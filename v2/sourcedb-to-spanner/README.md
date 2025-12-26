@@ -91,7 +91,7 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 ```
 #### Replaying DLQ entries.
 Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
-To retry the DLQs, run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in `retryDLQ` mode. Files for successfully applied DLQ entries in `dlq/severe` are deleted. Failed entries are retried until they are successfully applied.
+To retry the DLQs, run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in `retryDLQ` mode. Files corresponding to events which are successfully migrated to Spanner upon retry are deleted from the `dlq/severe` directory. If there are any failures during the retry, the events will be retried infinitely until they are successfully migrated to Spanner
 
 ##### Sample Command to retry DLQs.
 The following sample command could help to start a DLQ retry job.
@@ -100,10 +100,12 @@ gcloud  dataflow flex-template run <jobname> \
 --region=<the region where the dataflow job must run> \
 --template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
 --additional-experiments=use_runner_v2 \
---parameters datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
+--parameters datastreamSourceType="mysql",streamName=<data stream name>,\
 instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
 deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
 ```
+For parameter deadLetterQueueDirectory, the value should be whatever was passed in `outputDirectory` parameter in Bulk migration before followed by `/dlq` for example, if outputDirectory=`gs://test-bucket/output` was passed for the bulk migration, then deadLetterQueueDirectory should be `gs://test-bucket/output/dlq`
+
 For DLQ Replay for Cassandra source, set the `datastreamSourceType` as `mysql`.
 
 ##### Checking if all DLQ entries are applied.
