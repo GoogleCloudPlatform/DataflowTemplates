@@ -100,8 +100,7 @@ gcloud  dataflow flex-template run <jobname> \
 --region=<the region where the dataflow job must run> \
 --template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
 --additional-experiments=use_runner_v2 \
---parameters inputFilePattern=<outputDirectory of the bulk job>,streamName="ignore",\
-datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
+--parameters datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
 instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
 deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
 ```
