@@ -261,10 +261,10 @@ public class AssignShardIdFn
     } catch (Exception e) {
       LOG.error("Error fetching shard Id column: {}", e);
       TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e);
-      if (Constants.RETRYABLE_ERROR_TAG.equals(errorTag)) {
-        record.setShard(Constants.RETRYABLE_SENTINEL_SHARD_ID);
+      if (Constants.PERMANENT_ERROR_TAG.equals(errorTag)) {
+        record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
       } else {
-        record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+        record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
       }
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;

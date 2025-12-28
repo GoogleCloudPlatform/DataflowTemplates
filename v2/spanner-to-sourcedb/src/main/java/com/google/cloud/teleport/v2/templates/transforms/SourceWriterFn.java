@@ -199,16 +199,14 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
     String shardId = spannerRec.getShard();
-    if (shardId == null) {
-      // no shard found, move to permanent error
+    if (shardId == null || shardId.equals(Constants.SEVERE_ERROR_SHARD_ID)) {
+      // if no shard or permanent error shard id found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
-    } else if (shardId.equals(Constants.RETRYABLE_SENTINEL_SHARD_ID)) {
+    } else if (shardId.equals(Constants.RETRYABLE_ERROR_SHARD_ID)) {
+      // if retryable error shard id found, move to retryable error
       outputWithTag(
           c, Constants.RETRYABLE_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
-    } else if (shardId.equals(Constants.SEVERE_SENTINEL_SHARD_ID)) {
-      outputWithTag(
-          c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
     } else if (shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();

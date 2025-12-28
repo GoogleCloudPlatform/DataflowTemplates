@@ -575,14 +575,14 @@ public class AssignShardIdFnTest {
             "");
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
-    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
+    assertEquals(Constants.SEVERE_ERROR_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -614,7 +614,7 @@ public class AssignShardIdFnTest {
             "",
             "");
 
-    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -624,7 +624,7 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
+    assertEquals(Constants.SEVERE_ERROR_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -660,7 +660,7 @@ public class AssignShardIdFnTest {
             "",
             "");
 
-    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -671,7 +671,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
+    assertEquals(Constants.SEVERE_ERROR_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -772,7 +772,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
-    record.setShard(Constants.RETRYABLE_SENTINEL_SHARD_ID);
+    record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -784,7 +784,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext).output(eq(KV.of(key, record)));
-    assertEquals(Constants.RETRYABLE_SENTINEL_SHARD_ID, record.getShard());
+    assertEquals(Constants.RETRYABLE_ERROR_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -822,7 +822,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
-    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -834,7 +834,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext).output(eq(KV.of(key, record)));
-    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
+    assertEquals(Constants.SEVERE_ERROR_SHARD_ID, record.getShard());
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {

@@ -82,6 +82,6 @@ public class Constants {
       "Filtered record from custom transformation in reverse replication";
 
   // Sentinel Shard IDs for error handling
-  public static final String RETRYABLE_SENTINEL_SHARD_ID = "retryable_error_shard";
-  public static final String SEVERE_SENTINEL_SHARD_ID = "severe_error_shard";
+  public static final String RETRYABLE_ERROR_SHARD_ID = "retryable_error_shard";
+  public static final String SEVERE_ERROR_SHARD_ID = "severe_error_shard";
 }

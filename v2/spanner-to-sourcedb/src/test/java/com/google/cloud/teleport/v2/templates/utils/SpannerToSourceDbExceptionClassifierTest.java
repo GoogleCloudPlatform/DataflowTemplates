@@ -46,8 +46,8 @@ public class SpannerToSourceDbExceptionClassifierTest {
       ErrorCode.FAILED_PRECONDITION,
       ErrorCode.PERMISSION_DENIED,
       ErrorCode.UNAUTHENTICATED,
-      ErrorCode.RESOURCE_EXHAUSTED,
-      ErrorCode.UNIMPLEMENTED
+      ErrorCode.UNIMPLEMENTED,
+      ErrorCode.INTERNAL,
     };
 
     for (ErrorCode code : permanentCodes) {
@@ -63,8 +63,9 @@ public class SpannerToSourceDbExceptionClassifierTest {
       ErrorCode.UNAVAILABLE,
       ErrorCode.ABORTED,
       ErrorCode.DEADLINE_EXCEEDED,
-      ErrorCode.INTERNAL,
-      ErrorCode.UNKNOWN
+      ErrorCode.UNKNOWN,
+      ErrorCode.RESOURCE_EXHAUSTED,
+      ErrorCode.CANCELLED,
     };
 
     for (ErrorCode code : retryableCodes) {

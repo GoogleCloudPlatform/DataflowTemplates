@@ -39,8 +39,8 @@ public class SpannerToSourceDbExceptionClassifier {
           ErrorCode.FAILED_PRECONDITION,
           ErrorCode.PERMISSION_DENIED,
           ErrorCode.UNAUTHENTICATED,
-          ErrorCode.RESOURCE_EXHAUSTED,
-          ErrorCode.UNIMPLEMENTED);
+          ErrorCode.UNIMPLEMENTED,
+          ErrorCode.INTERNAL);
 
   public static TupleTag<String> classify(Exception exception) {
     if (exception instanceof SpannerException e) {

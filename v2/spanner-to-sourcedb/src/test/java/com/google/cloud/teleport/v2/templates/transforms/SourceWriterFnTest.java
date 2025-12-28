@@ -816,8 +816,8 @@ public class SourceWriterFnTest {
   @Test
   public void testRetryableSentinelShardId() throws Exception {
     TrimmedShardedDataChangeRecord record =
-        getParent1TrimmedDataChangeRecord(Constants.RETRYABLE_SENTINEL_SHARD_ID);
-    record.setShard(Constants.RETRYABLE_SENTINEL_SHARD_ID);
+        getParent1TrimmedDataChangeRecord(Constants.RETRYABLE_ERROR_SHARD_ID);
+    record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
     when(processContext.element()).thenReturn(KV.of(1L, record));
 
     SourceWriterFn sourceWriterFn =
@@ -848,8 +848,8 @@ public class SourceWriterFnTest {
   @Test
   public void testSevereSentinelShardId() throws Exception {
     TrimmedShardedDataChangeRecord record =
-        getParent1TrimmedDataChangeRecord(Constants.SEVERE_SENTINEL_SHARD_ID);
-    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+        getParent1TrimmedDataChangeRecord(Constants.SEVERE_ERROR_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     when(processContext.element()).thenReturn(KV.of(1L, record));
 
     SourceWriterFn sourceWriterFn =
