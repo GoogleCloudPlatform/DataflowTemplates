@@ -40,7 +40,7 @@
     <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
     <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
     <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
-    <extra.enforcer.rules.version>1.10.0</extra.enforcer.rules.version>
+    <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
