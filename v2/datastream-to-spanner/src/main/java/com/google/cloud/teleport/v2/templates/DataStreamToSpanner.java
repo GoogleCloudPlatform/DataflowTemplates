@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -712,16 +713,19 @@ public class DataStreamToSpanner {
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
     boolean isRegularMode = "regular".equals(options.getRunMode());
-    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
+    List<String> filePathsToIgnore = new ArrayList<>(Arrays.asList("/tmp_retry", "/tmp_severe/", ".temp"));
+    if (isRegularMode) {
+        filePathsToIgnore.add("/severe/");
+    } else {
+        filePathsToIgnore.add("/retry/");
+    }
+    if (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription())) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
               pipeline.apply(
                   "Read retry from PubSub",
                   new PubSubNotifiedDlqIO(
-                      options.getDlqGcsPubSubSubscription(),
-                      // file paths to ignore when re-consuming for retry
-                      new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+                                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
