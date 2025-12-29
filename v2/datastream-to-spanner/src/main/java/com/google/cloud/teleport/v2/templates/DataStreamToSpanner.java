@@ -713,11 +713,12 @@ public class DataStreamToSpanner {
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
     boolean isRegularMode = "regular".equals(options.getRunMode());
-    List<String> filePathsToIgnore = new ArrayList<>(Arrays.asList("/tmp_retry", "/tmp_severe/", ".temp"));
+    List<String> filePathsToIgnore =
+        new ArrayList<>(Arrays.asList("/tmp_retry", "/tmp_severe/", ".temp"));
     if (isRegularMode) {
-        filePathsToIgnore.add("/severe/");
+      filePathsToIgnore.add("/severe/");
     } else {
-        filePathsToIgnore.add("/retry/");
+      filePathsToIgnore.add("/retry/");
     }
     if (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription())) {
       reconsumedElements =
@@ -725,7 +726,7 @@ public class DataStreamToSpanner {
               pipeline.apply(
                   "Read retry from PubSub",
                   new PubSubNotifiedDlqIO(
-                                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
+                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(

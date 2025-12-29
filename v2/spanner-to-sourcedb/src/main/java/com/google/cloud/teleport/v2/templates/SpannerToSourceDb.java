@@ -655,17 +655,18 @@ public class SpannerToSourceDb {
                 ? debugOptions.getNumberOfWorkerHarnessThreads()
                 : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
-    List<String> filePathsToIgnore = new ArrayList<>(
+    List<String> filePathsToIgnore =
+        new ArrayList<>(
             Arrays.asList(
-                    "/tmp_retry",
-                    "/tmp_severe/",
-                    ".temp",
-                    "/tmp_skip/",
-                    "/" + options.getSkipDirectoryName()));
+                "/tmp_retry",
+                "/tmp_severe/",
+                ".temp",
+                "/tmp_skip/",
+                "/" + options.getSkipDirectoryName()));
     if (isRegularMode) {
-        filePathsToIgnore.add("/severe/");
+      filePathsToIgnore.add("/severe/");
     } else {
-        filePathsToIgnore.add("/retry/");
+      filePathsToIgnore.add("/retry/");
     }
 
     if (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription())) {
@@ -674,7 +675,7 @@ public class SpannerToSourceDb {
               pipeline.apply(
                   "Read retry from PubSub",
                   new PubSubNotifiedDlqIO(
-                                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
+                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
