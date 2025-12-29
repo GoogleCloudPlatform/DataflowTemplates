@@ -105,7 +105,7 @@ import org.slf4j.LoggerFactory;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-bigtable-change-streams-to-pubsub",
-    flexContainerName = "bigtable-changestreams-to-pubsub",
+    flexContainerName = "googlecloud-to-googlecloud",
     contactInformation = "https://cloud.google.com/support",
     streaming = true,
     supportsAtLeastOnce = true)

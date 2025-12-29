@@ -170,6 +170,35 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         return;
       }
 
+      String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+      TemplatesStageMojo configuredMojo =
+          new TemplatesStageMojo(
+              project,
+              session,
+              outputDirectory,
+              outputClassesDirectory,
+              resourcesDirectory,
+              targetDirectory,
+              projectId,
+              templateName,
+              bucketName,
+              librariesBucketName,
+              stagePrefix,
+              useRegion,
+              artifactRegion,
+              gcpTempLocation,
+              baseContainerImage,
+              basePythonContainerImage,
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
+              unifiedWorker,
+              generateSBOM);
+      configuredMojo.stageCommandSpecs(templateDefinitions);
+
       for (TemplateDefinitions definition : templateDefinitions) {
 
         ImageSpec imageSpec = definition.buildSpecModel(true);
@@ -180,36 +209,6 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         }
 
         LOG.info("Staging template {}...", currentTemplateName);
-
-        String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
-
-        // TODO: is there a better way to get the plugin on the _same project_?
-        TemplatesStageMojo configuredMojo =
-            new TemplatesStageMojo(
-                project,
-                session,
-                outputDirectory,
-                outputClassesDirectory,
-                resourcesDirectory,
-                targetDirectory,
-                projectId,
-                templateName,
-                bucketName,
-                librariesBucketName,
-                stagePrefix,
-                useRegion,
-                artifactRegion,
-                gcpTempLocation,
-                baseContainerImage,
-                basePythonContainerImage,
-                pythonTemplateLauncherEntryPoint,
-                javaTemplateLauncherEntryPoint,
-                pythonVersion,
-                beamVersion,
-                artifactRegistry,
-                stagingArtifactRegistry,
-                unifiedWorker,
-                generateSBOM);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
 

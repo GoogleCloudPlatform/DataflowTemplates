@@ -94,7 +94,7 @@ import org.slf4j.LoggerFactory;
         "pythonExternalTextTransformFunctionName"
       },
       optionsClass = TextToBigQueryStreamingOptions.class,
-      flexContainerName = "text-to-bigquery-streaming",
+      flexContainerName = "googlecloud-to-googlecloud",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
       contactInformation = "https://cloud.google.com/support",
@@ -174,7 +174,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformReloadIntervalMinutes"
       },
       optionsClass = TextToBigQueryStreamingOptions.class,
-      flexContainerName = "text-to-bigquery-streaming-xlang",
+      flexContainerName = "googlecloud-to-googlecloud-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/text-to-bigquery-stream",
       contactInformation = "https://cloud.google.com/support",

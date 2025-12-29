@@ -157,7 +157,7 @@ import org.slf4j.LoggerFactory;
           + " practices</a>."
     },
     optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
-    flexContainerName = "spanner-changestreams-to-bigquery",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
