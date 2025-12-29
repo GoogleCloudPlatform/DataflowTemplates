@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetVal
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
-import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
@@ -112,38 +111,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
   static final Pattern TIME_STRING_PATTERN =
       Pattern.compile("^(-)?(\\d+):(\\d+):(\\d+)(\\.(\\d+))?$");
 
-  /**
-   * DEPRECATED: Unified type interval is no longer utilized for MySQL. However, this can be reused
-   * for Postgres, whenever the support is added. Map Time type to {@link Interval#SCHEMA}. Note
-   * Time type records an interval between 2 timestamps, and is independent of timezone.
-   */
-  private static final ResultSetValueMapper<String> timeStringToAvroInterval =
-      (value, schema) -> {
-        Matcher matcher = TIME_STRING_PATTERN.matcher(value);
-        Preconditions.checkArgument(
-            matcher.matches(),
-            "The time string " + value + " does not match " + TIME_STRING_PATTERN);
 
-        /* MySQL output is always hours::minutes::seconds.fractionalSeconds */
-        boolean isNegative = matcher.group(1) != null;
-        int hours = Integer.parseInt(matcher.group(2));
-        int minutes = Integer.parseInt(matcher.group(3));
-        int seconds = Integer.parseInt(matcher.group(4));
-        long nanoSeconds =
-            matcher.group(5) == null
-                ? 0
-                : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
-        return new GenericRecordBuilder(Interval.SCHEMA)
-            .set(Interval.MONTHS_FIELD_NAME, 0)
-            .set(Interval.HOURS_FIELD_NAME, hours * ((isNegative) ? -1 : 1))
-            .set(
-                Interval.MICROS_FIELD_NAME,
-                ((isNegative) ? -1 : 1)
-                    * (TimeUnit.MINUTES.toMicros(minutes)
-                        + TimeUnit.SECONDS.toMicros(seconds)
-                        + TimeUnit.NANOSECONDS.toMicros(nanoSeconds)))
-            .build();
-      };
 
   private static long instantToMicro(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
@@ -187,6 +155,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    * Static mapping of SourceColumnType to {@link ResultSetValueExtractor} and {@link
    * ResultSetValueMapper}.
    */
+  @SuppressWarnings("null")
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
@@ -236,5 +205,133 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
     return SCHEMA_MAPPINGS;
+  }
+
+  /**
+   * Guess the column size in bytes for a given column type.
+   *
+   * <p>
+   * Ref: <a href=
+   * "https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html">MySQL
+   * Storage Requirements</a>
+   */
+  @Override
+  public int guessColumnSize(com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+      String typeName = sourceColumnType.getName().toUpperCase();
+      switch (typeName) {
+          // numeric types
+          // Ref: https://dev.mysql.com/doc/refman/8.4/en/integer-types.html
+          case "TINYINT":
+              return 1;
+          case "SMALLINT":
+          case "YEAR":
+              return 2;
+          case "MEDIUMINT":
+              return 3;
+          case "INT":
+          case "INTEGER":
+          case "FLOAT": // Partitioned as float/int
+              return 4;
+          case "BIGINT":
+          case "DOUBLE":
+          case "REAL": // MySQL REAL is DOUBLE by default unless REAL_AS_FLOAT sql mode is enabled
+              return 8;
+          // Date and Time
+          // Ref:
+          // https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html#data-types-storage-reqs-date-time
+          case "DATE":
+              return 3;
+          case "TIME": // Time is 3 bytes + fractional seconds storage (0-3 bytes)
+              return 6; // average/safe upper bound
+          case "TIMESTAMP": // 4 bytes + fractional
+              return 7;
+          case "DATETIME": // 5 bytes + fractional
+              return 8;
+          // String/Binary types
+          // Ref:
+          // https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html#data-types-storage-reqs-strings
+          case "CHAR":
+          case "BINARY":
+          case "VARCHAR":
+          case "VARBINARY":
+          case "TEXT":
+          case "BLOB":
+          case "TINYTEXT":
+          case "TINYBLOB":
+          case "MEDIUMTEXT":
+          case "MEDIUMBLOB":
+          case "LONGTEXT":
+          case "LONGBLOB":
+          case "ENUM":
+          case "SET":
+          case "JSON":
+              return guessVariableTypeSize(sourceColumnType);
+          case "BIT":
+              // (M+7)/8 bytes
+              Long[] mods = sourceColumnType.getMods();
+              long bits = (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 1;
+              return (int) ((bits + 7) / 8);
+          case "DECIMAL":
+          case "NUMERIC":
+              // Variable, but usually packed. precision/9 * 4 bytes.
+              // Let's assume a safe average if not calculable. 16 bytes is decent for common
+              // usage.
+              return 16;
+          default:
+              // Default safe fallback
+              return 16;
+      }
+  }
+
+  private int guessVariableTypeSize(
+          com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+      String typeName = sourceColumnType.getName().toUpperCase();
+      long length = 0;
+      Long[] mods = sourceColumnType.getMods();
+      if (mods != null && mods.length > 0 && mods[0] != null) {
+          length = mods[0];
+      } else {
+          // Defaults if length not specified
+          switch (typeName) {
+              case "TINYTEXT":
+              case "TINYBLOB":
+                  length = 255;
+                  break;
+              case "TEXT":
+              case "BLOB":
+                  length = 65_535;
+                  break;
+              case "MEDIUMTEXT":
+              case "MEDIUMBLOB":
+                  length = 16_777_215;
+                  break;
+              case "LONGTEXT":
+              case "LONGBLOB":
+              case "JSON":
+                  // Cap at a reasonable limit for fetch size calculation to avoid divide by zero
+                  // or tiny fetch sizes.
+                  // 4GB is too big. Let's assume 20KB average for unchecked huge fields?
+                  // Or strictly follow "max row size" logic which would kill fetch size?
+                  // The user wanted "max row size", but for unbounded types, using full 4GB is
+                  // impractical (fetch size = 0).
+                  // 4MB (max allowed packet default often) might be a better "max" proxy?
+                  // Let's stick to the previous conservative 1KB or similar, OR use a
+                  // configurable max?
+                  // FetchSizeCalculator previously used 10MB (10 * 1024 * 1024).
+                  length = 10 * 1024 * 1024;
+                  break;
+              default:
+                  length = 255; // Default for VARCHAR/CHAR if unknown
+          }
+      }
+
+      // Checking for multi-byte chars (Utf8mb4 is max 4 bytes)
+      // binary types don't need multiplier.
+      if (typeName.contains("TEXT") || typeName.contains("CHAR") || typeName.equals("JSON") || typeName.equals("ENUM")
+              || typeName.equals("SET")) {
+          return (int) (length * 4);
+      } else {
+          return (int) length;
+      }
   }
 }

@@ -181,6 +181,9 @@ public final class JdbcIoWrapper implements IoWrapper {
             tableConfig -> {
               SourceTableSchema sourceTableSchema =
                   findSourceTableSchema(sourceSchema, tableConfig);
+              long estimatedRowSize = config.dialectAdapter().estimateRowSize(sourceTableSchema,
+                  config.valueMappingsProvider());
+              int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, estimatedRowSize);
               return Map.entry(
                   SourceTableReference.builder()
                       .setSourceSchemaReference(sourceSchema.schemaReference())
@@ -193,13 +196,15 @@ public final class JdbcIoWrapper implements IoWrapper {
                           dataSourceConfiguration,
                           sourceSchema.schemaReference(),
                           tableConfig,
-                          sourceTableSchema)
+                          sourceTableSchema,
+                          fetchSize)
                       : getJdbcIO(
                           config,
                           dataSourceConfiguration,
                           sourceSchema.schemaReference(),
                           tableConfig,
-                          sourceTableSchema));
+                          sourceTableSchema,
+                          fetchSize));
             })
         .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
@@ -416,7 +421,8 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
             .withTable(delimitIdentifier(tableConfig.tableName()))
@@ -431,9 +437,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
-    if (tableConfig.fetchSize() != null) {
-      jdbcIO = jdbcIO.withFetchSize(tableConfig.fetchSize());
-    }
+    jdbcIO = jdbcIO.withFetchSize(fetchSize);
     return jdbcIO;
   }
 
@@ -452,7 +456,8 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
 
     ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
         ReadWithUniformPartitions.<SourceRow>builder()
@@ -461,7 +466,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
-            .setFetchSize(tableConfig.fetchSize())
+            .setFetchSize(fetchSize)
             .setRowMapper(
                 new JdbcSourceRowMapper(
                     config.valueMappingsProvider(),

@@ -164,6 +164,124 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
+  /**
+   * Guess the column size in bytes for a given column type.
+   *
+   * <p>
+   * Ref:
+   * <a href="https://www.postgresql.org/docs/current/datatype.html">PostgreSQL
+   * Data Types</a>
+   */
+  @Override
+  public int guessColumnSize(com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+      String typeName = sourceColumnType.getName().toUpperCase();
+      switch (typeName) {
+          // numeric types
+          case "SMALLINT":
+          case "INT2":
+              return 2;
+          case "INTEGER":
+          case "INT":
+          case "INT4":
+              return 4;
+          case "BIGINT":
+          case "INT8":
+          case "BIGSERIAL":
+          case "SERIAL8":
+          case "MONEY": // 8 bytes
+              return 8;
+          case "REAL":
+          case "FLOAT4":
+              return 4;
+          case "DOUBLE PRECISION":
+          case "FLOAT8":
+              return 8;
+          case "SERIAL":
+          case "SERIAL4":
+              return 4;
+          case "SMALLSERIAL":
+          case "SERIAL2":
+              return 2;
+          // Date and Time
+          case "DATE":
+              return 4;
+          case "TIME":
+          case "TIMESTAMP":
+          case "TIMESTAMP WITHOUT TIME ZONE":
+              return 8;
+          case "TIMESTAMPTZ":
+          case "TIMESTAMP WITH TIME ZONE":
+              return 12; // 8 bytes for timestamp + 4 bytes for zone offset (internal representation
+                         // varies, but convenient est)
+          case "INTERVAL":
+              return 16;
+          // String/Binary types
+          case "CHAR":
+          case "CHARACTER":
+          case "VARCHAR":
+          case "CHARACTER VARYING":
+          case "TEXT":
+          case "BYTEA":
+          case "BIT": // Fixed-length bit string
+          case "BIT VARYING":
+          case "VARBIT":
+          case "UUID": // 16 bytes
+          case "JSON":
+          case "JSONB":
+          case "XML":
+          case "CITEXT":
+              return guessVariableTypeSize(sourceColumnType);
+          case "BOOLEAN":
+          case "BOOL":
+              return 1;
+          case "NUMERIC":
+          case "DECIMAL":
+              // Variable. Arbitrary precision.
+              return 16;
+          default:
+              // Default safe fallback
+              return 16;
+      }
+  }
+
+  private int guessVariableTypeSize(
+          com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+      String typeName = sourceColumnType.getName().toUpperCase();
+      if (typeName.equals("UUID")) {
+          return 16;
+      }
+
+      long length = 0;
+      Long[] mods = sourceColumnType.getMods();
+      if (mods != null && mods.length > 0 && mods[0] != null) {
+          length = mods[0];
+      } else {
+          // Defaults if length not specified
+          // Postgres TEXT/BYTEA/JSON are variable unlimited (up to 1GB).
+          // We need a safe estimate for fetch size.
+          length = 255; // Default for unbounded text.
+          if (typeName.contains("TEXT") || typeName.contains("JSON") || typeName.equals("BYTEA")
+                  || typeName.equals("XML")) {
+              // Use a larger default for explicit "unbounded" types?
+              // FetchSizeCalculator had 64KB for TEXT/BLOB.
+              // Let's go with 64KB for true unbounded types if no mod is present.
+              length = 65_535;
+          }
+      }
+
+      // Checking for multi-byte chars. UTF-8 is standard.
+      if (typeName.contains("TEXT") || typeName.contains("CHAR") || typeName.contains("JSON")
+              || typeName.contains("XML") || typeName.contains("CITEXT")) {
+          return (int) (length * 4);
+      } else {
+          // Binary or Bit
+          if (typeName.contains("BIT")) {
+              return (int) Math.ceil(length / 8.0);
+          }
+          return (int) length;
+      }
+  }
+
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
     return SCHEMA_MAPPINGS;
