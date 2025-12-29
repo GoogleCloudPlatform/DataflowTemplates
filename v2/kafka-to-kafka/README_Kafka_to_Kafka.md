@@ -14,7 +14,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **readBootstrapServerAndTopic**: Kafka Bootstrap server and topic to read the input from. For example, `localhost:9092;topic1,topic2`.
-* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, `KafkaAuthenticationMethod.SASL_SCRAM_512` for SASL_SCRAM_512 authentication and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.
+* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, `SASL_SCRAM_512` for SASL_SCRAM_512 authentication and `TLS` for certificate-based authentication. `APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Managed Service for Apache Kafka cluster, it allows to authenticate using application default credentials.
 * **writeBootstrapServerAndTopic**: Kafka topic to write the output to.
 * **kafkaWriteAuthenticationMethod**: The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password,  SASL_SCRAM_512 for SASL_SCRAM_512 based authentication and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
 
@@ -100,7 +100,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_Kafka" \
--f v2/kafka-to-kafka
+-pl v2/kafka-to-kafka -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

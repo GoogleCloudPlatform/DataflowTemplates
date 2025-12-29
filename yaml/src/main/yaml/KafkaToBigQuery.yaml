@@ -113,9 +113,11 @@ pipeline:
   transforms:
     - type: ReadFromKafka
       config:
+        {% if schema %}
         schema: |
           {{ schema}}
-        format: {{ messageFormat }}
+        {% endif %}
+        format: {{ messageFormat  | default('JSON') }}
         topic: {{ kafkaReadTopics }}
         bootstrap_servers: {{ readBootstrapServers }}
         auto_offset_reset_config: 'earliest'

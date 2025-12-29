@@ -120,7 +120,12 @@ public interface SchemaRegistryOptions extends PipelineOptions {
       },
       optional = true,
       description = "Authentication Mode",
-      helpText = "Schema Registry authentication mode. Can be NONE, TLS or OAUTH.")
+      helpText =
+          "The mode of authentication to use with the Schema Registry. "
+              + "Use `NONE` for no authentication, `TLS` for certificate-based authentication and "
+              + "`OAUTH` for OAuth2 authentication. `APPLICATION_DEFAULT_CREDENTIALS` should be "
+              + "used only for Google Cloud Managed Service for Apache Kafka Schema Registry, "
+              + "it allows to authenticate using application default credentials.")
   @Default.String(KafkaAuthenticationMethod.NONE)
   String getSchemaRegistryAuthenticationMode();
 

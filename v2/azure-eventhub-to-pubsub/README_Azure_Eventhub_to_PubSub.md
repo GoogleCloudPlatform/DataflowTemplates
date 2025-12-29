@@ -82,7 +82,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Azure_Eventhub_to_PubSub" \
--f v2/azure-eventhub-to-pubsub
+-pl v2/azure-eventhub-to-pubsub -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

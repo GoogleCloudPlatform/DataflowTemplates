@@ -1,3 +1,5 @@
+SET GLOBAL max_connections = 300;
+
 CREATE TABLE `varchar_table` (
     `id` INT PRIMARY KEY,
     `varchar_col` VARCHAR(21000) CHARACTER SET utf8 DEFAULT NULL
@@ -187,6 +189,185 @@ CREATE TABLE set_table (
     set_col SET('v1', 'v2', 'v3') DEFAULT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bit_to_bool_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bit_to_bool_col BIT
+);
+
+CREATE TABLE IF NOT EXISTS bit_to_int64_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bit_to_int64_col BIT(64)
+);
+
+CREATE TABLE IF NOT EXISTS bit_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bit_to_string_col BIT(16)
+);
+
+CREATE TABLE IF NOT EXISTS bool_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bool_to_string_col BOOL
+);
+
+CREATE TABLE IF NOT EXISTS boolean_to_bool_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  boolean_to_bool_col BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS boolean_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  boolean_to_string_col BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS tinyint_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tinyint_to_string_col TINYINT
+);
+
+CREATE TABLE IF NOT EXISTS smallint_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  smallint_to_string_col SMALLINT
+);
+
+CREATE TABLE IF NOT EXISTS mediumint_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  mediumint_to_string_col MEDIUMINT
+);
+
+CREATE TABLE IF NOT EXISTS int_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  int_to_string_col INT
+);
+
+CREATE TABLE IF NOT EXISTS integer_to_int64_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  integer_to_int64_col INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS integer_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  integer_to_string_col INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS bigint_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  bigint_to_string_col BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS decimal_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  decimal_to_string_col DECIMAL(65, 30)
+);
+
+CREATE TABLE IF NOT EXISTS dec_to_numeric_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dec_to_numeric_col DEC(65, 30)
+);
+
+CREATE TABLE IF NOT EXISTS dec_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dec_to_string_col DEC(65, 30)
+);
+
+CREATE TABLE IF NOT EXISTS numeric_to_numeric_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  numeric_to_numeric_col NUMERIC(65, 30)
+);
+
+CREATE TABLE IF NOT EXISTS numeric_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  numeric_to_string_col NUMERIC(65, 30)
+);
+
+CREATE TABLE IF NOT EXISTS float_to_float32_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  float_to_float32_col FLOAT
+);
+
+CREATE TABLE IF NOT EXISTS float_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  float_to_string_col FLOAT
+);
+
+CREATE TABLE IF NOT EXISTS double_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  double_to_string_col DOUBLE
+);
+
+CREATE TABLE IF NOT EXISTS double_precision_to_float64_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  double_precision_to_float64_col DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS double_precision_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  double_precision_to_string_col DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS real_to_float64_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  real_to_float64_col REAL
+);
+
+CREATE TABLE IF NOT EXISTS real_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  real_to_string_col REAL
+);
+
+CREATE TABLE IF NOT EXISTS date_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  date_to_string_col DATE
+);
+
+CREATE TABLE IF NOT EXISTS datetime_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  datetime_to_string_col DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS timestamp_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  timestamp_to_string_col TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS binary_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  binary_to_string_col BINARY(255)
+);
+
+CREATE TABLE IF NOT EXISTS varbinary_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  varbinary_to_string_col VARBINARY(65000)
+);
+
+CREATE TABLE IF NOT EXISTS tinyblob_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tinyblob_to_string_col TINYBLOB
+);
+
+CREATE TABLE IF NOT EXISTS blob_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  blob_to_string_col BLOB
+);
+
+CREATE TABLE IF NOT EXISTS mediumblob_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  mediumblob_to_string_col MEDIUMBLOB
+);
+
+CREATE TABLE IF NOT EXISTS longblob_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  longblob_to_string_col LONGBLOB
+);
+
+CREATE TABLE IF NOT EXISTS set_to_array_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  set_to_array_col SET('v1', 'v2', 'v3')
+);
+
+CREATE TABLE IF NOT EXISTS json_to_string_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  json_to_string_col JSON
+);
 
 CREATE TABLE bigint_pk_table (
     id BIGINT PRIMARY KEY,
@@ -296,6 +477,37 @@ CREATE TABLE year_pk_table (
     year_pk_col YEAR NOT NULL
 );
 
+CREATE TABLE bool_pk_table (
+    id BOOL PRIMARY KEY,
+    bool_pk_col BOOL NOT NULL
+);
+
+
+CREATE TABLE date_pk_table (
+    id DATE PRIMARY KEY,
+    date_pk_col DATE NOT NULL
+);
+
+CREATE TABLE decimal_pk_table (
+    id DECIMAL(10,2) PRIMARY KEY,
+    decimal_pk_col DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE float_pk_table (
+  id FLOAT PRIMARY KEY,
+  float_pk_col FLOAT NOT NULL
+);
+
+CREATE TABLE double_pk_table (
+  id DOUBLE PRIMARY KEY,
+  double_pk_col DOUBLE NOT NULL
+);
+
+CREATE TABLE time_pk_table (
+    id TIME(3) PRIMARY KEY,
+    time_pk_col TIME(3) NOT NULL
+);
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -338,60 +550,138 @@ ALTER TABLE `set_table` MODIFY `id` INT AUTO_INCREMENT;
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (40);
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (9223372036854775807);
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (-9223372036854775808);
+INSERT INTO `bigint_to_string_table` (`bigint_to_string_col`) VALUES (40);
+INSERT INTO `bigint_to_string_table` (`bigint_to_string_col`) VALUES (9223372036854775807);
+INSERT INTO `bigint_to_string_table` (`bigint_to_string_col`) VALUES (-9223372036854775808);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (42);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (0);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (18446744073709551615);
 INSERT INTO `binary_table` (`binary_col`) VALUES (x'7835383030000000000000000000000000000000');
 INSERT INTO `binary_table` (`binary_col`) VALUES (REPEAT(X'FF', 255));
+INSERT INTO `binary_to_string_table` (`binary_to_string_col`) VALUES (x'7835383030000000000000000000000000000000');
+INSERT INTO `binary_to_string_table` (`binary_to_string_col`) VALUES (REPEAT(X'FF', 255));
 INSERT INTO `bit_table` (`bit_col`) VALUES (b'0111111111111111111111111111111111111111111111111111111111111111');
 INSERT INTO `bit8_table` (`bit8_col`) VALUES (b'0'), (b'11111111');
 INSERT INTO `bit1_table` (`bit1_col`) VALUES (b'0'), (b'1');
+INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (b'0');
+INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (b'1');
+INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (b'0111111111111111');
+INSERT INTO `bit_to_int64_table` (`bit_to_int64_col`) VALUES (b'0111111111111111111111111111111111111111111111111111111111111111');
 INSERT INTO `blob_table` (`blob_col`) VALUES (X'7835383030');
 INSERT INTO `blob_table` (`blob_col`) VALUES (REPEAT(X'FF', 65535));
+INSERT INTO `blob_to_string_table` (`blob_to_string_col`) VALUES (X'7835383030');
+INSERT INTO `blob_to_string_table` (`blob_to_string_col`) VALUES (REPEAT(X'FF', 65535));
 INSERT INTO `bool_table` (`bool_col`) VALUES (0);
 INSERT INTO `bool_table` (`bool_col`) VALUES (1);
+INSERT INTO `bool_to_string_table` (`bool_to_string_col`) VALUES (0);
+INSERT INTO `bool_to_string_table` (`bool_to_string_col`) VALUES (1);
 INSERT INTO `boolean_table` (`boolean_col`) VALUES (0);
 INSERT INTO `boolean_table` (`boolean_col`) VALUES (1);
+INSERT INTO `boolean_to_bool_table` (`boolean_to_bool_col`) VALUES (0);
+INSERT INTO `boolean_to_bool_table` (`boolean_to_bool_col`) VALUES (1);
+INSERT INTO `boolean_to_string_table` (`boolean_to_string_col`) VALUES (0);
+INSERT INTO `boolean_to_string_table` (`boolean_to_string_col`) VALUES (1);
 INSERT INTO `char_table` (`char_col`) VALUES ('a');
 INSERT INTO `char_table` (`char_col`) VALUES (REPEAT('a', 255));
 INSERT INTO `date_table` (`date_col`) VALUES ('2012-09-17');
 INSERT INTO `date_table` (`date_col`) VALUES ('1000-01-01');
 INSERT INTO `date_table` (`date_col`) VALUES ('9999-12-31');
+INSERT INTO `date_to_string_table` (`date_to_string_col`) VALUES ('2012-09-17');
+INSERT INTO `date_to_string_table` (`date_to_string_col`) VALUES ('1000-01-01');
+INSERT INTO `date_to_string_table` (`date_to_string_col`) VALUES ('9999-12-31');
 INSERT INTO `datetime_table` (`datetime_col`) VALUES ('1998-01-23 12:45:56');
 INSERT INTO `datetime_table` (`datetime_col`) VALUES ('1000-01-01 00:00:00');
 INSERT INTO `datetime_table` (`datetime_col`) VALUES ('9999-12-31 23:59:59');
+INSERT INTO `datetime_to_string_table` (`datetime_to_string_col`) VALUES ('1998-01-23 12:45:56');
+INSERT INTO `datetime_to_string_table` (`datetime_to_string_col`) VALUES ('1000-01-01 00:00:00');
+INSERT INTO `datetime_to_string_table` (`datetime_to_string_col`) VALUES ('9999-12-31 23:59:59');
+INSERT INTO `dec_to_numeric_table` (`dec_to_numeric_col`) VALUES (68.75);
+INSERT INTO `dec_to_numeric_table` (`dec_to_numeric_col`) VALUES (99999999999999999999999.999999999);
+INSERT INTO `dec_to_numeric_table` (`dec_to_numeric_col`) VALUES (12345678912345678.123456789012345678912452300000);
+INSERT INTO `dec_to_string_table` (`dec_to_string_col`) VALUES (68.75);
+INSERT INTO `dec_to_string_table` (`dec_to_string_col`) VALUES (99999999999999999999999.999999999);
+INSERT INTO `dec_to_string_table` (`dec_to_string_col`) VALUES (12345678912345678.123456789012345678912452300000);
 INSERT INTO `decimal_table` (`decimal_col`) VALUES (68.75);
 INSERT INTO `decimal_table` (`decimal_col`) VALUES (99999999999999999999999.999999999);
 INSERT INTO `decimal_table` (`decimal_col`) VALUES (12345678912345678.123456789012345678912452300000);
+INSERT INTO `decimal_to_string_table` (`decimal_to_string_col`) VALUES (68.75);
+INSERT INTO `decimal_to_string_table` (`decimal_to_string_col`) VALUES (99999999999999999999999.999999999);
+INSERT INTO `decimal_to_string_table` (`decimal_to_string_col`) VALUES (12345678912345678.123456789012345678912452300000);
+INSERT INTO `double_precision_to_float64_table` (`double_precision_to_float64_col`) VALUES (52.67);
+INSERT INTO `double_precision_to_float64_table` (`double_precision_to_float64_col`) VALUES (1.7976931348623157E308);
+INSERT INTO `double_precision_to_float64_table` (`double_precision_to_float64_col`) VALUES (-1.7976931348623157E308);
+INSERT INTO `double_precision_to_string_table` (`double_precision_to_string_col`) VALUES (52.67);
+INSERT INTO `double_precision_to_string_table` (`double_precision_to_string_col`) VALUES (1.7976931348623157E308);
+INSERT INTO `double_precision_to_string_table` (`double_precision_to_string_col`) VALUES (-1.7976931348623157E308);
 INSERT INTO `double_table` (`double_col`) VALUES (52.67);
 INSERT INTO `double_table` (`double_col`) VALUES (1.7976931348623157E308);
 INSERT INTO `double_table` (`double_col`) VALUES (-1.7976931348623157E308);
+INSERT INTO `double_to_string_table` (`double_to_string_col`) VALUES (52.67);
+INSERT INTO `double_to_string_table` (`double_to_string_col`) VALUES (1.7976931348623157E308);
+INSERT INTO `double_to_string_table` (`double_to_string_col`) VALUES (-1.7976931348623157E308);
 INSERT INTO `enum_table` (`enum_col`) VALUES ('1');
 INSERT INTO `float_table` (`float_col`) VALUES (45.56);
 INSERT INTO `float_table` (`float_col`) VALUES (3.4E38);
 INSERT INTO `float_table` (`float_col`) VALUES (-3.4E38);
+INSERT INTO `float_to_float32_table` (`float_to_float32_col`) VALUES (45.56);
+INSERT INTO `float_to_float32_table` (`float_to_float32_col`) VALUES (3.4E38);
+INSERT INTO `float_to_float32_table` (`float_to_float32_col`) VALUES (-3.4E38);
+INSERT INTO `float_to_string_table` (`float_to_string_col`) VALUES (45.56);
+INSERT INTO `float_to_string_table` (`float_to_string_col`) VALUES (3.4E38);
+INSERT INTO `float_to_string_table` (`float_to_string_col`) VALUES (-3.4E38);
 INSERT INTO `int_table` (`int_col`) VALUES (30);
 INSERT INTO `int_table` (`int_col`) VALUES (2147483647);
 INSERT INTO `int_table` (`int_col`) VALUES (-2147483648);
+INSERT INTO `int_to_string_table` (`int_to_string_col`) VALUES (30);
+INSERT INTO `int_to_string_table` (`int_to_string_col`) VALUES (2147483647);
+INSERT INTO `int_to_string_table` (`int_to_string_col`) VALUES (-2147483648);
+INSERT INTO `integer_to_int64_table` (`integer_to_int64_col`) VALUES (30);
+INSERT INTO `integer_to_int64_table` (`integer_to_int64_col`) VALUES (2147483647);
+INSERT INTO `integer_to_int64_table` (`integer_to_int64_col`) VALUES (-2147483648);
+INSERT INTO `integer_to_string_table` (`integer_to_string_col`) VALUES (30);
+INSERT INTO `integer_to_string_table` (`integer_to_string_col`) VALUES (2147483647);
+INSERT INTO `integer_to_string_table` (`integer_to_string_col`) VALUES (-2147483648);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (0);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (42);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (4294967295);
 INSERT INTO `test_json_table` (`test_json_col`) VALUES ('{"k1":"v1"}');
+INSERT INTO `json_to_string_table` (`json_to_string_col`) VALUES ('{"k1":"v1"}');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (X'7835383030');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (REPEAT(X'FF', 65535));
+INSERT INTO `longblob_to_string_table` (`longblob_to_string_col`) VALUES (X'7835383030');
+INSERT INTO `longblob_to_string_table` (`longblob_to_string_col`) VALUES (REPEAT(X'FF', 65535));
 INSERT INTO `longtext_table` (`longtext_col`) VALUES ('longtext');
 INSERT INTO `longtext_table` (`longtext_col`) VALUES (REPEAT('a', 65535));
 INSERT INTO `mediumblob_table` (`mediumblob_col`) VALUES (X'7835383030');
 INSERT INTO `mediumblob_table` (`mediumblob_col`) VALUES (REPEAT(X'FF', 65535));
+INSERT INTO `mediumblob_to_string_table` (`mediumblob_to_string_col`) VALUES (X'7835383030');
+INSERT INTO `mediumblob_to_string_table` (`mediumblob_to_string_col`) VALUES (REPEAT(X'FF', 65535));
 INSERT INTO `mediumint_table` (`mediumint_col`) VALUES (20);
+INSERT INTO `mediumint_to_string_table` (`mediumint_to_string_col`) VALUES (20);
 INSERT INTO `mediumint_unsigned_table` (`mediumint_unsigned_col`) VALUES (42);
 INSERT INTO `mediumint_unsigned_table` (`mediumint_unsigned_col`) VALUES (0);
 INSERT INTO `mediumint_unsigned_table` (`mediumint_unsigned_col`) VALUES (16777215);
 INSERT INTO `mediumtext_table` (`mediumtext_col`) VALUES ('mediumtext');
 INSERT INTO `mediumtext_table` (`mediumtext_col`) VALUES (REPEAT('a', 65535));
+INSERT INTO `numeric_to_numeric_table` (`numeric_to_numeric_col`) VALUES (68.75);
+INSERT INTO `numeric_to_numeric_table` (`numeric_to_numeric_col`) VALUES (99999999999999999999999.999999999);
+INSERT INTO `numeric_to_numeric_table` (`numeric_to_numeric_col`) VALUES (12345678912345678.123456789012345678912452300000);
+INSERT INTO `numeric_to_string_table` (`numeric_to_string_col`) VALUES (68.75);
+INSERT INTO `numeric_to_string_table` (`numeric_to_string_col`) VALUES (99999999999999999999999.999999999);
+INSERT INTO `numeric_to_string_table` (`numeric_to_string_col`) VALUES (12345678912345678.123456789012345678912452300000);
+INSERT INTO `real_to_float64_table` (`real_to_float64_col`) VALUES (52.67);
+INSERT INTO `real_to_float64_table` (`real_to_float64_col`) VALUES (1.7976931348623157E308);
+INSERT INTO `real_to_float64_table` (`real_to_float64_col`) VALUES (-1.7976931348623157E308);
+INSERT INTO `real_to_string_table` (`real_to_string_col`) VALUES (52.67);
+INSERT INTO `real_to_string_table` (`real_to_string_col`) VALUES (1.7976931348623157E308);
+INSERT INTO `real_to_string_table` (`real_to_string_col`) VALUES (-1.7976931348623157E308);
+INSERT INTO `set_to_array_table` (`set_to_array_col`) VALUES ('v1,v2');
 INSERT INTO `smallint_table` (`smallint_col`) VALUES (15);
 INSERT INTO `smallint_table` (`smallint_col`) VALUES (32767);
 INSERT INTO `smallint_table` (`smallint_col`) VALUES (-32768);
+INSERT INTO `smallint_to_string_table` (`smallint_to_string_col`) VALUES (15);
+INSERT INTO `smallint_to_string_table` (`smallint_to_string_col`) VALUES (32767);
+INSERT INTO `smallint_to_string_table` (`smallint_to_string_col`) VALUES (-32768);
 INSERT INTO `smallint_unsigned_table` (`smallint_unsigned_col`) VALUES (42);
 INSERT INTO `smallint_unsigned_table` (`smallint_unsigned_col`) VALUES (0);
 INSERT INTO `smallint_unsigned_table` (`smallint_unsigned_col`) VALUES (65535);
@@ -403,17 +693,27 @@ INSERT INTO `time_table` (`time_col`) VALUES ('-838:59:59');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('2022-08-05 08:23:11');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('1970-01-01 00:00:01');
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES ('2038-01-19 03:14:07');
+INSERT INTO `timestamp_to_string_table` (`timestamp_to_string_col`) VALUES ('2022-08-05 08:23:11');
+INSERT INTO `timestamp_to_string_table` (`timestamp_to_string_col`) VALUES ('1970-01-01 00:00:01');
+INSERT INTO `timestamp_to_string_table` (`timestamp_to_string_col`) VALUES ('2038-01-19 03:14:07');
 INSERT INTO `tinyblob_table` (`tinyblob_col`) VALUES (X'7835383030');
 INSERT INTO `tinyblob_table` (`tinyblob_col`) VALUES (REPEAT(X'FF', 255));
+INSERT INTO `tinyblob_to_string_table` (`tinyblob_to_string_col`) VALUES (X'7835383030');
+INSERT INTO `tinyblob_to_string_table` (`tinyblob_to_string_col`) VALUES (REPEAT(X'FF', 255));
 INSERT INTO `tinyint_table` (`tinyint_col`) VALUES (10);
 INSERT INTO `tinyint_table` (`tinyint_col`) VALUES (127);
 INSERT INTO `tinyint_table` (`tinyint_col`) VALUES (-128);
+INSERT INTO `tinyint_to_string_table` (`tinyint_to_string_col`) VALUES (10);
+INSERT INTO `tinyint_to_string_table` (`tinyint_to_string_col`) VALUES (127);
+INSERT INTO `tinyint_to_string_table` (`tinyint_to_string_col`) VALUES (-128);
 INSERT INTO `tinyint_unsigned_table` (`tinyint_unsigned_col`) VALUES (0);
 INSERT INTO `tinyint_unsigned_table` (`tinyint_unsigned_col`) VALUES (255);
 INSERT INTO `tinytext_table` (`tinytext_col`) VALUES ('tinytext');
 INSERT INTO `tinytext_table` (`tinytext_col`) VALUES (REPEAT('a', 255));
 INSERT INTO `varbinary_table` (`varbinary_col`) VALUES (X'7835383030');
 INSERT INTO `varbinary_table` (`varbinary_col`) VALUES (REPEAT(X'FF', 65000));
+INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (X'7835383030');
+INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (REPEAT(X'FF', 65000));
 INSERT INTO `varchar_table` (`varchar_col`) VALUES ('abc');
 INSERT INTO `varchar_table` (`varchar_col`) VALUES (REPEAT('a', 21000));
 INSERT INTO `year_table` (`year_col`) VALUES (2022);
@@ -449,46 +749,89 @@ SET time_zone = 'UTC';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 00:00:01', '1970-01-01 00:00:01'), ('1970-01-01 00:00:02', '1970-01-01 00:00:02'),
                                                                    ('2001-01-01 00:01:54.123456', '2001-01-01 00:01:54.123456'),
                                                                    ('2037-12-30 23:59:59', '2037-12-30 23:59:59'),  ('2038-01-18 23:59:59', '2038-01-18 23:59:59');
+
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
 SET time_zone = SYSTEM;
 INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
+INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
+INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
+INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.60, 12345.60), (0.01, 0.01), (-99999999.99, -99999999.99), (99999999, 99999999);
+INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (1.00001, 1.00001), (1, 1), (1.00002, 1.00002), (3.4E38, 3.4E38), (-3.4E38, -3.4E38), (1.17E-38, 1.17E-38), (-1.17E-38, -1.17E-38);
+INSERT INTO `double_pk_table` (`id`, `double_pk_col`) VALUES (45.56, 45.56), (1.0000000001, 1.0000000001), (1, 1), (1.0000000002, 1.0000000002), (1.7976931348623157E308, 1.7976931348623157E308), (-1.7976931348623157E308, -1.7976931348623157E308), (2.2250738585072014E-308, 2.2250738585072014E-308), (-2.2250738585072014E-308, -2.2250738585072014E-308);
+INSERT INTO `time_pk_table` (`id`, `time_pk_col`) VALUES ('15:50:00.2', '15:50:00.2'), ('838:59:58.123', '838:59:58.123'), ('-838:59:59', '-838:59:59');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
+INSERT INTO `bigint_to_string_table` (`bigint_to_string_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);
 INSERT INTO `binary_table` (`binary_col`) VALUES (NULL);
+INSERT INTO `binary_to_string_table` (`binary_to_string_col`) VALUES (NULL);
 INSERT INTO `bit_table` (`bit_col`) VALUES (NULL);
 INSERT INTO `bit8_table` (`bit8_col`) VALUES (NULL);
 INSERT INTO `bit1_table` (`bit1_col`) VALUES (NULL);
+INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (NULL);
+INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (NULL);
+INSERT INTO `bit_to_int64_table` (`bit_to_int64_col`) VALUES (NULL);
 INSERT INTO `blob_table` (`blob_col`) VALUES (NULL);
+INSERT INTO `blob_to_string_table` (`blob_to_string_col`) VALUES (NULL);
 INSERT INTO `bool_table` (`bool_col`) VALUES (NULL);
+INSERT INTO `bool_to_string_table` (`bool_to_string_col`) VALUES (NULL);
 INSERT INTO `boolean_table` (`boolean_col`) VALUES (NULL);
+INSERT INTO `boolean_to_bool_table` (`boolean_to_bool_col`) VALUES (NULL);
+INSERT INTO `boolean_to_string_table` (`boolean_to_string_col`) VALUES (NULL);
 INSERT INTO `char_table` (`char_col`) VALUES (NULL);
 INSERT INTO `date_table` (`date_col`) VALUES (NULL);
+INSERT INTO `date_to_string_table` (`date_to_string_col`) VALUES (NULL);
 INSERT INTO `datetime_table` (`datetime_col`) VALUES (NULL);
+INSERT INTO `datetime_to_string_table` (`datetime_to_string_col`) VALUES (NULL);
+INSERT INTO `dec_to_numeric_table` (`dec_to_numeric_col`) VALUES (NULL);
+INSERT INTO `dec_to_string_table` (`dec_to_string_col`) VALUES (NULL);
 INSERT INTO `decimal_table` (`decimal_col`) VALUES (NULL);
+INSERT INTO `decimal_to_string_table` (`decimal_to_string_col`) VALUES (NULL);
+INSERT INTO `double_precision_to_float64_table` (`double_precision_to_float64_col`) VALUES (NULL);
+INSERT INTO `double_precision_to_string_table` (`double_precision_to_string_col`) VALUES (NULL);
 INSERT INTO `double_table` (`double_col`) VALUES (NULL);
+INSERT INTO `double_to_string_table` (`double_to_string_col`) VALUES (NULL);
 INSERT INTO `enum_table` (`enum_col`) VALUES (NULL);
 INSERT INTO `float_table` (`float_col`) VALUES (NULL);
+INSERT INTO `float_to_float32_table` (`float_to_float32_col`) VALUES (NULL);
+INSERT INTO `float_to_string_table` (`float_to_string_col`) VALUES (NULL);
 INSERT INTO `int_table` (`int_col`) VALUES (NULL);
+INSERT INTO `int_to_string_table` (`int_to_string_col`) VALUES (NULL);
+INSERT INTO `integer_to_int64_table` (`integer_to_int64_col`) VALUES (NULL);
+INSERT INTO `integer_to_string_table` (`integer_to_string_col`) VALUES (NULL);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (NULL);
 INSERT INTO `test_json_table` (`test_json_col`) VALUES (NULL);
+INSERT INTO `json_to_string_table` (`json_to_string_col`) VALUES (NULL);
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (NULL);
+INSERT INTO `longblob_to_string_table` (`longblob_to_string_col`) VALUES (NULL);
 INSERT INTO `longtext_table` (`longtext_col`) VALUES (NULL);
 INSERT INTO `mediumblob_table` (`mediumblob_col`) VALUES (NULL);
+INSERT INTO `mediumblob_to_string_table` (`mediumblob_to_string_col`) VALUES (NULL);
 INSERT INTO `mediumint_table` (`mediumint_col`) VALUES (NULL);
+INSERT INTO `mediumint_to_string_table` (`mediumint_to_string_col`) VALUES (NULL);
 INSERT INTO `mediumint_unsigned_table` (`mediumint_unsigned_col`) VALUES (NULL);
 INSERT INTO `mediumtext_table` (`mediumtext_col`) VALUES (NULL);
+INSERT INTO `numeric_to_numeric_table` (`numeric_to_numeric_col`) VALUES (NULL);
+INSERT INTO `numeric_to_string_table` (`numeric_to_string_col`) VALUES (NULL);
+INSERT INTO `real_to_float64_table` (`real_to_float64_col`) VALUES (NULL);
+INSERT INTO `real_to_string_table` (`real_to_string_col`) VALUES (NULL);
+INSERT INTO `set_to_array_table` (`set_to_array_col`) VALUES (NULL);
 INSERT INTO `smallint_table` (`smallint_col`) VALUES (NULL);
+INSERT INTO `smallint_to_string_table` (`smallint_to_string_col`) VALUES (NULL);
 INSERT INTO `smallint_unsigned_table` (`smallint_unsigned_col`) VALUES (NULL);
 INSERT INTO `text_table` (`text_col`) VALUES (NULL);
 INSERT INTO `time_table` (`time_col`) VALUES (NULL);
 INSERT INTO `timestamp_table` (`timestamp_col`) VALUES (NULL);
+INSERT INTO `timestamp_to_string_table` (`timestamp_to_string_col`) VALUES (NULL);
 INSERT INTO `tinyblob_table` (`tinyblob_col`) VALUES (NULL);
+INSERT INTO `tinyblob_to_string_table` (`tinyblob_to_string_col`) VALUES (NULL);
 INSERT INTO `tinyint_table` (`tinyint_col`) VALUES (NULL);
+INSERT INTO `tinyint_to_string_table` (`tinyint_to_string_col`) VALUES (NULL);
 INSERT INTO `tinyint_unsigned_table` (`tinyint_unsigned_col`) VALUES (NULL);
 INSERT INTO `tinytext_table` (`tinytext_col`) VALUES (NULL);
 INSERT INTO `varbinary_table` (`varbinary_col`) VALUES (NULL);
+INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (NULL);
 INSERT INTO `varchar_table` (`varchar_col`) VALUES (NULL);
 INSERT INTO `year_table` (`year_col`) VALUES (NULL);
 INSERT INTO set_table (set_col) VALUES (NULL);
@@ -542,5 +885,18 @@ INSERT INTO spatial_multipolygon (areas)
 VALUES (MultiPolygon(Polygon(LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600), Point(77.6000, 12.9500), Point(77.5946, 12.9716))),
                      Polygon(LineString(Point(77.6200, 12.9400), Point(77.6300, 12.9300), Point(77.6400, 12.9450), Point(77.6200, 12.9400)))));
 
+CREATE TABLE IF NOT EXISTS spatial_geometry (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  geom GEOMETRY
+);
+
+INSERT INTO spatial_geometry (geom) VALUES (POINT(77.5946, 12.9716));
+
+CREATE TABLE IF NOT EXISTS spatial_geometrycollection (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  geoms GEOMETRYCOLLECTION
+);
+
+INSERT INTO spatial_geometrycollection (geoms) VALUES (MultiPoint(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
 
 

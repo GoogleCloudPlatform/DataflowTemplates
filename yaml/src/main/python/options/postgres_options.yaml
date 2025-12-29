@@ -4,30 +4,31 @@ options:
       - order: 1
         name: "jdbcUrl"
         description: "Connection URL for the JDBC source/sink."
-        help: "The JDBC connection URL"
+        help: "The JDBC connection URL."
         example: "jdbc:postgresql://your-host:5432/your-db"
         required: true
         type: text
       - order: 2
         name: "username"
         description: "Username for the JDBC connection."
-        help: "The database username"
+        help: "The database username."
         example: "my_user"
         required: false
         type: text
       - order: 3
         name: "password"
         description: "Password for the JDBC connection."
-        help: "The database password"
+        help: "The database password."
         example: "my_secret_password"
         required: false
-        type: text
+        type: password
       - order: 4
         name: "driverClassName"
         description: "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver"
         help: "The fully-qualified class name of the JDBC driver to use."
         example: "org.postgresql.Driver"
         required: false
+        default: "org.postgresql.Driver"
         type: text
       - order: 5
         name: "driverJars"
@@ -57,6 +58,7 @@ options:
         example: "postgres"
         required: false
         type: text
+        default: "postgres"
 
   - name: "postgres_read_options"
     parameters:

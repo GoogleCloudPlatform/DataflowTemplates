@@ -124,7 +124,7 @@ mvn clean package -PtemplatesStage  \
 <#elseif language == 'YAML'>
 -f yaml
 <#elseif flex>
--f v2/${spec.metadata.module!}
+-pl v2/${spec.metadata.module!} -am
 <#else>
 -f v1
 </#if>

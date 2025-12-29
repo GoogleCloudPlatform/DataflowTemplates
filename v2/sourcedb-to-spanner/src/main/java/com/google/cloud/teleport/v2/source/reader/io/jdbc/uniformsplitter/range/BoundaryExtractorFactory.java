@@ -15,12 +15,15 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -56,6 +59,11 @@ public class BoundaryExtractorFactory {
           .put(
               Timestamp.class,
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
+          .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
+          .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
+          .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
+          .put(
+              Duration.class, (BoundaryExtractor<Duration>) BoundaryExtractorFactory::fromDurations)
           .build();
 
   /**
@@ -176,6 +184,98 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(Timestamp.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  private static Boundary<Date> fromDates(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Date.class));
+    resultSet.next();
+    return Boundary.<Date>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getDate(1, utcCalendar))
+        .setEnd(resultSet.getDate(2, utcCalendar))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Date.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<Float> fromFloats(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Float.class));
+    resultSet.next();
+    return Boundary.<Float>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getFloat(1))
+        .setEnd(resultSet.getFloat(2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<Double> fromDoubles(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Double.class));
+    resultSet.next();
+    return Boundary.<Double>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getDouble(1))
+        .setEnd(resultSet.getDouble(2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<Duration> fromDurations(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Duration.class));
+    resultSet.next();
+    return Boundary.<Duration>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(parseTimeStringToDuration(resultSet.getString(1)))
+        .setEnd(parseTimeStringToDuration(resultSet.getString(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Duration.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  /**
+   * Converts a string in format "hh:mm:ss.sss" into a Duration by converting to a string with
+   * format "PThhHmmMss.sssS".
+   */
+  @VisibleForTesting
+  protected static Duration parseTimeStringToDuration(String timeString) {
+    if (timeString == null || timeString.isBlank()) {
+      return null;
+    }
+    boolean isNegative = timeString.trim().startsWith("-");
+    String[] parts = timeString.trim().split(":");
+    StringBuilder durationStrBuilder = new StringBuilder("PT");
+    durationStrBuilder.append(parts[0]).append("H");
+    if (parts.length > 1) {
+      if (isNegative) {
+        durationStrBuilder.append("-");
+      }
+      durationStrBuilder.append(parts[1]).append("M");
+    }
+    if (parts.length > 2) {
+      if (isNegative) {
+        durationStrBuilder.append("-");
+      }
+      durationStrBuilder.append(parts[2]).append("S");
+    }
+    return Duration.parse(durationStrBuilder.toString());
   }
 
   private BoundaryExtractorFactory() {}

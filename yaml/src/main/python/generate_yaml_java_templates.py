@@ -25,14 +25,20 @@ JAVA_TYPE_BY_YAML_TYPE = {
     'text': 'String',
     'integer': 'Integer',
     'boolean': 'Boolean',
-    'double' : 'Double'
+    'double' : 'Double',
+    'map': 'String',
+    'enum': 'Enum',
+    'password': 'String'
 }
 
 TEMPLATE_TYPE_BY_YAML_TYPE = {
     'text': 'TemplateParameter.Text',
     'integer': 'TemplateParameter.Integer',
     'boolean': 'TemplateParameter.Boolean',
-    'double' : 'TemplateParameter.Double'
+    'double' : 'TemplateParameter.Double',
+    'map': 'TemplateParameter.Text',
+    'enum': 'TemplateParameter.Enum',
+    'password': 'TemplateParameter.Password'
 }
 
 def get_git_root():
@@ -84,6 +90,8 @@ def generate_java_interface(yaml_path, java_path):
         content = f.read()
         # Remove Jinja variables before parsing
         content = re.sub(r'{{.*?}}', '', content)
+        # Remove Jinja control blocks
+        content = re.sub(r'{%.*?%}', '', content)
         # Fix set-like syntax for requirements
         content = re.sub(r'(requirements\s*:\s*)\{([^}]+)\}', r'\1[\2]', content, flags=re.DOTALL)
         # Fix set-like syntax for filesToCopy
@@ -99,16 +107,42 @@ def generate_java_interface(yaml_path, java_path):
     with open(template_path, 'r') as f:
         java_template = f.read()
 
-    # Build the parameters string
+    # Build the parameters map from options files
+    options_map = {}
+    options_files = template_info.get('options_file', [])
+    if options_files:
+        options_dir = yaml_path.parent.parent / "python" / "options"
+        for option_file in options_files:
+            option_file_path = options_dir / f"{option_file}.yaml"
+            if option_file_path.exists():
+                with open(option_file_path, 'r') as f:
+                    option_data = yaml.safe_load(f)
+                    for option in option_data.get('options', []):
+                        options_map[option['name']] = option['parameters']
+            else:
+                print(f"Warning: Option file {option_file_path} not found.")
+
+    # Flatten parameters
+    flat_parameters = []
+    for param in parameters:
+        if isinstance(param, str):
+            if param in options_map:
+                flat_parameters.extend(options_map[param])
+            else:
+                print(f"Warning: Parameter group {param} not found in options.")
+        else:
+            flat_parameters.append(param)
+
+    # Build the parameters code
     parameters_code = []
-    for i, param in enumerate(parameters):
+    for i, param in enumerate(flat_parameters):
         param_name = param['name']
         java_type = JAVA_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'), 'String')
         template_param_type = TEMPLATE_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'))
         getter_name = "get" + param_name[0].upper() + param_name[1:]
-        wrapped_description = param.get('description', '').strip()
-        wrapped_help_text = param.get('help', '').strip()
-        example = param.get('example', '').strip().replace('"', '\\"')
+        wrapped_description = str(param.get('description', '')).strip()
+        wrapped_help_text = str(param.get('help', '')).strip()
+        example = str(param.get('example', '')).strip().replace('"', '\\"')
 
         param_code = f"""
   @{template_param_type}(

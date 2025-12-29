@@ -32,14 +32,8 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
@@ -59,8 +53,8 @@ import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimm
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
+import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
-import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -78,12 +72,11 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOption
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
@@ -96,9 +89,11 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -605,23 +600,25 @@ public class SpannerToSourceDb {
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
             .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            spannerConfig,
-            spannerMetadataConfig,
-            SpannerAccessor.getOrCreate(spannerMetadataConfig)
-                .getDatabaseAdminClient()
-                .getDatabase(
-                    spannerMetadataConfig.getInstanceId().get(),
-                    spannerMetadataConfig.getDatabaseId().get())
-                .getDialect(),
-            options.getShadowTablePrefix());
+    // Fetch DDLs and create shadow tables in a DoFn to avoid launcher-side timeout.
+    PCollectionTuple ddlTuple =
+        pipeline.apply(
+            "Process Information Schema",
+            new SpannerInformationSchemaProcessorTransform(
+                spannerConfig, spannerMetadataConfig, options.getShadowTablePrefix()));
+
+    final PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(SpannerInformationSchemaProcessorTransform.MAIN_DDL_TAG)
+            .apply("View Main DDL", View.asSingleton());
 
     DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
 
-    shadowTableCreator.createShadowTablesInSpanner();
-    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    Ddl shadowTableDdl = SpannerSchema.getInformationSchemaAsDdl(spannerMetadataConfig);
+    final PCollectionView<Ddl> shadowTableDdlView =
+        ddlTuple
+            .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
+            .apply("View Shadow DDL", View.asSingleton());
+
     List<Shard> shards;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -686,11 +683,9 @@ public class SpannerToSourceDb {
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     PCollection<TrimmedShardedDataChangeRecord> dlqRecords =
-        dlqJsonStrRecords
-            .apply(
-                "Convert DLQ records to TrimmedShardedDataChangeRecord",
-                ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+        dlqJsonStrRecords.apply(
+            "Convert DLQ records to TrimmedShardedDataChangeRecord",
+            ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
 
     if (options.getFailureInjectionParameter() != null
@@ -711,13 +706,11 @@ public class SpannerToSourceDb {
               // stream data
               .apply("Reshuffle", Reshuffle.viaRandomKey())
               .apply("Filteration", ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
-              .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()))
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()));
       mergedRecords =
           PCollectionList.of(changeRecordsFromDB)
               .and(dlqRecords)
-              .apply("Flatten", Flatten.pCollections())
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .apply("Flatten", Flatten.pCollections());
     } else {
       mergedRecords = dlqRecords;
     }
@@ -726,7 +719,6 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
-    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
 
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
@@ -744,39 +736,47 @@ public class SpannerToSourceDb {
                 // mod
                 // number of parallelism
                 ParDo.of(
-                    new AssignShardIdFn(
-                        spannerConfig,
-                        schemaMapper,
-                        ddl,
-                        sourceSchema,
-                        shardingMode,
-                        shards.get(0).getLogicalShardId(),
-                        options.getSkipDirectoryName(),
-                        options.getShardingCustomJarPath(),
-                        options.getShardingCustomClassName(),
-                        options.getShardingCustomParameters(),
-                        options.getMaxShardConnections() * shards.size(),
-                        options.getSourceType()))) // currently assuming that all shards accept the
-            // same
+                        new AssignShardIdFn(
+                            spannerConfig,
+                            ddlView,
+                            sourceSchema,
+                            shardingMode,
+                            shards.get(0).getLogicalShardId(),
+                            options.getSkipDirectoryName(),
+                            options.getShardingCustomJarPath(),
+                            options.getShardingCustomClassName(),
+                            options.getShardingCustomParameters(),
+                            options.getMaxShardConnections() * shards.size(),
+                            options.getSourceType(),
+                            options.getSessionFilePath(),
+                            options.getSchemaOverridesFilePath(),
+                            options.getTableOverrides(),
+                            options
+                                .getColumnOverrides())) // currently assume that all shards accept
+                    // the
+                    // same source type
+                    .withSideInputs(ddlView))
             .setCoder(
-                KvCoder.of(
-                    VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
+                KvCoder.of(VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
             .apply("Reshuffle2", Reshuffle.of())
             .apply(
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    schemaMapper,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
-                    ddl,
-                    shadowTableDdl,
+                    ddlView,
+                    shadowTableDdlView,
                     sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
                     options.getSourceType(),
-                    customTransformation));
+                    customTransformation,
+                    options.getSessionFilePath(),
+                    options.getSchemaOverridesFilePath(),
+                    options.getTableOverrides(),
+                    options.getColumnOverrides()));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -962,46 +962,5 @@ public class SpannerToSourceDb {
       throw new RuntimeException("Unable to discover jdbc schema", e);
     }
     return sourceSchema;
-  }
-
-  private static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
-    // Check if config types are specified
-    boolean hasSessionFile =
-        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
-    boolean hasSchemaOverridesFile =
-        options.getSchemaOverridesFilePath() != null
-            && !options.getSchemaOverridesFilePath().equals("");
-    boolean hasStringOverrides =
-        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
-            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
-
-    int overrideTypesCount = 0;
-    if (hasSessionFile) {
-      overrideTypesCount++;
-    }
-    if (hasSchemaOverridesFile) {
-      overrideTypesCount++;
-    }
-    if (hasStringOverrides) {
-      overrideTypesCount++;
-    }
-
-    if (overrideTypesCount > 1) {
-      throw new IllegalArgumentException(
-          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
-              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
-    }
-
-    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (hasSessionFile) {
-      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
-    } else if (hasSchemaOverridesFile) {
-      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
-    } else if (hasStringOverrides) {
-      schemaMapper =
-          new SchemaStringOverridesBasedMapper(
-              options.getTableOverrides(), options.getColumnOverrides(), ddl);
-    }
-    return schemaMapper;
   }
 }

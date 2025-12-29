@@ -86,7 +86,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Mqtt_to_PubSub" \
--f v2/mqtt-to-pubsub
+-pl v2/mqtt-to-pubsub -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

@@ -27,9 +27,11 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -96,10 +98,14 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
-  public void testFromBigDecimals() throws SQLException {
+  public void testFromBigDecimalsWholeNumbers() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(0)
+            .build();
     BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1))
@@ -131,9 +137,52 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
-  public void testFromBigIntegersEmptyTable() throws SQLException {
+  public void testFromBigDecimalsRealNumbers() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(2)
+            .build();
+    System.out.println(partitionColumn.numericScale());
+    BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
+
+    // Check splittable if there is a mid point within the scale
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.1"));
+    when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.2"));
+    Boundary<BigDecimal> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary1.start()).isEqualTo(new BigDecimal("1.1"));
+    assertThat(boundary1.end()).isEqualTo(new BigDecimal("1.2"));
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(new BigDecimal("1.15"));
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(new BigDecimal("1.15"));
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // Check bot splittable if there is no mid point within the scale
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.01"));
+    when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.02"));
+    Boundary<BigDecimal> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromBigDecimalsEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(0)
+            .build();
     BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1)).thenReturn(null);
@@ -275,6 +324,200 @@ public class BoundaryExtractorFactoryTest {
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
     assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testFromDate() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+    BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
+    Date start = Date.valueOf("0001-01-01");
+    Date end = Date.valueOf("2041-01-31");
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDate(eq(1), any())).thenReturn(start);
+    when(mockResultSet.getDate(eq(2), any())).thenReturn(end);
+    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<Date>, Boundary<Date>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(Date.valueOf("1021-01-16"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+  }
+
+  @Test
+  public void testFromDatesEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+    BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDate(eq(1), any())).thenReturn(null);
+    when(mockResultSet.getDate(eq(2), any())).thenReturn(null);
+    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testFromFloat() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Float.class)
+            .setDecimalStepSize(new BigDecimal("0.00001"))
+            .build();
+    BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
+
+    // If step between values > min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getFloat(1)).thenReturn(1.001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.002f);
+    Boundary<Float> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is > minimum delta, boundary is splittable
+    assertThat(boundary1.start()).isEqualTo(1.001f);
+    assertThat(boundary1.end()).isEqualTo(1.002f);
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(1.0015f);
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(1.0015f);
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // if step between values < min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getFloat(1)).thenReturn(1.000001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.000002f);
+    Boundary<Float> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is < minimum delta, boundary is NOT splittable
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromDouble() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Double.class)
+            .setDecimalStepSize(new BigDecimal("0.00001"))
+            .build();
+    BoundaryExtractor<Double> extractor = BoundaryExtractorFactory.create(Double.class);
+
+    // If step between values > min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDouble(1)).thenReturn(1.001);
+    when(mockResultSet.getDouble(2)).thenReturn(1.002);
+    Boundary<Double> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is > minimum delta, boundary is splittable
+    assertThat(boundary1.start()).isEqualTo(1.001);
+    assertThat(boundary1.end()).isEqualTo(1.002);
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(1.0015);
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(1.0015);
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // if step between values < min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDouble(1)).thenReturn(1.000001);
+    when(mockResultSet.getDouble(2)).thenReturn(1.000002);
+    Boundary<Double> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is < minimum delta, boundary is NOT splittable
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromDuration() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+    BoundaryExtractor<Duration> extractor = BoundaryExtractorFactory.create(Duration.class);
+    String startStr = "70:10:00.15";
+    String endStr = "72:30:50.40";
+    Duration start = Duration.parse("PT70H10M00.15S");
+    Duration end = Duration.parse("PT72H30M50.4S");
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(eq(1))).thenReturn(startStr);
+    when(mockResultSet.getString(eq(2))).thenReturn(endStr);
+    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<Duration>, Boundary<Duration>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(Duration.parse("PT71H20M25.27S"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromDurationsEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+    BoundaryExtractor<Duration> extractor = BoundaryExtractorFactory.create(Duration.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(eq(1))).thenReturn(null);
+    when(mockResultSet.getString(eq(2))).thenReturn(null);
+    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testParseTimeStringToDuration() {
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration(null)).isNull();
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("")).isNull();
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("   ")).isNull();
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30"))
+        .isEqualTo(Duration.parse("PT30H"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30"))
+        .isEqualTo(Duration.parse("-PT30H"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15"))
+        .isEqualTo(Duration.parse("PT30H15M"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15"))
+        .isEqualTo(Duration.parse("-PT30H15M"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15:22"))
+        .isEqualTo(Duration.parse("PT30H15M22S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15:22"))
+        .isEqualTo(Duration.parse("-PT30H15M22S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15:22.984353"))
+        .isEqualTo(Duration.parse("PT30H15M22.984353S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15:22.984353"))
+        .isEqualTo(Duration.parse("-PT30H15M22.984353S"));
   }
 
   @Test

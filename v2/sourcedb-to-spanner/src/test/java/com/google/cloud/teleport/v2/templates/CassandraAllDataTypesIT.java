@@ -71,7 +71,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @RunWith(JUnit4.class)
 public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraAllDataTypesIT.class);
   public static final String CUSTOM_TRANSFORMATION_ALL_DATA_TYPES_GCS_PREFIX =
       "CustomTransformationAllDataTypes";
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -118,6 +118,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             .addParameter("transformationJarPath", customTransformation.jarPath())
             .addParameter("transformationClassName", customTransformation.classPath())
             .addParameter("dlqRetryMinutes", DLQ_RETRY_MINUTES.toString())
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", List.of("use_runner_v2", "enable_data_sampling"))
             .build();
@@ -163,10 +164,6 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    if (skipBaseCleanup) {
-      ResourceManagerUtils.cleanResources(cassandraResourceManager);
-      return;
-    }
     ResourceManagerUtils.cleanResources(spannerResourceManager, cassandraResourceManager);
     dlqFlexTemplateDataflowJobResourceManagers.forEach(ResourceManagerUtils::cleanResources);
   }

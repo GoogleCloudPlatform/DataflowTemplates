@@ -314,7 +314,12 @@ public final class JdbcIoWrapper implements IoWrapper {
                 IndexType.STRING,
                 IndexType.BIG_INT_UNSIGNED,
                 IndexType.BINARY,
-                IndexType.TIME_STAMP);
+                IndexType.TIME_STAMP,
+                IndexType.DATE,
+                IndexType.DECIMAL,
+                IndexType.FLOAT,
+                IndexType.DOUBLE,
+                IndexType.DURATION);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
@@ -374,6 +379,9 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
+        .setNumericScale(idxInfo.numericScale())
+        .setDecimalStepSize(idxInfo.decimalStepSize())
+        .setDatetimePrecision(idxInfo.datetimePrecision())
         .build();
   }
 
