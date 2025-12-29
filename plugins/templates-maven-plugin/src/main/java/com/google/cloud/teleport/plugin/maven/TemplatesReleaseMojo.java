@@ -260,7 +260,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       }
 
       if (publishYamlBlueprints) {
-        LOG.info("Trying to upload Job Builder blueprints to bucket '{}'...", bucketNameOnly(bucketName));
+        LOG.info(
+            "Trying to upload Job Builder blueprints to bucket '{}'...",
+            bucketNameOnly(bucketName));
         Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
           throw new MojoExecutionException(
