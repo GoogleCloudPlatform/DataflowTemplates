@@ -307,6 +307,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       throw new MojoExecutionException("URL generation failed", e);
     } catch (InvalidArgumentException e) {
       throw new MojoExecutionException("Invalid run argument", e);
+    } catch (MojoExecutionException e) {
+      throw e;
     } catch (Exception e) {
       throw new MojoExecutionException("Template run failed", e);
     }

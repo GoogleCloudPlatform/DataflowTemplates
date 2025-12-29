@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -119,12 +121,20 @@ public class TemplatesReleaseMojoTest {
   }
 
   @Test
-  public void testExecute_yamlBlueprintsDirectoryMissing_skipsUpload()
-      throws MojoExecutionException {
+  public void testExecute_yamlBlueprintsDirectoryMissing_throwsException() {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "a-path-that-does-not-exist";
     mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
-    setupAndAssertNoFilesUploaded();
+
+    try {
+      mojo.execute();
+      fail("MojoExecutionException was expected");
+    } catch (MojoExecutionException e) {
+      String expectedPath =
+          Paths.get(baseDir.getAbsolutePath(), "a-path-that-does-not-exist").toString();
+      assertEquals(
+          "YAML blueprints directory not found, skipping upload: " + expectedPath, e.getMessage());
+    }
   }
 
   @Test
