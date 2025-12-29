@@ -74,7 +74,7 @@ public class TemplatesReleaseMojoTest {
   public void testExecute_publishesYamlBlueprints() throws MojoExecutionException, IOException {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
-    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
+    mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
     // Create a fake yaml file to be uploaded
     File yamlDir = new File(baseDir, "yaml/src/main/yaml");
@@ -124,7 +124,7 @@ public class TemplatesReleaseMojoTest {
   public void testExecute_yamlBlueprintsDirectoryMissing_throwsException() {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "a-path-that-does-not-exist";
-    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
+    mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
     try {
       mojo.execute();

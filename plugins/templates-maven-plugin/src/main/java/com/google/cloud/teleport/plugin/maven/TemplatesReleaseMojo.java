@@ -166,10 +166,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   @Parameter(
       defaultValue = "yaml-blueprints",
-      property = "yamlBlueprintsGCSBucket",
+      property = "yamlBlueprintsGCSPath",
       readonly = true,
       required = false)
-  protected String yamlBlueprintsGCSBucket;
+  protected String yamlBlueprintsGCSPath;
 
   public void execute() throws MojoExecutionException {
 
@@ -279,7 +279,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                     path -> {
                       String fileName = path.getFileName().toString();
                       String objectName =
-                          String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
+                          String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
                       BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
                       BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
                       try (InputStream inputStream = Files.newInputStream(path)) {
