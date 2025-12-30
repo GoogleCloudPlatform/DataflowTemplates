@@ -167,7 +167,7 @@
   </dependencies>
 
   <properties>
-    <aws.version>1.12.795</aws.version>
+    <aws.version>1.12.797</aws.version>
   </properties>
 
 </project>
