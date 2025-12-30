@@ -23,14 +23,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
 * **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **project_id**: The Google Cloud project ID of the BigTable instance.
-* **instance_id**: The BigTable instance ID.
-* **table_id**: BigTable table ID to write the output to.
+* **projectId**: The Google Cloud project ID of the BigTable instance.
+* **instanceId**: The BigTable instance ID.
+* **tableId**: BigTable table ID to write the output to.
 * **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
 
 ### Optional parameters
 
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. Defaults to: JSON.
+* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
 
 
 
@@ -127,13 +128,14 @@ export TOPIC=<topic>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export PROJECT_ID=<project_id>
-export INSTANCE_ID=<instance_id>
-export TABLE_ID=<table_id>
+export PROJECT_ID=<projectId>
+export INSTANCE_ID=<instanceId>
+export TABLE_ID=<tableId>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
 export FORMAT=JSON
+export WINDOWING=<windowing>
 
 gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -144,9 +146,10 @@ gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --parameters "schema=$SCHEMA" \
   --parameters "language=$LANGUAGE" \
   --parameters "fields=$FIELDS" \
-  --parameters "project_id=$PROJECT_ID" \
-  --parameters "instance_id=$INSTANCE_ID" \
-  --parameters "table_id=$TABLE_ID" \
+  --parameters "projectId=$PROJECT_ID" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "tableId=$TABLE_ID" \
+  --parameters "windowing=$WINDOWING" \
   --parameters "outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC"
 ```
 
@@ -170,13 +173,14 @@ export TOPIC=<topic>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export PROJECT_ID=<project_id>
-export INSTANCE_ID=<instance_id>
-export TABLE_ID=<table_id>
+export PROJECT_ID=<projectId>
+export INSTANCE_ID=<instanceId>
+export TABLE_ID=<tableId>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
 export FORMAT=JSON
+export WINDOWING=<windowing>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -185,7 +189,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-bigtable-yaml-job" \
 -DtemplateName="PubSub_To_BigTable_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,language=$LANGUAGE,fields=$FIELDS,project_id=$PROJECT_ID,instance_id=$INSTANCE_ID,table_id=$TABLE_ID,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,language=$LANGUAGE,fields=$FIELDS,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,tableId=$TABLE_ID,windowing=$WINDOWING,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
 -f yaml
 ```
 
@@ -234,11 +238,12 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     schema = "<schema>"
     language = "<language>"
     fields = "<fields>"
-    project_id = "<project_id>"
-    instance_id = "<instance_id>"
-    table_id = "<table_id>"
+    projectId = "<projectId>"
+    instanceId = "<instanceId>"
+    tableId = "<tableId>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
     # format = "JSON"
+    # windowing = "<windowing>"
   }
 }
 ```
