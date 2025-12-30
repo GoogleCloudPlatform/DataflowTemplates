@@ -27,8 +27,8 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "MySql to Iceberg (YAML)",
     description =
-        "The MySql to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySql table\n" + //
-                        "    and outputs the records to Iceberg table.",
+        "The MySql to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySql table\n"
+            + "    and outputs the records to Iceberg table.",
     flexContainerName = "mysql-to-iceberg-yaml",
     yamlTemplateFile = "MySqlToIceberg.yaml",
     filesToCopy = {
@@ -176,8 +176,7 @@ public interface MySqlToIcebergYaml {
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText =
-          "Whether to disable auto-commit on read.",
+      helpText = "Whether to disable auto-commit on read.",
       example = "True")
   Boolean getDisableAutoCommit();
 
