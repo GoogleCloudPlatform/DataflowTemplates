@@ -78,10 +78,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   private static final Integer ER_QUERY_INTERRUPTED = 1317;
 
-  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  /** Ref <a href="https://bugs.mysql.com/bug.php?id=96537">bug/96537</a>. */
   private static final Integer ER_FILSORT_ABORT = 1028;
 
-  /** Ref <a href=>https://bugs.mysql.com/bug.php?id=96537>bug/96537</a>. */
+  /** Ref <a href="https://bugs.mysql.com/bug.php?id=96537">bug/96537</a>. */
   private static final Integer ER_FILSORT_TERMINATED = 10930;
 
   /**
