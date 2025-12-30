@@ -36,7 +36,7 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-    <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
+    <!-- <mysql-connector-java.version>8.0.30</mysql-connector-java.version> -->
     <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
