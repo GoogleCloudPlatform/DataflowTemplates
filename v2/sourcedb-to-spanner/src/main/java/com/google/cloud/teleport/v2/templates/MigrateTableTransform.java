@@ -120,7 +120,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     SourceRowToMutationDoFn transformDoFn =
         SourceRowToMutationDoFn.create(
             schemaMapper, customTransformation, options.getInsertOnlyModeForSpannerMutations());
-    PCollectionTuple transformationResult = 
+    PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",
             ParDo.of(transformDoFn)
