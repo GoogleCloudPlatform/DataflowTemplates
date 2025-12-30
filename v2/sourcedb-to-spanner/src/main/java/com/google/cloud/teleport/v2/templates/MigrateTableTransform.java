@@ -58,7 +58,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(MigrateTableTransform.class);
+  public static final String GCS_RECORDS_WRITTEN = "gcs_records_written";
 
   private transient SourceDbToSpannerOptions options;
   private SpannerConfig spannerConfig;
@@ -118,7 +120,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     SourceRowToMutationDoFn transformDoFn =
         SourceRowToMutationDoFn.create(
             schemaMapper, customTransformation, options.getInsertOnlyModeForSpannerMutations());
-    PCollectionTuple transformationResult =
+    PCollectionTuple transformationResult = 
         sourceRows.apply(
             "Transform",
             ParDo.of(transformDoFn)
@@ -176,8 +178,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     String shardIdForMetric = this.shardId;
     String metricName =
         StringUtils.isEmpty(shardIdForMetric)
-            ? "gcs_records_written"
-            : "gcs_records_written-" + shardIdForMetric;
+            ? GCS_RECORDS_WRITTEN
+            : String.join("_", GCS_RECORDS_WRITTEN, shardIdForMetric);
     return sourceRows.apply(
         "WriteAvroToGCS",
         FileIO.<AvroDestination, SourceRow>writeDynamic()
@@ -198,7 +200,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
             .withNaming((SerializableFunction<AvroDestination, FileNaming>) AvroFileNaming::new));
   }
 
-  class AvroFileNaming implements FileIO.Write.FileNaming {
+  static class AvroFileNaming implements FileIO.Write.FileNaming {
 
     private final FileIO.Write.FileNaming defaultNaming;
     private final AvroDestination avroDestination;
