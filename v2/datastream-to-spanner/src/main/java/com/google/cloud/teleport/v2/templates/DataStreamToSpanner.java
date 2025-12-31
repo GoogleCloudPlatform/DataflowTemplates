@@ -54,7 +54,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -713,29 +712,38 @@ public class DataStreamToSpanner {
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
     boolean isRegularMode = "regular".equals(options.getRunMode());
-    List<String> filePathsToIgnore =
-        new ArrayList<>(Arrays.asList("/tmp_retry", "/tmp_severe/", ".temp"));
-    if (isRegularMode) {
-      filePathsToIgnore.add("/severe/");
-    } else {
-      filePathsToIgnore.add("/retry/");
-    }
-    if (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription())) {
+    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
               pipeline.apply(
                   "Read retry from PubSub",
                   new PubSubNotifiedDlqIO(
-                      options.getDlqGcsPubSubSubscription(), filePathsToIgnore)));
+                      options.getDlqGcsPubSubSubscription(),
+                      // file paths to ignore when re-consuming for retry
+                      new ArrayList<String>(
+                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
               pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
     }
+    PCollectionTuple recoveredTuple =
+        applySevereRetryRecovery(
+            reconsumedElements.get(DeadLetterQueueManager.PERMANENT_ERRORS),
+            "EvaluateDlqRetry",
+            options.getDlqMaxRetryCount());
+
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
-        reconsumedElements
-            .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
-            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+        PCollectionList.of(
+                reconsumedElements
+                    .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
+                    .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .and(
+                recoveredTuple
+                    .get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG)
+                    .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(Flatten.pCollections());
+
     if (isRegularMode) {
       LOG.info("Regular Datastream flow");
       PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
@@ -864,8 +872,29 @@ public class DataStreamToSpanner {
     // We will write only the original payload from the failsafe event to the DLQ.  We are doing
     // that in
     // StringDeadLetterQueueSanitizer.
-    spannerWriteResults
-        .retryableErrors()
+
+    // 1. Gather all "fresh" permanent errors from Spanner/Transformer
+    PCollection<FailsafeElement<String, String>> processingFailures =
+        PCollectionList.of(spannerWriteResults.permanentErrors())
+            .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
+            .apply("FlattenProcessingFailures", Flatten.pCollections());
+
+    // 2. Apply "Severe Retry" logic to check for severe errors that need to be
+    // retried
+    PCollectionTuple recoveredLateTuple =
+        applySevereRetryRecovery(
+            processingFailures, "EvaluateProcessingFailureRetry", options.getDlqMaxRetryCount());
+
+    // 3. Merge "Rescued" errors with standard retryable errors
+    PCollection<FailsafeElement<String, String>> retryableErrors =
+        PCollectionList.of(spannerWriteResults.retryableErrors())
+            .and(
+                recoveredLateTuple
+                    .get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG)
+                    .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("Flatten Retryable Errors", Flatten.pCollections());
+
+    retryableErrors
         .apply(
             "DLQ: Write retryable Failures to GCS",
             MapElements.via(new StringDeadLetterQueueSanitizer()))
@@ -877,16 +906,22 @@ public class DataStreamToSpanner {
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry/")
                 .setIncludePaneInfo(true)
                 .build());
+
     PCollection<FailsafeElement<String, String>> dlqErrorRecords =
-        reconsumedElements
-            .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+        recoveredTuple
+            .get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
-    // TODO: Write errors from transformer and spanner writer into separate folders
+
+    // 4. Merge truly severe errors (fresh & DLQ-exhausted) for final severe bucket
+    // write
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
-            .and(spannerWriteResults.permanentErrors())
-            .and(transformedRecords.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
+            .and(
+                recoveredLateTuple
+                    .get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG)
+                    .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
             .apply(Flatten.pCollections());
+
     // increment the metrics
     permanentErrors
         .apply("Update metrics", ParDo.of(new MetricUpdaterDoFn(isRegularMode)))
@@ -903,6 +938,18 @@ public class DataStreamToSpanner {
                 .build());
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  private static PCollectionTuple applySevereRetryRecovery(
+      PCollection<FailsafeElement<String, String>> input, String stepName, int maxRetries) {
+    return input
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            stepName,
+            ParDo.of(new SevereRetryRecoveryFn(maxRetries))
+                .withOutputTags(
+                    DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG,
+                    TupleTagList.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG)));
   }
 
   static SpannerConfig getShadowTableSpannerConfig(Options options) {
