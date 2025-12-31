@@ -30,7 +30,8 @@ public interface JdbcValueMappingsProvider extends Serializable {
    * @param sourceColumnType The column type to estimate size for.
    * @return Estimated size in bytes.
    */
-  int guessColumnSize(com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType);
+  int guessColumnSize(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType);
 
   /**
    * Get Mapping of source types to {@link JdbcValueMapper}.

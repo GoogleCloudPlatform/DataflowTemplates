@@ -21,8 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Calculates the fetch size for JDBC readers based on worker resources and row
- * size estimation.
+ * Calculates the fetch size for JDBC readers based on worker resources and row size estimation.
  * Formula: FetchSize = (WorkerMemory) / (4 * WorkerCores * MaxRowSize)
  */
 public final class FetchSizeCalculator {
@@ -35,13 +34,12 @@ public final class FetchSizeCalculator {
   // Cap at a reasonable max to avoid issues with some drivers.
   private static final int MAX_FETCH_SIZE = 100_000;
 
-  private FetchSizeCalculator() {
-  }
+  private FetchSizeCalculator() {}
 
   /**
    * Calculates the fetch size for the given table.
    *
-   * @param tableConfig      The table configuration.
+   * @param tableConfig The table configuration.
    * @param estimatedRowSize Estimated size of a row in bytes.
    * @return The calculated fetch size.
    */
@@ -53,7 +51,9 @@ public final class FetchSizeCalculator {
 
     try {
       if (estimatedRowSize == 0) {
-        LOG.warn("Estimated row size is 0 for table {}, using default fetch size", tableConfig.tableName());
+        LOG.warn(
+            "Estimated row size is 0 for table {}, using default fetch size",
+            tableConfig.tableName());
         return DEFAULT_FETCH_SIZE;
       }
 
@@ -71,8 +71,13 @@ public final class FetchSizeCalculator {
 
       long calculatedFetchSize = workerMemory / denominator;
 
-      LOG.info("Auto-inferred fetch size for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
-          tableConfig.tableName(), calculatedFetchSize, workerMemory, workerCores, estimatedRowSize);
+      LOG.info(
+          "Auto-inferred fetch size for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
+          tableConfig.tableName(),
+          calculatedFetchSize,
+          workerMemory,
+          workerCores,
+          estimatedRowSize);
 
       if (calculatedFetchSize < MIN_FETCH_SIZE) {
         return MIN_FETCH_SIZE;
@@ -84,7 +89,9 @@ public final class FetchSizeCalculator {
       return (int) calculatedFetchSize;
 
     } catch (Exception e) {
-      LOG.warn("Failed to auto-infer fetch size for table {}, using default. Error: {}", tableConfig.tableName(),
+      LOG.warn(
+          "Failed to auto-infer fetch size for table {}, using default. Error: {}",
+          tableConfig.tableName(),
           e.getMessage());
       return DEFAULT_FETCH_SIZE;
     }

@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
@@ -32,15 +34,12 @@ import java.sql.Blob;
 import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.Calendar;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
 
@@ -111,8 +110,6 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
   static final Pattern TIME_STRING_PATTERN =
       Pattern.compile("^(-)?(\\d+):(\\d+):(\\d+)(\\.(\\d+))?$");
 
-
-
   private static long instantToMicro(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
         + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
@@ -151,187 +148,172 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
         return isNegative ? -1 * micros : micros;
       };
 
-  /**
-   * Static mapping of SourceColumnType to {@link ResultSetValueExtractor} and {@link
-   * ResultSetValueMapper}.
-   */
-  @SuppressWarnings("null")
-  private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
-      ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
-          .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIGINT UNSIGNED", Pair.of(ResultSet::getBigDecimal, bigDecimalToAvroNumber))
-          .put("BINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
-          .put("BIT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("BOOL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(utcDateExtractor, sqlDateToAvroTimestampMicros))
-          .put("DATETIME", Pair.of(utcTimeStampExtractor, sqlTimestampToAvroDateTime))
-          .put("DECIMAL", Pair.of(ResultSet::getBigDecimal, bigDecimalToByteArray))
-          .put("DOUBLE", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("ENUM", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("FLOAT", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INTEGER UNSIGNED", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("LONGBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("LONGTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MEDIUMBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("MEDIUMINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("MEDIUMTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("SET", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIME", Pair.of(ResultSet::getString, timeStringToAvroTimeInterval))
-          .put("TIMESTAMP", Pair.of(utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros))
-          .put("TINYBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("TINYINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TINYTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("VARBINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
-          .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("YEAR", Pair.of(ResultSet::getInt, valuePassThrough))
-          .build()
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  Map.entry(
-                      entry.getKey(),
-                      new JdbcValueMapper<>(
-                          entry.getValue().getLeft(), entry.getValue().getRight())))
-          .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue));
+  private static final JdbcMappings JDBC_MAPPINGS =
+      JdbcMappings.builder()
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 24)
+          .put("BIGINT UNSIGNED", ResultSet::getBigDecimal, bigDecimalToAvroNumber, 24)
+          .put(
+              "BINARY",
+              ResultSet::getBytes,
+              bytesToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "BIT",
+              ResultSet::getLong,
+              valuePassThrough,
+              (sourceColumnType) -> {
+                return 24;
+              })
+          .put(
+              "BLOB",
+              ResultSet::getBlob,
+              blobToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("BOOL", ResultSet::getInt, valuePassThrough, 20)
+          .put(
+              "CHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("DATE", utcDateExtractor, sqlDateToAvroTimestampMicros, 24)
+          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroDateTime, 32)
+          .put("DECIMAL", ResultSet::getBigDecimal, bigDecimalToByteArray, 48)
+          .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 24)
+          .put(
+              "ENUM",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("FLOAT", ResultSet::getFloat, valuePassThrough, 20)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 20)
+          .put("INTEGER UNSIGNED", ResultSet::getLong, valuePassThrough, 20)
+          .put(
+              "JSON",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "LONGBLOB",
+              ResultSet::getBlob,
+              blobToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "LONGTEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "MEDIUMBLOB",
+              ResultSet::getBlob,
+              blobToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("MEDIUMINT", ResultSet::getInt, valuePassThrough, 20)
+          .put(
+              "MEDIUMTEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "SET",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 20)
+          .put(
+              "TEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 32)
+          .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 32)
+          .put(
+              "TINYBLOB",
+              ResultSet::getBlob,
+              blobToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("TINYINT", ResultSet::getInt, valuePassThrough, 20)
+          .put(
+              "TINYTEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "VARBINARY",
+              ResultSet::getBytes,
+              bytesToHexString,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "VARCHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              MysqlJdbcValueMappings::guessVariableTypeSize)
+          .put("YEAR", ResultSet::getInt, valuePassThrough, 20)
+          .put("INT", ResultSet::getInt, valuePassThrough, 20) // Alias for INTEGER
+          .put("REAL", ResultSet::getDouble, valuePassThrough, 24) // Alias for DOUBLE
+          .put("NUMERIC", ResultSet::getBigDecimal, bigDecimalToByteArray, 48) // Alias for DECIMAL
+          .build();
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
-    return SCHEMA_MAPPINGS;
+    return JDBC_MAPPINGS.mappings();
   }
 
   /**
    * Guess the column size in bytes for a given column type.
    *
-   * <p>
-   * Ref: <a href=
-   * "https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html">MySQL
+   * <p>Ref: <a href= "https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html">MySQL
    * Storage Requirements</a>
    */
   @Override
-  public int guessColumnSize(com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
-      String typeName = sourceColumnType.getName().toUpperCase();
-      switch (typeName) {
-          // numeric types
-          // Ref: https://dev.mysql.com/doc/refman/8.4/en/integer-types.html
-          case "TINYINT":
-              return 1;
-          case "SMALLINT":
-          case "YEAR":
-              return 2;
-          case "MEDIUMINT":
-              return 3;
-          case "INT":
-          case "INTEGER":
-          case "FLOAT": // Partitioned as float/int
-              return 4;
-          case "BIGINT":
-          case "DOUBLE":
-          case "REAL": // MySQL REAL is DOUBLE by default unless REAL_AS_FLOAT sql mode is enabled
-              return 8;
-          // Date and Time
-          // Ref:
-          // https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html#data-types-storage-reqs-date-time
-          case "DATE":
-              return 3;
-          case "TIME": // Time is 3 bytes + fractional seconds storage (0-3 bytes)
-              return 6; // average/safe upper bound
-          case "TIMESTAMP": // 4 bytes + fractional
-              return 7;
-          case "DATETIME": // 5 bytes + fractional
-              return 8;
-          // String/Binary types
-          // Ref:
-          // https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html#data-types-storage-reqs-strings
-          case "CHAR":
-          case "BINARY":
-          case "VARCHAR":
-          case "VARBINARY":
-          case "TEXT":
-          case "BLOB":
-          case "TINYTEXT":
-          case "TINYBLOB":
-          case "MEDIUMTEXT":
-          case "MEDIUMBLOB":
-          case "LONGTEXT":
-          case "LONGBLOB":
-          case "ENUM":
-          case "SET":
-          case "JSON":
-              return guessVariableTypeSize(sourceColumnType);
-          case "BIT":
-              // (M+7)/8 bytes
-              Long[] mods = sourceColumnType.getMods();
-              long bits = (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 1;
-              return (int) ((bits + 7) / 8);
-          case "DECIMAL":
-          case "NUMERIC":
-              // Variable, but usually packed. precision/9 * 4 bytes.
-              // Let's assume a safe average if not calculable. 16 bytes is decent for common
-              // usage.
-              return 16;
-          default:
-              // Default safe fallback
-              return 16;
-      }
+  public int guessColumnSize(SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
+    if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
+      return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
+    }
+    return 16; // Default fallback
   }
 
-  private int guessVariableTypeSize(
-          com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
-      String typeName = sourceColumnType.getName().toUpperCase();
-      long length = 0;
-      Long[] mods = sourceColumnType.getMods();
-      if (mods != null && mods.length > 0 && mods[0] != null) {
-          length = mods[0];
-      } else {
-          // Defaults if length not specified
-          switch (typeName) {
-              case "TINYTEXT":
-              case "TINYBLOB":
-                  length = 255;
-                  break;
-              case "TEXT":
-              case "BLOB":
-                  length = 65_535;
-                  break;
-              case "MEDIUMTEXT":
-              case "MEDIUMBLOB":
-                  length = 16_777_215;
-                  break;
-              case "LONGTEXT":
-              case "LONGBLOB":
-              case "JSON":
-                  // Cap at a reasonable limit for fetch size calculation to avoid divide by zero
-                  // or tiny fetch sizes.
-                  // 4GB is too big. Let's assume 20KB average for unchecked huge fields?
-                  // Or strictly follow "max row size" logic which would kill fetch size?
-                  // The user wanted "max row size", but for unbounded types, using full 4GB is
-                  // impractical (fetch size = 0).
-                  // 4MB (max allowed packet default often) might be a better "max" proxy?
-                  // Let's stick to the previous conservative 1KB or similar, OR use a
-                  // configurable max?
-                  // FetchSizeCalculator previously used 10MB (10 * 1024 * 1024).
-                  length = 10 * 1024 * 1024;
-                  break;
-              default:
-                  length = 255; // Default for VARCHAR/CHAR if unknown
-          }
+  private static int guessVariableTypeSize(SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
+    long length = 0;
+    Long[] mods = sourceColumnType.getMods();
+    if (mods != null && mods.length > 0 && mods[0] != null) {
+      length = mods[0];
+    } else {
+      // Defaults to the max possible size for the type
+      switch (typeName) {
+        case "TINYTEXT":
+        case "TINYBLOB":
+          length = 255;
+          break;
+        case "TEXT":
+        case "BLOB":
+          length = 65_535;
+          break;
+        case "MEDIUMTEXT":
+        case "MEDIUMBLOB":
+          length = 16_777_215;
+          break;
+        case "LONGTEXT":
+        case "LONGBLOB":
+        case "JSON":
+          length = 10 * 1024 * 1024;
+          break;
+        default:
+          length = 255; // Default for VARCHAR/CHAR if unknown
       }
+    }
 
-      // Checking for multi-byte chars (Utf8mb4 is max 4 bytes)
-      // binary types don't need multiplier.
-      if (typeName.contains("TEXT") || typeName.contains("CHAR") || typeName.equals("JSON") || typeName.equals("ENUM")
-              || typeName.equals("SET")) {
-          return (int) (length * 4);
-      } else {
-          return (int) length;
-      }
+    // Checking for multi-byte chars (Utf8mb4 is max 4 bytes)
+    // binary types don't need multiplier.
+    // TEXT/BLOB/JSON types are already defined by byte length limits, not character
+    // counts,
+    // so they do not need the multiplier.
+    if (typeName.contains("CHAR") || typeName.equals("ENUM") || typeName.equals("SET")) {
+      return (int) (length * 4);
+    } else {
+      return (int) length;
+    }
   }
 }

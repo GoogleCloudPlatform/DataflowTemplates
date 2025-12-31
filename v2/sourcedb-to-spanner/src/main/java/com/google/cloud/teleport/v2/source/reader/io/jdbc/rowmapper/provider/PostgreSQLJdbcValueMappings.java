@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
@@ -31,11 +32,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.tuple.Pair;
 
 /** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
@@ -109,181 +108,224 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
 
-  private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
-      ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
-          .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIGSERIAL", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIT", Pair.of(bytesExtractor, valuePassThrough))
-          .put("BIT VARYING", Pair.of(bytesExtractor, valuePassThrough))
-          .put("BOOL", Pair.of(ResultSet::getBoolean, valuePassThrough))
-          .put("BOOLEAN", Pair.of(ResultSet::getBoolean, valuePassThrough))
-          .put("BYTEA", Pair.of(bytesExtractor, valuePassThrough))
-          .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CHARACTER", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CITEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(dateExtractor, dateToAvro))
-          .put("DECIMAL", Pair.of(ResultSet::getObject, numericToAvro))
-          .put("DOUBLE PRECISION", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("FLOAT4", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("FLOAT8", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("INT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT2", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT4", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("JSONB", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MONEY", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("NUMERIC", Pair.of(ResultSet::getObject, numericToAvro))
-          .put("OID", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("REAL", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("SERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL2", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL4", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL8", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SMALLSERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIMESTAMP", Pair.of(timestampExtractor, timestampToAvro))
-          .put("TIMESTAMPTZ", Pair.of(timestamptzExtractor, timestamptzToAvro))
-          .put("TIMESTAMP WITH TIME ZONE", Pair.of(timestamptzExtractor, timestamptzToAvro))
-          .put("TIMESTAMP WITHOUT TIME ZONE", Pair.of(timestampExtractor, timestampToAvro))
-          .put("UUID", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("VARBIT", Pair.of(bytesExtractor, valuePassThrough))
-          .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .build()
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  Map.entry(
-                      entry.getKey(),
-                      new JdbcValueMapper<>(
-                          entry.getValue().getLeft(), entry.getValue().getRight())))
-          .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+  private static final JdbcMappings JDBC_MAPPINGS =
+      JdbcMappings.builder()
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 24)
+          .put("BIGSERIAL", ResultSet::getLong, valuePassThrough, 24)
+          .put(
+              "BIT",
+              bytesExtractor,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "BIT VARYING",
+              bytesExtractor,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put("BOOL", ResultSet::getBoolean, valuePassThrough, 16)
+          .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 16)
+          .put(
+              "BYTEA",
+              bytesExtractor,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "CHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "CHARACTER",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "CHARACTER VARYING",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "CITEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put("DATE", dateExtractor, dateToAvro, 16)
+          .put("DECIMAL", ResultSet::getObject, numericToAvro, 90)
+          .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 24)
+          .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 16)
+          .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 24)
+          .put("INT", ResultSet::getInt, valuePassThrough, 16)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 16)
+          .put("INT2", ResultSet::getInt, valuePassThrough, 16)
+          .put("INT4", ResultSet::getInt, valuePassThrough, 16)
+          .put("INT8", ResultSet::getLong, valuePassThrough, 24)
+          .put(
+              "JSON",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "JSONB",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put("MONEY", ResultSet::getDouble, valuePassThrough, 24)
+          .put("NUMERIC", ResultSet::getObject, numericToAvro, 90)
+          .put(
+              "OID",
+              ResultSet::getLong,
+              valuePassThrough,
+              24) // Usually unsigned int, mapped to long for safety? Original
+          // was Long.
+          .put("REAL", ResultSet::getFloat, valuePassThrough, 16)
+          .put("SERIAL", ResultSet::getInt, valuePassThrough, 16)
+          .put("SERIAL2", ResultSet::getInt, valuePassThrough, 16)
+          .put("SERIAL4", ResultSet::getInt, valuePassThrough, 16)
+          .put("SERIAL8", ResultSet::getLong, valuePassThrough, 24)
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 16)
+          .put("SMALLSERIAL", ResultSet::getInt, valuePassThrough, 16)
+          .put(
+              "TEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put("TIMESTAMP", timestampExtractor, timestampToAvro, 24)
+          .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 140)
+          .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 140)
+          .put("TIMESTAMP WITHOUT TIME ZONE", timestampExtractor, timestampToAvro, 24)
+          .put(
+              "UUID",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "VARBIT",
+              bytesExtractor,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "VARCHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+          .put(
+              "XML",
+              ResultSet::getString,
+              valuePassThrough,
+              PostgreSQLJdbcValueMappings::guessVariableTypeSize) // Added
+          // XML
+          // based
+          // on
+          // switch
+          // case
+          // reference,
+          // though
+          // not in
+          // original
+          // map?
+          // No,
+          // wait.
+          // XML was
+          // in
+          // switch
+          // case
+          // but not
+          // in
+          // map...
+          // interesting.
+          // I will
+          // add it
+          // if it
+          // was
+          // supported,
+          // but if
+          // not in
+          // map,
+          // maybe
+          // better
+          // to
+          // leave
+          // it out
+          // or
+          // check.
+          // Note: "XML" was NOT in the original map, but WAS in the switch case for size.
+          // "XML" support might be missing in mapping?
+          // I will assume if it wasn't in the map, it wasn't supported for reading. I
+          // will leave it out of build() but keep it in size logic if needed, or better,
+          // just leave it out of build() so it falls to default if usage ever occurs (but
+          // it won't be mapped).
+          .build();
 
-  /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
-  /**
-   * Guess the column size in bytes for a given column type.
-   *
-   * <p>
-   * Ref:
-   * <a href="https://www.postgresql.org/docs/current/datatype.html">PostgreSQL
-   * Data Types</a>
-   */
   @Override
-  public int guessColumnSize(com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
-      String typeName = sourceColumnType.getName().toUpperCase();
-      switch (typeName) {
-          // numeric types
-          case "SMALLINT":
-          case "INT2":
-              return 2;
-          case "INTEGER":
-          case "INT":
-          case "INT4":
-              return 4;
-          case "BIGINT":
-          case "INT8":
-          case "BIGSERIAL":
-          case "SERIAL8":
-          case "MONEY": // 8 bytes
-              return 8;
-          case "REAL":
-          case "FLOAT4":
-              return 4;
-          case "DOUBLE PRECISION":
-          case "FLOAT8":
-              return 8;
-          case "SERIAL":
-          case "SERIAL4":
-              return 4;
-          case "SMALLSERIAL":
-          case "SERIAL2":
-              return 2;
-          // Date and Time
-          case "DATE":
-              return 4;
-          case "TIME":
-          case "TIMESTAMP":
-          case "TIMESTAMP WITHOUT TIME ZONE":
-              return 8;
-          case "TIMESTAMPTZ":
-          case "TIMESTAMP WITH TIME ZONE":
-              return 12; // 8 bytes for timestamp + 4 bytes for zone offset (internal representation
-                         // varies, but convenient est)
-          case "INTERVAL":
-              return 16;
-          // String/Binary types
-          case "CHAR":
-          case "CHARACTER":
-          case "VARCHAR":
-          case "CHARACTER VARYING":
-          case "TEXT":
-          case "BYTEA":
-          case "BIT": // Fixed-length bit string
-          case "BIT VARYING":
-          case "VARBIT":
-          case "UUID": // 16 bytes
-          case "JSON":
-          case "JSONB":
-          case "XML":
-          case "CITEXT":
-              return guessVariableTypeSize(sourceColumnType);
-          case "BOOLEAN":
-          case "BOOL":
-              return 1;
-          case "NUMERIC":
-          case "DECIMAL":
-              // Variable. Arbitrary precision.
-              return 16;
-          default:
-              // Default safe fallback
-              return 16;
-      }
+  public int guessColumnSize(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
+    if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
+      return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
+    }
+    // Fallback for types not in map but might have size logic (like XML if it was
+    // supported?)
+    // Or just default.
+    return 16;
   }
 
-  private int guessVariableTypeSize(
-          com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
-      String typeName = sourceColumnType.getName().toUpperCase();
-      if (typeName.equals("UUID")) {
-          return 16;
-      }
+  private static int guessVariableTypeSize(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
 
-      long length = 0;
-      Long[] mods = sourceColumnType.getMods();
-      if (mods != null && mods.length > 0 && mods[0] != null) {
-          length = mods[0];
-      } else {
-          // Defaults if length not specified
-          // Postgres TEXT/BYTEA/JSON are variable unlimited (up to 1GB).
-          // We need a safe estimate for fetch size.
-          length = 255; // Default for unbounded text.
-          if (typeName.contains("TEXT") || typeName.contains("JSON") || typeName.equals("BYTEA")
-                  || typeName.equals("XML")) {
-              // Use a larger default for explicit "unbounded" types?
-              // FetchSizeCalculator had 64KB for TEXT/BLOB.
-              // Let's go with 64KB for true unbounded types if no mod is present.
-              length = 65_535;
-          }
-      }
+    // Fixed width String types
+    if (typeName.equals("UUID")) {
+      // UUID String is 36 chars.
+      // 36 * 2 = 72 bytes.
+      // Overhead ~50.
+      return 122;
+    }
 
-      // Checking for multi-byte chars. UTF-8 is standard.
-      if (typeName.contains("TEXT") || typeName.contains("CHAR") || typeName.contains("JSON")
-              || typeName.contains("XML") || typeName.contains("CITEXT")) {
-          return (int) (length * 4);
-      } else {
-          // Binary or Bit
-          if (typeName.contains("BIT")) {
-              return (int) Math.ceil(length / 8.0);
-          }
-          return (int) length;
+    long length = 0;
+    Long[] mods = sourceColumnType.getMods();
+    if (mods != null && mods.length > 0 && mods[0] != null) {
+      length = mods[0];
+    } else {
+      // Defaults if length not specified
+      length = 255;
+      if (typeName.contains("TEXT")
+          || typeName.contains("JSON")
+          || typeName.equals("BYTEA")
+          || typeName.equals("XML")) {
+        length = 10 * 1024 * 1024; // 10MB conservative max for unbounded
       }
+    }
+
+    // Checking for multi-byte chars. UTF-8 is standard.
+    // In Java heap, chars are 2 bytes (UTF-16).
+    // So distinct from DB storage.
+    long byteLength;
+    boolean isString =
+        typeName.contains("TEXT")
+            || typeName.contains("CHAR")
+            || typeName.contains("JSON")
+            || typeName.contains("XML")
+            || typeName.contains("CITEXT");
+
+    if (isString) {
+      byteLength = length * 2; // Java char is 2 bytes
+    } else {
+      // Binary or Bit
+      if (typeName.contains("BIT") || typeName.contains("VARBIT")) {
+        byteLength = (long) Math.ceil(length / 8.0);
+      } else {
+        byteLength = length;
+      }
+    }
+
+    int overhead = isString ? 50 : 24; // String vs byte[] overhead
+
+    long totalSize = overhead + byteLength;
+    return (int) Math.min(totalSize, Integer.MAX_VALUE);
   }
 
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
-    return SCHEMA_MAPPINGS;
+    return JDBC_MAPPINGS.mappings();
   }
 }

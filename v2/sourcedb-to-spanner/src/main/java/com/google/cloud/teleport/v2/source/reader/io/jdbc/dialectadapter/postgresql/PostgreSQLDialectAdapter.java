@@ -81,8 +81,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String PAD_SPACE_RETURN_TYPE = "CHAR(5)";
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
-  public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
-  }
+  public PostgreSQLDialectAdapter(PostgreSQLVersion version) {}
 
   /**
    * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
@@ -475,18 +474,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     tags.put(
         RETURN_TYPE_REPLACEMENT_TAG, padSpace ? PAD_SPACE_RETURN_TYPE : NO_PAD_SPACE_RETURN_TYPE);
     return replaceTagsAndSanitize(query, tags);
-  }
-
-  @Override
-  public long estimateRowSize(
-      com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema sourceTableSchema,
-      com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider jdbcValueMappingsProvider) {
-    long estimatedRowSize = 0;
-    for (Map.Entry<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType> entry : sourceTableSchema
-        .sourceColumnNameToSourceColumnType().entrySet()) {
-      estimatedRowSize += jdbcValueMappingsProvider.guessColumnSize(entry.getValue());
-    }
-    return estimatedRowSize;
   }
 
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {

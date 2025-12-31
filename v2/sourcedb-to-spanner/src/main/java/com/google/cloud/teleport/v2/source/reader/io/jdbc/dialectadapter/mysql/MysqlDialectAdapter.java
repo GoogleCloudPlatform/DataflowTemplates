@@ -703,21 +703,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-  public long estimateRowSize(
-      com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema sourceTableSchema,
-      com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider jdbcValueMappingsProvider) {
-    long estimatedRowSize = 0;
-    for (Map.Entry<String, SourceColumnType> entry : sourceTableSchema.sourceColumnNameToSourceColumnType()
-        .entrySet()) {
-      estimatedRowSize += jdbcValueMappingsProvider.guessColumnSize(entry.getValue());
-    }
-    return estimatedRowSize;
-  }
-
-  /**
-   * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
-   * Having the type allows the implementation do finer distinctions if needed in the future.
-   */
   public enum MySqlVersion {
     DEFAULT,
   }
