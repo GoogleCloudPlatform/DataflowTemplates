@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -57,7 +58,7 @@ public class BoundarySplitterFactory {
               BigDecimal.class,
               (BoundarySplitter<BigDecimal>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitBigDecimal(start, end))
+                      splitBigDecimals(start, end, partitionColumn))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BYTE_ARRAY_CLASS,
@@ -74,6 +75,21 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Date>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitDates(start, end))
+          .put(
+              Float.class,
+              (BoundarySplitter<Float>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitFloats(start, end))
+          .put(
+              Double.class,
+              (BoundarySplitter<Double>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDoubles(start, end))
+          .put(
+              Duration.class,
+              (BoundarySplitter<Duration>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDurations(start, end, partitionColumn))
           .build();
 
   /**
@@ -169,14 +185,26 @@ public class BoundarySplitterFactory {
     return (start & end) + ((start ^ end) >> 1);
   }
 
-  private static BigDecimal splitBigDecimal(BigDecimal start, BigDecimal end) {
-    BigInteger startBigInt = (start == null) ? null : start.toBigInteger();
-    BigInteger endBigInt = (end == null) ? null : end.toBigInteger();
+  @VisibleForTesting
+  protected static BigDecimal splitBigDecimals(
+      BigDecimal start, BigDecimal end, PartitionColumn partitionColumn) {
+    Preconditions.checkNotNull(
+        partitionColumn, "Trying to split BigDecimals without partition column information.");
+    Preconditions.checkNotNull(
+        partitionColumn.numericScale(), "Trying to split BigDecimals without numeric scale.");
+    int scale = partitionColumn.numericScale();
+    BigInteger startBigInt = bigDecimalToBigInt(start, scale);
+    BigInteger endBigInt = bigDecimalToBigInt(end, scale);
+
     BigInteger split = splitBigIntegers(startBigInt, endBigInt);
     if (split == null) {
       return null;
     }
-    return new BigDecimal(split);
+    return new BigDecimal(split, scale);
+  }
+
+  private static BigInteger bigDecimalToBigInt(BigDecimal value, int scale) {
+    return value == null ? null : value.setScale(scale, RoundingMode.UNNECESSARY).unscaledValue();
   }
 
   private static Date splitDates(Date start, Date end) {
@@ -296,5 +324,91 @@ public class BoundarySplitterFactory {
 
   private static Timestamp splitTimestamps(Timestamp start, Timestamp end) {
     return instantToTimestamp(splitInstants(timeStampToInstant(start), timeStampToInstant(end)));
+  }
+
+  private static Float splitFloats(Float start, Float end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = -Float.MAX_VALUE;
+    }
+    if (end == null) {
+      end = Float.MAX_VALUE;
+    }
+
+    // Calculate overflow safe mid-point
+
+    // If signs are different, simple addition is safe from overflow
+    // because the values cancel each other out towards zero.
+    if ((start < 0 && end > 0) || (start > 0 && end < 0)) {
+      return (start + end) / 2.0f;
+    }
+
+    // If signs are the same (both positive or both negative),
+    // we use the offset formula to prevent overflow (Infinity).
+    // This works regardless of whether start > end or start < end.
+    return start + (end - start) / 2.0f;
+  }
+
+  private static Double splitDoubles(Double start, Double end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = -Double.MAX_VALUE;
+    }
+    if (end == null) {
+      end = Double.MAX_VALUE;
+    }
+
+    // Calculate overflow safe mid-point
+
+    // If signs are different, simple addition is safe from overflow
+    // because the values cancel each other out towards zero.
+    if ((start < 0 && end > 0) || (start > 0 && end < 0)) {
+      return (start + end) / 2.0;
+    }
+
+    // If signs are the same (both positive or both negative),
+    // we use the offset formula to prevent overflow (Infinity).
+    // This works regardless of whether start > end or start < end.
+    return start + (end - start) / 2.0;
+  }
+
+  @VisibleForTesting
+  protected static Duration splitDurations(
+      Duration start, Duration end, PartitionColumn partitionColumn) {
+    Preconditions.checkNotNull(
+        partitionColumn, "Trying to split Durations without partition column information.");
+    Preconditions.checkNotNull(
+        partitionColumn.datetimePrecision(),
+        "Trying to split Durations without datetime precision.");
+    int precision = partitionColumn.datetimePrecision();
+    BigInteger startBigInt = durationToBigInteger(start, precision);
+    BigInteger endBigInt = durationToBigInteger(end, precision);
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    return bigIntegerToDuration(split, precision);
+  }
+
+  private static BigInteger durationToBigInteger(Duration duration, int precision) {
+    if (duration == null) {
+      return null;
+    }
+    BigInteger seconds = BigInteger.valueOf(duration.getSeconds());
+    BigInteger nanos = BigInteger.valueOf(duration.getNano());
+    return seconds
+        .multiply(BigInteger.TEN.pow(precision))
+        .add(nanos.divide(BigInteger.TEN.pow(9 - precision)));
+  }
+
+  private static Duration bigIntegerToDuration(BigInteger bigInt, int precision) {
+    if (bigInt == null) {
+      return null;
+    }
+    BigInteger[] quotientAndRemainder = bigInt.divideAndRemainder(BigInteger.TEN.pow(precision));
+    BigInteger seconds = quotientAndRemainder[0];
+    BigInteger nanos = quotientAndRemainder[1].multiply(BigInteger.TEN.pow(9 - precision));
+    return Duration.ofSeconds(seconds.longValueExact(), nanos.longValueExact());
   }
 }

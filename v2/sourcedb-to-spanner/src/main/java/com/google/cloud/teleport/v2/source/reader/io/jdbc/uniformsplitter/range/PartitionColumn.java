@@ -19,6 +19,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Duration;
 import javax.annotation.Nullable;
 
 /** Details about a partition column. */
@@ -35,6 +37,9 @@ public abstract class PartitionColumn implements Serializable {
    */
   public abstract Class columnClass();
 
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
+
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
    * and must not be set otherwise. Defaults to null.
@@ -48,10 +53,21 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric scale for floating point and decimal columns. Null for other columns. */
+  @Nullable
+  public abstract Integer numericScale();
+
+  /** Precision of datetime columns. Defaults to null for non-datetime columns. */
+  @Nullable
+  public abstract Integer datetimePrecision();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
-        .setStringMaxLength(null);
+        .setStringMaxLength(null)
+        .setNumericScale(null)
+        .setDecimalStepSize(null)
+        .setDatetimePrecision(null);
   }
 
   public abstract Builder toBuilder();
@@ -67,6 +83,12 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
+    public abstract Builder setNumericScale(Integer value);
+
+    public abstract Builder setDecimalStepSize(BigDecimal value);
+
+    public abstract Builder setDatetimePrecision(Integer value);
+
     abstract PartitionColumn autoBuild();
 
     public PartitionColumn build() {
@@ -78,8 +100,26 @@ public abstract class PartitionColumn implements Serializable {
               || (partitionColumn.columnClass() != String.class
                   && partitionColumn.stringCollation() == null
                   && partitionColumn.stringMaxLength() == null),
-          "String columns must specify collation, and non string columns must not specify colaltion. PartitionColum = "
+          "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == BigDecimal.class
+                  && partitionColumn.numericScale() != null)
+              || (partitionColumn.columnClass() != BigDecimal.class),
+          "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
+      Preconditions.checkState(
+          ((partitionColumn.columnClass() == Float.class
+                      || partitionColumn.columnClass() == Double.class)
+                  && partitionColumn.decimalStepSize() != null)
+              || (partitionColumn.columnClass() != Float.class
+                  && partitionColumn.columnClass() != Double.class),
+          "Float and double columns must specify decimalStepSize. PartitionColum = "
+              + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == Duration.class
+                  && partitionColumn.datetimePrecision() != null)
+              || partitionColumn.columnClass() != Duration.class,
+          "Time/Duration columns must specify precision. PartitionColum = " + partitionColumn);
       return partitionColumn;
     }
   }

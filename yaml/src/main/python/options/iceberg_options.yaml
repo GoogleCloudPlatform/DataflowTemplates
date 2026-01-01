@@ -37,6 +37,13 @@ options:
         required: false
         type: text
       - order: 6
+        name: "filter"
+        description: "An optional filter expression to apply to the input records."
+        help: "A filter expression to apply to records from the Iceberg table."
+        example: "age > 18"
+        required: false
+        type: text
+      - order: 7
         name: "keep"
         description: "A list of field names to keep in the input record."
         help: "A list of field names to keep. Mutually exclusive with 'drop' and 'only'."

@@ -39,12 +39,12 @@
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
     <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
-    <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
-    <extra.enforcer.rules.version>1.10.0</extra.enforcer.rules.version>
+    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+    <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
-    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <jacoco.version>0.8.13</jacoco.version>
 
@@ -58,10 +58,10 @@
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.11.4</avro.version>
     <caffeine.version>3.2.2</caffeine.version>
-    <checkstyle.version>11.0.1</checkstyle.version>
+    <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
     <commons-io.version>2.16.1</commons-io.version>
-    <commons-lang3.version>3.14.0</commons-lang3.version>
+    <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-configuration2.version>2.10.1</commons-configuration2.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
@@ -85,6 +85,7 @@
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.4.5</truth.version>
+    <netty.version>4.1.125.Final</netty.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -101,7 +102,7 @@
     <jetty.version>12.1.5</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
-    <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
+    <postgres-socket-factory.version>1.27.1</postgres-socket-factory.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
@@ -115,6 +116,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>

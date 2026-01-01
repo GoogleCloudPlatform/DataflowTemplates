@@ -1,0 +1,33 @@
+options:
+  - name: "pubsub_common_options"
+    parameters:
+      - order: 1
+        name: "topic"
+        description: "Pub/Sub input topic"
+        help: "Pub/Sub topic to read the input from."
+        example: "projects/your-project-id/topics/your-topic-name"
+        required: true
+        type: text
+      - order: 2
+        name: "format"
+        description: "The message format."
+        help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+        default: JSON
+        required: false
+        type: text
+      - order: 3
+        name: "schema"
+        description: "Data schema."
+        help: >
+          A schema is required if data format is JSON, AVRO or PROTO. For JSON, 
+          this is a JSON schema. For AVRO and PROTO, this is the full schema 
+          definition.
+        required: true
+        type: text
+
+  - name: "pubsub_read_options"
+    parameters:
+
+  - name: "pubsub_write_options"
+    parameters:
+

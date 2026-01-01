@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,11 +39,15 @@ public class BoundaryTest {
             .setStart(0)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setNumericScale(0)
+            .setDatetimePrecision(2)
             .build();
     assertThat(boundary.start()).isEqualTo(0);
     assertThat(boundary.end()).isEqualTo(42);
     assertThat(boundary.toBuilder().build()).isEqualTo(boundary);
     assertThat(boundary.splitIndex().length()).isEqualTo(1);
+    assertThat(boundary.numericScale()).isEqualTo(0);
+    assertThat(boundary.datetimePrecision()).isEqualTo(2);
   }
 
   @Test
@@ -55,6 +60,8 @@ public class BoundaryTest {
             .setStart(null)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setNumericScale(null)
+            .setDatetimePrecision(null)
             .build();
 
     Boundary<Integer> boundaryNullBoth =
@@ -69,6 +76,11 @@ public class BoundaryTest {
     assertThat(boundaryNullStart.start()).isNull();
     assertThat(boundaryNullBoth.start()).isNull();
     assertThat(boundaryNullBoth.end()).isNull();
+    assertThat(boundaryNullStart.numericScale()).isNull();
+    assertThat(boundaryNullBoth.numericScale()).isNull(); // defaults to null if not explicitly set
+    assertThat(boundaryNullStart.datetimePrecision()).isNull();
+    assertThat(boundaryNullBoth.datetimePrecision())
+        .isNull(); // defaults to null if not explicitly set
   }
 
   @Test
@@ -166,6 +178,110 @@ public class BoundaryTest {
     assertThat(
             secondBoundary.toBuilder()
                 .setStart(firstBoundary.end() + 1)
+                .build()
+                .isMergable(firstBoundary))
+        .isFalse();
+    assertThat(firstBoundary.merge(secondBoundary)).isEqualTo(mergedBoundary);
+    assertThat(secondBoundary.merge(firstBoundary)).isEqualTo(mergedBoundary);
+  }
+
+  @Test
+  public void testAreValuesEqual() {
+    // Test special handling for float equality
+    Boundary<Float> floatBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.02f)
+            .setDecimalStepSize(BigDecimal.valueOf(0.01))
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    // float to non-float (double) comparison
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.01)).isEqualTo(false);
+    // non-float (double) to float comparison
+    assertThat(floatBoundary.areValuesEqual(0.01, 0.01f)).isEqualTo(false);
+    // float to float comparison
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.01f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.001f, 0.01f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.001f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.02f)).isEqualTo(false);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0f)).isEqualTo(false);
+    // float values that cause issues when compared as floats (1.03f - 1.02f returns 0.00999999
+    // which is less than 0.01)
+    assertThat(floatBoundary.areValuesEqual(1.03f, 1.02f)).isEqualTo(false);
+
+    // Test special handling for double equality
+    Boundary<Double> doubleBoundary =
+        Boundary.<Double>builder()
+            .setColName("col1")
+            .setColClass(Double.class)
+            .setStart(1.01)
+            .setEnd(1.02)
+            .setDecimalStepSize(BigDecimal.valueOf(0.001))
+            .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
+            .build();
+
+    // double to non-double (float) comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.001f)).isEqualTo(false);
+    // non-double (float) to double comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001f, 0.001)).isEqualTo(false);
+    // double to double comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.0001, 0.001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.0001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.002)).isEqualTo(false);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0)).isEqualTo(false);
+    // double values that cause issues when compared as doubles (1.003 - 1.002 returns 0.000999999
+    // which is less than 0.001)
+    assertThat(doubleBoundary.areValuesEqual(1.003, 1.002)).isEqualTo(false);
+  }
+
+  @Test
+  public void testFloatBoundaryMerge() {
+    BigDecimal decimalStepSize = BigDecimal.valueOf(0.01);
+
+    Boundary<Float> firstBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.02f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    Boundary<Float> secondBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.02f)
+            .setEnd(1.03f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    Boundary<Float> mergedBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.03f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+    assertThat(firstBoundary.isMergable(secondBoundary)).isTrue();
+    assertThat(secondBoundary.isMergable(firstBoundary)).isTrue();
+    assertThat(
+            firstBoundary.toBuilder()
+                .setEnd(secondBoundary.start() + 0.01f)
+                .build()
+                .isMergable(secondBoundary))
+        .isFalse();
+    assertThat(
+            secondBoundary.toBuilder()
+                .setStart(firstBoundary.end() + 0.01f)
                 .build()
                 .isMergable(firstBoundary))
         .isFalse();

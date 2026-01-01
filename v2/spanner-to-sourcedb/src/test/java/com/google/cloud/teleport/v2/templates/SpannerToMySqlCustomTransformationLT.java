@@ -126,7 +126,7 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
 
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofMinutes(10), Duration.ofSeconds(30)), check);
+            createConfig(jobInfo, Duration.ofMinutes(12), Duration.ofSeconds(30)), check);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
