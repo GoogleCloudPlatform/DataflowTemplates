@@ -98,7 +98,7 @@ options:
         description: "The schema in which the data is encoded in the Kafka topic."
         help: >
           The schema in which the data is encoded in the Kafka topic. 
-          For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}"
+          For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}.
           A schema is required if data format is JSON, AVRO or PROTO.
         example: '{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}'
         required: false
