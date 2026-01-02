@@ -119,6 +119,11 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
         + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
   }
 
+  private static long getLengthOrPrecision(SourceColumnType sourceColumnType) {
+    Long[] mods = sourceColumnType.getMods();
+    return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
+  }
+
   /** Map {@link java.sql.Timestamp} to timestampMicros LogicalType. */
   private static final ResultSetValueMapper<java.sql.Timestamp> sqlTimestampToAvroTimestampMicros =
       (value, schema) -> instantToMicro(value.toInstant());
@@ -160,23 +165,33 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               "BINARY",
               ResultSet::getBytes,
               bytesToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // in BINARY length is measured in bytes. ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
+                return (int) (n > 0 ? n : 255);
+              })
           .put(
               "BIT",
               ResultSet::getLong,
               valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
-          .put(
-              "BLOB",
-              ResultSet::getBlob,
-              blobToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // BIT(N) -> (N+7)/8 since it is stored in bytes
+                return (int) ((n > 0 ? n : 1) + 7) / 8;
+              })
+          .put("BLOB", ResultSet::getBlob, blobToHexString, 65_535) // BLOB -> 65,535 bytes
           .put("BOOL", ResultSet::getInt, valuePassThrough, 1)
           .put(
               "CHAR",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // CHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max length
+                // is 255.
+                return (int) ((n > 0 ? n : 255) * 4);
+              })
           /*
            * Time related type sizes are inferred from the way the JDBC driver decodes the
            * binary data ref:
@@ -188,7 +203,14 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               "DECIMAL",
               ResultSet::getBigDecimal,
               bigDecimalToByteArray,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long m = getLengthOrPrecision(sourceColumnType);
+                // DECIMAL(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
+                // string (+2 for sign and decimal point)
+                // Max number of digits in decimal is 65. Ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+                return (int) ((m > 0 ? m : 65) + 2);
+              })
           .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 8)
           .put(
               "ENUM",
@@ -202,31 +224,24 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
           .put("INTEGER UNSIGNED", ResultSet::getLong, valuePassThrough, 4)
           .put(
-              "JSON",
-              ResultSet::getString,
-              valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              "JSON", ResultSet::getString, valuePassThrough, Integer.MAX_VALUE) // JSON -> Long Max
           .put(
               "LONGBLOB",
               ResultSet::getBlob,
               blobToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              Integer.MAX_VALUE) // LONGBLOB -> Long Max
           .put(
               "LONGTEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
-          .put(
-              "MEDIUMBLOB",
-              ResultSet::getBlob,
-              blobToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              Integer.MAX_VALUE) // LONGTEXT -> Long Max
+          .put("MEDIUMBLOB", ResultSet::getBlob, blobToHexString, 16_777_215) // MEDIUMBLOB -> 16MB
           .put("MEDIUMINT", ResultSet::getInt, valuePassThrough, 4)
           .put(
               "MEDIUMTEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              16_777_215) // MEDIUMTEXT -> 16MB
           .put(
               "SET",
               ResultSet::getString,
@@ -237,34 +252,32 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           // maximum-length character in the character set.
           // https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
           .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
-          .put(
-              "TEXT",
-              ResultSet::getString,
-              valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("TEXT", ResultSet::getString, valuePassThrough, 65_535)
           .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 12)
           .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
-          .put(
-              "TINYBLOB",
-              ResultSet::getBlob,
-              blobToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("TINYBLOB", ResultSet::getBlob, blobToHexString, 255)
           .put("TINYINT", ResultSet::getInt, valuePassThrough, 1)
-          .put(
-              "TINYTEXT",
-              ResultSet::getString,
-              valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("TINYTEXT", ResultSet::getString, valuePassThrough, 255)
           .put(
               "VARBINARY",
               ResultSet::getBytes,
               bytesToHexString,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // in VARBINARY length is measured in bytes. ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
+                return (int) (n > 0 ? n : 65535);
+              })
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // VARCHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max bytes
+                // allowed is 65535. ref: https://dev.mysql.com/doc/refman/8.4/en/char.html
+                return (int) (n > 0 ? n * 4 : 65535);
+              })
           .put("YEAR", ResultSet::getInt, valuePassThrough, 2)
           .put("INT", ResultSet::getInt, valuePassThrough, 4)
           .put("REAL", ResultSet::getDouble, valuePassThrough, 8)
@@ -272,7 +285,14 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               "NUMERIC",
               ResultSet::getBigDecimal,
               bigDecimalToByteArray,
-              MysqlJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long m = getLengthOrPrecision(sourceColumnType);
+                // NUMERIC(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
+                // string (+2 for sign and decimal point)
+                // Max number of digits in decimal is 65. Ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+                return (int) ((m > 0 ? m : 65) + 2);
+              })
           .build();
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
@@ -293,73 +313,6 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
-  }
-
-  private static int estimateVariableTypeSize(SourceColumnType sourceColumnType) {
-    String typeName = sourceColumnType.getName().toUpperCase();
-    Long[] mods = sourceColumnType.getMods();
-    long lengthOrPrecision = (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
-
-    // DECIMAL(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
-    // string (+2 for sign and decimal point)
-    if (typeName.equals("DECIMAL") || typeName.equals("NUMERIC")) {
-      long m =
-          (lengthOrPrecision > 0)
-              ? lengthOrPrecision
-              : 65; // Max number of digits in decimal is 65. Ref:
-      // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
-      return (int) (m + 2);
-    }
-
-    // BIT(N) -> (N+7)/8 since it is stored in bytes
-    if (typeName.equals("BIT")) {
-      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 1;
-      return (int) ((n + 7) / 8);
-    }
-
-    // VARCHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max bytes
-    // allowed is 65535. ref: https://dev.mysql.com/doc/refman/8.4/en/char.html
-    if (typeName.equals("VARCHAR")) {
-      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 65535 / 4 + 1;
-      return (int) (n * 4);
-    }
-
-    // CHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max length
-    // is 255.
-    if (typeName.equals("CHAR")) {
-      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 255;
-      return (int) (n * 4);
-    }
-
-    // in VARBINARY and BINARY length is measured in bytes. ref:
-    // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
-    if (typeName.equals("VARBINARY")) {
-      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 65535;
-      return (int) n;
-    }
-    if (typeName.equals("BINARY")) {
-      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 255;
-      return (int) n;
-    }
-
-    switch (typeName) {
-      case "TINYTEXT":
-      case "TINYBLOB":
-        return 255;
-      case "TEXT":
-      case "BLOB":
-        return 65_535;
-      case "MEDIUMTEXT":
-      case "MEDIUMBLOB":
-        return 16_777_215;
-      case "LONGTEXT":
-      case "LONGBLOB":
-      case "JSON":
-        return Integer.MAX_VALUE;
-    }
-
-    // throw error if the type is not found
     throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
   }
 }
