@@ -75,4 +75,9 @@ public class SpannerWriter implements Serializable {
     // This needs to return the whole RowContext and Exception
     return writeResult;
   }
+
+  public SpannerWriteResult writeMutations(PCollection<Mutation> mutations) {
+    LOG.info("initiating write to spanner");
+    return mutations.apply("WriteToSpanner", getSpannerWrite());
+  }
 }
