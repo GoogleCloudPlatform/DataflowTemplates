@@ -5,7 +5,7 @@ options:
         name: "bootstrapServers"
         description: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster."
         help: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2"
-        example: "host1:port1,host2:port2"
+        example: "host1:port1,host2:port2,localhost:9092,127.0.0.1:9093"
         required: true
         type: text
       - order: 2
@@ -96,7 +96,10 @@ options:
       - order: 14
         name: "schema"
         description: "The schema in which the data is encoded in the Kafka topic."
-        help: "The schema in which the data is encoded in the Kafka topic. For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}"
+        help: >
+          The schema in which the data is encoded in the Kafka topic. 
+          For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}"
+          A schema is required if data format is JSON, AVRO or PROTO.
         example: '{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}'
         required: false
         type: text
