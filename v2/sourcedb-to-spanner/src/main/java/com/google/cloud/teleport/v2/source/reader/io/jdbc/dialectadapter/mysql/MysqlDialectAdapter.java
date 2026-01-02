@@ -703,10 +703,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-  /**
-   * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
-   * Having the type allows the implementation do finer distinctions if needed in the future.
-   */
   public enum MySqlVersion {
     DEFAULT,
   }
