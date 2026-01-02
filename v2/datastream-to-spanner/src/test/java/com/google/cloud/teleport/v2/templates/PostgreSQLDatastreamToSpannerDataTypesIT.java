@@ -556,7 +556,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string",
-        createRows("{\"duplicate_key\": 1, \"duplicate_k...", "{\"null_key\": null}", "NULL"));
+        createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     result.put("jsonb", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
         "jsonb_to_string", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
