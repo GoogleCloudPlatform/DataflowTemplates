@@ -26,7 +26,6 @@ import com.google.gson.GsonBuilder;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.StringUtils;
@@ -121,14 +120,6 @@ public class TemplateSpecsGenerator {
     }
 
     String imageName = templateDash.toLowerCase();
-    if (StringUtils.isNotEmpty(templateAnnotation.flexContainerName())) {
-      imageName = Path.of(templateAnnotation.flexContainerName()).getFileName().toString();
-    }
-
-    if (!targetDirectory.exists()) {
-      targetDirectory.mkdirs();
-    }
-
     File file = new File(targetDirectory, imageName + "-generated-metadata.json");
     LOG.info("Saving image spec metadata " + file.getAbsolutePath());
 
