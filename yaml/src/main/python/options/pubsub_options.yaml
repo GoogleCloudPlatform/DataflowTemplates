@@ -12,7 +12,6 @@ options:
         name: "format"
         description: "The message format."
         help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
-        default: JSON
         required: true
         type: text
       - order: 3
