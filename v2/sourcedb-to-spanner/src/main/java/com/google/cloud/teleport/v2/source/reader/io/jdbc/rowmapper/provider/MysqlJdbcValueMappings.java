@@ -40,8 +40,12 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MysqlJdbcValueMappings.class);
 
   /**
    * Pass the value extracted from {@link ResultSet} to {@link GenericRecordBuilder#set(Field,
@@ -150,107 +154,125 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
 
   private static final JdbcMappings JDBC_MAPPINGS =
       JdbcMappings.builder()
-          .put("BIGINT", ResultSet::getLong, valuePassThrough, 24)
-          .put("BIGINT UNSIGNED", ResultSet::getBigDecimal, bigDecimalToAvroNumber, 24)
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 8)
+          .put("BIGINT UNSIGNED", ResultSet::getBigDecimal, bigDecimalToAvroNumber, 8)
           .put(
               "BINARY",
               ResultSet::getBytes,
               bytesToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "BIT",
               ResultSet::getLong,
               valuePassThrough,
-              (sourceColumnType) -> {
-                return 24;
-              })
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "BLOB",
               ResultSet::getBlob,
               blobToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("BOOL", ResultSet::getInt, valuePassThrough, 20)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("BOOL", ResultSet::getInt, valuePassThrough, 1)
           .put(
               "CHAR",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("DATE", utcDateExtractor, sqlDateToAvroTimestampMicros, 24)
-          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroDateTime, 32)
-          .put("DECIMAL", ResultSet::getBigDecimal, bigDecimalToByteArray, 48)
-          .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 24)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          /*
+           * Time related type sizes are inferred from the way the JDBC driver decodes the
+           * binary data ref:
+           * https://github.com/mysql/mysql-connector-j/blob/release/8.0/src/main/protocol-impl/java/com/mysql/cj/protocol/a/MysqlBinaryValueDecoder.java
+           */
+          .put("DATE", utcDateExtractor, sqlDateToAvroTimestampMicros, 4)
+          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroDateTime, 11)
+          .put(
+              "DECIMAL",
+              ResultSet::getBigDecimal,
+              bigDecimalToByteArray,
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 8)
           .put(
               "ENUM",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("FLOAT", ResultSet::getFloat, valuePassThrough, 20)
-          .put("INTEGER", ResultSet::getInt, valuePassThrough, 20)
-          .put("INTEGER UNSIGNED", ResultSet::getLong, valuePassThrough, 20)
+              1020) // The maximum supported length of an individual ENUM element is M <= 255
+          // and (M x w) <= 1020, where M is the element literal length and w is the
+          // number of bytes required for the maximum-length character in the character
+          // set. https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
+          .put("FLOAT", ResultSet::getFloat, valuePassThrough, 4)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
+          .put("INTEGER UNSIGNED", ResultSet::getLong, valuePassThrough, 4)
           .put(
               "JSON",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "LONGBLOB",
               ResultSet::getBlob,
               blobToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "LONGTEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "MEDIUMBLOB",
               ResultSet::getBlob,
               blobToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("MEDIUMINT", ResultSet::getInt, valuePassThrough, 20)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("MEDIUMINT", ResultSet::getInt, valuePassThrough, 4)
           .put(
               "MEDIUMTEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "SET",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 20)
+              1020 * 64) // Number of elements in a SET can be up to 64. The maximum supported
+          // length of an individual SET element is M <= 255 and (M x w) <= 1020, where M
+          // is the element literal length and w is the number of bytes required for the
+          // maximum-length character in the character set.
+          // https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
           .put(
               "TEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 32)
-          .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 32)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 12)
+          .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
           .put(
               "TINYBLOB",
               ResultSet::getBlob,
               blobToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("TINYINT", ResultSet::getInt, valuePassThrough, 20)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("TINYINT", ResultSet::getInt, valuePassThrough, 1)
           .put(
               "TINYTEXT",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "VARBINARY",
               ResultSet::getBytes,
               bytesToHexString,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
-              MysqlJdbcValueMappings::guessVariableTypeSize)
-          .put("YEAR", ResultSet::getInt, valuePassThrough, 20)
-          .put("INT", ResultSet::getInt, valuePassThrough, 20) // Alias for INTEGER
-          .put("REAL", ResultSet::getDouble, valuePassThrough, 24) // Alias for DOUBLE
-          .put("NUMERIC", ResultSet::getBigDecimal, bigDecimalToByteArray, 48) // Alias for DECIMAL
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
+          .put("YEAR", ResultSet::getInt, valuePassThrough, 2)
+          .put("INT", ResultSet::getInt, valuePassThrough, 4)
+          .put("REAL", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "NUMERIC",
+              ResultSet::getBigDecimal,
+              bigDecimalToByteArray,
+              MysqlJdbcValueMappings::estimateVariableTypeSize)
           .build();
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
@@ -260,60 +282,84 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
   }
 
   /**
-   * Guess the column size in bytes for a given column type.
+   * estimate the column size in bytes for a given column type.
    *
    * <p>Ref: <a href= "https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html">MySQL
    * Storage Requirements</a>
    */
   @Override
-  public int guessColumnSize(SourceColumnType sourceColumnType) {
+  public int estimateColumnSize(SourceColumnType sourceColumnType) {
     String typeName = sourceColumnType.getName().toUpperCase();
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    return 16; // Default fallback
+    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
   }
 
-  private static int guessVariableTypeSize(SourceColumnType sourceColumnType) {
+  private static int estimateVariableTypeSize(SourceColumnType sourceColumnType) {
     String typeName = sourceColumnType.getName().toUpperCase();
-    long length = 0;
     Long[] mods = sourceColumnType.getMods();
-    if (mods != null && mods.length > 0 && mods[0] != null) {
-      length = mods[0];
-    } else {
-      // Defaults to the max possible size for the type
-      switch (typeName) {
-        case "TINYTEXT":
-        case "TINYBLOB":
-          length = 255;
-          break;
-        case "TEXT":
-        case "BLOB":
-          length = 65_535;
-          break;
-        case "MEDIUMTEXT":
-        case "MEDIUMBLOB":
-          length = 16_777_215;
-          break;
-        case "LONGTEXT":
-        case "LONGBLOB":
-        case "JSON":
-          length = 10 * 1024 * 1024;
-          break;
-        default:
-          length = 255; // Default for VARCHAR/CHAR if unknown
-      }
+    long lengthOrPrecision = (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
+
+    // DECIMAL(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
+    // string (+2 for sign and decimal point)
+    if (typeName.equals("DECIMAL") || typeName.equals("NUMERIC")) {
+      long m =
+          (lengthOrPrecision > 0)
+              ? lengthOrPrecision
+              : 65; // Max number of digits in decimal is 65. Ref:
+      // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+      return (int) (m + 2);
     }
 
-    // Checking for multi-byte chars (Utf8mb4 is max 4 bytes)
-    // binary types don't need multiplier.
-    // TEXT/BLOB/JSON types are already defined by byte length limits, not character
-    // counts,
-    // so they do not need the multiplier.
-    if (typeName.contains("CHAR") || typeName.equals("ENUM") || typeName.equals("SET")) {
-      return (int) (length * 4);
-    } else {
-      return (int) length;
+    // BIT(N) -> (N+7)/8 since it is stored in bytes
+    if (typeName.equals("BIT")) {
+      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 1;
+      return (int) ((n + 7) / 8);
     }
+
+    // VARCHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max bytes
+    // allowed is 65535. ref: https://dev.mysql.com/doc/refman/8.4/en/char.html
+    if (typeName.equals("VARCHAR")) {
+      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 65535 / 4 + 1;
+      return (int) (n * 4);
+    }
+
+    // CHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max length
+    // is 255.
+    if (typeName.equals("CHAR")) {
+      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 255;
+      return (int) (n * 4);
+    }
+
+    // in VARBINARY and BINARY length is measured in bytes. ref:
+    // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
+    if (typeName.equals("VARBINARY")) {
+      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 65535;
+      return (int) n;
+    }
+    if (typeName.equals("BINARY")) {
+      long n = (lengthOrPrecision > 0) ? lengthOrPrecision : 255;
+      return (int) n;
+    }
+
+    switch (typeName) {
+      case "TINYTEXT":
+      case "TINYBLOB":
+        return 255;
+      case "TEXT":
+      case "BLOB":
+        return 65_535;
+      case "MEDIUMTEXT":
+      case "MEDIUMBLOB":
+        return 16_777_215;
+      case "LONGTEXT":
+      case "LONGBLOB":
+      case "JSON":
+        return Integer.MAX_VALUE;
+    }
+
+    // throw error if the type is not found
+    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
   }
 }

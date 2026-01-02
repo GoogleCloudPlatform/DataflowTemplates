@@ -116,39 +116,39 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               "BIT",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "BIT VARYING",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put("BOOL", ResultSet::getBoolean, valuePassThrough, 16)
           .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 16)
           .put(
               "BYTEA",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "CHAR",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "CHARACTER",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "CHARACTER VARYING",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "CITEXT",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put("DATE", dateExtractor, dateToAvro, 16)
           .put("DECIMAL", ResultSet::getObject, numericToAvro, 90)
           .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 24)
@@ -163,12 +163,12 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               "JSON",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "JSONB",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put("MONEY", ResultSet::getDouble, valuePassThrough, 24)
           .put("NUMERIC", ResultSet::getObject, numericToAvro, 90)
           .put(
@@ -188,7 +188,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               "TEXT",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 24)
           .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 140)
           .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 140)
@@ -197,22 +197,22 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               "UUID",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "VARBIT",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize)
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
           .put(
               "XML",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::guessVariableTypeSize) // Added
+              PostgreSQLJdbcValueMappings::estimateVariableTypeSize) // Added
           // XML
           // based
           // on
@@ -257,7 +257,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
           .build();
 
   @Override
-  public int guessColumnSize(
+  public int estimateColumnSize(
       com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
     String typeName = sourceColumnType.getName().toUpperCase();
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
@@ -269,7 +269,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
     return 16;
   }
 
-  private static int guessVariableTypeSize(
+  private static int estimateVariableTypeSize(
       com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
     String typeName = sourceColumnType.getName().toUpperCase();
 
