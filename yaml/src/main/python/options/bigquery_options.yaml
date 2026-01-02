@@ -46,5 +46,5 @@ options:
           https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
           for the recommended values. The default value is 1.
         required: false
-        default: 4
+        default: 1
         type: integer
