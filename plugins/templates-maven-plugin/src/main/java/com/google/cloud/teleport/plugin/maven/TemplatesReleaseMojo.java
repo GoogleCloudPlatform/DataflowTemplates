@@ -23,14 +23,24 @@ import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_LAUNCH
 import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_VERSION;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.BuildPluginManager;
@@ -140,6 +150,27 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
 
+  @Parameter(
+      defaultValue = "false",
+      property = "publishYamlBlueprints",
+      readonly = true,
+      required = false)
+  protected boolean publishYamlBlueprints;
+
+  @Parameter(
+      defaultValue = "yaml/src/main/yaml",
+      property = "yamlBlueprintsPath",
+      readonly = true,
+      required = false)
+  protected String yamlBlueprintsPath;
+
+  @Parameter(
+      defaultValue = "yaml-blueprints",
+      property = "yamlBlueprintsGCSPath",
+      readonly = true,
+      required = false)
+  protected String yamlBlueprintsGCSPath;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -165,63 +196,109 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 .collect(Collectors.toList());
       }
 
-      if (templateDefinitions.isEmpty()) {
-        LOG.warn("Not found templates to release in this module.");
-        return;
+      if ((!templateDefinitions.isEmpty() || publishYamlBlueprints)
+          && (stagePrefix == null || stagePrefix.isEmpty())) {
+        throw new IllegalArgumentException(
+            "Stage Prefix must be informed for releases, when releasing templates or yaml blueprints.");
       }
 
-      for (TemplateDefinitions definition : templateDefinitions) {
+      if (!templateDefinitions.isEmpty()) {
+        LOG.info("Found {} templates to release.", templateDefinitions.size());
+        LOG.info("Trying to stage templates...");
 
-        ImageSpec imageSpec = definition.buildSpecModel(true);
-        String currentTemplateName = imageSpec.getMetadata().getName();
+        for (TemplateDefinitions definition : templateDefinitions) {
 
-        if (stagePrefix == null || stagePrefix.isEmpty()) {
-          throw new IllegalArgumentException("Stage Prefix must be informed for releases");
-        }
+          ImageSpec imageSpec = definition.buildSpecModel(true);
+          String currentTemplateName = imageSpec.getMetadata().getName();
 
-        LOG.info("Staging template {}...", currentTemplateName);
+          LOG.info("Staging template {}...", currentTemplateName);
 
-        String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+          String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
 
-        // TODO: is there a better way to get the plugin on the _same project_?
-        TemplatesStageMojo configuredMojo =
-            new TemplatesStageMojo(
-                project,
-                session,
-                outputDirectory,
-                outputClassesDirectory,
-                resourcesDirectory,
-                targetDirectory,
-                projectId,
-                templateName,
-                bucketName,
-                librariesBucketName,
-                stagePrefix,
-                useRegion,
-                artifactRegion,
-                gcpTempLocation,
-                baseContainerImage,
-                basePythonContainerImage,
-                pythonTemplateLauncherEntryPoint,
-                javaTemplateLauncherEntryPoint,
-                pythonVersion,
-                beamVersion,
-                artifactRegistry,
-                stagingArtifactRegistry,
-                unifiedWorker,
-                generateSBOM);
+          // TODO: is there a better way to get the plugin on the _same project_?
+          TemplatesStageMojo configuredMojo =
+              new TemplatesStageMojo(
+                  project,
+                  session,
+                  outputDirectory,
+                  outputClassesDirectory,
+                  resourcesDirectory,
+                  targetDirectory,
+                  projectId,
+                  templateName,
+                  bucketName,
+                  librariesBucketName,
+                  stagePrefix,
+                  useRegion,
+                  artifactRegion,
+                  gcpTempLocation,
+                  baseContainerImage,
+                  basePythonContainerImage,
+                  pythonTemplateLauncherEntryPoint,
+                  javaTemplateLauncherEntryPoint,
+                  pythonVersion,
+                  beamVersion,
+                  artifactRegistry,
+                  stagingArtifactRegistry,
+                  unifiedWorker,
+                  generateSBOM);
 
-        String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
+          String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
 
-        if (!definition.getTemplateAnnotation().stageImageOnly()) {
-          LOG.info("Template staged: {}", templatePath);
+          if (!definition.getTemplateAnnotation().stageImageOnly()) {
+            LOG.info("Template staged: {}", templatePath);
 
-          // Export the specs for collection
-          generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
-          if (definition.isFlex()) {
-            generator.saveImageSpec(definition, imageSpec, targetDirectory);
+            // Export the specs for collection
+            generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
+            if (definition.isFlex()) {
+              generator.saveImageSpec(definition, imageSpec, targetDirectory);
+            }
           }
         }
+      } else {
+        LOG.warn("Did not find any templates to release in this module.");
+      }
+
+      if (publishYamlBlueprints) {
+        LOG.info(
+            "Trying to upload Job Builder blueprints to bucket '{}'...",
+            bucketNameOnly(bucketName));
+        Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
+        if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
+          throw new MojoExecutionException(
+              "YAML blueprints directory not found, skipping upload: " + yamlPath);
+        } else {
+          try (Storage storage = StorageOptions.getDefaultInstance().getService();
+              Stream<Path> paths = Files.list(yamlPath)) {
+            paths
+                .filter(
+                    path ->
+                        Files.isRegularFile(path)
+                            && path.getFileName().toString().endsWith(".yaml"))
+                .forEach(
+                    path -> {
+                      String fileName = path.getFileName().toString();
+                      String objectName =
+                          String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
+                      BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
+                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+                      try (InputStream inputStream = Files.newInputStream(path)) {
+                        storage.create(blobInfo, inputStream);
+                        LOG.info(
+                            "Uploaded {} to gs://{}/{}",
+                            fileName,
+                            bucketNameOnly(bucketName),
+                            objectName);
+                      } catch (IOException e) {
+                        throw new RuntimeException("Error reading file " + fileName, e);
+                      }
+                    });
+          } catch (Exception e) {
+            throw new MojoExecutionException("Error uploading YAML blueprints", e);
+          }
+        }
+      } else {
+        LOG.warn("YAML blueprints not published in this module.");
       }
 
     } catch (DependencyResolutionRequiredException e) {
@@ -230,6 +307,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       throw new MojoExecutionException("URL generation failed", e);
     } catch (InvalidArgumentException e) {
       throw new MojoExecutionException("Invalid run argument", e);
+    } catch (MojoExecutionException e) {
+      throw e;
     } catch (Exception e) {
       throw new MojoExecutionException("Template run failed", e);
     }
