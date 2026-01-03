@@ -113,18 +113,18 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
-                .addParameter("kafkaReadTopics", topicName)
-                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-                .addParameter("messageFormat", "JSON")
+                .addParameter("bootstrapServers", kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                .addParameter("format", "JSON")
+                .addParameter("topic", topicName)
+                .addParameter("format", "JSON")
                 .addParameter(
                     "schema",
                     "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("numStorageWriteApiStreams", "1")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "1")
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
-                .addParameter(
-                    "readBootstrapServers",
-                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")));
+                .addParameter("table", toTableSpecLegacy(tableId))
+                .addParameter("createDisposition", "CREATE_IF_NEEDED")
+                .addParameter("writeDisposition", "WRITE_APPEND")
+                .addParameter("numStreams", "1")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

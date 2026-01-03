@@ -26,32 +26,16 @@ template:
   streaming: true
   hidden: false
 
+  options_file:
+    - "kafka_options"
+    - "bigquery_options"
+
+
+
   parameters:
-    - name: "readBootstrapServers"
-      description: "Kafka Bootstrap Server list"
-      help: "Kafka Bootstrap Server list, separated by commas."
-      example: "localhost:9092,127.0.0.1:9093"
-      required: true
-      type: text
-      order: 1
-
-    - name: "kafkaReadTopics"
-      description: "Kafka topic(s) to read the input from."
-      help: "Kafka topic(s) to read the input from."
-      example: "topic1,topic2"
-      required: true
-      type: text
-      order: 2
-
-    - name: "outputTableSpec"
-      description: "BigQuery output table"
-      help: >
-        BigQuery table location to write the output to. The name should be in 
-        the format <project>:<dataset>.<table_name>`. The table's schema must 
-        match input objects.
-      required: true
-      type: text
-      order: 3
+    - kafka_read_options
+    - bigquery_common_options
+    - bigquery_write_options
 
     - name: "outputDeadletterTable"
       description: "The dead-letter table name to output failed messages to BigQuery"
@@ -65,49 +49,7 @@ template:
       example: "your-project-id:your-dataset.your-table-name"
       required: true
       type: text
-      order: 4
-
-    - name: "messageFormat"
-      description: "The message format."
-      help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
-      default: JSON
-      required: false
-      type: text
-      order: 5
-
-    - name: "schema"
-      description: "Kafka schema."
-      help: >
-        Kafka schema. A schema is required if data format is JSON, AVRO or
-        PROTO.
-      required: true
-      type: text
-      order: 6
-
-    - name: "numStorageWriteApiStreams"
-      description: "Number of streams for BigQuery Storage Write API"
-      help: >
-        Number of streams defines the parallelism of the BigQueryIO’s Write 
-        transform and roughly corresponds to the number of Storage Write API’s 
-        streams which will be used by the pipeline. See
-        https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
-        for the recommended values. The default value is 1.
-      required: false
-      default: 1
-      type: integer
-      order: 7
-
-    - name: "storageWriteApiTriggeringFrequencySec"
-      description: "Triggering frequency in seconds for BigQuery Storage Write API"
-      help: >
-        Triggering frequency will determine how soon the data will be visible 
-        for querying in BigQuery. See
-        https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
-        for the recommended values. The default value is 5.
-      required: false
-      default: 5
-      type: integer
-      order: 8
+      order: 1
 
 pipeline:
   transforms:
@@ -117,9 +59,9 @@ pipeline:
         schema: |
           {{ schema}}
         {% endif %}
-        format: {{ messageFormat  | default('JSON') }}
-        topic: {{ kafkaReadTopics }}
-        bootstrap_servers: {{ readBootstrapServers }}
+        format: {{ format  | default('JSON') }}
+        topic: {{ topic }}
+        bootstrap_servers: {{ bootstrapServers }}
         auto_offset_reset_config: 'earliest'
         error_handling:
           output: errors
@@ -127,10 +69,10 @@ pipeline:
       name: WriteGoodMessages
       input: ReadFromKafka
       config:
-        table: {{ outputTableSpec }}
-        num_streams: {{ numStorageWriteApiStreams | default(1) }}
-        create_disposition: 'CREATE_IF_NEEDED'
-        write_disposition: 'WRITE_APPEND'
+        table: {{ table }}
+        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
+        num_streams: {{ numStreams | default(1) }}
         error_handling:
           output: errors
     - type: WriteToBigQuery
@@ -138,13 +80,13 @@ pipeline:
       input: ReadFromKafka.errors
       config:
         table: {{ outputDeadletterTable }}
-        num_streams: {{ numStorageWriteApiStreams | default(1) }}
+        num_streams: {{ numStreams | default(1) }}
     - type: WriteToBigQuery
       name: WriteBadWriteMessages
       input: WriteGoodMessages.errors
       config:
         table: {{ outputDeadletterTable }}
-        num_streams: {{ numStorageWriteApiStreams | default(1) }}
+        num_streams: {{ numStreams | default(1) }}
 
 options:
   streaming: true
