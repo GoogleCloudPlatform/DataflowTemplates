@@ -98,11 +98,11 @@ public class DeadLetterQueueTest {
             getIdentityMapper(spannerDdl));
     assertEquals("testDir", dlq.getDlqDirectory());
 
-    assertTrue(dlq.getDlqTransform() instanceof WriteDLQ);
+    assertTrue(dlq.createDLQTransform("testDir") instanceof WriteDLQ);
 
-    assertTrue(((WriteDLQ) dlq.getDlqTransform()).dlqDirectory().endsWith("testDir/"));
+    assertTrue(((WriteDLQ) dlq.createDLQTransform("testDir")).dlqDirectory().endsWith("testDir/"));
 
-    assertNotNull(((WriteDLQ) dlq.getDlqTransform()).fileNamePrefix());
+    assertNotNull(((WriteDLQ) dlq.createDLQTransform("testDir")).fileNamePrefix());
   }
 
   @Test
@@ -175,7 +175,7 @@ public class DeadLetterQueueTest {
         DeadLetterQueue.create(
             "IGNORE", spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
     assertEquals("IGNORE", dlq.getDlqDirectory());
-    assertNull(dlq.getDlqTransform());
+    assertNull(dlq.createDLQTransform("IGNORE"));
   }
 
   @Test(expected = RuntimeException.class)
