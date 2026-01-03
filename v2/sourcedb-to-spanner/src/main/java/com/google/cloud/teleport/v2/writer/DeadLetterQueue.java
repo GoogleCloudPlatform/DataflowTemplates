@@ -63,8 +63,6 @@ public class DeadLetterQueue implements Serializable {
 
   private final Ddl ddl;
 
-  private final PTransform<PCollection<String>, PDone> dlqTransform;
-
   private Map<String, String> srcTableToShardIdColumnMap;
 
   private final SQLDialect sqlDialect;
@@ -88,10 +86,6 @@ public class DeadLetterQueue implements Serializable {
     return dlqDirectory;
   }
 
-  public PTransform<PCollection<String>, PDone> getDlqTransform() {
-    return dlqTransform;
-  }
-
   private DeadLetterQueue(
       String dlqDirectory,
       Ddl ddl,
@@ -99,7 +93,6 @@ public class DeadLetterQueue implements Serializable {
       SQLDialect sqlDialect,
       ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
-    this.dlqTransform = createDLQTransform(dlqDirectory);
     this.ddl = ddl;
     this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
@@ -107,7 +100,7 @@ public class DeadLetterQueue implements Serializable {
   }
 
   @VisibleForTesting
-  private PTransform<PCollection<String>, PDone> createDLQTransform(String dlqDirectory) {
+  PTransform<PCollection<String>, PDone> createDLQTransform(String dlqDirectory) {
     if (dlqDirectory == null) {
       throw new RuntimeException("Unable to start pipeline as DLQ is not configured");
     }
@@ -164,7 +157,7 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("FilteredRowsDLQ", dlqTransform);
+        .apply("FilteredRowsDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added filtering dlq stage after transformer");
   }
 
@@ -187,7 +180,7 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("TransformerDLQ", dlqTransform);
+        .apply("TransformerDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after transformer");
   }
 
@@ -260,7 +253,7 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeSpannerWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("WriterDLQ", dlqTransform);
+        .apply("WriterDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after writer");
   }
 
