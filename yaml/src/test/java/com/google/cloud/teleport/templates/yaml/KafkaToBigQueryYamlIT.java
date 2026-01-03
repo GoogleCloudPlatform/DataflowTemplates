@@ -113,7 +113,9 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
-                .addParameter("bootstrapServers", kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                .addParameter(
+                    "bootstrapServers",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
                 .addParameter("format", "JSON")
                 .addParameter("topic", topicName)
                 .addParameter("format", "JSON")
@@ -124,7 +126,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
                 .addParameter("createDisposition", "CREATE_IF_NEEDED")
                 .addParameter("writeDisposition", "WRITE_APPEND")
                 .addParameter("numStreams", "1")
-                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))));
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)));
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
