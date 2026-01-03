@@ -180,9 +180,10 @@ public class DeadLetterQueueTest {
 
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
-    DeadLetterQueue.create(
-            null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl))
-        .getDlqDirectory();
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    dlq.createDLQTransform(null);
   }
 
   @Test
