@@ -32,6 +32,7 @@ template:
 
   parameters:
     - pubsub_common_options
+    - pubsub_read_options
     - maptofields_common_options
     - bigtable_common_options
     - windowinto_common_options
@@ -52,8 +53,13 @@ pipeline:
       name: ReadMessages
       config:
         topic: {{ topic }}
+        subscription: {{ subscription }}
         format: {{ format }}
         schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributeMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
     - type: MapToFields
       name: ConvertStringsToBytes
       input: ReadMessages
