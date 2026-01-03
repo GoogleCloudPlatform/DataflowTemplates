@@ -1,0 +1,156 @@
+CREATE TABLE `AllDataTypes_CT` (
+                                `id` INT PRIMARY KEY,
+                                `varchar_col` VARCHAR(1000) CHARACTER SET utf8 DEFAULT NULL,
+                                `tinyint_col` TINYINT DEFAULT NULL,
+                                `tinyint_unsigned_col` TINYINT UNSIGNED DEFAULT NULL,
+                                `text_col` TEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `date_col` DATE DEFAULT NULL,
+                                `smallint_col` SMALLINT DEFAULT NULL,
+                                `smallint_unsigned_col` SMALLINT UNSIGNED DEFAULT NULL,
+                                `mediumint_col` MEDIUMINT DEFAULT NULL,
+                                `mediumint_unsigned_col` MEDIUMINT UNSIGNED DEFAULT NULL,
+                                `bigint_col` BIGINT DEFAULT NULL,
+                                `bigint_unsigned_col` BIGINT UNSIGNED DEFAULT NULL,
+                                `float_col` FLOAT DEFAULT NULL,
+                                `double_col` DOUBLE DEFAULT NULL,
+                                `decimal_col` DECIMAL(65,30) DEFAULT NULL,
+                                `datetime_col` DATETIME DEFAULT NULL,
+                                `time_col` TIME DEFAULT NULL,
+                                `year_col` YEAR DEFAULT NULL,
+                                `char_col` CHAR(255) CHARACTER SET utf8 DEFAULT NULL,
+                                `tinyblob_col` TINYBLOB DEFAULT NULL,
+                                `tinytext_col` TINYTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `blob_col` BLOB DEFAULT NULL,
+                                `mediumblob_col` MEDIUMBLOB DEFAULT NULL,
+                                `mediumtext_col` MEDIUMTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `test_json_col` JSON DEFAULT NULL,
+                                `longblob_col` LONGBLOB DEFAULT NULL,
+                                `longtext_col` LONGTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `enum_col` ENUM('1','2','3') CHARACTER SET utf8 DEFAULT NULL,
+                                `bool_col` TINYINT(1) DEFAULT NULL,
+                                `binary_col` BINARY(255) DEFAULT NULL,
+                                `varbinary_col` VARBINARY(1000) DEFAULT NULL,
+                                `bit_col` BIT(64) DEFAULT NULL,
+                                `bit8_col` BIT(8) DEFAULT NULL,
+                                `bit1_col` BIT(1) DEFAULT NULL,
+                                `boolean_col` TINYINT(1) DEFAULT NULL,
+                                `int_col` INT DEFAULT NULL,
+                                `integer_unsigned_col` INTEGER UNSIGNED DEFAULT NULL,
+                                `timestamp_col` TIMESTAMP DEFAULT NULL,
+                                `set_col` SET('v1', 'v2', 'v3') DEFAULT NULL
+);
+
+INSERT INTO `AllDataTypes_CT` (`id`, `varchar_col`, `tinyint_col`, `tinyint_unsigned_col`, `text_col`, `date_col`,
+                            `smallint_col`, `smallint_unsigned_col`, `mediumint_col`, `mediumint_unsigned_col`,
+                            `bigint_col`, `bigint_unsigned_col`, `float_col`, `double_col`, `decimal_col`,
+                            `datetime_col`, `time_col`, `year_col`, `char_col`, `tinyblob_col`, `tinytext_col`,
+                            `blob_col`, `mediumblob_col`, `mediumtext_col`, `test_json_col`, `longblob_col`,
+                            `longtext_col`, `enum_col`, `bool_col`, `binary_col`, `varbinary_col`, `bit_col`,
+                            `bit8_col`, `bit1_col`, `boolean_col`, `int_col`, `integer_unsigned_col`, `timestamp_col`,
+                            `set_col`)
+VALUES (1, 'valid1', 1, 1, 'text1', '2023-01-01', 11, 11, 101, 101, 1001, 1001, 2.5, 3.5, 11.5, '2023-01-01 12:00:00',
+        '12:00:01', 2024, 'c1', 'blob1', 'tinytext1', 'blob1', 'mediumblob1', 'mediumtext1', '{
+    "k": "v1"
+  }', 'longblob1', 'longtext1', '1', 1, x'7835383030000000000000000000000000000000', 'varbin1',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1001, 1001,
+        '2023-01-01 12:00:00', 'v1'),
+       (2, 'valid2', 2, 2, 'text2', '2023-01-02', 12, 12, 102, 102, 1002, 1002, 3.5, 4.5, 12.5, '2023-01-02 12:00:00',
+        '12:00:02', 2025, 'c2', 'blob2', 'tinytext2', 'blob2', 'mediumblob2', 'mediumtext2', '{
+         "k": "v2"
+       }', 'longblob2', 'longtext2', '1', 1, x'7835383030000000000000000000000000000000', 'varbin2',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1002, 1002,
+        '2023-01-02 12:00:00', 'v1'),
+       (3, 'fail_me', 3, 3, 'text3', '2023-01-03', 13, 13, 103, 103, 1003, 1003, 4.5, 5.5, 13.5, '2023-01-03 12:00:00',
+        '12:00:03', 2026, 'c3', 'blob3', 'tinytext3', 'blob3', 'mediumblob3', 'mediumtext3', '{
+         "k": "v3"
+       }', 'longblob3', 'longtext3', '1', 1, x'7835383030000000000000000000000000000000', 'varbin3',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1003, 1003,
+        '2023-01-03 12:00:00', 'v1');
+
+INSERT INTO `AllDataTypes_CT` (`id`)
+VALUES (4);
+
+CREATE TABLE `AllDataTypes_SWF` (
+                                `id` INT PRIMARY KEY,
+                                `varchar_col` VARCHAR(1000) CHARACTER SET utf8 DEFAULT NULL,
+                                `tinyint_col` TINYINT DEFAULT NULL,
+                                `tinyint_unsigned_col` TINYINT UNSIGNED DEFAULT NULL,
+                                `text_col` TEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `date_col` DATE DEFAULT NULL,
+                                `smallint_col` SMALLINT DEFAULT NULL,
+                                `smallint_unsigned_col` SMALLINT UNSIGNED DEFAULT NULL,
+                                `mediumint_col` MEDIUMINT DEFAULT NULL,
+                                `mediumint_unsigned_col` MEDIUMINT UNSIGNED DEFAULT NULL,
+                                `bigint_col` BIGINT DEFAULT NULL,
+                                `bigint_unsigned_col` BIGINT UNSIGNED DEFAULT NULL,
+                                `float_col` FLOAT DEFAULT NULL,
+                                `double_col` DOUBLE DEFAULT NULL,
+                                `decimal_col` DECIMAL(65,30) DEFAULT NULL,
+                                `datetime_col` DATETIME DEFAULT NULL,
+                                `time_col` TIME DEFAULT NULL,
+                                `year_col` YEAR DEFAULT NULL,
+                                `char_col` CHAR(255) CHARACTER SET utf8 DEFAULT NULL,
+                                `tinyblob_col` TINYBLOB DEFAULT NULL,
+                                `tinytext_col` TINYTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `blob_col` BLOB DEFAULT NULL,
+                                `mediumblob_col` MEDIUMBLOB DEFAULT NULL,
+                                `mediumtext_col` MEDIUMTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `test_json_col` JSON DEFAULT NULL,
+                                `longblob_col` LONGBLOB DEFAULT NULL,
+                                `longtext_col` LONGTEXT CHARACTER SET utf8 DEFAULT NULL,
+                                `enum_col` ENUM('1','2','3') CHARACTER SET utf8 DEFAULT NULL,
+                                `bool_col` TINYINT(1) DEFAULT NULL,
+                                `binary_col` BINARY(255) DEFAULT NULL,
+                                `varbinary_col` VARBINARY(1000) DEFAULT NULL,
+                                `bit_col` BIT(64) DEFAULT NULL,
+                                `bit8_col` BIT(8) DEFAULT NULL,
+                                `bit1_col` BIT(1) DEFAULT NULL,
+                                `boolean_col` TINYINT(1) DEFAULT NULL,
+                                `int_col` INT DEFAULT NULL,
+                                `integer_unsigned_col` INTEGER UNSIGNED DEFAULT NULL,
+                                `timestamp_col` TIMESTAMP DEFAULT NULL,
+                                `set_col` SET('v1', 'v2', 'v3') DEFAULT NULL
+);
+
+INSERT INTO `AllDataTypes_SWF` (`id`, `varchar_col`, `tinyint_col`, `tinyint_unsigned_col`, `text_col`, `date_col`,
+                            `smallint_col`, `smallint_unsigned_col`, `mediumint_col`, `mediumint_unsigned_col`,
+                            `bigint_col`, `bigint_unsigned_col`, `float_col`, `double_col`, `decimal_col`,
+                            `datetime_col`, `time_col`, `year_col`, `char_col`, `tinyblob_col`, `tinytext_col`,
+                            `blob_col`, `mediumblob_col`, `mediumtext_col`, `test_json_col`, `longblob_col`,
+                            `longtext_col`, `enum_col`, `bool_col`, `binary_col`, `varbinary_col`, `bit_col`,
+                            `bit8_col`, `bit1_col`, `boolean_col`, `int_col`, `integer_unsigned_col`, `timestamp_col`,
+                            `set_col`)
+VALUES (1, 'valid1', 1, 1, 'text1', '2023-01-01', 11, 11, 101, 101, 1001, 1001, 2.5, 3.5, 11.5, '2023-01-01 12:00:00',
+        '12:00:01', 2024, 'c1', 'blob1', 'tinytext1', 'blob1', 'mediumblob1', 'mediumtext1', '{
+    "k": "v1"
+  }', 'longblob1', 'longtext1', '1', 1, x'7835383030000000000000000000000000000000', 'varbin1',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1001, 1001,
+        '2023-01-01 12:00:00', 'v1'),
+       (2, 'valid2', 2, 2, 'text2', '2023-01-02', 12, 12, 102, 102, 1002, 1002, 3.5, 4.5, 12.5, '2023-01-02 12:00:00',
+        '12:00:02', 2025, 'c2', 'blob2', 'tinytext2', 'blob2', 'mediumblob2', 'mediumtext2', '{
+         "k": "v2"
+       }', 'longblob2', 'longtext2', '1', 1, x'7835383030000000000000000000000000000000', 'varbin2',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1002, 1002,
+        '2023-01-02 12:00:00', 'v1'),
+       (3, 'fail_me', 3, 3, 'text3', '2023-01-03', 13, 13, 103, 103, 1003, 1003, 4.5, 5.5, 13.5, '2023-01-03 12:00:00',
+        '12:00:03', 2026, 'c3', 'blob3', 'tinytext3', 'blob3', 'mediumblob3', 'mediumtext3', '{
+         "k": "v3"
+       }', 'longblob3', 'longtext3', '1', 1, x'7835383030000000000000000000000000000000', 'varbin3',
+        b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1003, 1003,
+        '2023-01-03 12:00:00', 'v1');
+
+
+
+CREATE TABLE `Authors` (
+    `author_id` INT NOT NULL,
+    `name` VARCHAR(200),
+    PRIMARY KEY (`author_id`)
+);
+
+CREATE TABLE `Books` (
+    `author_id` INT NOT NULL,
+    `book_id` INT NOT NULL,
+    `name` VARCHAR(200),
+    PRIMARY KEY (`book_id`),
+    FOREIGN KEY (`author_id`) REFERENCES `Authors` (`author_id`)
+);
