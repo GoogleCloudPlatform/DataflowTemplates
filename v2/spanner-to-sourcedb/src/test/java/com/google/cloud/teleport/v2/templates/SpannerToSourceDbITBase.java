@@ -55,7 +55,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
 
-
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
         .maybeUseStaticInstance()

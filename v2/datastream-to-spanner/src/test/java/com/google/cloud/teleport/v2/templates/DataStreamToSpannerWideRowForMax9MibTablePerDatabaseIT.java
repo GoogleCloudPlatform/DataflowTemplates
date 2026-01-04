@@ -120,7 +120,6 @@ public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
         ADDITIONAL_JOB_PARAMS.putAll(
             new HashMap<>() {
               {
-
               }
             });
         jobInfo =

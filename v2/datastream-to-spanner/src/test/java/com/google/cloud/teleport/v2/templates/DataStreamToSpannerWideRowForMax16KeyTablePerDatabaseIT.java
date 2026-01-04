@@ -111,7 +111,6 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
         ADDITIONAL_JOB_PARAMS.putAll(
             new HashMap<>() {
               {
-
               }
             });
         jobInfo =

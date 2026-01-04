@@ -106,7 +106,6 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-
               }
             };
         jobInfo =

@@ -112,7 +112,6 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-
                 put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
               }
             };

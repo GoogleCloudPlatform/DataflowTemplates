@@ -112,7 +112,6 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
         ADDITIONAL_JOB_PARAMS.putAll(
             new HashMap<>() {
               {
-
               }
             });
         jobInfo =

@@ -112,7 +112,6 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
         ADDITIONAL_JOB_PARAMS.putAll(
             new HashMap<>() {
               {
-
               }
             });
         jobInfo =

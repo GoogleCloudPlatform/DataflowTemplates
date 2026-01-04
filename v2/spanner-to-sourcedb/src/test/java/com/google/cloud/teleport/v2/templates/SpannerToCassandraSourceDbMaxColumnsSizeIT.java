@@ -110,7 +110,6 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-
               }
             };
         jobInfo =
