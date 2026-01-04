@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.cdc.dlq;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.io.Serializable;
@@ -50,11 +51,17 @@ public class DeadLetterQueueManager implements Serializable {
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERRORS =
       new TupleTag<FailsafeElement<String, String>>();
 
+  private final boolean enableSevereRetryReset;
+
   private DeadLetterQueueManager(
-      String retryDlqDirectory, String severeDlqDirectory, int maxRetries) {
+      String retryDlqDirectory,
+      String severeDlqDirectory,
+      int maxRetries,
+      boolean enableSevereRetryReset) {
     this.retryDlqDirectory = retryDlqDirectory;
     this.severeDlqDirectory = severeDlqDirectory;
     this.maxRetries = maxRetries;
+    this.enableSevereRetryReset = enableSevereRetryReset;
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory) {
@@ -62,6 +69,11 @@ public class DeadLetterQueueManager implements Serializable {
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory, int maxRetries) {
+    return create(dlqDirectory, maxRetries, false);
+  }
+
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, int maxRetries, boolean enableSevereRetryReset) {
     String retryDlqUri =
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("retry", StandardResolveOptions.RESOLVE_DIRECTORY)
@@ -70,16 +82,23 @@ public class DeadLetterQueueManager implements Serializable {
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
             .toString();
-    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+    return new DeadLetterQueueManager(
+        retryDlqUri, severeDlqUri, maxRetries, enableSevereRetryReset);
   }
 
   public static DeadLetterQueueManager create(
       String dlqDirectory, String retryDlqUri, int maxRetries) {
+    return create(dlqDirectory, retryDlqUri, maxRetries, false);
+  }
+
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, String retryDlqUri, int maxRetries, boolean enableSevereRetryReset) {
     String severeDlqUri =
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
             .toString();
-    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+    return new DeadLetterQueueManager(
+        retryDlqUri, severeDlqUri, maxRetries, enableSevereRetryReset);
   }
 
   public String getRetryDlqDirectory() {
@@ -133,6 +152,30 @@ public class DeadLetterQueueManager implements Serializable {
                       int retryCount = jsonDLQElement.get("_metadata_retry_count").asInt();
                       if (retryCount <= maxRetries) {
                         output.get(RETRYABLE_ERRORS).output(element);
+                        return;
+                      }
+
+                      if (enableSevereRetryReset) {
+                        LOG.info("Resetting retry count for exhausted error: {}", retryCount);
+                        ObjectNode objectNode = (ObjectNode) jsonDLQElement;
+                        long historicalCount = 0;
+                        if (objectNode.has("_metadata_historical_retry_count")) {
+                          historicalCount =
+                              objectNode.get("_metadata_historical_retry_count").asLong();
+                        }
+                        historicalCount += retryCount;
+
+                        objectNode.put("_metadata_historical_retry_count", historicalCount);
+                        objectNode.put("_metadata_retry_count", 0); // Reset current count
+
+                        String error =
+                            jsonDLQElement.has("_metadata_error")
+                                ? jsonDLQElement.get("_metadata_error").asText()
+                                : "";
+                        FailsafeElement<String, String> validElement =
+                            FailsafeElement.of(objectNode.toString(), objectNode.toString());
+                        validElement.setErrorMessage(error);
+                        output.get(PERMANENT_ERRORS).output(validElement);
                         return;
                       }
                       String error = jsonDLQElement.get("_metadata_error").asText();
