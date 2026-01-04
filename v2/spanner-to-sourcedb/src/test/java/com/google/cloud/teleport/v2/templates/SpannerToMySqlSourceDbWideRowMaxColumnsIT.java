@@ -107,9 +107,7 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-                put("network", VPC_NAME);
-                put("subnetwork", SUBNET_NAME);
-                put("workerRegion", VPC_REGION);
+
                 put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
               }
             };

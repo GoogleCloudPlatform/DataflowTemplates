@@ -110,9 +110,7 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-                put("network", VPC_NAME);
-                put("subnetwork", SUBNET_NAME);
-                put("workerRegion", VPC_REGION);
+
               }
             };
         jobInfo =
