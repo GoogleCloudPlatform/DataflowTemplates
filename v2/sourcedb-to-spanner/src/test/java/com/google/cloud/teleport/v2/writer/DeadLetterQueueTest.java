@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
@@ -180,9 +181,10 @@ public class DeadLetterQueueTest {
 
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
-    DeadLetterQueue.create(
-            null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl))
-        .getDlqDirectory();
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+    dlq.createDLQTransform(null);
   }
 
   @Test
@@ -448,6 +450,11 @@ public class DeadLetterQueueTest {
             .to(Value.numeric(new java.math.BigDecimal("123.456")))
             .set("null_col")
             .to(Value.string(null))
+            .set("bit_col")
+            .to(
+                Value.bytes(
+                    ByteArray.copyFrom(
+                        new java.math.BigInteger("9223372036854775807").toByteArray())))
             .build();
 
     FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
@@ -460,15 +467,31 @@ public class DeadLetterQueueTest {
     assertTrue(payload.contains("\"int_col\":123"));
     assertTrue(payload.contains("\"float_col\":1.23"));
     assertTrue(payload.contains("\"numeric_col\":123.456"));
-    // Null values should be absent or null depending on implementation,
-    // but based on previous revert they should be absent if null.
-    // However, for Mutation, the code uses `value == null ? null : ...`
-    // and `json.put` with null removes the key.
-    // But wait, `Value` object itself might not be null, but `Value.isNull()` might be true.
-    // Let's check how Mutation.asMap() behaves.
-    // Actually, Mutation.asMap() returns Map<String, Value>.
-    // If we set .to((Value)null), it might not be in the map or value might be null.
-    // Let's assume standard behavior for now.
+    assertTrue(payload.contains("\"bit_col\":\"7fffffffffffffff\""));
+  }
+
+  @Test
+  public void testMutationToDlqElementWithBytesArray() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("bytes_array_col")
+            .toBytesArray(
+                java.util.List.of(
+                    com.google.cloud.ByteArray.copyFrom("test1".getBytes()),
+                    com.google.cloud.ByteArray.copyFrom("test2".getBytes())))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"id\":1"));
+    // "test1" in hex is 7465737431
+    // "test2" in hex is 7465737432
+    assertTrue(payload.contains("\"bytes_array_col\":[\"7465737431\",\"7465737432\"]"));
   }
 
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {

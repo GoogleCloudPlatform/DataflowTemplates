@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.writer;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -33,6 +34,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -285,6 +287,16 @@ public class DeadLetterQueue implements Serializable {
           case BOOL:
             val = value.getBool();
             break;
+          case ARRAY:
+            if (value.getType().getArrayElementType().getCode() == Type.Code.BYTES) {
+              val =
+                  value.getBytesArray().stream()
+                      .map(v -> v == null ? null : Hex.encodeHexString(v.toByteArray()))
+                      .collect(Collectors.toList());
+            } else {
+              val = value.toString();
+            }
+            break;
           default:
             val = value.toString();
         }
@@ -321,7 +333,7 @@ public class DeadLetterQueue implements Serializable {
   private void putValueToJson(JSONObject json, String key, Object value) {
     if (value == null) {
       json.put(key, (Object) null);
-    } else if (value instanceof Number) {
+    } else if (value instanceof Number || value instanceof java.util.Collection) {
       json.put(key, value);
     } else {
       json.put(key, value.toString());
