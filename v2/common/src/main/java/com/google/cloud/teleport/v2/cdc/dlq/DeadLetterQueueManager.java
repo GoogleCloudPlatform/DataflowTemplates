@@ -177,7 +177,10 @@ public class DeadLetterQueueManager implements Serializable {
                         if (objectNode.has(HISTORICAL_COUNT_KEY)) {
                           historicalCount = objectNode.get(HISTORICAL_COUNT_KEY).asLong();
                         }
-                        historicalCount += retryCount;
+                        // retryCount includes the current attempt which is about to be aborted
+                        // (since it failed check),
+                        // so we subtract 1 to get the actual number of failed retries.
+                        historicalCount += retryCount - 1;
 
                         objectNode.put(HISTORICAL_COUNT_KEY, historicalCount);
                         objectNode.put(RETRY_COUNT_KEY, 0); // Reset current count
