@@ -51,6 +51,20 @@ public class DeadLetterQueueManager implements Serializable {
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERRORS =
       new TupleTag<FailsafeElement<String, String>>();
 
+  private static final String RETRY_COUNT_KEY = "_metadata_retry_count";
+  private static final String HISTORICAL_COUNT_KEY = "_metadata_historical_retry_count";
+  private static final String ERROR_KEY = "_metadata_error";
+
+  /**
+   * Indicates whether to reset the retry count for severe errors that have exhausted their retry
+   * attempts.
+   *
+   * <p>If true, when an element exceeds {@code maxRetries}, its {@code _metadata_retry_count} is
+   * reset to 0, and the elapsed retries are accumulated in {@code
+   * _metadata_historical_retry_count}. The element is then routed to the severe queue
+   * (PERMANENT_ERRORS). This allows users to manually move these severe errors back to the retry
+   * queue to trigger a fresh set of retry attempts.
+   */
   private final boolean enableSevereRetryReset;
 
   private DeadLetterQueueManager(
@@ -149,7 +163,8 @@ public class DeadLetterQueueManager implements Serializable {
                        */
                       ObjectMapper mapper = new ObjectMapper();
                       JsonNode jsonDLQElement = mapper.readTree(input);
-                      int retryCount = jsonDLQElement.get("_metadata_retry_count").asInt();
+
+                      int retryCount = jsonDLQElement.get(RETRY_COUNT_KEY).asInt();
                       if (retryCount <= maxRetries) {
                         output.get(RETRYABLE_ERRORS).output(element);
                         return;
@@ -159,26 +174,27 @@ public class DeadLetterQueueManager implements Serializable {
                         LOG.info("Resetting retry count for exhausted error: {}", retryCount);
                         ObjectNode objectNode = (ObjectNode) jsonDLQElement;
                         long historicalCount = 0;
-                        if (objectNode.has("_metadata_historical_retry_count")) {
-                          historicalCount =
-                              objectNode.get("_metadata_historical_retry_count").asLong();
+                        if (objectNode.has(HISTORICAL_COUNT_KEY)) {
+                          historicalCount = objectNode.get(HISTORICAL_COUNT_KEY).asLong();
                         }
                         historicalCount += retryCount;
 
-                        objectNode.put("_metadata_historical_retry_count", historicalCount);
-                        objectNode.put("_metadata_retry_count", 0); // Reset current count
+                        objectNode.put(HISTORICAL_COUNT_KEY, historicalCount);
+                        objectNode.put(RETRY_COUNT_KEY, 0); // Reset current count
 
                         String error =
-                            jsonDLQElement.has("_metadata_error")
-                                ? jsonDLQElement.get("_metadata_error").asText()
+                            jsonDLQElement.has(ERROR_KEY)
+                                ? jsonDLQElement.get(ERROR_KEY).asText()
                                 : "";
+
                         FailsafeElement<String, String> validElement =
                             FailsafeElement.of(objectNode.toString(), objectNode.toString());
                         validElement.setErrorMessage(error);
                         output.get(PERMANENT_ERRORS).output(validElement);
                         return;
                       }
-                      String error = jsonDLQElement.get("_metadata_error").asText();
+
+                      String error = jsonDLQElement.get(ERROR_KEY).asText();
                       element.setErrorMessage(error);
                       output.get(PERMANENT_ERRORS).output(element);
                     } catch (IOException e) {
