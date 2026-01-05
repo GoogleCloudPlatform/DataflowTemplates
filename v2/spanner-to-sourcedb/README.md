@@ -50,7 +50,7 @@ The following error scenarios are possible currently:
 
 Points 1 to 4 above are retryable errors - the Dataflow job automatically retries default of 500 times. In most cases,  should be good enough for the retryable records to succeed, however, even if after exhausting all the retries, these are not successful - then these records are marked as ‘severe' error category. Such ‘severe' errors can be retried later with a ‘retryDLQ' mode of the Dataflow job.
 
-Alternatively, if running in `regular` mode, you can manually move severe errors from the `severe` directory back to the `retry` directory. The pipeline will detect them, and the retry count in the metadata will be automatically reset to 0, allowing a fresh set of retries while preserving the historical retry count for auditing.
+Alternatively, if running in `regular` mode, you can manually move severe errors from the `severe` directory back to the `retry` directory and the pipeline will automatically pick them up and retry them.
 
 
 ## Before you begin
@@ -140,22 +140,22 @@ The file should be a list of JSONs as:
 
 ```json
 [
-  {
+    {
     "logicalShardId": "shard1",
     "host": "10.11.12.13",
     "user": "root",
     "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
     "port": "3306",
     "dbName": "db1"
-  },
-  {
+    },
+    {
     "logicalShardId": "shard2",
     "host": "10.11.12.14",
     "user": "root",
     "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
     "port": "3306",
     "dbName": "db2"
-  }
+    }
 ]
 ```
 
