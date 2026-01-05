@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetVal
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
@@ -113,6 +114,38 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    */
   static final Pattern TIME_STRING_PATTERN =
       Pattern.compile("^(-)?(\\d+):(\\d+):(\\d+)(\\.(\\d+))?$");
+  /**
+   * DEPRECATED: Unified type interval is no longer utilized for MySQL. However, this can be reused
+   * for Postgres, whenever the support is added. Map Time type to {@link Interval#SCHEMA}. Note
+   * Time type records an interval between 2 timestamps, and is independent of timezone.
+   */
+  private static final ResultSetValueMapper<String> timeStringToAvroInterval =
+      (value, schema) -> {
+        Matcher matcher = TIME_STRING_PATTERN.matcher(value);
+        Preconditions.checkArgument(
+            matcher.matches(),
+            "The time string " + value + " does not match " + TIME_STRING_PATTERN);
+
+        /* MySQL output is always hours::minutes::seconds.fractionalSeconds */
+        boolean isNegative = matcher.group(1) != null;
+        int hours = Integer.parseInt(matcher.group(2));
+        int minutes = Integer.parseInt(matcher.group(3));
+        int seconds = Integer.parseInt(matcher.group(4));
+        long nanoSeconds =
+            matcher.group(5) == null
+                ? 0
+                : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
+        return new GenericRecordBuilder(Interval.SCHEMA)
+            .set(Interval.MONTHS_FIELD_NAME, 0)
+            .set(Interval.HOURS_FIELD_NAME, hours * ((isNegative) ? -1 : 1))
+            .set(
+                Interval.MICROS_FIELD_NAME,
+                ((isNegative) ? -1 : 1)
+                    * (TimeUnit.MINUTES.toMicros(minutes)
+                        + TimeUnit.SECONDS.toMicros(seconds)
+                        + TimeUnit.NANOSECONDS.toMicros(nanoSeconds)))
+            .build();
+      };
 
   private static long instantToMicro(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())

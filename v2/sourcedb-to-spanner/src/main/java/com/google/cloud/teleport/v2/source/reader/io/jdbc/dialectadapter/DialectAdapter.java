@@ -120,7 +120,7 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
     for (java.util.Map.Entry<
             String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType>
         entry : sourceTableSchema.sourceColumnNameToSourceColumnType().entrySet()) {
-      estimatedRowSize += jdbcValueMappingsProvider.guessColumnSize(entry.getValue());
+          estimatedRowSize += jdbcValueMappingsProvider.estimateColumnSize(entry.getValue());
     }
     return estimatedRowSize;
   }
