@@ -100,7 +100,7 @@ import org.slf4j.LoggerFactory;
             + "For any errors which occur in the transformation of the data, the original records can be inserted into a separate Kafka topic. The template supports "
             + "reading a Kafka topic which contains single/multiple schema(s). It can write to a single or multiple BigQuery tables, depending on the schema of records. ",
     optionsClass = KafkaToBigQueryFlexOptions.class,
-    flexContainerName = "kafka-to-bigquery-flex",
+    flexContainerName = "kafka-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

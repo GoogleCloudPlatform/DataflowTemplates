@@ -72,7 +72,7 @@ import org.apache.beam.sdk.values.PCollection;
         "The Pub/Sub to Avro files on Cloud Storage template is a streaming pipeline that reads data from a "
             + "Pub/Sub topic and writes Avro files into the specified Cloud Storage bucket.",
     optionsClass = Options.class,
-    flexContainerName = "pubsub-to-avro",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-avro",
     contactInformation = "https://cloud.google.com/support",

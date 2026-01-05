@@ -74,6 +74,9 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
 
+  @Parameter(defaultValue = "${flexContainerName}", readonly = true, required = false)
+  protected String flexContainerName;
+
   @Parameter(defaultValue = "${bucketName}", readonly = true, required = true)
   protected String bucketName;
 
@@ -203,6 +206,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               targetDirectory,
               projectId,
               templateName,
+              flexContainerName,
               bucketName,
               bucketName,
               stagePrefix,

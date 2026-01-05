@@ -105,8 +105,8 @@ public class TemplateSpecsGeneratorTest {
     assertNotNull(saveMetadata);
     assertTrue(saveMetadata.exists());
     assertEquals(
-        saveMetadata.getPath(),
-        outputFolder.toPath().resolve("AtoBNestedFlex-generated-metadata.json").toString());
+        outputFolder.toPath().resolve("atobnestedflex-generated-metadata.json").toString(),
+        saveMetadata.getPath());
   }
 
   @Test

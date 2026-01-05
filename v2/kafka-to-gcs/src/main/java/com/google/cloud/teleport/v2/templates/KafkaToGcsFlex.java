@@ -50,7 +50,7 @@ import org.apache.beam.sdk.values.PCollection;
         "A streaming pipeline which ingests data from Kafka and writes to a pre-existing Cloud"
             + " Storage bucket with a variety of file types.",
     optionsClass = KafkaToGcsFlex.KafkaToGcsOptions.class,
-    flexContainerName = "kafka-to-gcs-flex",
+    flexContainerName = "kafka-to-gcs",
     contactInformation = "https://cloud.google.com/support",
     requirements = {"The output Google Cloud Storage directory must exist."})
 public class KafkaToGcsFlex {
