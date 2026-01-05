@@ -62,6 +62,9 @@ public class ChangeEventTypeConvertor {
        */
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return BooleanUtils.toBoolean(node.asText());
       }
       return Boolean.valueOf(node.asBoolean());
@@ -80,6 +83,9 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return Long.valueOf(node.asText());
       }
       return node.asLong();
@@ -98,6 +104,9 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return Double.valueOf(node.asText());
       }
       return Double.valueOf(node.asDouble());
@@ -115,6 +124,9 @@ public class ChangeEventTypeConvertor {
     try {
       JsonNode node = changeEvent.get(key);
       if (node.isTextual()) {
+        if (node.asText().equalsIgnoreCase("NULL")) {
+          return null;
+        }
         return Float.valueOf(node.asText());
       }
       return new Float(node.asDouble());
@@ -155,6 +167,9 @@ public class ChangeEventTypeConvertor {
       // For data with Spanner type as BYTES, Datastream returns a hex encoded string. We need to
       // decode it before returning to ensure data correctness.
       String s = node.asText();
+      if (s.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       // Make an odd length hex string even by appending a 0 in the beginning.
       if (s.length() % 2 == 1) {
         s = "0" + s;
@@ -179,6 +194,9 @@ public class ChangeEventTypeConvertor {
     }
     try {
       String timeString = changeEvent.get(key).asText();
+      if (timeString.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       Instant instant = parseTimestamp(timeString);
       return Timestamp.ofTimeSecondsAndNanos(instant.getEpochSecond(), instant.getNano());
     } catch (Exception e) {
@@ -195,6 +213,9 @@ public class ChangeEventTypeConvertor {
     }
     try {
       String dateString = changeEvent.get(key).asText();
+      if (dateString.equalsIgnoreCase("NULL")) {
+        return null;
+      }
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
@@ -225,6 +246,9 @@ public class ChangeEventTypeConvertor {
 
     String value = toString(changeEvent, key, requiredField);
     if (value == null) {
+      return null;
+    }
+    if (value.equalsIgnoreCase("NULL")) {
       return null;
     }
     if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
