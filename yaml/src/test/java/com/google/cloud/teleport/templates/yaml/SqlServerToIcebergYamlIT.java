@@ -1,3 +1,191 @@
+// /*
+//  * Copyright (C) 2024 Google LLC
+//  *
+//  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+//  * use this file except in compliance with the License. You may obtain a copy of
+//  * the License at
+//  *
+//  *   http://www.apache.org/licenses/LICENSE-2.0
+//  *
+//  * Unless required by applicable law or agreed to in writing, software
+//  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+//  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+//  * License for the specific language governing permissions and limitations under
+//  * the License.
+//  */
+// package com.google.cloud.teleport.templates.yaml;
+
+// import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+// import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+// import static org.junit.Assert.assertEquals;
+// import static org.junit.Assert.assertNotNull;
+
+// import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
+// import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+// import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+// import java.io.IOException;
+// import java.util.Comparator;
+// import java.util.HashMap;
+// import java.util.List;
+// import java.util.Map;
+// import org.apache.beam.it.common.PipelineLauncher;
+// import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+// import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+// import org.apache.beam.it.common.PipelineOperator;
+// import org.apache.beam.it.common.utils.ResourceManagerUtils;
+// import org.apache.beam.it.gcp.TemplateTestBase;
+// import org.apache.beam.it.gcp.storage.GcsResourceManager;
+// import org.apache.beam.it.jdbc.JDBCResourceManager;
+// import org.apache.beam.it.jdbc.MSSQLResourceManager;
+// import org.apache.iceberg.data.Record;
+// import org.apache.iceberg.PartitionField;
+// import org.apache.iceberg.PartitionSpec;
+// import org.apache.iceberg.Table;
+// import org.junit.After;
+// import org.junit.Before;
+// import org.junit.Test;
+// import org.junit.experimental.categories.Category;
+// import org.junit.runner.RunWith;
+// import org.junit.runners.JUnit4;
+// import org.slf4j.Logger;
+// import org.slf4j.LoggerFactory;
+
+// /** Integration test for {@link SqlServerToIcebergYaml} template. */
+// @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+// @TemplateIntegrationTest(SqlServerToIcebergYaml.class)
+// @RunWith(JUnit4.class)
+// public class SqlServerToIcebergYamlIT extends TemplateTestBase {
+
+//   private static final String READ_QUERY = "SELECT * FROM %s";
+
+//   private MSSQLResourceManager mssqlResourceManager;
+//   private IcebergResourceManager icebergResourceManager;
+//   private GcsResourceManager warehouseGcsResourceManager;
+//   private static final Logger LOG = LoggerFactory.getLogger(SqlServerToIcebergYamlIT.class);
+
+//   // Iceberg Setup
+//   private static final String CATALOG_NAME = "hadoop_catalog";
+//   private static final String NAMESPACE = "iceberg_namespace";
+//   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
+//   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+
+//   @Before
+//   public void setUp() throws IOException {
+//     mssqlResourceManager = MSSQLResourceManager.builder(testName).build();
+
+//     warehouseGcsResourceManager =
+//         GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+//     warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+//     LOG.info("warehouse bucket created {}", warehouseGcsResourceManager.getBucket());
+
+//     icebergResourceManager =
+//         IcebergResourceManager.builder(testName)
+//             .setCatalogName(CATALOG_NAME)
+//             .setCatalogProperties(getCatalogProperties())
+//             .build();
+//   }
+
+//   @After
+//   public void tearDown() {
+//     ResourceManagerUtils.cleanResources(
+//         mssqlResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+//   }
+
+//   @Test
+//   public void testSqlServerToIceberg() throws IOException {
+//     // SQL Server setup
+//     String tableName = "source_table";
+//     HashMap<String, String> columns = new HashMap<>();
+//     columns.put("id", "INTEGER");
+//     columns.put("active", "INTEGER");
+//     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
+
+//     mssqlResourceManager.createTable(tableName, schema);
+
+//     List<Map<String, Object>> records =
+//         List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
+//     mssqlResourceManager.write(tableName, records);
+
+//     LaunchConfig.Builder options =
+//         LaunchConfig.builder(testName, specPath)
+//             .addParameter("jdbcUrl", "jdbc:sqlserver://108.59.86.158:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true;")
+//             .addParameter("username", "sqlserver")
+//             .addParameter("password", "Dataflow1*")
+//             .addParameter("readQuery", String.format(READ_QUERY, "test_table_name"))
+//             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+//             .addParameter("catalogName", CATALOG_NAME)
+//             .addParameter("fetchSize", "1")
+//             .addParameter("disableAutoCommit", "true")
+//             .addParameter("partitionFields", "active")
+//             .addParameter(
+//                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
+
+//     // Act
+//     PipelineLauncher.LaunchInfo info = launchTemplate(options);
+//     assertThatPipeline(info).isRunning();
+
+//     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+//     LOG.info("Pipeline executed successfully");
+
+//     // Assert
+//     assertThatResult(result).isLaunchFinished();
+//     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+//     LOG.info("Iceberg records: {}", icebergRecords);
+//     assertNotNull(icebergRecords);
+//     assertEquals(2, icebergRecords.size());
+//     icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.getField("id")));
+//     // Verify records
+//     Record actualRecord1 = icebergRecords.get(0);
+//     Record actualRecord2 = icebergRecords.get(1);
+//     assertEquals(1, actualRecord1.getField("id"));
+//     assertEquals(1, actualRecord1.getField("active"));
+//     assertEquals(2, actualRecord2.getField("id"));
+//     assertEquals(0, actualRecord2.getField("active"));
+
+//     // Table icebergTable =
+//     //     icebergResourceManager.loadTable(ICEBERG_TABLE_IDENTIFIER);
+
+//     // PartitionSpec spec = icebergTable.spec();
+
+//     // Table should be partitioned
+//     // assertEquals(true, spec.isPartitioned());
+//     // assertEquals(1, spec.fields().size());
+
+//     // PartitionField partitionField = spec.fields().get(0);
+
+//     // // Partition field name matches YAML option
+//     // assertEquals("active", partitionField.name());
+
+//     // // Partition uses identity transform (default for column partitioning)
+//     // assertEquals("identity", partitionField.transform().toString());
+
+//     // Partition source column is the "active" column
+//     // int activeFieldId =
+//     //   icebergTable.schema().findField("active").fieldId();
+
+//     // assertEquals(activeFieldId, partitionField.sourceId());
+//   }
+
+//   @Override
+//   protected PipelineOperator.Config createConfig(LaunchInfo info) {
+//     return PipelineOperator.Config.builder()
+//         .setJobId(info.jobId())
+//         .setProject(PROJECT)
+//         .setRegion(REGION)
+//         .build();
+//   }
+
+//   private Map<String, String> getCatalogProperties() {
+//     return Map.of(
+//         "type", "rest",
+//         "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
+//         "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
+//         "header.x-goog-user-project", PROJECT,
+//         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
+//         "rest-metrics-reporting-enabled", "false");
+//   }
+// }
+
 /*
  * Copyright (C) 2024 Google LLC
  *
@@ -37,6 +225,9 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
+import org.apache.iceberg.PartitionField;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.data.Record;
 import org.junit.After;
 import org.junit.Before;
@@ -79,7 +270,7 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
-            .build();
+            .build();        
   }
 
   @After
@@ -106,13 +297,15 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter(
-                "jdbcUrl",
-                "jdbc:sqlserver://108.59.86.158:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true;")
-            .addParameter("username", "sqlserver")
-            .addParameter("password", "Dataflow1*")
-            .addParameter("readQuery", String.format(READ_QUERY, "test_table_name"))
+                "jdbcUrl", mssqlResourceManager.getUri())
+            .addParameter("username", mssqlResourceManager.getUsername())
+            .addParameter("password", mssqlResourceManager.getPassword())
+            .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
+            .addParameter("fetchSize", "1")
+            .addParameter("disableAutoCommit", "true")
+            .addParameter("partitionFields", "[active]")
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
 
@@ -137,6 +330,25 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
     assertEquals(1, actualRecord1.getField("active"));
     assertEquals(2, actualRecord2.getField("id"));
     assertEquals(0, actualRecord2.getField("active"));
+
+    Table icebergTable = icebergResourceManager.loadTable(ICEBERG_TABLE_IDENTIFIER);
+
+    PartitionSpec spec = icebergTable.spec();
+
+    // Table should be partitioned
+    assertEquals(true, spec.isPartitioned());
+    assertEquals(1, spec.fields().size());
+
+    PartitionField partitionField = spec.fields().get(0);
+
+    // Partition field name matches YAML option
+    assertEquals("active", partitionField.name());
+
+    // Partition source column is the "active" column
+    int activeFieldId =
+      icebergTable.schema().findField("active").fieldId();
+
+    assertEquals(activeFieldId, partitionField.sourceId());
   }
 
   @Override
