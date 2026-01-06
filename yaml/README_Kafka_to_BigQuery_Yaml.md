@@ -21,17 +21,28 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readBootstrapServers**: Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`.
-* **kafkaReadTopics**: Kafka topic(s) to read the input from. For example, `topic1,topic2`.
-* **outputTableSpec**: BigQuery table location to write the output to. The name should be in  the format <project>:<dataset>.<table_name>`. The table's schema must  match input objects.
+* **bootstrapServers**: A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2 For example, `host1:port1,host2:port2,localhost:9092,127.0.0.1:9093`.
+* **topic**: Kafka topic to read from. For example: my_topic For example, `my_topic`.
+* **table**: BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.
 * **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output  table for different reasons (e.g., mismatched schema, malformed json)  are written to this table. If it doesn't exist, it will be created  during pipeline execution. If not specified,  'outputTableSpec_error_records' is used instead. The dead-letter table name to output failed messages to BigQuery. For example, `your-project-id:your-dataset.your-table-name`.
-* **schema**: Kafka schema. A schema is required if data format is JSON, AVRO or PROTO.
 
 ### Optional parameters
 
-* **messageFormat**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. Defaults to: JSON.
-* **numStorageWriteApiStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
-* **storageWriteApiTriggeringFrequencySec**: Triggering frequency will determine how soon the data will be visible  for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 5.
+* **allowDuplicates**: If the Kafka read allows duplicates. For example: true For example, `true`.
+* **confluentSchemaRegistrySubject**: The subject name for the Confluent Schema Registry. For example: my_subject For example, `my_subject`.
+* **confluentSchemaRegistryUrl**: The URL for the Confluent Schema Registry. For example: http://schema-registry:8081 For example, `http://schema-registry:8081`.
+* **consumerConfigUpdates**: A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'} For example, `{"group.id": "my_group"}`.
+* **fileDescriptorPath**: The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb For example, `gs://bucket/path/to/descriptor.pb`.
+* **format**: The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON For example, `JSON`. Defaults to: JSON.
+* **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
+* **offsetDeduplication**: If the redistribute is using offset deduplication mode. For example: true For example, `true`.
+* **redistributeByRecordKey**: If the redistribute keys by the Kafka record key. For example: true For example, `true`.
+* **redistributeNumKeys**: The number of keys for redistributing Kafka inputs. For example: 10 For example, `10`.
+* **redistributed**: If the Kafka read should be redistributed. For example: true For example, `true`.
+* **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
+* **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'. Defaults to: CREATE_IF_NEEDED.
+* **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. Defaults to: WRITE_APPEND.
+* **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
 
 
 
@@ -124,29 +135,51 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery_Yaml"
 
 ### Required
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export BOOTSTRAP_SERVERS=<bootstrapServers>
+export TOPIC=<topic>
+export TABLE=<table>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export SCHEMA=<schema>
 
 ### Optional
-export MESSAGE_FORMAT=JSON
-export NUM_STORAGE_WRITE_API_STREAMS=1
-export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=5
+export ALLOW_DUPLICATES=<allowDuplicates>
+export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
+export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
+export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
+export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
+export FORMAT=JSON
+export MESSAGE_NAME=<messageName>
+export OFFSET_DEDUPLICATION=<offsetDeduplication>
+export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
+export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
+export REDISTRIBUTED=<redistributed>
+export SCHEMA=<schema>
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export WRITE_DISPOSITION=WRITE_APPEND
+export NUM_STREAMS=1
 
 gcloud dataflow flex-template run "kafka-to-bigquery-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "readBootstrapServers=$READ_BOOTSTRAP_SERVERS" \
-  --parameters "kafkaReadTopics=$KAFKA_READ_TOPICS" \
-  --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
-  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
-  --parameters "messageFormat=$MESSAGE_FORMAT" \
+  --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
+  --parameters "topic=$TOPIC" \
+  --parameters "allowDuplicates=$ALLOW_DUPLICATES" \
+  --parameters "confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT" \
+  --parameters "confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL" \
+  --parameters "consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES" \
+  --parameters "fileDescriptorPath=$FILE_DESCRIPTOR_PATH" \
+  --parameters "format=$FORMAT" \
+  --parameters "messageName=$MESSAGE_NAME" \
+  --parameters "offsetDeduplication=$OFFSET_DEDUPLICATION" \
+  --parameters "redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY" \
+  --parameters "redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS" \
+  --parameters "redistributed=$REDISTRIBUTED" \
   --parameters "schema=$SCHEMA" \
-  --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
-  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
+  --parameters "table=$TABLE" \
+  --parameters "createDisposition=$CREATE_DISPOSITION" \
+  --parameters "writeDisposition=$WRITE_DISPOSITION" \
+  --parameters "numStreams=$NUM_STREAMS" \
+  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE"
 ```
 
 For more information about the command, please check:
@@ -165,16 +198,27 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
-export KAFKA_READ_TOPICS=<kafkaReadTopics>
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
+export BOOTSTRAP_SERVERS=<bootstrapServers>
+export TOPIC=<topic>
+export TABLE=<table>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
-export SCHEMA=<schema>
 
 ### Optional
-export MESSAGE_FORMAT=JSON
-export NUM_STORAGE_WRITE_API_STREAMS=1
-export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=5
+export ALLOW_DUPLICATES=<allowDuplicates>
+export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
+export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
+export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
+export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
+export FORMAT=JSON
+export MESSAGE_NAME=<messageName>
+export OFFSET_DEDUPLICATION=<offsetDeduplication>
+export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
+export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
+export REDISTRIBUTED=<redistributed>
+export SCHEMA=<schema>
+export CREATE_DISPOSITION=CREATE_IF_NEEDED
+export WRITE_DISPOSITION=WRITE_APPEND
+export NUM_STREAMS=1
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -183,7 +227,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigquery-yaml-job" \
 -DtemplateName="Kafka_to_BigQuery_Yaml" \
--Dparameters="readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,schema=$SCHEMA,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,allowDuplicates=$ALLOW_DUPLICATES,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,offsetDeduplication=$OFFSET_DEDUPLICATION,redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY,redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS,redistributed=$REDISTRIBUTED,schema=$SCHEMA,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
 -f yaml
 ```
 
@@ -228,14 +272,25 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_yaml" {
   name              = "kafka-to-bigquery-yaml"
   region            = var.region
   parameters        = {
-    readBootstrapServers = "<readBootstrapServers>"
-    kafkaReadTopics = "<kafkaReadTopics>"
-    outputTableSpec = "<outputTableSpec>"
+    bootstrapServers = "<bootstrapServers>"
+    topic = "<topic>"
+    table = "<table>"
     outputDeadletterTable = "<outputDeadletterTable>"
-    schema = "<schema>"
-    # messageFormat = "JSON"
-    # numStorageWriteApiStreams = "1"
-    # storageWriteApiTriggeringFrequencySec = "5"
+    # allowDuplicates = "<allowDuplicates>"
+    # confluentSchemaRegistrySubject = "<confluentSchemaRegistrySubject>"
+    # confluentSchemaRegistryUrl = "<confluentSchemaRegistryUrl>"
+    # consumerConfigUpdates = "<consumerConfigUpdates>"
+    # fileDescriptorPath = "<fileDescriptorPath>"
+    # format = "JSON"
+    # messageName = "<messageName>"
+    # offsetDeduplication = "<offsetDeduplication>"
+    # redistributeByRecordKey = "<redistributeByRecordKey>"
+    # redistributeNumKeys = "<redistributeNumKeys>"
+    # redistributed = "<redistributed>"
+    # schema = "<schema>"
+    # createDisposition = "CREATE_IF_NEEDED"
+    # writeDisposition = "WRITE_APPEND"
+    # numStreams = "1"
   }
 }
 ```

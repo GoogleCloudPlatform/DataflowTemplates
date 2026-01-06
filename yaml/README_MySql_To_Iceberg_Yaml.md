@@ -1,9 +1,9 @@
 
 MySql to Iceberg (YAML) template
 ---
-The MySql to Iceberg template is a batch pipeline executes the user provided
-SQL query to read data from MySql table and outputs the records to Iceberg
-table.
+The MySql to Iceberg template is a batch pipeline executes the user provided SQL
+query to read data from MySql table
+and outputs the records to Iceberg table.
 
 
 
@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
 * **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mysql-connector-java-8.0.30.jar`.
+* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mysql-42.2.23.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
 * **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mysql`.
