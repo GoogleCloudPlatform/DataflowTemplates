@@ -28,6 +28,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -163,6 +164,14 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
       publisher = Publisher.newBuilder(topic).setCredentialsProvider(credentialsProvider).build();
       final Publisher finalPublisher = publisher;
 
+      SubscriptionName dlqSubscription =
+          pubsubResourceManager.createSubscription(dlqTopic, "dlq-subscription");
+
+      PubsubMessagesCheck deadLetterCheck =
+          PubsubMessagesCheck.builder(pubsubResourceManager, dlqSubscription)
+              .setMinMessages(10)
+              .build();
+
       PipelineOperator.Result result =
           pipelineOperator()
               .waitForConditionsAndFinish(
@@ -204,10 +213,7 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
                     LOG.info("Checking table size. Current size: {}", tableSize);
                     return tableSize == 20;
                   },
-                  // Check that a minimum of 10 messages are in the dead letter queue
-                  PubsubMessagesCheck.builder(pubsubResourceManager, dlqTopic, "dlq-topic")
-                      .setMinMessages(10)
-                      .build());
+                  deadLetterCheck);
 
       /******************************** Assert ********************************/
       assertThatResult(result).meetsConditions();
