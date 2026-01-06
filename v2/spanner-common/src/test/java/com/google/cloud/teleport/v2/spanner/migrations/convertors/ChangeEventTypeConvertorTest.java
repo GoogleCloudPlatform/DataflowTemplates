@@ -746,4 +746,30 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toDate(ce, "field1", /* requiredField= */ true),
         Date.parseDate("2020-12-30"));
   }
+
+  @Test
+  public void canConvertNullStrings() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("long_field", "NULL");
+    changeEvent.put("double_field", "null");
+    changeEvent.put("float_field", "Null");
+    changeEvent.put("numeric_field", "NULL");
+    changeEvent.put("boolean_field", "NULL");
+    changeEvent.put("byte_field", "NULL");
+    changeEvent.put("timestamp_field", "NULL");
+    changeEvent.put("date_field", "NULL");
+    changeEvent.put("string_field", "NULL"); // this should not be converted to null
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertNull(ChangeEventTypeConvertor.toLong(ce, "long_field", true));
+    assertNull(ChangeEventTypeConvertor.toDouble(ce, "double_field", true));
+    assertNull(ChangeEventTypeConvertor.toFloat(ce, "float_field", true));
+    assertNull(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "numeric_field", true));
+    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "boolean_field", true));
+    assertNull(ChangeEventTypeConvertor.toByteArray(ce, "byte_field", true));
+    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "timestamp_field", true));
+    assertNull(ChangeEventTypeConvertor.toDate(ce, "date_field", true));
+    assertEquals("NULL", ChangeEventTypeConvertor.toString(ce, "string_field", true));
+  }
 }

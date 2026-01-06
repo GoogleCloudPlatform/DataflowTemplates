@@ -22,6 +22,13 @@ options:
 
   - name: "bigtable_read_options"
     parameters:
+      - order: 1
+        name: "flatten"
+        description: "BigTable flatten boolean"
+        help: "If set to false, output rows are nested; if true or omitted, output rows are flattened."
+        default: true
+        required: false
+        type: boolean
 
   - name: "bigtable_write_options"
     parameters:

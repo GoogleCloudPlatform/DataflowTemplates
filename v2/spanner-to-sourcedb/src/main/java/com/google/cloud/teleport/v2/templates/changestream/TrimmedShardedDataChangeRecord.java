@@ -52,6 +52,9 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   @SerializedName("_metadata_retry_count")
   private long metadataRetryCount;
 
+  @SerializedName("_metadata_historical_retry_count")
+  private long metadataHistoricalRetryCount;
+
   // AvroCoder requires the default constructor
   public TrimmedShardedDataChangeRecord() {}
 
@@ -74,6 +77,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.transactionTag = transactionTag;
     this.isRetryRecord = false;
     this.metadataRetryCount = 0;
+    this.metadataHistoricalRetryCount = 0;
   }
 
   public TrimmedShardedDataChangeRecord(TrimmedShardedDataChangeRecord other) {
@@ -88,6 +92,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.shard = other.shard;
     this.isRetryRecord = other.isRetryRecord;
     this.metadataRetryCount = other.metadataRetryCount;
+    this.metadataHistoricalRetryCount = other.metadataHistoricalRetryCount;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -150,6 +155,14 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.metadataRetryCount = metadataRetryCount;
   }
 
+  public long getMetadataHistoricalRetryCount() {
+    return metadataHistoricalRetryCount;
+  }
+
+  public void setMetadataHistoricalRetryCount(long metadataHistoricalRetryCount) {
+    this.metadataHistoricalRetryCount = metadataHistoricalRetryCount;
+  }
+
   @Override
   public boolean equals(@javax.annotation.Nullable Object o) {
     if (this == o) {
@@ -169,7 +182,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         && Objects.equals(transactionTag, that.transactionTag)
         && Objects.equals(shard, that.shard)
         && isRetryRecord == that.isRetryRecord
-        && metadataRetryCount == that.metadataRetryCount;
+        && metadataRetryCount == that.metadataRetryCount
+        && metadataHistoricalRetryCount == that.metadataHistoricalRetryCount;
   }
 
   @Override
@@ -185,7 +199,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         transactionTag,
         shard,
         isRetryRecord,
-        metadataRetryCount);
+        metadataRetryCount,
+        metadataHistoricalRetryCount);
   }
 
   @Override
@@ -216,6 +231,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         + isRetryRecord
         + ", metadataRetryCount="
         + metadataRetryCount
+        + ", metadataHistoricalRetryCount="
+        + metadataHistoricalRetryCount
         + '}';
   }
 }

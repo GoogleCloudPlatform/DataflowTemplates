@@ -120,9 +120,6 @@ public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
         ADDITIONAL_JOB_PARAMS.putAll(
             new HashMap<>() {
               {
-                put("network", VPC_NAME);
-                put("subnetwork", SUBNET_NAME);
-                put("workerRegion", VPC_REGION);
               }
             });
         jobInfo =

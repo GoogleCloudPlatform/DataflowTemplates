@@ -68,7 +68,7 @@ def run_mvn_spotless():
         print("Error: 'mvn' command not found. Please ensure Maven is installed and in your PATH.")
         return e
     except subprocess.CalledProcessError as e:
-        print(f"Error running mvn spotless:apply: {e}", file=sys.stderr)
+        print(f"Error running mvn spotless:apply: {e.stdout}")
         return e
 
 def generate_java_interface(yaml_path, java_path):
@@ -140,8 +140,8 @@ def generate_java_interface(yaml_path, java_path):
         java_type = JAVA_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'), 'String')
         template_param_type = TEMPLATE_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'))
         getter_name = "get" + param_name[0].upper() + param_name[1:]
-        wrapped_description = str(param.get('description', '')).strip()
-        wrapped_help_text = str(param.get('help', '')).strip()
+        description = str(param.get('description', '')).strip()
+        help_text = str(param.get('help', '')).strip()
         example = str(param.get('example', '')).strip().replace('"', '\\"')
 
         param_code = f"""
@@ -149,8 +149,8 @@ def generate_java_interface(yaml_path, java_path):
       order = {i + 1},
       name = "{param_name}",
       optional = {str(not param.get('required', False)).lower()},
-      description = "{wrapped_description}",
-      helpText = "{wrapped_help_text}",
+      description = "{description}",
+      helpText = "{help_text}",
       example = "{example}"
     )
 """
