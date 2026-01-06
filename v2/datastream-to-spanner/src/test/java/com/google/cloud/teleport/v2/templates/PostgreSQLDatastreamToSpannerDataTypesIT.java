@@ -338,6 +338,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_int_array_to_string",
             "t_line_to_float64_array",
             "t_lseg_to_float64_array",
+            "t_macaddr",
+            "t_macaddr8",
             "t_money_to_int64",
             "t_path_to_float64_array",
             "t_point_to_float64_array",
@@ -553,7 +555,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     result.put("int8", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
     result.put(
         "int8_to_string", createRows("-9223372036854775808", "9223372036854775807", "5", "NULL"));
-    result.put("json", createRows("{\"duplicate_key\":1}", "{\"null_key\":null}", "NULL"));
+    result.put("json", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
     result.put(
         "json_to_string", createRows("{\"duplicate_key\": 2}", "{\"null_key\": null}", "NULL"));
     result.put("jsonb", createRows("{\"duplicate_key\":2}", "{\"null_key\":null}", "NULL"));
