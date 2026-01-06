@@ -82,7 +82,7 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
-            .build();        
+            .build();
   }
 
   @After
@@ -108,8 +108,7 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter(
-                "jdbcUrl", mssqlResourceManager.getUri())
+            .addParameter("jdbcUrl", mssqlResourceManager.getUri())
             .addParameter("username", mssqlResourceManager.getUsername())
             .addParameter("password", mssqlResourceManager.getPassword())
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
@@ -157,8 +156,7 @@ public class SqlServerToIcebergYamlIT extends TemplateTestBase {
     assertEquals("active", partitionField.name());
 
     // Partition source column is the "active" column
-    int activeFieldId =
-      icebergTable.schema().findField("active").fieldId();
+    int activeFieldId = icebergTable.schema().findField("active").fieldId();
 
     assertEquals(activeFieldId, partitionField.sourceId());
   }
