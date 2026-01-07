@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * Driver config file from GCS. Cassandra has a structured config file to accept all the driver
  * parameters, be it list of host ip addresses, credentials, retry policy and many more. Most of
  * these parameters are very specific to the Cassandra Database. Refer to the <a
- * href=>https://docs.datastax.com/en/developer/java-driver/4.3/manual/core/configuration/reference/index.html>reference
+ * href="https://docs.datastax.com/en/developer/java-driver/4.3/manual/core/configuration/reference/index.html">reference
  * configuration</a> for the file format.
  */
 public final class CassandraDriverConfigLoader {

@@ -134,7 +134,7 @@ export BUCKET_NAME=<my-bucket>
 export GCS_FILE_PATH=<my-csv-file>
 
 for i in {1..${MERGE_COUNT}}; do
-  gsutil compose gs://${BUCKET_NAME}/${FILE_NAME} gs://${BUCKET_NAME}/${FILE_NAME} gs://${BUCKET_NAME}/${FILE_NAME}
+  gcloud storage objects compose gs://${BUCKET_NAME}/${FILE_NAME} gs://${BUCKET_NAME}/${FILE_NAME} gs://${BUCKET_NAME}/${FILE_NAME}
 done
 ```
 

@@ -1407,6 +1407,62 @@ public class GenericRecordTypeConvertorTest {
     assertEquals(Value.string("name1"), actual.get("new_name"));
   }
 
+  @Test
+  public void transformChangeEventTest_LongValueFromCustomTransform()
+      throws InvalidTransformationException {
+    /*
+     * This test verifies that if a Custom Transformation returns a Long value for a column
+     * mapped to BYTES in Spanner, it is treated as a LONG schema (not STRING),
+     * and thus converted correctly (Long -> BigInteger -> ByteArray) instead of
+     * being interpreted as a Hex String.
+     */
+    GenericRecord genericRecord = new GenericData.Record(getAllSpannerTypesSchema());
+    genericRecord.put("int_col", 123L);
+
+    // Define a transformer that returns a Long value for 'bytes_col'
+    ISpannerMigrationTransformer longTransformer =
+        new ISpannerMigrationTransformer() {
+          @Override
+          public void init(String customParameters) {}
+
+          @Override
+          public MigrationTransformationResponse toSpannerRow(
+              MigrationTransformationRequest request) {
+            Map<String, Object> responseRow = new HashMap<>();
+            // Return a Long value. In a real scenario, this comes from a BIT column read as Long.
+            // 0x7FFFFFFFFFFFFFFF = 9223372036854775807L
+            responseRow.put("bytes_col", 9223372036854775807L);
+            return new MigrationTransformationResponse(responseRow, false);
+          }
+
+          @Override
+          public MigrationTransformationResponse toSourceRow(
+              MigrationTransformationRequest request) {
+            return null;
+          }
+        };
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(
+            new IdentityMapper(getIdentityDdl()), "", null, longTransformer);
+
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
+
+    // Expected: The Long value 9223372036854775807L should be converted to BYTES.
+    // 9223372036854775807L is 0x7FFFFFFFFFFFFFFF.
+    // If it were treated as String, it would try to Hex decode "9223372036854775807", which is
+    // invalid hex (odd length, non-hex chars if any).
+    // Actually "9223372036854775807" contains only digits so it might be parseable as hex if length
+    // was even,
+    // but here we want to ensure it uses the numeric conversion.
+    // 0x7FFFFFFFFFFFFFFF as bytes is [127, -1, -1, -1, -1, -1, -1, -1]
+    byte[] expectedBytes =
+        new byte[] {127, -1, -1, -1, -1, -1, -1, -1}; // Signed bytes for 0x7F FF...
+
+    assertEquals(Value.bytes(ByteArray.copyFrom(expectedBytes)), actual.get("bytes_col"));
+  }
+
   private class TestCustomTransform implements ISpannerMigrationTransformer {
 
     private Map<String, Value> expected;

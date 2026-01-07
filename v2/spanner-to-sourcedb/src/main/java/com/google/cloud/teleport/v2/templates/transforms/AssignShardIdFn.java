@@ -41,9 +41,9 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
+import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.HashMap;
@@ -61,6 +61,7 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -258,9 +259,13 @@ public class AssignShardIdFn
       // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
     } catch (Exception e) {
-      StringWriter errors = new StringWriter();
       LOG.error("Error fetching shard Id column: {}", e);
-      // The record has no shard hence will be sent to DLQ in subsequent steps
+      TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e);
+      if (Constants.PERMANENT_ERROR_TAG.equals(errorTag)) {
+        record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
+      } else {
+        record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
+      }
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));

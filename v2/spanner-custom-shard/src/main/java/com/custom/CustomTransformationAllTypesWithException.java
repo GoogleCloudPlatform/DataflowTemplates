@@ -35,7 +35,10 @@ public class CustomTransformationAllTypesWithException implements ISpannerMigrat
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    throw new InvalidTransformationException("Simulated failure");
+    if (request.getTableName().equals("AllDataTypes_CT")) {
+      throw new InvalidTransformationException("Simulated failure");
+    }
+    return new MigrationTransformationResponse(request.getRequestRow(), false);
   }
 
   @Override

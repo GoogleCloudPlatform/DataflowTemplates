@@ -1,0 +1,34 @@
+options:
+  - name: "bigtable_common_options"
+    parameters:
+      - order: 1
+        name: "projectId"
+        description: "BigTable project ID"
+        help: "The Google Cloud project ID of the BigTable instance."
+        required: true
+        type: text
+      - order: 2
+        name: "instanceId"
+        description: "BigTable instance ID"
+        help: "The BigTable instance ID."
+        required: true
+        type: text
+      - order: 3
+        name: "tableId"
+        description: "BigTable output table"
+        help: "BigTable table ID to write the output to."
+        required: true
+        type: text
+
+  - name: "bigtable_read_options"
+    parameters:
+      - order: 1
+        name: "flatten"
+        description: "BigTable flatten boolean"
+        help: "If set to false, output rows are nested; if true or omitted, output rows are flattened."
+        default: true
+        required: false
+        type: boolean
+
+  - name: "bigtable_write_options"
+    parameters:

@@ -39,12 +39,12 @@
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
     <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
-    <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
-    <extra.enforcer.rules.version>1.10.0</extra.enforcer.rules.version>
+    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+    <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
     <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
-    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <jacoco.version>0.8.13</jacoco.version>
 
@@ -58,7 +58,7 @@
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.11.4</avro.version>
     <caffeine.version>3.2.2</caffeine.version>
-    <checkstyle.version>11.0.1</checkstyle.version>
+    <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>

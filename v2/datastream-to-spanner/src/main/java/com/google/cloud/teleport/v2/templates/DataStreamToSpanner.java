@@ -959,14 +959,14 @@ public class DataStreamToSpanner {
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
     if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
     } else {
       String retryDlqUri =
           FileSystems.matchNewResource(dlqDirectory, true)
               .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
               .toString();
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
     }
   }
 

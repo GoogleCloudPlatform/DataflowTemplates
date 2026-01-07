@@ -5,11 +5,11 @@ ingests data by reading from a database via JDBC and writes the data to Cloud Sp
 
 Currently, this template works for tables of any size on the follow sources
 * MySQL 8.0+ - String (upto 3 byte characters), Integer like (up to BigInteger
-including unsigned) and Binary/VarBinary primary keys.
+  including unsigned) and Binary/VarBinary primary keys.
 * MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
-Binary/VarBinary primary keys.
+  Binary/VarBinary primary keys.
 * PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
-BigInteger including unsigned) primary keys.
+  BigInteger including unsigned) primary keys.
 
 Tables without primary keys or primary keys not mentioned above are not supported.
 
@@ -91,19 +91,35 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 ```
 #### Replaying DLQ entries.
 Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
-To retry the DLQs, please run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in `retryDLQ` mode. After the DLQs are successfully applied, the files will be deleted from the dlq directory.
-##### Sample Command to retry DLQs.
-The following sample command could help to start a DLQ retry job.
+To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job either:
+1.  In `retryDLQ` mode to retry errors in the severe bucket which are retried infinitely, unless they are successfully migrated to Spanner in which case they are deleted from the dlq directory.
+
+Sample Command:
 ```bash
 gcloud  dataflow flex-template run <jobname> \
 --region=<the region where the dataflow job must run> \
 --template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
 --additional-experiments=use_runner_v2 \
---parameters inputFilePattern=<GCS location of the input file pattern>,streamName="ignore",\
-datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
+--parameters datastreamSourceType="mysql",\
 instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
 deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
 ```
+
+2.  Or, in `regular` mode by manually moving the severe error files from `dlq/severe` back to `dlq/retry`. The pipeline will automatically pick them up, retry them dlqMaxRetryCount times and move them back to severe bucket in case of failure.
+
+Sample Command:
+```bash
+gcloud  dataflow flex-template run <jobname> \
+--region=<the region where the dataflow job must run> \
+--template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
+--additional-experiments=use_runner_v2 \
+--parameters datastreamSourceType="mysql",\
+instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
+deadLetterQueueDirectory=<outputDirectory/dlq>,dlqMaxRetryCount=<maxRetryCount>,runMode="regular"
+```
+
+Note: For parameter deadLetterQueueDirectory, the value should be whatever was passed in `outputDirectory` parameter in Bulk migration before followed by `/dlq` for example, if outputDirectory=`gs://test-bucket/output` was passed for the bulk migration, then deadLetterQueueDirectory should be `gs://test-bucket/output/dlq`
+
 For DLQ Replay for Cassandra source, set the `datastreamSourceType` as `mysql`.
 
 ##### Checking if all DLQ entries are applied.

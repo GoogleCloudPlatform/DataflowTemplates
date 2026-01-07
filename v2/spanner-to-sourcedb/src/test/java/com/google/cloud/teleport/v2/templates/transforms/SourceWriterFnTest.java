@@ -814,6 +814,70 @@ public class SourceWriterFnTest {
   }
 
   @Test
+  public void testRetryableSentinelShardId() throws Exception {
+    TrimmedShardedDataChangeRecord record =
+        getParent1TrimmedDataChangeRecord(Constants.RETRYABLE_ERROR_SHARD_ID);
+    record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.processElement(processContext);
+
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), any());
+  }
+
+  @Test
+  public void testSevereSentinelShardId() throws Exception {
+    TrimmedShardedDataChangeRecord record =
+        getParent1TrimmedDataChangeRecord(Constants.SEVERE_ERROR_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.processElement(processContext);
+
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), any());
+  }
+
+  @Test
   public void testPermanentErrorWithInvalidTransformationException() throws Exception {
     TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 8888);
     record.setShard("shardA");
