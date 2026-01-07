@@ -26,7 +26,8 @@ import org.slf4j.LoggerFactory;
 /** Converts a ChangeStreamErrorRecord record to a FailsafeElement. */
 public class ConvertChangeStreamErrorRecordToFailsafeElementFn
     extends DoFn<String, FailsafeElement<String, String>> implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(ConvertChangeStreamErrorRecordToFailsafeElementFn.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ConvertChangeStreamErrorRecordToFailsafeElementFn.class);
   private static final Gson gson = new Gson();
 
   public ConvertChangeStreamErrorRecordToFailsafeElementFn() {}
@@ -36,8 +37,8 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFn
     try {
       String jsonRec = c.element();
       ChangeStreamErrorRecord record = gson.fromJson(jsonRec, ChangeStreamErrorRecord.class);
-      FailsafeElement<String, String> failsafeElement = FailsafeElement.of(record.getOriginalRecord(),
-          record.getOriginalRecord());
+      FailsafeElement<String, String> failsafeElement =
+          FailsafeElement.of(record.getOriginalRecord(), record.getOriginalRecord());
       failsafeElement.setErrorMessage(record.getErrorMessage());
       c.output(failsafeElement);
     } catch (Exception e) {

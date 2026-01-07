@@ -27,7 +27,8 @@ import org.slf4j.LoggerFactory;
 public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFn
     extends DoFn<FailsafeElement<String, String>, TrimmedShardedDataChangeRecord>
     implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(ConvertDlqRecordToTrimmedShardedDataChangeRecordFn.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ConvertDlqRecordToTrimmedShardedDataChangeRecordFn.class);
   private static final Gson gson = new Gson();
 
   public ConvertDlqRecordToTrimmedShardedDataChangeRecordFn() {}
@@ -36,7 +37,8 @@ public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFn
   public void processElement(ProcessContext c) {
     try {
       String jsonRec = c.element().getPayload();
-      TrimmedShardedDataChangeRecord record = gson.fromJson(jsonRec, TrimmedShardedDataChangeRecord.class);
+      TrimmedShardedDataChangeRecord record =
+          gson.fromJson(jsonRec, TrimmedShardedDataChangeRecord.class);
       record.setRetryRecord(true);
       c.output(record);
     } catch (Exception e) {

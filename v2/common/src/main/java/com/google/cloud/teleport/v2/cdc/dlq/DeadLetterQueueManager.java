@@ -201,10 +201,7 @@ public class DeadLetterQueueManager implements Serializable {
                       element.setErrorMessage(error);
                       output.get(PERMANENT_ERRORS).output(element);
                     } catch (IOException e) {
-                      LOG.error(
-                          "Issue parsing JSON record {}. Unable to continue.",
-                          input,
-                          e); // aastha error - classified as severe
+                      LOG.error("Issue parsing JSON record {}. Unable to continue.", input, e);
                       output.get(PERMANENT_ERRORS).output(element);
                     }
                   }

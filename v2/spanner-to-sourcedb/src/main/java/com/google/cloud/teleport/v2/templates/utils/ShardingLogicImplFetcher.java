@@ -105,8 +105,7 @@ public class ShardingLogicImplFetcher {
         LOG.info("Invoking init of the custom class with input as {}", shardingCustomParameters);
         shardFetcher.init(shardingCustomParameters);
         return shardFetcher;
-      } catch (Exception e) { // aastha error - worker error which is expected as this will hinder w
-                              // processing rows correctly
+      } catch (Exception e) {
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
       }
     }
@@ -133,7 +132,7 @@ public class ShardingLogicImplFetcher {
                 LOG.info("Localized jar: {} to: {}", sourceResourceId, destResourceId);
                 driverJarUrls.add(destFile.toURI().toURL());
               } catch (IOException e) {
-                LOG.warn("Unable to copy {} . Exception: {}", jarPath, e); // aastha problematic warning - this IOException is not caught in AssignShardIdFn as its outside the try-catch block
+                LOG.warn("Unable to copy {} . Exception: {}", jarPath, e);
               }
             });
     return driverJarUrls.stream().toArray(URL[]::new);

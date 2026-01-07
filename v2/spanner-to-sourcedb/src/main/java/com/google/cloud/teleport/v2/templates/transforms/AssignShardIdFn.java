@@ -207,8 +207,7 @@ public class AssignShardIdFn
             sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
 
     shardIdFetcher =
-        ShardingLogicImplFetcher.getShardingLogicImpl( // aastha error - worker error which is expected as this will
-                                                       // hinder w processing rows correctly
+        ShardingLogicImplFetcher.getShardingLogicImpl(
             customJarPath,
             shardingCustomClassName,
             shardingCustomParameters,
@@ -235,13 +234,13 @@ public class AssignShardIdFn
               "Writing record for table {} to skipped directory name {} since table not present in"
                   + " the session file.",
               tableName,
-              skipDirName); // aastha warning - redirected to skipped directory
+              skipDirName);
           record.setShard(skipDirName);
           qualifiedShard = skipDirName;
         } else {
           ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
-          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest, shardIdFetcher); // aastha could throw error but is correctly caught
+          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest, shardIdFetcher);
 
           qualifiedShard = shardIdResponse.getLogicalShardId();
           if (qualifiedShard == null || qualifiedShard.isEmpty() || qualifiedShard.contains("/")) {
@@ -260,7 +259,7 @@ public class AssignShardIdFn
       // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
     } catch (Exception e) {
-      LOG.error("Error fetching shard Id column: {}", e); // aastha error - caught and tagged as severe/retry
+      LOG.error("Error fetching shard Id column: {}", e);
       TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e);
       if (Constants.PERMANENT_ERROR_TAG.equals(errorTag)) {
         record.setShard(Constants.SEVERE_ERROR_SHARD_ID);

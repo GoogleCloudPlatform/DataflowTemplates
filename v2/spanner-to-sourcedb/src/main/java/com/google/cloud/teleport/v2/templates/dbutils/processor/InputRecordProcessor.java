@@ -110,7 +110,7 @@ public class InputRecordProcessor {
 
       DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
       if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
-        LOG.warn("DML statement is empty for table: " + tableName); // aastha warning - problematic - dropped without DLQ in SourceWriterFn
+        LOG.warn("DML statement is empty for table: " + tableName);
         return false;
       }
       // TODO we need to handle it as proper Interface Level as of now we have handle Prepared

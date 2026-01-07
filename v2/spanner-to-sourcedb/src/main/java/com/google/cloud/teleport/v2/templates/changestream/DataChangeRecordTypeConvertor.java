@@ -35,7 +35,7 @@ public class DataChangeRecordTypeConvertor {
   private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
-      throws DataChangeRecordConvertorException { // aastha exception - caught in AssignShardIdFn correctly
+      throws DataChangeRecordConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;

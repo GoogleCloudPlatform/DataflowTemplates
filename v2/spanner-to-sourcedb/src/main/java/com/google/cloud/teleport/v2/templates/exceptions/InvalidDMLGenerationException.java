@@ -16,9 +16,8 @@
 package com.google.cloud.teleport.v2.templates.exceptions;
 
 /**
- * Exception thrown when the DML Generator fails to create a valid DML
- * statement.
- * This effectively prevents silent data loss by routing these records to DLQ.
+ * Exception thrown when the DML Generator fails to create a valid DML statement. This effectively
+ * prevents silent data loss by routing these records to DLQ.
  */
 public class InvalidDMLGenerationException extends RuntimeException {
   public InvalidDMLGenerationException(String message) {

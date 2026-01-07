@@ -22,9 +22,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
-import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Base64;
 import java.util.HashMap;
@@ -44,7 +44,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
-      throw new InvalidDMLGenerationException("DMLGeneratorRequest is null. Cannot process the request.");
+      throw new InvalidDMLGenerationException(
+          "DMLGeneratorRequest is null. Cannot process the request.");
     }
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
@@ -111,7 +112,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
       return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
     } else {
-      throw new InvalidDMLGenerationException("Unsupported modType: " + dmlGeneratorRequest.getModType());
+      throw new InvalidDMLGenerationException(
+          "Unsupported modType: " + dmlGeneratorRequest.getModType());
     }
   }
 
@@ -299,8 +301,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
       if (sourceColDef == null) {
         LOG.warn(
-            "The source column definition for {} was not found in source schema",
-            sourceColName); // aastha warning - caught by above function
+            "The source column definition for {} was not found in source schema", sourceColName);
         return null;
       }
 
@@ -318,14 +319,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (spannerColName == null) {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName); // aastha warning - problematic  - caught by above function
+            sourceColName);
         return null;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema",
-            spannerColName); // aastha warning - problematic  - caught by above function
+            "The spanner column definition for {} was not found in spanner schema", spannerColName);
         return null;
       }
       String columnValue = "";
@@ -348,7 +348,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", spannerColName); // aastha warning - problematic - caught by above function
+        LOG.warn("The column {} was not found in input record", spannerColName);
         return null;
       }
 
