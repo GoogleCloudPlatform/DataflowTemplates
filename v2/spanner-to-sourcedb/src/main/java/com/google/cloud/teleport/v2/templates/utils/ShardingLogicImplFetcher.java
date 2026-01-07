@@ -105,7 +105,8 @@ public class ShardingLogicImplFetcher {
         LOG.info("Invoking init of the custom class with input as {}", shardingCustomParameters);
         shardFetcher.init(shardingCustomParameters);
         return shardFetcher;
-      } catch (Exception e) {
+      } catch (Exception e) { // aastha error - worker error which is expected as this will hinder w
+                              // processing rows correctly
         throw new RuntimeException("Error loading custom class : " + e.getMessage());
       }
     }

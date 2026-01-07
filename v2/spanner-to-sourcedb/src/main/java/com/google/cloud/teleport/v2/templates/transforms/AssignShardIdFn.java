@@ -207,7 +207,8 @@ public class AssignShardIdFn
             sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
 
     shardIdFetcher =
-        ShardingLogicImplFetcher.getShardingLogicImpl( // aastha error - problematic - this function can error out but there's nothing catching it
+        ShardingLogicImplFetcher.getShardingLogicImpl( // aastha error - worker error which is expected as this will
+                                                       // hinder w processing rows correctly
             customJarPath,
             shardingCustomClassName,
             shardingCustomParameters,

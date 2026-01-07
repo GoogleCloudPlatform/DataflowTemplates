@@ -20,21 +20,30 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Converts a DLQ record to a TrimmedShardedDataChangeRecord. */
 public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFn
     extends DoFn<FailsafeElement<String, String>, TrimmedShardedDataChangeRecord>
     implements Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(ConvertDlqRecordToTrimmedShardedDataChangeRecordFn.class);
   private static final Gson gson = new Gson();
 
   public ConvertDlqRecordToTrimmedShardedDataChangeRecordFn() {}
 
   @ProcessElement
-  public void processElement(ProcessContext c) throws Exception { // aastha exception - maybe problematic not sure how its handled
-    String jsonRec = c.element().getPayload();
-    TrimmedShardedDataChangeRecord record =
-        gson.fromJson(jsonRec, TrimmedShardedDataChangeRecord.class);
-    record.setRetryRecord(true);
-    c.output(record);
+  public void processElement(ProcessContext c) {
+    try {
+      String jsonRec = c.element().getPayload();
+      TrimmedShardedDataChangeRecord record = gson.fromJson(jsonRec, TrimmedShardedDataChangeRecord.class);
+      record.setRetryRecord(true);
+      c.output(record);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to parse TrimmedShardedDataChangeRecord from DLQ. Dropping record payload: {}",
+          c.element().getPayload(),
+          e);
+    }
   }
 }

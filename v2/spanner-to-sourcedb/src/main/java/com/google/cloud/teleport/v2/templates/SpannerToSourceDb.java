@@ -682,7 +682,8 @@ public class SpannerToSourceDb {
             .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    PCollection<TrimmedShardedDataChangeRecord> dlqRecords = // aastha exception - this could throw exception - maybe problematic
+    PCollection<TrimmedShardedDataChangeRecord> dlqRecords = // aastha exception - this could throw exception -
+                                                             // problematic - fixed
         dlqJsonStrRecords.apply(
             "Convert DLQ records to TrimmedShardedDataChangeRecord",
             ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()));
