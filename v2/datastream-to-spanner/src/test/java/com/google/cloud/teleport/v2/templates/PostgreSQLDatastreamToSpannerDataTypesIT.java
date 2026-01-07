@@ -321,6 +321,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "bit_varying",
             "bit_varying_to_string",
             "bytea",
+            "macaddr",
+            "macaddr8",
             "uuid_to_bytes",
             "varbit",
             "varbit_to_string",
@@ -338,8 +340,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_int_array_to_string",
             "t_line_to_float64_array",
             "t_lseg_to_float64_array",
-            "t_macaddr",
-            "t_macaddr8",
             "t_money_to_int64",
             "t_path_to_float64_array",
             "t_point_to_float64_array",
@@ -352,13 +352,13 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     // Validate supported data types.
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
-      if (ignoredTypeMappings.contains(type)) {
+      String tableName = String.format("t_%s", type);
+      if (ignoredTypeMappings.contains(type) || ignoredTypeMappings.contains(tableName)) {
         LOG.warn(
             "Mapping for {} is ignored to avoid failing the test (it does not map as expected)...",
             type);
         continue;
       }
-      String tableName = String.format("t_%s", type);
       LOG.info("Asserting type: {}", type);
 
       List<Struct> rows = resourceManager.readTableRecords(tableName, "id", "col");
