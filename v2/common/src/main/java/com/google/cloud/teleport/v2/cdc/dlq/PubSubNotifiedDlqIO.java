@@ -81,9 +81,9 @@ public class PubSubNotifiedDlqIO extends PTransform<PBegin, PCollection<Metadata
           }
           context.output(fileMetadata);
         } catch (FileNotFoundException e) {
-          LOG.warn("Ignoring non-existent file {}", fileName, e);
+          LOG.warn("Ignoring non-existent file {}", fileName, e); // aastha warning - seems fine
         } catch (IOException e) {
-          LOG.error("GCS Failure retrieving {}", fileName, e);
+          LOG.error("GCS Failure retrieving {}", fileName, e); // aastha error - worker will retry
           throw e;
         }
       }

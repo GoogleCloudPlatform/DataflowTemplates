@@ -43,7 +43,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
-      LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
+      LOG.warn("DMLGeneratorRequest is null. Cannot process the request."); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
@@ -55,13 +55,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
           "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
           schemaMapper,
           spannerDdl,
-          sourceSchema);
+          sourceSchema); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
       LOG.warn(
-          "The spanner table {} was not found in ddl found on spanner. Ddl: {}",
+          "The spanner table {} was not found in ddl found on spanner. Ddl: {}", // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
           spannerTableName,
           spannerDdl);
       return new DMLGeneratorResponse("");
@@ -79,7 +79,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "Equivalent table {} was not found in source for spanner table {}",
           sourceTableName,
-          spannerTableName);
+          spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
 
@@ -87,7 +87,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "Cannot reverse replicate for source table {} without primary key, skipping the record. Source Table: {}",
           sourceTableName,
-          sourceTable);
+          sourceTable); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
 
@@ -102,7 +102,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkcolumnNameValues == null) {
       LOG.warn(
-          "Cannot reverse replicate for table {} without primary key, skipping the record",
+          "Cannot reverse replicate for table {} without primary key, skipping the record", // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
           sourceTableName);
       return new DMLGeneratorResponse("");
     }
@@ -115,7 +115,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
       return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
     } else {
-      LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
+      LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType()); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
   }
@@ -304,7 +304,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
       if (sourceColDef == null) {
         LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
+            "The source column definition for {} was not found in source schema",
+            sourceColName); // aastha warning - caught by above function
         return null;
       }
 
@@ -322,13 +323,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (spannerColName == null) {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
+            sourceColName); // aastha warning - problematic  - caught by above function
         return null;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema", spannerColName);
+            "The spanner column definition for {} was not found in spanner schema",
+            spannerColName); // aastha warning - problematic  - caught by above function
         return null;
       }
       String columnValue = "";
@@ -351,7 +353,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", spannerColName);
+        LOG.warn("The column {} was not found in input record", spannerColName); // aastha warning - problematic - caught by above function
         return null;
       }
 

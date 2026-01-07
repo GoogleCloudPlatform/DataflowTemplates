@@ -261,7 +261,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                               if (!ShadowTableRecord.isEquals(
                                   shadowTableRecord, newShadowTableRecord)) {
                                 throw new TransactionalCheckException(
-                                    "Shadow table sequence changed during transaction");
+                                    "Shadow table sequence changed during transaction"); // aastha exception - caught in try-catch and tagged correctly (maybe, not sure)
                               }
                             };
                         boolean isEventFiltered =
@@ -286,7 +286,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                         }
 
                         spannerDao.updateShadowTable(
-                            getShadowTableMutation(
+                            getShadowTableMutation( // aastha exception - caught in try-catch and tagged correctly (maybe, not sure)
                                 tableName,
                                 shadowTableName,
                                 keysJson,
@@ -327,7 +327,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       com.google.cloud.Timestamp commitTimestamp,
       String recordSequence,
       Ddl ddl)
-      throws ChangeEventConvertorException {
+      throws ChangeEventConvertorException {  // aastha exception - caught in try-catch and tagged correctly (maybe, not sure)
     Mutation.WriteBuilder mutationBuilder = null;
 
     Table table = ddl.table(tableName);

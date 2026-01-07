@@ -47,17 +47,24 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
         shardIdResponse.setLogicalShardId(shardId);
         return shardIdResponse;
       } else {
-        LOG.error("Cannot find entry for the shard id column '" + shardIdColumn + "' in record.");
+        LOG.error(
+            "Cannot find entry for the shard id column '"
+                + shardIdColumn
+                + "' in record."); // aastha error - caught by AssignShardIdFn and classified correctly
         throw new RuntimeException(
             "Cannot find entry for the shard id column '" + shardIdColumn + "' in record.");
       }
     } catch (IllegalArgumentException e) {
-      LOG.error("Error fetching shard Id column for table: " + e.getMessage());
+      LOG.error("Error fetching shard Id column for table: " + e.getMessage()); // aastha error - caught by AssignShardIdFn and classified correctly
       throw new RuntimeException("Error fetching shard Id column for table: " + e.getMessage());
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
-      LOG.error("Error fetching shard Id colum: " + e.getMessage() + ": " + errors.toString());
+      LOG.error(
+          "Error fetching shard Id colum: "
+              + e.getMessage()
+              + ": "
+              + errors.toString()); // aastha error - caught by AssignShardIdFn and classified correctly
       throw new RuntimeException(
           "Error fetching shard Id colum: " + e.getMessage() + ": " + errors.toString());
     }
@@ -69,12 +76,12 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
       if (shardIdColumn == null || shardIdColumn.isEmpty()) {
         LOG.warn(
             "Table {} found in change record but not found in session file. Skipping record",
-            tableName);
+            tableName); // aastha warning - causes above function to error out, which then gets caught by AssignShardIdFn
         return "";
       }
       return shardIdColumn;
     } catch (NoSuchElementException e) {
-      LOG.warn("Table {} not found in session file. Skipping record.", tableName);
+      LOG.warn("Table {} not found in session file. Skipping record.", tableName); // aastha warning - causes above function to error out, which then gets caught by AssignShardIdFn
       return "";
     }
   }

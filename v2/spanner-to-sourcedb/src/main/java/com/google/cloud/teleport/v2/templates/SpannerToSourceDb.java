@@ -632,7 +632,7 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    SourceSchema sourceSchema = fetchSourceSchema(options, shards);
+    SourceSchema sourceSchema = fetchSourceSchema(options, shards); // aastha this could throw an error
     LOG.info("Source schema: {}", sourceSchema);
 
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
@@ -682,7 +682,7 @@ public class SpannerToSourceDb {
             .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    PCollection<TrimmedShardedDataChangeRecord> dlqRecords =
+    PCollection<TrimmedShardedDataChangeRecord> dlqRecords = // aastha exception - this could throw exception - maybe problematic
         dlqJsonStrRecords.apply(
             "Convert DLQ records to TrimmedShardedDataChangeRecord",
             ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()));

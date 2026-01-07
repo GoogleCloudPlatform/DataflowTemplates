@@ -29,7 +29,7 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFn
   public ConvertChangeStreamErrorRecordToFailsafeElementFn() {}
 
   @ProcessElement
-  public void processElement(ProcessContext c) throws Exception {
+  public void processElement(ProcessContext c) throws Exception { // aastha exception - maybe problematic not sure how its handled
     String jsonRec = c.element();
     ChangeStreamErrorRecord record = gson.fromJson(jsonRec, ChangeStreamErrorRecord.class);
     FailsafeElement<String, String> failsafeElement =

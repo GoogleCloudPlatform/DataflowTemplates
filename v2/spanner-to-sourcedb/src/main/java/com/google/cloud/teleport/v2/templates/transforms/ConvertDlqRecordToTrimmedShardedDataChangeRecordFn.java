@@ -30,7 +30,7 @@ public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFn
   public ConvertDlqRecordToTrimmedShardedDataChangeRecordFn() {}
 
   @ProcessElement
-  public void processElement(ProcessContext c) throws Exception {
+  public void processElement(ProcessContext c) throws Exception { // aastha exception - maybe problematic not sure how its handled
     String jsonRec = c.element().getPayload();
     TrimmedShardedDataChangeRecord record =
         gson.fromJson(jsonRec, TrimmedShardedDataChangeRecord.class);

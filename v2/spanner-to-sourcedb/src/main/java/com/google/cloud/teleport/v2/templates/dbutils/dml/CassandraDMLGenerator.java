@@ -76,7 +76,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
-      LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
+      LOG.warn("DMLGeneratorRequest is null. Cannot process the request."); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
@@ -88,7 +88,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
           "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
           schemaMapper,
           spannerDdl,
-          sourceSchema);
+          sourceSchema); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     String sourceTableName = "";
@@ -97,13 +97,14 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     } catch (Exception e) {
       LOG.warn(
           "Equivalent table for {} was not found in source, check schema mapping provided",
-          spannerTableName);
+          spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
 
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
-      LOG.warn("Spanner table {} not found. Dropping the record.", spannerTableName);
+      LOG.warn(
+          "Spanner table {} not found. Dropping the record.", spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     SourceTable sourceTable = sourceSchema.table(sourceTableName);
@@ -111,7 +112,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "Source table {} not found for Spanner table Name: {}",
           sourceTableName,
-          spannerTableName);
+          spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
 
@@ -119,7 +120,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn(
           "Cannot reverse replicate table {} without primary key. Skipping the record.",
           sourceTableName);
-      return new DMLGeneratorResponse("");
+      return new DMLGeneratorResponse(""); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
     }
 
     Map<String, PreparedStatementValueObject<?>> pkColumnNameValues =
@@ -134,7 +135,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     if (pkColumnNameValues == null) {
       LOG.warn(
           "Failed to generate primary key values for table {}. Skipping the record.",
-          sourceTableName);
+          sourceTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
     java.sql.Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
@@ -200,7 +201,8 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     } else if ("DELETE".equals(modType)) {
       return getDeleteStatementCQL(sourceTable.name(), timestamp, pkColumnNameValues);
     } else {
-      LOG.error("Unsupported modType: {} for table {}", modType, spannerTable.name());
+      LOG.error(
+          "Unsupported modType: {} for table {}", modType, spannerTable.name()); // aastha error - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
       return new DMLGeneratorResponse("");
     }
   }
@@ -410,7 +412,8 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
       if (sourceColDef == null) {
         LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
+            "The source column definition for {} was not found in source schema",
+            sourceColName); // aastha warning - caught by above function
         return null;
       }
 
@@ -435,13 +438,14 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (spannerColName == null || spannerColName == "") {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
+            sourceColName); // aastha warning - problematic  - caught by above function
         return null;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema", spannerColName);
+            "The spanner column definition for {} was not found in spanner schema",
+            spannerColName); // aastha warning - problematic  - caught by above function
         return null;
       }
       if (keyValuesJson.has(spannerColName)) {
@@ -453,7 +457,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", spannerColName);
+        LOG.warn("The column {} was not found in input record", spannerColName); // aastha warning - problematic  - caught by above function
         return null;
       }
       response.put(sourceColName, columnValue);

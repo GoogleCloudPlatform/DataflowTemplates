@@ -140,7 +140,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
           FileSystems.delete(Collections.singleton(file));
           LOG.info("Deleted file {}.", file);
         } catch (IOException e) {
-          LOG.error("Unable to delete file {}. Exception: {}", file, e);
+          LOG.error("Unable to delete file {}. Exception: {}", file, e); // aastha error - seems okay, metric updated
           failedDeletions.inc();
         }
       }
@@ -186,7 +186,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         jsonReader = readFile(dlqFile.resourceId());
       } catch (FileNotFoundException e) {
         // If the file does exist, it will be retried on the next trigger.
-        LOG.warn("DLQ File Not Found: {}", dlqFile.resourceId().toString());
+        LOG.warn("DLQ File Not Found: {}", dlqFile.resourceId().toString()); // aastha warning - seems fine
         return;
       }
 
@@ -211,7 +211,8 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
                   outputs.get(contentTag).output(resultNode.toString());
                   reconsumedElements.inc();
                 } catch (IOException e) {
-                  LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
+                  LOG.error(
+                      "Issue parsing JSON record {}. Unable to continue.", line, e); // aastha error - maybe problematic - worker should retry
                   throw new RuntimeException(e);
                 }
               });

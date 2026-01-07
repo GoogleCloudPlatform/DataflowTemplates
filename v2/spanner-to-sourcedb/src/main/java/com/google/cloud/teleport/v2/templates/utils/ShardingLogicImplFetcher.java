@@ -132,7 +132,7 @@ public class ShardingLogicImplFetcher {
                 LOG.info("Localized jar: {} to: {}", sourceResourceId, destResourceId);
                 driverJarUrls.add(destFile.toURI().toURL());
               } catch (IOException e) {
-                LOG.warn("Unable to copy {} . Exception: {}", jarPath, e);
+                LOG.warn("Unable to copy {} . Exception: {}", jarPath, e); // aastha problematic warning - this IOException is not caught in AssignShardIdFn as its outside the try-catch block
               }
             });
     return driverJarUrls.stream().toArray(URL[]::new);
