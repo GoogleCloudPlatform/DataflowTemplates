@@ -25,7 +25,7 @@ REPO_OWNER="GoogleCloudPlatform"
 GH_RUNNER_VERSION="2.299.1"
 
 MACHINE_TYPE="n1-highmem-32"
-BOOT_DISK_SIZE="200GB"
+BOOT_DISK_SIZE="500GB"
 
 VERBOSE=0
 
@@ -171,7 +171,7 @@ gcloud secrets add-iam-policy-binding $SECRET_NAME \
   --role roles/secretmanager.secretAccessor
 
 # Create instance template
-IMAGE_FAMILY="ubuntu-2004-lts"
+IMAGE_FAMILY="ubuntu-2204-lts"
 IMAGE_PROJECT="ubuntu-os-cloud"
 BOOT_DISK_TYPE="pd-balanced"
 SCOPE="cloud-platform"
@@ -200,7 +200,7 @@ ZONE="us-central1-a"
 if [ $VERBOSE -eq 1 ]; then echo; echo "Creating instance group: $INSTANCE_GROUP_NAME with $SIZE runners in $ZONE..."; fi
 gcloud compute instance-groups managed create $INSTANCE_GROUP_NAME \
   --size=${SIZE} \
-  --base-instance-name=nokill-${BASE_NAME} \
+  --base-instance-name=nokill-${RUNNER_NAME} \
   --template=$INSTANCE_TEMPLATE_NAME \
   --zone=$ZONE
 
