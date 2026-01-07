@@ -45,3 +45,9 @@ jobs:
             This is an automated PR created by the update-docs workflow.
           branch: chore/update-generated-docs
           base: main
+
+      - name: Add ignore-for-release label to PR
+        uses: actions-ecosystem/action-add-labels@v1.1.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: ignore-for-release

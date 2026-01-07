@@ -45,3 +45,9 @@ jobs:
           branch: chore/update-python-deps
           base: main
           labels: package-upgrade
+
+      - name: Add ignore-for-release label to PR
+        uses: actions-ecosystem/action-add-labels@v1.1.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: ignore-for-release
