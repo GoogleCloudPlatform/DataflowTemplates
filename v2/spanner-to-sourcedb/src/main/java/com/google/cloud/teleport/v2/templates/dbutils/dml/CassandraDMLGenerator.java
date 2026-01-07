@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.common.collect.ImmutableMap;
@@ -76,51 +77,46 @@ public class CassandraDMLGenerator implements IDMLGenerator {
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
-      LOG.warn("DMLGeneratorRequest is null. Cannot process the request."); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException("DMLGeneratorRequest is null. Cannot process the request.");
     }
     ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
     if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
-      LOG.warn(
-          "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
-          schemaMapper,
-          spannerDdl,
-          sourceSchema); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Schema Mapper, Ddl and SourceSchema must be not null, respectively found %s,%s,%s.",
+              schemaMapper, spannerDdl, sourceSchema));
     }
     String sourceTableName = "";
     try {
       sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
-    } catch (Exception e) {
-      LOG.warn(
-          "Equivalent table for {} was not found in source, check schema mapping provided",
-          spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+    } catch (NoSuchElementException e) {
+      throw new InvalidDMLGenerationException(
+          "Could not find source table name for spanner table: " + spannerTableName, e);
     }
 
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
-      LOG.warn(
-          "Spanner table {} not found. Dropping the record.", spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "The spanner table %s was not found in ddl found on spanner. Ddl: %s",
+              spannerTableName, spannerDdl));
     }
     SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
-      LOG.warn(
-          "Source table {} not found for Spanner table Name: {}",
-          sourceTableName,
-          spannerTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "The source table %s was not found in source schema. Source Schema: %s",
+              sourceTableName, sourceSchema));
     }
 
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
-      LOG.warn(
-          "Cannot reverse replicate table {} without primary key. Skipping the record.",
-          sourceTableName);
-      return new DMLGeneratorResponse(""); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for source table %s without primary key, skipping the record",
+              sourceTableName));
     }
 
     Map<String, PreparedStatementValueObject<?>> pkColumnNameValues =
@@ -133,10 +129,10 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkColumnNameValues == null) {
-      LOG.warn(
-          "Failed to generate primary key values for table {}. Skipping the record.",
-          sourceTableName); // aastha warning - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for table %s without primary key, skipping the record",
+              sourceTableName));
     }
     java.sql.Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
     String modType = dmlGeneratorRequest.getModType();
@@ -201,9 +197,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     } else if ("DELETE".equals(modType)) {
       return getDeleteStatementCQL(sourceTable.name(), timestamp, pkColumnNameValues);
     } else {
-      LOG.error(
-          "Unsupported modType: {} for table {}", modType, spannerTable.name()); // aastha error - problematic - InputRecordProcessor returns false for this - its dropped without DLQ
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException("Unsupported modType: " + dmlGeneratorRequest.getModType());
     }
   }
 
