@@ -670,16 +670,24 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
+      // If it is IT test project and the IT test instance, then choose an instance randomly from
+      // static list
       if (Objects.equals(projectId, "cloud-teleport-testing")
-          && (Strings.isNullOrEmpty(System.getProperty("spannerInstanceId"))
-              || Objects.equals(System.getProperty("spannerInstanceId"), "teleport"))) {
-        this.useStaticInstance = true;
-        List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
-        Random random = new Random();
-        int randomIndex = random.nextInt(instanceList.size());
-        String randomInstanceName = instanceList.get(randomIndex);
-        this.instanceId = randomInstanceName;
-      } else if (System.getProperty("spannerInstanceId") != null) {
+          || Objects.equals(projectId, "span-cloud-teleport-testing")) {
+        if (Strings.isNullOrEmpty(System.getProperty("spannerInstanceId"))
+            || Objects.equals(System.getProperty("spannerInstanceId"), "teleport")) {
+          this.useStaticInstance = true;
+          List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
+          Random random = new Random();
+          int randomIndex = random.nextInt(instanceList.size());
+          String randomInstanceName = instanceList.get(randomIndex);
+          this.instanceId = randomInstanceName;
+          return this;
+        }
+      }
+
+      // Else read from the system property
+      if (System.getProperty("spannerInstanceId") != null) {
         this.useStaticInstance = true;
         this.instanceId = System.getProperty("spannerInstanceId");
       }
