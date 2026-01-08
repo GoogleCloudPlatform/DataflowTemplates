@@ -37,3 +37,15 @@ CREATE CHANGE STREAM allstream
   retention_period = '7d',
   allow_txn_exclusion = true
 );
+
+CREATE TABLE IF NOT EXISTS BoundaryConversionTestTable (
+    varchar_column STRING(20) NOT NULL,
+    tinyint_column INT64,
+    smallint_column INT64,
+    int_column INT64,
+    bigint_column INT64,
+    float_column FLOAT64,
+    double_column FLOAT64,
+    decimal_column NUMERIC,
+    bool_column BOOL
+) PRIMARY KEY(varchar_column);

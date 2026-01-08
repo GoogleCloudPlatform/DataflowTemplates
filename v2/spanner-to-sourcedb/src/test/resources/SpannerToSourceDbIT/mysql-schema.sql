@@ -28,3 +28,15 @@ CREATE TABLE Users (
      column1 VARCHAR(25),
      PRIMARY KEY(id)
  );
+
+CREATE TABLE BoundaryConversionTestTable (
+     varchar_column VARCHAR(100) PRIMARY KEY,
+     tinyint_column tinyint,
+     smallint_column smallint,
+     int_column int,
+     bigint_column bigint,
+     float_column float,
+     double_column double,
+     decimal_column decimal,
+     bool_column boolean
+);
