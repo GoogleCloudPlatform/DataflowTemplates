@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-change-streams-to-vector-search",
-    flexContainerName = "bigtable-changestreams-to-vector-search",
+    flexContainerName = "googlecloud-to-googlecloud",
     contactInformation = "https://cloud.google.com/support",
     streaming = true)
 public final class BigtableChangeStreamsToVectorSearch {

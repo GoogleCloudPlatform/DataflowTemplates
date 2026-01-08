@@ -32,7 +32,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
         "The Java Database Connectivity (JDBC) to Pub/Sub template is a batch pipeline that ingests data from "
             + "JDBC source and writes the resulting records to a pre-existing Pub/Sub topic as a JSON string.",
     blocks = {ReadFromJdbc.class, RowToJSONString.class, WriteToPubSub.class},
-    flexContainerName = "jdbc-to-pubsub-auto",
+    flexContainerName = "jdbc-and-googlecloud",
     contactInformation = "https://cloud.google.com/support",
     // TODO: replace the original template when we are ready to do it, and remove `hidden`.
     hidden = true)
