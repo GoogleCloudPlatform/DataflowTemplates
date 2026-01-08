@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -82,6 +83,15 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     assertTrue(!record.equals(message));
     assertTrue(record.equals(getTrimmedDataChangeRecord("shardA")));
   }
+
+    @Test
+    public void testProcessElementWithInvalidJson() {
+        ConvertChangeStreamErrorRecordToFailsafeElementFn fn =
+                new ConvertChangeStreamErrorRecordToFailsafeElementFn();
+        when(processContext.element()).thenReturn("invalid-json");
+        fn.processElement(processContext);
+        verify(processContext, times(0)).output(any());
+    }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {
     return new TrimmedShardedDataChangeRecord(

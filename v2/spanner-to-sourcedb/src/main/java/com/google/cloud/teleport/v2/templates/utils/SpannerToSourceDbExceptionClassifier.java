@@ -31,56 +31,57 @@ import org.apache.beam.sdk.values.TupleTag;
 /** Helper class to classify Exceptions into Retryable or Permanent error. */
 public class SpannerToSourceDbExceptionClassifier {
 
-  private static final Set<ErrorCode> permanentSpannerErrorCodes =
-      Set.of(
-          ErrorCode.ALREADY_EXISTS,
-          ErrorCode.OUT_OF_RANGE,
-          ErrorCode.INVALID_ARGUMENT,
-          ErrorCode.NOT_FOUND,
-          ErrorCode.FAILED_PRECONDITION,
-          ErrorCode.PERMISSION_DENIED,
-          ErrorCode.UNAUTHENTICATED,
-          ErrorCode.UNIMPLEMENTED,
-          ErrorCode.INTERNAL);
+    private static final Set<ErrorCode> permanentSpannerErrorCodes =
+            Set.of(
+                    ErrorCode.ALREADY_EXISTS,
+                    ErrorCode.OUT_OF_RANGE,
+                    ErrorCode.INVALID_ARGUMENT,
+                    ErrorCode.NOT_FOUND,
+                    ErrorCode.FAILED_PRECONDITION,
+                    ErrorCode.PERMISSION_DENIED,
+                    ErrorCode.UNAUTHENTICATED,
+                    ErrorCode.UNIMPLEMENTED,
+                    ErrorCode.INTERNAL);
 
-  public static TupleTag<String> classify(Exception exception) {
-    if (exception instanceof SpannerException e) {
-      return classifySpannerException(e);
-    } else if (exception instanceof ChangeEventConvertorException
-        || exception instanceof IllegalArgumentException
-        || exception instanceof InvalidDMLGenerationException
-        || exception instanceof NullPointerException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    }
-    return Constants.RETRYABLE_ERROR_TAG;
-  }
-
-  private static TupleTag<String> classifySpannerException(SpannerException exception) {
-    // Since we have wrapped the logic inside Spanner transaction, the exceptions
-    // would also be
-    // wrapped inside a SpannerException.
-    // We need to get and inspect the cause while handling the exception.
-    Throwable cause = exception.getCause();
-
-    if (cause instanceof InvalidTransformationException
-        || cause instanceof ChangeEventConvertorException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof CodecNotFoundException
-        || cause instanceof SQLSyntaxErrorException
-        || cause instanceof SQLDataException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof SQLNonTransientConnectionException e
-        && e.getErrorCode() != 1053
-        && e.getErrorCode() != 1159
-        && e.getErrorCode() != 1161) {
-      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-      // error codes 1053,1161 and 1159 can be retried
-      return Constants.PERMANENT_ERROR_TAG;
+    public static TupleTag<String> classify(Exception exception) {
+        if (exception instanceof SpannerException e) {
+            return classifySpannerException(e);
+        } else if (exception instanceof ChangeEventConvertorException
+                || exception instanceof IllegalArgumentException
+                || exception instanceof InvalidDMLGenerationException
+                || exception instanceof NullPointerException) {
+            return Constants.PERMANENT_ERROR_TAG;
+        }
+        return Constants.RETRYABLE_ERROR_TAG;
     }
 
-    if (permanentSpannerErrorCodes.contains(exception.getErrorCode())) {
-      return Constants.PERMANENT_ERROR_TAG;
+    private static TupleTag<String> classifySpannerException(SpannerException exception) {
+        // Since we have wrapped the logic inside Spanner transaction, the exceptions
+        // would also be
+        // wrapped inside a SpannerException.
+        // We need to get and inspect the cause while handling the exception.
+        Throwable cause = exception.getCause();
+
+        if (cause instanceof InvalidTransformationException
+                || cause instanceof ChangeEventConvertorException
+                || cause instanceof InvalidDMLGenerationException) {
+            return Constants.PERMANENT_ERROR_TAG;
+        } else if (cause instanceof CodecNotFoundException
+                || cause instanceof SQLSyntaxErrorException
+                || cause instanceof SQLDataException) {
+            return Constants.PERMANENT_ERROR_TAG;
+        } else if (cause instanceof SQLNonTransientConnectionException e
+                && e.getErrorCode() != 1053
+                && e.getErrorCode() != 1159
+                && e.getErrorCode() != 1161) {
+            // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+            // error codes 1053,1161 and 1159 can be retried
+            return Constants.PERMANENT_ERROR_TAG;
+        }
+
+        if (permanentSpannerErrorCodes.contains(exception.getErrorCode())) {
+            return Constants.PERMANENT_ERROR_TAG;
+        }
+        return Constants.RETRYABLE_ERROR_TAG;
     }
-    return Constants.RETRYABLE_ERROR_TAG;
-  }
 }

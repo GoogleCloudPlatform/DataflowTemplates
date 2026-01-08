@@ -137,4 +137,20 @@ public class FileBasedDeadLetterQueueReconsumerTest {
 
     assertThat(text).isEqualTo(expected);
   }
+
+  @Test
+  public void testInvalidJsonFileIsIgnored() throws IOException {
+    String invalidJson = "invalid-json";
+    String fileName = createJsonFile("invalid.json", new String[] {invalidJson});
+
+    String folderPath = Paths.get(folder.getRoot().getAbsolutePath()).resolve("*").toString();
+    PCollection<String> jsonData =
+        p.apply(FileIO.match().filepattern(folderPath))
+            .apply(FileBasedDeadLetterQueueReconsumer.moveAndConsumeMatches());
+
+    PAssert.that(jsonData).empty();
+    p.run().waitUntilFinish();
+
+    assertFalse(new File(fileName).exists());
+  }
 }
