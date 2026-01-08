@@ -150,6 +150,21 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
       basePath =
           basePath.replace(new String(new byte[] {27, 91, 48, 109}, StandardCharsets.UTF_8), "");
 
+      // Split by newline and take the last non-empty line to avoid JVM warnings.
+      // The mvn command output can sometimes include unrelated JVM warnings (e.g.
+      // [warning][perf,memops])
+      // mixed with the actual output. The actual path is expected to be the last valid line.
+      // Example output:
+      // [0.005s][warning][perf,memops] Cannot use file /tmp/hsperfdata_runner/109499 ...
+      // /home/runner/.m2/repository
+      String[] lines = basePath.split("\\r?\\n");
+      for (int i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i].trim().isEmpty() && !lines[i].contains("[warning]")) {
+          basePath = lines[i].trim();
+          break;
+        }
+      }
+
       inStream.close();
 
       return basePath;
