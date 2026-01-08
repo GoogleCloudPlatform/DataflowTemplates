@@ -84,14 +84,14 @@ public class ConvertChangeStreamErrorRecordToFailsafeElementFnTest {
     assertTrue(record.equals(getTrimmedDataChangeRecord("shardA")));
   }
 
-    @Test
-    public void testProcessElementWithInvalidJson() {
-        ConvertChangeStreamErrorRecordToFailsafeElementFn fn =
-                new ConvertChangeStreamErrorRecordToFailsafeElementFn();
-        when(processContext.element()).thenReturn("invalid-json");
-        fn.processElement(processContext);
-        verify(processContext, times(0)).output(any());
-    }
+  @Test
+  public void testProcessElementWithInvalidJson() {
+    ConvertChangeStreamErrorRecordToFailsafeElementFn fn =
+        new ConvertChangeStreamErrorRecordToFailsafeElementFn();
+    when(processContext.element()).thenReturn("invalid-json");
+    fn.processElement(processContext);
+    verify(processContext, times(0)).output(any());
+  }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {
     return new TrimmedShardedDataChangeRecord(
