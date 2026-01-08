@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -34,12 +35,15 @@ import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +85,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     PCollectionTuple rowsAndTables = input.apply("Read_rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
+
     CustomTransformation customTransformation =
         CustomTransformation.builder(
                 options.getTransformationJarPath(), options.getTransformationClassName())
@@ -106,10 +111,15 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     SpannerWriter writer =
         new SpannerWriter(spannerConfig, options.getBatchSizeForSpannerMutations());
     SpannerWriteResult spannerWriteResult =
-        writer.writeToSpanner(
+            writer.writeMutations(
             transformationResult
                 .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
-                .setCoder(SerializableCoder.of(RowContext.class)));
+                            .apply(
+                                    "ExtractMutations",
+                                    MapElements.into(TypeDescriptor.of(Mutation.class))
+                                            .via((RowContext r) -> r.mutation()))
+                            .apply("RWReshuffle", Reshuffle.viaRandomKey()));
+
     PCollection<MutationGroup> failedMutations = spannerWriteResult.getFailedMutations();
 
     String outputDirectory = options.getOutputDirectory();
