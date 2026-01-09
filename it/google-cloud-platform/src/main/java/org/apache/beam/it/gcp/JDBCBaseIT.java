@@ -150,6 +150,12 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
       basePath =
           basePath.replace(new String(new byte[] {27, 91, 48, 109}, StandardCharsets.UTF_8), "");
 
+      // Split by newline and take the last line.
+      // The mvn command output can sometimes include unrelated JVM warnings mixed with the actual
+      // output. The actual path is expected to be the last line in the output.
+      String[] lines = basePath.split("\\r?\\n");
+      basePath = lines[lines.length - 1].trim();
+
       inStream.close();
 
       return basePath;

@@ -593,7 +593,6 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
-              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
