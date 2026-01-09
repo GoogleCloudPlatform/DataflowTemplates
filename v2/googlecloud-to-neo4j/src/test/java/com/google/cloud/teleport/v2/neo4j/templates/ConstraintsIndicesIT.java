@@ -37,7 +37,8 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -45,34 +46,30 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 public abstract class ConstraintsIndicesIT extends TemplateTestBase {
-  private Neo4jResourceManager neo4jClient;
-
-  protected abstract String neo4jTagName();
-
-  protected abstract boolean dynamicDatabase();
+  protected abstract Neo4jResourceManager getNeo4jClient();
 
   protected abstract boolean supportsNodeKeyConstraints();
 
   protected abstract boolean supportsRelationshipKeyConstraints();
 
-  @Before
-  public void setup() {
-    neo4jClient =
-        Neo4jResourceManager.builder(testName)
-            .setDatabaseName(dynamicDatabase() ? null : "neo4j")
-            .setAdminPassword("letmein!")
-            .setHost(TestProperties.hostIp())
-            .setContainerImageTag(neo4jTagName())
-            .build();
+  protected static Neo4jResourceManager setupClient(
+      String testName, String neo4jTagName, boolean dynamicDatabase) {
+    return Neo4jResourceManager.builder(testName)
+        .setDatabaseName(dynamicDatabase ? null : "neo4j")
+        .setAdminPassword("letmein!")
+        .setHost(TestProperties.hostIp())
+        .setContainerImageTag(neo4jTagName)
+        .build();
   }
 
   @After
-  public void tearDown() {
-    ResourceManagerUtils.cleanResources(neo4jClient);
+  public void cleanUp() {
+    getNeo4jClient().run("MATCH (n) DETACH DELETE n;");
   }
 
   @Test
   public void doesNotCreateExtraIndicesWhenImportingNodes() throws Exception {
+    Neo4jResourceManager neo4jClient = getNeo4jClient();
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/node-spec.json"));
     gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
@@ -111,6 +108,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
 
   @Test
   public void doesNotCreateExtraIndicesWhenImportingRelationships() throws Exception {
+    Neo4jResourceManager neo4jClient = getNeo4jClient();
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/constraints-indices/edge-spec.json"));
     gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
@@ -161,6 +159,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
 
   @Test
   public void canResetDatabase() throws Exception {
+    Neo4jResourceManager neo4jClient = getNeo4jClient();
     assertThat(
             neo4jClient.run(
                 "UNWIND range(1, 1000) AS id CREATE (n1:From {id: id})-[:CONNECTED_TO {id: id + 1000}]->(n2:To {id: id + 2000}) RETURN id"))
@@ -244,15 +243,21 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @RunWith(JUnit4.class)
   @Ignore("Has known issues to be fixed in Beam 2.57")
   public static class Neo4j5EnterpriseIT extends ConstraintsIndicesIT {
+    private static Neo4jResourceManager neo4jClient;
 
-    @Override
-    protected String neo4jTagName() {
-      return "5-enterprise";
+    @BeforeClass
+    public static void setupClass() {
+      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "5-enterprise", true);
+    }
+
+    @AfterClass
+    public static void cleanUpClass() {
+      ResourceManagerUtils.cleanResources(neo4jClient);
     }
 
     @Override
-    protected boolean dynamicDatabase() {
-      return true;
+    protected Neo4jResourceManager getNeo4jClient() {
+      return neo4jClient;
     }
 
     @Override
@@ -271,14 +276,21 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @RunWith(JUnit4.class)
   public static class Neo4j5CommunityIT extends ConstraintsIndicesIT {
 
-    @Override
-    protected String neo4jTagName() {
-      return "5";
+    private static Neo4jResourceManager neo4jClient;
+
+    @BeforeClass
+    public static void setupClass() {
+      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "5", false);
+    }
+
+    @AfterClass
+    public static void cleanUpClass() {
+      ResourceManagerUtils.cleanResources(neo4jClient);
     }
 
     @Override
-    protected boolean dynamicDatabase() {
-      return false;
+    protected Neo4jResourceManager getNeo4jClient() {
+      return neo4jClient;
     }
 
     @Override
@@ -297,14 +309,21 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @RunWith(JUnit4.class)
   public static class Neo4j44EnterpriseIT extends ConstraintsIndicesIT {
 
-    @Override
-    protected String neo4jTagName() {
-      return "4.4-enterprise";
+    private static Neo4jResourceManager neo4jClient;
+
+    @BeforeClass
+    public static void setupClass() {
+      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "4.4-enterprise", true);
+    }
+
+    @AfterClass
+    public static void cleanUpClass() {
+      ResourceManagerUtils.cleanResources(neo4jClient);
     }
 
     @Override
-    protected boolean dynamicDatabase() {
-      return true;
+    protected Neo4jResourceManager getNeo4jClient() {
+      return neo4jClient;
     }
 
     @Override
@@ -322,15 +341,21 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @TemplateIntegrationTest(GoogleCloudToNeo4j.class)
   @RunWith(JUnit4.class)
   public static class Neo4j44CommunityIT extends ConstraintsIndicesIT {
+    private static Neo4jResourceManager neo4jClient;
 
-    @Override
-    protected String neo4jTagName() {
-      return "4.4";
+    @BeforeClass
+    public static void setupClass() {
+      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "4.4", false);
+    }
+
+    @AfterClass
+    public static void cleanUpClass() {
+      ResourceManagerUtils.cleanResources(neo4jClient);
     }
 
     @Override
-    protected boolean dynamicDatabase() {
-      return false;
+    protected Neo4jResourceManager getNeo4jClient() {
+      return neo4jClient;
     }
 
     @Override
