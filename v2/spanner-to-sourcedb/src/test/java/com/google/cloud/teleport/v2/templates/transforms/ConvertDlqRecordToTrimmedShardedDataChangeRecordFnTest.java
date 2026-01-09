@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -63,17 +62,6 @@ public class ConvertDlqRecordToTrimmedShardedDataChangeRecordFnTest {
     convertDlqRecordToTrimmedShardedDataChangeRecordFn.processElement(processContext);
     record.setRetryRecord(true);
     verify(processContext, times(1)).output(eq(record));
-  }
-
-  @Test
-  public void testProcessElementWithInvalidJson() {
-    ConvertDlqRecordToTrimmedShardedDataChangeRecordFn fn =
-        new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn();
-    FailsafeElement<String, String> failsafeElement =
-        FailsafeElement.of("original", "invalid-json");
-    when(processContext.element()).thenReturn(failsafeElement);
-    fn.processElement(processContext);
-    verify(processContext, times(0)).output(any());
   }
 
   private TrimmedShardedDataChangeRecord getTrimmedDataChangeRecord(String shardId) {

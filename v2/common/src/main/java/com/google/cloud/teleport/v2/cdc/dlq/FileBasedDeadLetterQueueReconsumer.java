@@ -211,7 +211,8 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
                   outputs.get(contentTag).output(resultNode.toString());
                   reconsumedElements.inc();
                 } catch (IOException e) {
-                  LOG.error("Issue parsing JSON record {}. Skipping record.", line, e);
+                  LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
+                  throw new RuntimeException(e);
                 }
               });
       outputs.get(filesTag).output(dlqFile);

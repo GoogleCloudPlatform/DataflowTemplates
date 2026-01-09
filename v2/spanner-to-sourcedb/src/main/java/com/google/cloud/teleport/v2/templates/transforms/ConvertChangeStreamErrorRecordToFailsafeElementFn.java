@@ -20,30 +20,21 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Converts a ChangeStreamErrorRecord record to a FailsafeElement. */
 public class ConvertChangeStreamErrorRecordToFailsafeElementFn
     extends DoFn<String, FailsafeElement<String, String>> implements Serializable {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(ConvertChangeStreamErrorRecordToFailsafeElementFn.class);
   private static final Gson gson = new Gson();
 
   public ConvertChangeStreamErrorRecordToFailsafeElementFn() {}
 
   @ProcessElement
-  public void processElement(ProcessContext c) {
-    try {
-      String jsonRec = c.element();
-      ChangeStreamErrorRecord record = gson.fromJson(jsonRec, ChangeStreamErrorRecord.class);
-      FailsafeElement<String, String> failsafeElement =
-          FailsafeElement.of(record.getOriginalRecord(), record.getOriginalRecord());
-      failsafeElement.setErrorMessage(record.getErrorMessage());
-      c.output(failsafeElement);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to parse ChangeStreamErrorRecord from DLQ. Dropping record: {}", c.element(), e);
-    }
+  public void processElement(ProcessContext c) throws Exception {
+    String jsonRec = c.element();
+    ChangeStreamErrorRecord record = gson.fromJson(jsonRec, ChangeStreamErrorRecord.class);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(record.getOriginalRecord(), record.getOriginalRecord());
+    failsafeElement.setErrorMessage(record.getErrorMessage());
+    c.output(failsafeElement);
   }
 }
