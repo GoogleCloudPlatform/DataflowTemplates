@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import static com.google.cloud.teleport.v2.neo4j.templates.Connections.jsonBasicPayload;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
@@ -55,8 +57,9 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -67,22 +70,43 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataConversionIT extends TemplateTestBase {
 
-  private BigQueryResourceManager bigQueryClient;
-  private Neo4jResourceManager neo4jClient;
+  private static BigQueryResourceManager bigQueryClient;
+  private static Neo4jResourceManager neo4jClient;
+  private String databaseName;
 
-  @Before
-  public void setUp() {
-    bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+  @BeforeClass
+  public static void setUpClass() {
+    // Tests sharing an active neo4j test container
     neo4jClient =
-        Neo4jResourceManager.builder(testName)
+        Neo4jResourceManager.builder(DataConversionIT.class.getName())
             .setAdminPassword("letmein!")
             .setHost(TestProperties.hostIp())
             .build();
   }
 
-  @After
-  public void tearDown() {
-    ResourceManagerUtils.cleanResources(bigQueryClient, neo4jClient);
+  @Before
+  public void setup() {
+    databaseName = neo4jClient.createTestDatabase();
+  }
+
+  @Before
+  public void setUp() {
+    synchronized (DataConversionIT.class) {
+      if (bigQueryClient == null) {
+        bigQueryClient =
+            BigQueryResourceManager.builder(DataConversionIT.class.getName(), PROJECT, credentials)
+                .build();
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    if (bigQueryClient == null) {
+      ResourceManagerUtils.cleanResources(neo4jClient);
+    } else {
+      ResourceManagerUtils.cleanResources(bigQueryClient, neo4jClient);
+    }
   }
 
   // NOTE: BIGNUMERIC, GEOGRAPHY, JSON and INTERVAL BigQuery column types are not supported by Beam
@@ -134,7 +158,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -192,7 +216,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -227,7 +251,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -272,7 +296,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -320,7 +344,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -339,6 +363,7 @@ public class DataConversionIT extends TemplateTestBase {
                 createConfig(info),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery("MATCH (n:Node) RETURN n {.*} as properties")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("properties", Map.of("int64", "1"))))
                     .build());
     assertThatResult(result).meetsConditions();
@@ -360,7 +385,8 @@ public class DataConversionIT extends TemplateTestBase {
                   protected CheckResult check() {
                     var result =
                         neo4jClient.run(
-                            String.format("MATCH (n) RETURN n.`%s` AS prop", e.getKey()));
+                            String.format("MATCH (n) RETURN n.`%s` AS prop", e.getKey()),
+                            databaseName);
                     if (result.isEmpty()) {
                       return new CheckResult(false, "not persisted yet");
                     }
@@ -374,6 +400,335 @@ public class DataConversionIT extends TemplateTestBase {
                   }
                 })
         .toArray(Supplier[]::new);
+  }
+
+  @Test
+  public void escapesFieldNamesForBigQuery() throws Exception {
+    TableId table =
+        bigQueryClient.createTable(
+            testName,
+            Schema.of(
+                Field.newBuilder("select", StandardSQLTypeName.STRING).build(),
+                Field.newBuilder("age", StandardSQLTypeName.INT64).build()));
+    Map<String, Object> sourceRow = new HashMap<>();
+    sourceRow.put("select", "john");
+    sourceRow.put("age", 23L);
+    bigQueryClient.write(testName, List.of(InsertAllRequest.RowToInsert.of(sourceRow)));
+    gcsClient.createArtifact("spec.json", contentOf("/testing-specs/escaping/bq-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson", String.format("{\"bqtable\": \"%s\"}", toTableSpecStandard(table)));
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("select", "john");
+    expectedRow.put("where", 1L);
+    assertThatPipeline(info).isRunning();
+
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
+                        .setExpectedResult(
+                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
+                        .build()))
+        .meetsConditions();
+  }
+
+  @Test
+  public void escapesFieldNamesForInlineCSV() throws Exception {
+    gcsClient.createArtifact("spec.json", contentOf("/testing-specs/escaping/inlinecsv-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("select", "john");
+    expectedRow.put("where", 1L);
+    assertThatPipeline(info).isRunning();
+
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
+                        .setExpectedResult(
+                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
+                        .build()))
+        .meetsConditions();
+  }
+
+  @Test
+  public void escapesFieldsNamesForExternalCSV() throws Exception {
+    gcsClient.createArtifact("external.csv", contentOf("/testing-specs/escaping/external.csv"));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/escaping/externalcsv-spec.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson",
+                String.format("{\"externalcsvuri\": \"%s\"}", getGcsPath("external.csv")));
+
+    LaunchInfo info = launchTemplate(options);
+
+    Map<String, Object> expectedRow = new HashMap<>();
+    expectedRow.put("select", "john");
+    expectedRow.put("where", 1L);
+    assertThatPipeline(info).isRunning();
+
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
+                        .setExpectedResult(
+                            List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
+                        .build()))
+        .meetsConditions();
+  }
+
+  @Test
+  // TODO: generate bigquery data set once import-spec supports value interpolation
+  public void importsStackoverflowUsers() throws IOException {
+    String spec = contentOf("/testing-specs/synthetic-fields/spec.yml");
+    gcsClient.createArtifact("spec.yml", spec);
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.yml"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j-connection.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery("MATCH (u:User) RETURN count(u) AS count")
+                    .setDatabaseName(databaseName)
+                    .setExpectedResult(List.of(Map.of("count", 10L)))
+                    .build(),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "MATCH (l:Letter) WITH DISTINCT toUpper(l.char) AS char ORDER BY char ASC RETURN collect(char) AS chars")
+                    .setDatabaseName(databaseName)
+                    .setExpectedResult(
+                        List.of(Map.of("chars", List.of("A", "C", "G", "I", "J", "T", "W"))))
+                    .build());
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void mapsBooleanPropertiesFromInlineTextSource() throws Exception {
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/property-mappings/booleans-text-spec.json"));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"));
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    assertBooleansArePersisted(info);
+  }
+
+  @Test
+  public void mapsBooleanPropertiesFromBigQuery() throws Exception {
+    TableId table =
+        bigQueryClient.createTable(
+            testName,
+            Schema.of(
+                Field.newBuilder("id", StandardSQLTypeName.STRING).build(),
+                Field.newBuilder("truthy", StandardSQLTypeName.BOOL).build()));
+    bigQueryClient.write(
+        testName,
+        List.of(
+            RowToInsert.of(Map.of("id", "bool-1", "truthy", false)),
+            RowToInsert.of(Map.of("id", "bool-2", "truthy", true)),
+            RowToInsert.of(Map.of("id", "bool-3", "truthy", true)),
+            RowToInsert.of(Map.of("id", "bool-4", "truthy", false))));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/property-mappings/booleans-bq-spec.json"));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter(
+                "optionsJson", String.format("{\"bqtable\": \"%s\"}", toTableSpecStandard(table)));
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    assertBooleansArePersisted(info);
+  }
+
+  @Test
+  public void importsNodesWithLabelNamedSameAsSourceField() throws IOException {
+
+    TableId table =
+        bigQueryClient.createTable(
+            testName,
+            Schema.of(
+                Field.newBuilder("Station", StandardSQLTypeName.STRING).build(),
+                Field.newBuilder("Zone", StandardSQLTypeName.INT64).build(),
+                Field.newBuilder("Latitude", StandardSQLTypeName.FLOAT64).build(),
+                Field.newBuilder("Longitude", StandardSQLTypeName.FLOAT64).build()));
+    bigQueryClient.write(
+        testName,
+        List.of(
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-1",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-2",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-3",
+                    "Zone",
+                    1,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912)),
+            RowToInsert.of(
+                Map.of(
+                    "Station",
+                    "station-4",
+                    "Zone",
+                    2,
+                    "Latitude",
+                    51.51434226,
+                    "Longitude",
+                    -0.075626912))));
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/property-mappings/mapping-clash-bq-spec.json"));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
+
+    LaunchInfo info =
+        launchTemplate(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter("jobSpecUri", getGcsPath("spec.json"))
+                .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+                .addParameter(
+                    "optionsJson",
+                    String.format("{\"bqtable\": \"%s\"}", toTableSpecStandard(table))));
+
+    assertThatPipeline(info).isRunning();
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery("MATCH (n:Station) RETURN count(n) AS count")
+                        .setDatabaseName(databaseName)
+                        .setExpectedResult(List.of(Map.of("count", 4L)))
+                        .build()))
+        .meetsConditions();
+  }
+
+  private void assertBooleansArePersisted(LaunchInfo info) throws IOException {
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(info),
+                    Neo4jQueryCheck.builder(neo4jClient)
+                        .setQuery(
+                            "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props ORDER BY n.id ASC")
+                        .setDatabaseName(databaseName)
+                        .setExpectedResult(
+                            List.of(
+                                Map.of(
+                                    "labels",
+                                    List.of("Boolean"),
+                                    "props",
+                                    Map.of("id", "bool-1", "truthy", false)),
+                                Map.of(
+                                    "labels",
+                                    List.of("Boolean"),
+                                    "props",
+                                    Map.of("id", "bool-2", "truthy", true)),
+                                Map.of(
+                                    "labels",
+                                    List.of("Boolean"),
+                                    "props",
+                                    Map.of("id", "bool-3", "truthy", true)),
+                                Map.of(
+                                    "labels",
+                                    List.of("Boolean"),
+                                    "props",
+                                    Map.of("id", "bool-4", "truthy", false))))
+                        .build()))
+        .meetsConditions();
   }
 
   private String contentOf(String resourcePath) throws IOException {
