@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
@@ -52,9 +53,8 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testGetDMLStatement_NullRequest() {
-    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(null);
-    assertNotNull(response);
-    assertEquals("", response.getDmlStatement());
+    assertThrows(
+        InvalidDMLGenerationException.class, () -> cassandraDMLGenerator.getDMLStatement(null));
   }
 
   @Test
@@ -62,9 +62,9 @@ public class CassandraDMLGeneratorTest {
     DMLGeneratorRequest dmlGeneratorRequest =
         new DMLGeneratorRequest.Builder("insert", "text", null, null, null).build();
 
-    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest);
-    assertNotNull(response);
-    assertEquals("", response.getDmlStatement());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () -> cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest));
   }
 
   @Test
@@ -251,17 +251,17 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SomeRandomName\":\"999\"}");
     String modType = "INSERT";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -275,17 +275,17 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"musicId\":\"999\"}");
     String modType = "INSERT";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -720,17 +720,17 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "DELETE";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -778,17 +778,17 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "JUNK";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -836,17 +836,17 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "DELETE";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -860,16 +860,16 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "INSERT";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setCommitTimestamp(Timestamp.now())
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            cassandraDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 }

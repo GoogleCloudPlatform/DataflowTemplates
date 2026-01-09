@@ -21,6 +21,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import java.sql.SQLDataException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
@@ -47,6 +48,7 @@ public class SpannerToSourceDbExceptionClassifier {
       return classifySpannerException(e);
     } else if (exception instanceof ChangeEventConvertorException
         || exception instanceof IllegalArgumentException
+        || exception instanceof InvalidDMLGenerationException
         || exception instanceof NullPointerException) {
       return Constants.PERMANENT_ERROR_TAG;
     }
@@ -61,7 +63,8 @@ public class SpannerToSourceDbExceptionClassifier {
     Throwable cause = exception.getCause();
 
     if (cause instanceof InvalidTransformationException
-        || cause instanceof ChangeEventConvertorException) {
+        || cause instanceof ChangeEventConvertorException
+        || cause instanceof InvalidDMLGenerationException) {
       return Constants.PERMANENT_ERROR_TAG;
     } else if (cause instanceof CodecNotFoundException
         || cause instanceof SQLSyntaxErrorException
