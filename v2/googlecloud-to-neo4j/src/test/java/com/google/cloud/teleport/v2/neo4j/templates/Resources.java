@@ -18,33 +18,19 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.beam.it.neo4j.Neo4jResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class Resources {
+
+  private static final Logger LOG = LoggerFactory.getLogger(Resources.class);
 
   public static String contentOf(String resourcePath) throws IOException {
     try (BufferedReader bufferedReader =
         new BufferedReader(
             new InputStreamReader(Resources.class.getResourceAsStream(resourcePath)))) {
       return bufferedReader.lines().collect(Collectors.joining("\n"));
-    }
-  }
-
-  // TODO: move this to neo4j resource manager in Beam
-  public static void cleanUpDataBase(Neo4jResourceManager neo4jClient) {
-    neo4jClient.run("MATCH (n) DETACH DELETE n;");
-    List<Map<String, Object>> results = neo4jClient.run("SHOW CONSTRAINTS YIELD name");
-    for (Map<String, Object> result : results) {
-      String name = (String) result.get("name");
-      neo4jClient.run("DROP CONSTRAINT " + name);
-    }
-    results = neo4jClient.run("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' ");
-    for (Map<String, Object> result : results) {
-      String name = (String) result.get("name");
-      neo4jClient.run("DROP INDEX " + name);
     }
   }
 }

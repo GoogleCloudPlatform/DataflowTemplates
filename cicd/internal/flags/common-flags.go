@@ -35,7 +35,9 @@ var (
 	modulesToBuild string
 	moduleMap      = map[string][]string{
 		ALL:     {},
-		DEFAULT: {},
+		DEFAULT: {"plugins/templates-maven-plugin",
+			"v2/googlecloud-to-neo4j/",
+		},
 		KAFKA: {"v2/kafka-common/",
 			"v2/kafka-to-bigquery/",
 			"v2/kafka-to-gcs/",
@@ -75,20 +77,7 @@ func RegisterCommonFlags() {
 // Returns all modules to build.
 func ModulesToBuild() []string {
 	m := modulesToBuild
-	if m == "DEFAULT" {
-		// "DEFAULT" is "ALL" minus other modules defined in moduleMap
-		var s []string
-		for k, v := range moduleMap {
-			if k != "ALL" && k != "DEFAULT" {
-				for _, n := range v {
-					if !(strings.HasPrefix(n, "plugins/") || strings.Contains(n, "common/")) {
-						s = append(s, "!"+n)
-					}
-				}
-			}
-		}
-		return s
-	} else if val, ok := moduleMap[modulesToBuild]; ok {
+	if val, ok := moduleMap[modulesToBuild]; ok {
 		return val
 	}
 	if len(m) == 0 {

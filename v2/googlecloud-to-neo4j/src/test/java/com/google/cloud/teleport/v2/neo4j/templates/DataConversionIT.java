@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.neo4j.templates;
 
 import static com.google.cloud.teleport.v2.neo4j.templates.Connections.jsonBasicPayload;
-import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -58,7 +57,6 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -74,6 +72,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   private static BigQueryResourceManager bigQueryClient;
   private static Neo4jResourceManager neo4jClient;
+  private String databaseName;
 
   @BeforeClass
   public static void setUpClass() {
@@ -86,6 +85,11 @@ public class DataConversionIT extends TemplateTestBase {
   }
 
   @Before
+  public void setup() {
+    databaseName = neo4jClient.createTestDatabase();
+  }
+
+  @Before
   public void setUp() {
     synchronized (DataConversionIT.class) {
       if (bigQueryClient == null) {
@@ -94,11 +98,6 @@ public class DataConversionIT extends TemplateTestBase {
                 .build();
       }
     }
-  }
-
-  @After
-  public void cleanUp() {
-    Resources.cleanUpDataBase(neo4jClient);
   }
 
   @AfterClass
@@ -159,7 +158,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -217,7 +216,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -252,7 +251,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -297,7 +296,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -345,7 +344,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -364,6 +363,7 @@ public class DataConversionIT extends TemplateTestBase {
                 createConfig(info),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery("MATCH (n:Node) RETURN n {.*} as properties")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("properties", Map.of("int64", "1"))))
                     .build());
     assertThatResult(result).meetsConditions();
@@ -385,7 +385,8 @@ public class DataConversionIT extends TemplateTestBase {
                   protected CheckResult check() {
                     var result =
                         neo4jClient.run(
-                            String.format("MATCH (n) RETURN n.`%s` AS prop", e.getKey()));
+                            String.format("MATCH (n) RETURN n.`%s` AS prop", e.getKey()),
+                            databaseName);
                     if (result.isEmpty()) {
                       return new CheckResult(false, "not persisted yet");
                     }
@@ -424,7 +425,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -445,6 +446,7 @@ public class DataConversionIT extends TemplateTestBase {
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(
                             List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
                         .build()))
@@ -464,7 +466,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -483,6 +485,7 @@ public class DataConversionIT extends TemplateTestBase {
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(
                             List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
                         .build()))
@@ -504,7 +507,7 @@ public class DataConversionIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -527,6 +530,7 @@ public class DataConversionIT extends TemplateTestBase {
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(
                             List.of(Map.of("labels", List.of("Node"), "props", expectedRow)))
                         .build()))
@@ -538,7 +542,7 @@ public class DataConversionIT extends TemplateTestBase {
   public void importsStackoverflowUsers() throws IOException {
     String spec = contentOf("/testing-specs/synthetic-fields/spec.yml");
     gcsClient.createArtifact("spec.yml", spec);
-    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -552,11 +556,13 @@ public class DataConversionIT extends TemplateTestBase {
                 createConfig(info),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery("MATCH (u:User) RETURN count(u) AS count")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("count", 10L)))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH (l:Letter) WITH DISTINCT toUpper(l.char) AS char ORDER BY char ASC RETURN collect(char) AS chars")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(Map.of("chars", List.of("A", "C", "G", "I", "J", "T", "W"))))
                     .build());
@@ -567,7 +573,7 @@ public class DataConversionIT extends TemplateTestBase {
   public void mapsBooleanPropertiesFromInlineTextSource() throws Exception {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/property-mappings/booleans-text-spec.json"));
-    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -596,7 +602,7 @@ public class DataConversionIT extends TemplateTestBase {
             RowToInsert.of(Map.of("id", "bool-4", "truthy", false))));
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/property-mappings/booleans-bq-spec.json"));
-    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -666,7 +672,7 @@ public class DataConversionIT extends TemplateTestBase {
                     -0.075626912))));
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/property-mappings/mapping-clash-bq-spec.json"));
-    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchInfo info =
         launchTemplate(
@@ -684,6 +690,7 @@ public class DataConversionIT extends TemplateTestBase {
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n:Station) RETURN count(n) AS count")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(List.of(Map.of("count", 4L)))
                         .build()))
         .meetsConditions();
@@ -697,6 +704,7 @@ public class DataConversionIT extends TemplateTestBase {
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery(
                             "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props ORDER BY n.id ASC")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(
                             List.of(
                                 Map.of(

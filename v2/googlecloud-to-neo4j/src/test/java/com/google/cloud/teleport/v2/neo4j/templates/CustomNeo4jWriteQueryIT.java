@@ -32,8 +32,8 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
-import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -45,6 +45,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   private static Neo4jResourceManager neo4jClient;
+  private String databaseName;
 
   @BeforeClass
   public static void setUpClass() {
@@ -56,9 +57,9 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
             .build();
   }
 
-  @After
-  public void cleanUp() {
-    Resources.cleanUpDataBase(neo4jClient);
+  @Before
+  public void setup() {
+    databaseName = neo4jClient.createTestDatabase();
   }
 
   @AfterClass
@@ -80,7 +81,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 + "  \"username\": \"neo4j\",\n"
                 + "  \"pwd\": \"%s\"\n"
                 + "}",
-            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+            neo4jClient.getUri(), databaseName, neo4jClient.getAdminPassword()));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -96,6 +97,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -106,6 +108,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC, labels ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("labels", List.of("Customer"), "count", 1L),
@@ -114,6 +117,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("relType", ":`SOLD`", "propertyNames", List.of("productId"))))
@@ -121,6 +125,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("type", "SOLD", "count", 2L)))
                     .build());
     assertThatResult(result).meetsConditions();
@@ -131,7 +136,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
     String spec =
         contentOf("/testing-specs/inline-data/northwind-jobspec-single-pass-merge-all.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
-    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -147,6 +152,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -163,6 +169,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("labels", List.of("Customer"), "count", 7L),
@@ -171,6 +178,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("relType", ":`PURCHASES`", "propertyNames", List.of("orderId"))))
@@ -178,11 +186,13 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 87L)))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "SHOW CONSTRAINTS YIELD type, entityType, labelsOrTypes, properties RETURN *")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -216,7 +226,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
             // merge mode for rel nodes, means the nodes will be created only once
             "/testing-specs/inline-data/northwind-subset-jobspec-single-pass-create-edge-merge-nodes.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
-    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -232,6 +242,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -248,6 +259,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("labels", List.of("Customer"), "count", 1L),
@@ -256,6 +268,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("relType", ":`PURCHASES`", "propertyNames", List.of("orderId"))))
@@ -263,11 +276,13 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 2L)))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "SHOW CONSTRAINTS YIELD type, entityType, labelsOrTypes, properties RETURN *")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -296,7 +311,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   public void importsInlineDataToNeo4J() throws IOException {
     String spec = contentOf("/testing-specs/inline-data/northwind-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
-    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -317,6 +332,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                             + "ORDER BY nodeLabels, propertyName "
                             + "RETURN nodeLabels, collect(propertyName) AS propertyNames "
                             + "ORDER BY nodeLabels ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -333,6 +349,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH (n) RETURN labels(n) AS labels, count(n) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("labels", List.of("Customer"), "count", 7L),
@@ -346,6 +363,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                             + "ORDER BY relType, propertyName "
                             + "RETURN relType, collect(propertyName) AS propertyNames "
                             + "ORDER BY relType ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
@@ -357,6 +375,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
                         "MATCH ()-[r]->() RETURN type(r) AS type, count(r) AS count ORDER BY count ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(List.of(Map.of("type", "PURCHASES", "count", 97L)))
                     .build());
     assertThatResult(result).meetsConditions();
@@ -366,7 +385,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   public void importsMovieGraphFromInlineData() throws IOException {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/import-spec/movie-import/spec.json"));
-    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -381,18 +400,22 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                     createConfig(info),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n:Person) RETURN count(n) AS count")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(List.of(Map.of("count", 4L)))
                         .build(),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (n:Movie) RETURN count(n) AS count")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(List.of(Map.of("count", 2L)))
                         .build(),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (:Person)-[r:ACTED_IN]->(:Movie) RETURN count(r) AS count")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(List.of(Map.of("count", 2L)))
                         .build(),
                     Neo4jQueryCheck.builder(neo4jClient)
                         .setQuery("MATCH (:Person)-[r:DIRECTED]->(:Movie) RETURN count(r) AS count")
+                        .setDatabaseName(databaseName)
                         .setExpectedResult(List.of(Map.of("count", 2L)))
                         .build()))
         .meetsConditions();
@@ -401,7 +424,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   @Test
   public void allowsSameKeyNamesAcrossRelationshipsAndNodes() throws IOException {
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/validation/spec.json"));
-    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient));
+    gcsClient.createArtifact("neo4j.json", jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -417,6 +440,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
                         "MATCH (p:Person)-[l:LIKES]->(f:Food) "
                             + "RETURN l.id AS likeId, l.rating AS rating, p.id AS personId, f.id AS foodId "
                             + "ORDER BY likeId ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of(
