@@ -64,7 +64,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
 
   @After
   public void cleanUp() {
-    getNeo4jClient().run("MATCH (n) DETACH DELETE n;");
+    Resources.cleanUpDataBase(getNeo4jClient());
   }
 
   @Test

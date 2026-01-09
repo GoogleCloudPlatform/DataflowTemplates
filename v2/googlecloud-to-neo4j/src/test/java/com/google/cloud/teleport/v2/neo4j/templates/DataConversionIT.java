@@ -98,7 +98,7 @@ public class DataConversionIT extends TemplateTestBase {
 
   @After
   public void cleanUp() {
-    neo4jClient.run("MATCH (n) DETACH DELETE n;");
+    Resources.cleanUpDataBase(neo4jClient);
   }
 
   @AfterClass
