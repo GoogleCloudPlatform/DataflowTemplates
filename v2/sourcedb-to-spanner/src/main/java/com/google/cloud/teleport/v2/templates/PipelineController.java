@@ -161,7 +161,7 @@ public class PipelineController {
           spannerTables.stream()
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
-      LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      LOG.info("level: {} source tables: {}", currentLevel, sourceTables);
       PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
       if (currentLevel > 0 && previousLevelPCollection == null) {
         LOG.warn(
