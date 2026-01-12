@@ -24,7 +24,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -132,12 +131,6 @@ public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
                 .setAllowedTables(Map.of(mySQLResourceManager.getDatabaseName(), TABLES))
                 .build();
 
-        ADDITIONAL_JOB_PARAMS.putAll(
-            new HashMap<>() {
-              {
-                put("dlqMaxRetryCount", "1");
-              }
-            });
         LOG.info("Launching Dataflow job...");
         jobInfo =
             launchDataflowJob(
@@ -147,7 +140,7 @@ public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
                 "datastream-to-pg-dialect-spanner-table-and-index-limits",
                 spannerResourceManager,
                 pubsubResourceManager,
-                new HashMap<>(),
+                Map.of("dlqMaxRetryCount", "1"),
                 null,
                 null,
                 gcsResourceManager,

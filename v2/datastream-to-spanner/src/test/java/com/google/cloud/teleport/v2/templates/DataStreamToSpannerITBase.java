@@ -64,7 +64,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
 
-  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
   public static final int CUTOVER_MILLIS = 30 * 1000;
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
@@ -356,8 +355,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     } else {
       params.put("datastreamSourceType", "mysql");
     }
-
-    params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (jdbcSource != null) {
       LOG.info("JDBC source provided. Creating Datastream stream...");
