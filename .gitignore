@@ -26,3 +26,6 @@
 **/*.tfstate
 **/*.tfstate.backup
 **/.terraform*
+
+# Derby log
+**/derby.log*
