@@ -43,8 +43,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r test-infra/requirements.txt
       - name: Run cleanup_pubsub_notifications.py
+        # There could be pubsub notifications created by tests other than Spanner tests and hence not removing and
+        # keeping the pubsub notification cleanup on the main project.
         run: python test-infra/cleanup_pubsub_notifications.py --project cloud-teleport-testing
       - name: Run cleanup_spanner_databases.py
+        # The Spanner databases are created in Spanner Import/Export tests which are in the main project and not moved
+        # to the new project and hence not removing and keeping the spanner database cleanup on the main project.
         run: python test-infra/cleanup_spanner_databases.py --project cloud-teleport-testing
       - name: Run delete_spanner_instances.sh
         run: bash test-infra/delete_spanner_instances.sh

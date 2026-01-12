@@ -670,27 +670,22 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      // If it is IT test project and the IT test instance, then choose an instance randomly from
-      // static list
-      if (Objects.equals(projectId, "cloud-teleport-testing")
-          || Objects.equals(projectId, "span-cloud-teleport-testing")) {
-        if (Strings.isNullOrEmpty(System.getProperty("spannerInstanceId"))
-            || Objects.equals(System.getProperty("spannerInstanceId"), "teleport")) {
-          this.useStaticInstance = true;
-          List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
-          Random random = new Random();
-          int randomIndex = random.nextInt(instanceList.size());
-          String randomInstanceName = instanceList.get(randomIndex);
-          this.instanceId = randomInstanceName;
-          return this;
-        }
-      }
+      String spannerInstanceId = System.getProperty("spannerInstanceId");
+      boolean isTestProject =
+          Objects.equals(projectId, "cloud-teleport-testing")
+              || Objects.equals(projectId, "span-cloud-teleport-testing");
+      boolean shouldPickRandomInstance =
+          Strings.isNullOrEmpty(spannerInstanceId) || Objects.equals(spannerInstanceId, "teleport");
 
-      // Else read from the system property
-      if (System.getProperty("spannerInstanceId") != null) {
+      if (isTestProject && shouldPickRandomInstance) {
         this.useStaticInstance = true;
-        this.instanceId = System.getProperty("spannerInstanceId");
+        List<String> staticInstanceList = TestConstants.SPANNER_TEST_INSTANCES;
+        this.instanceId = staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+      } else if (spannerInstanceId != null) {
+        this.useStaticInstance = true;
+        this.instanceId = spannerInstanceId;
       }
+      // Else useStaticInstance would remain false and a new Spanner test instance would be created.
       return this;
     }
 
