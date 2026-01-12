@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.astradb.templates;
 
+import com.datastax.astra.sdk.db.DatabaseClient;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.db.DatabaseClient;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.BigQuery;

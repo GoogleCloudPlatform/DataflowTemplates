@@ -22,9 +22,9 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
 
+import com.datastax.astra.sdk.db.DatabaseClient;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
-import com.dtsx.astra.sdk.db.DatabaseClient;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -113,7 +113,7 @@ public class CassandraConnectorTest {
         mockConstruction(
             DatabaseClient.class,
             (mock, context) -> {
-              when(mock.exist()).thenReturn(true);
+              when(mock.exists()).thenReturn(true);
               when(mock.downloadSecureConnectBundle(testAstraDbRegion))
                   .thenReturn(testAstraDbSecureBundle.get());
             })) {

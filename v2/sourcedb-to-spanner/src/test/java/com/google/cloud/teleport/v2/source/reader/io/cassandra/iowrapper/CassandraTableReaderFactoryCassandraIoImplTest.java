@@ -33,12 +33,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.astra.sdk.db.DatabaseClient;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
-import com.dtsx.astra.sdk.db.DatabaseClient;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;

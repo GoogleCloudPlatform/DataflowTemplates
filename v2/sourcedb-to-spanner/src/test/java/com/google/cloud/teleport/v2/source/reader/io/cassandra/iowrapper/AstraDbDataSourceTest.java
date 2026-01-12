@@ -21,7 +21,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.datastax.astra.sdk.db.DatabaseClient;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.exception.AstraDBNotFoundException;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import org.junit.Test;
@@ -48,7 +48,7 @@ public class AstraDbDataSourceTest {
         mockConstruction(
             DatabaseClient.class,
             (mock, context) -> {
-              when(mock.exist()).thenReturn(true);
+              when(mock.exists()).thenReturn(true);
               when(mock.downloadSecureConnectBundle(testRegion))
                   .thenReturn(testSecureBundleWithRegion);
               when(mock.downloadDefaultSecureConnectBundle())
@@ -90,7 +90,7 @@ public class AstraDbDataSourceTest {
           mockConstruction(
               DatabaseClient.class,
               (mock, context) -> {
-                when(mock.exist()).thenReturn(true);
+                when(mock.exists()).thenReturn(true);
                 when(mock.downloadSecureConnectBundle(testRegion))
                     .thenReturn(testSecureBundleWithRegion);
               })) {
@@ -127,7 +127,7 @@ public class AstraDbDataSourceTest {
         mockConstruction(
             DatabaseClient.class,
             (mock, context) -> {
-              when(mock.exist()).thenReturn(false);
+              when(mock.exists()).thenReturn(false);
               when(mock.downloadSecureConnectBundle(testRegion))
                   .thenReturn(testSecureBundleWithRegion);
               when(mock.downloadDefaultSecureConnectBundle())

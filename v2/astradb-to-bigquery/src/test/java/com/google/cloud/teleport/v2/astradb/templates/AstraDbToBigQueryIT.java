@@ -18,13 +18,13 @@ package com.google.cloud.teleport.v2.astradb.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.datastax.astra.sdk.db.AstraDatabasesClient;
+import com.datastax.astra.sdk.db.DatabaseClient;
+import com.datastax.astra.sdk.db.domain.Database;
+import com.datastax.astra.sdk.db.domain.DatabaseCreationRequest;
+import com.datastax.astra.sdk.db.domain.DatabaseStatusType;
+import com.datastax.astra.sdk.utils.ApiLocator;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.db.AstraDbClient;
-import com.dtsx.astra.sdk.db.DatabaseClient;
-import com.dtsx.astra.sdk.db.domain.Database;
-import com.dtsx.astra.sdk.db.domain.DatabaseCreationRequest;
-import com.dtsx.astra.sdk.db.domain.DatabaseStatusType;
-import com.dtsx.astra.sdk.utils.ApiLocator;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.ByteArrayInputStream;
@@ -136,7 +136,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   @SuppressWarnings("BusyWait")
   private void createOrResumeAstraDatabase() throws InterruptedException {
-    AstraDbClient databasesClient = new AstraDbClient(test());
+    AstraDatabasesClient databasesClient = new AstraDatabasesClient(test());
     if (databasesClient.findByName(ASTRA_DB).findAny().isEmpty()) {
       LOGGER.debug("Create a new Database {}", ASTRA_DB);
       databasesClient.create(
@@ -148,7 +148,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
     } else {
       LOGGER.debug("Database {} exists in source organization", ASTRA_DB);
     }
-    dbClient = databasesClient.databaseByName(ASTRA_DB);
+    dbClient = databasesClient.databaseByName(ASTRA_DB).orElseThrow();
     if (dbClient.get().getStatus() == DatabaseStatusType.HIBERNATED) {
       resumeDb(dbClient.get());
       LOGGER.debug("Resuming as DB was Hibernated");
