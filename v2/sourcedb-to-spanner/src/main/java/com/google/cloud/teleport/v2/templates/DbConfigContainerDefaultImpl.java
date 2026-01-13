@@ -34,7 +34,8 @@ public final class DbConfigContainerDefaultImpl implements DbConfigContainer {
 
   /** Create an {@link IoWrapper} instance for a list of SourceTables. */
   @Override
-  public IoWrapper getIOWrapper(List<String> sourceTables, OnSignal<?> waitOnSignal) {
+  public IoWrapper getIOWrapper(
+      List<String> sourceTables, OnSignal<?> waitOnSignal, ISchemaMapper schemaMapper) {
     return this.ioWrapperFactory.getIOWrapper(sourceTables, waitOnSignal);
   }
 

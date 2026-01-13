@@ -29,7 +29,7 @@ public class SchemaFileOverrideTest {
   public void testGetRenamedTables() {
     Map<String, String> renamedTables = new HashMap<>();
     renamedTables.put("Lorem", "Epsum");
-    schemaFileOverride = new SchemaFileOverride(renamedTables, null);
+    schemaFileOverride = new SchemaFileOverride(renamedTables, null, null);
     assertEquals(renamedTables, schemaFileOverride.getRenamedTables());
   }
 
@@ -39,7 +39,7 @@ public class SchemaFileOverrideTest {
     Map<String, String> tableColumnMap = new HashMap<>();
     tableColumnMap.put("Lorem", "Epsum");
     renamedColumns.put("table1", tableColumnMap);
-    schemaFileOverride = new SchemaFileOverride(null, renamedColumns);
+    schemaFileOverride = new SchemaFileOverride(null, renamedColumns, null);
     assertEquals(renamedColumns, schemaFileOverride.getRenamedColumnTupleMap());
   }
 }

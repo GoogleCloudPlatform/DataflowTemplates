@@ -58,7 +58,11 @@ public class OptionsToConfigBuilderTest {
     pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-            sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
+            sourceDbToSpannerOptions,
+            List.of("table1", "table2"),
+            null,
+            Wait.on(dummyPCollection),
+            null);
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
@@ -73,7 +77,8 @@ public class OptionsToConfigBuilderTest {
                     sourceDbToSpannerOptions,
                     List.of("table1", "table2"),
                     null,
-                    Wait.on(dummyPCollection))
+                    Wait.on(dummyPCollection),
+                    null)
                 .maxFetchSize())
         .isEqualTo(42);
   }
@@ -101,7 +106,8 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null);
 
     JdbcIOWrapperConfig configWithoutConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
@@ -122,7 +128,8 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null);
 
     assertThat(configWithConnectionProperties.sourceDbURL())
         .isEqualTo(
@@ -155,7 +162,8 @@ public class OptionsToConfigBuilderTest {
             sourceDbToSpannerOptions,
             List.of("table1", "table2", "table3"),
             null,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?currentSchema=public");
     assertThat(config.tables())
@@ -188,7 +196,8 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null);
     JdbcIOWrapperConfig configWithoutConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
@@ -208,7 +217,8 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            -1L);
+            -1L,
+            null);
     assertThat(configWithoutConnectionParameters.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public");
     assertThat(configWithConnectionParameters.sourceDbURL())
@@ -240,7 +250,8 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null);
     assertThat(configWithNamespace.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
   }
@@ -256,7 +267,7 @@ public class OptionsToConfigBuilderTest {
         RuntimeException.class,
         () ->
             OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                sourceDbToSpannerOptions, new ArrayList<>(), null, null));
+                sourceDbToSpannerOptions, new ArrayList<>(), null, null, null));
   }
 
   @Test

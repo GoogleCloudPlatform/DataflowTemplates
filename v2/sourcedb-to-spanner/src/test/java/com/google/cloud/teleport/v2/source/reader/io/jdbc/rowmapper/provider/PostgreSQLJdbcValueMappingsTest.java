@@ -30,7 +30,7 @@ public class PostgreSQLJdbcValueMappingsTest {
     PostgreSQLJdbcValueMappings mappings = new PostgreSQLJdbcValueMappings();
     for (String typeName : mappings.getMappings().keySet()) {
       SourceColumnType sourceColumnType = new SourceColumnType(typeName, new Long[] {10L}, null);
-      int size = mappings.guessColumnSize(sourceColumnType);
+      int size = mappings.estimateColumnSize(sourceColumnType);
       assertTrue("Row size estimate for type " + typeName + " should be > 0", size > 0);
     }
   }

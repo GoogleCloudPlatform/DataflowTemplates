@@ -22,8 +22,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetVal
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
@@ -114,6 +114,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    */
   static final Pattern TIME_STRING_PATTERN =
       Pattern.compile("^(-)?(\\d+):(\\d+):(\\d+)(\\.(\\d+))?$");
+
   /**
    * DEPRECATED: Unified type interval is no longer utilized for MySQL. However, this can be reused
    * for Postgres, whenever the support is added. Map Time type to {@link Interval#SCHEMA}. Note
@@ -322,7 +323,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
                 long m = getLengthOrPrecision(sourceColumnType);
                 // NUMERIC(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
                 // string (+2 for sign and decimal point)
-                // Max number of digits in decimal is 65. Ref:
+                // Max number of digits in Numeric is 65. Ref:
                 // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
                 return (int) ((m > 0 ? m : 65) + 2);
               })

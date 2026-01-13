@@ -43,7 +43,7 @@ public class DbConfigContainerDefaultImplTest {
 
     when(mockIOWrapperFactory.getIOWrapper(mockTables, mockWaitOnSignal)).thenReturn(mockIoWrapper);
     DbConfigContainer dbConfigContainer = new DbConfigContainerDefaultImpl(mockIOWrapperFactory);
-    assertThat(dbConfigContainer.getIOWrapper(mockTables, mockWaitOnSignal))
+    assertThat(dbConfigContainer.getIOWrapper(mockTables, mockWaitOnSignal, mockIschemaMapper))
         .isEqualTo(mockIoWrapper);
     assertThat(dbConfigContainer.getShardId()).isNull();
     assertThat(dbConfigContainer.getSrcTableToShardIdColumnMap(mockIschemaMapper, mockTables))

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
@@ -22,16 +24,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public class DataflowWorkerMachineTypeValidatorTest {
+public class DataflowWorkerMachineTypeUtilsTest {
 
   @Test
   public void testValidMachineType() {
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs("n1-standard-4", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-4", 4);
   }
 
   @Test
   public void testValidMachineTypeHighCpu() {
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs("n1-standard-8", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-8", 4);
   }
 
   @Test
@@ -39,7 +41,7 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs("n1-standard-2", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs("n1-standard-2", 4);
         });
   }
 
@@ -48,7 +50,7 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs(null, 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(null, 4);
         });
   }
 
@@ -57,18 +59,18 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs(" ", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs(" ", 4);
         });
   }
 
   @Test
   public void testValidCustomMachineType() {
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs("custom-8-12345", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-8-12345", 4);
   }
 
   @Test
   public void testValidCustomMachineTypeMinCpu() {
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs("custom-4-12345", 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-4-12345", 4);
   }
 
   @Test
@@ -76,7 +78,7 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs("custom-2-12345", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-2-12345", 4);
         });
   }
 
@@ -85,7 +87,7 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs("custom-2", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-2", 4);
         });
   }
 
@@ -94,7 +96,7 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs("custom-abc-12345", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs("custom-abc-12345", 4);
         });
   }
 
@@ -103,7 +105,25 @@ public class DataflowWorkerMachineTypeValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeValidator.validateMachineSpecs("unknown-machine-type", 4);
+          DataflowWorkerMachineTypeUtils.validateMachineSpecs("unknown-machine-type", 4);
+        });
+  }
+
+  @Test
+  public void testGetWorkerMemoryGBStandard() {
+    assertEquals(15.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n1-standard-4"), 0.001);
+    assertEquals(52.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n1-highmem-8"), 0.001);
+  }
+
+  @Test
+  public void testGetWorkerMemoryGBInvalid() {
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("unknown-machine"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("custom-2-invalid"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null);
         });
   }
 }

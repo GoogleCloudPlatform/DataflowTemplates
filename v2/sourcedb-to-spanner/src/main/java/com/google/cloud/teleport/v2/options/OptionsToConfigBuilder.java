@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcI
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.re2j.Matcher;
@@ -47,7 +48,8 @@ public final class OptionsToConfigBuilder {
       SourceDbToSpannerOptions options,
       List<String> tables,
       String shardId,
-      Wait.OnSignal<?> waitOn) {
+      Wait.OnSignal<?> waitOn,
+      ISchemaMapper schemaMapper) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
     String sourceDbURL = options.getSourceConfigURL();
     String dbName = extractDbFromURL(sourceDbURL);
@@ -60,6 +62,15 @@ public final class OptionsToConfigBuilder {
     long maxConnections =
         options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
     Integer numPartitions = options.getNumPartitions();
+    String workerMachineType = null;
+    try {
+      workerMachineType =
+          options
+              .as(org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.class)
+              .getWorkerMachineType();
+    } catch (Exception e) {
+      LOG.warn("Could not retrieve workerMachineType from options", e);
+    }
 
     return getJdbcIOWrapperConfig(
         sqlDialect,
@@ -79,7 +90,9 @@ public final class OptionsToConfigBuilder {
         numPartitions,
         waitOn,
         options.getFetchSize(),
-        options.getUniformizationStageCountHint());
+        options.getUniformizationStageCountHint(),
+        schemaMapper,
+        workerMachineType);
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
@@ -100,7 +113,9 @@ public final class OptionsToConfigBuilder {
       Integer numPartitions,
       Wait.OnSignal<?> waitOn,
       Integer fetchSize,
-      Long uniformizationStageCountHint) {
+      Long uniformizationStageCountHint,
+      ISchemaMapper schemaMapper,
+      String workerMachineType) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     SourceSchemaReference sourceSchemaReference =
         sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
@@ -114,7 +129,8 @@ public final class OptionsToConfigBuilder {
                     .setPassword(password)
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
-            .setJdbcDriverJars(jdbcDriverJars);
+            .setJdbcDriverJars(jdbcDriverJars)
+            .setWorkerMachineType(workerMachineType);
     if (maxConnections != 0) {
       builder = builder.setMaxConnections(maxConnections);
     }
@@ -142,6 +158,8 @@ public final class OptionsToConfigBuilder {
           sourceDbURL = sourceDbURL + "&" + connectionProperties;
         }
         break;
+      default:
+        break;
     }
 
     builder.setSourceDbURL(sourceDbURL);
@@ -157,6 +175,20 @@ public final class OptionsToConfigBuilder {
     builder = builder.setTables(ImmutableList.copyOf(tables));
     builder = builder.setMaxFetchSize(fetchSize);
     builder = builder.setSplitStageCountHint(uniformizationStageCountHint);
+
+    if (schemaMapper != null && tables != null) {
+      com.google.common.collect.ImmutableMap.Builder<String, Integer> fetchSizeMapBuilder =
+          com.google.common.collect.ImmutableMap.builder();
+      for (String table : tables) {
+        Integer tableFetchSize =
+            schemaMapper.getFetchSize(StringUtils.defaultString(namespace), table);
+        if (tableFetchSize != null) {
+          fetchSizeMapBuilder.put(table, tableFetchSize);
+        }
+      }
+      builder.setTableVsFetchSize(fetchSizeMapBuilder.build());
+    }
+
     return builder.build();
   }
 

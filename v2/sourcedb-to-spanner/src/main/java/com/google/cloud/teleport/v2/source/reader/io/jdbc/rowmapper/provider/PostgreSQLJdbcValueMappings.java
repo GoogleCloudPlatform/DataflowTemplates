@@ -109,151 +109,174 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               .build();
 
   private static final JdbcMappings JDBC_MAPPINGS =
+      /*
+      Postgres JDBC uses binary encoding for most types ref:org.postgresql.jdbc.PgConnection.getSupportedBinaryOids()
+      */
       JdbcMappings.builder()
-          .put("BIGINT", ResultSet::getLong, valuePassThrough, 24)
-          .put("BIGSERIAL", ResultSet::getLong, valuePassThrough, 24)
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 8) // -
+          .put("BIGSERIAL", ResultSet::getLong, valuePassThrough, 8) // -
           .put(
               "BIT",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) ((n > 0 ? n : 1)); // bit uses text protocol.
+              })
           .put(
               "BIT VARYING",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
-          .put("BOOL", ResultSet::getBoolean, valuePassThrough, 16)
-          .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 16)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int)
+                    ((n > 0
+                        ? n
+                        : 10 * 1024
+                            * 1024)); // bit varying without a length specification means unlimited
+                // length. ref:
+                // https://www.postgresql.org/docs/current/datatype-bit.html
+              })
+          .put("BOOL", ResultSet::getBoolean, valuePassThrough, 1)
+          .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 1)
           .put(
               "BYTEA",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min(length, Integer.MAX_VALUE);
+              })
           .put(
               "CHAR",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // CHAR(N) -> N * 4 bytes (UTF-8 max) + overhead.
+                return (int) Math.min(((n > 0 ? n : 255) * 4), Integer.MAX_VALUE);
+              })
           .put(
               "CHARACTER",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+              })
           .put(
               "CHARACTER VARYING",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+              })
           .put(
               "CITEXT",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
-          .put("DATE", dateExtractor, dateToAvro, 16)
-          .put("DECIMAL", ResultSet::getObject, numericToAvro, 90)
-          .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 24)
-          .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 16)
-          .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 24)
-          .put("INT", ResultSet::getInt, valuePassThrough, 16)
-          .put("INTEGER", ResultSet::getInt, valuePassThrough, 16)
-          .put("INT2", ResultSet::getInt, valuePassThrough, 16)
-          .put("INT4", ResultSet::getInt, valuePassThrough, 16)
-          .put("INT8", ResultSet::getLong, valuePassThrough, 24)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("DATE", dateExtractor, dateToAvro, 4)
+          .put(
+              "DECIMAL",
+              ResultSet::getObject,
+              numericToAvro,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) (n / 2 + 8);
+              })
+          .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 8)
+          .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 4)
+          .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 8)
+          .put("INT", ResultSet::getInt, valuePassThrough, 4)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
+          .put("INT2", ResultSet::getInt, valuePassThrough, 2)
+          .put("INT4", ResultSet::getInt, valuePassThrough, 4)
+          .put("INT8", ResultSet::getLong, valuePassThrough, 8)
           .put(
               "JSON",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
           .put(
               "JSONB",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
-          .put("MONEY", ResultSet::getDouble, valuePassThrough, 24)
-          .put("NUMERIC", ResultSet::getObject, numericToAvro, 90)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("MONEY", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "NUMERIC",
+              ResultSet::getObject,
+              numericToAvro,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) (n / 2 + 8);
+              })
           .put(
               "OID",
               ResultSet::getLong,
               valuePassThrough,
-              24) // Usually unsigned int, mapped to long for safety? Original
-          // was Long.
-          .put("REAL", ResultSet::getFloat, valuePassThrough, 16)
-          .put("SERIAL", ResultSet::getInt, valuePassThrough, 16)
-          .put("SERIAL2", ResultSet::getInt, valuePassThrough, 16)
-          .put("SERIAL4", ResultSet::getInt, valuePassThrough, 16)
-          .put("SERIAL8", ResultSet::getLong, valuePassThrough, 24)
-          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 16)
-          .put("SMALLSERIAL", ResultSet::getInt, valuePassThrough, 16)
+              4) // Usually unsigned int, mapped to long for safety
+          .put("REAL", ResultSet::getFloat, valuePassThrough, 4)
+          .put("SERIAL", ResultSet::getInt, valuePassThrough, 4)
+          .put("SERIAL2", ResultSet::getInt, valuePassThrough, 2)
+          .put("SERIAL4", ResultSet::getInt, valuePassThrough, 4)
+          .put("SERIAL8", ResultSet::getLong, valuePassThrough, 8)
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
+          .put("SMALLSERIAL", ResultSet::getInt, valuePassThrough, 2)
           .put(
               "TEXT",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
-          .put("TIMESTAMP", timestampExtractor, timestampToAvro, 24)
-          .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 140)
-          .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 140)
-          .put("TIMESTAMP WITHOUT TIME ZONE", timestampExtractor, timestampToAvro, 24)
-          .put(
-              "UUID",
-              ResultSet::getString,
-              valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
+          .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
+          .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)
+          .put("TIMESTAMP WITHOUT TIME ZONE", timestampExtractor, timestampToAvro, 8)
+          .put("UUID", ResultSet::getString, valuePassThrough, 16)
           .put(
               "VARBIT",
               bytesExtractor,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) ((n > 0 ? n : 10 * 1024 * 1024) + 24);
+              })
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize)
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 10 * 1024 * 1024) * 4) + 24, Integer.MAX_VALUE);
+              })
           .put(
               "XML",
               ResultSet::getString,
               valuePassThrough,
-              PostgreSQLJdbcValueMappings::estimateVariableTypeSize) // Added
-          // XML
-          // based
-          // on
-          // switch
-          // case
-          // reference,
-          // though
-          // not in
-          // original
-          // map?
-          // No,
-          // wait.
-          // XML was
-          // in
-          // switch
-          // case
-          // but not
-          // in
-          // map...
-          // interesting.
-          // I will
-          // add it
-          // if it
-          // was
-          // supported,
-          // but if
-          // not in
-          // map,
-          // maybe
-          // better
-          // to
-          // leave
-          // it out
-          // or
-          // check.
-          // Note: "XML" was NOT in the original map, but WAS in the switch case for size.
-          // "XML" support might be missing in mapping?
-          // I will assume if it wasn't in the map, it wasn't supported for reading. I
-          // will leave it out of build() but keep it in size logic if needed, or better,
-          // just leave it out of build() so it falls to default if usage ever occurs (but
-          // it won't be mapped).
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
           .build();
 
   @Override
@@ -269,59 +292,10 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
     return 16;
   }
 
-  private static int estimateVariableTypeSize(
+  private static long getLengthOrPrecision(
       com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
-    String typeName = sourceColumnType.getName().toUpperCase();
-
-    // Fixed width String types
-    if (typeName.equals("UUID")) {
-      // UUID String is 36 chars.
-      // 36 * 2 = 72 bytes.
-      // Overhead ~50.
-      return 122;
-    }
-
-    long length = 0;
     Long[] mods = sourceColumnType.getMods();
-    if (mods != null && mods.length > 0 && mods[0] != null) {
-      length = mods[0];
-    } else {
-      // Defaults if length not specified
-      length = 255;
-      if (typeName.contains("TEXT")
-          || typeName.contains("JSON")
-          || typeName.equals("BYTEA")
-          || typeName.equals("XML")) {
-        length = 10 * 1024 * 1024; // 10MB conservative max for unbounded
-      }
-    }
-
-    // Checking for multi-byte chars. UTF-8 is standard.
-    // In Java heap, chars are 2 bytes (UTF-16).
-    // So distinct from DB storage.
-    long byteLength;
-    boolean isString =
-        typeName.contains("TEXT")
-            || typeName.contains("CHAR")
-            || typeName.contains("JSON")
-            || typeName.contains("XML")
-            || typeName.contains("CITEXT");
-
-    if (isString) {
-      byteLength = length * 2; // Java char is 2 bytes
-    } else {
-      // Binary or Bit
-      if (typeName.contains("BIT") || typeName.contains("VARBIT")) {
-        byteLength = (long) Math.ceil(length / 8.0);
-      } else {
-        byteLength = length;
-      }
-    }
-
-    int overhead = isString ? 50 : 24; // String vs byte[] overhead
-
-    long totalSize = overhead + byteLength;
-    return (int) Math.min(totalSize, Integer.MAX_VALUE);
+    return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
   }
 
   @Override

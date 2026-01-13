@@ -44,7 +44,8 @@ public final class FetchSizeCalculator {
    * @return The calculated fetch size.
    */
   @SuppressWarnings("null")
-  public static int getFetchSize(TableConfig tableConfig, long estimatedRowSize) {
+  public static int getFetchSize(
+      TableConfig tableConfig, long estimatedRowSize, String workerMachineType) {
     if (tableConfig.fetchSize() != null) {
       return tableConfig.fetchSize();
     }
@@ -57,7 +58,7 @@ public final class FetchSizeCalculator {
         return DEFAULT_FETCH_SIZE;
       }
 
-      long workerMemory = getWorkerMemory();
+      long workerMemory = getWorkerMemory(workerMachineType);
       int workerCores = getWorkerCores();
 
       // Formula: (Memory of Dataflow worker VM) / (2 * 2 * (Number of cores on the
@@ -98,7 +99,15 @@ public final class FetchSizeCalculator {
   }
 
   @VisibleForTesting
-  static long getWorkerMemory() {
+  static long getWorkerMemory(String workerMachineType) {
+    if (workerMachineType != null) {
+      Double memoryGB =
+          com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils
+              .getWorkerMemoryGB(workerMachineType);
+      if (memoryGB != null) {
+        return (long) (memoryGB * 1024 * 1024 * 1024);
+      }
+    }
     return Runtime.getRuntime().maxMemory();
   }
 

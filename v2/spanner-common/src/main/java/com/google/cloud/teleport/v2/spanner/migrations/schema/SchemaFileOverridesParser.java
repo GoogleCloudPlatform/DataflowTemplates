@@ -81,4 +81,11 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
         schemaFileOverride.getRenamedColumnTupleMap().get(sourceTableName);
     return tableOverridesMap.getOrDefault(sourceColumnName, sourceColumnName);
   }
+
+  public Schema.TableParams getTableParams(String sourceTableName) {
+    if (schemaFileOverride.getTableParams() == null) {
+      return null;
+    }
+    return schemaFileOverride.getTableParams().get(sourceTableName);
+  }
 }

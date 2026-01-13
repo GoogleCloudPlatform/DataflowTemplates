@@ -56,7 +56,6 @@ import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.collections4.map.HashedMap;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -1428,7 +1427,7 @@ public class GenericRecordTypeConvertorTest {
       if (!nullify) {
         return new MigrationTransformationResponse(request.getRequestRow(), isFiltered);
       } else {
-        Map<String, Object> allNulls = new HashedMap();
+        Map<String, Object> allNulls = new HashMap<>();
         for (String k : request.getRequestRow().keySet()) {
           allNulls.put(k, null);
         }
