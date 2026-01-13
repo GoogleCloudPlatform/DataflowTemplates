@@ -151,7 +151,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected boolean generateSBOM;
 
   @Parameter(
-      defaultValue = "false",
+      defaultValue = "true",
       property = "publishYamlBlueprints",
       readonly = true,
       required = false)
