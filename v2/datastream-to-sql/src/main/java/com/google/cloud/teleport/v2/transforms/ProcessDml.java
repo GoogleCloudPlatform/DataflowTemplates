@@ -51,6 +51,11 @@ public class ProcessDml {
     return new StatefulProcessDml();
   }
 
+  private static boolean isDLQEvent(DmlInfo dmlInfo) {
+    return dmlInfo.getOriginalPayload() != null
+        && dmlInfo.getOriginalPayload().contains("\"_metadata_retry_count\":");
+  }
+
   /** This class is used as the default return value of {@link ProcessDml#statefulOrderByPK()}. */
   public static class StatefulProcessDml
       extends PTransform<PCollection<KV<String, DmlInfo>>, PCollection<KV<String, DmlInfo>>> {
@@ -103,7 +108,9 @@ public class ProcessDml {
       if (dmlInfo.getAllPkFields().size() == 0) {
         context.output(KV.of(numThreads, dmlInfo));
         // FIX: Changed '> 0' to '>= 0' to allow DLQ retries to pass through
-      } else if (lastSortKey == null || currentSortKey.compareTo(lastSortKey) >= 0) {
+      } else if (lastSortKey == null
+          || currentSortKey.compareTo(lastSortKey) > 0
+          || (currentSortKey.compareTo(lastSortKey) >= 0 && isDLQEvent(dmlInfo))) {
         myState.write(currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
 

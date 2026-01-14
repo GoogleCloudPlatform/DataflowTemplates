@@ -591,7 +591,7 @@ public class DataStreamToSQL {
     LOG.info("Parsed table name map: {}", tableNameMap);
 
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
-    String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
+    String dlqDirectory = dlqManager.getRetryDlqDirectory();
     String tempDlqDir = dlqManager.getRetryDlqDirectory() + "tmp/";
 
     /*
