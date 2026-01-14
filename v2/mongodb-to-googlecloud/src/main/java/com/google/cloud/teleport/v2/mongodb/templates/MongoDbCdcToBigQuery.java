@@ -68,7 +68,9 @@ import org.slf4j.LoggerFactory;
     preview = true,
     requirements = {
       "The target BigQuery dataset must exist.",
-      "The source MongoDB instance must be accessible from the Dataflow worker machines.",
+      "If UDF is used, the source MongoDB instance must be accessible from the Dataflow worker machines.",
+      "You must have a PubSub topic that listens for change data capture (CDC) events on the MongoDB change stream "
+          + "and publishes them to PubSub as JSON records.",
       "The change stream pushing changes from MongoDB to Pub/Sub should be running."
     },
     streaming = true,
