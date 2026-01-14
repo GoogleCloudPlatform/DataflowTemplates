@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
@@ -27,13 +29,12 @@ import org.junit.runners.JUnit4;
 public final class FetchSizeCalculatorTest {
 
   @Test
-  public void testGetFetchSize_Defaults() {
+  public void testGetFetchSize_NoMachineType() {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-    // Pass a dummy estimated row size
-    int fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
-    assertTrue(fetchSize >= 100);
-    assertTrue(fetchSize <= 100_000);
+    // No machine type offered, so calculation should be impossible
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
+    assertNull(fetchSize);
   }
 
   @Test
@@ -41,17 +42,17 @@ public final class FetchSizeCalculatorTest {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(12345).setApproxRowCount(100L).build();
     // Row size doesn't matter for explicit
-    int fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
-    assertEquals(12345, fetchSize);
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
+    assertEquals(Integer.valueOf(12345), fetchSize);
   }
 
   @Test
   public void testGetFetchSize_ZeroRowSize() {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-    int fetchSize = FetchSizeCalculator.getFetchSize(config, 0L, null);
-    // Expected to return default fetch size (50_000)
-    assertEquals(50_000, fetchSize);
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 0L, null);
+    // Zero row size means we can't safely estimate memory usage -> return null
+    assertNull(fetchSize);
   }
 
   @Test
@@ -61,40 +62,18 @@ public final class FetchSizeCalculatorTest {
             .setFetchSize(42) // User override
             .build();
     // Even if row size is huge, the override should be respected exactly.
-    int fetchSize = FetchSizeCalculator.getFetchSize(config, 100_000_000L, null);
-    assertEquals(42, fetchSize);
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100_000_000L, null);
+    assertEquals(Integer.valueOf(42), fetchSize);
   }
 
   @Test
   public void testGetFetchSize_WithMachineType() {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-    // n1-standard-1 has 3.75GB memory.
-    // 3.75 * 1024^3 = 4,026,531,840 bytes.
-    // Cores = 1 (DataflowWorkerMachineTypeUtils assumes 1 core for n1-standard-1,
-    // wait, checks map)
-    // Actually FetchSizeCalculator.getWorkerCores() uses
-    // Runtime.availableProcessors().
-    // This makes the test environment dependent if we don't mock getWorkerCores.
-    // However, we can just check if it returns a reasonable value or mock it if
-    // needed.
-    // But since `getWorkerCores` is static and not easily mockable without
-    // Powermock,
-    // we will rely on the fact that we use getWorkerMemory which calls
-    // DataflowWorkerMachineTypeUtils.
 
-    // Let's use a very large row size to force a small fetch size, ensuring logic
-    // is hit.
-    // If we use n1-standard-1 (3.75GB), and row size 1MB.
-    // Denom = 4 * Cores * 1MB.
-    // If Cores = 1, Denom = 4MB.
-    // Fetch = 3.75GB / 4MB ~= 960.
-    // 960 is between MIN(100) and MAX(100000).
-
-    int fetchSize = FetchSizeCalculator.getFetchSize(config, 1_000_000L, "n1-standard-1");
+    // n1-standard-1: 3.75GB RAM, 1 vCPU
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1_000_000L, "n1-standard-1");
+    assertNotNull(fetchSize);
     assertTrue(fetchSize > 100);
-    assertTrue(fetchSize < 100_000);
-    // Rough check: 3.75GB / (4 * 16 * 1MB) if 16 cores machine running test?
-    // We can't assert exact value easily without knowing cores.
   }
 }

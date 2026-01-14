@@ -126,4 +126,48 @@ public class DataflowWorkerMachineTypeUtilsTest {
           DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null);
         });
   }
+
+  @Test
+  public void testGetWorkerCoresStandard() {
+    assertEquals(4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-standard-4"));
+    assertEquals(8, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-highmem-8"));
+    assertEquals(96, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-standard-96"));
+  }
+
+  @Test
+  public void testGetWorkerCoresInvalid() {
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("unknown-machine"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-invalid")); // Invalid parsing
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("invalid-custom-2-1024")); // Invalid family
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DataflowWorkerMachineTypeUtils.getWorkerCores(null);
+        });
+  }
+
+  @Test
+  public void testGetWorkerMemoryGBCustom() {
+    // custom-2-4096 => 4096MB = 4GB
+    assertEquals(4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("custom-2-4096"), 0.001);
+    // n2-custom-4-8192 => 8192MB = 8GB
+    assertEquals(8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192"), 0.001);
+    // n2d-custom-2-2048 => 2048MB = 2GB
+    assertEquals(2.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2d-custom-2-2048"), 0.001);
+    // e2-custom-2-4096 => 4096MB = 4GB
+    assertEquals(4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("e2-custom-2-4096"), 0.001);
+    // n4-custom-32-131072 => 128GB
+    assertEquals(128.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n4-custom-32-131072"), 0.001);
+    // extended memory
+    assertEquals(8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192-ext"), 0.001);
+  }
+
+  @Test
+  public void testGetWorkerCoresCustom() {
+    assertEquals(2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-4096"));
+    assertEquals(4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n2-custom-4-8192"));
+    assertEquals(2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n2d-custom-2-2048"));
+    assertEquals(32, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n4-custom-32-131072"));
+  }
 }

@@ -47,6 +47,8 @@ public abstract class SourceTableSchema implements Serializable {
 
   public abstract String tableName();
 
+  public abstract long estimatedRowSize();
+
   // Source Schema from metadata tables. SourceColumnType is similar to
   // com.google.cloud.teleport.v2.spanner.migrations.schema
   /* TODO(vardhanvthigle):
@@ -85,6 +87,8 @@ public abstract class SourceTableSchema implements Serializable {
     public abstract Builder setTableSchemaUUID(String value);
 
     public abstract Builder setTableName(String value);
+
+    public abstract Builder setEstimatedRowSize(long value);
 
     @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
 

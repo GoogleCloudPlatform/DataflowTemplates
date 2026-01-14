@@ -181,10 +181,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             tableConfig -> {
               SourceTableSchema sourceTableSchema =
                   findSourceTableSchema(sourceSchema, tableConfig);
-              long estimatedRowSize =
-                  config
-                      .dialectAdapter()
-                      .estimateRowSize(sourceTableSchema, config.valueMappingsProvider());
+              long estimatedRowSize = sourceTableSchema.estimatedRowSize();
               int fetchSize =
                   FetchSizeCalculator.getFetchSize(
                       tableConfig, estimatedRowSize, config.workerMachineType());
@@ -246,6 +243,11 @@ public final class JdbcIoWrapper implements IoWrapper {
                       colEntry ->
                           sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                               colEntry.getKey(), colEntry.getValue()));
+              long estimatedRowSize =
+                  config
+                      .dialectAdapter()
+                      .estimateRowSize(tableEntry.getValue(), config.valueMappingsProvider());
+              sourceTableSchemaBuilder.setEstimatedRowSize(estimatedRowSize);
               return sourceTableSchemaBuilder.build();
             })
         .forEach(sourceSchemaBuilder::addTableSchema);

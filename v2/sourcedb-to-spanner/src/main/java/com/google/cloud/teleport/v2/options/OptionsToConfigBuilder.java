@@ -34,6 +34,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -65,11 +66,13 @@ public final class OptionsToConfigBuilder {
     String workerMachineType = null;
     try {
       workerMachineType =
-          options
-              .as(org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.class)
-              .getWorkerMachineType();
+          options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
     } catch (Exception e) {
-      LOG.warn("Could not retrieve workerMachineType from options", e);
+      if (sqlDialect == SQLDialect.POSTGRESQL || sqlDialect == SQLDialect.MYSQL) {
+        LOG.warn(
+            "Could not retrieve workerMachineType from options. FetchSize cannot be auto-inferred. Cursor Mode will not be used unless explicitly set",
+            e);
+      }
     }
 
     return getJdbcIOWrapperConfig(
