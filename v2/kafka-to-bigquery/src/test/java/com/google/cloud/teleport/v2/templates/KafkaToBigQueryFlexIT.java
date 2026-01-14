@@ -98,7 +98,7 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
   }
 
   @Before
-  public void setup() throws IOException {
+  public void setup() {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     bqDatasetId = bigQueryClient.createDataset(REGION);
     bqSchema =
@@ -107,17 +107,6 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
             Field.newBuilder("productName", StandardSQLTypeName.STRING).setMaxLength(10L).build(),
             Field.of("productSize", StandardSQLTypeName.FLOAT64),
             Field.of("productUsage", StandardSQLTypeName.STRING));
-
-    URL avroSchemaResource = Resources.getResource("KafkaToBigQueryFlexAvroIT/avro_schema.avsc");
-    gcsClient.uploadArtifact("avro_schema.avsc", avroSchemaResource.getPath());
-    avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
-    avroSchemaUsageEnum = avroSchema.getField("productUsage").schema();
-
-    URL otherAvroSchemaResource =
-        Resources.getResource("KafkaToBigQueryFlexAvroIT/other_avro_schema.avsc");
-    gcsClient.uploadArtifact("other_avro_schema.avsc", otherAvroSchemaResource.getPath());
-    otherAvroSchema =
-        new org.apache.avro.Schema.Parser().parse(otherAvroSchemaResource.openStream());
   }
 
   @After
@@ -128,6 +117,19 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
   @AfterClass
   public static void tearDownClass() {
     ResourceManagerUtils.cleanResources(kafkaResourceManager);
+  }
+
+  private void setupAvro() throws IOException {
+    URL avroSchemaResource = Resources.getResource("KafkaToBigQueryFlexIT/avro_schema.avsc");
+    gcsClient.uploadArtifact("avro_schema.avsc", avroSchemaResource.getPath());
+    avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
+    avroSchemaUsageEnum = avroSchema.getField("productUsage").schema();
+
+    URL otherAvroSchemaResource =
+        Resources.getResource("KafkaToBigQueryFlexIT/other_avro_schema.avsc");
+    gcsClient.uploadArtifact("other_avro_schema.avsc", otherAvroSchemaResource.getPath());
+    otherAvroSchema =
+        new org.apache.avro.Schema.Parser().parse(otherAvroSchemaResource.openStream());
   }
 
   @Test
@@ -253,6 +255,7 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
   private void baseKafkaToBigQueryAvroSerializationErrorWithDLQ(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, RestClientException {
+    setupAvro();
     String topicName = kafkaResourceManager.createTopic(testName, 5);
 
     LaunchConfig.Builder options =
@@ -321,6 +324,7 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
       int successRowCount,
       int failRowCount)
       throws IOException {
+    setupAvro();
     String topicName = kafkaResourceManager.createTopic(testName, 5);
 
     LaunchConfig.Builder options =
@@ -360,6 +364,7 @@ public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
   private void baseKafkaToBigQueryAvro(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, RestClientException {
+    setupAvro();
     // Arrange
     String topicName = kafkaResourceManager.createTopic(testName, 5);
 

@@ -42,6 +42,11 @@ on:
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
+      # Exclude kafka paths from global run (covered in kafka-pr.yml)
+      - '!v2/kafka-to-bigquery/**'
+      - '!v2/kafka-to-gcs/**'
+      - '!v2/kafka-to-kafka/**'
+      - '!v2/pubsub-to-kafka/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:

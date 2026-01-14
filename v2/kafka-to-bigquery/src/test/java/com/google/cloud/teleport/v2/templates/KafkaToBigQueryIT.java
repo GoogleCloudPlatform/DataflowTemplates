@@ -26,10 +26,12 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.io.Resources;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -302,6 +304,11 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder,
       Consumer<TableResult> assertFunction)
       throws IOException, RestClientException {
+    // Avro schema
+    URL avroSchemaResource = Resources.getResource("KafkaToBigQueryIT/avro_schema.avsc");
+    gcsClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());
+    avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
+
     // Arrange
     String topicName = kafkaResourceManager.createTopic(testName, 5);
 
