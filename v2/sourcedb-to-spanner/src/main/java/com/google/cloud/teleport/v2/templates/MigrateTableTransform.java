@@ -31,22 +31,38 @@ import java.util.Arrays;
 import java.util.Map;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.io.Compression;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.FileIO.Write.FileNaming;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.WriteFilesResult;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>> {
-  private static final Logger LOG = LoggerFactory.getLogger(MigrateTableTransform.class);
 
-  private SourceDbToSpannerOptions options;
+  private static final Logger LOG = LoggerFactory.getLogger(MigrateTableTransform.class);
+  public static final String GCS_RECORDS_WRITTEN = "gcs_records_written";
+
+  private transient SourceDbToSpannerOptions options;
   private SpannerConfig spannerConfig;
   private Ddl ddl;
   private ISchemaMapper schemaMapper;
@@ -80,6 +96,19 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     PCollectionTuple rowsAndTables = input.apply("Read_rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
+
+    if (options.getGcsOutputDirectory() != null && !options.getGcsOutputDirectory().isEmpty()) {
+      String avroDirectory;
+      if (shardId.isEmpty()) {
+        avroDirectory = options.getGcsOutputDirectory();
+      } else {
+        avroDirectory =
+            FileSystems.matchNewResource(options.getGcsOutputDirectory(), true)
+                .resolve(shardId, StandardResolveOptions.RESOLVE_DIRECTORY)
+                .toString();
+      }
+      writeToGCS(sourceRows, avroDirectory);
+    }
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(
@@ -142,5 +171,57 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
             .setCoder(SerializableCoder.of(RowContext.class)));
     return spannerWriteResult.getOutput();
+  }
+
+  public WriteFilesResult<AvroDestination> writeToGCS(
+      PCollection<SourceRow> sourceRows, String gcsOutputDirectory) {
+    String shardIdForMetric = this.shardId;
+    String metricName =
+        StringUtils.isEmpty(shardIdForMetric)
+            ? GCS_RECORDS_WRITTEN
+            : String.join("_", GCS_RECORDS_WRITTEN, shardIdForMetric);
+    return sourceRows.apply(
+        "WriteAvroToGCS",
+        FileIO.<AvroDestination, SourceRow>writeDynamic()
+            .by(
+                (record) ->
+                    AvroDestination.of(
+                        record.tableName(), record.getPayload().getSchema().toString()))
+            .via(
+                Contextful.fn(
+                    record -> {
+                      Metrics.counter(MigrateTableTransform.class, metricName).inc();
+                      return record.getPayload();
+                    }),
+                Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
+            .withDestinationCoder(AvroCoder.of(AvroDestination.class))
+            .to(gcsOutputDirectory)
+            .withNumShards(0)
+            .withNaming((SerializableFunction<AvroDestination, FileNaming>) AvroFileNaming::new));
+  }
+
+  static class AvroFileNaming implements FileIO.Write.FileNaming {
+
+    private final FileIO.Write.FileNaming defaultNaming;
+    private final AvroDestination avroDestination;
+
+    public AvroFileNaming(AvroDestination avroDestination) {
+      defaultNaming =
+          FileIO.Write.defaultNaming(DigestUtils.md5Hex(avroDestination.jsonSchema), ".avro");
+      this.avroDestination = avroDestination;
+    }
+
+    @Override
+    public String getFilename(
+        BoundedWindow window,
+        PaneInfo pane,
+        int numShards,
+        int shardIndex,
+        Compression compression) {
+      String subDir = avroDestination.name;
+      return subDir
+          + "/"
+          + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);
+    }
   }
 }
