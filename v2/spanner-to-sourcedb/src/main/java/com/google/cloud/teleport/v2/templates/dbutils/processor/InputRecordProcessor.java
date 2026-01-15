@@ -109,6 +109,7 @@ public class InputRecordProcessor {
               .build();
 
       DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
+      LOG.warn("Generated DML statements: " + dmlGeneratorResponse.getDmlStatement());
       if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);
         return false;
@@ -146,6 +147,7 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
       return false;
     } catch (Exception e) {
+      LOG.warn("Exception in DML: " + e.getMessage());
       // Not logging the error here since the error can be retryable error and high number of them
       // could have side effects on the pipeline execution.
       throw e; // throw the original exception since it needs to go to DLQ

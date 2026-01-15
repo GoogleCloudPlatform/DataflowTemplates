@@ -71,6 +71,9 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     try {
       sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
     } catch (NoSuchElementException e) {
+      LOG.warn(
+              "The spanner table {} was not found in source schema mapping. Source tables: {}",
+              spannerTableName, String.join(", ", sourceSchema.tables().keySet()));
       return new DMLGeneratorResponse("");
     }
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
