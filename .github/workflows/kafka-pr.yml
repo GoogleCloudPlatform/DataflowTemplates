@@ -177,6 +177,7 @@ jobs:
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-integration-test-parallelism=4 \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@v6

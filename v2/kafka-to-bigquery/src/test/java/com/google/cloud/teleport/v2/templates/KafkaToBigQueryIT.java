@@ -26,12 +26,20 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.io.Resources;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -40,14 +48,15 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
-import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.kafka.KafkaResourceManager;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -61,23 +70,36 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public final class KafkaToBigQueryIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaToBigQueryIT.class);
 
-  private KafkaResourceManager kafkaResourceManager;
+  private static KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;
+  private org.apache.avro.Schema avroSchema;
+
+  @BeforeClass
+  public static void setupClass() {
+    // Setup container based resource manager per test class to keep concurrent running
+    // containers under control
+    kafkaResourceManager =
+        KafkaResourceManager.builder(KafkaToBigQueryIT.class.getSimpleName())
+            .setHost(TestProperties.hostIp())
+            .build();
+  }
 
   @Before
   public void setup() throws IOException {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     bigQueryClient.createDataset(REGION);
-
-    kafkaResourceManager =
-        KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(kafkaResourceManager, bigQueryClient);
+    ResourceManagerUtils.cleanResources(bigQueryClient);
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    ResourceManagerUtils.cleanResources(kafkaResourceManager);
   }
 
   @Test
@@ -233,5 +255,154 @@ public final class KafkaToBigQueryIT extends TemplateTestBase {
     } catch (Exception e) {
       throw new RuntimeException("Error publishing record to Kafka", e);
     }
+  }
+
+  @Test
+  public void testKafkaToBigQueryAvro() throws IOException, RestClientException {
+    baseKafkaToBigQueryAvro(Function.identity(), null); // no extra parameters
+  }
+
+  @Test
+  public void testKafkaToBigQueryAvroWithStorageApiExistingDLQ()
+      throws IOException, RestClientException {
+    TableId deadletterTableId =
+        bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
+
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("useStorageWriteApi", "true")
+                .addParameter("numStorageWriteApiStreams", "3")
+                .addParameter("storageWriteApiTriggeringFrequencySec", "3")
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)),
+        null);
+  }
+
+  @Test
+  public void testKafkaToBigQueryAvroWithUdfFunction() throws RestClientException, IOException {
+    String udfFileName = "transform.js";
+    gcsClient.createArtifact(
+        "input/" + udfFileName,
+        "function transform(value) {\n"
+            + "  const data = JSON.parse(value);\n"
+            + "  data.productName = data.productName.toUpperCase();\n"
+            + "  return JSON.stringify(data);\n"
+            + "}");
+
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("javascriptTextTransformGcsPath", getGcsPath("input/" + udfFileName))
+                .addParameter("javascriptTextTransformFunctionName", "transform"),
+        tableResult ->
+            assertThatBigQueryRecords(tableResult)
+                .hasRecordsUnordered(
+                    List.of(
+                        Map.of("productId", 11, "productName", "DATAFLOW"),
+                        Map.of("productId", 12, "productName", "PUB/SUB"))));
+  }
+
+  public void baseKafkaToBigQueryAvro(
+      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder,
+      Consumer<TableResult> assertFunction)
+      throws IOException, RestClientException {
+    // Avro schema
+    URL avroSchemaResource = Resources.getResource("KafkaToBigQueryIT/avro_schema.avsc");
+    gcsClient.uploadArtifact("schema.avsc", avroSchemaResource.getPath());
+    avroSchema = new org.apache.avro.Schema.Parser().parse(avroSchemaResource.openStream());
+
+    // Arrange
+    String topicName = kafkaResourceManager.createTopic(testName, 5);
+
+    String bqTable = testName;
+    Schema bqSchema =
+        Schema.of(
+            Field.of("productId", StandardSQLTypeName.INT64),
+            Field.newBuilder("productName", StandardSQLTypeName.STRING).setMaxLength(10L).build());
+
+    TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
+    TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
+
+    LaunchConfig.Builder options =
+        paramsAdder.apply(
+            LaunchConfig.builder(testName, specPath)
+                .addParameter(
+                    "bootstrapServers",
+                    kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
+                .addParameter("inputTopics", topicName)
+                .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
+                .addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId))
+                .addParameter("messageFormat", "AVRO")
+                .addParameter("avroSchemaPath", getGcsPath("schema.avsc")));
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    MockSchemaRegistryClient registryClient = new MockSchemaRegistryClient();
+    registryClient.register(topicName + "-value", avroSchema, 1, 1);
+
+    KafkaProducer<String, Object> kafkaProducer =
+        kafkaResourceManager.buildProducer(
+            new StringSerializer(), new KafkaAvroSerializer(registryClient));
+
+    for (int i = 1; i <= 10; i++) {
+      GenericRecord dataflow = createRecord(Integer.valueOf(i + "1"), "Dataflow", 0);
+      publish(kafkaProducer, topicName, i + "1", dataflow);
+
+      GenericRecord pubsub = createRecord(Integer.valueOf(i + "2"), "Pub/Sub", 0);
+      publish(kafkaProducer, topicName, i + "2", pubsub);
+
+      GenericRecord invalid = createRecord(Integer.valueOf(i + "3"), "InvalidNameTooLong", 0);
+      publish(kafkaProducer, topicName, i + "3", invalid);
+
+      try {
+        TimeUnit.SECONDS.sleep(3);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionsAndFinish(
+                createConfig(info),
+                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build(),
+                BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId)
+                    .setMinRows(10)
+                    .build());
+
+    // Assert
+    assertThatResult(result).meetsConditions();
+
+    TableResult tableRows = bigQueryClient.readTable(bqTable);
+    if (assertFunction != null) {
+      assertFunction.accept(tableRows);
+    } else {
+      assertThatBigQueryRecords(tableRows)
+          .hasRecordsUnordered(
+              List.of(
+                  Map.of("productId", 11, "productName", "Dataflow"),
+                  Map.of("productId", 12, "productName", "Pub/Sub")));
+    }
+  }
+
+  private void publish(
+      KafkaProducer<String, Object> producer, String topicName, String key, GenericRecord value) {
+    try {
+      RecordMetadata recordMetadata =
+          producer.send(new ProducerRecord<>(topicName, key, value)).get();
+      LOG.info(
+          "Published record {}, partition {} - offset: {}",
+          recordMetadata.topic(),
+          recordMetadata.partition(),
+          recordMetadata.offset());
+    } catch (Exception e) {
+      throw new RuntimeException("Error publishing record to Kafka", e);
+    }
+  }
+
+  private GenericRecord createRecord(int id, String name, double value) {
+    return new GenericRecordBuilder(avroSchema)
+        .set("productId", id)
+        .set("productName", name)
+        .build();
   }
 }
