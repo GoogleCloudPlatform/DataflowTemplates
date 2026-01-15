@@ -366,11 +366,21 @@
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
           <trimStackTrace>false</trimStackTrace>
           <reportFormat>html</reportFormat>
+          <enableOutErrElements>false</enableOutErrElements>
+          <enablePropertiesElement>false</enablePropertiesElement>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
           </systemPropertyVariables>
         </configuration>
+        <dependencies>
+          <dependency>
+            <!-- Specify JUnit4 provider as Templates tests currently using JUnit4 -->
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit47</artifactId>
+            <version>${surefire.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
@@ -593,6 +603,8 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <enableOutErrElements>false</enableOutErrElements>
+              <enablePropertiesElement>false</enablePropertiesElement>
             </configuration>
           </plugin>
         </plugins>
@@ -798,6 +810,8 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <enableOutErrElements>false</enableOutErrElements>
+              <enablePropertiesElement>false</enablePropertiesElement>
             </configuration>
           </plugin>
         </plugins>
