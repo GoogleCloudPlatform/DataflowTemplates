@@ -150,6 +150,20 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
       basePath =
           basePath.replace(new String(new byte[] {27, 91, 48, 109}, StandardCharsets.UTF_8), "");
 
+      // We are getting the path to the local maven repository from the mvn command output.
+      // The mvn command output can sometimes include unrelated JVM warnings mixed with the actual
+      // output. The actual path is expected to be always the last line in the output.
+
+      // For example, the output can look like this:
+      // [0.005s][warning][perf,memops] Cannot use file /tmp/hsperfdata_runner/109499 ...
+      // /home/runner/.m2/repository
+
+      // In the above example, we want to extract the last line "/home/runner/.m2/repository".
+
+      // Split by newline and take the last line.
+      String[] lines = basePath.trim().split("\\r?\\n");
+      basePath = lines[lines.length - 1].trim();
+
       inStream.close();
 
       return basePath;

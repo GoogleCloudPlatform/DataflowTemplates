@@ -109,11 +109,6 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
                 TABLE_NAMES,
                 generateBaseSchema());
         setupSchema();
-        ADDITIONAL_JOB_PARAMS.putAll(
-            new HashMap<>() {
-              {
-              }
-            });
         jobInfo =
             launchDataflowJob(
                 getClass().getSimpleName(),

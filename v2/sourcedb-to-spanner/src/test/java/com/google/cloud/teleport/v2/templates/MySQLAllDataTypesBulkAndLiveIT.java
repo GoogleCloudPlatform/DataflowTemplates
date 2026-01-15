@@ -115,7 +115,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
   }
 
   @Test
-  public void testAllScenarios() throws IOException {
+  public void testAllScenarios() throws IOException, InterruptedException {
     // --------------------------------------------------------------------------------------------
     // Phase 1: Bulk Migration
     // --------------------------------------------------------------------------------------------
@@ -155,6 +155,9 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(30)));
     assertThatResult(result).isLaunchFinished();
+
+    // Wait for 2 minutes to ensure all DLQ events are created in GCS.
+    Thread.sleep(Duration.ofMinutes(2).toMillis());
 
     // Verify DLQ Events
     // Total events expected:

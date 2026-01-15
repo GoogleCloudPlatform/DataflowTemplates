@@ -315,8 +315,12 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   /** Waits until the specified job is not in a pending state. */
   public JobState waitUntilActive(String project, String region, String jobId) throws IOException {
     JobState state = getJobStatus(project, region, jobId);
+    boolean logOnce = false;
     while (PENDING_STATES.contains(state)) {
-      LOG.info("Job still pending. Will check again in 15 seconds");
+      if (!logOnce) {
+        LOG.info("Job still pending. Will check again in 15 seconds");
+        logOnce = true;
+      }
       try {
         TimeUnit.SECONDS.sleep(15);
       } catch (InterruptedException e) {
