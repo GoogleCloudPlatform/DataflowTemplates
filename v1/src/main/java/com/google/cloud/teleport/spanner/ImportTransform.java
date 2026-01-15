@@ -19,6 +19,7 @@ import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.DatabaseNotFoundException;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
@@ -29,6 +30,9 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.iam.IAMCheckResult;
+import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
+import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
@@ -54,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -141,9 +146,23 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
   @Override
   public PDone expand(PBegin begin) {
+
+    PCollection<Void> validationSignal =
+        begin
+            .apply("Trigger Validation", Create.of((Void) null))
+            .apply(
+                "Validate Config",
+                ParDo.of(
+                    new DoFn<Void, Void>() {
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        validateRequiredPermissions(spannerConfig);
+                      }
+                    }));
     PCollectionView<Dialect> dialectView =
         begin
             .apply("Read Dialect", new ReadDialect(spannerConfig))
+            .apply("Validate", Wait.on(validationSignal))
             .apply("Dialect As PCollectionView", View.asSingleton());
 
     PCollection<Export> manifest =
@@ -951,6 +970,38 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
             actualHash);
         c.output(KV.of(table, filePath.toString()));
       }
+    }
+  }
+
+  /**
+   * @throws DatabaseNotFoundException if database is not found.
+   */
+  private static void validateRequiredPermissions(SpannerConfig spannerConfig) {
+    String instanceId = spannerConfig.getInstanceId().get();
+    String databaseId = spannerConfig.getDatabaseId().get();
+    IAMCheckResult iamCheckResult;
+    try {
+      IAMPermissionsChecker iamPermissionsChecker =
+          new IAMPermissionsChecker(spannerConfig.getProjectId().get());
+
+      iamCheckResult =
+          iamPermissionsChecker.checkSpannerDatabaseRequirements(
+              IAMRequirementsCreator.createSpannerWriteResourceRequirement(),
+              instanceId,
+              databaseId);
+      if (iamCheckResult.isPermissionsAvailable()) {
+        return;
+      }
+      String errorString =
+          "For resource: "
+              + iamCheckResult.getResourceName()
+              + ", missing permissions: "
+              + iamCheckResult.getMissingPermissions()
+              + ";";
+      throw new RuntimeException(errorString);
+    } catch (GeneralSecurityException | IOException e) {
+      LOG.error("Error while validating permissions for spanner", e);
+      throw new RuntimeException(e);
     }
   }
 }
