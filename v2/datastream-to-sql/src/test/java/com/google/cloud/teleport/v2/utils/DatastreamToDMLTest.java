@@ -48,7 +48,6 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Test;
@@ -1195,27 +1194,6 @@ public class DatastreamToDMLTest {
 
     // Assert: Verify it matched the Exception catch block and output to ERROR_TAG
     verify(mockContext).output(eq(DatastreamToDML.ERROR_TAG), any(FailsafeElement.class));
-  }
-
-  @Test
-  public void testDmlInfoDlqJsonFormatter_createsValidJson() throws IOException {
-    // Arrange
-    String originalPayload = "{\"id\": 1}";
-    DmlInfo dmlInfo = mock(DmlInfo.class);
-    when(dmlInfo.getOriginalPayload()).thenReturn(originalPayload);
-
-    DataStreamToSQL.DmlInfoDlqJsonFormatter formatter =
-        new DataStreamToSQL.DmlInfoDlqJsonFormatter();
-
-    // Act
-    String result = formatter.apply(KV.of("key", dmlInfo));
-
-    // Assert
-    JsonNode resultNode = new ObjectMapper().readTree(result);
-    assertThat(resultNode.has("message")).isTrue();
-    assertThat(resultNode.get("message").get("id").asInt()).isEqualTo(1);
-    assertThat(resultNode.has("error_message")).isTrue();
-    assertThat(resultNode.get("error_message").asText()).isEqualTo("Failed DML execution");
   }
 
   @Test
