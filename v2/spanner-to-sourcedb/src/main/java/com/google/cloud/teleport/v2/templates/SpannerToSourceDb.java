@@ -183,6 +183,18 @@ public class SpannerToSourceDb {
     void setMetadataDatabase(String value);
 
     @TemplateParameter.Text(
+        order = 35,
+        optional = true,
+        description = "Cloud Spanner metadata table name",
+        helpText =
+            "The Spanner change streams connector metadata table name to use. If not provided,"
+                + " Spanner automatically creates the streams connector metadata table during the pipeline flow"
+                + " change. You must provide this parameter when updating an existing pipeline.")
+    String getMetadataTableName();
+
+    void setMetadataTableName(String value);
+
+    @TemplateParameter.Text(
         order = 7,
         optional = true,
         description = "Changes are read from the given timestamp",
@@ -880,6 +892,10 @@ public class SpannerToSourceDb {
             .withMetadataDatabase(options.getMetadataDatabase())
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
+
+    if (options.getMetadataTableName() != null && !options.getMetadataTableName().isEmpty()) {
+      readChangeStreamDoFn = readChangeStreamDoFn.withMetadataTable(options.getMetadataTableName());
+    }
     if (!options.getEndTimestamp().equals("")) {
       return readChangeStreamDoFn.withInclusiveEndAt(
           Timestamp.parseTimestamp(options.getEndTimestamp()));
