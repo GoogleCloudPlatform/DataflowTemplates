@@ -42,9 +42,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
@@ -66,6 +64,11 @@ import org.slf4j.LoggerFactory;
 public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesReleaseMojo.class);
+
+  private record Blueprint(String name, String path) {}
+  ;
+
+  private static final Gson GSON = new Gson();
 
   @Parameter(defaultValue = "${projectId}", readonly = true, required = true)
   protected String projectId;
@@ -280,9 +283,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
           LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
         } else {
+
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               Stream<Path> paths = Files.list(yamlPath)) {
-            List<Map<String, String>> blueprints = new ArrayList<>();
+            List<Blueprint> blueprints = new ArrayList<>();
             paths
                 .filter(
                     path ->
@@ -302,10 +306,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                             fileName,
                             bucketNameOnly(bucketName),
                             objectName);
-                        Map<String, String> blueprint = new HashMap<>();
-                        blueprint.put("name", fileName);
-                        blueprint.put("path", objectName);
-                        blueprints.add(blueprint);
+                        blueprints.add(new Blueprint(fileName, objectName));
                       } catch (IOException e) {
                         throw new RuntimeException("Error reading file " + fileName, e);
                       }
@@ -316,8 +317,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
             storage.create(
                 manifestBlobInfo,
-                new ByteArrayInputStream(
-                    new Gson().toJson(blueprints).getBytes(StandardCharsets.UTF_8)));
+                new ByteArrayInputStream(GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8)));
             LOG.info(
                 "Uploaded {} to gs://{}/{}",
                 yamlManifestName,

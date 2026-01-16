@@ -130,7 +130,6 @@ public class TemplatesReleaseMojoTest {
       String manifestName =
           String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
 
-      // String manifestName = "test-prefix/yaml-blueprints/" + mojo.yamlManifestName;
       assertTrue(uploadedFiles.containsKey(manifestName));
       String manifestContent = new String(uploadedFiles.get(manifestName), StandardCharsets.UTF_8);
 
