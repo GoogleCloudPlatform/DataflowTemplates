@@ -40,6 +40,7 @@ import org.apache.iceberg.data.Record;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,6 +49,9 @@ import org.junit.runners.JUnit4;
 /** Integration tests for Iceberg Resource Manager. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
+@Ignore(
+    "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/3224") // re-enable after tests
+// fixed
 public class IcebergResourceManagerIT {
 
   private static String warehouseLocation;
