@@ -24,6 +24,7 @@ import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import java.sql.SQLDataException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
@@ -171,5 +172,13 @@ public class SpannerToSourceDbExceptionClassifierTest {
     Exception ex = new RuntimeException("test");
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag);
+  }
+
+  @Test
+  public void testClassifyInvalidDMLGenerationException() {
+    InvalidDMLGenerationException exception =
+        new InvalidDMLGenerationException("Unknown column present in source table");
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(exception);
+    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 }
