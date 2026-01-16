@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
+import static com.google.cloud.teleport.spanner.AvroUtil.ON_UPDATE_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
@@ -232,6 +233,9 @@ public class DdlToAvroSchemaConverter {
             }
           } else if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
+            if (cm.onUpdateExpression() != null) {
+              fieldBuilder.prop(ON_UPDATE_EXPRESSION, cm.onUpdateExpression());
+            }
           }
           Schema avroType = avroType(cm.type(), table.name() + "_" + columnOrdinal++);
           if (!cm.notNull()) {
