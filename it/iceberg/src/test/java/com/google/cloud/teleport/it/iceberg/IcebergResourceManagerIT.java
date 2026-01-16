@@ -49,23 +49,18 @@ import org.junit.runners.JUnit4;
 /** Integration tests for Iceberg Resource Manager. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
-@Ignore(
-    "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/3224") // re-enable after tests
-// fixed
 public class IcebergResourceManagerIT {
 
-  private static String warehouseLocation;
-  private static IcebergResourceManager resourceManager;
-  private static String testNamespace;
-  private static String catalog;
+  private String warehouseLocation;
+  private IcebergResourceManager resourceManager;
+  private static final String testNamespace = "namespace";
+  private static final String catalog = "default";
 
   @Before
   public void setUp() throws IOException {
     String testId = UUID.randomUUID().toString();
-    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
+    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse" + testId);
     warehouseLocation = "file:" + warehouseDirectory.toString();
-    testNamespace = "namespace";
-    catalog = "default";
 
     resourceManager =
         IcebergResourceManager.builder(testId)
