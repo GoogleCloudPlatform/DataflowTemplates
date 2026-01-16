@@ -95,7 +95,7 @@ import org.apache.commons.lang3.ArrayUtils;
         "pythonExternalTextTransformFunctionName"
       },
       optionsClass = PubSubProtoToBigQueryOptions.class,
-      flexContainerName = "pubsub-proto-to-bigquery",
+      flexContainerName = "pubsub-binary-to-bigquery",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
       contactInformation = "https://cloud.google.com/support",
@@ -125,7 +125,7 @@ import org.apache.commons.lang3.ArrayUtils;
         "javascriptTextTransformReloadIntervalMinutes"
       },
       optionsClass = PubSubProtoToBigQueryOptions.class,
-      flexContainerName = "pubsub-proto-to-bigquery-xlang",
+      flexContainerName = "pubsub-binary-to-bigquery-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-proto-to-bigquery",
       contactInformation = "https://cloud.google.com/support",

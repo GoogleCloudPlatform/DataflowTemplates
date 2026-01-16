@@ -41,9 +41,9 @@ import java.util.logging.Logger;
  * includes Python, Yaml and Xlang templates
  */
 public class DockerfileGenerator {
-
+  // TODO(DO NOT MERGE) - testing!
   public static final String BASE_CONTAINER_IMAGE =
-      "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless:latest";
+      "gcr.io/dataflow-build/yathu/java17-template-launcher-base-distroless:850175030";
   // Keep in sync with python version used in
   // https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/python/generate_dependencies.sh
   public static final String BASE_PYTHON_CONTAINER_IMAGE =

@@ -133,7 +133,7 @@ import org.slf4j.LoggerFactory;
       "Note: This template does not support a regional path for de-identification template location. Only a global path is supported."
     },
     optionsClass = TokenizePipelineOptions.class,
-    flexContainerName = "dlptext-to-bigquery",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/dlp-text-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

@@ -64,7 +64,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName"
       },
-      flexContainerName = "firestore-to-bigquery",
+      flexContainerName = "googlecloud-to-googlecloud",
       contactInformation = "https://cloud.google.com/support",
       hidden = true),
   @Template(
@@ -82,7 +82,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
         "javascriptTextTransformFunctionName",
         "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "firestore-to-bigquery-xlang",
+      flexContainerName = "googlecloud-to-googlecloud-xlang",
       contactInformation = "https://cloud.google.com/support",
       hidden = true)
 })

@@ -53,7 +53,7 @@ import org.apache.beam.sdk.values.PCollection;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName"
       },
-      flexContainerName = "bigquery-to-elasticsearch",
+      flexContainerName = "googlecloud-to-elasticsearch",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",
@@ -76,7 +76,7 @@ import org.apache.beam.sdk.values.PCollection;
         "javascriptTextTransformGcsPath",
         "javascriptTextTransformFunctionName"
       },
-      flexContainerName = "bigquery-to-elasticsearch-xlang",
+      flexContainerName = "googlecloud-to-elasticsearch-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",
