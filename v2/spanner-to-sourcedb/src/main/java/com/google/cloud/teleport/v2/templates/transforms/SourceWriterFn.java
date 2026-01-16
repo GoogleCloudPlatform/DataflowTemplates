@@ -212,30 +212,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
     } else {
-      boolean isTargetRecord = false;
-      String testDdrKey = "";
-      String testId = "";
       Stopwatch timer = Stopwatch.createStarted();
       // Get the latest commit timestamp processed at source
       try {
         JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
         String tableName = spannerRec.getTableName();
-        // --- TEST HOOK: PREPARE FLAG ---
-        if ("utas_persistentlogin".equalsIgnoreCase(tableName)) {
-          JsonNode ddrKeyNode = keysJson.get("ddrkey");
-          JsonNode idNode = keysJson.get("id");
-          if (ddrKeyNode != null && idNode != null) {
-            testDdrKey = ddrKeyNode.asText();
-            testId = idNode.asText();
-
-            // Invert logic: Flag everything EXCEPT the control key as a target
-            if (!("11111111".equals(testDdrKey) && "22222222".equals(testId))) {
-              isTargetRecord = true;
-            }
-          }
-        }
-        // -------------------------------
-
         com.google.cloud.spanner.Key primaryKey =
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
@@ -317,17 +298,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                       return null;
                     });
         successRecordCountMetric.inc();
-
-        // --- TEST HOOK SUCCESS LOG ---
-        if (isTargetRecord) {
-          String worker = System.getenv("HOSTNAME");
-          LOG.info(
-              "TEST-HOOK: Worker [{}] SUCCESSFULLY PROCESSED target record (ddrkey={}, id={}).",
-              worker,
-              testDdrKey,
-              testId);
-        }
-
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
         }
@@ -338,18 +308,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // We need to get and inspect the cause while handling the exception.
         SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
-
-        // --- TEST HOOK FAILURE LOG ---
-        if (isTargetRecord) {
-          String worker = System.getenv("HOSTNAME");
-          LOG.warn(
-              "TEST-HOOK: Worker [{}] FAILED TO PROCESS target record (ddrkey={}, id={})! Exception: {}",
-              worker,
-              testDdrKey,
-              testId,
-              ex.getMessage());
-        }
-
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
         if (cause != null) {

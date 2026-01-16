@@ -282,30 +282,6 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
-
-    // --- TEST HOOK FOR DATAFLOW FAILOVER SIMULATION START ---
-    if (keyValuesJson != null && "utas_persistentlogin".equalsIgnoreCase(spannerTable.name())) {
-      String ddrkey = keyValuesJson.optString("ddrkey", "");
-      String id = keyValuesJson.optString("id", "");
-
-      // Invert Logic: Sleep for EVERYTHING except this single control key (11111111,
-      // 22222222)
-      if (!("1234".equals(ddrkey) && "1234".equals(id))) {
-        String workerName = System.getenv("HOSTNAME");
-        LOG.info(
-            "TEST-HOOK: Worker [{}] received poison record (ddrkey={}, id={}) from utas_persistentlogin. Sleeping for 5 minutes to simulate stall...",
-            workerName,
-            ddrkey,
-            id);
-        try {
-          Thread.sleep(300000); // 5 minutes
-        } catch (InterruptedException e) {
-          LOG.warn("TEST-HOOK: Sleep interrupted by worker shutdown signal.");
-        }
-      }
-    }
-    // --- TEST HOOK FOR DATAFLOW FAILOVER SIMULATION END ---
-
     /*
     Get all primary key col ids from source table
     For each - get the corresponding column name from spanner Schema
@@ -325,6 +301,18 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
     for (int i = 0; i < sourcePKs.size(); i++) {
       String sourceColName = sourcePKs.get(i);
+      SourceColumn sourceColDef = sourceTable.column(sourceColName);
+      if (sourceColDef == null) {
+        LOG.warn(
+            "The source column definition for {} was not found in source schema", sourceColName);
+        return null;
+      }
+
+      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
+        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
+        continue;
+      }
+
       String spannerColName = "";
       try {
         spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
@@ -337,21 +325,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             sourceColName);
         return null;
       }
-      SourceColumn sourceColDef = sourceTable.column(sourceColName);
-      if (sourceColDef == null) {
-        LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
-        return null;
-      }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
         return null;
-      }
-      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-        continue;
       }
       String columnValue = "";
       if (keyValuesJson.has(spannerColName)) {
