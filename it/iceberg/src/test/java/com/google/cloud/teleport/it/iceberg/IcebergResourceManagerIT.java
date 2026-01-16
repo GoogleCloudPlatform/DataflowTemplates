@@ -40,7 +40,6 @@ import org.apache.iceberg.data.Record;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
