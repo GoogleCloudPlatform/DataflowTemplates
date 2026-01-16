@@ -189,7 +189,8 @@ public class SpannerToSourceDb {
         helpText =
             "The Spanner change streams connector metadata table name to use. If not provided,"
                 + " Spanner automatically creates the streams connector metadata table during the pipeline flow"
-                + " change. You must provide this parameter when updating an existing pipeline.")
+                + " change. You must provide this parameter when updating an existing pipeline to ensure"
+                + " that the metadata table from the original job is carried over.")
     String getSpannerMetadataTableName();
 
     void setSpannerMetadataTableName(String value);
