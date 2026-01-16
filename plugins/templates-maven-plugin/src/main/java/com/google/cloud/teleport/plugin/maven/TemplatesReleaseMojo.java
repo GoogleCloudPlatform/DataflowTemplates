@@ -31,13 +31,17 @@ import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.gson.Gson;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,6 +64,11 @@ import org.slf4j.LoggerFactory;
 public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesReleaseMojo.class);
+
+  private record Blueprint(String name, String path) {}
+  ;
+
+  private static final Gson GSON = new Gson();
 
   @Parameter(defaultValue = "${projectId}", readonly = true, required = true)
   protected String projectId;
@@ -171,6 +180,13 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String yamlBlueprintsGCSPath;
 
+  @Parameter(
+      defaultValue = "yaml-manifest.json",
+      property = "yamlManifestName",
+      readonly = true,
+      required = false)
+  protected String yamlManifestName;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -268,8 +284,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
           throw new MojoExecutionException(
               "YAML blueprints directory not found, skipping upload: " + yamlPath);
         } else {
+
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               Stream<Path> paths = Files.list(yamlPath)) {
+            List<Blueprint> blueprints = new ArrayList<>();
             paths
                 .filter(
                     path ->
@@ -289,10 +307,23 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                             fileName,
                             bucketNameOnly(bucketName),
                             objectName);
+                        blueprints.add(new Blueprint(fileName, objectName));
                       } catch (IOException e) {
                         throw new RuntimeException("Error reading file " + fileName, e);
                       }
                     });
+            String manifestObjectName =
+                String.join("/", stagePrefix, yamlBlueprintsGCSPath, yamlManifestName);
+            BlobId manifestBlobId = BlobId.of(bucketNameOnly(bucketName), manifestObjectName);
+            BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
+            storage.create(
+                manifestBlobInfo,
+                new ByteArrayInputStream(GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8)));
+            LOG.info(
+                "Uploaded {} to gs://{}/{}",
+                yamlManifestName,
+                bucketNameOnly(bucketName),
+                manifestObjectName);
           } catch (Exception e) {
             throw new MojoExecutionException("Error uploading YAML blueprints", e);
           }
