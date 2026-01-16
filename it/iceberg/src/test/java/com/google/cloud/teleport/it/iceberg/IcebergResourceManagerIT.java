@@ -58,7 +58,7 @@ public class IcebergResourceManagerIT {
   @Before
   public void setUp() throws IOException {
     String testId = UUID.randomUUID().toString();
-    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse" + testId);
+    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse-" + testId);
     warehouseLocation = "file:" + warehouseDirectory.toString();
 
     resourceManager =
