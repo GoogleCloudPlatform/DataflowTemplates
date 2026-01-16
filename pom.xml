@@ -49,7 +49,7 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.71.0</beam.version>
+    <beam.version>2.71.0-SNAPSHOT</beam.version>
     <beam-python.version>2.71.0</beam-python.version>
     <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1422</beam-maven-repo>
 
