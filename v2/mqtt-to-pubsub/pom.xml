@@ -25,7 +25,6 @@
 
     <artifactId>mqtt-to-pubsub</artifactId>
     <properties>
-        <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
     <dependencies>
         <dependency>
