@@ -319,7 +319,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 new ByteArrayInputStream(
                     new Gson().toJson(blueprints).getBytes(StandardCharsets.UTF_8)));
             LOG.info(
-                "Uploaded yaml-manifest.json to gs://{}/{}",
+                "Uploaded {} to gs://{}/{}",
+                yamlManifestName,
                 bucketNameOnly(bucketName),
                 manifestObjectName);
           } catch (Exception e) {

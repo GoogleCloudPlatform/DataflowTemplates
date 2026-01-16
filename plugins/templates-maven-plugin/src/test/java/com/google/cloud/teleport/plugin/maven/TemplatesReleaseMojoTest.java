@@ -83,7 +83,6 @@ public class TemplatesReleaseMojoTest {
     mojo.bucketName = "gs://test-bucket";
   }
 
-
   @Test
   public void testExecute_publishesYamlBlueprintsAndCreatesManifest()
       throws MojoExecutionException, IOException {
@@ -128,7 +127,8 @@ public class TemplatesReleaseMojoTest {
       verify(mockStorage, Mockito.times(3))
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
-      String manifestName = String.join("/",mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
+      String manifestName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
 
       // String manifestName = "test-prefix/yaml-blueprints/" + mojo.yamlManifestName;
       assertTrue(uploadedFiles.containsKey(manifestName));
@@ -139,19 +139,22 @@ public class TemplatesReleaseMojoTest {
       List<Map<String, String>> actualBlueprints = gson.fromJson(manifestContent, type);
       List<Map<String, String>> expectedBlueprints =
           new ArrayList<>(
-            List.of(
-              Map.of(
-                  "name",
-                  yamlFile1.getName(),
-                  "path",
-                  String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile1.getName())),
-              Map.of(
-                  "name",
-                  yamlFile2.getName(),
-                  "path",
-                  String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile2.getName()))
-              )
-          );
+              List.of(
+                  Map.of(
+                      "name",
+                      yamlFile1.getName(),
+                      "path",
+                      String.join(
+                          "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile1.getName())),
+                  Map.of(
+                      "name",
+                      yamlFile2.getName(),
+                      "path",
+                      String.join(
+                          "/",
+                          mojo.stagePrefix,
+                          mojo.yamlBlueprintsGCSPath,
+                          yamlFile2.getName()))));
 
       // Sort both lists to ensure proper comparison
       actualBlueprints.sort(Comparator.comparing(m -> m.get("name")));
