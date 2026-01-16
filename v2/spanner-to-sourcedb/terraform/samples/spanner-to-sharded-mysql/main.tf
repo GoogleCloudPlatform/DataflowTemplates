@@ -180,6 +180,7 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     spannerProjectId               = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
     metadataInstance               = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
     metadataDatabase               = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
+    spannerMetadataTableName       = var.dataflow_params.template_params.spanner_metadata_table_name
     sourceShardsFilePath           = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
     startTimestamp                 = var.dataflow_params.template_params.start_timestamp
     endTimestamp                   = var.dataflow_params.template_params.end_timestamp

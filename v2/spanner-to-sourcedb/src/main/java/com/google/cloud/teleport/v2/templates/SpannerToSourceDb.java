@@ -185,6 +185,19 @@ public class SpannerToSourceDb {
     @TemplateParameter.Text(
         order = 7,
         optional = true,
+        description = "Cloud Spanner metadata table name",
+        helpText =
+            "The Spanner change streams connector metadata table name to use. If not provided,"
+                + " Spanner automatically creates the streams connector metadata table during the pipeline flow"
+                + " change. You must provide this parameter when updating an existing pipeline to ensure"
+                + " that the metadata table from the original job is carried over.")
+    String getSpannerMetadataTableName();
+
+    void setSpannerMetadataTableName(String value);
+
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
         description = "Changes are read from the given timestamp",
         helpText = "Read changes from the given timestamp.")
     @Default.String("")
@@ -193,7 +206,7 @@ public class SpannerToSourceDb {
     void setStartTimestamp(String value);
 
     @TemplateParameter.Text(
-        order = 8,
+        order = 9,
         optional = true,
         description = "Changes are read until the given timestamp",
         helpText =
@@ -204,7 +217,7 @@ public class SpannerToSourceDb {
     void setEndTimestamp(String value);
 
     @TemplateParameter.Text(
-        order = 9,
+        order = 10,
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
         helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
@@ -214,7 +227,7 @@ public class SpannerToSourceDb {
     void setShadowTablePrefix(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 10,
+        order = 11,
         optional = false,
         description = "Path to GCS file containing the the Source shard details",
         helpText = "Path to GCS file containing connection profile info for source shards.")
@@ -223,7 +236,7 @@ public class SpannerToSourceDb {
     void setSourceShardsFilePath(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 11,
+        order = 12,
         optional = true,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -234,7 +247,7 @@ public class SpannerToSourceDb {
     void setSessionFilePath(String value);
 
     @TemplateParameter.Enum(
-        order = 12,
+        order = 13,
         optional = true,
         enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
         description = "Filtration mode",
@@ -248,7 +261,7 @@ public class SpannerToSourceDb {
     void setFiltrationMode(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 13,
+        order = 14,
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
@@ -260,7 +273,7 @@ public class SpannerToSourceDb {
     void setShardingCustomJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 14,
+        order = 15,
         optional = true,
         description = "Custom class name",
         helpText =
@@ -272,7 +285,7 @@ public class SpannerToSourceDb {
     void setShardingCustomClassName(String value);
 
     @TemplateParameter.Text(
-        order = 15,
+        order = 16,
         optional = true,
         description = "Custom sharding logic parameters",
         helpText =
@@ -283,7 +296,7 @@ public class SpannerToSourceDb {
     void setShardingCustomParameters(String value);
 
     @TemplateParameter.Text(
-        order = 16,
+        order = 17,
         optional = true,
         description = "SourceDB timezone offset",
         helpText =
@@ -294,7 +307,7 @@ public class SpannerToSourceDb {
     void setSourceDbTimezoneOffset(String value);
 
     @TemplateParameter.PubsubSubscription(
-        order = 17,
+        order = 18,
         optional = true,
         description =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
@@ -309,7 +322,7 @@ public class SpannerToSourceDb {
     void setDlqGcsPubSubSubscription(String value);
 
     @TemplateParameter.Text(
-        order = 18,
+        order = 19,
         optional = true,
         description = "Directory name for holding skipped records",
         helpText =
@@ -321,7 +334,7 @@ public class SpannerToSourceDb {
     void setSkipDirectoryName(String value);
 
     @TemplateParameter.Long(
-        order = 19,
+        order = 20,
         optional = true,
         description = "Maximum connections per shard.",
         helpText = "This will come from shard file eventually.")
@@ -331,7 +344,7 @@ public class SpannerToSourceDb {
     void setMaxShardConnections(Long value);
 
     @TemplateParameter.Text(
-        order = 20,
+        order = 21,
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
@@ -343,7 +356,7 @@ public class SpannerToSourceDb {
     void setDeadLetterQueueDirectory(String value);
 
     @TemplateParameter.Integer(
-        order = 21,
+        order = 22,
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
@@ -354,7 +367,7 @@ public class SpannerToSourceDb {
     void setDlqMaxRetryCount(Integer value);
 
     @TemplateParameter.Enum(
-        order = 22,
+        order = 23,
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
@@ -367,7 +380,7 @@ public class SpannerToSourceDb {
     void setRunMode(String value);
 
     @TemplateParameter.Integer(
-        order = 23,
+        order = 24,
         optional = true,
         description = "Dead letter queue retry minutes",
         helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -377,7 +390,7 @@ public class SpannerToSourceDb {
     void setDlqRetryMinutes(Integer value);
 
     @TemplateParameter.Enum(
-        order = 24,
+        order = 25,
         optional = true,
         description = "Source database type, ex: mysql",
         enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("cassandra")},
@@ -388,7 +401,7 @@ public class SpannerToSourceDb {
     void setSourceType(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 25,
+        order = 26,
         optional = true,
         description = "Custom transformation jar location in Cloud Storage",
         helpText =
@@ -400,7 +413,7 @@ public class SpannerToSourceDb {
     void setTransformationJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 26,
+        order = 27,
         optional = true,
         description = "Custom class name for transformation",
         helpText =
@@ -412,7 +425,7 @@ public class SpannerToSourceDb {
     void setTransformationClassName(String value);
 
     @TemplateParameter.Text(
-        order = 27,
+        order = 28,
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
@@ -423,7 +436,7 @@ public class SpannerToSourceDb {
     void setTransformationCustomParameters(String value);
 
     @TemplateParameter.Text(
-        order = 28,
+        order = 29,
         optional = true,
         description = "Table name overrides from spanner to source",
         regexes =
@@ -439,7 +452,7 @@ public class SpannerToSourceDb {
     void setTableOverrides(String value);
 
     @TemplateParameter.Text(
-        order = 29,
+        order = 30,
         optional = true,
         description = "Column name overrides from spanner to source",
         regexes =
@@ -457,7 +470,7 @@ public class SpannerToSourceDb {
     void setColumnOverrides(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 30,
+        order = 31,
         optional = true,
         description = "File based overrides from spanner to source",
         helpText =
@@ -468,7 +481,7 @@ public class SpannerToSourceDb {
     void setSchemaOverridesFilePath(String value);
 
     @TemplateParameter.Text(
-        order = 31,
+        order = 32,
         optional = true,
         description = "Directory name for holding filtered records",
         helpText =
@@ -480,7 +493,7 @@ public class SpannerToSourceDb {
     void setFilterEventsDirectoryName(String value);
 
     @TemplateParameter.Boolean(
-        order = 32,
+        order = 33,
         optional = true,
         description = "Boolean setting if reverse migration is sharded",
         helpText =
@@ -492,7 +505,7 @@ public class SpannerToSourceDb {
     void setIsShardedMigration(Boolean value);
 
     @TemplateParameter.Text(
-        order = 33,
+        order = 34,
         optional = true,
         description = "Failure injection parameter",
         helpText = "Failure injection parameter. Only used for testing.")
@@ -502,7 +515,7 @@ public class SpannerToSourceDb {
     void setFailureInjectionParameter(String value);
 
     @TemplateParameter.Enum(
-        order = 34,
+        order = 35,
         enumOptions = {
           @TemplateEnumOption("LOW"),
           @TemplateEnumOption("MEDIUM"),
@@ -880,6 +893,12 @@ public class SpannerToSourceDb {
             .withMetadataDatabase(options.getMetadataDatabase())
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
+
+    if (options.getSpannerMetadataTableName() != null
+        && !options.getSpannerMetadataTableName().isEmpty()) {
+      readChangeStreamDoFn =
+          readChangeStreamDoFn.withMetadataTable(options.getSpannerMetadataTableName());
+    }
     if (!options.getEndTimestamp().equals("")) {
       return readChangeStreamDoFn.withInclusiveEndAt(
           Timestamp.parseTimestamp(options.getEndTimestamp()));
