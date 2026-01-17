@@ -71,6 +71,7 @@ runs:
         cache-key: ${{ inputs.java-cache-key }}
         java-version: ${{ inputs.java-version }}
     - name: Temporarily clear java cache
+      shell: bash
       run: |
         rm -rf /home/runner/.m2/repository/org/apache/beam
     - name: Setup Python
