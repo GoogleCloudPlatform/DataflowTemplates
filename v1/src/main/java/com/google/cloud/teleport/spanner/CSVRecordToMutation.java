@@ -24,6 +24,7 @@ import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.T
 import com.google.common.base.Strings;
 import com.google.common.primitives.Longs;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -258,9 +259,14 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           }
           break;
         case NUMERIC:
+          columnValue =
+              isNullValue ? Value.numeric(null) : Value.numeric(new BigDecimal(cellValue.trim()));
+          break;
         case JSON:
+          columnValue = isNullValue ? Value.json(null) : Value.json(cellValue.trim());
+          break;
         case PG_JSONB:
-          columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
+          columnValue = isNullValue ? Value.pgJsonb(null) : Value.pgJsonb(cellValue.trim());
           break;
         case PG_NUMERIC:
           columnValue = isNullValue ? Value.pgNumeric(null) : Value.pgNumeric(cellValue.trim());

@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertThatArtifacts;
 import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.assertThatStructs;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -27,6 +26,7 @@ import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -62,6 +63,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
   @Before
   public void setup() throws IOException, URISyntaxException {
+    this.skipBaseCleanup = true;
     googleSqlResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION)
             .maybeUseStaticInstance()
@@ -84,25 +86,27 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
-            + "4,Jane,Doe,10,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
-            + "5,Jane,Doe,0,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n"
+            + "4,Jane,Doe,10,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n"
+            + "5,Jane,Doe,0,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "input/singers2.csv",
+        "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n");
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS Singers");
     statements.add(
         "CREATE TABLE Singers (\n"
-            + "  SingerId      INT64 NOT NULL,\n"
-            + "  FirstName     STRING(1024),\n"
-            + "  LastName      STRING(1024),\n"
-            + "  Active        BOOL,\n"
-            + "  Rating        FLOAT32,\n"
-            + "  Score         FLOAT64,\n"
-            + "  BirthDate     DATE,\n"
-            + "  LastModified  TIMESTAMP,\n"
+            + "  SingerId        INT64 NOT NULL,\n"
+            + "  FirstName       STRING(1024),\n"
+            + "  LastName        STRING(1024),\n"
+            + "  Active          BOOL,\n"
+            + "  Rating          FLOAT32,\n"
+            + "  Score           FLOAT64,\n"
+            + "  BirthDate       DATE,\n"
+            + "  LastModified    TIMESTAMP,\n"
+            + "  JsonProperties  JSON,\n"
             + ") PRIMARY KEY (SingerId)");
     googleSqlResourceManager.executeDdlStatements(statements);
 
@@ -124,7 +128,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
-            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"},\n"
+            + "        {\"column_name\": \"JsonProperties\", \"type_name\": \"JSON\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
@@ -139,6 +144,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
+            .addParameter("escape", "\\")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
             .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
@@ -162,15 +168,32 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                 "Rating",
                 "Score",
                 "BirthDate",
-                "LastModified"));
+                "LastModified",
+                "JsonProperties"));
     assertThat(structs).hasSize(5);
     assertThatStructs(structs)
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    "{\"p_id\":1,\"value\":0.5}"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.5}"),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -179,9 +202,18 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z"),
+                    "2023-01-01T17:24:02Z",
+                    "{\"p_id\":1,\"value\":0.5}"),
                 createRecordMap(
-                    "4", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "4",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.5}"),
                 createRecordMap(
                     "5",
                     "Jane",
@@ -190,20 +222,22 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "4.1",
                     "2.1",
                     "2021-02-03",
-                    "2023-01-01T17:23:01Z")));
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.5}")));
   }
 
   @Test
   public void testImportCsvBadRows() throws IOException {
     // Arrange
     gcsClient.createArtifact(
-        "input/singers1.csv",
-        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
+        "inputBadRows/singers1.csv",
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00,\"{\\\"p_id\\\":1,\\\"value\\\":0.5}\"\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\": 2.2412421353246235436}\"\n");
 
     List<String> statements = new ArrayList<>();
-    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add("DROP TABLE IF EXISTS SingersBadRows");
     statements.add(
-        "CREATE TABLE Singers (\n"
+        "CREATE TABLE SingersBadRows (\n"
             + "  SingerId      INT64 NOT NULL,\n"
             + "  FirstName     STRING(1024),\n"
             + "  LastName      STRING(1024),\n"
@@ -212,6 +246,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
+            + "  JsonProperties  JSON,\n"
             + ") PRIMARY KEY (SingerId)");
     googleSqlResourceManager.executeDdlStatements(statements);
 
@@ -219,10 +254,10 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "{\n"
             + "  \"tables\": [\n"
             + "    {\n"
-            + "      \"table_name\": \"Singers\",\n"
+            + "      \"table_name\": \"SingersBadRows\",\n"
             + "      \"file_patterns\": [\n"
             + "        \""
-            + getGcsPath("input")
+            + getGcsPath("inputBadRows")
             + "/*.csv\"\n"
             + "      ],\n"
             + "      \"columns\": [\n"
@@ -233,23 +268,28 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
-            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"},\n"
+            + "        {\"column_name\": \"JsonProperties\", \"type_name\": \"JSON\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
             + "}";
-    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+    gcsClient.createArtifact(
+        "inputBadRows/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
+    // Add the invalidMutationPath to pipeline options.
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
-            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("importManifest", getGcsPath("inputBadRows/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
+            .addParameter("escape", "\\")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
-            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
+            .addParameter("invalidOutputPath", getGcsPath("invalid/"))
+            .addParameter("mutationErrorOutputPath", getGcsPath("invalid-mutations/"))
             .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
@@ -261,9 +301,10 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
+    // Assert that the valid row was inserted.
     ImmutableList<Struct> structs =
         googleSqlResourceManager.readTableRecords(
-            "Singers",
+            "SingersBadRows",
             List.of(
                 "SingerId",
                 "FirstName",
@@ -272,7 +313,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                 "Rating",
                 "Score",
                 "BirthDate",
-                "LastModified"));
+                "LastModified",
+                "JsonProperties"));
     assertThat(structs).hasSize(1);
     assertThatStructs(structs)
         .hasRecordsUnordered(
@@ -282,25 +324,27 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "John",
                     "Doe",
                     "true",
-                    "4.0",
+                    "3.5",
                     "1.5",
                     "2023-02-01",
-                    "2023-01-01T17:22:00Z")));
+                    "2023-01-01T17:22:00Z",
+                    "{\"p_id\":1,\"value\":0.5}")));
 
-    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
-    assertThat(artifacts).hasSize(1);
-    assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
+    // Assert that the mutation error was written to the invalidMutationPath.
+    List<Artifact> mutationArtifacts =
+        gcsClient.listArtifacts("invalid-mutations/", Pattern.compile(".*"));
+    assertThat(mutationArtifacts).hasSize(1);
   }
 
   @Test
   public void testImportCsvToPostgres() throws IOException {
     // Arrange
     gcsClient.createArtifact(
-        "input/singers1.csv",
+        "inputPG/singers1.csv",
         "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
             + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "inputPG/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS \"Singers\"");
@@ -324,7 +368,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "      \"table_name\": \"Singers\",\n"
             + "      \"file_patterns\": [\n"
             + "        \""
-            + getGcsPath("input")
+            + getGcsPath("inputPG")
             + "/*.csv\"\n"
             + "      ],\n"
             + "      \"columns\": [\n"
@@ -341,14 +385,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  ],\n"
             + "  \"dialect\": \"POSTGRESQL\"\n"
             + "}";
-    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+    gcsClient.createArtifact(
+        "inputPG/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
-            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("importManifest", getGcsPath("inputPG/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
@@ -380,9 +425,25 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    null),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    null),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -391,7 +452,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z")));
+                    "2023-01-01T17:24:02Z",
+                    null)));
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
@@ -404,11 +466,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
     // Arrange
     gcsClient.createArtifact(
-        "input/uuid1.csv",
+        "inputUUID/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
             + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
-        "input/uuid2.csv",
+        "inputUUID/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
             + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
@@ -429,7 +491,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "      \"table_name\": \"UuidTable\",\n"
             + "      \"file_patterns\": [\n"
             + "        \""
-            + getGcsPath("input")
+            + getGcsPath("inputUUID")
             + "/*.csv\"\n"
             + "      ],\n"
             + "      \"columns\": [\n"
@@ -440,14 +502,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "    }\n"
             + "  ]\n"
             + "}";
-    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+    gcsClient.createArtifact(
+        "inputUUID/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
-            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("importManifest", getGcsPath("inputUUID/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
@@ -480,11 +543,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
     // Arrange
     gcsClient.createArtifact(
-        "input/uuid1.csv",
+        "inputUUIDPG/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
             + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
-        "input/uuid2.csv",
+        "inputUUIDPG/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
             + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
@@ -505,7 +568,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "      \"table_name\": \"UuidTable\",\n"
             + "      \"file_patterns\": [\n"
             + "        \""
-            + getGcsPath("input")
+            + getGcsPath("inputUUIDPG")
             + "/*.csv\"\n"
             + "      ],\n"
             + "      \"columns\": [\n"
@@ -517,14 +580,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  ],\n"
             + "  \"dialect\": \"POSTGRESQL\"\n"
             + "}";
-    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+    gcsClient.createArtifact(
+        "inputUUIDPG/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
-            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("importManifest", getGcsPath("inputUUIDPG/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
@@ -592,24 +656,31 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
       String rating,
       String score,
       String birthDate,
-      String lastModified) {
-    return Map.of(
-        "SingerId",
-        singerId,
-        "FirstName",
-        firstName,
-        "LastName",
-        lastName,
-        "Active",
-        active,
-        "Rating",
-        rating,
-        "Score",
-        score,
-        "BirthDate",
-        birthDate,
-        "LastModified",
-        lastModified);
+      String lastModified,
+      @Nullable String jsonProperties) {
+    ImmutableMap.Builder retBuilder = ImmutableMap.<String, Object>builder();
+    retBuilder.putAll(
+        Map.of(
+            "SingerId",
+            singerId,
+            "FirstName",
+            firstName,
+            "LastName",
+            lastName,
+            "Active",
+            active,
+            "Rating",
+            rating,
+            "Score",
+            score,
+            "BirthDate",
+            birthDate,
+            "LastModified",
+            lastModified));
+    if (jsonProperties != null) {
+      retBuilder.put("JsonProperties", jsonProperties);
+    }
+    return retBuilder.build();
   }
 
   @Override
