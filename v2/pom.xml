@@ -35,7 +35,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <jib.maven.version>3.4.0</jib.maven.version>
         <kafka-clients.version>3.7.0</kafka-clients.version>
         <opencensus.version>0.31.1</opencensus.version>
@@ -45,7 +44,6 @@
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
-        <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     </properties>
 
     <dependencyManagement>

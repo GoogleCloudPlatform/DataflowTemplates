@@ -28,7 +28,6 @@
 
     <properties>
         <google-storage-api.version>v1-rev20200611-1.30.10</google-storage-api.version>
-        <commons-csv.version>1.8</commons-csv.version>
     </properties>
 
     <dependencies>
