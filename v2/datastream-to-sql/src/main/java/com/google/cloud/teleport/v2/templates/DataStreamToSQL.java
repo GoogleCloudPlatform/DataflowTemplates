@@ -15,30 +15,48 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
+import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +65,9 @@ import org.slf4j.LoggerFactory;
  * objects into DML statements. The DML is applied to the desired target database, which can be one
  * of MySQL or PostgreSQL. Replication maintains a 1:1 match between source and target by default.
  * No DDL is supported in the current version of this pipeline.
+ *
+ * <p>Failures during SQL execution are captured and written to a Dead Letter Queue (DLQ) in GCS.
+ * The pipeline also reconsumes failed records from the DLQ for reprocessing.
  *
  * <p>NOTE: Future versions will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
@@ -90,6 +111,10 @@ public class DataStreamToSQL {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSQL.class);
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
+
+  /** String/String Coder for FailsafeElement. */
+  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
   /**
    * Options supported by the pipeline.
@@ -325,7 +350,7 @@ public class DataStreamToSQL {
     void setOrderByIncludesIsDeleted(Boolean value);
 
     @TemplateParameter.Text(
-        order = 18,
+        order = 20,
         optional = true,
         description = "Datastream source type override",
         helpText =
@@ -333,6 +358,59 @@ public class DataStreamToSQL {
     String getDatastreamSourceType();
 
     void setDatastreamSourceType(String value);
+
+    @TemplateParameter.Text(
+        order = 21,
+        optional = true,
+        description = "Dead letter queue directory.",
+        helpText =
+            "The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.")
+    @Default.String("")
+    String getDeadLetterQueueDirectory();
+
+    void setDeadLetterQueueDirectory(String value);
+
+    @TemplateParameter.Integer(
+        order = 22,
+        optional = true,
+        description = "The number of minutes between DLQ Retries.",
+        helpText = "The number of minutes between DLQ Retries. Defaults to `10`.")
+    @Default.Integer(10)
+    Integer getDlqRetryMinutes();
+
+    void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 23,
+        optional = true,
+        description = "The maximum number of times to retry a failed record from the DLQ.",
+        helpText =
+            "The maximum number of times to retry a failed record from the DLQ before marking it as a permanent failure. Defaults to 5.")
+    @Default.Integer(5)
+    Integer getDlqMaxRetries();
+
+    void setDlqMaxRetries(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 24,
+        optional = true,
+        description = "The number of minutes to cache table schemas.",
+        helpText = "The number of minutes to cache table schemas. Defaults to 1440 (24 hours).")
+    @Default.Integer(1440)
+    Integer getSchemaCacheRefreshMinutes();
+
+    void setSchemaCacheRefreshMinutes(Integer value);
+
+    @TemplateParameter.Enum(
+        order = 25,
+        optional = true,
+        description = "Run mode - currently supported are : regular or retryDLQ",
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        helpText = "This is the run mode type, whether regular or with retryDLQ.")
+    @Default.String("regular")
+    String getRunMode();
+
+    void setRunMode(String value);
   }
 
   /**
@@ -388,8 +466,12 @@ public class DataStreamToSQL {
         CdcJdbcIO.DataSourceConfiguration.create(jdbcDriverName, jdbcDriverConnectionString)
             .withUsername(options.getDatabaseUser())
             .withPassword(options.getDatabasePassword())
-            .withMaxIdleConnections(new Integer(0))
-            .withLoginTimeout(options.getDatabaseLoginTimeout());
+            .withMaxIdleConnections(new Integer(0));
+
+    if (options.getDatabaseLoginTimeout() != null) {
+      dataSourceConfiguration =
+          dataSourceConfiguration.withLoginTimeout(options.getDatabaseLoginTimeout());
+    }
 
     return dataSourceConfiguration;
   }
@@ -441,6 +523,140 @@ public class DataStreamToSQL {
     return mappings;
   }
 
+  public static class FailsafeDlqJsonFormatter
+      extends DoFn<FailsafeElement<String, String>, String> {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      try {
+        FailsafeElement<String, String> element = context.element();
+        ObjectNode jsonWrapper = MAPPER.createObjectNode();
+        // FIX: Parse nested object
+        JsonNode messageNode = MAPPER.readTree(element.getOriginalPayload());
+        jsonWrapper.set("message", messageNode);
+
+        jsonWrapper.put("error_message", element.getErrorMessage());
+        jsonWrapper.put("stacktrace", element.getStacktrace());
+        jsonWrapper.put("timestamp", Instant.now().toString());
+        context.output(MAPPER.writeValueAsString(jsonWrapper));
+      } catch (Exception e) {
+        LOG.error("Failed to format failsafe DLQ record", e);
+      }
+    }
+  }
+
+  /**
+   * The {@link FailsafeDmlInfoDlqJsonFormatter} class formats a FailsafeElement containing DML info
+   * into a JSON string for the DLQ.
+   */
+  public static class FailsafeDmlInfoDlqJsonFormatter
+      extends DoFn<FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>, String> {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      try {
+        FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>> element = context.element();
+        ObjectNode jsonWrapper = MAPPER.createObjectNode();
+        JsonNode messageNode =
+            MAPPER.readTree(element.getOriginalPayload().getValue().getOriginalPayload());
+        jsonWrapper.set("message", messageNode);
+        jsonWrapper.put("error_message", element.getErrorMessage());
+        jsonWrapper.put("stacktrace", element.getStacktrace());
+        jsonWrapper.put("timestamp", Instant.now().toString());
+        context.output(MAPPER.writeValueAsString(jsonWrapper));
+      } catch (Exception e) {
+        LOG.error("Failed to format failsafe DLQ record", e);
+      }
+    }
+  }
+
+  /**
+   * The {@link ExecuteDmlFn} class executes DML statements on a SQL database.
+   *
+   * <p>This DoFn connects to a database and executes DML statements. On failure, it outputs a
+   * FailsafeElement containing the original record and error information.
+   */
+  private static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
+    private static final Logger LOG = LoggerFactory.getLogger(ExecuteDmlFn.class);
+
+    private final CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
+    private transient javax.sql.DataSource dataSource;
+    private transient java.sql.Connection connection;
+
+    public static final org.apache.beam.sdk.values.TupleTag<KV<String, DmlInfo>> SUCCESS_TAG =
+        new org.apache.beam.sdk.values.TupleTag<KV<String, DmlInfo>>() {};
+    public static final org.apache.beam.sdk.values.TupleTag<
+            FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>
+        FAILURE_TAG =
+            new org.apache.beam.sdk.values.TupleTag<
+                FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
+
+    public ExecuteDmlFn(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
+      this.dataSourceConfiguration = dataSourceConfiguration;
+    }
+
+    @Setup
+    public void setup() throws SQLException {
+      dataSource = dataSourceConfiguration.buildDatasource();
+      connection = dataSource.getConnection();
+    }
+
+    @Teardown
+    public void teardown() throws SQLException {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      KV<String, DmlInfo> dmlInfo = c.element();
+      try (java.sql.Statement statement = connection.createStatement()) {
+        LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
+        statement.execute(dmlInfo.getValue().getDmlSql());
+        c.output(SUCCESS_TAG, dmlInfo);
+      } catch (SQLException e) {
+        LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
+        c.output(
+            FAILURE_TAG,
+            FailsafeElement.of(dmlInfo, dmlInfo)
+                .setErrorMessage(e.getMessage())
+                .setStacktrace(getStackTraceAsString(e)));
+      }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+      java.io.StringWriter stringWriter = new java.io.StringWriter();
+      java.io.PrintWriter printWriter = new java.io.PrintWriter(stringWriter);
+      throwable.printStackTrace(printWriter);
+      return stringWriter.toString();
+    }
+  }
+
+  private static DeadLetterQueueManager buildDlqManager(Options options) {
+    String tempLocation =
+        options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
+            ? options.as(DataflowPipelineOptions.class).getTempLocation()
+            : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
+
+    String dlqDirectory =
+        options.getDeadLetterQueueDirectory().isEmpty()
+            ? tempLocation + "dlq/"
+            : options.getDeadLetterQueueDirectory();
+
+    LOG.info("Dead-letter queue directory: {}", dlqDirectory);
+
+    if ("regular".equals(options.getRunMode())) {
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
+    } else {
+      String retryDlqUri =
+          org.apache.beam.sdk.io.FileSystems.matchNewResource(dlqDirectory, true).toString();
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, options.getDlqMaxRetries());
+    }
+  }
+
   /**
    * Runs the pipeline with the supplied options.
    *
@@ -454,6 +670,7 @@ public class DataStreamToSQL {
      * 2) Write JSON Strings to SQL DML Objects
      * 3) Filter stale rows using stateful PK transform
      * 4) Write DML statements to SQL Database via jdbc
+     * 5) Write Failures to GCS Dead Letter Queue
      */
 
     Pipeline pipeline = Pipeline.create(options);
@@ -468,9 +685,14 @@ public class DataStreamToSQL {
     LOG.info("Parsed schema map: {}", schemaMap);
     LOG.info("Parsed table name map: {}", tableNameMap);
 
+    DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
      * a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
+     * b) Reconsume Dead Letter Queue data from GCS into JSON String FailsafeElements
+     * (dlqJsonRecords)
+     * c) Flatten DataStream and DLQ Streams (allJsonRecords)
      */
     PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
         pipeline.apply(
@@ -484,38 +706,110 @@ public class DataStreamToSQL {
                 .withHashRowId()
                 .withDatastreamSourceType(options.getDatastreamSourceType()));
 
+    // Elements sent to the Dead Letter Queue are to be reconsumed.
+    // A DLQManager is to be created using PipelineOptions, and it is in charge
+    // of building pieces of the DLQ.
+    PCollection<String> dlqStrings =
+        pipeline.apply(
+            "DLQ Consumer/reader", dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+
+    PCollectionTuple reconsumedElements = dlqManager.getReconsumerDataTransform(dlqStrings);
+
+    PCollection<FailsafeElement<String, String>> dlqJsonRecords =
+        reconsumedElements
+            .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
+            .setCoder(FAILSAFE_ELEMENT_CODER);
+
+    reconsumedElements
+        .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+        .setCoder(FAILSAFE_ELEMENT_CODER)
+        .apply("Format Permanent Errors", ParDo.of(new FailsafeDlqJsonFormatter()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write Permanent Errors to DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
+
+    PCollection<FailsafeElement<String, String>> allJsonRecords;
+    if ("regular".equals(options.getRunMode())) {
+      allJsonRecords =
+          PCollectionList.of(datastreamJsonRecords)
+              .and(dlqJsonRecords)
+              .apply("Merge Datastream & DLQ", Flatten.pCollections());
+    } else {
+      allJsonRecords = dlqJsonRecords;
+    }
+
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
      * a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
-     * Stage 3) Filter stale rows using stateful PK transform
      */
+    PCollectionTuple dmlResults =
+        allJsonRecords.apply(
+            "Format to DML",
+            CreateDml.of(dataSourceConfiguration)
+                .withDefaultCasing(options.getDefaultCasing())
+                .withSchemaMap(schemaMap)
+                .withTableNameMap(tableNameMap)
+                .withColumnCasing(options.getColumnCasing())
+                .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
+                .withNumThreads(options.getNumThreads())
+                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes()));
+
     PCollection<KV<String, DmlInfo>> dmlStatements =
-        datastreamJsonRecords
-            .apply(
-                "Format to DML",
-                CreateDml.of(dataSourceConfiguration)
-                    .withDefaultCasing(options.getDefaultCasing())
-                    .withSchemaMap(schemaMap)
-                    .withTableNameMap(tableNameMap)
-                    .withColumnCasing(options.getColumnCasing())
-                    .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
-                    .withNumThreads(options.getNumThreads()))
+        dmlResults
+            .get(CreateDml.DML_MAIN_TAG)
+            /*
+             * Stage 3) Filter stale rows using stateful PK transform
+             */
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
+
+    // Errors from DML conversion are severe and should not be retried.
+    dmlResults
+        .get(DatastreamToDML.ERROR_TAG)
+        .setCoder(FAILSAFE_ELEMENT_CODER)
+        .apply("Format Conversion Errors", ParDo.of(new FailsafeDlqJsonFormatter()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write Conversion Errors to DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     /*
      * Stage 4: Write Inserts to CloudSQL
      */
-    dmlStatements.apply(
-        "Write to SQL",
-        CdcJdbcIO.<KV<String, DmlInfo>>write()
-            .withDataSourceConfiguration(dataSourceConfiguration)
-            .withStatementFormatter(
-                new CdcJdbcIO.StatementFormatter<KV<String, DmlInfo>>() {
-                  public String formatStatement(KV<String, DmlInfo> element) {
-                    LOG.debug("Executing SQL: {}", element.getValue().getDmlSql());
-                    return element.getValue().getDmlSql();
-                  }
-                }));
+    PCollectionTuple sqlWriteResults =
+        dmlStatements.apply(
+            "Write to SQL",
+            ParDo.of(new ExecuteDmlFn(dataSourceConfiguration))
+                .withOutputTags(
+                    ExecuteDmlFn.SUCCESS_TAG, TupleTagList.of(ExecuteDmlFn.FAILURE_TAG)));
+
+    // Errors from the SQL sink are retryable
+    PCollection<FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>> sqlWriteFailures =
+        sqlWriteResults
+            .get(ExecuteDmlFn.FAILURE_TAG)
+            .setCoder(
+                FailsafeElementCoder.of(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(DmlInfo.class)),
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(DmlInfo.class))));
+
+    sqlWriteFailures
+        .apply("Format Retryable Errors", ParDo.of(new FailsafeDmlInfoDlqJsonFormatter()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write Retryable Errors to DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
+                .withTmpDirectory(dlqManager.getRetryDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     // Execute the pipeline and return the result.
     return pipeline.run();

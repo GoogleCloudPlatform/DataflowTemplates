@@ -38,6 +38,7 @@ import java.util.Objects;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringSubstitutor;
 import org.slf4j.Logger;
@@ -48,6 +49,10 @@ public abstract class DatastreamToDML
     extends DoFn<FailsafeElement<String, String>, KV<String, DmlInfo>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToDML.class);
+
+  /** Tag for records that failed DML conversion and should be sent to the DLQ. */
+  public static final TupleTag<FailsafeElement<String, String>> ERROR_TAG =
+      new TupleTag<FailsafeElement<String, String>>() {};
 
   private static String rowIdColumnName = "rowid";
   private static List<String> defaultPrimaryKeys;
@@ -61,6 +66,7 @@ public abstract class DatastreamToDML
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
+  protected Integer schemaCacheRefreshMinutes = 1440;
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -101,6 +107,13 @@ public abstract class DatastreamToDML
   public DatastreamToDML withColumnCasing(String casing) {
     if (casing != null) {
       this.columnCasing = casing;
+    }
+    return this;
+  }
+
+  public DatastreamToDML withSchemaCacheRefreshMinutes(Integer cacheMinutes) {
+    if (cacheMinutes != null) {
+      this.schemaCacheRefreshMinutes = cacheMinutes;
     }
     return this;
   }
@@ -170,8 +183,17 @@ public abstract class DatastreamToDML
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
     } catch (IOException e) {
-      // TODO(dhercher): Push failure to DLQ collection
-      LOG.error("IOException: {} :: {}", jsonString, e.toString());
+      context.output(
+          ERROR_TAG,
+          FailsafeElement.of(element.getOriginalPayload(), jsonString)
+              .setErrorMessage(e.getMessage())
+              .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
+    } catch (Exception e) {
+      context.output(
+          ERROR_TAG,
+          FailsafeElement.of(element.getOriginalPayload(), jsonString)
+              .setErrorMessage(e.getMessage())
+              .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     }
   }
 
@@ -192,14 +214,17 @@ public abstract class DatastreamToDML
 
   private synchronized void setUpTableCache() {
     if (tableCache == null) {
-      tableCache = new JdbcTableCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
+      tableCache =
+          new JdbcTableCache(this.getDataSource())
+              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
     if (primaryKeyCache == null) {
       primaryKeyCache =
-          new JdbcPrimaryKeyCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
+          new JdbcPrimaryKeyCache(this.getDataSource())
+              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
@@ -257,52 +282,42 @@ public abstract class DatastreamToDML
 
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
-    try {
-      // Oracle uses upper case while Postgres uses all lowercase.
-      // We lowercase the values of these metadata fields to align with
-      // our schema conversion rules.
-      String catalogName = this.getTargetCatalogName(row);
-      String schemaName = this.getTargetSchemaName(row);
-      String tableName = this.getTargetTableName(row);
+    // Oracle uses upper case while Postgres uses all lowercase.
+    // We lowercase the values of these metadata fields to align with
+    // our schema conversion rules.
+    String catalogName = this.getTargetCatalogName(row);
+    String schemaName = this.getTargetSchemaName(row);
+    String tableName = this.getTargetTableName(row);
 
-      Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-      if (tableSchema.isEmpty()) {
-        // If the table DNE we return null (NOOP).
-        return null;
-      }
-
-      List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
-      List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-      List<String> sourcePrimaryKeys = row.getPrimaryKeys();
-      List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
-      List<String> orderByValues =
-          getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
-
-      String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
-      Map<String, String> sqlTemplateValues =
-          getSqlTemplateValues(
-              rowObj, catalogName, schemaName, tableName, primaryKeys, tableSchema);
-
-      StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues, "{", "}");
-      String dmlSql =
-          stringSubstitutor.setDisableSubstitutionInValues(true).replace(dmlSqlTemplate);
-      return DmlInfo.of(
-          failsafeValue,
-          dmlSql,
-          schemaName,
-          tableName,
-          primaryKeys,
-          orderByFields,
-          primaryKeyValues,
-          orderByValues);
-    } catch (DeletedWithoutPrimaryKey e) {
-      LOG.error("CDC Error: {} :: {}", rowObj.toString(), e.toString());
-      return null;
-    } catch (Exception e) {
-      // TODO(dhercher): Consider raising an error and pushing to DLQ
-      LOG.error("Value Error: {} :: {}", rowObj.toString(), e.toString());
-      return null;
+    Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+    if (tableSchema.isEmpty()) {
+      throw new RuntimeException(
+          String.format("Target table not found: %s.%s", schemaName, tableName));
     }
+
+    List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+    List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
+    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+    List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
+    List<String> orderByValues =
+        getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
+
+    String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
+    Map<String, String> sqlTemplateValues =
+        getSqlTemplateValues(rowObj, catalogName, schemaName, tableName, primaryKeys, tableSchema);
+
+    StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues, "{", "}");
+    String dmlSql = stringSubstitutor.setDisableSubstitutionInValues(true).replace(dmlSqlTemplate);
+    return DmlInfo.of(
+        failsafeValue,
+        dmlSql,
+        schemaName,
+        tableName,
+        primaryKeys,
+        orderByFields,
+        primaryKeyValues,
+        orderByValues,
+        failsafeValue);
   }
 
   public String getDmlTemplate(JsonNode rowObj, List<String> primaryKeys) {
