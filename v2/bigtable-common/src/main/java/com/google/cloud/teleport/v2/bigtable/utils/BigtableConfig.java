@@ -68,6 +68,11 @@ public class BigtableConfig {
           BigtableOptionsFactory.ADDITIONAL_RETRY_CODES, options.getBigtableAdditionalRetryCodes());
     }
 
+    if (options.getBigtableBulkWriteFlowControl() != null) {
+      builderBigtableTableConfig.withConfiguration(
+              BigtableOptionsFactory.BIGTABLE_ENABLE_BULK_MUTATION_FLOW_CONTROL, options.getBigtableBulkWriteFlowControl());
+    }
+
     return builderBigtableTableConfig.build();
   }
 
