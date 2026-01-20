@@ -70,7 +70,8 @@ public class BigtableConfig {
 
     if (options.getBigtableBulkWriteFlowControl() != null) {
       builderBigtableTableConfig.withConfiguration(
-              BigtableOptionsFactory.BIGTABLE_ENABLE_BULK_MUTATION_FLOW_CONTROL, String.valueOf(options.getBigtableBulkWriteFlowControl()));
+          BigtableOptionsFactory.BIGTABLE_ENABLE_BULK_MUTATION_FLOW_CONTROL,
+          String.valueOf(options.getBigtableBulkWriteFlowControl()));
     }
 
     return builderBigtableTableConfig.build();

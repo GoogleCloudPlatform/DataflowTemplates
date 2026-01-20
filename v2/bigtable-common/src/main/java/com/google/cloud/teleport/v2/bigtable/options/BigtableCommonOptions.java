@@ -142,12 +142,12 @@ public interface BigtableCommonOptions extends GcpOptions {
     void setBigtableBulkWriteMaxRequestSizeBytes(Integer value);
 
     @TemplateParameter.Boolean(
-            order = 9,
-            optional = true,
-            description = "Enable bulk write flow control",
-            helpText =
-                    "When set to true, enables bulk write flow control which will use" +
-                            "server's signal to throttle the writes.")
+        order = 9,
+        optional = true,
+        description = "Enable bulk write flow control",
+        helpText =
+            "When set to true, enables bulk write flow control which will use"
+                + "server's signal to throttle the writes.")
     @Default.Boolean(false)
     Boolean getBigtableBulkWriteFlowControl();
 
