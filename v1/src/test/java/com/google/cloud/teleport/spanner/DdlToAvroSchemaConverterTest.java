@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
+import static com.google.cloud.teleport.spanner.AvroUtil.ON_UPDATE_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
@@ -177,6 +178,17 @@ public class DdlToAvroSchemaConverterTest {
             .type(Type.int64())
             .isIdentityColumn(true)
             .endColumn()
+            .column("default_commit_ts")
+            .type(Type.timestamp())
+            .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+            .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+            .endColumn()
+            .column("on_update_ts")
+            .type(Type.timestamp())
+            .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+            .onUpdateExpression("PENDING_COMMIT_TIMESTAMP()")
+            .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -217,7 +229,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(12));
+    assertThat(fields, hasSize(14));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -227,6 +239,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(0).getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(fields.get(0).getProp(STORED), equalTo(null));
     assertThat(fields.get(0).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(0).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(1).name(), equalTo("first_name"));
     assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
@@ -235,6 +248,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(fields.get(1).getProp(STORED), equalTo(null));
     assertThat(fields.get(1).getProp(DEFAULT_EXPRESSION), equalTo("'John'"));
+    assertThat(fields.get(1).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(2).name(), equalTo("last_name"));
     assertThat(fields.get(2).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
@@ -243,6 +257,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(2).getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(fields.get(2).getProp(STORED), equalTo(null));
     assertThat(fields.get(2).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(2).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(3).name(), equalTo("full_name"));
     assertThat(fields.get(3).schema(), equalTo(Schema.create(Schema.Type.NULL)));
@@ -253,6 +268,7 @@ public class DdlToAvroSchemaConverterTest {
         equalTo("CONCAT(first_name, ' ', last_name)"));
     assertThat(fields.get(3).getProp(STORED), equalTo("true"));
     assertThat(fields.get(3).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(3).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(4).name(), equalTo("gen_id"));
     assertThat(fields.get(4).schema(), equalTo(Schema.create(Schema.Type.NULL)));
@@ -261,6 +277,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(4).getProp(GENERATION_EXPRESSION), equalTo("MOD(id+1, 64)"));
     assertThat(fields.get(4).getProp(STORED), equalTo("true"));
     assertThat(fields.get(4).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(4).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(5).name(), equalTo("MyTokens"));
     assertThat(fields.get(5).schema(), equalTo(Schema.create(Schema.Type.NULL)));
@@ -271,6 +288,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         fields.get(5).getProp(GENERATION_EXPRESSION), equalTo("(TOKENIZE_FULLTEXT(MyData))"));
     assertThat(fields.get(5).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(5).getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(6).name(), equalTo("Embeddings"));
     assertThat(fields.get(6).schema(), equalTo(nullableArray(Schema.Type.FLOAT)));
@@ -314,6 +332,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(field10.getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(field10.getProp(STORED), equalTo(null));
     assertThat(field10.getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(field10.getProp(ON_UPDATE_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(11).name(), equalTo("identity_column_no_params"));
     assertThat(fields.get(11).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
@@ -324,6 +343,28 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo(null));
     assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo(null));
     assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo(null));
+
+    Schema.Field field12 = fields.get(12);
+    assertThat(field12.name(), equalTo("default_commit_ts"));
+    assertThat(field12.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field12.getProp(SQL_TYPE), equalTo("TIMESTAMP"));
+    assertThat(field12.getProp(NOT_NULL), equalTo(null));
+    assertThat(field12.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field12.getProp(STORED), equalTo(null));
+    assertThat(field12.getProp(DEFAULT_EXPRESSION), equalTo("PENDING_COMMIT_TIMESTAMP()"));
+    assertThat(field12.getProp(ON_UPDATE_EXPRESSION), equalTo(null));
+    assertThat(field12.getProp(SPANNER_OPTION + "0"), equalTo("allow_commit_timestamp=TRUE"));
+
+    Schema.Field field13 = fields.get(13);
+    assertThat(field13.name(), equalTo("on_update_ts"));
+    assertThat(field13.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field13.getProp(SQL_TYPE), equalTo("TIMESTAMP"));
+    assertThat(field13.getProp(NOT_NULL), equalTo(null));
+    assertThat(field13.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field13.getProp(STORED), equalTo(null));
+    assertThat(field13.getProp(DEFAULT_EXPRESSION), equalTo("PENDING_COMMIT_TIMESTAMP()"));
+    assertThat(field13.getProp(ON_UPDATE_EXPRESSION), equalTo("PENDING_COMMIT_TIMESTAMP()"));
+    assertThat(field13.getProp(SPANNER_OPTION + "0"), equalTo("allow_commit_timestamp=TRUE"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
@@ -431,6 +472,15 @@ public class DdlToAvroSchemaConverterTest {
             .type(Type.pgArray(Type.pgFloat4()))
             .arrayLength(Integer.valueOf(128))
             .endColumn()
+            .column("default_commit_ts")
+            .pgSpannerCommitTimestamp()
+            .defaultExpression("spanner.pending_commit_timestamp()")
+            .endColumn()
+            .column("on_update_ts")
+            .pgSpannerCommitTimestamp()
+            .defaultExpression("spanner.pending_commit_timestamp()")
+            .onUpdateExpression("spanner.pending_commit_timestamp()")
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -466,7 +516,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(11));
+    assertThat(fields, hasSize(13));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -562,6 +612,27 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(10).getProp(SQL_TYPE), equalTo("real[] vector length 128"));
     assertThat(fields.get(10).getProp(NOT_NULL), equalTo(null));
     assertThat(fields.get(10).getProp(STORED), equalTo(null));
+
+    Schema.Field field11 = fields.get(11);
+    assertThat(field11.name(), equalTo("default_commit_ts"));
+    assertThat(field11.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field11.getProp(SQL_TYPE), equalTo("spanner.commit_timestamp"));
+    assertThat(field11.getProp(NOT_NULL), equalTo(null));
+    assertThat(field11.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field11.getProp(STORED), equalTo(null));
+    assertThat(field11.getProp(DEFAULT_EXPRESSION), equalTo("spanner.pending_commit_timestamp()"));
+    assertThat(field11.getProp(ON_UPDATE_EXPRESSION), equalTo(null));
+
+    Schema.Field field12 = fields.get(12);
+    assertThat(field12.name(), equalTo("on_update_ts"));
+    assertThat(field12.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field12.getProp(SQL_TYPE), equalTo("spanner.commit_timestamp"));
+    assertThat(field12.getProp(NOT_NULL), equalTo(null));
+    assertThat(field12.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field12.getProp(STORED), equalTo(null));
+    assertThat(field12.getProp(DEFAULT_EXPRESSION), equalTo("spanner.pending_commit_timestamp()"));
+    assertThat(
+        field12.getProp(ON_UPDATE_EXPRESSION), equalTo("spanner.pending_commit_timestamp()"));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));

@@ -28,6 +28,7 @@ import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest.Column;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -387,7 +388,9 @@ public class TextImportTransformTest {
                   + " \"type_name\":\"timestamp with time zone\"}, {\"column_name\":"
                   + " \"numeric_col\", \"type_name\": \"numeric\"}, {\"column_name\": \"date_col\","
                   + " \"type_name\": \"date\"}, {\"column_name\": \"commit_timestamp_col\","
-                  + " \"type_name\": \"spanner.commit_timestamp\"}]}]}",
+                  + " \"type_name\": \"spanner.commit_timestamp\"}, {\"column_name\":"
+                  + " \"default_commit_ts\", \"type_name\": \"spanner.commit_timestamp\"},"
+                  + " {\"column_name\": \"on_update_ts\", \"type_name\": \"spanner.commit_timestamp\"}]}]}",
               f11.toString());
       writer.write(jsonString, 0, jsonString.length());
     }
@@ -470,6 +473,17 @@ public class TextImportTransformTest {
             .column("timestamp_col")
             .timestamp()
             .endColumn()
+            .column("default_commit_ts")
+            .timestamp()
+            .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+            .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+            .endColumn()
+            .column("on_update_ts")
+            .timestamp()
+            .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+            .onUpdateExpression("PENDING_COMMIT_TIMESTAMP()")
+            .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -548,6 +562,15 @@ public class TextImportTransformTest {
             .endColumn()
             .column("commit_timestamp_col")
             .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("default_commit_ts")
+            .pgSpannerCommitTimestamp()
+            .defaultExpression("spanner.pending_commit_timestamp()")
+            .endColumn()
+            .column("on_update_ts")
+            .pgSpannerCommitTimestamp()
+            .defaultExpression("spanner.pending_commit_timestamp()")
+            .onUpdateExpression("spanner.pending_commit_timestamp()")
             .endColumn()
             .primaryKey()
             .asc("int_col")
