@@ -296,8 +296,11 @@ public class DataStreamToSQL {
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =
-            "A map of key/values used to dictate schema name changes (ie."
-                + " old_name:new_name,CaseError:case_error)")
+            "A map of key/values used to dictate schema and table name changes. "
+                + "Examples: Schema to schema (SCHEMA1:SCHEMA2), "
+                + "Table to table (SCHEMA1.table1:SCHEMA2.TABLE1), "
+                + "or multiple mappings using the pipe '|' delimiter "
+                + "(e.g. schema1.source:schema2.target|schema3.source:schema4.target).")
     @Default.String("")
     String getSchemaMap();
 
