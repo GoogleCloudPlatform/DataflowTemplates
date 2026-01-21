@@ -67,7 +67,7 @@ var (
 		},
 		YAML: {
 			"python/",
-			"yaml/"
+			"yaml/",
 		},
 	}
 )
