@@ -66,7 +66,7 @@ func TestModulesToBuild(t *testing.T) {
 		},
 		{
 			input:    "YAML",
-			expected: []string{"plugins/templates-maven-plugin","python/", "yaml/"},
+			expected: []string{"plugins/templates-maven-plugin", "python/", "yaml/"},
 		},
 	}
 
