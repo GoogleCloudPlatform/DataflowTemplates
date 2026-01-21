@@ -54,12 +54,12 @@ public class BigtableConfig {
     }
     if (options.getBigtableRpcTimeoutMs() != null) {
       builderBigtableTableConfig.withConfiguration(
-          BigtableOptionsFactory.BIGTABLE_RPC_TIMEOUT_MS_KEY,
+          BigtableOptionsFactory.BIGTABLE_MUTATE_RPC_TIMEOUT_MS_KEY,
           String.valueOf(options.getBigtableRpcTimeoutMs()));
     }
     if (options.getBigtableRpcAttemptTimeoutMs() != null) {
       builderBigtableTableConfig.withConfiguration(
-          BigtableOptionsFactory.BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS_KEY,
+          BigtableOptionsFactory.BIGTABLE_MUTATE_RPC_ATTEMPT_TIMEOUT_MS_KEY,
           String.valueOf(options.getBigtableRpcAttemptTimeoutMs()));
     }
 
