@@ -66,6 +66,7 @@ var (
 			"v2/datastream-to-sql/",
 		},
 		YAML: {
+			"plugins/templates-maven-plugin",
 			"python/",
 			"yaml/",
 		},
