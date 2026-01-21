@@ -50,8 +50,10 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -62,6 +64,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class KafkaToGcsAvroBinaryIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToGcsAvroBinaryIT.class);
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
   private static final Pattern RESULT_REGEX = Pattern.compile(".*\\.avro$");
 
   private KafkaResourceManager kafkaResourceManager;

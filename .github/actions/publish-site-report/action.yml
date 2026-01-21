@@ -35,5 +35,8 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.output-zip-file }}
-        path: 'target/site/'
+        path: |
+          **/surefire-reports/TEST-*.xml
+          **/surefire-reports/*.html
+          **/surefire-reports/html/**
         retention-days: 7
