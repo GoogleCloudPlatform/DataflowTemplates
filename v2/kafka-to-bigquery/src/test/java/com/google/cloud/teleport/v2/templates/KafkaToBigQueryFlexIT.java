@@ -61,8 +61,10 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -76,6 +78,7 @@ import org.slf4j.LoggerFactory;
 public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToBigQueryFlexIT.class);
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
 
   private static KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;

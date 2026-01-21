@@ -40,8 +40,10 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -52,6 +54,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class KafkaToGcsFlexJsonIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToGcsFlex.class);
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
   private static final Pattern RESULT_REGEX = Pattern.compile(".*\\.json$");
   private KafkaResourceManager kafkaResourceManager;
 
