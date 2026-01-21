@@ -58,13 +58,16 @@
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.11.4</avro.version>
     <caffeine.version>3.2.2</caffeine.version>
+    <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-configuration2.version>2.10.1</commons-configuration2.version>
+    <commons-text.version>1.10.0</commons-text.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
+    <dlp.version>3.85.0</dlp.version>
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
@@ -78,12 +81,14 @@
     <log4j-2.version>2.24.3</log4j-2.version>
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
+    <nashorn.version>15.4</nashorn.version>
     <re2j.version>1.8</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
     <snakeyaml.version>2.4</snakeyaml.version>
     <snappy.version>1.1.10.8</snappy.version>
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>3.5.3</surefire.version>
+    <testcontainers.version>1.21.3</testcontainers.version>
     <truth.version>1.4.5</truth.version>
     <netty.version>4.1.125.Final</netty.version>
 
