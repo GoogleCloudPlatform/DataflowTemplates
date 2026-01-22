@@ -165,5 +165,8 @@ func IntegrationTestParallelism() int {
 func ThreadCount() int {
 	i := 4
 	fmt.Sscan(dThreadCount, &i)
+	if j := IntegrationTestParallelism(); j > i {
+		i = j
+	}
 	return i
 }
