@@ -220,6 +220,48 @@ jobs:
           output-zip-file: test-report-spanner
         if: always()
 
+  release-it-yaml:
+    name: Create Release - IT YAML
+    needs: [release-it-spanner]
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      - name: Declare release branch name and tag name
+        id: variables
+        run: |
+          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ steps.variables.outputs.releaseBranchName }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-connect-2" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=3 \
+          --modules-to-build="YAML"
+      - name: Upload Site Report
+        uses: ./.github/actions/publish-site-report
+        with:
+          output-zip-file: test-report-yaml
+        if: always()
+
   finalize-release:
     name: Finalize Release
     needs: [release-it-spanner]
