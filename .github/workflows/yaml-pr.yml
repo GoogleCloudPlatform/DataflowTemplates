@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,42 +14,26 @@
 
 # Checks that are intended to run on PRs containing Java code.
 
-name: Java PR
+name: YAML/Python PR
 
 on:
   pull_request:
     branches:
       - 'main'
     paths:
-      - '**.java'
-      - '**.xml'
-      # Include Python requirements files for dependency updates (e.g., for v2 templates).
+      - 'yaml/**'
+      - 'python/**'
+      # Include python files and Dockerfiles used for YAML and xlang templates.
+      - '**.py'
+      # Include Python requirements files for dependency updates
       - '**/requirements.txt'
+      - 'python/default_base_*.txt'
+      - 'python/generate_all_dependencies.sh'
       - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
-      - '.github/workflows/java-pr.yml'
-      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
-      - '!v2/datastream-to-spanner/**'
-      - '!v2/spanner-common/**'
-      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
-      - '!v2/gcs-to-sourcedb/**'
-      - '!v2/spanner-migrations-sdk/**'
-      - '!v2/spanner-custom-shard/**'
-      - '!v2/sourcedb-to-spanner/**'
-      # Exclude kafka paths from global run (covered in kafka-pr.yml)
-      - '!v2/kafka-to-bigquery/**'
-      - '!v2/kafka-to-gcs/**'
-      - '!v2/kafka-to-kafka/**'
-      - '!v2/pubsub-to-kafka/**'
-      # Exclude yaml and python paths from global run (covered in yaml-pr.yml)
-      - '!yaml/**'
-      - '!python/**'
-  schedule:
-    - cron: "0 */12 * * *"
-  workflow_dispatch:
-
+      - '.github/workflows/yaml-pr.yml'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -58,7 +42,12 @@ env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
   IT_REGION: us-west2
 
-permissions: write-all
+permissions:
+  actions: write
+  checks: write
+  contents: read
+  pull-requests: read
+  statuses: write
 
 jobs:
   spotless_check:
@@ -72,7 +61,8 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Spotless
-        run: ./cicd/run-spotless
+        run: ./cicd/run-spotless \
+          --modules-to-build="YAML"
   checkstyle_check:
     name: Checkstyle
     timeout-minutes: 10
@@ -84,7 +74,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Checkstyle
-        run: ./cicd/run-checkstyle
+        run: | 
+          ./cicd/run-checkstyle \
+          --modules-to-build="YAML"
   java_build:
     name: Build
     timeout-minutes: 60
@@ -96,7 +88,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Build
-        run: ./cicd/run-build
+        run: |
+          ./cicd/run-build \
+          --modules-to-build="YAML"
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
@@ -111,7 +105,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests
+        run: |
+          ./cicd/run-unit-tests \
+          --modules-to-build="YAML"
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@v6
         if: always() # always run even if the previous step fails
@@ -146,7 +142,7 @@ jobs:
       - name: Run Integration Smoke Tests
         run: |
           ./cicd/run-it-smoke-tests \
-          --modules-to-build="DEFAULT" \
+          --modules-to-build="YAML" \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
@@ -179,7 +175,7 @@ jobs:
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
-          --modules-to-build="DEFAULT" \
+          --modules-to-build="YAML" \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-integration-test-parallelism=6 \
