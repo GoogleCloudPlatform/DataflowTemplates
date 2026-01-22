@@ -63,7 +63,7 @@ public class TemplatesReleaseMojoTest {
   public void setUp() throws IOException {
     mojo = new TemplatesReleaseMojo();
     mavenProject = mock(MavenProject.class);
-    baseDir = temporaryFolder.newFolder();
+    baseDir = temporaryFolder.newFolder("yaml");
     File outputDirectory = temporaryFolder.newFolder("output");
 
     when(mavenProject.getBasedir()).thenReturn(baseDir);
@@ -78,11 +78,11 @@ public class TemplatesReleaseMojoTest {
   @Test
   public void testExecute_publishesYamlBlueprints() throws MojoExecutionException, IOException {
     mojo.publishYamlBlueprints = true;
-    mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
+    mojo.yamlBlueprintsPath = "src/main/yaml";
     mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
     // Create a fake yaml file to be uploaded
-    File yamlDir = new File(baseDir, "yaml/src/main/yaml");
+    File yamlDir = new File(baseDir, "src/main/yaml");
     yamlDir.mkdirs();
     File yamlFile = new File(yamlDir, "my-blueprint.yaml");
     String yamlContent = getYamlContent();

@@ -158,7 +158,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected boolean publishYamlBlueprints;
 
   @Parameter(
-      defaultValue = "yaml/src/main/yaml",
+      defaultValue = "src/main/yaml",
       property = "yamlBlueprintsPath",
       readonly = true,
       required = false)
