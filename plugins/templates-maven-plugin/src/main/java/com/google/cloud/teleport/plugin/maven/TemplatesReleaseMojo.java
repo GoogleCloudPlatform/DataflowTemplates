@@ -263,10 +263,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         LOG.info(
             "Trying to upload Job Builder blueprints to bucket '{}'...",
             bucketNameOnly(bucketName));
-        Path yamlPath = Paths.get(project.getBasedir().getParent(), yamlBlueprintsPath);
+        Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
-          throw new MojoExecutionException(
-              "YAML blueprints directory not found, skipping upload: " + yamlPath);
+          LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
         } else {
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               Stream<Path> paths = Files.list(yamlPath)) {
