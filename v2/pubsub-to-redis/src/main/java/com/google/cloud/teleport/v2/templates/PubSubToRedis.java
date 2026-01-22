@@ -27,7 +27,6 @@ import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.io.RedisHashIO;
 import com.google.cloud.teleport.v2.templates.transforms.MessageTransformation;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -94,9 +93,6 @@ import org.slf4j.LoggerFactory;
       "The Pub/Sub to Redis template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
           + "writes the message payload to Redis. The most common use case of this template is to export logs to Redis "
           + "Enterprise for advanced search-based log analysis in real time.",
-      "Before writing to Redis, you can apply a JavaScript user-defined function to the message payload. Any "
-          + "messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further "
-          + "troubleshooting and reprocessing.",
       "For added security, enable an SSL connection when setting up your database endpoint connection."
     },
     optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
@@ -106,7 +102,6 @@ import org.slf4j.LoggerFactory;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-redis",
     requirements = {
       "The source Pub/Sub subscription must exist prior to running the pipeline.",
-      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
       "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
     },
     preview = true,
@@ -126,11 +121,9 @@ public class PubSubToRedis {
    * The {@link PubSubToRedisOptions} class provides the custom execution options passed by the
    * executor at the command-line.
    *
-   * <p>Inherits standard configuration options, options from {@link
-   * JavascriptTextTransformer.JavascriptTextTransformerOptions}.
+   * <p>Inherits standard configuration options.
    */
-  public interface PubSubToRedisOptions
-      extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions {
+  public interface PubSubToRedisOptions extends PipelineOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         groupName = "Source",
