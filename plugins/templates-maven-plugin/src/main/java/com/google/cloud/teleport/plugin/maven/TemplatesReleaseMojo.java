@@ -158,7 +158,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected boolean publishYamlBlueprints;
 
   @Parameter(
-      defaultValue = "yaml/src/main/yaml",
+      defaultValue = "src/main/yaml",
       property = "yamlBlueprintsPath",
       readonly = true,
       required = false)
@@ -265,8 +265,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             bucketNameOnly(bucketName));
         Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
-          throw new MojoExecutionException(
-              "YAML blueprints directory not found, skipping upload: " + yamlPath);
+          LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
         } else {
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               Stream<Path> paths = Files.list(yamlPath)) {
