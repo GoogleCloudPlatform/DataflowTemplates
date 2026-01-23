@@ -27,6 +27,8 @@ dataflow_params = {
     metadata_instance_id = "<YOUR_METADATA_INSTANCE_ID>" # Replace with your metadata instance ID (if applicable)
     # Optional ID of the metadata database
     metadata_database_id = "<YOUR_METADATA_DATABASE_ID>" # Replace with your metadata database ID (if applicable)
+    # Optional name of the metadata table
+    spanner_metadata_table_name = "<YOUR_METADATA_TABLE_NAME>" # Replace with your metadata table name (if applicable)
     # Optional start timestamp for replication
     start_timestamp = "2024-10-01T00:00:00Z"
     # Optional end timestamp for replication
