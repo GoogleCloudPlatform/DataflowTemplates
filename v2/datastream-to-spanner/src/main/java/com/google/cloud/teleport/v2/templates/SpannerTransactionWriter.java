@@ -23,12 +23,16 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PInput;
@@ -93,29 +97,49 @@ public class SpannerTransactionWriter
   @Override
   public SpannerTransactionWriter.Result expand(
       PCollection<FailsafeElement<String, String>> input) {
-    PCollectionTuple spannerWriteResults =
+    PCollectionTuple groupByResults =
         input.apply(
-            "Write Mutations",
-            ParDo.of(
-                    new SpannerTransactionWriterDoFn(
-                        spannerConfig,
-                        shadowTableSpannerConfig,
-                        ddlView,
-                        shadowTableDdlView,
-                        shadowTablePrefix,
-                        sourceType,
-                        isRegularRunMode))
-                .withSideInputs(ddlView, shadowTableDdlView)
+            "Group events by primary key",
+            ParDo.of(new GroupChangeEventsByPrimaryKeyDoFn(ddlView))
+                .withSideInputs(ddlView)
                 .withOutputTags(
-                    DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG,
-                    TupleTagList.of(
-                        Arrays.asList(
-                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
-                            DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+                    DatastreamToSpannerConstants.SUCCESSFUL_GROUPED_EVENT_TAG,
+                    TupleTagList.of(List.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+    PCollectionTuple spannerWriteResults =
+        groupByResults
+            .get(DatastreamToSpannerConstants.SUCCESSFUL_GROUPED_EVENT_TAG)
+            .apply("Reshuffle", Reshuffle.of())
+            .apply(
+                "Write Mutations",
+                ParDo.of(
+                        new SpannerTransactionWriterDoFn(
+                            spannerConfig,
+                            shadowTableSpannerConfig,
+                            ddlView,
+                            shadowTableDdlView,
+                            shadowTablePrefix,
+                            sourceType,
+                            isRegularRunMode))
+                    .withSideInputs(ddlView, shadowTableDdlView)
+                    .withOutputTags(
+                        DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG,
+                        TupleTagList.of(
+                            Arrays.asList(
+                                DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
+                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+
+    PCollection<FailsafeElement<String, String>> groupByErrorRecords =
+        groupByResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+
+    PCollection<FailsafeElement<String, String>> permanentErrorRecords =
+        PCollectionList.of(
+                spannerWriteResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
+            .and(groupByErrorRecords)
+            .apply(Flatten.pCollections());
 
     return Result.create(
         spannerWriteResults.get(DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG),
-        spannerWriteResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG),
+        permanentErrorRecords,
         spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG));
   }
 
