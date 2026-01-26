@@ -43,9 +43,9 @@ public class DatastreamToSpannerConstants {
   /* The Tag for Successful mutations. */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 
-  /* The tag for successfully grouped events. */
+  /* The tag for successfully keyed events. */
   public static final TupleTag<KV<Long, FailsafeElement<String, String>>>
-      SUCCESSFUL_GROUPED_EVENT_TAG = new TupleTag<KV<Long, FailsafeElement<String, String>>>() {};
+      SUCCESSFUL_KEYED_EVENT_TAG = new TupleTag<KV<Long, FailsafeElement<String, String>>>() {};
 
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;

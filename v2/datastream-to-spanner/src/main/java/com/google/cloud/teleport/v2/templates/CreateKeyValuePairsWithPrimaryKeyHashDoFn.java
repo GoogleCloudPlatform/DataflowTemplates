@@ -33,11 +33,11 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GroupChangeEventsByPrimaryKeyDoFn
+public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
     extends DoFn<FailsafeElement<String, String>, KV<Long, FailsafeElement<String, String>>> {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(GroupChangeEventsByPrimaryKeyDoFn.class);
+      LoggerFactory.getLogger(CreateKeyValuePairsWithPrimaryKeyHashDoFn.class);
 
   private final PCollectionView<Ddl> ddlView;
 
@@ -47,7 +47,7 @@ public class GroupChangeEventsByPrimaryKeyDoFn
   private final Counter conversionErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, CONVERSION_ERRORS_COUNTER_NAME);
 
-  public GroupChangeEventsByPrimaryKeyDoFn(PCollectionView<Ddl> ddlView) {
+  public CreateKeyValuePairsWithPrimaryKeyHashDoFn(PCollectionView<Ddl> ddlView) {
     this.ddlView = ddlView;
   }
 

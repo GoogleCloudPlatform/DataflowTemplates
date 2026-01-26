@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -26,6 +27,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -99,16 +103,20 @@ public class SpannerTransactionWriter
       PCollection<FailsafeElement<String, String>> input) {
     PCollectionTuple groupByResults =
         input.apply(
-            "Group events by primary key",
-            ParDo.of(new GroupChangeEventsByPrimaryKeyDoFn(ddlView))
+            "Produce Key value pairs with key as Primary Key Hash",
+            ParDo.of(new CreateKeyValuePairsWithPrimaryKeyHashDoFn(ddlView))
                 .withSideInputs(ddlView)
                 .withOutputTags(
-                    DatastreamToSpannerConstants.SUCCESSFUL_GROUPED_EVENT_TAG,
+                    DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG,
                     TupleTagList.of(List.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
     PCollectionTuple spannerWriteResults =
         groupByResults
-            .get(DatastreamToSpannerConstants.SUCCESSFUL_GROUPED_EVENT_TAG)
-            .apply("Reshuffle", Reshuffle.of())
+            .get(DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG)
+            .setCoder(
+                KvCoder.of(
+                    VarLongCoder.of(),
+                    FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("Reshuffle Keyed Events", Reshuffle.of())
             .apply(
                 "Write Mutations",
                 ParDo.of(
