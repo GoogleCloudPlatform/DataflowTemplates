@@ -295,4 +295,76 @@ public final class MySqlChangeEventContextTest {
     verify(resultSet, times(1)).next();
     verify(resultSet, times(0)).getCurrentRowAsStruct();
   }
+
+  @Test
+  public void testCanGenerateDataDmlStatement() throws Exception {
+    long eventTimestamp = 1615159728L;
+    // DDL with generated PK
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .string()
+            .max()
+            .generatedAs("uuid()")
+            .endColumn()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("shadow_Users")
+            .column("id")
+            .string()
+            .max()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.DELETE_EVENT);
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    // Source keys (mapped to non-generated columns in Spanner)
+    changeEvent.put("first_name", "John");
+    changeEvent.put("last_name", "Doe");
+    changeEvent.put("id", "aa");
+
+    ChangeEventContext context =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            ddl,
+            "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
+
+    Statement dmlStatement = context.getDataDmlStatement(ddl);
+
+    // Verify DML generation
+    String expectedSql =
+        "DELETE FROM Users WHERE first_name = @first_name AND last_name = @last_name";
+    assertEquals(expectedSql, dmlStatement.getSql());
+    assertEquals("John", dmlStatement.getParameters().get("first_name").getString());
+    assertEquals("Doe", dmlStatement.getParameters().get("last_name").getString());
+  }
 }
