@@ -101,7 +101,7 @@ import org.slf4j.LoggerFactory;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName",
       },
-      flexContainerName = "pubsub-to-bigquery",
+      flexContainerName = "googlecloud-to-googlecloud",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
       contactInformation = "https://cloud.google.com/support",
@@ -127,7 +127,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformFunctionName",
         "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "pubsub-to-bigquery-xlang",
+      flexContainerName = "googlecloud-to-googlecloud-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-bigquery",
       contactInformation = "https://cloud.google.com/support",

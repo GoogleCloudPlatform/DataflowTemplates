@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName"
       },
-      flexContainerName = "gcs-to-splunk",
+      flexContainerName = "googlecloud-to-splunk",
       contactInformation = "https://cloud.google.com/support",
       hidden = true),
   @Template(
@@ -109,7 +109,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformFunctionName",
         "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "gcs-to-splunk-xlang",
+      flexContainerName = "googlecloud-to-splunk-xlang",
       contactInformation = "https://cloud.google.com/support",
       hidden = true)
 })
