@@ -265,6 +265,10 @@ public class ChangeEventSessionConvertor {
             .filter(f -> !f.startsWith(EVENT_METADATA_KEY_PREFIX))
             .collect(Collectors.toList());
     for (String columnName : columnNames) {
+      if (ddl.table(tableName).column(columnName).isGenerated()) {
+        ((ObjectNode) changeEvent).remove(columnName);
+        continue;
+      }
       Type columnType = ddl.table(tableName).column(columnName).type();
       if (columnType.getCode() == Type.Code.JSON || columnType.getCode() == Type.Code.PG_JSONB) {
         // JSON type cannot be a key column, hence setting requiredField to false.

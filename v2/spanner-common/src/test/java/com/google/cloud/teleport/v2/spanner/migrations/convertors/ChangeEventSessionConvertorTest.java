@@ -644,4 +644,42 @@ public class ChangeEventSessionConvertorTest {
     assertEquals("A", actualEvent1.get("TalentName").asText());
     assertEquals("B", actualEvent2.get("RecordName").asText());
   }
+
+  @Test
+  public void transformChangeEventDataWithGeneratedColumnTest() throws Exception {
+    Schema schema = getSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), new ShardingContext(), "", true);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("gen_col", "123");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("gen_col")
+            .int64()
+            .generatedAs("1")
+            .endColumn()
+            .endTable()
+            .build();
+
+    JsonNode actualEvent =
+        changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, ddl);
+
+    JSONObject expectedChangeEvent = new JSONObject();
+    expectedChangeEvent.put("first_name", "A");
+    expectedChangeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode expectedEvent = parseChangeEvent(expectedChangeEvent.toString());
+
+    assertEquals(expectedEvent, actualEvent);
+  }
 }

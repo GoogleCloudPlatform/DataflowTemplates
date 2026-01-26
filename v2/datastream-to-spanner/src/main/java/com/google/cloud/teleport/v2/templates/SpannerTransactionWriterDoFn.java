@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -278,7 +279,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       } else {
         processSingleDatabaseTransaction(
-            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       }
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
@@ -377,7 +378,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       ProcessContext c,
       ChangeEventContext changeEventContext,
       ChangeEventSequence currentChangeEventSequence,
-      Ddl shadowDdl) {
+      Ddl shadowDdl,
+      Ddl ddl) {
 
     spannerAccessor
         .getDatabaseClient()
@@ -402,7 +404,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                     skippedEvents.inc();
                     return null;
                   }
-                  // Apply shadow and data table mutations.
+                  // Execute DML if applicable
+                  Statement dataDml = changeEventContext.getDataDmlStatement(ddl);
+
+                  if (dataDml != null) {
+                    transaction.executeUpdate(dataDml);
+                  }
+
+                  // Apply shadow and data table mutations (only if they exist)
                   transaction.buffer(changeEventContext.getMutations());
                   isInTransaction.set(false);
                   return null;
@@ -472,6 +481,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                       .run(
                           (TransactionRunner.TransactionCallable<Void>)
                               mainTxn -> {
+                                // Execute Data DML if applicable
+                                Statement dataDml =
+                                    changeEventContext.getDataDmlStatement(dataTableDdl);
+                                if (dataDml != null) {
+                                  mainTxn.executeUpdate(dataDml);
+                                }
+
                                 // Read row from main table with lock scanned ranges to acquire
                                 // exclusive lock on the main table row.
                                 changeEventContext.readDataTableRowWithExclusiveLock(
@@ -504,7 +520,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                                 }
 
                                 // Write to main table
-                                mainTxn.buffer(changeEventContext.getDataMutation());
+                                if (changeEventContext.getDataMutation() != null) {
+                                  mainTxn.buffer(changeEventContext.getDataMutation());
+                                }
                                 return null;
                               });
 
