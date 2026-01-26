@@ -30,6 +30,7 @@ import static org.twdata.maven.mojoexecutor.MojoExecutor.executionEnvironment;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.goal;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.plugin;
 
+import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.DockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
@@ -57,6 +58,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -103,6 +106,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
+
+  @Parameter(defaultValue = "${flexContainerName}", readonly = true, required = false)
+  protected String flexContainerName;
 
   @Parameter(defaultValue = "${bucketName}", readonly = true, required = true)
   protected String bucketName;
@@ -202,7 +208,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   private String mavenRepo;
 
-  public TemplatesStageMojo() {}
+  private ContainerStageTracker containerStageTracker;
+
+  public TemplatesStageMojo() {
+    this.containerStageTracker = new ContainerStageTracker();
+  }
 
   public TemplatesStageMojo(
       MavenProject project,
@@ -213,6 +223,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       File targetDirectory,
       String projectId,
       String templateName,
+      String flexContainerName,
       String bucketName,
       String librariesBucketName,
       String stagePrefix,
@@ -237,6 +248,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.targetDirectory = targetDirectory;
     this.projectId = projectId;
     this.templateName = templateName;
+    this.flexContainerName = flexContainerName;
     this.bucketName = bucketName;
     this.librariesBucketName = librariesBucketName;
     this.stagePrefix = stagePrefix;
@@ -254,6 +266,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.unifiedWorker = unifiedWorker;
     this.internalMaven = false;
     this.generateSBOM = generateSBOM;
+    this.containerStageTracker = new ContainerStageTracker();
   }
 
   public void execute() throws MojoExecutionException {
@@ -276,6 +289,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
+      stageCommandSpecs(templateDefinitions);
       for (TemplateDefinitions definition : templateDefinitions) {
 
         ImageSpec imageSpec = definition.buildSpecModel(false);
@@ -283,12 +297,18 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         String currentDisplayName = definition.getTemplateAnnotation().displayName();
 
         // Filter out the template if there was a specific one given
-        if (templateName != null
-            && !templateName.isEmpty()
-            && !templateName.equals(currentTemplateName)
-            && !templateName.equals(currentDisplayName)) {
-          LOG.info("Skipping template {} ({})", currentTemplateName, currentDisplayName);
-          continue;
+        if (!Strings.isNullOrEmpty(templateName)) {
+          if (!templateName.equals(currentTemplateName)
+              && !templateName.equals(currentDisplayName)) {
+            LOG.info("Skipping template {} ({})", currentTemplateName, currentDisplayName);
+            continue;
+          }
+        }
+        if (!Strings.isNullOrEmpty(flexContainerName)) {
+          if (!flexContainerName.equals(definition.getTemplateAnnotation().flexContainerName())) {
+            LOG.info("Skipping template {} ({})", currentTemplateName, currentDisplayName);
+            continue;
+          }
         }
 
         LOG.info("Staging template {}...", currentTemplateName);
@@ -301,6 +321,33 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       throw new MojoExecutionException("URL generation failed", e);
     } catch (Exception e) {
       throw new MojoExecutionException("Template staging failed", e);
+    }
+  }
+
+  /**
+   * Save command specs for templates. This is needed before staging any Java/XLang flex templates
+   * as they share same image.
+   */
+  public void stageCommandSpecs(List<TemplateDefinitions> allDefinitions) {
+    TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
+    for (TemplateDefinitions definition : allDefinitions) {
+      if (!definition.isFlex()) {
+        continue;
+      }
+      File xlangOutputDir;
+      File commandSpecFile;
+      Template annotation = definition.getTemplateAnnotation();
+      String containerName = annotation.flexContainerName();
+      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+        commandSpecFile = generator.saveCommandSpec(definition, outputClassesDirectory);
+      } else if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+        xlangOutputDir =
+            new File(outputClassesDirectory.getPath() + "/" + containerName + "/resources");
+        commandSpecFile = generator.saveCommandSpec(definition, xlangOutputDir);
+      } else {
+        continue;
+      }
+      containerStageTracker.addContainer(containerName, annotation.name(), commandSpecFile);
     }
   }
 
@@ -476,19 +523,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory)
               .getName();
     }
-
-    File xlangOutputDir;
-    File commandSpecFile;
-    if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
-      xlangOutputDir =
-          new File(outputClassesDirectory.getPath() + "/" + containerName + "/resources");
-      commandSpecFile = generator.saveCommandSpec(definition, xlangOutputDir);
-    } else {
-      commandSpecFile = generator.saveCommandSpec(definition, outputClassesDirectory);
-    }
-    String appRoot = "/template/" + containerName;
-    String commandSpec = appRoot + "/resources/" + commandSpecFile.getName();
-
     String templatePath =
         "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
     File imageSpecFile = null;
@@ -502,9 +536,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           buildProjectId,
           imagePathTag,
           metadataFile,
-          appRoot,
-          commandSpec,
-          commandSpecFile.getName(),
           templatePath);
 
       // stageFlexJavaTemplate calls `gcloud dataflow flex-template build` command, which takes
@@ -547,32 +578,36 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     if (generateSBOM) {
-      // generate SBOM
-      File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(
-          imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
-      GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
-      Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
-      String digest = runnable.getDigest();
+      if (!containerStageTracker.isStaged(containerName, currentTemplateName)) {
+        // generate SBOM
+        File buildDir = new File(outputClassesDirectory.getAbsolutePath());
+        performVulnerabilityScanAndGenerateUserSBOM(
+            imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
+        GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
+        Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
+        String digest = runnable.getDigest();
+
+        if (stageImageBeforePromote) {
+          // resolve tag to apply
+          ImageSpecMetadata metadata = imageSpec.getMetadata();
+          String trackTag = "public-image-latest";
+          String dateSuffix =
+              LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
+          String deprecatedTag = "update-available-" + dateSuffix;
+          if (metadata.isHidden()) {
+            trackTag = "no-new-use-public-image-latest";
+          } else if (metadata.getName().contains("[Deprecated]")) {
+            trackTag = "deprecated-public-image-latest";
+          }
+          // promote image
+          PromoteHelper promoteHelper =
+              new PromoteHelper(
+                  imagePath, targetImagePath, stagePrefix, trackTag, deprecatedTag, digest);
+          promoteHelper.promote();
+        }
+      }
 
       if (stageImageBeforePromote) {
-        // resolve tag to apply
-        ImageSpecMetadata metadata = imageSpec.getMetadata();
-        String trackTag = "public-image-latest";
-        String dateSuffix =
-            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
-        String deprecatedTag = "update-available-" + dateSuffix;
-        if (metadata.isHidden()) {
-          trackTag = "no-new-use-public-image-latest";
-        } else if (metadata.getName().contains("[Deprecated]")) {
-          trackTag = "deprecated-public-image-latest";
-        }
-        // promote image
-        PromoteHelper promoteHelper =
-            new PromoteHelper(
-                imagePath, targetImagePath, stagePrefix, trackTag, deprecatedTag, digest);
-        promoteHelper.promote();
-
         if (!stageImageOnly) {
           // overwrite image spec file
           if (imageSpecFile == null) {
@@ -604,6 +639,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (imageSpecFile != null) {
       gcsCopy(imageSpecFile.getAbsolutePath(), templatePath);
     }
+
+    containerStageTracker.setStaged(containerName);
 
     LOG.info("Flex Template was staged! {}", stageImageOnly ? imageSpec.getImage() : templatePath);
     return templatePath;
@@ -653,12 +690,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String buildProjectId,
       String imagePathTag,
       String metadataFile,
-      String appRoot,
-      String commandSpec,
-      String commandSpecFileName,
       String templatePath)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+    // check if the image of this template has been staged
+    if (containerStageTracker.isStaged(containerName, currentTemplateName)) {
+      return;
+    }
     String tarFileName =
         String.format("%s/%s/%s.tar", outputDirectory.getPath(), containerName, containerName);
     Plugin plugin =
@@ -668,59 +706,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             null,
             List.of(
                 dependency("com.google.cloud.tools", "jib-layer-filter-extension-maven", "0.3.0")));
-    List<Element> elements = new ArrayList<>();
 
-    // Base image to use
-    elements.add(element("from", element("image", baseContainerImage)));
-
-    // Target image to stage
-    elements.add(element("to", element("image", imagePathTag)));
-    elements.add(
-        element(
-            "container",
-            element("appRoot", appRoot),
-            // Keep the original entrypoint
-            element("entrypoint", "INHERIT"),
-            // Point to the command spec
-            element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec))));
-    elements.add(element("outputPaths", element("tar", tarFileName)));
-
-    // Only use shaded JAR and exclude libraries if shade was not disabled
-    if (System.getProperty("skipShade") == null
-        || System.getProperty("skipShade").equalsIgnoreCase("false")) {
-      elements.add(
-          element(
-              "extraDirectories",
-              element(
-                  "paths",
-                  element(
-                      "path",
-                      element("from", targetDirectory + "/classes"),
-                      element("includes", commandSpecFileName),
-                      element("into", "/template/" + containerName + "/resources")))));
-
-      elements.add(element("containerizingMode", "packaged"));
-      elements.add(
-          element(
-              "pluginExtensions",
-              element(
-                  "pluginExtension",
-                  element(
-                      "implementation",
-                      "com.google.cloud.tools.jib.maven.extension.layerfilter.JibLayerFilterExtension"),
-                  element(
-                      "configuration",
-                      attribute(
-                          "implementation",
-                          "com.google.cloud.tools.jib.maven.extension.layerfilter.Configuration"),
-                      element(
-                          "filters",
-                          element("filter", element("glob", "**/libs/*.jar")),
-                          element(
-                              "filter",
-                              element("glob", "**/libs/conscrypt-openjdk-uber-*.jar"),
-                              element("toLayer", "conscrypt")))))));
-    }
     // X-lang templates need to have a custom image which builds both python and java.
     String[] flexTemplateBuildCmd;
     if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
@@ -730,16 +716,21 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (!dockerfile.exists()) {
         List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
         if (filesToCopy.isEmpty()) {
-          filesToCopy =
-              List.of(
-                  String.format("%s-generated-metadata.json", containerName), "requirements.txt");
+          filesToCopy = List.of("requirements.txt");
+        } else {
+          // Currently not used.
+          LOG.warn(
+              "filesToCopy is overridden in Template {}. Make sure its flexContainerName is set unique.",
+              currentTemplateName);
         }
         List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-        if (entryPoint.isEmpty()) {
+        if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
           entryPoint = List.of(javaTemplateLauncherEntryPoint);
+        } else {
+          // entryPoint is used by YAML templates. XLANG Templates always use Java entrypoint
+          throw new IllegalArgumentException("Cannot override entrypoint for XLANG template.");
         }
-        String xlangCommandSpec =
-            "/template/" + containerName + "/resources/" + commandSpecFileName;
+        String xlangCommandSpec = containerStageTracker.getCommandSpecEnv(containerName);
 
         // Copy in requirements.txt if present
         File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
@@ -787,6 +778,64 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       LOG.info("Staging XLANG image using Dockerfile");
       stageXlangUsingDockerfile(imagePathTag, containerName, buildProjectId);
     } else {
+      List<Element> elements = new ArrayList<>();
+
+      // Base image to use
+      elements.add(element("from", element("image", baseContainerImage)));
+
+      // Target image to stage
+      elements.add(element("to", element("image", imagePathTag)));
+      elements.add(
+          element(
+              "container",
+              element("appRoot", containerStageTracker.getAppRoot(containerName)),
+              // Keep the original entrypoint
+              element("entrypoint", "INHERIT"),
+              // Point to the command spec
+              element(
+                  "environment",
+                  element(
+                      "DATAFLOW_JAVA_COMMAND_SPEC",
+                      containerStageTracker.getCommandSpecEnv(containerName)))));
+      elements.add(element("outputPaths", element("tar", tarFileName)));
+
+      // Only use shaded JAR and exclude libraries if shade was not disabled
+      if (System.getProperty("skipShade") == null
+          || System.getProperty("skipShade").equalsIgnoreCase("false")) {
+        List<Element> paths = new ArrayList<>();
+        for (File commandSpecFile : containerStageTracker.getCommandSpecFile(containerName)) {
+          paths.add(
+              element(
+                  "path",
+                  element("from", targetDirectory + "/classes"),
+                  element("includes", commandSpecFile.getName()),
+                  element("into", "/template/" + containerName + "/resources")));
+        }
+
+        elements.add(element("extraDirectories", element("paths", paths.toArray(new Element[0]))));
+
+        elements.add(element("containerizingMode", "packaged"));
+        elements.add(
+            element(
+                "pluginExtensions",
+                element(
+                    "pluginExtension",
+                    element(
+                        "implementation",
+                        "com.google.cloud.tools.jib.maven.extension.layerfilter.JibLayerFilterExtension"),
+                    element(
+                        "configuration",
+                        attribute(
+                            "implementation",
+                            "com.google.cloud.tools.jib.maven.extension.layerfilter.Configuration"),
+                        element(
+                            "filters",
+                            element("filter", element("glob", "**/libs/*.jar")),
+                            element(
+                                "filter",
+                                element("glob", "**/libs/conscrypt-openjdk-uber-*.jar"),
+                                element("toLayer", "conscrypt")))))));
+      }
       // Jib's LayerFilter extension is not thread-safe, do only one at a time
       synchronized (TemplatesStageMojo.class) {
         executeMojo(
@@ -1394,7 +1443,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       Files.copy(
           Path.of(targetDirectory.getPath() + targetArtifactPath),
-          Path.of(classesDirectory + "/" + containerName + "/classpath" + targetArtifactPath));
+          Path.of(classesDirectory + "/" + containerName + "/classpath" + targetArtifactPath),
+          StandardCopyOption.REPLACE_EXISTING);
       String sourceLibsDirectory = targetDirectory.getPath() + "/extra_libs";
       String destLibsDirectory = classesDirectory + "/" + containerName + "/libs/";
       Files.walk(Paths.get(sourceLibsDirectory))
@@ -1519,6 +1569,64 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     LOG.info("Image {} validated successfully.", imagePathTag);
+  }
+
+  /** Tracking staged containers shared by templates. */
+  private static class ContainerStageTracker {
+    private final Map<String, ContainerCommandSpecs> containers;
+
+    ContainerStageTracker() {
+      this.containers = new HashMap<>();
+    }
+
+    void addContainer(String containerName, String templateName, File commandSpecFile) {
+      if (!containers.containsKey(containerName)) {
+        containers.put(containerName, new ContainerCommandSpecs());
+      }
+      containers.get(containerName).commandSpecFiles.put(templateName, commandSpecFile);
+    }
+
+    Collection<File> getCommandSpecFile(String containerName) {
+      return containers.get(containerName).commandSpecFiles.values();
+    }
+
+    void setStaged(String containerName) {
+      if (containers.containsKey(containerName)) {
+        containers.get(containerName).staged = true;
+      }
+    }
+
+    boolean isStaged(String containerName, String templateName) {
+      if (!containers.containsKey(containerName)) {
+        // not managed by ContainerStageTracker
+        return false;
+      }
+      if (!containers.get(containerName).commandSpecFiles.containsKey(templateName)) {
+        throw new IllegalStateException(
+            String.format(
+                "Template %s's command spec not included in %s", templateName, containerName));
+      }
+      return containers.get(containerName).staged;
+    }
+
+    String getAppRoot(String containerName) {
+      return "/template/" + containerName;
+    }
+
+    String getCommandSpecEnv(String containerName) {
+      return getAppRoot(containerName)
+          + "/resources/{SPEC_FILE_TEMPLATE_NAME}-generated-command-spec.json";
+    }
+
+    private static class ContainerCommandSpecs {
+      Map<String, File> commandSpecFiles;
+      boolean staged;
+
+      ContainerCommandSpecs() {
+        commandSpecFiles = new HashMap<>();
+        staged = false;
+      }
+    }
   }
 
   /** A runnable used for generating system SBOM, fetching image digest for retrivial. */
