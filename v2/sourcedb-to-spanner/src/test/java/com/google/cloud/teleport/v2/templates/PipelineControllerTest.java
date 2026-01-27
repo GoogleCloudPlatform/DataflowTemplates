@@ -359,7 +359,7 @@ public class PipelineControllerTest {
         new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions);
     JdbcIOWrapperConfig config =
         dbConfigContainer.getJDBCIOWrapperConfig(
-            List.of("table1", "table2"), Wait.on(dummyPCollection));
+            List.of("table1", "table2"), Wait.on(dummyPCollection), schemaMapper);
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
@@ -406,7 +406,7 @@ public class PipelineControllerTest {
 
     JdbcIOWrapperConfig config =
         dbConfigContainer.getJDBCIOWrapperConfig(
-            List.of("table1", "table2"), Wait.on(dummyPCollection));
+            List.of("table1", "table2"), Wait.on(dummyPCollection), new IdentityMapper(shardedDdl));
 
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
@@ -417,7 +417,10 @@ public class PipelineControllerTest {
     assertThat(config.waitOn()).isNotNull();
     assertEquals("shard1", dbConfigContainer.getShardId());
     assertThat(
-            dbConfigContainer.getIOWrapper(List.of("table1", "table2"), Wait.on(dummyPCollection)))
+            dbConfigContainer.getIOWrapper(
+                List.of("table1", "table2"),
+                Wait.on(dummyPCollection),
+                new IdentityMapper(shardedDdl)))
         .isEqualTo(mockJdbcIoWrapper);
   }
 
@@ -455,7 +458,7 @@ public class PipelineControllerTest {
 
     JdbcIOWrapperConfig config =
         dbConfigContainer.getJDBCIOWrapperConfig(
-            List.of("table1", "table2"), Wait.on(dummyPCollection));
+            List.of("table1", "table2"), Wait.on(dummyPCollection), new IdentityMapper(shardedDdl));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL()).isEqualTo(testUrl + "?currentSchema=testNameSpace");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});

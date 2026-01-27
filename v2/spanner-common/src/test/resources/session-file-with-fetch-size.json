@@ -1,0 +1,100 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "new_cart",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "ColDefs": {
+        "c1": {
+          "Name": "new_product_id",
+          "Type": {
+            "Name": "STRING"
+          }
+        },
+        "c2": {
+          "Name": "new_quantity",
+          "Type": {
+            "Name": "INT64"
+          }
+        },
+        "c3": {
+          "Name": "new_user_id",
+          "Type": {
+            "Name": "STRING"
+          }
+        }
+      },
+      "PK": [
+        {
+          "ColId": "c3",
+          "Order": 1
+        },
+        {
+          "ColId": "c1",
+          "Order": 2
+        }
+      ]
+    }
+  },
+  "SyntheticPKeys": {
+    "t1": {
+      "ColId": "c10",
+      "Sequence": 0
+    }
+  },
+  "SrcSchema": {
+    "t1": {
+      "Name": "cart",
+      "Id": "t1",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "ColDefs": {
+        "c1": {
+          "Name": "product_id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ]
+          }
+        },
+        "c2": {
+          "Name": "quantity",
+          "Type": {
+            "Name": "bigint"
+          }
+        },
+        "c3": {
+          "Name": "user_id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ]
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Order": 1
+        },
+        {
+          "ColId": "c1",
+          "Order": 2
+        }
+      ]
+    }
+  },
+  "TableParams": {
+    "t1": {
+      "fetchSize": 1234
+    }
+  }
+}

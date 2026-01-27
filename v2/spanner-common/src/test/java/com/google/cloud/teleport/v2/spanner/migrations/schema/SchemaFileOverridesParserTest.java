@@ -71,4 +71,18 @@ public class SchemaFileOverridesParserTest {
         Paths.get(Resources.getResource("schema-overrides-malformed.json").getPath());
     schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
   }
+
+  @Test
+  public void testGetTableParams() {
+    Path schemaOverridesFile =
+        Paths.get(Resources.getResource("schema-overrides-with-params.json").getPath());
+    schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFile.toString());
+    assertEquals(
+        Integer.valueOf(500),
+        schemaFileOverridesParser
+            .schemaFileOverride
+            .getTableParams()
+            .get("Singers")
+            .getFetchSize());
+  }
 }
