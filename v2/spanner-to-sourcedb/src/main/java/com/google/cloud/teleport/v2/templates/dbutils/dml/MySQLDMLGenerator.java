@@ -51,18 +51,22 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
-      throw new InvalidDMLGenerationException(
-          String.format(
-              "Schema Mapper, Ddl and SourceSchema must be not null, respectively found %s,%s,%s.",
-              schemaMapper, spannerDdl, sourceSchema));
+
+    if (schemaMapper == null) {
+      throw new InvalidDMLGenerationException("Schema Mapper must be not null");
     }
+    if (spannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner Ddl must be not null.");
+    }
+    if (sourceSchema == null) {
+      throw new InvalidDMLGenerationException("SourceSchema must be not null.");
+    }
+
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
-              "The spanner table %s was not found in ddl found on spanner. Ddl: %s",
-              spannerTableName, spannerDdl));
+              "The spanner table %s was not found in ddl found on spanner", spannerTableName));
     }
 
     String sourceTableName = "";
@@ -84,8 +88,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
       throw new InvalidDMLGenerationException(
           String.format(
-              "Cannot reverse replicate for source table %s without primary key, skipping the record. Source Table: %s",
-              sourceTableName, sourceTable));
+              "Cannot reverse replicate for source table %s without primary key, skipping the record.",
+              sourceTableName));
     }
 
     Map<String, String> pkcolumnNameValues =

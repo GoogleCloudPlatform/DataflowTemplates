@@ -84,11 +84,14 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
-      throw new InvalidDMLGenerationException(
-          String.format(
-              "Schema Mapper, Ddl and SourceSchema must be not null, respectively found %s,%s,%s.",
-              schemaMapper, spannerDdl, sourceSchema));
+    if (schemaMapper == null) {
+      throw new InvalidDMLGenerationException("Schema Mapper must be not null");
+    }
+    if (spannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner Ddl must be not null.");
+    }
+    if (sourceSchema == null) {
+      throw new InvalidDMLGenerationException("SourceSchema must be not null.");
     }
     String sourceTableName = "";
     try {
@@ -102,15 +105,12 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     if (spannerTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
-              "The spanner table %s was not found in ddl found on spanner. Ddl: %s",
-              spannerTableName, spannerDdl));
+              "The spanner table %s was not found in ddl found on spanner.", spannerTableName));
     }
     SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       throw new InvalidDMLGenerationException(
-          String.format(
-              "The source table %s was not found in source schema. Source Schema: %s",
-              sourceTableName, sourceSchema));
+          String.format("The source table %s was not found in source schema.", sourceTableName));
     }
 
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
@@ -199,7 +199,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       return getDeleteStatementCQL(sourceTable.name(), timestamp, pkColumnNameValues);
     } else {
       throw new InvalidDMLGenerationException(
-          "Unsupported modType: " + dmlGeneratorRequest.getModType());
+          String.format("Unsupported modType: %s for table %s", modType, spannerTable.name()));
     }
   }
 
