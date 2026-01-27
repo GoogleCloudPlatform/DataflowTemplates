@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -43,8 +44,10 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -56,6 +59,7 @@ import org.slf4j.LoggerFactory;
 public final class KafkaToKafkaIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToKafka.class);
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
   private KafkaResourceManager kafkaResourceManager;
 
   @Before

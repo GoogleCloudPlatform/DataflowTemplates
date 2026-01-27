@@ -36,7 +36,6 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-    <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
   <dependencies>
@@ -74,7 +73,7 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>iceberg</artifactId>
+      <artifactId>it-iceberg</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>

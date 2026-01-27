@@ -23,7 +23,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>iceberg</artifactId>
+    <artifactId>it-iceberg</artifactId>
 
     <properties>
         <iceberg.version>1.10.1</iceberg.version>

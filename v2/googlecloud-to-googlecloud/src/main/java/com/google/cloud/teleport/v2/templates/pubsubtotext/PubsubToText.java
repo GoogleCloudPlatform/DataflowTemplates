@@ -54,7 +54,7 @@ import org.apache.beam.sdk.values.PCollection;
         "The Pub/Sub Topic or Subscription to Cloud Storage Text template is a streaming pipeline that reads records "
             + "from Pub/Sub and saves them as a series of Cloud Storage files in text format. The template can be used as a quick way to save data in Pub/Sub for future use. By default, the template generates a new file every 5 minutes.",
     optionsClass = Options.class,
-    flexContainerName = "pubsub-to-text",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-topic-subscription-to-text",
     contactInformation = "https://cloud.google.com/support",

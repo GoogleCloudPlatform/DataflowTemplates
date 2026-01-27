@@ -348,6 +348,108 @@ public class CassandraSourceRowMapperTest {
   }
 
   @Test
+  public void testCassandraSourceRowForNullValues() {
+    ResultSet mockResultSet = Mockito.mock(ResultSet.class);
+    Row mockRow = Mockito.mock(Row.class);
+    final String testIntCol = "testIntCol";
+    final String nullCol = "nullCol";
+    final String extractedNullCol = "extractedNullCol";
+
+    when(mockRow.getInt(testIntCol)).thenReturn(42);
+
+    when(mockRow.isNull(nullCol)).thenReturn(true);
+
+    when(mockRow.isNull(extractedNullCol)).thenReturn(false);
+    when(mockRow.getString(extractedNullCol)).thenReturn(null);
+
+    when(mockResultSet.iterator()).thenReturn(ImmutableList.of(mockRow).stream().iterator());
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    SourceTableSchema sourceTableSchema =
+        SourceTableSchema.builder(MapperType.CASSANDRA)
+            .setTableName("testTable")
+            .addSourceColumnNameToSourceColumnType(
+                testIntCol, new SourceColumnType("int", null, null))
+            .addSourceColumnNameToSourceColumnType(nullCol, new SourceColumnType("int", null, null))
+            .addSourceColumnNameToSourceColumnType(
+                extractedNullCol, new SourceColumnType("varchar", null, null))
+            .build();
+
+    CassandraSourceRowMapper cassandraSourceRowMapper =
+        CassandraSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchema)
+            .build();
+
+    ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+    cassandraSourceRowMapper.map(mockResultSet).forEachRemaining(row -> readRowsBuilder.add(row));
+    ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+    assertThat(
+            readRows.stream()
+                .map(r -> r.getPayload().toString())
+                .sorted()
+                .collect(ImmutableList.toImmutableList()))
+        .isEqualTo(
+            ImmutableList.of(
+                "{\"testIntCol\": 42, \"nullCol\": null, \"extractedNullCol\": null}"));
+  }
+
+  @Test
+  public void testAstraDbSourceRowForNullValues() {
+    com.datastax.oss.driver.api.core.cql.Row mockRow =
+        Mockito.mock(com.datastax.oss.driver.api.core.cql.Row.class);
+    com.datastax.oss.driver.api.core.cql.ResultSet mockResultSet =
+        new MockV4Resultset(ImmutableList.of(mockRow));
+    final String testIntCol = "testIntCol";
+    final String nullCol = "nullCol";
+    final String extractedNullCol = "extractedNullCol";
+
+    when(mockRow.getInt(testIntCol)).thenReturn(42);
+
+    when(mockRow.isNull(nullCol)).thenReturn(true);
+
+    when(mockRow.isNull(extractedNullCol)).thenReturn(false);
+    when(mockRow.getString(extractedNullCol)).thenReturn(null);
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    SourceTableSchema sourceTableSchema =
+        SourceTableSchema.builder(MapperType.CASSANDRA)
+            .setTableName("testTable")
+            .addSourceColumnNameToSourceColumnType(
+                testIntCol, new SourceColumnType("int", null, null))
+            .addSourceColumnNameToSourceColumnType(nullCol, new SourceColumnType("int", null, null))
+            .addSourceColumnNameToSourceColumnType(
+                extractedNullCol, new SourceColumnType("varchar", null, null))
+            .build();
+
+    AstraDbSourceRowMapper astraDbSourceRowMapper =
+        AstraDbSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchema)
+            .build();
+
+    ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+    astraDbSourceRowMapper.map(mockResultSet).forEachRemaining(row -> readRowsBuilder.add(row));
+    ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+    assertThat(
+            readRows.stream()
+                .map(r -> r.getPayload().toString())
+                .sorted()
+                .collect(ImmutableList.toImmutableList()))
+        .isEqualTo(
+            ImmutableList.of(
+                "{\"testIntCol\": 42, \"nullCol\": null, \"extractedNullCol\": null}"));
+  }
+
+  @Test
   public void testCassandraSourceRowForUnsupportedType() {
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
     Row mockRow = Mockito.mock(Row.class);

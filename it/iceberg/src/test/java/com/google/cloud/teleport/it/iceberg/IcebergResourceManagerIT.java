@@ -50,18 +50,16 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class IcebergResourceManagerIT {
 
-  private static String warehouseLocation;
-  private static IcebergResourceManager resourceManager;
-  private static String testNamespace;
-  private static String catalog;
+  private String warehouseLocation;
+  private IcebergResourceManager resourceManager;
+  private static final String testNamespace = "namespace";
+  private static final String catalog = "default";
 
   @Before
   public void setUp() throws IOException {
     String testId = UUID.randomUUID().toString();
-    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
+    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse-" + testId);
     warehouseLocation = "file:" + warehouseDirectory.toString();
-    testNamespace = "namespace";
-    catalog = "default";
 
     resourceManager =
         IcebergResourceManager.builder(testId)

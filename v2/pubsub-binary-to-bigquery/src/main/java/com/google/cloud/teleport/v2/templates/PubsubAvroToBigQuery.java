@@ -60,7 +60,7 @@ import org.apache.beam.sdk.values.Row;
         "The Pub/Sub Avro to BigQuery template is a streaming pipeline that ingests Avro data from a Pub/Sub "
             + "subscription into a BigQuery table. Any errors which occur while writing to the BigQuery table are streamed into a Pub/Sub unprocessed topic.",
     optionsClass = PubsubAvroToBigQueryOptions.class,
-    flexContainerName = "pubsub-avro-to-bigquery",
+    flexContainerName = "pubsub-binary-to-bigquery",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-avro-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

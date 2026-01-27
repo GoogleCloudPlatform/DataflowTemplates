@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.time.Instant;
@@ -110,8 +111,7 @@ public class InputRecordProcessor {
 
       DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
       if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
-        LOG.warn("DML statement is empty for table: " + tableName);
-        return false;
+        throw new InvalidDMLGenerationException("DML statement is empty for table: " + tableName);
       }
       // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
       // TODO Statement and Raw Statement Differently

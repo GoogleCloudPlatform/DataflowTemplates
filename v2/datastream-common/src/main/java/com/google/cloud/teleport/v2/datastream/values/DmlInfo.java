@@ -43,6 +43,8 @@ public abstract class DmlInfo implements Serializable {
 
   public abstract List<String> getOrderByValues();
 
+  public abstract String getOriginalPayload();
+
   @SchemaCreate
   public static DmlInfo of(
       String failsafeValue,
@@ -52,7 +54,8 @@ public abstract class DmlInfo implements Serializable {
       List<String> allPkFields,
       List<String> orderByFields,
       List<String> primaryKeyValues,
-      List<String> orderByValues) {
+      List<String> orderByValues,
+      String originalPayload) {
     return new AutoValue_DmlInfo(
         failsafeValue,
         dmlSql,
@@ -61,7 +64,8 @@ public abstract class DmlInfo implements Serializable {
         allPkFields,
         orderByFields,
         primaryKeyValues,
-        orderByValues);
+        orderByValues,
+        originalPayload);
   }
 
   public String getStateWindowKey() {

@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,8 +29,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
@@ -58,7 +63,7 @@ public class TemplatesReleaseMojoTest {
   public void setUp() throws IOException {
     mojo = new TemplatesReleaseMojo();
     mavenProject = mock(MavenProject.class);
-    baseDir = temporaryFolder.newFolder();
+    baseDir = temporaryFolder.newFolder("yaml");
     File outputDirectory = temporaryFolder.newFolder("output");
 
     when(mavenProject.getBasedir()).thenReturn(baseDir);
@@ -73,11 +78,11 @@ public class TemplatesReleaseMojoTest {
   @Test
   public void testExecute_publishesYamlBlueprints() throws MojoExecutionException, IOException {
     mojo.publishYamlBlueprints = true;
-    mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
+    mojo.yamlBlueprintsPath = "src/main/yaml";
     mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
     // Create a fake yaml file to be uploaded
-    File yamlDir = new File(baseDir, "yaml/src/main/yaml");
+    File yamlDir = new File(baseDir, "src/main/yaml");
     yamlDir.mkdirs();
     File yamlFile = new File(yamlDir, "my-blueprint.yaml");
     String yamlContent = getYamlContent();
@@ -121,20 +126,35 @@ public class TemplatesReleaseMojoTest {
   }
 
   @Test
-  public void testExecute_yamlBlueprintsDirectoryMissing_throwsException() {
+  public void testExecute_yamlBlueprintsDirectoryMissing_logsWarning()
+      throws MojoExecutionException {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "a-path-that-does-not-exist";
     mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
+    Logger logger = Logger.getLogger(TemplatesReleaseMojo.class.getName());
+    MemoryHandler memoryHandler = new MemoryHandler();
+    memoryHandler.setLevel(Level.WARNING);
+    logger.addHandler(memoryHandler);
+
     try {
+      // Act
       mojo.execute();
-      fail("MojoExecutionException was expected");
-    } catch (MojoExecutionException e) {
-      String expectedPath =
-          Paths.get(baseDir.getAbsolutePath(), "a-path-that-does-not-exist").toString();
-      assertEquals(
-          "YAML blueprints directory not found, skipping upload: " + expectedPath, e.getMessage());
+
+    } finally {
+      logger.removeHandler(memoryHandler);
     }
+
+    // Assert
+    boolean foundWarning =
+        memoryHandler.getRecords().stream()
+            .anyMatch(
+                r ->
+                    r.getLevel() == Level.WARNING
+                        && r.getMessage()
+                            .equals(
+                                "YAML blueprints directory not found, skipping upload for path: "));
+    assertTrue("Did not find expected warning log message.", foundWarning);
   }
 
   @Test
@@ -183,5 +203,24 @@ pipeline:
         error_handling:
           output: errors
     """;
+  }
+
+  private static class MemoryHandler extends Handler {
+    private final List<LogRecord> records = new ArrayList<>();
+
+    @Override
+    public void publish(LogRecord record) {
+      records.add(record);
+    }
+
+    @Override
+    public void flush() {}
+
+    @Override
+    public void close() throws SecurityException {}
+
+    public List<LogRecord> getRecords() {
+      return records;
+    }
   }
 }

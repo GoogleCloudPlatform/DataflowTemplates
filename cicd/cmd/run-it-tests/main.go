@@ -48,7 +48,7 @@ func main() {
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
-		mvnFlags.IncludeDependencies(),
+		mvnFlags.DoNotIncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),

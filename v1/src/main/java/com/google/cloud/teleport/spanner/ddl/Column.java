@@ -78,6 +78,9 @@ public abstract class Column implements Serializable {
   @Nullable
   public abstract String defaultExpression();
 
+  @Nullable
+  public abstract String onUpdateExpression();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Column.Builder()
         .dialect(dialect)
@@ -111,6 +114,14 @@ public abstract class Column implements Serializable {
         appendable.append(defaultExpression());
       } else {
         appendable.append(" (").append(defaultExpression()).append(")");
+      }
+    }
+    if (onUpdateExpression() != null) {
+      appendable.append(" ON UPDATE ");
+      if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(onUpdateExpression());
+      } else {
+        appendable.append(" (").append(onUpdateExpression()).append(")");
       }
     }
     if (isIdentityColumn()) {
@@ -226,6 +237,8 @@ public abstract class Column implements Serializable {
     public abstract Builder generationExpression(String expression);
 
     public abstract Builder defaultExpression(String expression);
+
+    public abstract Builder onUpdateExpression(String expression);
 
     public Builder generatedAs(String expression) {
       return isGenerated(true).generationExpression(expression);

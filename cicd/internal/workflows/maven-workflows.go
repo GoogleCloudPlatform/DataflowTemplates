@@ -39,6 +39,7 @@ const (
 // `Run` method.
 type MavenFlags interface {
 	IncludeDependencies() string
+	DoNotIncludeDependencies() string
 	IncludeDependents() string
 	SkipCheckstyle() string
 	SkipDependencyAnalysis() string
@@ -65,7 +66,11 @@ type MavenFlags interface {
 type mvnFlags struct{}
 
 func (*mvnFlags) IncludeDependencies() string {
-	return "-am"
+	return op.IncludeDependencies
+}
+
+func (*mvnFlags) DoNotIncludeDependencies() string {
+	return op.DoNotIncludeDependencies
 }
 
 func (*mvnFlags) IncludeDependents() string {
