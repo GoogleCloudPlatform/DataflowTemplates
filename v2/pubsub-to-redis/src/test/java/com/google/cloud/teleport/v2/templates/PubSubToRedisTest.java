@@ -20,7 +20,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 
 import com.github.fppt.jedismock.RedisServer;
 import com.google.cloud.teleport.v2.templates.io.RedisHashIO;
@@ -348,23 +347,5 @@ public class PubSubToRedisTest {
 
     // Verify that the data was written to Redis Streams (additional verification logic may be
     // needed)
-  }
-
-  @Test
-  public void testInvalidImageReference() {
-    String invalidImageReference =
-        "gcr.io//pubsub-to-redis:templates"; // Invalid due to double slashes
-
-    // Simulate the staging process and check for expected exception or error handling
-    Exception exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> {
-              // Call the method responsible for staging with the invalid reference
-              // For example: TemplateStaging.stageTemplate(invalidImageReference);
-            });
-
-    String expectedMessage = "Invalid image reference format";
-    assertThat(exception.getMessage(), is(equalTo(expectedMessage)));
   }
 }
