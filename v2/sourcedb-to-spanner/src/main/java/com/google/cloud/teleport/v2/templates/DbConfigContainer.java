@@ -49,10 +49,9 @@ public interface DbConfigContainer {
       ISchemaMapper schemaMapper, List<String> spannerTables);
 
   /**
-   * Create an {@link IoWrapper} instance for a list of SourceTables.
-   *
    * @param sourceTables
    * @param waitOnSignal
+   * @param schemaMapper
    * @return
    */
   IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
