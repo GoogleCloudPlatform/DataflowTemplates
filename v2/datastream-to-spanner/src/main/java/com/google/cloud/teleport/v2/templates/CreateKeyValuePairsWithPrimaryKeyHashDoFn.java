@@ -61,7 +61,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
     try {
-      JsonNode changeEvent = mapper.readTree(msg.getOriginalPayload());
+      JsonNode changeEvent = mapper.readTree(msg.getPayload());
       Ddl ddl = c.sideInput(ddlView);
 
       String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
