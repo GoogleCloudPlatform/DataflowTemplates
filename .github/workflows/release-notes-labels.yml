@@ -13,6 +13,8 @@ jobs:
         with:
           mode: minimum
           count: 1
+          # Note: If updating these labels, also update .github/release.yml 
+          # and contributor-docs/code-contributions.md.
           labels: |
             addition
             bug-fix

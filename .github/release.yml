@@ -1,17 +1,23 @@
+# Note: If updating these categories, also update 
+# .github/workflows/release-notes-labels.yml and 
+# contributor-docs/code-contributions.md.
 changelog:
   exclude:
     labels:
       - ignore-for-release
   categories:
-    - title: New Templates
+    - title: Additional New Features
       labels:
-        - new-template
-    - title: Improvements
-      labels:
-        - improvement
+        - addition
     - title: Bug fixes
       labels:
         - bug-fix
+    - title: Improvements
+      labels:
+        - improvement
+    - title: New Templates
+      labels:
+        - new-template
     - title: Package Upgrades
       labels:
         - package-upgrade
