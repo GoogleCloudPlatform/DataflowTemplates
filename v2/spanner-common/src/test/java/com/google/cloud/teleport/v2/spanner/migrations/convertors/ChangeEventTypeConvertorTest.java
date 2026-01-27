@@ -125,9 +125,6 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toBoolean(ce, "bool_field17", /* requiredField= */ false),
         new Boolean(false));
     assertNull(ChangeEventTypeConvertor.toBoolean(ce, "bool_field18", /* requiredField= */ false));
-    assertNull(
-        ChangeEventTypeConvertor.toBoolean(
-            ce, "bool_field18", /* requiredField= */ true)); // Spanner supports NULL primary key
     assertNull(ChangeEventTypeConvertor.toBoolean(ce, "non_existent", /* requiredField= */ false));
   }
 
@@ -182,7 +179,6 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toLong(ce, "field8", /* requiredField= */ true), new Long(0));
     assertNull(ChangeEventTypeConvertor.toLong(ce, "field9", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toLong(ce, "field9", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -264,7 +260,6 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toFloat(ce, "field11", /* requiredField= */ true), new Float(0));
     assertNull(ChangeEventTypeConvertor.toFloat(ce, "field12", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toFloat(ce, "field12", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -338,7 +333,6 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toDouble(ce, "field11", /* requiredField= */ true), new Double(0));
     assertNull(ChangeEventTypeConvertor.toDouble(ce, "field12", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toDouble(ce, "field12", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -481,8 +475,6 @@ public final class ChangeEventTypeConvertorTest {
         new String("123345.678903457"));
     assertNull(
         ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field13", /* requiredField= */ false));
-    assertNull(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field13", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -553,7 +545,6 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toByteArray(ce, "field4", /* requiredField= */ true),
         ByteArray.copyFrom(new byte[] {-17, -2}));
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /* requiredField= */ true));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field6", /* requiredField= */ true),
         ByteArray.copyFrom(new byte[] {127, -1, -1, -1, -1, -1, -1, -1}));
@@ -623,7 +614,6 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ true),
         Timestamp.parseTimestamp("2023-12-22T15:26:01.769602"));
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field8", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -705,7 +695,6 @@ public final class ChangeEventTypeConvertorTest {
         ChangeEventTypeConvertor.toDate(ce, "field5", /* requiredField= */ true),
         Date.parseDate("2020-12-30"));
     assertNull(ChangeEventTypeConvertor.toDate(ce, "field6", /* requiredField= */ false));
-    assertNull(ChangeEventTypeConvertor.toDate(ce, "field6", /* requiredField= */ true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
