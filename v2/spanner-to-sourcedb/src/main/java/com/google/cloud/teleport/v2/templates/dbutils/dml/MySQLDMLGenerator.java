@@ -117,7 +117,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
     } else {
       throw new InvalidDMLGenerationException(
-          "Unsupported modType: " + dmlGeneratorRequest.getModType());
+            String.format("Unsupported modType: %s for table %s", dmlGeneratorRequest.getModType(), spannerTableName));
     }
   }
 
