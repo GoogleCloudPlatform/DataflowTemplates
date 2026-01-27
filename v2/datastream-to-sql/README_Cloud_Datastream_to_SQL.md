@@ -54,12 +54,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **databaseName**: The name of the SQL database to connect to. The default value is `postgres`.
 * **defaultCasing**: A Toggle for table casing behavior. For example,(ie.LOWERCASE = mytable -> mytable, UPPERCASE = mytable -> MYTABLECAMEL = my_table -> myTable, SNAKE = myTable -> my_table. Defaults to: LOWERCASE.
 * **columnCasing**: A toggle for target column name casing. LOWERCASE (default): my_column -> my_column. UPPERCASE: my_column -> MY_COLUMN. CAMEL: my_column -> myColumn. SNAKE: myColumn -> my_column.
-* **schemaMap**: A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error). Defaults to empty.
+* **schemaMap**: A map of key/values used to dictate schema and table name changes. Examples: Schema to schema (SCHEMA1:SCHEMA2), Table to table (SCHEMA1.table1:SCHEMA2.TABLE1), or multiple mappings using the pipe '|' delimiter (e.g. schema1.source:schema2.target|schema3.source:schema4.target). Defaults to empty.
 * **customConnectionString**: Optional connection string which will be used instead of the default database string.
 * **numThreads**: Determines key parallelism of Format to DML step, specifically, the value is passed into Reshuffle.withNumBuckets. Defaults to: 100.
 * **databaseLoginTimeout**: The timeout in seconds for database login attempts. This helps prevent connection hangs when multiple workers try to connect simultaneously.
-* **datastreamSourceType**: Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.
 * **orderByIncludesIsDeleted**: Order by configurations for data should include prioritizing data which is not deleted. Defaults to: false.
+* **datastreamSourceType**: Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.
+* **deadLetterQueueDirectory**: The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.
+* **dlqRetryMinutes**: The number of minutes between DLQ Retries. Defaults to `10`.
+* **dlqMaxRetries**: The maximum number of times to retry a failed record from the DLQ before marking it as a permanent failure. Defaults to 5.
+* **schemaCacheRefreshMinutes**: The number of minutes to cache table schemas. Defaults to 1440 (24 hours).
+* **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 
 
 
@@ -172,8 +177,13 @@ export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 export NUM_THREADS=100
 export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
-export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ORDER_BY_INCLUDES_IS_DELETED=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export SCHEMA_CACHE_REFRESH_MINUTES=1440
+export RUN_MODE=regular
 
 gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --project "$PROJECT" \
@@ -197,8 +207,13 @@ gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING" \
   --parameters "numThreads=$NUM_THREADS" \
   --parameters "databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT" \
+  --parameters "orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED" \
   --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
-  --parameters "orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED"
+  --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
+  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+  --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
+  --parameters "schemaCacheRefreshMinutes=$SCHEMA_CACHE_REFRESH_MINUTES" \
+  --parameters "runMode=$RUN_MODE"
 ```
 
 For more information about the command, please check:
@@ -237,8 +252,13 @@ export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 export NUM_THREADS=100
 export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
-export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ORDER_BY_INCLUDES_IS_DELETED=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export SCHEMA_CACHE_REFRESH_MINUTES=1440
+export RUN_MODE=regular
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -247,7 +267,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-sql-job" \
 -DtemplateName="Cloud_Datastream_to_SQL" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,defaultCasing=$DEFAULT_CASING,columnCasing=$COLUMN_CASING,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS,databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,defaultCasing=$DEFAULT_CASING,columnCasing=$COLUMN_CASING,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS,databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT,orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,schemaCacheRefreshMinutes=$SCHEMA_CACHE_REFRESH_MINUTES,runMode=$RUN_MODE" \
 -f v2/datastream-to-sql
 ```
 
@@ -310,8 +330,13 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_sql" {
     # customConnectionString = ""
     # numThreads = "100"
     # databaseLoginTimeout = "<databaseLoginTimeout>"
-    # datastreamSourceType = "<datastreamSourceType>"
     # orderByIncludesIsDeleted = "false"
+    # datastreamSourceType = "<datastreamSourceType>"
+    # deadLetterQueueDirectory = ""
+    # dlqRetryMinutes = "10"
+    # dlqMaxRetries = "5"
+    # schemaCacheRefreshMinutes = "1440"
+    # runMode = "regular"
   }
 }
 ```
