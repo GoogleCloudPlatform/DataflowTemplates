@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
@@ -217,17 +218,16 @@ public final class MySQLDMLGeneratorTest {
 
     /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -245,17 +245,16 @@ public final class MySQLDMLGeneratorTest {
 
     /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -967,17 +966,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1058,17 +1056,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1115,17 +1112,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "JUNK";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1173,17 +1169,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1200,17 +1195,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1227,17 +1221,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
@@ -1254,17 +1247,16 @@ public final class MySQLDMLGeneratorTest {
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchemaMapper(schemaMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.isEmpty());
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            mySQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
   }
 
   @Test
