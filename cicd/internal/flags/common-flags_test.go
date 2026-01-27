@@ -64,6 +64,10 @@ func TestModulesToBuild(t *testing.T) {
 				"v2/datastream-to-sql/",
 			},
 		},
+		{
+			input:    "YAML",
+			expected: []string{"plugins/templates-maven-plugin", "python/", "yaml/"},
+		},
 	}
 
 	for _, test := range tests {

@@ -67,6 +67,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
 
+  @Parameter(defaultValue = "${flexContainerName}", readonly = true, required = false)
+  protected String flexContainerName;
+
   @Parameter(defaultValue = "${bucketName}", readonly = true, required = true)
   protected String bucketName;
 
@@ -158,7 +161,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected boolean publishYamlBlueprints;
 
   @Parameter(
-      defaultValue = "yaml/src/main/yaml",
+      defaultValue = "src/main/yaml",
       property = "yamlBlueprintsPath",
       readonly = true,
       required = false)
@@ -202,61 +205,54 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             "Stage Prefix must be informed for releases, when releasing templates or yaml blueprints.");
       }
 
-      if (!templateDefinitions.isEmpty()) {
-        LOG.info("Found {} templates to release.", templateDefinitions.size());
-        LOG.info("Trying to stage templates...");
+      String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+      TemplatesStageMojo configuredMojo =
+          new TemplatesStageMojo(
+              project,
+              session,
+              outputDirectory,
+              outputClassesDirectory,
+              resourcesDirectory,
+              targetDirectory,
+              projectId,
+              templateName,
+              flexContainerName,
+              bucketName,
+              librariesBucketName,
+              stagePrefix,
+              useRegion,
+              artifactRegion,
+              gcpTempLocation,
+              baseContainerImage,
+              basePythonContainerImage,
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
+              unifiedWorker,
+              generateSBOM);
+      configuredMojo.stageCommandSpecs(templateDefinitions);
 
-        for (TemplateDefinitions definition : templateDefinitions) {
+      for (TemplateDefinitions definition : templateDefinitions) {
 
-          ImageSpec imageSpec = definition.buildSpecModel(true);
-          String currentTemplateName = imageSpec.getMetadata().getName();
+        ImageSpec imageSpec = definition.buildSpecModel(true);
+        String currentTemplateName = imageSpec.getMetadata().getName();
 
-          LOG.info("Staging template {}...", currentTemplateName);
+        LOG.info("Staging template {}...", currentTemplateName);
 
-          String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+        String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
 
-          // TODO: is there a better way to get the plugin on the _same project_?
-          TemplatesStageMojo configuredMojo =
-              new TemplatesStageMojo(
-                  project,
-                  session,
-                  outputDirectory,
-                  outputClassesDirectory,
-                  resourcesDirectory,
-                  targetDirectory,
-                  projectId,
-                  templateName,
-                  bucketName,
-                  librariesBucketName,
-                  stagePrefix,
-                  useRegion,
-                  artifactRegion,
-                  gcpTempLocation,
-                  baseContainerImage,
-                  basePythonContainerImage,
-                  pythonTemplateLauncherEntryPoint,
-                  javaTemplateLauncherEntryPoint,
-                  pythonVersion,
-                  beamVersion,
-                  artifactRegistry,
-                  stagingArtifactRegistry,
-                  unifiedWorker,
-                  generateSBOM);
+        if (!definition.getTemplateAnnotation().stageImageOnly()) {
+          LOG.info("Template staged: {}", templatePath);
 
-          String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
-
-          if (!definition.getTemplateAnnotation().stageImageOnly()) {
-            LOG.info("Template staged: {}", templatePath);
-
-            // Export the specs for collection
-            generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
-            if (definition.isFlex()) {
-              generator.saveImageSpec(definition, imageSpec, targetDirectory);
-            }
+          // Export the specs for collection
+          generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
+          if (definition.isFlex()) {
+            generator.saveImageSpec(definition, imageSpec, targetDirectory);
           }
         }
-      } else {
-        LOG.warn("Did not find any templates to release in this module.");
       }
 
       if (publishYamlBlueprints) {
@@ -265,8 +261,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             bucketNameOnly(bucketName));
         Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
-          throw new MojoExecutionException(
-              "YAML blueprints directory not found, skipping upload: " + yamlPath);
+          LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
         } else {
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               Stream<Path> paths = Files.list(yamlPath)) {

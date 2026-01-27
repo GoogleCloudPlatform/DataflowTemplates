@@ -43,7 +43,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
     description =
         "The Spanner to BigQuery template is a batch pipeline that reads data from a Spanner table, and writes them to a BigQuery table.",
     optionsClass = SpannerToBigQueryOptions.class,
-    flexContainerName = "spanner-to-bigquery",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/spanner-to-bigquery",
     contactInformation = "https://cloud.google.com/support")

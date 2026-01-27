@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
@@ -43,52 +44,52 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
-      LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          "DMLGeneratorRequest is null. Cannot process the request.");
     }
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
-      LOG.warn(
-          "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
-          schemaMapper,
-          spannerDdl,
-          sourceSchema);
-      return new DMLGeneratorResponse("");
+
+    if (schemaMapper == null) {
+      throw new InvalidDMLGenerationException("Schema Mapper must be not null");
     }
+    if (spannerDdl == null) {
+      throw new InvalidDMLGenerationException("Spanner Ddl must be not null.");
+    }
+    if (sourceSchema == null) {
+      throw new InvalidDMLGenerationException("SourceSchema must be not null.");
+    }
+
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
-      LOG.warn(
-          "The spanner table {} was not found in ddl found on spanner. Ddl: {}",
-          spannerTableName,
-          spannerDdl);
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "The spanner table %s was not found in ddl found on spanner", spannerTableName));
     }
 
     String sourceTableName = "";
     try {
       sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
     } catch (NoSuchElementException e) {
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          "Could not find source table name for spanner table: " + spannerTableName, e);
     }
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
         sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
-      LOG.warn(
-          "Equivalent table {} was not found in source for spanner table {}",
-          sourceTableName,
-          spannerTableName);
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Equivalent table %s was not found in source for spanner table %s",
+              sourceTableName, spannerTableName));
     }
 
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
-      LOG.warn(
-          "Cannot reverse replicate for source table {} without primary key, skipping the record. Source Table: {}",
-          sourceTableName,
-          sourceTable);
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for source table %s without primary key, skipping the record.",
+              sourceTableName));
     }
 
     Map<String, String> pkcolumnNameValues =
@@ -101,10 +102,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkcolumnNameValues == null) {
-      LOG.warn(
-          "Cannot reverse replicate for table {} without primary key, skipping the record",
-          sourceTableName);
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Cannot reverse replicate for table %s without primary key, skipping the record",
+              sourceTableName));
     }
 
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
@@ -115,8 +116,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
       return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
     } else {
-      LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
-      return new DMLGeneratorResponse("");
+      throw new InvalidDMLGenerationException(
+          String.format(
+              "Unsupported modType: %s for table %s",
+              dmlGeneratorRequest.getModType(), spannerTableName));
     }
   }
 

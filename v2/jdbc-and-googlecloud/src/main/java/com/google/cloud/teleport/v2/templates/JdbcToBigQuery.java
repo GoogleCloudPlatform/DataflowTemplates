@@ -79,7 +79,7 @@ import org.joda.time.format.DateTimeFormatter;
           + "See the <a href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud KMS API encryption endpoint</a> for additional details on encrypting your username, password, and connection string parameters."
     },
     optionsClass = JdbcToBigQueryOptions.class,
-    flexContainerName = "jdbc-to-bigquery",
+    flexContainerName = "jdbc-and-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

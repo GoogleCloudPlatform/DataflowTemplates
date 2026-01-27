@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import net.jcip.annotations.NotThreadSafe;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -61,8 +60,10 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -72,10 +73,10 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(KafkaToBigQueryFlex.class)
 @RunWith(JUnit4.class)
-@NotThreadSafe
 public final class KafkaToBigQueryFlexIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToBigQueryFlexIT.class);
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
 
   private static KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;

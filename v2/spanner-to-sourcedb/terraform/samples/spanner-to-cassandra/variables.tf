@@ -26,6 +26,7 @@ variable "dataflow_params" {
       spanner_project_id               = optional(string)
       metadata_instance_id             = optional(string)
       metadata_database_id             = optional(string)
+      spanner_metadata_table_name      = optional(string)
       start_timestamp                  = optional(string)
       end_timestamp                    = optional(string)
       shadow_table_prefix              = optional(string)

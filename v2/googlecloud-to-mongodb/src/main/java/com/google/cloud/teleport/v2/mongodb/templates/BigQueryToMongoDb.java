@@ -47,7 +47,7 @@ import org.bson.Document;
         "The BigQuery to MongoDB template is a batch pipeline that reads rows from a BigQuery and writes them to MongoDB as documents. "
             + "Currently each row is stored as a document.",
     optionsClass = Options.class,
-    flexContainerName = "bigquery-to-mongodb",
+    flexContainerName = "googlecloud-to-mongodb",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-mongodb",
     contactInformation = "https://cloud.google.com/support",

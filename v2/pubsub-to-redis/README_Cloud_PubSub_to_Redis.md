@@ -6,10 +6,6 @@ Pub/Sub subscription and writes the message payload to Redis. The most common us
 case of this template is to export logs to Redis Enterprise for advanced
 search-based log analysis in real time.
 
-Before writing to Redis, you can apply a JavaScript user-defined function to the
-message payload. Any messages that experience processing failures are forwarded
-to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.
-
 For added security, enable an SSL connection when setting up your database
 endpoint connection.
 

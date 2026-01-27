@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
       "Learn more about <a href=\"https://cloud.google.com/spanner/docs/change-streams\">change streams</a>, <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow\">how to build change streams Dataflow pipelines</a>, and <a href=\"https://cloud.google.com/spanner/docs/change-streams/use-dataflow#best_practices\">best practices</a>."
     },
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
-    flexContainerName = "spanner-changestreams-to-gcs",
+    flexContainerName = "googlecloud-to-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-spanner-change-streams-to-cloud-storage",
     contactInformation = "https://cloud.google.com/support",

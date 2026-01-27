@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
         "The Pub/Sub to Java Database Connectivity (JDBC) template is a streaming pipeline that ingests data from a "
             + "pre-existing Cloud Pub/Sub subscription as JSON strings, and writes the resulting records to JDBC.",
     optionsClass = PubsubToJdbcOptions.class,
-    flexContainerName = "pubsub-to-jdbc",
+    flexContainerName = "jdbc-and-googlecloud",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-jdbc",
     contactInformation = "https://cloud.google.com/support",
