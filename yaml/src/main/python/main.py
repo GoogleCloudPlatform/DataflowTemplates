@@ -17,8 +17,10 @@
 import argparse
 import datetime
 import jinja2
+import json
 import logging
 import pprint
+import re
 import yaml
 
 from apache_beam.io.filesystems import FileSystems
@@ -27,6 +29,8 @@ from apache_beam.yaml import main
 from jinja2 import Environment, meta
 
 UNDEFINED_MARKER = "__UNDEFINED_JINJA_VARIABLE__"
+PYTHON_LAUNCHER_YAML_INDEX = "yaml-templates-index"
+GOOG_DATAFLOW_PROVIDED_TEMPLATE_NAME = 'goog-dataflow-provided-template-name'
 
 class _UndefinedMarker(jinja2.Undefined):
     """A Jinja Undefined class that renders to special marker string."""
@@ -48,10 +52,29 @@ def _clean_undefined_recursively(d):
     return d
 
 
-def _get_pipeline_yaml():
-    """Reads the pipeline definition from the 'template.yaml' file.
+def _get_template_name(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--label', '--labels', dest='labels', action='append', default=None)
+    arg_label, _ = parser.parse_known_args(argv)
+    template_name = None
+    pattern = re.compile(GOOG_DATAFLOW_PROVIDED_TEMPLATE_NAME + r'=([\w-]+)')
+    for label in arg_label.labels:
+        matched = pattern.search(label)
+        if matched:
+            return matched.group(1)
 
-    This function assumes that a 'template.yaml' file is present in the
+
+def _get_yaml_file_name(template_name):
+    with FileSystems.open(PYTHON_LAUNCHER_YAML_INDEX) as fin:
+        yaml_index = json.load(fin)
+    return yaml_index[template_name]
+
+
+def _get_pipeline_yaml(argv):
+    """Reads the pipeline definition from the yaml file set by options.
+
+    This function uses the 'goog-dataflow-provided-template-name' label
+    passed in and a "yaml-templates-index" file to find the yaml file in
     current working directory of the execution environment. It opens the file,
     reads its content, decodes it as a string, and returns it. 
 
@@ -60,9 +83,12 @@ def _get_pipeline_yaml():
     Returns:
         str: The content of the 'template.yaml' file as a string.
     """
-    with FileSystems.open("template.yaml") as fin:
+    template_name = _get_template_name(argv)
+    template_file_name = _get_yaml_file_name(template_name)
+    with FileSystems.open(template_file_name) as fin:
         pipeline_yaml = fin.read().decode()
     return pipeline_yaml
+
 
 def _get_pipeline_with_options(yaml_pipeline):
     """Expands the YAML template by merging options from `options_file` directives.
@@ -155,7 +181,8 @@ def run(argv=None):
     7. Caches Beam YAML provider artifacts.
     8. Executes the Beam pipeline.
     """
-    yaml_pipeline = _get_pipeline_yaml()
+
+    yaml_pipeline = _get_pipeline_yaml(argv)
     logging.info("Yaml pipeline: \n%s\n", pprint.pformat(yaml_pipeline, indent=2))
 
     yaml_pipeline_jinja_variables = _extract_jinja_variable_names(yaml_pipeline)
