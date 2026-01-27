@@ -74,6 +74,20 @@ public final class FetchSizeCalculatorTest {
     // n1-standard-1: 3.75GB RAM, 1 vCPU
     Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1_000_000L, "n1-standard-1");
     assertNotNull(fetchSize);
-    assertTrue(fetchSize > 100);
+    assertTrue(fetchSize > 0);
+  }
+
+  @Test
+  public void testGetFetchSize_ClampedToMax() {
+    TableConfig config =
+        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+
+    // custom-1-16384: 16GB RAM, 1 vCPU
+    // Memory: ~17 billion bytes
+    // Denominator: 4 * 1 * 1 = 4
+    // Calculated: ~4.29 billion > Integer.MAX_VALUE
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1L, "custom-1-16384");
+    assertNotNull(fetchSize);
+    assertEquals(Integer.MAX_VALUE, (int) fetchSize);
   }
 }

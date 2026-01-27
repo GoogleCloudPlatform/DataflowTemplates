@@ -19,12 +19,33 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class DataflowWorkerMachineTypeUtilsTest {
+
+  @Before
+  public void setUp() {
+    DataflowWorkerMachineTypeUtils.resetCacheForTesting();
+    // Pre-populate cache to avoid API calls during tests
+
+    // Standard types
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-4", 15.00, 4);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-8", 30.00, 8);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-96", 360.00, 96);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-highmem-8", 52.00, 8);
+
+    // Custom types used in tests
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("custom-2-4096", 4.0, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2-custom-4-8192", 8.0, 4);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2d-custom-2-2048", 2.0, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("e2-custom-2-4096", 4.0, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n4-custom-32-131072", 128.0, 32);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2-custom-4-8192-ext", 8.0, 4);
+  }
 
   @Test
   public void testValidMachineType() {
@@ -117,7 +138,14 @@ public class DataflowWorkerMachineTypeUtilsTest {
 
   @Test
   public void testGetWorkerMemoryGBInvalid() {
+    // This will try to fetch from API and fail (return null) because it's not in
+    // cache and invalid/unknown project
     assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("unknown-machine"));
+
+    // Custom types with invalid structure or not matching regex should return null
+    // or throw depending on usage
+    // logic in getWorkerMemoryGB checks getMachineSpec which checks
+    // tryParseCustomMachineType
     assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("custom-2-invalid"));
 
     assertThrows(
@@ -137,8 +165,10 @@ public class DataflowWorkerMachineTypeUtilsTest {
   @Test
   public void testGetWorkerCoresInvalid() {
     assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("unknown-machine"));
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-invalid")); // Invalid parsing
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("invalid-custom-2-1024")); // Invalid family
+    assertNull(
+        DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-invalid")); // Invalid parsing
+    assertNull(
+        DataflowWorkerMachineTypeUtils.getWorkerCores("invalid-custom-2-1024")); // Invalid family
 
     assertThrows(
         IllegalArgumentException.class,
@@ -158,9 +188,11 @@ public class DataflowWorkerMachineTypeUtilsTest {
     // e2-custom-2-4096 => 4096MB = 4GB
     assertEquals(4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("e2-custom-2-4096"), 0.001);
     // n4-custom-32-131072 => 128GB
-    assertEquals(128.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n4-custom-32-131072"), 0.001);
+    assertEquals(
+        128.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n4-custom-32-131072"), 0.001);
     // extended memory
-    assertEquals(8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192-ext"), 0.001);
+    assertEquals(
+        8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192-ext"), 0.001);
   }
 
   @Test

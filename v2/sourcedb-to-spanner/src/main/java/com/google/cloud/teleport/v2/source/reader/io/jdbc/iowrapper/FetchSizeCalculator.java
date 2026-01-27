@@ -27,25 +27,26 @@ import org.slf4j.LoggerFactory;
 public final class FetchSizeCalculator {
   private static final Logger LOG = LoggerFactory.getLogger(FetchSizeCalculator.class);
 
-  private static final int MIN_FETCH_SIZE = 100;
-  // Cap at a reasonable max to avoid issues with some drivers.
-  private static final int MAX_FETCH_SIZE = 100_000;
+  private static final int MIN_FETCH_SIZE = 1;
+  private static final int MAX_FETCH_SIZE = Integer.MAX_VALUE;
 
   private FetchSizeCalculator() {}
 
   /**
    * Calculates the fetch size for the given table.
    *
-   * @param tableConfig       The table configuration.
-   * @param estimatedRowSize  Estimated size of a row in bytes.
+   * @param tableConfig The table configuration.
+   * @param estimatedRowSize Estimated size of a row in bytes.
    * @param workerMachineType The Dataflow worker machine type.
-   * @return The calculated fetch size, or null if it cannot be calculated
-   *         (disabling cursor mode).
+   * @return The calculated fetch size, or null if it cannot be calculated (disabling cursor mode).
    */
-  @SuppressWarnings("null")
   public static Integer getFetchSize(
       TableConfig tableConfig, long estimatedRowSize, String workerMachineType) {
     if (tableConfig.fetchSize() != null) {
+      LOG.info(
+          "Explicitly configured fetch size for table {}: {}",
+          tableConfig.tableName(),
+          tableConfig.fetchSize());
       return tableConfig.fetchSize();
     }
 
@@ -59,7 +60,7 @@ public final class FetchSizeCalculator {
       if (estimatedRowSize == 0) {
         LOG.warn(
             "Estimated row size is 0 for table {}. FetchSize cannot be calculated. Cursor mode will not be enabled.",
-                tableConfig.tableName());
+            tableConfig.tableName());
         return null;
       }
 
@@ -107,7 +108,7 @@ public final class FetchSizeCalculator {
     } catch (Exception e) {
       LOG.warn(
           "Failed to auto-infer fetch size for table {}, error: {}. Cursor mode will not be enabled.",
-              tableConfig.tableName(),
+          tableConfig.tableName(),
           e.getMessage());
       return null;
     }

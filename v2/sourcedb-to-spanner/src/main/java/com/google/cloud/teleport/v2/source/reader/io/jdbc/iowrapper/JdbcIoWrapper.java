@@ -182,9 +182,10 @@ public final class JdbcIoWrapper implements IoWrapper {
               SourceTableSchema sourceTableSchema =
                   findSourceTableSchema(sourceSchema, tableConfig);
               long estimatedRowSize = sourceTableSchema.estimatedRowSize();
-              int fetchSize =
+              Integer calculatedFetchSize =
                   FetchSizeCalculator.getFetchSize(
                       tableConfig, estimatedRowSize, config.workerMachineType());
+              int fetchSize = (calculatedFetchSize == null) ? 0 : calculatedFetchSize;
               return Map.entry(
                   SourceTableReference.builder()
                       .setSourceSchemaReference(sourceSchema.schemaReference())
@@ -291,6 +292,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (config.maxPartitions() != null && config.maxPartitions() != 0) {
       tableConfigBuilder.setMaxPartitions(config.maxPartitions());
     }
+    // Set fetch size for the table by priority: table specific fetch size > global fetch size
     if (config.tableVsFetchSize().containsKey(tableName)) {
       tableConfigBuilder.setFetchSize(config.tableVsFetchSize().get(tableName));
     } else if (config.maxFetchSize() != null) {
@@ -445,7 +447,6 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
-    jdbcIO = jdbcIO.withFetchSize(fetchSize);
     return jdbcIO;
   }
 
