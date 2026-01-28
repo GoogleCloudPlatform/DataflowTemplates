@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +41,11 @@ public final class FetchSizeCalculator {
    * @return The calculated fetch size, or null if it cannot be calculated (disabling cursor mode).
    */
   public static Integer getFetchSize(
-      TableConfig tableConfig, long estimatedRowSize, String workerMachineType) {
+      TableConfig tableConfig,
+      long estimatedRowSize,
+      String workerMachineType,
+      String projectId,
+      String workerZone) {
     if (tableConfig.fetchSize() != null) {
       LOG.info(
           "Explicitly configured fetch size for table {}: {}",
@@ -65,15 +68,20 @@ public final class FetchSizeCalculator {
         return null;
       }
 
-      Long workerMemory = getWorkerMemory(workerMachineType);
-      Integer workerCores = getWorkerCores(workerMachineType);
+      Double workerMemoryGB =
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(
+              projectId, workerZone, workerMachineType);
+      Integer workerCores =
+          DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, workerZone, workerMachineType);
 
-      if (workerMemory == null || workerCores == null) {
+      if (workerMemoryGB == null || workerCores == null) {
         LOG.warn(
             "Machine type '{}' not recognized or memory/cores unavailable. FetchSize cannot be calculated. Cursor mode will not be enabled.",
             workerMachineType);
         return null;
       }
+
+      long workerMemoryBytes = (long) (workerMemoryGB * 1024 * 1024 * 1024);
 
       // Formula: (Memory of Dataflow worker VM) / (2 * 2 * (Number of cores on the
       // Dataflow worker VM) * (Maximum row size))
@@ -87,13 +95,13 @@ public final class FetchSizeCalculator {
         return null;
       }
 
-      long calculatedFetchSize = workerMemory / denominator;
+      long calculatedFetchSize = workerMemoryBytes / denominator;
 
       LOG.info(
           "Auto-inferred fetch size for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
           tableConfig.tableName(),
           calculatedFetchSize,
-          workerMemory,
+          workerMemoryBytes,
           workerCores,
           estimatedRowSize);
 
@@ -115,25 +123,8 @@ public final class FetchSizeCalculator {
     }
   }
 
-  @VisibleForTesting
-  static Long getWorkerMemory(String workerMachineType) {
-    if (workerMachineType != null) {
-      Double memoryGB = DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(workerMachineType);
-      if (memoryGB != null) {
-        return (long) (memoryGB * 1024 * 1024 * 1024);
-      }
-    }
-    return null;
-  }
-
-  @VisibleForTesting
-  static Integer getWorkerCores(String workerMachineType) {
-    if (workerMachineType != null) {
-      Integer workerCores = DataflowWorkerMachineTypeUtils.getWorkerCores(workerMachineType);
-      if (workerCores != null) {
-        return workerCores;
-      }
-    }
-    return null;
+  public static Integer getFetchSize(
+      TableConfig tableConfig, long estimatedRowSize, String workerMachineType) {
+    return getFetchSize(tableConfig, estimatedRowSize, workerMachineType, null, null);
   }
 }

@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
-import com.google.cloud.ServiceOptions;
 import com.google.cloud.compute.v1.MachineType;
 import com.google.cloud.compute.v1.MachineTypesClient;
 import com.google.common.base.Preconditions;
@@ -32,16 +31,25 @@ public class DataflowWorkerMachineTypeUtils {
   private static final String DEFAULT_ZONE = "us-central1-a";
 
   public static Double getWorkerMemoryGB(String workerMachineType) {
-    MachineSpec spec = getMachineSpec(workerMachineType);
+    return getWorkerMemoryGB(null, null, workerMachineType);
+  }
+
+  public static Double getWorkerMemoryGB(String projectId, String zone, String workerMachineType) {
+    MachineSpec spec = getMachineSpec(projectId, zone, workerMachineType);
     return spec != null ? spec.memoryGB : null;
   }
 
   public static Integer getWorkerCores(String workerMachineType) {
-    MachineSpec spec = getMachineSpec(workerMachineType);
+    return getWorkerCores(null, null, workerMachineType);
+  }
+
+  public static Integer getWorkerCores(String projectId, String zone, String workerMachineType) {
+    MachineSpec spec = getMachineSpec(projectId, zone, workerMachineType);
     return spec != null ? spec.vCPUs : null;
   }
 
-  private static MachineSpec getMachineSpec(String workerMachineType) {
+  private static MachineSpec getMachineSpec(
+      String projectId, String zone, String workerMachineType) {
     Preconditions.checkArgument(
         workerMachineType != null && !StringUtils.isBlank(workerMachineType),
         "workerMachineType cannot be null or empty.");
@@ -52,7 +60,7 @@ public class DataflowWorkerMachineTypeUtils {
     }
 
     // Fetch from Compute Engine API
-    MachineSpec apiSpec = fetchMachineSpecFromApi(workerMachineType);
+    MachineSpec apiSpec = fetchMachineSpecFromApi(projectId, zone, workerMachineType);
     if (apiSpec != null) {
       MACHINE_SPEC_CACHE.put(workerMachineType, apiSpec);
       return apiSpec;
@@ -61,8 +69,13 @@ public class DataflowWorkerMachineTypeUtils {
     return null;
   }
 
-  private static MachineSpec fetchMachineSpecFromApi(String workerMachineType) {
-    String projectId = ServiceOptions.getDefaultProjectId();
+  private static MachineSpec fetchMachineSpecFromApi(
+      String projectId, String zone, String workerMachineType) {
+    if (zone == null) {
+      LOG.warn("Could not determine Zone. Defaulting to {}.", DEFAULT_ZONE);
+      zone = DEFAULT_ZONE;
+    }
+
     if (projectId == null) {
       LOG.warn("Could not determine Project ID. Cannot fetch machine type details from API.");
       return null;
@@ -71,7 +84,7 @@ public class DataflowWorkerMachineTypeUtils {
     try (MachineTypesClient client = MachineTypesClient.create()) {
       // machineTypes.get() returns the resource or throws NotFoundException
       // API documentation confirms custom types like custom-CPUS-MEM are supported
-      MachineType machineType = client.get(projectId, DEFAULT_ZONE, workerMachineType);
+      MachineType machineType = client.get(projectId, zone, workerMachineType);
 
       // machineType.getMemoryMb() is int, returns memory in MB
       // machineType.getGuestCpus() is int

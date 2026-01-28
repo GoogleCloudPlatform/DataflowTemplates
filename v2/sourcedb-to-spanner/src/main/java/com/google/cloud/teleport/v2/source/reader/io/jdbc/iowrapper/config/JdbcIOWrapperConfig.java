@@ -257,6 +257,14 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract String workerMachineType();
 
+  /** Project ID for worker machine type lookup. */
+  @Nullable
+  public abstract String projectId();
+
+  /** Worker Zone for machine type lookup. */
+  @Nullable
+  public abstract String workerZone();
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
@@ -285,7 +293,9 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMachineType(null);
+        .setWorkerMachineType(null)
+        .setProjectId(null)
+        .setWorkerZone(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -317,7 +327,9 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMachineType(null);
+        .setWorkerMachineType(null)
+        .setProjectId(null)
+        .setWorkerZone(null);
   }
 
   @AutoValue.Builder
@@ -391,6 +403,10 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setSplitStageCountHint(Long value);
 
     public abstract Builder setWorkerMachineType(String value);
+
+    public abstract Builder setProjectId(@Nullable String value);
+
+    public abstract Builder setWorkerZone(@Nullable String value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

@@ -184,7 +184,11 @@ public final class JdbcIoWrapper implements IoWrapper {
               long estimatedRowSize = sourceTableSchema.estimatedRowSize();
               Integer calculatedFetchSize =
                   FetchSizeCalculator.getFetchSize(
-                      tableConfig, estimatedRowSize, config.workerMachineType());
+                      tableConfig,
+                      estimatedRowSize,
+                      config.workerMachineType(),
+                      config.projectId(),
+                      config.workerZone());
               int fetchSize = (calculatedFetchSize == null) ? 0 : calculatedFetchSize;
               return Map.entry(
                   SourceTableReference.builder()

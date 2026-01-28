@@ -21,12 +21,38 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public final class FetchSizeCalculatorTest {
+
+  @org.junit.Before
+  public void setUp() throws Exception {
+    resetCache();
+  }
+
+  @org.junit.After
+  public void tearDown() throws Exception {
+    resetCache();
+  }
+
+  private void resetCache() throws Exception {
+    java.lang.reflect.Method method =
+        DataflowWorkerMachineTypeUtils.class.getDeclaredMethod("resetCacheForTesting");
+    method.setAccessible(true);
+    method.invoke(null);
+  }
+
+  private void putMachineSpec(String machineType, double memoryGB, int vCPUs) throws Exception {
+    java.lang.reflect.Method method =
+        DataflowWorkerMachineTypeUtils.class.getDeclaredMethod(
+            "putMachineSpecForTesting", String.class, double.class, int.class);
+    method.setAccessible(true);
+    method.invoke(null, machineType, memoryGB, vCPUs);
+  }
 
   @Test
   public void testGetFetchSize_NoMachineType() {
@@ -67,18 +93,19 @@ public final class FetchSizeCalculatorTest {
   }
 
   @Test
-  public void testGetFetchSize_WithMachineType() {
+  public void testGetFetchSize_WithMachineType() throws Exception {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
 
     // n1-standard-1: 3.75GB RAM, 1 vCPU
+    putMachineSpec("n1-standard-1", 3.75, 1);
     Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1_000_000L, "n1-standard-1");
     assertNotNull(fetchSize);
     assertTrue(fetchSize > 0);
   }
 
   @Test
-  public void testGetFetchSize_ClampedToMax() {
+  public void testGetFetchSize_ClampedToMax() throws Exception {
     TableConfig config =
         TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
 
@@ -86,8 +113,26 @@ public final class FetchSizeCalculatorTest {
     // Memory: ~17 billion bytes
     // Denominator: 4 * 1 * 1 = 4
     // Calculated: ~4.29 billion > Integer.MAX_VALUE
+    putMachineSpec("custom-1-16384", 16.0, 1);
     Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1L, "custom-1-16384");
     assertNotNull(fetchSize);
     assertEquals(Integer.MAX_VALUE, (int) fetchSize);
+  }
+
+  @Test
+  public void testGetFetchSize_WithProjectIdAndZone() throws Exception {
+    TableConfig config =
+        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+
+    // Verify that passing projectId and zone works correctly with the cache
+    putMachineSpec("n1-standard-1", 3.75, 1);
+
+    // We can't easily verify that projectId/zone were *used* by the cache lookup
+    // (since cache lookup ignores them if key is found),
+    // but we can verify the method returns a result without crashing.
+    Integer fetchSize =
+        FetchSizeCalculator.getFetchSize(
+            config, 1_000_000L, "n1-standard-1", "dummy-project", "dummy-zone");
+    assertNotNull(fetchSize);
   }
 }

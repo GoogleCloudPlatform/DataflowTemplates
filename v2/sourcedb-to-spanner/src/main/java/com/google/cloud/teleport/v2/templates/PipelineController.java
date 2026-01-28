@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -161,7 +162,7 @@ public class PipelineController {
           spannerTables.stream()
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
-      LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      LOG.info("level: {} source tables: {}", currentLevel, sourceTables);
       PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
       if (currentLevel > 0 && previousLevelPCollection == null) {
         LOG.warn(
@@ -348,6 +349,13 @@ public class PipelineController {
 
     public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+      String workerZone = null;
+      try {
+        workerZone = options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
+      } catch (Exception e) {
+        LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
+      }
+
       return OptionsToConfigBuilder.getJdbcIOWrapperConfig(
           sqlDialect,
           sourceTables,
@@ -366,7 +374,9 @@ public class PipelineController {
           options.getNumPartitions(),
           waitOnSignal,
           options.getFetchSize(),
-          options.getUniformizationStageCountHint());
+          options.getUniformizationStageCountHint(),
+          options.getProjectId(),
+          workerZone);
     }
 
     @Override

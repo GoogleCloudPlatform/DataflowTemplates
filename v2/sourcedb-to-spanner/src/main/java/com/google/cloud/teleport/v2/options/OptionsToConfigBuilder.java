@@ -33,6 +33,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -60,6 +61,12 @@ public final class OptionsToConfigBuilder {
     long maxConnections =
         options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
     Integer numPartitions = options.getNumPartitions();
+    String workerZone = null;
+    try {
+      workerZone = options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
+    } catch (Exception e) {
+      LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
+    }
 
     return getJdbcIOWrapperConfig(
         sqlDialect,
@@ -79,7 +86,9 @@ public final class OptionsToConfigBuilder {
         numPartitions,
         waitOn,
         options.getFetchSize(),
-        options.getUniformizationStageCountHint());
+        options.getUniformizationStageCountHint(),
+        options.getProjectId(),
+        workerZone);
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
@@ -100,7 +109,9 @@ public final class OptionsToConfigBuilder {
       Integer numPartitions,
       Wait.OnSignal<?> waitOn,
       Integer fetchSize,
-      Long uniformizationStageCountHint) {
+      Long uniformizationStageCountHint,
+      String projectId,
+      String workerZone) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     SourceSchemaReference sourceSchemaReference =
         sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
@@ -114,7 +125,9 @@ public final class OptionsToConfigBuilder {
                     .setPassword(password)
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
-            .setJdbcDriverJars(jdbcDriverJars);
+            .setJdbcDriverJars(jdbcDriverJars)
+            .setProjectId(projectId)
+            .setWorkerZone(workerZone);
     if (maxConnections != 0) {
       builder = builder.setMaxConnections(maxConnections);
     }
