@@ -253,6 +253,18 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
+  /** Worker Machine Type. */
+  @Nullable
+  public abstract String workerMachineType();
+
+  /** Project ID for worker machine type lookup. */
+  @Nullable
+  public abstract String projectId();
+
+  /** Worker Zone for machine type lookup. */
+  @Nullable
+  public abstract String workerZone();
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
@@ -268,7 +280,6 @@ public abstract class JdbcIOWrapperConfig {
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
         .setWaitOn(null)
-        .setMaxFetchSize(null)
         .setDbParallelizationForReads(null)
         .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
         .setReadWithUniformPartitionsFeatureEnabled(true)
@@ -281,7 +292,10 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMachineType(null)
+        .setProjectId(null)
+        .setWorkerZone(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -312,7 +326,10 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMachineType(null)
+        .setProjectId(null)
+        .setWorkerZone(null);
   }
 
   @AutoValue.Builder
@@ -384,6 +401,12 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxConnections(Long value);
 
     public abstract Builder setSplitStageCountHint(Long value);
+
+    public abstract Builder setWorkerMachineType(String value);
+
+    public abstract Builder setProjectId(@Nullable String value);
+
+    public abstract Builder setWorkerZone(@Nullable String value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 
