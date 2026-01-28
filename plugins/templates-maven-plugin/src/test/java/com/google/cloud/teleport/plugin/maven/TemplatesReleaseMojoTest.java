@@ -312,7 +312,8 @@ public class TemplatesReleaseMojoTest {
       assertTrue(blueprintNamesInManifest.contains("new-blueprint.yaml"));
 
       // Verify skipped log message
-      String expectedLog = String.join("/", "Skipping existing blueprint: gs:/", bucket, existingObjectName);
+      String expectedLog =
+          String.join("/", "Skipping existing blueprint: gs:/", bucket, existingObjectName);
       assertTrue(
           memoryHandler.getRecords().stream().anyMatch(r -> r.getMessage().equals(expectedLog)));
     }
