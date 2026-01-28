@@ -60,19 +60,21 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
   @ProcessElement
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
+    String tableName = "";
     try {
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
       Ddl ddl = c.sideInput(ddlView);
 
-      String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+      tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
       com.google.cloud.spanner.Key primaryKey =
           ChangeEventSpannerConvertor.changeEventToPrimaryKey(
-              tableName, ddl, changeEvent, /* convertNameToLowerCase= */ true);
+              tableName, ddl, changeEvent, /* convertNameToLowerCase= */ false);
       String finalKeyString = tableName + "_" + primaryKey.toString();
       Long finalKey = (long) finalKeyString.hashCode();
       c.output(KV.of(finalKey, msg));
     } catch (Exception e) {
-      LOG.error("Conversion Error", e);
+      LOG.error(
+          "Error while converting change event to primary key hash for tableName=" + tableName, e);
       // Errors that result during Event conversions are not retryable.
       // Making a copy, as the input must not be mutated.
       FailsafeElement<String, String> output = FailsafeElement.of(msg);
