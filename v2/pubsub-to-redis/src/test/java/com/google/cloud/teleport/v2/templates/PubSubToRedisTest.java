@@ -82,7 +82,8 @@ public class PubSubToRedisTest {
     public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
       FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
       assertThat(
-          new String(element.getOriginalPayload().getPayload()), is(equalTo(expectedOriginalPayload)));
+          new String(element.getOriginalPayload().getPayload()),
+          is(equalTo(expectedOriginalPayload)));
       if (checkTransformedBy) {
         assertThat(element.getPayload().contains("transformedBy"), is(true));
       } else {
@@ -104,7 +105,8 @@ public class PubSubToRedisTest {
     public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
       FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
       assertThat(
-          new String(element.getOriginalPayload().getPayload()), is(equalTo(expectedOriginalPayload)));
+          new String(element.getOriginalPayload().getPayload()),
+          is(equalTo(expectedOriginalPayload)));
       return null;
     }
   }
@@ -135,7 +137,8 @@ public class PubSubToRedisTest {
     private final String expectedMessageId;
     private final int expectedCount;
 
-    DeadLetterWithAttributesChecker(String expectedPayload, String expectedMessageId, int expectedCount) {
+    DeadLetterWithAttributesChecker(
+        String expectedPayload, String expectedMessageId, int expectedCount) {
       this.expectedPayload = expectedPayload;
       this.expectedMessageId = expectedMessageId;
       this.expectedCount = expectedCount;
@@ -345,13 +348,11 @@ public class PubSubToRedisTest {
                     0)); // Adjusted to use constructor instead of builder()
 
     // Good message should be in main output
-    PAssert.that(result.get(PubSubToRedis.UDF_OUT))
-        .satisfies(new TransformedOutputChecker(1));
+    PAssert.that(result.get(PubSubToRedis.UDF_OUT)).satisfies(new TransformedOutputChecker(1));
 
     // Bad message should be in dead-letter output with original payload
     PAssert.that(result.get(PubSubToRedis.UDF_DEADLETTER_OUT))
-        .satisfies(
-            new DeadLetterWithAttributesChecker("invalid-json-will-fail-udf", "bad-456", 1));
+        .satisfies(new DeadLetterWithAttributesChecker("invalid-json-will-fail-udf", "bad-456", 1));
 
     pipeline.run();
   }
