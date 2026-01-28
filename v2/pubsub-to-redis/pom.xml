@@ -62,6 +62,18 @@
             <version>${ptr.jedis-mock.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Integration Test Dependencies -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.metadata</groupId>
+            <artifactId>metadata</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>
