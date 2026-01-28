@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.metrics.Counter;
@@ -66,9 +67,11 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
       Ddl ddl = c.sideInput(ddlView);
 
       tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+      ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
+      ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
       com.google.cloud.spanner.Key primaryKey =
           ChangeEventSpannerConvertor.changeEventToPrimaryKey(
-              tableName, ddl, changeEvent, /* convertNameToLowerCase= */ false);
+              tableName, ddl, changeEvent, /* convertNameToLowerCase= */ true);
       String finalKeyString = tableName + "_" + primaryKey.toString();
       Long finalKey = (long) finalKeyString.hashCode();
       c.output(KV.of(finalKey, msg));
