@@ -132,74 +132,101 @@ public class DataflowWorkerMachineTypeUtilsTest {
 
   @Test
   public void testGetWorkerMemoryGBStandard() {
-    assertEquals(15.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n1-standard-4"), 0.001);
-    assertEquals(52.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n1-highmem-8"), 0.001);
+    assertEquals(
+        15.00,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n1-standard-4"),
+        0.001);
+    assertEquals(
+        52.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n1-highmem-8"), 0.001);
   }
 
   @Test
   public void testGetWorkerMemoryGBInvalid() {
     // This will try to fetch from API and fail (return null) because it's not in
     // cache and invalid/unknown project
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("unknown-machine"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "unknown-machine"));
 
     // Custom types with invalid structure or not matching regex should return null
     // or throw depending on usage
     // logic in getWorkerMemoryGB checks getMachineSpec which checks
     // tryParseCustomMachineType
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("custom-2-invalid"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "custom-2-invalid"));
 
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null);
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, null);
         });
   }
 
   @Test
   public void testGetWorkerCoresStandard() {
-    assertEquals(4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-standard-4"));
-    assertEquals(8, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-highmem-8"));
-    assertEquals(96, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n1-standard-96"));
+    assertEquals(
+        4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n1-standard-4"));
+    assertEquals(
+        8, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n1-highmem-8"));
+    assertEquals(
+        96, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n1-standard-96"));
   }
 
   @Test
   public void testGetWorkerCoresInvalid() {
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores("unknown-machine"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "unknown-machine"));
     assertNull(
-        DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-invalid")); // Invalid parsing
+        DataflowWorkerMachineTypeUtils.getWorkerCores(
+            null, null, "custom-2-invalid")); // Invalid parsing
     assertNull(
-        DataflowWorkerMachineTypeUtils.getWorkerCores("invalid-custom-2-1024")); // Invalid family
+        DataflowWorkerMachineTypeUtils.getWorkerCores(
+            null, null, "invalid-custom-2-1024")); // Invalid family
 
     assertThrows(
         IllegalArgumentException.class,
         () -> {
-          DataflowWorkerMachineTypeUtils.getWorkerCores(null);
+          DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, null);
         });
   }
 
   @Test
   public void testGetWorkerMemoryGBCustom() {
     // custom-2-4096 => 4096MB = 4GB
-    assertEquals(4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("custom-2-4096"), 0.001);
+    assertEquals(
+        4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "custom-2-4096"), 0.001);
     // n2-custom-4-8192 => 8192MB = 8GB
-    assertEquals(8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192"), 0.001);
+    assertEquals(
+        8.0,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2-custom-4-8192"),
+        0.001);
     // n2d-custom-2-2048 => 2048MB = 2GB
-    assertEquals(2.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2d-custom-2-2048"), 0.001);
+    assertEquals(
+        2.0,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2d-custom-2-2048"),
+        0.001);
     // e2-custom-2-4096 => 4096MB = 4GB
-    assertEquals(4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("e2-custom-2-4096"), 0.001);
+    assertEquals(
+        4.0,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "e2-custom-2-4096"),
+        0.001);
     // n4-custom-32-131072 => 128GB
     assertEquals(
-        128.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n4-custom-32-131072"), 0.001);
+        128.0,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n4-custom-32-131072"),
+        0.001);
     // extended memory
     assertEquals(
-        8.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB("n2-custom-4-8192-ext"), 0.001);
+        8.0,
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2-custom-4-8192-ext"),
+        0.001);
   }
 
   @Test
   public void testGetWorkerCoresCustom() {
-    assertEquals(2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("custom-2-4096"));
-    assertEquals(4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n2-custom-4-8192"));
-    assertEquals(2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n2d-custom-2-2048"));
-    assertEquals(32, (int) DataflowWorkerMachineTypeUtils.getWorkerCores("n4-custom-32-131072"));
+    assertEquals(
+        2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "custom-2-4096"));
+    assertEquals(
+        4, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n2-custom-4-8192"));
+    assertEquals(
+        2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n2d-custom-2-2048"));
+    assertEquals(
+        32, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n4-custom-32-131072"));
   }
 }

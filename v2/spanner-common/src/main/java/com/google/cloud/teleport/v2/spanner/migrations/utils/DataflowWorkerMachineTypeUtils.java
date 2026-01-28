@@ -30,17 +30,9 @@ public class DataflowWorkerMachineTypeUtils {
   private static final Map<String, MachineSpec> MACHINE_SPEC_CACHE = new ConcurrentHashMap<>();
   private static final String DEFAULT_ZONE = "us-central1-a";
 
-  public static Double getWorkerMemoryGB(String workerMachineType) {
-    return getWorkerMemoryGB(null, null, workerMachineType);
-  }
-
   public static Double getWorkerMemoryGB(String projectId, String zone, String workerMachineType) {
     MachineSpec spec = getMachineSpec(projectId, zone, workerMachineType);
     return spec != null ? spec.memoryGB : null;
-  }
-
-  public static Integer getWorkerCores(String workerMachineType) {
-    return getWorkerCores(null, null, workerMachineType);
   }
 
   public static Integer getWorkerCores(String projectId, String zone, String workerMachineType) {
