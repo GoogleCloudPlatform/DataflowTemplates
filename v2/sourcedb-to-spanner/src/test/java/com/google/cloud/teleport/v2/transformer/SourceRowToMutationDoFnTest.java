@@ -27,10 +27,13 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.constants.SourceDbToSpannerConstants;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
@@ -363,5 +366,81 @@ public class SourceRowToMutationDoFnTest {
             MapElements.into(TypeDescriptor.of(Mutation.class))
                 .via((RowContext r) -> r.mutation()));
     return mutations;
+  }
+
+  @Test
+  public void testSourceRowToMutationDoFn_generatedColumn() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+
+    SourceTableSchema schema =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "firstName", new SourceColumnType("varchar", new Long[] {20L}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "lastName", new SourceColumnType("varchar", new Long[] {20L}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "genCol", new SourceColumnType("varchar", new Long[] {20L}, null))
+            .build();
+    SourceRow sourceRow =
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
+            .setField("genCol", "123") // Source has data for generated column
+            .build();
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
+    ISchemaMapper mockIschemaMapper =
+        mock(ISchemaMapper.class, Mockito.withSettings().serializable());
+    when(mockIschemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
+    when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
+        .thenReturn("spannerTable");
+
+    // Mappings
+    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("firstName")))
+        .thenReturn("spFirstName");
+    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("lastName")))
+        .thenReturn("spLastName");
+    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("genCol")))
+        .thenReturn("spGenCol");
+
+    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spFirstName")))
+        .thenReturn("firstName");
+    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spLastName")))
+        .thenReturn("lastName");
+    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spGenCol")))
+        .thenReturn("genCol");
+
+    when(mockIschemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
+        .thenReturn(Type.string());
+
+    // Include genCol in the list of columns
+    when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(List.of("spFirstName", "spLastName", "spGenCol"));
+
+    when(mockIschemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    // Mock isGeneratedColumn to return true ONLY for spGenCol
+    when(mockIschemaMapper.isGeneratedColumn(anyString(), anyString(), eq("spGenCol")))
+        .thenReturn(true);
+    when(mockIschemaMapper.isGeneratedColumn(anyString(), anyString(), eq("spFirstName")))
+        .thenReturn(false);
+    when(mockIschemaMapper.isGeneratedColumn(anyString(), anyString(), eq("spLastName")))
+        .thenReturn(false);
+
+    PCollection<Mutation> mutations =
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null, false));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder("spannerTable")
+                .set("spFirstName")
+                .to("abc")
+                .set("spLastName")
+                .to("def")
+                // spGenCol should NOT be here
+                .build());
+    pipeline.run();
   }
 }

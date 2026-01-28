@@ -110,5 +110,8 @@ public class MySQLDDLIT extends SourceDbToSpannerITBase {
         spannerResourceManager.readTableRecords("vendor", "vendor_id", "full_name");
 
     SpannerAsserts.assertThatStructs(vendor).hasRows(3);
+    SpannerAsserts.assertThatStructs(vendor)
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mySQLResourceManager.runSQLQuery("SELECT vendor_id, full_name FROM vendor"));
   }
 }
