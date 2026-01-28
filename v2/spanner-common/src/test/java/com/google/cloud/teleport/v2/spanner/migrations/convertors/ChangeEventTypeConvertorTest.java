@@ -26,6 +26,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import java.io.IOException;
+import java.math.BigInteger;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -518,6 +519,14 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field3", 123456789);
     changeEvent.put("field4", true);
     changeEvent.put("field5", JSONObject.NULL);
+    // Tests for bit columns
+    changeEvent.put("field6", 9223372036854775807L); // Long 2^63 - 1
+    changeEvent.put("field7", -9223372036854775808L); // Long -2^63
+    changeEvent.put("field8", new BigInteger("123345678903456545422346373223")); // BigInt 2^63 + 1
+    changeEvent.put(
+        "field9", new BigInteger("-123345678903456545422346373223")); // BigInt -2^63 - 1
+    changeEvent.put("field10", 255); // Integer 2^8 - 1
+    changeEvent.put("field11", -256); // Integer -2^8
     JsonNode ce = getJsonNode(changeEvent.toString());
 
     assertEquals(
@@ -531,11 +540,30 @@ public final class ChangeEventTypeConvertorTest {
         ByteArray.copyFrom(""));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field3", /* requiredField= */ true),
-        ByteArray.copyFrom(new byte[] {1, 35, 69, 103, -119}));
+        ByteArray.copyFrom(new byte[] {7, 91, -51, 21}));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field4", /* requiredField= */ true),
         ByteArray.copyFrom(new byte[] {-17, -2}));
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /* requiredField= */ false));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field6", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {127, -1, -1, -1, -1, -1, -1, -1}));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field7", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {-128, 0, 0, 0, 0, 0, 0, 0}));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field8", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {1, -114, -115, 39, 123, -80, -4, 112, -27, 9, 69, 72, 103}));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field9", /* requiredField= */ true),
+        ByteArray.copyFrom(
+            new byte[] {-2, 113, 114, -40, -124, 79, 3, -113, 26, -10, -70, -73, -103}));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field10", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {0, -1}));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field11", /* requiredField= */ true),
+        ByteArray.copyFrom(new byte[] {-1, 0}));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -706,5 +734,31 @@ public final class ChangeEventTypeConvertorTest {
     assertEquals(
         ChangeEventTypeConvertor.toDate(ce, "field1", /* requiredField= */ true),
         Date.parseDate("2020-12-30"));
+  }
+
+  @Test
+  public void canConvertNullStrings() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("long_field", "NULL");
+    changeEvent.put("double_field", "null");
+    changeEvent.put("float_field", "Null");
+    changeEvent.put("numeric_field", "NULL");
+    changeEvent.put("boolean_field", "NULL");
+    changeEvent.put("byte_field", "NULL");
+    changeEvent.put("timestamp_field", "NULL");
+    changeEvent.put("date_field", "NULL");
+    changeEvent.put("string_field", "NULL"); // this should not be converted to null
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertNull(ChangeEventTypeConvertor.toLong(ce, "long_field", true));
+    assertNull(ChangeEventTypeConvertor.toDouble(ce, "double_field", true));
+    assertNull(ChangeEventTypeConvertor.toFloat(ce, "float_field", true));
+    assertNull(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "numeric_field", true));
+    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "boolean_field", true));
+    assertNull(ChangeEventTypeConvertor.toByteArray(ce, "byte_field", true));
+    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "timestamp_field", true));
+    assertNull(ChangeEventTypeConvertor.toDate(ce, "date_field", true));
+    assertEquals("NULL", ChangeEventTypeConvertor.toString(ce, "string_field", true));
   }
 }

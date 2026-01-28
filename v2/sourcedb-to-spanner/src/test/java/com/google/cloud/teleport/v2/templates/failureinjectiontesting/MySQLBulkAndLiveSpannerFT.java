@@ -25,7 +25,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
-import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -95,8 +94,10 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     // The Author name is inserted as "author_name_" + i, and length of author name column is
     // configured as STRING(13) in Spanner. Hence, insertion of rows from id 1 to 9 would succeed in
     // Spanner (author_name_9 is 13 chars) and from id 10 onwards it would fail. At the end of Bulk
-    // migration, we expect 9 rows to be inserted and 191 rows to be in the DLQ folder.
-    MySQLSrcDataProvider.writeAuthorRowsInSourceDB(1, 200, sourceDBResourceManager);
+    // migration, we expect 9 rows to be inserted and 191 rows to be in the DLQ folder,
+    // also, the corresponding 9 child rows in Books to be migrated to Spanner and 191 rows of Books
+    // table to be in DLQ.
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 200, sourceDBResourceManager);
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
@@ -132,20 +133,19 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
-
     ConditionCheck conditionCheck =
-        // Total events = successfully processed events + errors in output folder
-        new TotalEventsProcessedCheck(
-                spannerResourceManager,
-                List.of(AUTHORS_TABLE, BOOKS_TABLE),
-                gcsResourceManager,
-                "output/dlq/severe/",
-                200)
+        // Check that there are at least 191 errors in DLQ
+        DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
+            .setMinEvents(382)
+            .build()
             .and(
-                // Check that there are at least 191 errors in DLQ
-                DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-                    .setMinEvents(191)
-                    .build());
+                // Total events = successfully processed events + errors in output folder
+                new TotalEventsProcessedCheck(
+                    spannerResourceManager,
+                    List.of(AUTHORS_TABLE, BOOKS_TABLE),
+                    gcsResourceManager,
+                    "output/dlq/severe/",
+                    400));
 
     assertTrue(conditionCheck.get());
 
@@ -155,23 +155,23 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     spannerResourceManager.executeDdlStatement(
         "ALTER TABLE `Authors` ALTER COLUMN `name` STRING(200)");
 
-    String dlqGcsPrefix = bulkErrorFolderFullPath.replace("gs://" + artifactBucketName, "");
-    SubscriptionName dlqSubscription =
-        createPubsubResources(
-            testName + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
-
     // launch forward migration template in retryDLQ mode
     retryLiveJobInfo =
         launchFwdDataflowJobInRetryDlqMode(
             spannerResourceManager,
             bulkErrorFolderFullPath,
             bulkErrorFolderFullPath + "/dlq",
-            dlqSubscription);
+            gcsResourceManager,
+            null);
 
     conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(200)
+                        .setMaxRows(200)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
                         .setMinRows(200)
                         .setMaxRows(200)
                         .build()))

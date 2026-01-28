@@ -96,7 +96,8 @@ public class SrcDbToSpannerMySQLSpannerFT extends SourceDbToSpannerFTBase {
                 "50"),
             spannerResourceManager,
             gcsResourceManager,
-            sourceDBResourceManager);
+            sourceDBResourceManager,
+            null);
   }
 
   /**

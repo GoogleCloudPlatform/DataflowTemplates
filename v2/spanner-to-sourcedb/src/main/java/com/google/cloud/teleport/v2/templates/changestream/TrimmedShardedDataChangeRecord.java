@@ -16,8 +16,14 @@
 package com.google.cloud.teleport.v2.templates.changestream;
 
 import com.google.cloud.Timestamp;
+import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.util.Objects;
+import org.apache.avro.reflect.AvroEncode;
+import org.apache.avro.reflect.Nullable;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.encoder.TimestampEncoding;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -25,9 +31,13 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
  * Trimmed version of the Apache Beam DataChangeRecord class that only contains the field we need in
  * this pipeline.
  */
-@SuppressWarnings("initialization.fields.uninitialized") // Avro requires the default constructor
+@SuppressWarnings("initialization.fields.uninitialized")
+@DefaultCoder(AvroCoder.class)
 public class TrimmedShardedDataChangeRecord extends java.lang.Object implements Serializable {
+
+  @AvroEncode(using = TimestampEncoding.class)
   private Timestamp commitTimestamp;
+
   private String serverTransactionId;
   private String recordSequence;
   private String tableName;
@@ -35,8 +45,15 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private ModType modType;
   private long numberOfRecordsInTransaction;
   private String transactionTag;
-  private String shard;
+
+  @Nullable private String shard;
   private boolean isRetryRecord;
+
+  @SerializedName("_metadata_retry_count")
+  private long metadataRetryCount;
+
+  // AvroCoder requires the default constructor
+  public TrimmedShardedDataChangeRecord() {}
 
   public TrimmedShardedDataChangeRecord(
       com.google.cloud.Timestamp commitTimestamp,
@@ -56,6 +73,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.transactionTag = transactionTag;
     this.isRetryRecord = false;
+    this.metadataRetryCount = 0;
   }
 
   public TrimmedShardedDataChangeRecord(TrimmedShardedDataChangeRecord other) {
@@ -69,6 +87,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.transactionTag = other.transactionTag;
     this.shard = other.shard;
     this.isRetryRecord = other.isRetryRecord;
+    this.metadataRetryCount = other.metadataRetryCount;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -123,6 +142,14 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.isRetryRecord = isRetryRecord;
   }
 
+  public long getMetadataRetryCount() {
+    return metadataRetryCount;
+  }
+
+  public void setMetadataRetryCount(long metadataRetryCount) {
+    this.metadataRetryCount = metadataRetryCount;
+  }
+
   @Override
   public boolean equals(@javax.annotation.Nullable Object o) {
     if (this == o) {
@@ -141,7 +168,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         && numberOfRecordsInTransaction == that.numberOfRecordsInTransaction
         && Objects.equals(transactionTag, that.transactionTag)
         && Objects.equals(shard, that.shard)
-        && isRetryRecord == that.isRetryRecord;
+        && isRetryRecord == that.isRetryRecord
+        && metadataRetryCount == that.metadataRetryCount;
   }
 
   @Override
@@ -156,7 +184,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         numberOfRecordsInTransaction,
         transactionTag,
         shard,
-        isRetryRecord);
+        isRetryRecord,
+        metadataRetryCount);
   }
 
   @Override
@@ -185,6 +214,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         + shard
         + ", isRetryRecord="
         + isRetryRecord
+        + ", metadataRetryCount="
+        + metadataRetryCount
         + '}';
   }
 }

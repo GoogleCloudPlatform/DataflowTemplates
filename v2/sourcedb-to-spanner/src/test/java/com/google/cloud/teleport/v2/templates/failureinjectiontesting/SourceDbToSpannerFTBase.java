@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 import static java.util.Arrays.stream;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.BufferedReader;
@@ -33,6 +34,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
@@ -95,7 +97,13 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       CloudSqlResourceManager cloudSqlResourceManager)
       throws IOException {
     return launchBulkDataflowJob(
-        jobName, null, null, spannerResourceManager, gcsResourceManager, cloudSqlResourceManager);
+        jobName,
+        null,
+        null,
+        spannerResourceManager,
+        gcsResourceManager,
+        cloudSqlResourceManager,
+        null);
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -104,7 +112,8 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       Map<String, String> additionalParams,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
-      CloudSqlResourceManager cloudSqlResourceManager)
+      CloudSqlResourceManager cloudSqlResourceManager,
+      CustomTransformation customTransformation)
       throws IOException {
     // launch dataflow template
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
@@ -119,11 +128,25 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("username", cloudSqlResourceManager.getUsername())
             .addParameter("password", cloudSqlResourceManager.getPassword())
             .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"));
 
     if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
       flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);
+    }
+
+    if (customTransformation != null) {
+      flexTemplateBuilder.addParameter(
+          "transformationJarPath",
+          getGcsPath(
+              "CustomTransformationAllTypes/" + customTransformation.jarPath(),
+              gcsResourceManager));
+      flexTemplateBuilder.addParameter("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        flexTemplateBuilder.addParameter(
+            "transformationCustomParameters", customTransformation.customParameters());
+      }
     }
 
     if (additionalParams != null) {
@@ -156,6 +179,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
                 "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+            .addParameter("workerMachineType", "n2-standard-4")
             .build();
 
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
@@ -239,11 +263,12 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager,
       String inputLocationFullPath,
       String dlqLocationFullPath,
-      SubscriptionName dlqPubSubSubscription)
+      GcsResourceManager gcsResourceManager,
+      CustomTransformation customTransformation)
       throws IOException {
 
     // launch dataflow template
-    FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager =
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
@@ -254,15 +279,92 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
             .addParameter("deadLetterQueueDirectory", dlqLocationFullPath)
-            .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
             .addParameter("runMode", "retryDLQ")
-            .build();
+            .addParameter("dlqRetryMinutes", "1")
+            .addParameter("workerMachineType", "n2-standard-4");
+
+    if (customTransformation != null) {
+      flexTemplateBuilder.addParameter(
+          "transformationJarPath",
+          getGcsPath(
+              "CustomTransformationAllTypes/" + customTransformation.jarPath(),
+              gcsResourceManager));
+      flexTemplateBuilder.addParameter("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        flexTemplateBuilder.addParameter(
+            "transformationCustomParameters", customTransformation.customParameters());
+      }
+    }
 
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     return jobInfo;
+  }
+
+  public void createAndUploadJarToGcs(String gcsPathPrefix, GcsResourceManager gcsResourceManager)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+        gcsPathPrefix + "/customTransformation.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+  }
+
+  protected void loadSQLFileResource(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String resourcePath)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            com.google.common.io.Resources.readLines(
+                com.google.common.io.Resources.getResource(resourcePath),
+                java.nio.charset.StandardCharsets.UTF_8));
+    loadSQLToJdbcResourceManager(jdbcResourceManager, sql);
+  }
+
+  protected void loadSQLToJdbcResourceManager(
+      org.apache.beam.it.jdbc.JDBCResourceManager jdbcResourceManager, String sql)
+      throws Exception {
+    LOG.info("Loading sql to jdbc resource manager with uri: {}", jdbcResourceManager.getUri());
+    try {
+      java.sql.Connection connection =
+          java.sql.DriverManager.getConnection(
+              jdbcResourceManager.getUri(),
+              jdbcResourceManager.getUsername(),
+              jdbcResourceManager.getPassword());
+
+      // Preprocess SQL to handle multi-line statements and newlines
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+
+      // Split into individual statements
+      String[] statements = sql.split(";");
+
+      // Execute each statement
+      java.sql.Statement statement = connection.createStatement();
+      for (String stmt : statements) {
+        if (!stmt.trim().isEmpty()) {
+          // Skip SELECT statements
+          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+            LOG.info("Executing statement: {}", stmt);
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.info("failed to load SQL into database: {}", sql);
+      throw new Exception("Failed to load SQL into database", e);
+    }
+    LOG.info("Successfully loaded sql to jdbc resource manager");
   }
 
   protected class DataShard {

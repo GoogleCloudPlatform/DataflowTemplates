@@ -276,7 +276,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     return expectedData;
   }
 
-  private static String repeatString(String str, int count) {
+  public static String repeatString(String str, int count) {
     return new String(new char[count]).replace("\0", str);
   }
 }

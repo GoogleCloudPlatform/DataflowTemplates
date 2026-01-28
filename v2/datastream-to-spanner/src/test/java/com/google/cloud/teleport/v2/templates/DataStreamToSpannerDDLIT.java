@@ -630,7 +630,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     row = new HashMap<>();
@@ -661,7 +661,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -696,7 +696,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     row = new HashMap<>();
@@ -717,7 +717,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     row = new HashMap<>();
@@ -738,7 +738,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -767,7 +767,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "3");
     row.put("bool_column", true);
     row.put("binary_column", "EjRWeJCrze8SNFZ4kKvN7xI0Vng=");
-    row.put("bit_column", "ASc=");
+    row.put("bit_column", "fw==");
     events.add(row);
 
     row = new HashMap<>();
@@ -828,7 +828,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -853,7 +853,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     row = new HashMap<>();
@@ -864,7 +864,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -886,13 +886,13 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
                 "select varchar_column, float_column, decimal_column, char_column, bool_column"
-                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsWithSizes"))
+                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsReducedSizes"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 

@@ -27,7 +27,16 @@ CREATE TABLE `AllDatatypeColumns` (
     `other_bool_column` tinyint(1),        
     `binary_column` binary(10),            
     `varbinary_column` varbinary(20),      
-    `bit_column` bit(7),                   
+    `bit_column` bit(7),
+    `null_string_column` varchar(128),
+    `null_int_column` bigint,
+    `null_date_column` date,
+    `null_float_64_column` double,
+    `null_float_32_column` float(10,2),
+    `null_numeric_column` decimal(10,2),
+    `null_timestamp_column` timestamp,
+    `null_blob_column` varbinary(20),
+    `null_bool_column` tinyint(1),
     PRIMARY KEY (`varchar_column`)
 );
 

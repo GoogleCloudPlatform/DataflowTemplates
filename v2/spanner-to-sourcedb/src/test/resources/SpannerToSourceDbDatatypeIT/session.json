@@ -38,7 +38,16 @@
         "c27",
         "c28",
         "c29",
-        "c30"
+        "c30",
+        "c31",
+        "c32",
+        "c33",
+        "c34",
+        "c35",
+        "c36",
+        "c37",
+        "c38",
+        "c39"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
@@ -360,6 +369,105 @@
           "NotNull": false,
           "Comment": "From: bigint_column bigint(19)",
           "Id": "c9"
+        },
+        "c31": {
+          "Name": "null_string_column",
+          "T": {
+            "Name": "STRING",
+            "Len": 128,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_string_column varchar(128)",
+          "Id": "c31"
+        },
+        "c32": {
+          "Name": "null_int_column",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_int_column bigint",
+          "Id": "c32"
+        },
+        "c33": {
+          "Name": "null_date_column",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_date_column date",
+          "Id": "c33"
+        },
+        "c34": {
+          "Name": "null_float_64_column",
+          "T": {
+            "Name": "FLOAT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_float_64_column double",
+          "Id": "c34"
+        },
+        "c35": {
+          "Name": "null_float_32_column",
+          "T": {
+            "Name": "FLOAT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_float_32_column float(10,2)",
+          "Id": "c35"
+        },
+        "c36": {
+          "Name": "null_numeric_column",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_numeric_column decimal(10,2)",
+          "Id": "c36"
+        },
+        "c37": {
+          "Name": "null_timestamp_column",
+          "T": {
+            "Name": "TIMESTAMP",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_timestamp_column timestamp",
+          "Id": "c37"
+        },
+        "c38": {
+          "Name": "null_blob_column",
+          "T": {
+            "Name": "BYTES",
+            "Len": 9223372036854776000,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_blob_column varbinary(20)",
+          "Id": "c38"
+        },
+        "c39": {
+          "Name": "null_bool_column",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: null_bool_column tinyint(1)",
+          "Id": "c39"
         }
       },
       "PrimaryKeys": [
@@ -821,7 +929,16 @@
         "c27",
         "c28",
         "c29",
-        "c30"
+        "c30",
+        "c31",
+        "c32",
+        "c33",
+        "c34",
+        "c35",
+        "c36",
+        "c37",
+        "c38",
+        "c39"
       ],
       "ColDefs": {
         "c10": {
@@ -1395,6 +1512,184 @@
             "AutoIncrement": false
           },
           "Id": "c9"
+        },
+        "c31": {
+          "Name": "null_string_column",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              128
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c31"
+        },
+        "c32": {
+          "Name": "null_int_column",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c32"
+        },
+        "c33": {
+          "Name": "null_date_column",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c33"
+        },
+        "c34": {
+          "Name": "null_float_64_column",
+          "Type": {
+            "Name": "double",
+            "Mods": [
+              22
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c34"
+        },
+        "c35": {
+          "Name": "null_float_32_column",
+          "Type": {
+            "Name": "float",
+            "Mods": [
+              10,
+              2
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c35"
+        },
+        "c36": {
+          "Name": "null_numeric_column",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10,
+              2
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c36"
+        },
+        "c37": {
+          "Name": "null_timestamp_column",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c37"
+        },
+        "c38": {
+          "Name": "null_blob_column",
+          "Type": {
+            "Name": "varbinary",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c38"
+        },
+        "c39": {
+          "Name": "null_bool_column",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c39"
         }
       },
       "PrimaryKeys": [

@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
     binary_column BYTES(MAX),
     varbinary_column BYTES(20),
     bit_column BYTES(MAX),
+    null_string_column STRING(128),
+    null_int_column INT64,
+    null_date_column DATE,
+    null_float_64_column FLOAT64,
+    null_float_32_column FLOAT32,
+    null_numeric_column NUMERIC,
+    null_timestamp_column TIMESTAMP,
+    null_blob_column BYTES(20),
+    null_bool_column BOOL,
 ) PRIMARY KEY(varchar_column);
 
 

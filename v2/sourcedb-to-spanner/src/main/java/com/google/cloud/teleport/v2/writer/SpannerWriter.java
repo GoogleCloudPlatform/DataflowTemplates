@@ -47,7 +47,10 @@ public class SpannerWriter implements Serializable {
     return setBatchSize(
         SpannerIO.write()
             .withSpannerConfig(spannerConfig)
-            .withFailureMode(FailureMode.REPORT_FAILURES));
+            .withFailureMode(FailureMode.REPORT_FAILURES)
+            .withGroupingFactor(500));
+    // Reduced grouping factor from 1000 to 500 to reduce memory pressure. Tests show very little
+    // impact of throughput by this change.
   }
 
   protected Write setBatchSize(Write write) {
