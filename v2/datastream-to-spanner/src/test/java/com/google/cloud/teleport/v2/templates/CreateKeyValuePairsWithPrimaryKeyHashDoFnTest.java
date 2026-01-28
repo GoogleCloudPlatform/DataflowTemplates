@@ -269,4 +269,79 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
 
     assertNotEquals(captor1.getValue().getKey(), captor2.getValue().getKey());
   }
+
+  @Test
+  public void testProcessElementWithPayload() {
+    Ddl ddl = getTestDdl();
+    when(processContext.sideInput(ddlView)).thenReturn(ddl);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Doe");
+    outputObject.put("age", 13);
+
+    // Create a FailsafeElement where original payload is different from current payload
+    // This ensures that the DoFn uses getPayload() and not getOriginalPayload()
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of("original_payload", outputObject.toString());
+    when(processContext.element()).thenReturn(failsafeElement);
+
+    doFn.processElement(processContext);
+
+    ArgumentCaptor<KV<Long, FailsafeElement<String, String>>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext).output(captor.capture());
+
+    KV<Long, FailsafeElement<String, String>> result = captor.getValue();
+    assertEquals(failsafeElement, result.getValue());
+    assertNotEquals(null, result.getKey());
+  }
+
+  @Test
+  public void testProcessElementWithUpperCaseColumnKeys() {
+    Ddl ddl = getTestDdl();
+    when(processContext.sideInput(ddlView)).thenReturn(ddl);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("FIRST_NAME", "Johnny");
+    outputObject.put("LAST_NAME", "Doe");
+    outputObject.put("AGE", 13);
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContext.element()).thenReturn(failsafeElement);
+
+    doFn.processElement(processContext);
+
+    ArgumentCaptor<KV<Long, FailsafeElement<String, String>>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext).output(captor.capture());
+
+    KV<Long, FailsafeElement<String, String>> result = captor.getValue();
+    assertEquals(failsafeElement, result.getValue());
+    assertNotEquals(null, result.getKey());
+  }
+
+  @Test
+  public void testProcessElementWithExtraColumns() {
+    Ddl ddl = getTestDdl();
+    when(processContext.sideInput(ddlView)).thenReturn(ddl);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Doe");
+    outputObject.put("age", 13);
+    outputObject.put("extra_column", "extra_value");
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContext.element()).thenReturn(failsafeElement);
+
+    doFn.processElement(processContext);
+
+    verify(processContext).output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
+  }
 }

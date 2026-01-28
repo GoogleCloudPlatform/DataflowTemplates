@@ -63,6 +63,8 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFn
     FailsafeElement<String, String> msg = c.element();
     String tableName = "";
     try {
+      // msg.getPayload() contains transformed change event and hence msg.getPayload() should be
+      // used and not msg.getOriginalPayload()
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
       Ddl ddl = c.sideInput(ddlView);
 
