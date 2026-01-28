@@ -29,17 +29,16 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -197,45 +196,44 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       throws IOException {
     // default parameters
 
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put(
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(getClass().getSimpleName())
+            .withTemplateName("Spanner_to_SourceDb")
+            .withTemplateModulePath("v2/spanner-to-sourcedb")
+            .withPipelineLauncher(pipelineLauncher)
+            .addParameter(
                 "sessionFilePath",
-                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", project);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
+                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", project)
+            .addParameter("metadataDatabase", spannerMetadataResourceManager.getDatabaseId())
+            .addParameter("metadataInstance", spannerMetadataResourceManager.getInstanceId())
+            .addParameter(
                 "sourceShardsFilePath",
-                getGcsPath(artifactBucket, shardFileName, gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName.toString());
-            put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
-            put("maxShardConnections", "100");
-            put("sourceType", sourceType);
-            put("workerMachineType", "n2-standard-4");
-          }
-        };
+                getGcsPath(artifactBucket, shardFileName, gcsResourceManager))
+            .addParameter("changeStreamName", "allstream")
+            .addParameter("dlqGcsPubSubSubscription", subscriptionName.toString())
+            .addParameter(
+                "deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager))
+            .addParameter("maxShardConnections", "100")
+            .addParameter("sourceType", sourceType)
+            .addParameter("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
-      params.put(
+      flexTemplateBuilder.addParameter(
           "transformationJarPath",
           getGcsPath(artifactBucket, customTransformation.jarPath(), gcsResourceManager));
-      params.put("transformationClassName", customTransformation.classPath());
+      flexTemplateBuilder.addParameter("transformationClassName", customTransformation.classPath());
     }
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
-    options
-        .addEnvironment("maxWorkers", maxWorkers)
-        .addEnvironment("numWorkers", numWorkers)
-        .addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    flexTemplateBuilder
+        .addEnvironmentVariable("maxWorkers", maxWorkers)
+        .addEnvironmentVariable("numWorkers", numWorkers)
+        .addEnvironmentVariable(
+            "additionalExperiments", Collections.singletonList("use_runner_v2"));
 
-    options.setParameters(params);
-    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     return jobInfo;
   }
 
