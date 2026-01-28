@@ -38,13 +38,13 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.MySQLSource;
@@ -149,51 +149,47 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     Stream stream =
         createDatastreamResources(
             artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
-
     // Setup Parameters
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix));
-            put("streamName", stream.getName());
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("projectId", project);
-            put("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix));
-            put("gcsPubSubSubscription", subscription.toString());
-            put("dlqGcsPubSubSubscription", dlqSubscription.toString());
-            put("datastreamSourceType", "mysql");
-            put("inputFileFormat", "avro");
-            put("workerMachineType", "n2-standard-4");
-          }
-        };
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(testName)
+            .withTemplateName("Cloud_Datastream_to_Spanner")
+            .withTemplateModulePath("v2/datastream-to-spanner")
+            .withPipelineLauncher(pipelineLauncher)
+            .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+            .addParameter("streamName", stream.getName())
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", project)
+            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+            .addParameter("gcsPubSubSubscription", subscription.toString())
+            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+            .addParameter("datastreamSourceType", "mysql")
+            .addParameter("inputFileFormat", "avro")
+            .addParameter("workerMachineType", "n2-standard-4");
 
     // Add shadow table parameters if shadowTableSpannerResourceManager is not null
     if (shadowTableSpannerResourceManager != null) {
-      params.putAll(
-          new HashMap<>() {
-            {
-              put(
-                  "shadowTableSpannerInstanceId",
-                  shadowTableSpannerResourceManager.getInstanceId());
-              put(
-                  "shadowTableSpannerDatabaseId",
-                  shadowTableSpannerResourceManager.getDatabaseId());
-            }
-          });
+      flexTemplateBuilder
+          .addParameter(
+              "shadowTableSpannerInstanceId", shadowTableSpannerResourceManager.getInstanceId())
+          .addParameter(
+              "shadowTableSpannerDatabaseId", shadowTableSpannerResourceManager.getDatabaseId());
     }
     // Add all parameters for the template
-    params.putAll(templateParameters);
+    for (Map.Entry<String, String> entry : templateParameters.entrySet()) {
+      flexTemplateBuilder.addParameter(entry.getKey(), entry.getValue());
+    }
 
-    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
-    options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+    flexTemplateBuilder
+        .addEnvironmentVariable("maxWorkers", maxWorkers)
+        .addEnvironmentVariable("numWorkers", numWorkers);
 
     // Set all environment options
-    environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
-    options.setParameters(params);
+    environmentOptions.forEach(
+        (key, value) -> flexTemplateBuilder.addEnvironmentVariable(key, value));
 
     // Act
-    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     assertThatPipeline(jobInfo).isRunning();
 
     ConditionCheck[] checks = new ConditionCheck[tables.size()];
