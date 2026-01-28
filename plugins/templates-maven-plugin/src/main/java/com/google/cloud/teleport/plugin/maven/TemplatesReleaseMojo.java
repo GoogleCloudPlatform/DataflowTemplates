@@ -32,6 +32,8 @@ import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.gson.Gson;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -298,26 +301,39 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                       String objectName =
                           String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
                       BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
-                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
-                      try (InputStream inputStream = Files.newInputStream(path)) {
-                        storage.create(blobInfo, inputStream);
+
+                      // Process only new files that don't exist in GCS already
+                      if (storage.get(blobId) == null) {
+                        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+                        try (InputStream inputStream = Files.newInputStream(path)) {
+                          storage.create(blobInfo, inputStream);
+                          LOG.info(
+                              "Uploaded blueprint {} to gs://{}/{}",
+                              fileName,
+                              bucketNameOnly(bucketName),
+                              objectName);
+                        } catch (IOException e) {
+                          throw new RuntimeException("Error reading file " + fileName, e);
+                        }
+                      } else {
                         LOG.info(
-                            "Uploaded {} to gs://{}/{}",
-                            fileName,
+                            "Skipping existing blueprint: gs://{}/{}",
                             bucketNameOnly(bucketName),
                             objectName);
-                        blueprints.add(new Blueprint(fileName, objectName));
-                      } catch (IOException e) {
-                        throw new RuntimeException("Error reading file " + fileName, e);
                       }
+                      blueprints.add(new Blueprint(fileName, objectName));
                     });
             String manifestObjectName =
                 String.join("/", stagePrefix, yamlBlueprintsGCSPath, yamlManifestName);
             BlobId manifestBlobId = BlobId.of(bucketNameOnly(bucketName), manifestObjectName);
             BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
-            storage.create(
-                manifestBlobInfo,
-                new ByteArrayInputStream(GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8)));
+
+            // Upload the manifest file with retries
+            byte[] manifestBytes = GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8);
+            Failsafe.with(gcsRetryPolicy())
+                .run(
+                    () ->
+                        storage.create(manifestBlobInfo, new ByteArrayInputStream(manifestBytes)));
             LOG.info(
                 "Uploaded {} to gs://{}/{}",
                 yamlManifestName,
@@ -342,5 +358,13 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
     } catch (Exception e) {
       throw new MojoExecutionException("Template run failed", e);
     }
+  }
+
+  private static <T> RetryPolicy<T> gcsRetryPolicy() {
+    return RetryPolicy.<T>builder()
+        .handle(IOException.class)
+        .withBackoff(Duration.ofSeconds(2), Duration.ofSeconds(30))
+        .withMaxRetries(3)
+        .build();
   }
 }
