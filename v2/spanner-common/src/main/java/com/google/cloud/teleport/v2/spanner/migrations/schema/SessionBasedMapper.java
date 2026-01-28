@@ -321,4 +321,14 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       return false;
     }
   }
+
+  @Override
+  public boolean isGeneratedColumn(String namespace, String spannerTable, String spannerColumn) {
+    try {
+      Column col = getCol(namespace, spannerTable, spannerColumn);
+      return col.isGenerated();
+    } catch (NoSuchElementException e) {
+      return false;
+    }
+  }
 }
