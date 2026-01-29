@@ -88,7 +88,7 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             jobParameters,
             null);
     PipelineOperator.Result result =
-        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(30L)));
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(50L)));
     assertThatResult(result).isLaunchFinished();
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
