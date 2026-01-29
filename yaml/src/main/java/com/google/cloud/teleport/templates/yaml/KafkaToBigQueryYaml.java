@@ -28,9 +28,9 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "Kafka to BigQuery (YAML)",
     description =
         "The Apache Kafka to BigQuery template is a streaming pipeline which ingests  text data from Apache Kafka, executes a user-defined function (UDF), and  outputs the resulting records to BigQuery. Any errors which occur in the  transformation of the data, execution of the UDF, or inserting into the  output table are inserted into a separate errors table in BigQuery.  If the errors table does not exist prior to execution, then it is created.",
-    flexContainerName = "kafka-to-bigquery-yaml",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "KafkaToBigQuery.yaml",
-    filesToCopy = {"template.yaml", "main.py", "requirements.txt"},
+    filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

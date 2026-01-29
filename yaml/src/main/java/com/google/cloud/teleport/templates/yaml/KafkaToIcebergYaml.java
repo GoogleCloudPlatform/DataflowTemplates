@@ -28,10 +28,9 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "Kafka to Iceberg (YAML)",
     description =
         "The Kafka to Iceberg template is a streaming pipeline that reads data from Kafka and writes to an Iceberg table.",
-    flexContainerName = "kafka-to-iceberg-yaml",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "KafkaToIceberg.yaml",
     filesToCopy = {
-      "template.yaml",
       "main.py",
       "requirements.txt",
       "options/kafka_options.yaml",

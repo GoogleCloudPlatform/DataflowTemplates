@@ -2,7 +2,7 @@ import sys
 import os
 import unittest
 import yaml
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, call, patch, mock_open
 
 # Mock apache_beam modules before importing main
 sys.modules['apache_beam'] = MagicMock()
@@ -73,14 +73,18 @@ class TestMain(unittest.TestCase):
         self.assertIn('name: test_pipeline', result)
         self.assertNotIn('optional:', result)
 
+    @patch('json.load')
     @patch('main.FileSystems')
-    def test_get_pipeline_yaml(self, mock_fs):
+    def test_get_pipeline_yaml(self, mock_fs, mock_load):
         mock_f = mock_open(read_data=b"pipeline: test")
         mock_fs.open.return_value = mock_f()
-        
-        result = main._get_pipeline_yaml()
+        argv = ['--label=goog-dataflow-provided-template-name=my-template']
+        with patch("json.load") as mock_load:
+            mock_load.return_value = {"my-template": "template.yaml"}
+            result = main._get_pipeline_yaml(argv)
         self.assertEqual(result, "pipeline: test")
-        mock_fs.open.assert_called_with("template.yaml")
+        mock_fs.open.assert_has_calls(
+            [call(main.PYTHON_LAUNCHER_YAML_INDEX), call("template.yaml")])
 
     @patch('main.FileSystems')
     def test_get_pipeline_with_options(self, mock_fs):

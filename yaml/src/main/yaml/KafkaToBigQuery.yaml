@@ -14,7 +14,7 @@ template:
   flex_container_name: "kafka-to-bigquery-yaml"
   yamlTemplateFile: "KafkaToBigQuery.yaml"
   filesToCopy: >
-    {"template.yaml", "main.py", "requirements.txt"}
+    {"main.py", "requirements.txt"}
   documentation: >
     https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery
   contactInformation: "https://cloud.google.com/support"

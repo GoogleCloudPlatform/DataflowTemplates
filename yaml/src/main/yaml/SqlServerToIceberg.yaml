@@ -10,7 +10,7 @@ template:
   flex_container_name: "sqlserver-to-iceberg-yaml"
   yamlTemplateFile: "SqlServerToIceberg.yaml"
   filesToCopy: >
-    {"template.yaml", "main.py", "requirements.txt", "options/sqlserver_options.yaml", "options/iceberg_options.yaml"}
+    {"main.py", "requirements.txt", "options/sqlserver_options.yaml", "options/iceberg_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input SqlServer instance and table must exist.",

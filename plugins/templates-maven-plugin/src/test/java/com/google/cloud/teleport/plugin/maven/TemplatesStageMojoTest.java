@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
+import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_LAUNCHER_YAML_INDEX;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -25,11 +28,16 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.junit.Before;
@@ -120,43 +128,56 @@ public class TemplatesStageMojoTest {
         });
   }
 
-  @Test
-  public void testPrepareYamlTemplateFiles_copiesFile() throws Exception {
-    // Arrange
+  private static TemplateDefinitions mockYamlDefinitions(String containerName) {
     TemplateDefinitions definitions = mock(TemplateDefinitions.class);
     Template template = mock(Template.class);
+    when(template.name()).thenReturn("My_Yaml");
+    when(template.flexContainerName()).thenReturn(containerName);
+    when(template.type()).thenReturn(Template.TemplateType.YAML);
+    when(definitions.isClassic()).thenReturn(false);
+    when(definitions.isFlex()).thenReturn(true);
     when(definitions.getTemplateAnnotation()).thenReturn(template);
+    return definitions;
+  }
+
+  @Test
+  public void testPrepareYamlTemplateFiles_indexFile() throws Exception {
+    String containerName = "container-name";
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
+    Template template = definitions.getTemplateAnnotation();
     when(template.yamlTemplateFile()).thenReturn("my-template.yaml");
 
     // Create necessary files and assert directory
-    File yamlDir = new File(baseDir, "src/main/yaml");
-    assertTrue(yamlDir.mkdirs());
-    File sourceFile = new File(yamlDir, "my-template.yaml");
+    File sourceFile = new File(outputClassesDir, "my-template.yaml");
     Files.writeString(sourceFile.toPath(), "yaml: content");
 
     // Act
-    mojo.prepareYamlTemplateFiles(definitions);
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
+    mojo.prepareYamlTemplateFiles(template.flexContainerName());
 
     // Assert that yaml template file exists and has the correct content
-    File destinationFile = new File(outputClassesDir, "template.yaml");
+    File destinationFile =
+        Path.of(outputClassesDir.getPath(), containerName, PYTHON_LAUNCHER_YAML_INDEX).toFile();
     assertTrue(destinationFile.exists());
-    assertEquals("yaml: content", Files.readString(destinationFile.toPath()));
+    assertEquals(
+        "{\n  \"my_yaml\": \"my-template.yaml\"\n}", Files.readString(destinationFile.toPath()));
   }
 
   @Test
   public void testPrepareYamlTemplateFiles_fileNotFound_throwsException() {
-    // Arrange
-    TemplateDefinitions definitions = mock(TemplateDefinitions.class);
-    Template template = mock(Template.class);
-    when(definitions.getTemplateAnnotation()).thenReturn(template);
+    String containerName = "container-name";
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
+    Template template = definitions.getTemplateAnnotation();
     when(template.yamlTemplateFile()).thenReturn("my-template.yaml");
 
     // No yaml template file created
 
     // Act and assert that yaml file not found
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
     MojoExecutionException exception =
         assertThrows(
-            MojoExecutionException.class, () -> mojo.prepareYamlTemplateFiles(definitions));
+            MojoExecutionException.class,
+            () -> mojo.prepareYamlTemplateFiles(template.flexContainerName()));
     assertTrue(exception.getMessage().startsWith("YAML template file not found:"));
   }
 
@@ -164,12 +185,13 @@ public class TemplatesStageMojoTest {
   public void testPrepareYamlDockerfile_generatesDockerfile() throws Exception {
     // Arrange
     String containerName = "my-yaml-template";
-    TemplateDefinitions definitions = mock(TemplateDefinitions.class);
-    Template template = mock(Template.class);
-    when(definitions.getTemplateAnnotation()).thenReturn(template);
+    String yamlFilename = "my-template.yaml";
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
+    Template template = definitions.getTemplateAnnotation();
+
     when(template.type()).thenReturn(Template.TemplateType.YAML);
     when(template.filesToCopy()).thenReturn(new String[] {"script.py"});
-    when(template.yamlTemplateFile()).thenReturn("my-template.yaml");
+    when(template.yamlTemplateFile()).thenReturn(yamlFilename);
     when(template.entryPoint()).thenReturn(new String[] {"python", "script.py"});
 
     // Create necessary directories and assert
@@ -177,6 +199,7 @@ public class TemplatesStageMojoTest {
     assertTrue(containerDir.mkdirs());
 
     // Act
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
     mojo.prepareYamlDockerfile(definitions, containerName);
 
     // Assert dockerfile exists
@@ -184,10 +207,14 @@ public class TemplatesStageMojoTest {
     assertTrue(dockerfile.exists());
 
     // Assert dockerfile contents match expected
-    String content = new String(Files.readAllBytes(dockerfile.toPath()), StandardCharsets.UTF_8);
+    String content = Files.readString(dockerfile.toPath());
     assertTrue(content.contains("FROM python-base"));
     assertTrue(content.contains("FROM base"));
-    assertTrue(content.contains("COPY script.py template.yaml $WORKDIR/"));
+    assertTrue(
+        content.contains(
+            String.format(
+                "COPY script.py %s %s/%s $WORKDIR/",
+                yamlFilename, containerName, PYTHON_LAUNCHER_YAML_INDEX)));
     assertTrue(content.contains("ENTRYPOINT [\"python\", \"script.py\"]"));
   }
 
@@ -195,10 +222,8 @@ public class TemplatesStageMojoTest {
   public void testPrepareYamlDockerfile_usesDefaults() throws Exception {
     // Arrange
     String containerName = "my-yaml-template-defaults";
-    TemplateDefinitions definitions = mock(TemplateDefinitions.class);
-    Template template = mock(Template.class);
-    when(definitions.getTemplateAnnotation()).thenReturn(template);
-    when(template.type()).thenReturn(Template.TemplateType.YAML);
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
+    Template template = definitions.getTemplateAnnotation();
     when(template.filesToCopy()).thenReturn(new String[] {});
     when(template.yamlTemplateFile()).thenReturn(null);
     when(template.entryPoint()).thenReturn(new String[] {});
@@ -207,6 +232,7 @@ public class TemplatesStageMojoTest {
     assertTrue(containerDir.mkdirs());
 
     // Act
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
     mojo.prepareYamlDockerfile(definitions, containerName);
 
     // Assert dockerfile exists
@@ -214,7 +240,7 @@ public class TemplatesStageMojoTest {
     assertTrue(dockerfile.exists());
 
     // Assert dockerfile contents match expected
-    String content = new String(Files.readAllBytes(dockerfile.toPath()), StandardCharsets.UTF_8);
+    String content = Files.readString(dockerfile.toPath());
     assertTrue(content.contains("FROM python-base"));
     assertTrue(content.contains("FROM base"));
     assertFalse(content.contains("COPY template.yaml"));
@@ -225,10 +251,8 @@ public class TemplatesStageMojoTest {
   public void testPrepareYamlDockerfile_withEmptyYamlFile() throws Exception {
     // Arrange
     String containerName = "my-yaml-template-empty-yaml";
-    TemplateDefinitions definitions = mock(TemplateDefinitions.class);
-    Template template = mock(Template.class);
-    when(definitions.getTemplateAnnotation()).thenReturn(template);
-    when(template.type()).thenReturn(Template.TemplateType.YAML);
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
+    Template template = definitions.getTemplateAnnotation();
     when(template.filesToCopy()).thenReturn(new String[] {"script.py"});
     when(template.yamlTemplateFile()).thenReturn("");
     when(template.entryPoint()).thenReturn(new String[] {});
@@ -237,6 +261,7 @@ public class TemplatesStageMojoTest {
     assertTrue(containerDir.mkdirs());
 
     // Act
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
     mojo.prepareYamlDockerfile(definitions, containerName);
 
     // Assert dockerfile exists
@@ -244,7 +269,7 @@ public class TemplatesStageMojoTest {
     assertTrue(dockerfile.exists());
 
     // Assert dockerfile contents match expected
-    String content = new String(Files.readAllBytes(dockerfile.toPath()), StandardCharsets.UTF_8);
+    String content = Files.readString(dockerfile.toPath());
     assertTrue(content.contains("COPY script.py $WORKDIR/"));
     assertFalse(content.contains("template.yaml"));
   }
@@ -253,8 +278,7 @@ public class TemplatesStageMojoTest {
   public void testPrepareYamlDockerfile_alreadyExists() throws Exception {
     // Arrange
     String containerName = "my-yaml-template-exists";
-    TemplateDefinitions definitions = mock(TemplateDefinitions.class);
-
+    TemplateDefinitions definitions = mockYamlDefinitions(containerName);
     File containerDir = new File(outputClassesDir, containerName);
     assertTrue(containerDir.mkdirs());
     File dockerfile = new File(containerDir, "Dockerfile");
@@ -262,11 +286,50 @@ public class TemplatesStageMojoTest {
     Files.writeString(dockerfile.toPath(), expectedContent);
 
     // Act
+    mojo.stageCommandSpecs(ImmutableList.of(definitions));
     mojo.prepareYamlDockerfile(definitions, containerName);
 
     // Assert existing dockerfile is used
-    assertEquals(
-        expectedContent,
-        new String(Files.readAllBytes(dockerfile.toPath()), StandardCharsets.UTF_8));
+    assertEquals(expectedContent, Files.readString(dockerfile.toPath()));
+  }
+
+  @Test
+  public void testPrepareYamlDockerfile_multipleTemplates() throws Exception {
+    String containerName = "my-yaml-template";
+    TemplateDefinitions definitionsA = mockYamlDefinitions(containerName);
+    TemplateDefinitions definitionsB = mockYamlDefinitions(containerName);
+    Template templateA = definitionsA.getTemplateAnnotation();
+    Template templateB = definitionsB.getTemplateAnnotation();
+    when(templateA.name()).thenReturn("template-a");
+    when(templateB.name()).thenReturn("template-b");
+    when(templateA.entryPoint()).thenReturn(new String[] {});
+    when(templateB.entryPoint()).thenReturn(new String[] {});
+    when(templateA.yamlTemplateFile()).thenReturn("template-a.yaml");
+    when(templateB.yamlTemplateFile()).thenReturn("template-b.yaml");
+    when(templateA.filesToCopy()).thenReturn(new String[] {"script_a.py"});
+    when(templateB.filesToCopy()).thenReturn(new String[] {"script_a.py", "script_b.py"});
+    // Act
+    mojo.stageCommandSpecs(ImmutableList.of(definitionsA, definitionsB));
+    mojo.prepareYamlDockerfile(definitionsA, containerName);
+
+    File containerDir = new File(outputClassesDir, containerName);
+    File dockerfile = new File(containerDir, "Dockerfile");
+    String content = Files.readString(dockerfile.toPath());
+    assertTrue(content.contains("FROM python-base"));
+    assertTrue(content.contains("FROM base"));
+    assertTrue(content.contains("ENTRYPOINT [\"/default/launcher\"]"));
+    // Check files to copy
+    Pattern pattern = Pattern.compile("^COPY\\s+(.*?)\\s+\\$WORKDIR/$", Pattern.MULTILINE);
+    Matcher matcher = pattern.matcher(content);
+    assertTrue("Expected statement not found: COPY <files> $WORKDIR/", matcher.find());
+    List<String> results = Arrays.asList(matcher.group(1).trim().split("\\s+"));
+    assertThat(
+        results,
+        containsInAnyOrder(
+            "script_a.py",
+            "script_b.py",
+            "template-a.yaml",
+            "template-b.yaml",
+            containerName + "/" + PYTHON_LAUNCHER_YAML_INDEX));
   }
 }
