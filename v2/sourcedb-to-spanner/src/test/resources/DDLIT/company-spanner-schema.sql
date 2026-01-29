@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS vendor (
     first_name STRING(255) NOT NULL,
     last_name STRING(255) NOT NULL,
     email STRING(255) NOT NULL,
-    full_name STRING(512),
-) PRIMARY KEY (full_name);
+    full_name STRING(512) AS (first_name || ' ' || last_name) STORED,
+) PRIMARY KEY (vendor_id);
 
 CREATE INDEX full_name_idx ON vendor (full_name);
 CREATE INDEX email_idx ON vendor (email DESC);

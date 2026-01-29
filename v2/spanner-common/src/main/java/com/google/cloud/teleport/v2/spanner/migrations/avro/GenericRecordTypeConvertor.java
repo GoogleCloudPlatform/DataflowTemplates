@@ -158,6 +158,11 @@ public class GenericRecordTypeConvertor {
           continue;
         }
 
+        // If the column is generated, we skip it as it's read-only in Spanner.
+        if (schemaMapper.isGeneratedColumn(namespace, spannerTableName, spannerColName)) {
+          continue;
+        }
+
         // For session based mapper, populate synthetic primary key with UUID. For identity mapper,
         // the schemaMapper returns null.
         if (spannerColName.equals(

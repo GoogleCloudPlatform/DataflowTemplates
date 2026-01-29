@@ -1506,4 +1506,56 @@ public class GenericRecordTypeConvertorTest {
   private CassandraAnnotations getTestCassandraAnnotationNone() {
     return getTestCassandraAnnotation("");
   }
+
+  @Test
+  public void testGeneratedColumnFiltering() throws InvalidTransformationException {
+    final String tableName = "generated_col_table";
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable(tableName)
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("gen_col")
+            .int64()
+            .generatedAs("id * 2")
+            .endColumn()
+            .column("val_col")
+            .string()
+            .endColumn()
+            .endTable()
+            .build();
+    final ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(schemaMapper, "", null, null);
+
+    Schema payloadSchema =
+        SchemaBuilder.record("payload")
+            .fields()
+            .name("id")
+            .type(SchemaBuilder.builder().longType())
+            .noDefault()
+            .name("gen_col")
+            .type(SchemaBuilder.builder().longType())
+            .noDefault()
+            .name("val_col")
+            .type(SchemaBuilder.builder().stringType())
+            .noDefault()
+            .endRecord();
+
+    GenericRecord payload =
+        new GenericRecordBuilder(payloadSchema)
+            .set("id", 100L)
+            .set("gen_col", 200L) // Source has data for generated column
+            .set("val_col", "test")
+            .build();
+
+    Map<String, Value> result = genericRecordTypeConvertor.transformChangeEvent(payload, tableName);
+
+    // Verify that "gen_col" is NOT in the result map
+    assertThat(result).containsEntry("id", Value.int64(100L));
+    assertThat(result).containsEntry("val_col", Value.string("test"));
+    assertThat(result).doesNotContainKey("gen_col");
+  }
 }
