@@ -57,6 +57,7 @@ import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Duration;
@@ -77,8 +78,8 @@ import org.slf4j.LoggerFactory;
  * <p>Change events that failed to be written will be pushed onto the secondary output tagged with
  * PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that caused the failure.
  */
-class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
-    implements Serializable {
+class SpannerTransactionWriterDoFn
+    extends DoFn<KV<Long, FailsafeElement<String, String>>, Timestamp> implements Serializable {
 
   // TODO - Change Cloud Spanner nomenclature in code used to read DDL.
 
@@ -239,7 +240,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    FailsafeElement<String, String> msg = c.element();
+    FailsafeElement<String, String> msg = c.element().getValue();
     Ddl ddl = c.sideInput(ddlView);
     // TODO: pass shadow table ddl to shdaow tble mutaiton generator and sequence reader.
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
