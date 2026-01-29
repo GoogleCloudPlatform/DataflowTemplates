@@ -45,6 +45,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 import redis.clients.jedis.Jedis;
 
@@ -70,15 +71,24 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
-    // Start Redis container
+    // Start Redis container with a fixed port binding so Dataflow workers can connect.
+    // Port 6379 must be open in the CI runner's firewall for Dataflow workers to connect.
     redisContainer =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(REDIS_PORT);
+            .withExposedPorts(REDIS_PORT)
+            .withCreateContainerCmdModifier(
+                cmd ->
+                    cmd.getHostConfig()
+                        .withPortBindings(
+                            new com.github.dockerjava.api.model.PortBinding(
+                                com.github.dockerjava.api.model.Ports.Binding.bindPort(REDIS_PORT),
+                                new com.github.dockerjava.api.model.ExposedPort(REDIS_PORT))))
+            .waitingFor(Wait.forListeningPort());
     redisContainer.start();
 
     // Get the host IP that is accessible from Dataflow workers
     redisHost = TestProperties.hostIp();
-    redisMappedPort = redisContainer.getFirstMappedPort();
+    redisMappedPort = REDIS_PORT;
     LOG.info("Redis container started at {}:{}", redisHost, redisMappedPort);
   }
 

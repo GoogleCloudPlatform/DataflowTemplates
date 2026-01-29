@@ -82,4 +82,21 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- Configure Surefire to run integration tests sequentially.
+                 This is required because all tests share the same fixed Redis port (6379). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
+                <configuration>
+                    <!-- Run tests sequentially to avoid port conflicts on fixed port 6379 -->
+                    <parallel>none</parallel>
+                    <threadCount>1</threadCount>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
