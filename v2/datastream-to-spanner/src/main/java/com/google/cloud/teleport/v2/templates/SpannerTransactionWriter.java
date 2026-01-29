@@ -101,16 +101,16 @@ public class SpannerTransactionWriter
   @Override
   public SpannerTransactionWriter.Result expand(
       PCollection<FailsafeElement<String, String>> input) {
-    PCollectionTuple groupByResults =
+    PCollectionTuple keyedEvents =
         input.apply(
-            "Produce Key value pairs with key as Primary Key Hash",
+            "Key By PK Hash",
             ParDo.of(new CreateKeyValuePairsWithPrimaryKeyHashDoFn(ddlView))
                 .withSideInputs(ddlView)
                 .withOutputTags(
                     DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG,
                     TupleTagList.of(List.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
     PCollectionTuple spannerWriteResults =
-        groupByResults
+        keyedEvents
             .get(DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG)
             .setCoder(
                 KvCoder.of(
@@ -136,13 +136,13 @@ public class SpannerTransactionWriter
                                 DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
                                 DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
 
-    PCollection<FailsafeElement<String, String>> groupByErrorRecords =
-        groupByResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+    PCollection<FailsafeElement<String, String>> keyedEventsErrorRecords =
+        keyedEvents.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
 
     PCollection<FailsafeElement<String, String>> permanentErrorRecords =
         PCollectionList.of(
                 spannerWriteResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
-            .and(groupByErrorRecords)
+            .and(keyedEventsErrorRecords)
             .apply(Flatten.pCollections());
 
     return Result.create(
