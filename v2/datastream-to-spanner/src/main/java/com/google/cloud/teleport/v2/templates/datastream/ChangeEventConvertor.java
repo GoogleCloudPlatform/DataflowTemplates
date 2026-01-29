@@ -37,7 +37,7 @@ public class ChangeEventConvertor {
 
   private ChangeEventConvertor() {}
 
-  static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
+  public static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
@@ -66,7 +66,7 @@ public class ChangeEventConvertor {
     }
   }
 
-  static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
+  public static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     List<String> changeEventKeys = ChangeEventUtils.getEventColumnKeys(changeEvent);
     ObjectNode jsonNode = (ObjectNode) changeEvent;
