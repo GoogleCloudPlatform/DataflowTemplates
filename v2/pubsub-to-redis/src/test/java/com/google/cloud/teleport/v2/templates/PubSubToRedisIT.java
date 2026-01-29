@@ -32,6 +32,7 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -43,6 +44,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 import redis.clients.jedis.Jedis;
 
 /** Integration test for {@link PubSubToRedis}. */
@@ -54,13 +57,29 @@ public final class PubSubToRedisIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToRedis.class);
 
+  private static final int REDIS_PORT = 6379;
+
   private PubsubResourceManager pubsubResourceManager;
+  private GenericContainer<?> redisContainer;
   private Jedis redisClient;
+  private String redisHost;
+  private int redisMappedPort;
 
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+
+    // Start Redis container
+    redisContainer =
+        new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(REDIS_PORT);
+    redisContainer.start();
+
+    // Get the host IP that is accessible from Dataflow workers
+    redisHost = TestProperties.hostIp();
+    redisMappedPort = redisContainer.getFirstMappedPort();
+    LOG.info("Redis container started at {}:{}", redisHost, redisMappedPort);
   }
 
   @After
@@ -69,6 +88,17 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     if (redisClient != null) {
       redisClient.close();
     }
+    if (redisContainer != null) {
+      redisContainer.stop();
+    }
+  }
+
+  /** Creates a Jedis client connected to the Redis container. */
+  private Jedis createRedisClient() {
+    LOG.info("Connecting to Redis at {}:{}", redisHost, redisMappedPort);
+    Jedis jedis = new Jedis(redisHost, redisMappedPort);
+    jedis.select(0);
+    return jedis;
   }
 
   @Test
@@ -83,13 +113,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     String inSubscriptionName = testName + "-sub";
     pubsubResourceManager.createSubscription(tc, inSubscriptionName);
 
-    String redisHost = "127.0.0.1";
-    int redisPort = 6379;
-    String redisPassword = "";
-
-    redisClient = new Jedis(redisHost, redisPort);
-    redisClient.select(0);
-    redisClient.flushDB();
+    redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -98,8 +122,8 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                     "inputSubscription",
                     "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
                 .addParameter("redisHost", redisHost)
-                .addParameter("redisPort", String.valueOf(redisPort))
-                .addParameter("redisPassword", redisPassword)
+                .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "STRING_SINK"));
 
     // Act
@@ -152,13 +176,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     String inSubscriptionName = testId + "-sub";
     pubsubResourceManager.createSubscription(tc, inSubscriptionName);
 
-    String redisHost = "127.0.0.1";
-    int redisPort = 6379;
-    String redisPassword = "";
-
-    redisClient = new Jedis(redisHost, redisPort);
-    redisClient.select(0);
-    redisClient.flushDB();
+    redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -167,8 +185,8 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                     "inputSubscription",
                     "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
                 .addParameter("redisHost", redisHost)
-                .addParameter("redisPort", String.valueOf(redisPort))
-                .addParameter("redisPassword", redisPassword)
+                .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "HASH_SINK"));
 
     // Act
@@ -223,13 +241,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     String inSubscriptionName = testId + "-sub";
     pubsubResourceManager.createSubscription(tc, inSubscriptionName);
 
-    String redisHost = "127.0.0.1";
-    int redisPort = 6379;
-    String redisPassword = "";
-
-    redisClient = new Jedis(redisHost, redisPort);
-    redisClient.select(0);
-    redisClient.flushDB();
+    redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -238,8 +250,8 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                     "inputSubscription",
                     "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
                 .addParameter("redisHost", redisHost)
-                .addParameter("redisPort", String.valueOf(redisPort))
-                .addParameter("redisPassword", redisPassword)
+                .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "STREAMS_SINK"));
 
     // Act
