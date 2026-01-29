@@ -51,7 +51,11 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
   private FlexTemplateDataflowJobResourceManager(Builder builder) {
     this.parameters = builder.parameters;
     this.templateName = builder.templateName;
-    pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
+    if (builder.pipelineLauncher != null) {
+      pipelineLauncher = builder.pipelineLauncher;
+    } else {
+      pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
+    }
     synchronized (specPaths) {
       if (!specPaths.containsKey(builder.templateName)) {
         buildAndStageTemplate(
@@ -102,6 +106,10 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     return jobInfo;
   }
 
+  public LaunchConfig getLaunchConfig() {
+    return launchConfig;
+  }
+
   public String getTemplateName() {
     return templateName;
   }
@@ -114,6 +122,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     private String templateName;
     private String templateModulePath;
     private String additionalMavenProfile;
+    private PipelineLauncher pipelineLauncher;
 
     private Builder(String jobName) {
       this.jobName = jobName;
@@ -154,6 +163,12 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     public FlexTemplateDataflowJobResourceManager.Builder withAdditionalMavenProfile(
         String profile) {
       this.additionalMavenProfile = profile;
+      return this;
+    }
+
+    public FlexTemplateDataflowJobResourceManager.Builder withPipelineLauncher(
+        PipelineLauncher pipelineLauncher) {
+      this.pipelineLauncher = pipelineLauncher;
       return this;
     }
 

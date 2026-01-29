@@ -29,12 +29,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -72,7 +72,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
   protected static final String VPC_REGION = "us-central1";
   protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
-  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   public SourceDbToSpannerLTBase() {
     try {
@@ -140,33 +139,34 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     String outputDirectory =
         String.join(
             "/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "output"});
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("projectId", project);
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("sourceDbDialect", dialect.name());
-            put("sourceConfigURL", sourceDatabaseResource.getconnectionURL());
-            put("username", sourceDatabaseResource.username());
-            put("password", sourceDatabaseResource.password());
-            put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
-            put("jdbcDriverClassName", driverClassName());
-          }
-        };
-    params.putAll(ADDITIONAL_JOB_PARAMS);
-    params.putAll(templateParameters);
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(getClass().getSimpleName())
+            .withTemplateName("Sourcedb_to_Spanner_Flex")
+            .withTemplateModulePath("v2/sourcedb-to-spanner")
+            .withPipelineLauncher(pipelineLauncher)
+            .addParameter("projectId", project)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("sourceDbDialect", dialect.name())
+            .addParameter("sourceConfigURL", sourceDatabaseResource.getconnectionURL())
+            .addParameter("username", sourceDatabaseResource.username())
+            .addParameter("password", sourceDatabaseResource.password())
+            .addParameter("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory)
+            .addParameter("jdbcDriverClassName", driverClassName())
+            .addParameter("workerMachineType", "n2-standard-4");
+
+    for (Map.Entry<String, String> entry : templateParameters.entrySet()) {
+      flexTemplateBuilder.addParameter(entry.getKey(), entry.getValue());
+    }
 
     // Configure job
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
-            .addEnvironment("maxWorkers", MAX_WORKERS)
-            .addEnvironment("numWorkers", NUM_WORKERS)
-            .setParameters(params);
-    environmentOptions.forEach(options::addEnvironment);
+    flexTemplateBuilder
+        .addEnvironmentVariable("maxWorkers", MAX_WORKERS)
+        .addEnvironmentVariable("numWorkers", NUM_WORKERS);
+    environmentOptions.forEach(flexTemplateBuilder::addEnvironmentVariable);
 
     // Act
-    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     assertThatPipeline(jobInfo).isRunning();
 
     ConditionCheck[] checks =
