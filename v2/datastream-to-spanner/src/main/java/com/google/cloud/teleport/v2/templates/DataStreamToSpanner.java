@@ -721,7 +721,7 @@ public class DataStreamToSpanner {
                       options.getDlqGcsPubSubSubscription(),
                       // file paths to ignore when re-consuming for retry
                       new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp", "skipped", "tmp_skipped")))));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
