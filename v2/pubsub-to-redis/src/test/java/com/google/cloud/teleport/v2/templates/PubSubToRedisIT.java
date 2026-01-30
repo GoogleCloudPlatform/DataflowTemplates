@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.Arrays;
@@ -71,8 +72,10 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
-    // Start Redis container with a fixed port binding so Dataflow workers can connect.
-    // Port 6379 must be open in the CI runner's firewall for Dataflow workers to connect.
+    // Start Redis container with a fixed port binding so Dataflow workers can
+    // connect.
+    // Port 6379 must be open in the CI runner's firewall for Dataflow workers to
+    // connect.
     redisContainer =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(REDIS_PORT)
@@ -120,17 +123,14 @@ public final class PubSubToRedisIT extends TemplateTestBase {
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
     TopicName tc = pubsubResourceManager.createTopic(testName);
-    String inSubscriptionName = testName + "-sub";
-    pubsubResourceManager.createSubscription(tc, inSubscriptionName);
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testName);
 
     redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
             LaunchConfig.builder(testName, specPath)
-                .addParameter(
-                    "inputSubscription",
-                    "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
+                .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
                 .addParameter("redisPassword", "")
@@ -183,17 +183,14 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     // Arrange
     String testId = testName + "-hash";
     TopicName tc = pubsubResourceManager.createTopic(testId);
-    String inSubscriptionName = testId + "-sub";
-    pubsubResourceManager.createSubscription(tc, inSubscriptionName);
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testId);
 
     redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
             LaunchConfig.builder(testId, specPath)
-                .addParameter(
-                    "inputSubscription",
-                    "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
+                .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
                 .addParameter("redisPassword", "")
@@ -248,17 +245,14 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     // Arrange
     String testId = testName + "-streams";
     TopicName tc = pubsubResourceManager.createTopic(testId);
-    String inSubscriptionName = testId + "-sub";
-    pubsubResourceManager.createSubscription(tc, inSubscriptionName);
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(tc, "sub-" + testId);
 
     redisClient = createRedisClient();
 
     LaunchConfig.Builder options =
         paramsAdder.apply(
             LaunchConfig.builder(testId, specPath)
-                .addParameter(
-                    "inputSubscription",
-                    "projects/" + PROJECT + "/subscriptions/" + inSubscriptionName)
+                .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
                 .addParameter("redisPassword", "")
