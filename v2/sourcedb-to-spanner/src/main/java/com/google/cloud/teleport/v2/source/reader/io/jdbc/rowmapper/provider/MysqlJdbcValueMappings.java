@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
@@ -22,6 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetVal
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomLogical.TimeIntervalMicros;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.DateTime;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.Interval;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
@@ -33,17 +35,18 @@ import java.sql.Blob;
 import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.Calendar;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MysqlJdbcValueMappings.class);
 
   /**
    * Pass the value extracted from {@link ResultSet} to {@link GenericRecordBuilder#set(Field,
@@ -150,6 +153,11 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
         + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
   }
 
+  private static long getLengthOrPrecision(SourceColumnType sourceColumnType) {
+    Long[] mods = sourceColumnType.getMods();
+    return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
+  }
+
   /** Map {@link java.sql.Timestamp} to timestampMicros LogicalType. */
   private static final ResultSetValueMapper<java.sql.Timestamp> sqlTimestampToAvroTimestampMicros =
       (value, schema) -> instantToMicro(value.toInstant());
@@ -183,58 +191,162 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
         return isNegative ? -1 * micros : micros;
       };
 
-  /**
-   * Static mapping of SourceColumnType to {@link ResultSetValueExtractor} and {@link
-   * ResultSetValueMapper}.
-   */
-  private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
-      ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
-          .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIGINT UNSIGNED", Pair.of(ResultSet::getBigDecimal, bigDecimalToAvroNumber))
-          .put("BINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
-          .put("BIT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("BOOL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(utcDateExtractor, sqlDateToAvroTimestampMicros))
-          .put("DATETIME", Pair.of(utcTimeStampExtractor, sqlTimestampToAvroDateTime))
-          .put("DECIMAL", Pair.of(ResultSet::getBigDecimal, bigDecimalToByteArray))
-          .put("DOUBLE", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("ENUM", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("FLOAT", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INTEGER UNSIGNED", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("LONGBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("LONGTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MEDIUMBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("MEDIUMINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("MEDIUMTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("SET", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIME", Pair.of(ResultSet::getString, timeStringToAvroTimeInterval))
-          .put("TIMESTAMP", Pair.of(utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros))
-          .put("TINYBLOB", Pair.of(ResultSet::getBlob, blobToHexString))
-          .put("TINYINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TINYTEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("VARBINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
-          .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("YEAR", Pair.of(ResultSet::getInt, valuePassThrough))
-          .build()
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  Map.entry(
-                      entry.getKey(),
-                      new JdbcValueMapper<>(
-                          entry.getValue().getLeft(), entry.getValue().getRight())))
-          .collect(ImmutableMap.toImmutableMap(Entry::getKey, Entry::getValue));
+  private static final JdbcMappings JDBC_MAPPINGS =
+      JdbcMappings.builder()
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 8)
+          .put("BIGINT UNSIGNED", ResultSet::getBigDecimal, bigDecimalToAvroNumber, 8)
+          .put(
+              "BINARY",
+              ResultSet::getBytes,
+              bytesToHexString,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // in BINARY length is measured in bytes. ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
+                return (int) (n > 0 ? n : 255);
+              })
+          .put(
+              "BIT",
+              ResultSet::getLong,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // BIT(N) -> (N+7)/8 since it is stored in bytes
+                return (int) ((n > 0 ? n : 1) + 7) / 8;
+              })
+          .put("BLOB", ResultSet::getBlob, blobToHexString, 65_535) // BLOB -> 65,535 bytes
+          .put("BOOL", ResultSet::getInt, valuePassThrough, 1)
+          .put(
+              "CHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // CHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max length
+                // is 255.
+                return (int) ((n > 0 ? n : 255) * 4);
+              })
+          /*
+           * Time related type sizes are inferred from the way the JDBC driver decodes the
+           * binary data ref:
+           * https://github.com/mysql/mysql-connector-j/blob/release/8.0/src/main/protocol-impl/java/com/mysql/cj/protocol/a/MysqlBinaryValueDecoder.java
+           */
+          .put("DATE", utcDateExtractor, sqlDateToAvroTimestampMicros, 4)
+          .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroDateTime, 11)
+          .put(
+              "DECIMAL",
+              ResultSet::getBigDecimal,
+              bigDecimalToByteArray,
+              sourceColumnType -> {
+                long m = getLengthOrPrecision(sourceColumnType);
+                // DECIMAL(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
+                // string (+2 for sign and decimal point)
+                // Max number of digits in decimal is 65. Ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+                return (int) ((m > 0 ? m : 65) + 2);
+              })
+          .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "ENUM",
+              ResultSet::getString,
+              valuePassThrough,
+              1020) // The maximum supported length of an individual ENUM element is M <= 255
+          // and (M x w) <= 1020, where M is the element literal length and w is the
+          // number of bytes required for the maximum-length character in the character
+          // set. https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
+          .put("FLOAT", ResultSet::getFloat, valuePassThrough, 4)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
+          .put("INTEGER UNSIGNED", ResultSet::getLong, valuePassThrough, 4)
+          .put(
+              "JSON", ResultSet::getString, valuePassThrough, Integer.MAX_VALUE) // JSON -> Long Max
+          .put(
+              "LONGBLOB",
+              ResultSet::getBlob,
+              blobToHexString,
+              Integer.MAX_VALUE) // LONGBLOB -> Long Max
+          .put(
+              "LONGTEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              Integer.MAX_VALUE) // LONGTEXT -> Long Max
+          .put("MEDIUMBLOB", ResultSet::getBlob, blobToHexString, 16_777_215) // MEDIUMBLOB -> 16MB
+          .put("MEDIUMINT", ResultSet::getInt, valuePassThrough, 4)
+          .put(
+              "MEDIUMTEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              16_777_215) // MEDIUMTEXT -> 16MB
+          .put(
+              "SET",
+              ResultSet::getString,
+              valuePassThrough,
+              1020 * 64) // Number of elements in a SET can be up to 64. The maximum supported
+          // length of an individual SET element is M <= 255 and (M x w) <= 1020, where M
+          // is the element literal length and w is the number of bytes required for the
+          // maximum-length character in the character set.
+          // https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
+          .put("TEXT", ResultSet::getString, valuePassThrough, 65_535)
+          .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 12)
+          .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
+          .put("TINYBLOB", ResultSet::getBlob, blobToHexString, 255)
+          .put("TINYINT", ResultSet::getInt, valuePassThrough, 1)
+          .put("TINYTEXT", ResultSet::getString, valuePassThrough, 255)
+          .put(
+              "VARBINARY",
+              ResultSet::getBytes,
+              bytesToHexString,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // in VARBINARY length is measured in bytes. ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
+                return (int) (n > 0 ? n : 65535);
+              })
+          .put(
+              "VARCHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // VARCHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max bytes
+                // allowed is 65535. ref: https://dev.mysql.com/doc/refman/8.4/en/char.html
+                return (int) (n > 0 ? n * 4 : 65535);
+              })
+          .put("YEAR", ResultSet::getInt, valuePassThrough, 2)
+          .put("INT", ResultSet::getInt, valuePassThrough, 4)
+          .put("REAL", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "NUMERIC",
+              ResultSet::getBigDecimal,
+              bigDecimalToByteArray,
+              sourceColumnType -> {
+                long m = getLengthOrPrecision(sourceColumnType);
+                // NUMERIC(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
+                // string (+2 for sign and decimal point)
+                // Max number of digits in Numeric is 65. Ref:
+                // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+                return (int) ((m > 0 ? m : 65) + 2);
+              })
+          .build();
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
-    return SCHEMA_MAPPINGS;
+    return JDBC_MAPPINGS.mappings();
+  }
+
+  /**
+   * estimate the column size in bytes for a given column type.
+   *
+   * <p>Ref: <a href= "https://dev.mysql.com/doc/refman/8.4/en/storage-requirements.html">MySQL
+   * Storage Requirements</a>
+   */
+  @Override
+  public int estimateColumnSize(SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
+    if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
+      return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
+    }
+    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
   }
 }

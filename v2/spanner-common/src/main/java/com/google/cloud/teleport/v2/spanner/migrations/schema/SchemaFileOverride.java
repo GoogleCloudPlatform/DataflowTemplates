@@ -24,10 +24,15 @@ public class SchemaFileOverride implements Serializable {
 
   private final Map<String, Map<String, String>> renamedColumns;
 
+  private final Map<String, Schema.TableParams> tableParams;
+
   public SchemaFileOverride(
-      Map<String, String> renamedTables, Map<String, Map<String, String>> renamedColumns) {
+      Map<String, String> renamedTables,
+      Map<String, Map<String, String>> renamedColumns,
+      Map<String, Schema.TableParams> tableParams) {
     this.renamedTables = renamedTables;
     this.renamedColumns = renamedColumns;
+    this.tableParams = tableParams;
   }
 
   public Map<String, Map<String, String>> getRenamedColumnTupleMap() {
@@ -36,5 +41,9 @@ public class SchemaFileOverride implements Serializable {
 
   public Map<String, String> getRenamedTables() {
     return renamedTables;
+  }
+
+  public Map<String, Schema.TableParams> getTableParams() {
+    return tableParams;
   }
 }

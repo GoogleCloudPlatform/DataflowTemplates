@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
@@ -300,5 +301,14 @@ public class SessionFileReaderTest {
             new ColumnPK[] {new ColumnPK("c6", 1), new ColumnPK("c5", 2)},
             "c6"));
     return spSchema;
+  }
+
+  @Test
+  public void readSessionFileWithFetchSize() throws Exception {
+    Path sessionFile =
+        Paths.get(Resources.getResource("session-file-with-fetch-size.json").getPath());
+    Schema schema = SessionFileReader.read(sessionFile.toString());
+    Schema.TableParams params = schema.getTableParams().get("t1");
+    assertEquals(Integer.valueOf(1234), params.getFetchSize());
   }
 }

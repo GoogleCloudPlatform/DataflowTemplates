@@ -55,6 +55,9 @@ public class Schema implements Serializable {
   /** Denotes whether the Schema is empty or not. */
   private boolean empty;
 
+  /** Maps the HarbourBridge table ID to the table parameters. */
+  private final Map<String, TableParams> tableParams;
+
   public Schema() {
     this.spSchema = new HashMap<String, SpannerTable>();
     this.syntheticPKeys = new HashMap<String, SyntheticPKey>();
@@ -63,6 +66,7 @@ public class Schema implements Serializable {
     this.toSource = new HashMap<String, NameAndCols>();
     this.srcToID = new HashMap<String, NameAndCols>();
     this.spannerToID = new HashMap<String, NameAndCols>();
+    this.tableParams = new HashMap<String, TableParams>();
     this.empty = true;
   }
 
@@ -79,6 +83,23 @@ public class Schema implements Serializable {
     this.toSource = toSource;
     this.srcToID = toSource;
     this.spannerToID = toSpanner;
+    this.tableParams = new HashMap<String, TableParams>();
+    this.empty = (spSchema == null || srcSchema == null);
+  }
+
+  public Schema(
+      Map<String, SpannerTable> spSchema,
+      Map<String, SyntheticPKey> syntheticPKeys,
+      Map<String, SourceTable> srcSchema,
+      Map<String, TableParams> tableParams) {
+    this.spSchema = spSchema;
+    this.syntheticPKeys = syntheticPKeys;
+    this.srcSchema = srcSchema;
+    this.toSpanner = new HashMap<String, NameAndCols>();
+    this.toSource = new HashMap<String, NameAndCols>();
+    this.srcToID = new HashMap<String, NameAndCols>();
+    this.spannerToID = new HashMap<String, NameAndCols>();
+    this.tableParams = tableParams == null ? new HashMap<String, TableParams>() : tableParams;
     this.empty = (spSchema == null || srcSchema == null);
   }
 
@@ -93,6 +114,7 @@ public class Schema implements Serializable {
     this.toSource = new HashMap<String, NameAndCols>();
     this.srcToID = new HashMap<String, NameAndCols>();
     this.spannerToID = new HashMap<String, NameAndCols>();
+    this.tableParams = new HashMap<String, TableParams>();
     this.empty = (spSchema == null || srcSchema == null);
   }
 
@@ -138,6 +160,10 @@ public class Schema implements Serializable {
 
   public void setSpannerToID(Map<String, NameAndCols> spannerToID) {
     this.spannerToID = spannerToID;
+  }
+
+  public Map<String, TableParams> getTableParams() {
+    return tableParams;
   }
 
   public void generateMappings() {
@@ -279,6 +305,41 @@ public class Schema implements Serializable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(empty, spSchema, syntheticPKeys, srcSchema);
+    return Objects.hash(empty, spSchema, syntheticPKeys, srcSchema, tableParams);
+  }
+
+  /** TableParams object to store table level configuration. */
+  public static class TableParams implements Serializable {
+    private final Integer fetchSize;
+
+    public TableParams(Integer fetchSize) {
+      this.fetchSize = fetchSize;
+    }
+
+    public Integer getFetchSize() {
+      return fetchSize;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == this) {
+        return true;
+      }
+      if (!(o instanceof TableParams)) {
+        return false;
+      }
+      final TableParams other = (TableParams) o;
+      return Objects.equals(this.fetchSize, other.fetchSize);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(fetchSize);
+    }
+
+    @Override
+    public String toString() {
+      return String.format("{ 'fetchSize': '%s' }", fetchSize);
+    }
   }
 }

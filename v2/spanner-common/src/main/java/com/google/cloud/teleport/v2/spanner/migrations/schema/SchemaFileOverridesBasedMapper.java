@@ -238,4 +238,13 @@ public class SchemaFileOverridesBasedMapper implements ISchemaMapper, Serializab
       return false;
     }
   }
+
+  @Override
+  public Integer getFetchSize(String namespace, String tableName) {
+    Schema.TableParams params = parser.getTableParams(tableName);
+    if (params != null) {
+      return params.getFetchSize();
+    }
+    return null;
+  }
 }
