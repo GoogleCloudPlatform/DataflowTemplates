@@ -256,17 +256,13 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
-  /** Worker Machine Type. */
+  /** Worker Memory in GB. */
   @Nullable
-  public abstract String workerMachineType();
+  public abstract Double workerMemoryGB();
 
-  /** Project ID for worker machine type lookup. */
+  /** Worker Cores. */
   @Nullable
-  public abstract String projectId();
-
-  /** Worker Zone for machine type lookup. */
-  @Nullable
-  public abstract String workerZone();
+  public abstract Integer workerCores();
 
   public abstract Builder toBuilder();
 
@@ -296,9 +292,8 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMachineType(null)
-        .setProjectId(null)
-        .setWorkerZone(null);
+        .setWorkerMemoryGB(null)
+        .setWorkerCores(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -330,9 +325,8 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMachineType(null)
-        .setProjectId(null)
-        .setWorkerZone(null);
+        .setWorkerMemoryGB(null)
+        .setWorkerCores(null);
   }
 
   @AutoValue.Builder
@@ -405,11 +399,9 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setSplitStageCountHint(Long value);
 
-    public abstract Builder setWorkerMachineType(String value);
+    public abstract Builder setWorkerMemoryGB(Double value);
 
-    public abstract Builder setProjectId(@Nullable String value);
-
-    public abstract Builder setWorkerZone(@Nullable String value);
+    public abstract Builder setWorkerCores(Integer value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

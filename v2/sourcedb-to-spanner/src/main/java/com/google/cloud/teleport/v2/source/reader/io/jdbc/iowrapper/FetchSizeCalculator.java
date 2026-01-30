@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,19 +32,13 @@ public final class FetchSizeCalculator {
   private FetchSizeCalculator() {}
 
   /**
-   * Calculates the fetch size for the given table.
-   *
-   * @param tableConfig The table configuration.
    * @param estimatedRowSize Estimated size of a row in bytes.
-   * @param workerMachineType The Dataflow worker machine type.
-   * @return The calculated fetch size, or null if it cannot be calculated (disabling cursor mode).
+   * @param workerMemoryGB The Dataflow worker memory in GB.
+   * @param workerCores The Dataflow worker cores.
+   * @return The calculated fetch size, or 0 if it cannot be calculated.
    */
   public static Integer getFetchSize(
-      TableConfig tableConfig,
-      long estimatedRowSize,
-      String workerMachineType,
-      String projectId,
-      String workerZone) {
+      TableConfig tableConfig, long estimatedRowSize, Double workerMemoryGB, Integer workerCores) {
     if (tableConfig.fetchSize() != null) {
       LOG.info(
           "Explicitly configured fetch size for table {}: {}",
@@ -55,30 +48,17 @@ public final class FetchSizeCalculator {
     }
 
     try {
-      if (workerMachineType == null || workerMachineType.isEmpty()) {
-        LOG.warn(
-            "Worker machine type is not provided. FetchSize cannot be calculated. Cursor mode will not be enabled.");
-        return null;
-      }
-
       if (estimatedRowSize == 0) {
         LOG.warn(
             "Estimated row size is 0 for table {}. FetchSize cannot be calculated. Cursor mode will not be enabled.",
             tableConfig.tableName());
-        return null;
+        return 0;
       }
-
-      Double workerMemoryGB =
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(
-              projectId, workerZone, workerMachineType);
-      Integer workerCores =
-          DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, workerZone, workerMachineType);
 
       if (workerMemoryGB == null || workerCores == null) {
         LOG.warn(
-            "Machine type '{}' not recognized or memory/cores unavailable. FetchSize cannot be calculated. Cursor mode will not be enabled.",
-            workerMachineType);
-        return null;
+            "Worker memory or cores unavailable. FetchSize cannot be calculated. Cursor mode will not be enabled.");
+        return 0;
       }
 
       long workerMemoryBytes = (long) (workerMemoryGB * 1024 * 1024 * 1024);
@@ -88,11 +68,11 @@ public final class FetchSizeCalculator {
       // 2 * 2 = 4 (Safety factor)
       long denominator = 4L * workerCores * estimatedRowSize;
 
-      if (denominator == 0) { // Should not happen given maxRowSize check and cores >= 1
+      if (denominator == 0) { // Should not happen given estimatedRowSize check and cores >= 1
         LOG.warn(
             "Denominator for fetch size calculation is zero for table {}. FetchSize cannot be calculated. Cursor mode will not be enabled.",
             tableConfig.tableName());
-        return null;
+        return 0;
       }
 
       long calculatedFetchSize = workerMemoryBytes / denominator;
@@ -119,12 +99,7 @@ public final class FetchSizeCalculator {
           "Failed to auto-infer fetch size for table {}, error: {}. Cursor mode will not be enabled.",
           tableConfig.tableName(),
           e.getMessage());
-      return null;
+      return 0;
     }
-  }
-
-  public static Integer getFetchSize(
-      TableConfig tableConfig, long estimatedRowSize, String workerMachineType) {
-    return getFetchSize(tableConfig, estimatedRowSize, workerMachineType, null, null);
   }
 }

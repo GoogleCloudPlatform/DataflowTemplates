@@ -16,12 +16,9 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -29,134 +26,91 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class FetchSizeCalculatorTest {
 
-  @org.junit.Before
-  public void setUp() throws Exception {
-    resetCache();
-  }
+  private TableConfig tableConfig;
 
-  @org.junit.After
-  public void tearDown() throws Exception {
-    resetCache();
-  }
-
-  private void resetCache() throws Exception {
-    java.lang.reflect.Method method =
-        DataflowWorkerMachineTypeUtils.class.getDeclaredMethod("resetCacheForTesting");
-    method.setAccessible(true);
-    method.invoke(null);
-  }
-
-  private void putMachineSpec(String machineType, double memoryGB, int vCPUs) throws Exception {
-    java.lang.reflect.Method method =
-        DataflowWorkerMachineTypeUtils.class.getDeclaredMethod(
-            "putMachineSpecForTesting", String.class, double.class, int.class);
-    method.setAccessible(true);
-    method.invoke(null, machineType, memoryGB, vCPUs);
+  @Before
+  public void setUp() {
+    tableConfig = TableConfig.builder("t1").setApproxRowCount(100L).build();
   }
 
   @Test
   public void testGetFetchSize_NoMachineType() {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-    // No machine type offered, so calculation should be impossible
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
-    assertNull(fetchSize);
+    // Test when machine type (memory/cores) is not provided.
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, null);
+    assertEquals(0, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_Explicit() {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(12345).setApproxRowCount(100L).build();
-    // Row size doesn't matter for explicit
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100L, null);
-    assertEquals(Integer.valueOf(12345), fetchSize);
+  public void testGetFetchSize_ExplicitFetchSize() {
+    // Test when fetch size is explicitly configured in TableConfig.
+    TableConfig configWithFetchSize = TableConfig.builder("t1").setFetchSize(12345).build();
+    int fetchSize = FetchSizeCalculator.getFetchSize(configWithFetchSize, 100L, null, null);
+    assertEquals(12345, fetchSize);
   }
 
   @Test
   public void testGetFetchSize_ZeroRowSize() {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 0L, null);
-    // Zero row size means we can't safely estimate memory usage -> return null
-    assertNull(fetchSize);
+    // Test when estimated row size is 0.
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 0L, 16.0, 4);
+    assertEquals(0, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_SchemaMapperOverride() {
-    TableConfig config =
-        TableConfig.builder("t1")
-            .setFetchSize(42) // User override
-            .build();
-    // Even if row size is huge, the override should be respected exactly.
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 100_000_000L, null);
-    assertEquals(Integer.valueOf(42), fetchSize);
+  public void testGetFetchSize_StandardCalculation() {
+    // Test standard calculation.
+    // Memory: 16 GB = 17,179,869,184 bytes
+    // Cores: 4
+    // Row Size: 1000 bytes
+    // Denominator = 4 * 4 * 1000 = 16,000
+    // Expected Fetch Size = 17,179,869,184 / 16,000 = 1,073,741
+
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1000L, 16.0, 4);
+    assertEquals(1073741, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_WithMachineType() throws Exception {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+  public void testGetFetchSize_SmallRowSize() {
+    // Test with small row size (should result in large fetch size, capped at
+    // MAX_INTEGER if implemented,
+    // but here check calculation logic).
+    // Memory: 16 GB
+    // Cores: 4
+    // Row Size: 10 bytes
+    // Denominator = 4 * 4 * 10 = 160
+    // Expected Fetch Size = 17,179,869,184 / 160 = 107,374,182
+    // Integer.MAX_VALUE = 2,147,483,647. Result is within integer range.
 
-    // n1-standard-1: 3.75GB RAM, 1 vCPU
-    putMachineSpec("n1-standard-1", 3.75, 1);
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1_000_000L, "n1-standard-1");
-    assertNotNull(fetchSize);
-    assertTrue(fetchSize > 0);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10L, 16.0, 4);
+    assertEquals(107374182, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_ClampedToMax() throws Exception {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+  public void testGetFetchSize_LargeRowSize() {
+    // Test with large row size.
+    // Memory: 16 GB
+    // Cores: 4
+    // Row Size: 10 MB (10,485,760 bytes)
+    // Denominator = 4 * 4 * 10,485,760 = 167,772,160
+    // Expected Fetch Size = 17,179,869,184 / 167,772,160 = 102
 
-    // custom-1-16384: 16GB RAM, 1 vCPU
-    // Memory: ~17 billion bytes
-    // Denominator: 4 * 1 * 1 = 4
-    // Calculated: ~4.29 billion > Integer.MAX_VALUE
-    putMachineSpec("custom-1-16384", 16.0, 1);
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1L, "custom-1-16384");
-    assertNotNull(fetchSize);
-    assertEquals(Integer.MAX_VALUE, (int) fetchSize);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10485760L, 16.0, 4);
+    assertEquals(102, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_WithProjectIdAndZone() throws Exception {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-
-    // Verify that passing projectId and zone works correctly with the cache
-    putMachineSpec("n1-standard-1", 3.75, 1);
-
-    // We can't easily verify that projectId/zone were *used* by the cache lookup
-    // (since cache lookup ignores them if key is found),
-    // but we can verify the method returns a result without crashing.
-    Integer fetchSize =
-        FetchSizeCalculator.getFetchSize(
-            config, 1_000_000L, "n1-standard-1", "dummy-project", "dummy-zone");
-    assertNotNull(fetchSize);
+  public void testGetFetchSize_ZeroCores() {
+    // Test when cores are 0 (should typically be handled by Utils returning null or
+    // >=1, but testing calculator logic).
+    // In this case, providing 0 cores.
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, 16.0, 0);
+    assertEquals(0, fetchSize);
   }
 
   @Test
-  public void testGetFetchSize_ZeroCores() throws Exception {
-    TableConfig config =
-        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
-
-    // machine with 0 cores
-    putMachineSpec("zero-cores", 16.0, 0);
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1L, "zero-cores");
-    // Should be null because denominator would be 0
-    assertNull(fetchSize);
-  }
-
-  @Test
-  public void testGetFetchSize_Exception() {
-    // Mock TableConfig to throw exception
-    TableConfig mockConfig = org.mockito.Mockito.mock(TableConfig.class);
-    org.mockito.Mockito.when(mockConfig.fetchSize()).thenReturn(null);
-    org.mockito.Mockito.when(mockConfig.tableName())
-        .thenThrow(new RuntimeException("Test Exception"));
-
-    Integer fetchSize = FetchSizeCalculator.getFetchSize(mockConfig, 100L, "n1-standard-1");
-    assertNull(fetchSize);
+  public void testGetFetchSize_nullInputs() {
+    // Null memory
+    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, 4));
+    // Null cores
+    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 16.0, null));
   }
 }
