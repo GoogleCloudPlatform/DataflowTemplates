@@ -141,7 +141,7 @@ public class PostgreSQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
                 "datastream-to-spanner-table-and-index-limits-pg-dialect",
                 spannerResourceManager,
                 pubsubResourceManager,
-                Map.of("dlqMaxRetryCount", "1"), 
+                Map.of("dlqMaxRetryCount", "1"),
                 null,
                 null,
                 gcsResourceManager,
