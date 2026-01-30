@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.plugin.maven;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -220,7 +219,8 @@ public class TemplatesReleaseMojoTest {
   }
 
   @Test
-  public void testExecute_skipsExistingBlueprints() throws MojoExecutionException, IOException {
+  public void testExecute_uploadsAllBlueprintsWhenSomeExist()
+      throws MojoExecutionException, IOException {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "src/main/yaml";
     mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
@@ -242,21 +242,6 @@ public class TemplatesReleaseMojoTest {
       storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
       when(mockStorageOptions.getService()).thenReturn(mockStorage);
 
-      // Mock storage.get() to simulate one existing file
-      com.google.cloud.storage.Blob existingBlob = mock(com.google.cloud.storage.Blob.class);
-      String bucket = mojo.bucketName.replace("gs://", "");
-      String existingObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, existingFile.getName());
-      com.google.cloud.storage.BlobId existingBlobId =
-          com.google.cloud.storage.BlobId.of(bucket, existingObjectName);
-      when(mockStorage.get(existingBlobId)).thenReturn(existingBlob);
-
-      String newObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, newFile.getName());
-      com.google.cloud.storage.BlobId newBlobId =
-          com.google.cloud.storage.BlobId.of(bucket, newObjectName);
-      when(mockStorage.get(newBlobId)).thenReturn(null);
-
       Map<String, byte[]> uploadedFiles = new HashMap<>();
       ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
 
@@ -270,31 +255,29 @@ public class TemplatesReleaseMojoTest {
           .when(mockStorage)
           .create(blobInfoCaptor.capture(), Mockito.any(InputStream.class));
 
-      Logger logger = Logger.getLogger(TemplatesReleaseMojo.class.getName());
-      MemoryHandler memoryHandler = new MemoryHandler();
-      logger.addHandler(memoryHandler);
-
       // Act
-      try {
-        mojo.execute();
-      } finally {
-        logger.removeHandler(memoryHandler);
-      }
+      mojo.execute();
 
       // Assert
-      // Should be called for new-blueprint.yaml and the manifest.
-      verify(mockStorage, Mockito.times(2))
+      // Should be called for both blueprints and the manifest.
+      verify(mockStorage, Mockito.times(3))
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
       List<BlobInfo> createdBlobs = blobInfoCaptor.getAllValues();
       List<String> createdBlobNames =
           createdBlobs.stream().map(BlobInfo::getName).collect(Collectors.toList());
 
+      String bucket = mojo.bucketName.replace("gs://", "");
+      String existingObjectName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, existingFile.getName());
+      String newObjectName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, newFile.getName());
+
       String manifestName =
           String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
       assertTrue(createdBlobNames.contains(newObjectName));
       assertTrue(createdBlobNames.contains(manifestName));
-      assertFalse(createdBlobNames.contains(existingObjectName));
+      assertTrue(createdBlobNames.contains(existingObjectName));
 
       // Verify manifest contains both blueprints
       assertTrue(uploadedFiles.containsKey(manifestName));
@@ -310,12 +293,6 @@ public class TemplatesReleaseMojoTest {
           actualBlueprints.stream().map(b -> b.get("name")).collect(Collectors.toList());
       assertTrue(blueprintNamesInManifest.contains("existing-blueprint.yaml"));
       assertTrue(blueprintNamesInManifest.contains("new-blueprint.yaml"));
-
-      // Verify skipped log message
-      String expectedLog =
-          String.join("/", "Skipping existing blueprint: gs:/", bucket, existingObjectName);
-      assertTrue(
-          memoryHandler.getRecords().stream().anyMatch(r -> r.getMessage().equals(expectedLog)));
     }
   }
 

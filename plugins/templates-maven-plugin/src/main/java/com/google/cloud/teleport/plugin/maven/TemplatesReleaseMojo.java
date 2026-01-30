@@ -302,25 +302,22 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
                       BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
 
-                      // Process only new files that don't exist in GCS already
-                      if (storage.get(blobId) == null) {
-                        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
-                        try (InputStream inputStream = Files.newInputStream(path)) {
-                          storage.create(blobInfo, inputStream);
-                          LOG.info(
-                              "Uploaded blueprint {} to gs://{}/{}",
-                              fileName,
-                              bucketNameOnly(bucketName),
-                              objectName);
-                        } catch (IOException e) {
-                          throw new RuntimeException("Error reading file " + fileName, e);
-                        }
-                      } else {
-                        LOG.info(
-                            "Skipping existing blueprint: gs://{}/{}",
-                            bucketNameOnly(bucketName),
-                            objectName);
-                      }
+                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+
+                      // Upload every blueprint with retries
+                      Failsafe.with(gcsRetryPolicy())
+                          .run(
+                              () -> {
+                                try (InputStream inputStream = Files.newInputStream(path)) {
+                                  storage.create(blobInfo, inputStream);
+                                }
+                              });
+
+                      LOG.info(
+                          "Uploaded blueprint {} to gs://{}/{}",
+                          fileName,
+                          bucketNameOnly(bucketName),
+                          objectName);
                       blueprints.add(new Blueprint(fileName, objectName));
                     });
             String manifestObjectName =
