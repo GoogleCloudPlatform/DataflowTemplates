@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -349,12 +348,7 @@ public class PipelineController {
 
     public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
-      String workerZone = null;
-      try {
-        workerZone = options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
-      } catch (Exception e) {
-        LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
-      }
+      String workerZone = OptionsToConfigBuilder.extractWorkerZone(options);
 
       return OptionsToConfigBuilder.getJdbcIOWrapperConfig(
           sqlDialect,

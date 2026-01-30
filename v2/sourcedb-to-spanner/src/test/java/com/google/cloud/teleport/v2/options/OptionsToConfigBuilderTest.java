@@ -343,4 +343,26 @@ public class OptionsToConfigBuilderTest {
 
     assertThat(config.workerZone()).isNull();
   }
+
+  @Test
+  public void testExtractWorkerZone() {
+    DataflowPipelineWorkerPoolOptions mockOptions =
+        Mockito.mock(DataflowPipelineWorkerPoolOptions.class);
+    Mockito.when(mockOptions.getWorkerZone()).thenReturn("us-central1-a");
+    Mockito.when(mockOptions.as(DataflowPipelineWorkerPoolOptions.class)).thenReturn(mockOptions);
+
+    String workerZone = OptionsToConfigBuilder.extractWorkerZone(mockOptions);
+    assertThat(workerZone).isEqualTo("us-central1-a");
+  }
+
+  @Test
+  public void testExtractWorkerZoneException() {
+    DataflowPipelineWorkerPoolOptions mockOptions =
+        Mockito.mock(DataflowPipelineWorkerPoolOptions.class);
+    Mockito.when(mockOptions.as(DataflowPipelineWorkerPoolOptions.class))
+        .thenThrow(new RuntimeException("Test Exception"));
+
+    String workerZone = OptionsToConfigBuilder.extractWorkerZone(mockOptions);
+    assertThat(workerZone).isNull();
+  }
 }

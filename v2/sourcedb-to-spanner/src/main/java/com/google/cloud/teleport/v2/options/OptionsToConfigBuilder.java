@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -43,6 +44,21 @@ public final class OptionsToConfigBuilder {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
   public static final String DEFAULT_POSTGRESQL_NAMESPACE = "public";
+
+  /**
+   * Extracts the worker zone from the options.
+   *
+   * @param options Pipeline options.
+   * @return The worker zone or null if not found.
+   */
+  public static String extractWorkerZone(PipelineOptions options) {
+    try {
+      return options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
+    } catch (Exception e) {
+      LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
+      return null;
+    }
+  }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
@@ -61,12 +77,7 @@ public final class OptionsToConfigBuilder {
     long maxConnections =
         options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
     Integer numPartitions = options.getNumPartitions();
-    String workerZone = null;
-    try {
-      workerZone = options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
-    } catch (Exception e) {
-      LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
-    }
+    String workerZone = extractWorkerZone(options);
 
     return getJdbcIOWrapperConfig(
         sqlDialect,

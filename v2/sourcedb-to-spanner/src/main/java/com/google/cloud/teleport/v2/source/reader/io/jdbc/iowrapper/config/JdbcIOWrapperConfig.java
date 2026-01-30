@@ -102,9 +102,12 @@ public abstract class JdbcIOWrapperConfig {
   public abstract Integer maxPartitions();
 
   /**
-   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
-   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
-   * (innodb_read_ahead_threshold) and the worker memory.
+   * Configures the size of data read in db, per db read call.
+   *
+   * <p>If explicitly set, this value overrides the auto-inferred fetch size.
+   *
+   * <p>If not set (null), the fetch size is auto-calculated based on the worker memory and
+   * estimated row size to optimize for the available resources.
    */
   @Nullable
   public abstract Integer maxFetchSize();

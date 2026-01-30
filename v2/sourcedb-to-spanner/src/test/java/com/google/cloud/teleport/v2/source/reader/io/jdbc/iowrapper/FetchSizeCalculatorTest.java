@@ -138,7 +138,8 @@ public final class FetchSizeCalculatorTest {
 
   @Test
   public void testGetFetchSize_ZeroCores() throws Exception {
-    TableConfig config = TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+    TableConfig config =
+        TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
 
     // machine with 0 cores
     putMachineSpec("zero-cores", 16.0, 0);
