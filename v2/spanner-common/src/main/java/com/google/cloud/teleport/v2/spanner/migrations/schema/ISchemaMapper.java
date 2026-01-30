@@ -108,4 +108,11 @@ public interface ISchemaMapper extends Serializable {
    * @param namespace is currently not operational.
    */
   boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn);
+
+  /**
+   * Returns true if the provided Spanner column is a generated column.
+   *
+   * @param namespace is currently not operational.
+   */
+  boolean isGeneratedColumn(String namespace, String spannerTable, String spannerColumn);
 }
