@@ -34,4 +34,12 @@ public class MysqlJdbcValueMappingsTest {
       assertTrue("Row size estimate for type " + typeName + " should be > 0", size > 0);
     }
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testUnknownTypeThrowsException() {
+    MysqlJdbcValueMappings mappings = new MysqlJdbcValueMappings();
+    SourceColumnType sourceColumnType =
+        new SourceColumnType("UNKNOWN_TYPE", new Long[] {10L}, null);
+    mappings.estimateColumnSize(sourceColumnType);
+  }
 }

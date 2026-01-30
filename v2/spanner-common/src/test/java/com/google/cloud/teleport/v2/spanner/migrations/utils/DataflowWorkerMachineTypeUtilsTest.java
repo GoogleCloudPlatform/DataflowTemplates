@@ -18,11 +18,18 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import com.google.cloud.compute.v1.MachineType;
+import com.google.cloud.compute.v1.MachineTypesClient;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.MockedStatic;
 
 @RunWith(JUnit4.class)
 public class DataflowWorkerMachineTypeUtilsTest {
@@ -228,5 +235,54 @@ public class DataflowWorkerMachineTypeUtilsTest {
         2, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n2d-custom-2-2048"));
     assertEquals(
         32, (int) DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "n4-custom-32-131072"));
+  }
+
+  @Test
+  public void testFetchMachineSpecFromApi_Success() {
+    String projectId = "test-project";
+    String zone = "us-central1-a";
+    String machineType = "n1-standard-new"; // Not in pre-populated cache
+
+    try (MockedStatic<MachineTypesClient> mockedStaticClient =
+        mockStatic(MachineTypesClient.class)) {
+      MachineTypesClient mockClient = mock(MachineTypesClient.class);
+      mockedStaticClient.when(MachineTypesClient::create).thenReturn(mockClient);
+
+      MachineType mockMachineType = mock(MachineType.class);
+      when(mockMachineType.getGuestCpus()).thenReturn(4);
+      when(mockMachineType.getMemoryMb()).thenReturn(15360); // 15 GB
+
+      when(mockClient.get(anyString(), anyString(), anyString())).thenReturn(mockMachineType);
+
+      Double memoryGB =
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(projectId, zone, machineType);
+      Integer vCpus = DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, zone, machineType);
+
+      assertEquals(15.0, memoryGB, 0.001);
+      assertEquals(4, (int) vCpus);
+    }
+  }
+
+  @Test
+  public void testFetchMachineSpecFromApi_Failure() {
+    String projectId = "test-project";
+    String zone = "us-central1-a";
+    String machineType = "unknown-machine";
+
+    try (MockedStatic<MachineTypesClient> mockedStaticClient =
+        mockStatic(MachineTypesClient.class)) {
+      MachineTypesClient mockClient = mock(MachineTypesClient.class);
+      mockedStaticClient.when(MachineTypesClient::create).thenReturn(mockClient);
+
+      when(mockClient.get(anyString(), anyString(), anyString()))
+          .thenThrow(new RuntimeException("API Error"));
+
+      Double memoryGB =
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(projectId, zone, machineType);
+      Integer vCpus = DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, zone, machineType);
+
+      assertNull(memoryGB);
+      assertNull(vCpus);
+    }
   }
 }

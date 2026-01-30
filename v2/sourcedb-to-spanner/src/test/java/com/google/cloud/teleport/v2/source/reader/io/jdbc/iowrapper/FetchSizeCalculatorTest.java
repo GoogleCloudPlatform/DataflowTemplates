@@ -135,4 +135,27 @@ public final class FetchSizeCalculatorTest {
             config, 1_000_000L, "n1-standard-1", "dummy-project", "dummy-zone");
     assertNotNull(fetchSize);
   }
+
+  @Test
+  public void testGetFetchSize_ZeroCores() throws Exception {
+    TableConfig config = TableConfig.builder("t1").setFetchSize(null).setApproxRowCount(100L).build();
+
+    // machine with 0 cores
+    putMachineSpec("zero-cores", 16.0, 0);
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(config, 1L, "zero-cores");
+    // Should be null because denominator would be 0
+    assertNull(fetchSize);
+  }
+
+  @Test
+  public void testGetFetchSize_Exception() {
+    // Mock TableConfig to throw exception
+    TableConfig mockConfig = org.mockito.Mockito.mock(TableConfig.class);
+    org.mockito.Mockito.when(mockConfig.fetchSize()).thenReturn(null);
+    org.mockito.Mockito.when(mockConfig.tableName())
+        .thenThrow(new RuntimeException("Test Exception"));
+
+    Integer fetchSize = FetchSizeCalculator.getFetchSize(mockConfig, 100L, "n1-standard-1");
+    assertNull(fetchSize);
+  }
 }

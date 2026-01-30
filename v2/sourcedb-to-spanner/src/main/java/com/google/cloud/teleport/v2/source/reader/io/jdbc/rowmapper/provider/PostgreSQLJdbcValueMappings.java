@@ -286,10 +286,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    // Fallback for types not in map but might have size logic (like XML if it was
-    // supported?)
-    // Or just default.
-    return 16;
+    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
   }
 
   private static long getLengthOrPrecision(

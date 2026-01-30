@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -31,6 +32,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link OptionsToConfigBuilder}. */
@@ -319,5 +321,26 @@ public class OptionsToConfigBuilderTest {
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
         .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+  }
+
+  @Test
+  public void testWorkerZoneExtractionException() {
+    SourceDbToSpannerOptions mockOptions = Mockito.mock(SourceDbToSpannerOptions.class);
+    Mockito.when(mockOptions.getSourceDbDialect()).thenReturn(SQLDialect.MYSQL.name());
+    Mockito.when(mockOptions.getSourceConfigURL()).thenReturn("jdbc:mysql://localhost:3306/testDB");
+    Mockito.when(mockOptions.getJdbcDriverClassName()).thenReturn("com.mysql.jdbc.Driver");
+    Mockito.when(mockOptions.getUsername()).thenReturn("user");
+    Mockito.when(mockOptions.getPassword()).thenReturn("password");
+    Mockito.when(mockOptions.getJdbcDriverJars()).thenReturn("driver.jar");
+    Mockito.when(mockOptions.getProjectId()).thenReturn("project-id");
+    Mockito.when(mockOptions.getJdbcDriverClassName()).thenReturn("com.mysql.jdbc.Driver");
+    Mockito.when(mockOptions.as(DataflowPipelineWorkerPoolOptions.class))
+        .thenThrow(new RuntimeException("Test Exception"));
+
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+            mockOptions, List.of("table1"), null, null);
+
+    assertThat(config.workerZone()).isNull();
   }
 }
