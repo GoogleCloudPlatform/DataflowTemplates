@@ -40,6 +40,10 @@ public class DatastreamToSpannerConstants {
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERROR_TAG =
       new TupleTag<FailsafeElement<String, String>>() {};
 
+  /* The Tag for Skipped events */
+  public static final TupleTag<FailsafeElement<String, String>> SKIPPED_EVENT_TAG =
+      new TupleTag<FailsafeElement<String, String>>() {};
+
   /* The Tag for Successful mutations. */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 
