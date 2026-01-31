@@ -28,9 +28,10 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "Postgres to Iceberg (YAML)",
     description =
         "The Postgres to Iceberg template is a batch pipeline executes the user provided SQL query to read data from Postgres table and outputs the records to Iceberg table.",
-    flexContainerName = "pipeline-yaml",
+    flexContainerName = "postgres-to-iceberg-yaml",
     yamlTemplateFile = "PostgresToIceberg.yaml",
     filesToCopy = {
+      "template.yaml",
       "main.py",
       "requirements.txt",
       "options/postgres_options.yaml",

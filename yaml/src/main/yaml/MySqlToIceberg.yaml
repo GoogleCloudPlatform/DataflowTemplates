@@ -10,7 +10,7 @@ template:
   flex_container_name: "mysql-to-iceberg-yaml"
   yamlTemplateFile: "MySqlToIceberg.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/mysql_options.yaml", "options/iceberg_options.yaml"}
+    {"template.yaml", "main.py", "requirements.txt", "options/mysql_options.yaml", "options/iceberg_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input MySql instance and table must exist.",

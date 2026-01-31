@@ -9,7 +9,7 @@ template:
   flex_container_name: "kafka-to-iceberg-yaml"
   yamlTemplateFile: "KafkaToIceberg.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/kafka_options.yaml", "options/iceberg_options.yaml"}
+    {"template.yaml", "main.py", "requirements.txt", "options/kafka_options.yaml", "options/iceberg_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
       "The Input Kafka topic must exist.",

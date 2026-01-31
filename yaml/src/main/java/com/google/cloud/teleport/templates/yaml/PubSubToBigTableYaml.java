@@ -27,7 +27,7 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "PubSub to BigTable (YAML)",
     description =
         "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
-    flexContainerName = "pipeline-yaml",
+    flexContainerName = "pubsub-to-bigtable-yaml",
     yamlTemplateFile = "PubSubToBigTable.yaml",
     filesToCopy = {"PubSubToBigTable.yaml", "main.py", "requirements.txt"},
     documentation =
