@@ -52,7 +52,6 @@ public class DockerfileGenerator {
       "/opt/google/dataflow/python_template_launcher";
   public static final String JAVA_LAUNCHER_ENTRYPOINT =
       "/opt/google/dataflow/java_template_launcher";
-  public static final String PYTHON_LAUNCHER_YAML_INDEX = "yaml-templates-index";
 
   // Keep pythonVersion below in sync with version in base image
   public static final String PYTHON_VERSION = "3.11";
