@@ -10,7 +10,7 @@ template:
   flex_container_name: "iceberg-to-postgres-yaml"
   yamlTemplateFile: "IcebergToPostgres.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/postgres_options.yaml"}
+    {"template.yaml", "main.py", "requirements.txt", "options/iceberg_options.yaml", "options/postgres_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input Iceberg table must exist and be accessible through the provided catalog.",

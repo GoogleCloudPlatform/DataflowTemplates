@@ -82,7 +82,7 @@ import org.apache.beam.sdk.options.Validation;
     description = "The Apache Kafka ...",
     flexContainerName = "kafka-to-bigquery-yaml",
     yamlTemplateFile = "{yaml_path.name}",
-    filesToCopy = {{"main.py", "requirements.txt"}},
+    filesToCopy = {{"template.yaml", "main.py", "requirements.txt"}},
     documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
     requirements = {{"req1",
