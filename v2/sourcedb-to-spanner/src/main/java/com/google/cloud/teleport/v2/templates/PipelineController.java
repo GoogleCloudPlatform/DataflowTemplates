@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -348,6 +349,8 @@ public class PipelineController {
 
     public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+      String workerZone = OptionsToConfigBuilder.extractWorkerZone(options);
+
       return OptionsToConfigBuilder.getJdbcIOWrapperConfig(
           sqlDialect,
           sourceTables,
@@ -366,7 +369,10 @@ public class PipelineController {
           options.getNumPartitions(),
           waitOnSignal,
           options.getFetchSize(),
-          options.getUniformizationStageCountHint());
+          options.getUniformizationStageCountHint(),
+          options.getProjectId(),
+          workerZone,
+          options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType());
     }
 
     @Override
