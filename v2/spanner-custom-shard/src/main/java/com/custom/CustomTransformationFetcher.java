@@ -56,6 +56,12 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
   }
 
   @Override
+  public MigrationTransformationResponse toSpannerRowFromMutation(
+      MigrationTransformationRequest request) throws InvalidTransformationException {
+    return new MigrationTransformationResponse(request.getRequestRow(), false);
+  }
+
+  @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
     if (request.getTableName().equals("Customers")) {
