@@ -1,10 +1,9 @@
 package com.google.cloud.teleport.v2.dto;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
-import com.google.cloud.Date;
 import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;

@@ -8,6 +8,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * a Ddl object.
  */
 public class SpannerInformationSchemaProcessorTransform
-    extends PTransform<PBegin, PCollection<Ddl>> {
+    extends PTransform<@NotNull PBegin, @NotNull PCollection<Ddl>> {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerInformationSchemaProcessorTransform.class);
 
@@ -30,7 +31,7 @@ public class SpannerInformationSchemaProcessorTransform
   }
 
   @Override
-  public PCollection<Ddl> expand(PBegin p) {
+  public @NotNull PCollection<Ddl> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
             "ReadSpannerInformationSchema",

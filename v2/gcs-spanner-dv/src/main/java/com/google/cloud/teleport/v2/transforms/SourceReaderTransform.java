@@ -6,10 +6,11 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SourceReaderTransform extends PTransform<PBegin, PCollection<String>> {
+public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull PCollection<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceReaderTransform.class);
 
@@ -20,7 +21,7 @@ public class SourceReaderTransform extends PTransform<PBegin, PCollection<String
   }
 
   @Override
-  public PCollection<String> expand(PBegin input) {
+  public @NotNull PCollection<String> expand(PBegin input) {
     return input.apply("ReadSourceAvroRecords",
         AvroIO.parseGenericRecords(new ParseAvroFn())
             .from(createAvroFilePattern(gcsInputDirectory))

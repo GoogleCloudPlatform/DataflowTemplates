@@ -9,8 +9,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.jetbrains.annotations.NotNull;
 
-public class SpannerReaderTransform extends PTransform<PCollection<SpannerTableReadConfiguration>, PCollection<Struct>> {
+public class SpannerReaderTransform extends PTransform<@NotNull PCollection<SpannerTableReadConfiguration>, @NotNull PCollection<Struct>> {
 
   private final SpannerConfig spannerConfig;
 
@@ -19,7 +20,7 @@ public class SpannerReaderTransform extends PTransform<PCollection<SpannerTableR
   }
 
   @Override
-  public PCollection<Struct> expand(PCollection<SpannerTableReadConfiguration> input) {
+  public @NotNull PCollection<Struct> expand(PCollection<SpannerTableReadConfiguration> input) {
     return input.apply("CreateReadOps", ParDo.of(new DoFn<SpannerTableReadConfiguration, ReadOperation>() {
       @ProcessElement
       public void processElement(@Element SpannerTableReadConfiguration spannerTableReadConfiguration, OutputReceiver<ReadOperation> out) {

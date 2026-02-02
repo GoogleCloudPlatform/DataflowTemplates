@@ -8,8 +8,9 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.jetbrains.annotations.NotNull;
 
-public class SpannerHashTransform extends PTransform<PCollection<Struct>, PCollection<ComparisonRecord>> {
+public class SpannerHashTransform extends PTransform<@NotNull PCollection<Struct>, @NotNull PCollection<ComparisonRecord>> {
 
   private final PCollectionView<Ddl> ddlView;
 
@@ -18,7 +19,7 @@ public class SpannerHashTransform extends PTransform<PCollection<Struct>, PColle
   }
 
   @Override
-  public PCollection<ComparisonRecord> expand(PCollection<Struct> spannerRecords) {
+  public @NotNull PCollection<ComparisonRecord> expand(PCollection<Struct> spannerRecords) {
     return spannerRecords.apply("ConvertSpannerRecordsToHash",
         ParDo.of(new SpannerHashFn(ddlView)).withSideInputs(ddlView));
   }
