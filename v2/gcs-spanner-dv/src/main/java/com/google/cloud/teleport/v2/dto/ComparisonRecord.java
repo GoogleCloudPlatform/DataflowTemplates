@@ -1,28 +1,32 @@
 package com.google.cloud.teleport.v2.dto;
 
+import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.common.hash.Hashing;
 import java.nio.charset.StandardCharsets;
-import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.commons.codec.binary.Base64;
 
-@DefaultCoder(AvroCoder.class)
-public class ComparisonRecord {
+@AutoValue
+@DefaultSchema(AutoValueSchema.class)
+public abstract class ComparisonRecord {
 
-  private String hash;
+  public abstract String getHash();
 
-  //Avro coder needs the default constructor.
-  public ComparisonRecord() {
+  public static Builder builder() {
+    return new AutoValue_ComparisonRecord.Builder();
   }
 
-  public String getHash() {
-    return hash;
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder setHash(String hash);
+
+    public abstract ComparisonRecord build();
   }
 
   public static ComparisonRecord fromSpannerStruct(Struct spannerStruct) {
-    ComparisonRecord comparisonRecord = new ComparisonRecord();
     int nCols = spannerStruct.getColumnCount();
     StringBuilder sbConcatCols = new StringBuilder();
     for (int i = 0; i < nCols; i++) {
@@ -62,8 +66,8 @@ public class ComparisonRecord {
           throw new RuntimeException(String.format("Unsupported type: %s", colType));
       } // switch
     }
-    comparisonRecord.hash = Hashing.murmur3_128()
+    String hash = Hashing.murmur3_128()
         .hashString(sbConcatCols.toString(), StandardCharsets.UTF_8).toString();
-    return comparisonRecord;
+    return builder().setHash(hash).build();
   }
 }
