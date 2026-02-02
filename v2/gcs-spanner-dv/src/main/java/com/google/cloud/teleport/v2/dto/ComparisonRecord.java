@@ -1,11 +1,11 @@
 package com.google.cloud.teleport.v2.dto;
 
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.common.hash.Hashing;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import com.google.cloud.spanner.Struct;
 import org.apache.commons.codec.binary.Base64;
 
 @DefaultCoder(AvroCoder.class)

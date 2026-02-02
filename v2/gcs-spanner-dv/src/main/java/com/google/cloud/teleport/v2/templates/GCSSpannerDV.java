@@ -22,27 +22,23 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.dto.SpannerTableReadConfiguration;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerHashTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
+import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.extensions.avro.io.AvroIO;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -151,9 +147,7 @@ public class GCSSpannerDV {
 
     // Fetch source records from GCS
     PCollection<String> sourceRecords = pipeline.apply("ReadSourceAvroRecords",
-        AvroIO.parseGenericRecords(new ParseAvroFn())
-            .from(createAvroFilePattern(options.getGcsInputDirectory()))
-            .withHintMatchesManyFiles()
+        new SourceReaderTransform(options.getGcsInputDirectory())
     );
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
@@ -161,41 +155,45 @@ public class GCSSpannerDV {
     // Fetch Spanner DDL using Info schema
     final PCollectionView<Ddl> ddlView =
         pipeline.apply(
-            "ReadSpannerInformationSchema",
-            new SpannerInformationSchemaProcessorTransform(
-                spannerConfig))
+                "ReadSpannerInformationSchema",
+                new SpannerInformationSchemaProcessorTransform(
+                    spannerConfig))
             .apply("FetchDDlAsView", View.asSingleton());
 
-    List<String> tables = Arrays.asList("Singers", "Albums", "Songs");
+    SpannerTableReadConfiguration singers =
+        SpannerTableReadConfiguration.builder()
+            .tableName("Singers")
+            .build();
+
+    SpannerTableReadConfiguration albums =
+        SpannerTableReadConfiguration.builder()
+            .tableName("Albums")
+            .build();
+
+    SpannerTableReadConfiguration songs =
+        SpannerTableReadConfiguration.builder()
+            .tableName("Songs")
+            .build();
+
+    SpannerTableReadConfiguration users =
+        SpannerTableReadConfiguration.builder()
+            .tableName("Users")
+            .build();
+
+    List<SpannerTableReadConfiguration> tables = Arrays.asList(singers, albums, songs, users);
 
     // Fetch Spanner records
     PCollection<Struct> spannerRecords = pipeline
         .apply("FetchTables", Create.of(tables))
-        .apply("CreateReadOps", ParDo.of(new DoFn<String, ReadOperation>() {
-          @ProcessElement
-          public void processElement(@Element String tableName, OutputReceiver<ReadOperation> out) {
-            // Construct query for the specific table
-            String query = String.format("SELECT * FROM %s", tableName);
-            out.output(ReadOperation.create().withQuery(query));
-          }
-        })).apply("ReadSpannerRecords", SpannerIO.readAll()
-            .withSpannerConfig(spannerConfig)
-        );
+        .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig));
 
     // Map Spanner records into hashed records
     PCollection<ComparisonRecord> spannerHashes = spannerRecords.apply(
         "HashSpannerRecords", new SpannerHashTransform(ddlView));
 
-
     return pipeline.run();
   }
 
-  private static String createAvroFilePattern(String inputPath) {
-    //clean up trailing "/" if entered by the user mistakenly
-    String cleanPath =
-        inputPath.endsWith("/") ? inputPath.substring(0, inputPath.length() - 1) : inputPath;
-    return cleanPath + "/**/*.avro";
-  }
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(Options options) {
@@ -205,14 +203,5 @@ public class GCSSpannerDV {
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
-  }
-
-  private static class ParseAvroFn implements SerializableFunction<GenericRecord, String> {
-
-    @Override
-    public String apply(GenericRecord input) {
-      LOG.info("Avro record: {}", input.toString());
-      return input.toString();
-    }
   }
 }

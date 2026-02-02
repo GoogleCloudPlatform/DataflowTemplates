@@ -23,6 +23,10 @@ resource "google_dataflow_flex_template_job" "generated" {
 
   parameters = {
     gcsInputDirectory             = var.gcs_input_directory
+    instanceId                    = var.instance_id
+    databaseId                    = var.database_id
+    spannerPriority               = var.spanner_priority
+    spannerHost                   = var.spanner_host
   }
 
   service_account_email       = var.service_account_email

@@ -88,6 +88,30 @@ variable "gcs_input_directory" {
   default     = null
 }
 
+variable "instance_id" {
+  type        = string
+  description = "Spanner instance id"
+  default     = null
+}
+
+variable "database_id" {
+  type        = string
+  description = "Spanner database id"
+  default     = null
+}
+
+variable "spanner_host" {
+  type        = string
+  description = "Spanner API endpoint"
+  default     = null
+}
+
+variable "spanner_priority" {
+  type        = string
+  description = "Spanner RPC priority"
+  default     = null
+}
+
 variable "additional_pipeline_options" {
   type        = list(string)
   description = "Additional Dataflow pipeline options."
