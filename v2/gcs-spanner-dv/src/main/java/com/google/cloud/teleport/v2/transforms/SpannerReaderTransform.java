@@ -23,7 +23,7 @@ public class SpannerReaderTransform extends PTransform<PCollection<SpannerTableR
     return input.apply("CreateReadOps", ParDo.of(new DoFn<SpannerTableReadConfiguration, ReadOperation>() {
       @ProcessElement
       public void processElement(@Element SpannerTableReadConfiguration spannerTableReadConfiguration, OutputReceiver<ReadOperation> out) {
-        String query = String.format("SELECT * FROM %s", spannerTableReadConfiguration.tableName());
+        String query = String.format("SELECT * FROM %s", spannerTableReadConfiguration.getTableName());
         out.output(ReadOperation.create().withQuery(query));
       }
     })).apply("ReadSpannerRecords", SpannerIO.readAll().withSpannerConfig(spannerConfig));

@@ -146,7 +146,7 @@ public class GCSSpannerDV {
     Pipeline pipeline = Pipeline.create(options);
 
     // Fetch source records from GCS
-    PCollection<String> sourceRecords = pipeline.apply("ReadSourceAvroRecords",
+    PCollection<String> sourceRecords = pipeline.apply("ReadSourceRecords",
         new SourceReaderTransform(options.getGcsInputDirectory())
     );
 
@@ -158,26 +158,26 @@ public class GCSSpannerDV {
                 "ReadSpannerInformationSchema",
                 new SpannerInformationSchemaProcessorTransform(
                     spannerConfig))
-            .apply("FetchDDlAsView", View.asSingleton());
+            .apply("FetchDdlAsView", View.asSingleton());
 
     SpannerTableReadConfiguration singers =
         SpannerTableReadConfiguration.builder()
-            .tableName("Singers")
+            .setTableName("Singers")
             .build();
 
     SpannerTableReadConfiguration albums =
         SpannerTableReadConfiguration.builder()
-            .tableName("Albums")
+            .setTableName("Albums")
             .build();
 
     SpannerTableReadConfiguration songs =
         SpannerTableReadConfiguration.builder()
-            .tableName("Songs")
+            .setTableName("Songs")
             .build();
 
     SpannerTableReadConfiguration users =
         SpannerTableReadConfiguration.builder()
-            .tableName("Users")
+            .setTableName("Users")
             .build();
 
     List<SpannerTableReadConfiguration> tables = Arrays.asList(singers, albums, songs, users);
