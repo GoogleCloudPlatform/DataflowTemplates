@@ -79,6 +79,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
     redisContainer =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(REDIS_PORT)
+            .withCommand("redis-server", "--requirepass", "testpassword")
             .withCreateContainerCmdModifier(
                 cmd ->
                     cmd.getHostConfig()
@@ -110,6 +111,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
   private Jedis createRedisClient() {
     LOG.info("Connecting to Redis at {}:{}", redisHost, redisMappedPort);
     Jedis jedis = new Jedis(redisHost, redisMappedPort);
+    jedis.auth("testpassword");
     jedis.select(0);
     return jedis;
   }
@@ -133,6 +135,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "testpassword")
                 .addParameter("redisSinkType", "STRING_SINK"));
 
     // Act
@@ -192,6 +195,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "testpassword")
                 .addParameter("redisSinkType", "HASH_SINK"));
 
     // Act
@@ -253,6 +257,7 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
+                .addParameter("redisPassword", "testpassword")
                 .addParameter("redisSinkType", "STREAMS_SINK"));
 
     // Act
