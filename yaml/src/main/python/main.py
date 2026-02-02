@@ -53,7 +53,7 @@ def _clean_undefined_recursively(d):
 
 
 def _get_template_name(argv):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument('--label', '--labels', dest='labels', action='append', default=None)
     arg_label, _ = parser.parse_known_args(argv)
     template_name = None
@@ -188,7 +188,14 @@ def run(argv=None):
     yaml_pipeline_jinja_variables = _extract_jinja_variable_names(yaml_pipeline)
     logging.info("Jinja variables: \n%s\n", pprint.pformat(yaml_pipeline_jinja_variables,indent=2))
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    # TODO(https://github.com/apache/beam/issues/37475): re-enable passing jinja_variable_flags when conflict resolved
+    parser.add_argument(
+      '--jinja_variable_flags',
+      default=[],
+      type=lambda s: s.split(','),
+      help='A list of flag names that should be used as jinja variables.')
+
     _, pipeline_args = parser.parse_known_args(argv)
     logging.info("Original pipeline args: \n%s\n", \
                  pprint.pformat(pipeline_args,indent=2))
