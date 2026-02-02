@@ -160,32 +160,9 @@ public class GCSSpannerDV {
                     spannerConfig))
             .apply("FetchDdlAsView", View.asSingleton());
 
-    SpannerTableReadConfiguration singers =
-        SpannerTableReadConfiguration.builder()
-            .setTableName("Singers")
-            .build();
-
-    SpannerTableReadConfiguration albums =
-        SpannerTableReadConfiguration.builder()
-            .setTableName("Albums")
-            .build();
-
-    SpannerTableReadConfiguration songs =
-        SpannerTableReadConfiguration.builder()
-            .setTableName("Songs")
-            .build();
-
-    SpannerTableReadConfiguration users =
-        SpannerTableReadConfiguration.builder()
-            .setTableName("Users")
-            .build();
-
-    List<SpannerTableReadConfiguration> tables = Arrays.asList(singers, albums, songs, users);
-
     // Fetch Spanner records
     PCollection<Struct> spannerRecords = pipeline
-        .apply("FetchTables", Create.of(tables))
-        .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig));
+        .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig, ddlView));
 
     // Map Spanner records into hashed records
     PCollection<ComparisonRecord> spannerHashes = spannerRecords.apply(
