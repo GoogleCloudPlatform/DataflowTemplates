@@ -21,6 +21,10 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.transforms.SpannerHashTransform;
+import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +43,9 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,6 +149,7 @@ public class GCSSpannerDV {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
+    // Fetch source records from GCS
     PCollection<String> sourceRecords = pipeline.apply("ReadSourceAvroRecords",
         AvroIO.parseGenericRecords(new ParseAvroFn())
             .from(createAvroFilePattern(options.getGcsInputDirectory()))
@@ -151,8 +158,17 @@ public class GCSSpannerDV {
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
+    // Fetch Spanner DDL using Info schema
+    final PCollectionView<Ddl> ddlView =
+        pipeline.apply(
+            "ReadSpannerInformationSchema",
+            new SpannerInformationSchemaProcessorTransform(
+                spannerConfig))
+            .apply("FetchDDlAsView", View.asSingleton());
+
     List<String> tables = Arrays.asList("Singers", "Albums", "Songs");
 
+    // Fetch Spanner records
     PCollection<Struct> spannerRecords = pipeline
         .apply("FetchTables", Create.of(tables))
         .apply("CreateReadOps", ParDo.of(new DoFn<String, ReadOperation>() {
@@ -165,6 +181,11 @@ public class GCSSpannerDV {
         })).apply("ReadSpannerRecords", SpannerIO.readAll()
             .withSpannerConfig(spannerConfig)
         );
+
+    // Map Spanner records into hashed records
+    PCollection<ComparisonRecord> spannerHashes = spannerRecords.apply(
+        "HashSpannerRecords", new SpannerHashTransform(ddlView));
+
 
     return pipeline.run();
   }
