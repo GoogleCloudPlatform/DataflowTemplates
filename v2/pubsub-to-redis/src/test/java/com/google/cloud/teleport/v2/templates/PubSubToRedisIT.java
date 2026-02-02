@@ -133,7 +133,6 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
-                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "STRING_SINK"));
 
     // Act
@@ -193,7 +192,6 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
-                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "HASH_SINK"));
 
     // Act
@@ -255,7 +253,6 @@ public final class PubSubToRedisIT extends TemplateTestBase {
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("redisHost", redisHost)
                 .addParameter("redisPort", String.valueOf(redisMappedPort))
-                .addParameter("redisPassword", "")
                 .addParameter("redisSinkType", "STREAMS_SINK"));
 
     // Act
