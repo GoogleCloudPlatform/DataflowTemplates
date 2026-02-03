@@ -49,7 +49,7 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
     @Override
     public ComparisonRecord apply(GenericRecord input) {
       ComparisonRecord comparisonRecord = ComparisonRecord.fromAvroRecord(input);
-      LOG.info("source comparison record: {}", comparisonRecord.toString());
+      // LOG.info("source comparison record: {}", comparisonRecord.toString());
       return comparisonRecord;
     }
   }

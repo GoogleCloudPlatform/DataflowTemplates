@@ -7,21 +7,13 @@ import org.apache.avro.Schema;
  */
 public interface AvroValueVisitor {
   void visitString(String s);
-
   void visitInt(int i);
-
   void visitLong(long l);
-
   void visitFloat(float f);
-
   void visitDouble(double d);
-
   void visitBoolean(boolean b);
-
   void visitBytes(byte[] b);
-
   void visitNull();
-
   void visitDefault(Object value);
 
   static void dispatch(Object value, Schema schema, AvroValueVisitor visitor) {

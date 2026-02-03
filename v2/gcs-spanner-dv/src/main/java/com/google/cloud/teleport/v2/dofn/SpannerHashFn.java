@@ -33,7 +33,7 @@ public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
 
     ComparisonRecord comparisonRecord = ComparisonRecord.fromSpannerStruct(
         Objects.requireNonNull(c.element()), primaryKeyColumns);
-    LOG.info("spanner comparison record: {}", comparisonRecord.toString());
+    // LOG.info("spanner comparison record: {}", comparisonRecord.toString());
     c.output(comparisonRecord);
   }
 }

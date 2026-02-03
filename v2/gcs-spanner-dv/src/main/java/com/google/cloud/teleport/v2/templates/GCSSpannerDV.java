@@ -15,6 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MATCHED_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SOURCE_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SPANNER_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SOURCE_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANNER_TAG;
+
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -22,6 +28,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.transforms.MatchRecordsTransform;
 import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
@@ -33,7 +40,11 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,17 +159,48 @@ public class GCSSpannerDV {
     // Fetch Spanner DDL using Info schema
     final PCollectionView<Ddl> ddlView =
         pipeline.apply(
-                "ReadSpannerInformationSchema",
-                new SpannerInformationSchemaProcessorTransform(
-                    spannerConfig));
+                    "ReadSpannerInformationSchema",
+                    new SpannerInformationSchemaProcessorTransform(
+                            spannerConfig));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords = pipeline
         .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig, ddlView));
 
+    PCollectionTuple inputs = PCollectionTuple.of(SOURCE_TAG, sourceRecords)
+            .and(SPANNER_TAG, spannerRecords);
+
+    // Match records to determine equivalence
+    PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
+
+    matchResults.get(MATCHED_TAG)
+            .apply("CountMatched", Count.globally())
+            .apply("LogMatched", ParDo.of(new LogCountFn("Matched")));
+
+    matchResults.get(MISSING_IN_SPANNER_TAG)
+            .apply("CountMissingInSpanner", Count.globally())
+            .apply("LogMissingInSpanner", ParDo.of(new LogCountFn("MissingInSpanner")));
+
+    matchResults.get(MISSING_IN_SOURCE_TAG)
+            .apply("CountMissingInSource", Count.globally())
+            .apply("LogMissingInSource", ParDo.of(new LogCountFn("MissingInSource")));
+
     return pipeline.run();
   }
 
+  static class LogCountFn extends DoFn<Long, Void> {
+
+      private final String label;
+
+      public LogCountFn(String label) {
+          this.label = label;
+      }
+
+      @ProcessElement
+      public void processElement(ProcessContext c) {
+          LOG.info("{}: {}", label, c.element());
+      }
+  }
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(Options options) {
