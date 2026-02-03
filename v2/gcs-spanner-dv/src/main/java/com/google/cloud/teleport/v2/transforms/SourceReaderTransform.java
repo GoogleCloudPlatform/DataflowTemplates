@@ -28,7 +28,7 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
       return input.apply("ReadSourceAvroRecords",
           AvroIO.parseGenericRecords(new ParseAvroFn())
               .from(createAvroFilePattern(gcsInputDirectory))
-              //AvroIO is not able to automatically infer the coder for ComparisonRecord so be use
+              //AvroIO is not able to automatically infer the coder for ComparisonRecord so we use
               //coder registry to explicitly set it
               .withCoder(input.getPipeline().getSchemaRegistry().getSchemaCoder(ComparisonRecord.class))
               .withHintMatchesManyFiles());

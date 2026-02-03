@@ -9,14 +9,14 @@ import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Objects;
-import org.apache.beam.sdk.schemas.AutoValueSchema;
-import org.apache.beam.sdk.schemas.SchemaCoder;
-import org.apache.beam.sdk.util.CoderUtils;
-import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.SchemaCoder;
+import org.apache.beam.sdk.util.CoderUtils;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,6 +25,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ComparisonRecordTest {
 
+  //Spanner struct tests
   @Test
   public void testFromSpannerStruct_String() {
     Struct struct = Struct.newBuilder()
@@ -98,31 +99,7 @@ public class ComparisonRecordTest {
   }
 
   @Test
-  public void testSerialization() throws Exception {
-    ComparisonRecord record = ComparisonRecord.builder()
-        .setTableName("test_table")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .setHash("some_hash_123")
-        .build();
-
-    ComparisonRecord cloned = CoderUtils.clone(
-        SchemaCoder.of(
-            Objects.requireNonNull(new AutoValueSchema()
-                .schemaFor(TypeDescriptor.of(ComparisonRecord.class))),
-            TypeDescriptor.of(ComparisonRecord.class),
-            new AutoValueSchema()
-                .toRowFunction(TypeDescriptor.of(ComparisonRecord.class)),
-            new AutoValueSchema()
-                .fromRowFunction(TypeDescriptor.of(ComparisonRecord.class))),
-        record);
-
-    assertEquals(record, cloned);
-    Assert.assertNotNull(cloned);
-    assertEquals(record.getHash(), cloned.getHash());
-  }
-
-  @Test
-  public void testHashCollision_StringBoundaries() {
+  public void testFromSpannerStruct_StringBoundaries() {
     // "ab", "c" vs "a", "bc"
     // In naive concatenation, these produce "abc" and collide.
     // In our hasher, they should be distinct due to length prefixing.
@@ -144,7 +121,7 @@ public class ComparisonRecordTest {
   }
 
   @Test
-  public void testHashCollision_TypeDifference() {
+  public void testFromSpannerStruct_TypeDifference() {
     // String "123" vs Int64 123
     Struct structString = Struct.newBuilder()
         .set("col1").to("123")
@@ -162,7 +139,7 @@ public class ComparisonRecordTest {
   }
 
   @Test
-  public void testHash_NullVsEmptyString() {
+  public void testFromSpannerStruct_NullVsEmptyString() {
     // Null vs Empty String
     // We handle null with a 0 byte, and non-null with a 1 byte.
     Struct structNull = Struct.newBuilder()
@@ -181,7 +158,7 @@ public class ComparisonRecordTest {
   }
 
   @Test
-  public void testHash_DateFormatting() {
+  public void testFromSpannerStruct_DateFormatting() {
     // Verify ISO-8601 formatting consistency
     Struct struct1 = Struct.newBuilder()
         .set("col1").to(Date.fromYearMonthDay(2023, 1, 9))
@@ -206,6 +183,23 @@ public class ComparisonRecordTest {
     Assert.assertNotEquals(record1.getHash(), record3.getHash());
     Assert.assertNotEquals(record1.getHash(), record3.getHash());
   }
+
+  @Test
+  public void testFromSpannerStruct_PrimaryKeyPresence() {
+    Struct struct = Struct.newBuilder()
+        .set("pk1").to("val1")
+        .set("col1").to("data")
+        .set("__tableName__").to("t")
+        .build();
+
+    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.singletonList("pk1"));
+
+    Assert.assertEquals(1, record.getPrimaryKeyColumns().size());
+    Assert.assertEquals("pk1", record.getPrimaryKeyColumns().get(0).getColName());
+    Assert.assertEquals("val1", record.getPrimaryKeyColumns().get(0).getColValue());
+  }
+
+  //Avro record tests
 
   @Test
   public void testFromAvroRecord_String() {
@@ -332,6 +326,25 @@ public class ComparisonRecordTest {
   }
 
   @Test
+  public void testFromAvroRecord_PrimaryKeyPresence() {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .requiredString("pk1")
+        .requiredString("col1")
+        .endRecord();
+    GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+        .set("pk1", "val1")
+        .set("col1", "data")
+        .build();
+
+    ComparisonRecord record = createAvroComparisonRecord("t", payload, Collections.singletonList("pk1"));
+
+    Assert.assertEquals(1, record.getPrimaryKeyColumns().size());
+    Assert.assertEquals("pk1", record.getPrimaryKeyColumns().get(0).getColName());
+    Assert.assertEquals("val1", record.getPrimaryKeyColumns().get(0).getColValue());
+  }
+
+  //Equivalence tests
+  @Test
   public void testEquivalenceOfSpannerAndAvroRecord_AllPrimitiveTypes() {
     // Tests primitive types that map cleanly between Avro and Spanner
     Schema payloadSchema = SchemaBuilder.record("payload").fields()
@@ -436,6 +449,61 @@ public class ComparisonRecordTest {
       ComparisonRecord avroRecord = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
 
       assertEquals(spannerRecord.getHash(), avroRecord.getHash());
+  }
+
+  @Test
+  public void testEquivalenceOfSpannerAndAvroRecord_WithPKs() {
+      // Avro
+      Schema payloadSchema = SchemaBuilder.record("payload").fields()
+              .requiredString("pk1")
+              .requiredString("col1")
+              .endRecord();
+      GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+              .set("pk1", "val1")
+              .set("col1", "data")
+              .build();
+      ComparisonRecord avroRecord = createAvroComparisonRecord("t", payload, Collections.singletonList("pk1"));
+
+      // Spanner
+      Struct struct = Struct.newBuilder()
+              .set("pk1").to("val1")
+              .set("col1").to("data")
+              .set("__tableName__").to("t")
+              .build();
+      ComparisonRecord spannerRecord = ComparisonRecord.fromSpannerStruct(struct, Collections.singletonList("pk1"));
+
+      // Check individual fields first for debugging clarity
+      Assert.assertEquals(avroRecord.getHash(), spannerRecord.getHash());
+      Assert.assertEquals(avroRecord.getTableName(), spannerRecord.getTableName());
+      Assert.assertEquals(avroRecord.getPrimaryKeyColumns(), spannerRecord.getPrimaryKeyColumns());
+
+      // Check full equality
+      Assert.assertEquals(avroRecord, spannerRecord);
+  }
+
+  //Serialization test
+  @Test
+  public void testSerialization() throws Exception {
+    ComparisonRecord record = ComparisonRecord.builder()
+        .setTableName("test_table")
+        .setPrimaryKeyColumns(Collections.emptyList())
+        .setHash("some_hash_123")
+        .build();
+
+    ComparisonRecord cloned = CoderUtils.clone(
+        SchemaCoder.of(
+            Objects.requireNonNull(new AutoValueSchema()
+                .schemaFor(TypeDescriptor.of(ComparisonRecord.class))),
+            TypeDescriptor.of(ComparisonRecord.class),
+            new AutoValueSchema()
+                .toRowFunction(TypeDescriptor.of(ComparisonRecord.class)),
+            new AutoValueSchema()
+                .fromRowFunction(TypeDescriptor.of(ComparisonRecord.class))),
+        record);
+
+    assertEquals(record, cloned);
+    Assert.assertNotNull(cloned);
+    assertEquals(record.getHash(), cloned.getHash());
   }
 
   // Helper

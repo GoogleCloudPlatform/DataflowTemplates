@@ -14,11 +14,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
-import java.io.Serializable;
-
 @AutoValue
 @DefaultSchema(AutoValueSchema.class)
-public abstract class ComparisonRecord implements Serializable {
+public abstract class ComparisonRecord {
 
   public abstract String getTableName();
 
@@ -82,8 +80,7 @@ public abstract class ComparisonRecord implements Serializable {
     Hasher hasher = Hashing.murmur3_128().newHasher();
 
     String tableName = avroRecord.get("tableName").toString();
-    @SuppressWarnings("unchecked")
-    List<String> primaryKeyNames = (List<String>) avroRecord.get("primaryKeys");
+    List<?> primaryKeyNames = (List<?>) avroRecord.get("primaryKeys");
     // Ensure the list is safely cast/converted if Avro returns Utf8
     List<String> safePrimaryKeyNames = primaryKeyNames.stream()
         .map(Object::toString)
