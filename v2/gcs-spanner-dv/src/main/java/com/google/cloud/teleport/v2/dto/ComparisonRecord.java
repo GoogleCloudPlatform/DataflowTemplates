@@ -2,14 +2,11 @@ package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.spanner.Value;
 import com.google.common.hash.Hashing;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
-import org.apache.commons.codec.binary.Base64;
 
 @AutoValue
 @DefaultSchema(AutoValueSchema.class)
@@ -39,23 +36,26 @@ public abstract class ComparisonRecord {
 
   public static ComparisonRecord fromSpannerStruct(Struct spannerStruct,
       List<String> primaryKeyColumnNames) {
-    int nCols = spannerStruct.getColumnCount();
-    StringBuilder sbConcatCols = new StringBuilder();
+    com.google.common.hash.Hasher hasher = Hashing.murmur3_128().newHasher();
 
     // 1. Compute hash by iterating all columns by index
-    for (int i = 0; i < nCols; i++) {
-      sbConcatCols.append(valueToString(spannerStruct.getValue(i)));
+    SpannerHasherVisitor hasherVisitor = new SpannerHasherVisitor(hasher);
+    for (int i = 0; i < spannerStruct.getColumnCount(); i++) {
+      SpannerValueVisitor.dispatch(spannerStruct.getValue(i), hasherVisitor);
     }
-    String hash = Hashing.murmur3_128()
-        .hashString(sbConcatCols.toString(), StandardCharsets.UTF_8).toString();
+    String hash = hasher.hash().toString();
 
     // 2. Extract primary key columns by looking them up by name
+    SpannerStringVisitor stringVisitor = new SpannerStringVisitor();
     List<Column> primaryKeyColumns = primaryKeyColumnNames.stream()
         .map(
-            pkName -> Column.builder()
-                .setColName(pkName)
-                .setColValue(valueToString(spannerStruct.getValue(pkName)))
-                .build())
+            pkName -> {
+              SpannerValueVisitor.dispatch(spannerStruct.getValue(pkName), stringVisitor);
+              return Column.builder()
+                  .setColName(pkName)
+                  .setColValue(stringVisitor.getResult())
+                  .build();
+            })
         .collect(Collectors.toList());
 
     return builder()
@@ -63,27 +63,5 @@ public abstract class ComparisonRecord {
         .setPrimaryKeyColumns(primaryKeyColumns)
         .setHash(hash)
         .build();
-  }
-
-  private static String valueToString(Value value) {
-    if (value.isNull()) {
-      return "";
-    }
-    return switch (value.getType().getCode()) {
-      case STRING -> value.getString();
-      case BYTES -> Base64.encodeBase64String(value.getBytes().toByteArray());
-      case INT64 -> String.valueOf(value.getInt64());
-      case FLOAT64 -> String.valueOf(value.getFloat64());
-      case NUMERIC -> String.valueOf(value.getNumeric());
-      case DATE -> {
-        com.google.cloud.Date date = value.getDate();
-        yield String.format("%d%d%d",
-            date.getYear(),
-            date.getMonth(),
-            date.getDayOfMonth());
-      }
-      case BOOL -> String.valueOf(value.getBool());
-      default -> throw new RuntimeException(String.format("Unsupported type: %s", value.getType()));
-    };
   }
 }

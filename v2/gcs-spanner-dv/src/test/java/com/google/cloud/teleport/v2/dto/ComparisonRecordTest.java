@@ -29,7 +29,7 @@ public class ComparisonRecordTest {
         .build();
 
     ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.singletonList("col1"));
-    assertEquals("abefb27f10ddef93dcfa008a1b604b49", record.getHash());
+    assertEquals("4fbb051e701e31e4fde2e4007742ccbf", record.getHash());
     assertEquals("test_table", record.getTableName());
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("col1", record.getPrimaryKeyColumns().get(0).getColName());
@@ -50,7 +50,7 @@ public class ComparisonRecordTest {
         .build();
 
     ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.emptyList());
-    assertEquals("d4ec581fb3ce3565de614c2b410226fc", record.getHash());
+    assertEquals("dc907235a1cefae97f1bc87d84cc5175", record.getHash());
     assertEquals("test_table", record.getTableName());
     Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
   }
@@ -64,7 +64,7 @@ public class ComparisonRecordTest {
         .build();
 
     ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.emptyList());
-    assertEquals("7520966e2b92faef4194e6e595e7e57c", record.getHash());
+    assertEquals("b9ba3d31be9a5bfec628ffea0f2dacc2", record.getHash());
     assertEquals("test_table", record.getTableName());
     Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
   }
@@ -115,5 +115,90 @@ public class ComparisonRecordTest {
     assertEquals(record, cloned);
     Assert.assertNotNull(cloned);
     assertEquals(record.getHash(), cloned.getHash());
+  }
+
+  @Test
+  public void testHashCollision_StringBoundaries() {
+    // "ab", "c" vs "a", "bc"
+    // In naive concatenation, these produce "abc" and collide.
+    // In our hasher, they should be distinct due to length prefixing.
+    Struct struct1 = Struct.newBuilder()
+        .set("col1").to("ab")
+        .set("col2").to("c")
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord record1 = ComparisonRecord.fromSpannerStruct(struct1, Collections.emptyList());
+
+    Struct struct2 = Struct.newBuilder()
+        .set("col1").to("a")
+        .set("col2").to("bc")
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord record2 = ComparisonRecord.fromSpannerStruct(struct2, Collections.emptyList());
+
+    Assert.assertNotEquals(record1.getHash(), record2.getHash());
+  }
+
+  @Test
+  public void testHashCollision_TypeDifference() {
+    // String "123" vs Int64 123
+    Struct structString = Struct.newBuilder()
+        .set("col1").to("123")
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord recordString = ComparisonRecord.fromSpannerStruct(structString, Collections.emptyList());
+
+    Struct structInt = Struct.newBuilder()
+        .set("col1").to(123L)
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord recordInt = ComparisonRecord.fromSpannerStruct(structInt, Collections.emptyList());
+
+    Assert.assertNotEquals(recordString.getHash(), recordInt.getHash());
+  }
+
+  @Test
+  public void testHash_NullVsEmptyString() {
+    // Null vs Empty String
+    // We handle null with a 0 byte, and non-null with a 1 byte.
+    Struct structNull = Struct.newBuilder()
+        .set("col1").to(Value.string(null))
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord recordNull = ComparisonRecord.fromSpannerStruct(structNull, Collections.emptyList());
+
+    Struct structEmpty = Struct.newBuilder()
+        .set("col1").to("")
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord recordEmpty = ComparisonRecord.fromSpannerStruct(structEmpty, Collections.emptyList());
+
+    Assert.assertNotEquals(recordNull.getHash(), recordEmpty.getHash());
+  }
+
+  @Test
+  public void testHash_DateFormatting() {
+    // Verify ISO-8601 formatting consistency
+    Struct struct1 = Struct.newBuilder()
+        .set("col1").to(Date.fromYearMonthDay(2023, 1, 9))
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord record1 = ComparisonRecord.fromSpannerStruct(struct1, Collections.emptyList());
+
+    Struct struct2 = Struct.newBuilder()
+        .set("col1").to(Date.fromYearMonthDay(2023, 1, 9))
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord record2 = ComparisonRecord.fromSpannerStruct(struct2, Collections.emptyList());
+
+    Assert.assertEquals(record1.getHash(), record2.getHash());
+
+    // Different date
+    Struct struct3 = Struct.newBuilder()
+        .set("col1").to(Date.fromYearMonthDay(2023, 1, 10))
+        .set("__tableName__").to("t")
+        .build();
+    ComparisonRecord record3 = ComparisonRecord.fromSpannerStruct(struct3, Collections.emptyList());
+    Assert.assertNotEquals(record1.getHash(), record3.getHash());
   }
 }
