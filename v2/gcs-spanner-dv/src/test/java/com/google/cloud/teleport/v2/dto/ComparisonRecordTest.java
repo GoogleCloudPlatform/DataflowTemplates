@@ -13,6 +13,10 @@ import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -200,5 +204,185 @@ public class ComparisonRecordTest {
         .build();
     ComparisonRecord record3 = ComparisonRecord.fromSpannerStruct(struct3, Collections.emptyList());
     Assert.assertNotEquals(record1.getHash(), record3.getHash());
+    Assert.assertNotEquals(record1.getHash(), record3.getHash());
+  }
+
+  @Test
+  public void testFromAvroRecord_String() {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .requiredString("col1")
+        .endRecord();
+    GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+        .set("col1", "test_value")
+        .build();
+
+    ComparisonRecord record = createAvroComparisonRecord("test_table", payload, Collections.singletonList("col1"));
+    assertEquals("4fbb051e701e31e4fde2e4007742ccbf", record.getHash());
+    assertEquals("test_table", record.getTableName());
+    assertEquals(1, record.getPrimaryKeyColumns().size());
+    assertEquals("col1", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("test_value", record.getPrimaryKeyColumns().get(0).getColValue());
+  }
+
+  @Test
+  public void testFromAvroRecord_Nulls() {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .optionalString("col_string")
+        .optionalLong("col_int64")
+        .endRecord();
+
+    GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+        .set("col_string", null)
+        .set("col_int64", null)
+        .build();
+
+    ComparisonRecord record = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
+    assertEquals("b9ba3d31be9a5bfec628ffea0f2dacc2", record.getHash());
+    assertEquals("test_table", record.getTableName());
+    Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
+  }
+
+  @Test
+  public void testFromAvroRecord_MultiplePKs() {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .requiredString("pk1")
+        .requiredLong("pk2")
+        .requiredString("col_other")
+        .endRecord();
+
+    GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+        .set("pk1", "val1")
+        .set("pk2", 123L)
+        .set("col_other", "other")
+        .build();
+
+    ComparisonRecord record = createAvroComparisonRecord("table_multi_pk", payload,
+        java.util.Arrays.asList("pk1", "pk2"));
+
+    assertEquals("table_multi_pk", record.getTableName());
+    assertEquals(2, record.getPrimaryKeyColumns().size());
+
+    assertEquals("pk1", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("val1", record.getPrimaryKeyColumns().get(0).getColValue());
+
+    assertEquals("pk2", record.getPrimaryKeyColumns().get(1).getColName());
+    assertEquals("123", record.getPrimaryKeyColumns().get(1).getColValue());
+  }
+
+  @Test
+  public void testFromAvroRecord_HashCollision_StringBoundaries() {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .requiredString("col1")
+        .requiredString("col2")
+        .endRecord();
+
+    GenericRecord payload1 = new GenericRecordBuilder(payloadSchema)
+        .set("col1", "ab")
+        .set("col2", "c")
+        .build();
+    ComparisonRecord record1 = createAvroComparisonRecord("t", payload1, Collections.emptyList());
+
+    GenericRecord payload2 = new GenericRecordBuilder(payloadSchema)
+        .set("col1", "a")
+        .set("col2", "bc")
+        .build();
+    ComparisonRecord record2 = createAvroComparisonRecord("t", payload2, Collections.emptyList());
+
+    Assert.assertNotEquals(record1.getHash(), record2.getHash());
+  }
+
+  @Test
+  public void testFromAvroRecord_HashCollision_TypeDifference() {
+    // String "123" vs Long 123
+    Schema stringSchema = SchemaBuilder.record("payload").fields().requiredString("col1").endRecord();
+    GenericRecord payloadString = new GenericRecordBuilder(stringSchema).set("col1", "123").build();
+    ComparisonRecord recordString = createAvroComparisonRecord("t", payloadString, Collections.emptyList());
+
+    Schema longSchema = SchemaBuilder.record("payload").fields().requiredLong("col1").endRecord();
+    GenericRecord payloadInt = new GenericRecordBuilder(longSchema).set("col1", 123L).build();
+    ComparisonRecord recordInt = createAvroComparisonRecord("t", payloadInt, Collections.emptyList());
+
+    Assert.assertNotEquals(recordString.getHash(), recordInt.getHash());
+  }
+
+  @Test
+  public void testFromAvroRecord_FieldOrderMatters() {
+    // Schema 1: col1, col2
+    Schema schema1 = SchemaBuilder.record("payload").fields()
+        .requiredString("col1")
+        .requiredString("col2")
+        .endRecord();
+    GenericRecord payload1 = new GenericRecordBuilder(schema1)
+        .set("col1", "val1")
+        .set("col2", "val2")
+        .build();
+    ComparisonRecord record1 = createAvroComparisonRecord("t", payload1, Collections.emptyList());
+
+    // Schema 2: col2, col1 (Same data, different order)
+    Schema schema2 = SchemaBuilder.record("payload").fields()
+        .requiredString("col2")
+        .requiredString("col1")
+        .endRecord();
+    GenericRecord payload2 = new GenericRecordBuilder(schema2)
+        .set("col2", "val2")
+        .set("col1", "val1")
+        .build();
+    ComparisonRecord record2 = createAvroComparisonRecord("t", payload2, Collections.emptyList());
+
+    // Hashes should differ because hashing is order-dependent
+    Assert.assertNotEquals(record1.getHash(), record2.getHash());
+  }
+
+  @Test
+  public void testEquivalenceOfSpannerAndAvroRecord_AllPrimitiveTypes() {
+    // Tests primitive types that map cleanly between Avro and Spanner
+    Schema payloadSchema = SchemaBuilder.record("payload").fields()
+        .requiredString("col_string")
+        .requiredLong("col_int64")
+        .requiredDouble("col_float64")
+        .requiredBoolean("col_bool")
+        .requiredBytes("col_bytes")
+        .endRecord();
+
+    GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+        .set("col_string", "string_val")
+        .set("col_int64", 12345L)
+        .set("col_float64", 12.345)
+        .set("col_bool", true)
+        .set("col_bytes", "bytes".getBytes())
+        .build();
+
+    ComparisonRecord sourceRecord = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
+
+    // We expect this to match Spanner hash if Spanner had ONLY these fields.
+    // Let's verify by constructing Spanner struct with ONLY these fields.
+    Struct spannerStruct = Struct.newBuilder()
+        .set("col_string").to("string_val")
+        .set("col_int64").to(12345L)
+        .set("col_float64").to(12.345)
+        .set("col_bool").to(true)
+        .set("col_bytes").to(ByteArray.copyFrom("bytes".getBytes()))
+        .set("__tableName__").to("test_table")
+        .build();
+
+    ComparisonRecord spannerRecord = ComparisonRecord.fromSpannerStruct(spannerStruct, Collections.emptyList());
+    assertEquals(spannerRecord.getHash(), sourceRecord.getHash());
+  }
+
+  // Helper
+  private ComparisonRecord createAvroComparisonRecord(String tableName, GenericRecord payload,
+      java.util.List<String> primaryKeys) {
+    Schema schema = SchemaBuilder.record("SourceRowWithMetadata").fields()
+        .requiredString("tableName")
+        .optionalString("shardId")
+        .name("primaryKeys").type().array().items().stringType().noDefault()
+        .name("payload").type(payload.getSchema()).noDefault()
+        .endRecord();
+
+    return ComparisonRecord.fromAvroRecord(new GenericRecordBuilder(schema)
+        .set("tableName", tableName)
+        .set("primaryKeys", primaryKeys)
+        .set("payload", payload)
+        .build());
   }
 }

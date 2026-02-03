@@ -141,7 +141,7 @@ public class GCSSpannerDV {
     Pipeline pipeline = Pipeline.create(options);
 
     // Fetch source records from GCS
-    PCollection<String> sourceRecords = pipeline.apply("ReadSourceRecords",
+    PCollection<ComparisonRecord> sourceRecords = pipeline.apply("ReadSourceRecords",
         new SourceReaderTransform(options.getGcsInputDirectory())
     );
 

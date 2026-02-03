@@ -7,12 +7,10 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull PCollection<String>> {
+import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceReaderTransform.class);
+public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
 
   private final String gcsInputDirectory;
 
@@ -21,7 +19,7 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
   }
 
   @Override
-  public @NotNull PCollection<String> expand(PBegin input) {
+  public @NotNull PCollection<ComparisonRecord> expand(PBegin input) {
     return input.apply("ReadSourceAvroRecords",
         AvroIO.parseGenericRecords(new ParseAvroFn())
             .from(createAvroFilePattern(gcsInputDirectory))
@@ -35,12 +33,11 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
     return cleanPath + "/**/*.avro";
   }
 
-  private static class ParseAvroFn implements SerializableFunction<GenericRecord, String> {
+  private static class ParseAvroFn implements SerializableFunction<GenericRecord, ComparisonRecord> {
 
     @Override
-    public String apply(GenericRecord input) {
-      LOG.info("Avro record: {}", input.toString());
-      return input.toString();
+    public ComparisonRecord apply(GenericRecord input) {
+      return ComparisonRecord.fromAvroRecord(input);
     }
   }
 }

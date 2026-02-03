@@ -2,15 +2,21 @@ package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
+import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
+import java.io.Serializable;
+
 @AutoValue
 @DefaultSchema(AutoValueSchema.class)
-public abstract class ComparisonRecord {
+public abstract class ComparisonRecord implements Serializable {
 
   public abstract String getTableName();
 
@@ -36,7 +42,7 @@ public abstract class ComparisonRecord {
 
   public static ComparisonRecord fromSpannerStruct(Struct spannerStruct,
       List<String> primaryKeyColumnNames) {
-    com.google.common.hash.Hasher hasher = Hashing.murmur3_128().newHasher();
+    Hasher hasher = Hashing.murmur3_128().newHasher();
 
     // 1. Compute hash by iterating all columns by index
     SpannerHasherVisitor hasherVisitor = new SpannerHasherVisitor(hasher);
@@ -60,6 +66,57 @@ public abstract class ComparisonRecord {
 
     return builder()
         .setTableName(spannerStruct.getString("__tableName__"))
+        .setPrimaryKeyColumns(primaryKeyColumns)
+        .setHash(hash)
+        .build();
+  }
+
+  public static ComparisonRecord fromAvroRecord(GenericRecord avroRecord) {
+    Hasher hasher = Hashing.murmur3_128().newHasher();
+
+    String tableName = avroRecord.get("tableName").toString();
+    @SuppressWarnings("unchecked")
+    List<String> primaryKeyNames = (List<String>) avroRecord.get("primaryKeys");
+    // Ensure the list is safely cast/converted if Avro returns Utf8
+    List<String> safePrimaryKeyNames = primaryKeyNames.stream()
+        .map(Object::toString)
+        .toList();
+
+    GenericRecord payload = (GenericRecord) avroRecord.get("payload");
+    org.apache.avro.Schema payloadSchema = payload.getSchema();
+
+    // 1. Compute hash by iterating all fields in the payload schema order
+    AvroHasherVisitor hasherVisitor = new AvroHasherVisitor(hasher);
+    for (Field field : payloadSchema.getFields()) {
+      Object value = payload.get(field.pos());
+      AvroValueVisitor.dispatch(value, field.schema(), hasherVisitor);
+    }
+    // Spanner query adds __tableName__ as the last column, so we must hash it too
+    // to match.
+    if (tableName != null) {
+      hasherVisitor.visitString(tableName);
+    }
+
+    String hash = hasher.hash().toString();
+
+    // 2. Extract primary key columns by looking them up by name in the payload
+    AvroStringVisitor stringVisitor = new AvroStringVisitor();
+    List<Column> primaryKeyColumns = safePrimaryKeyNames.stream()
+        .map(pkName -> {
+          // get(name) is valid for GenericRecord
+          Object value = payload.get(pkName);
+          // We need the schema for this field to dispatch safely
+          Schema fieldSchema = payloadSchema.getField(pkName).schema();
+          AvroValueVisitor.dispatch(value, fieldSchema, stringVisitor);
+          return Column.builder()
+              .setColName(pkName)
+              .setColValue(stringVisitor.getResult())
+              .build();
+        })
+        .collect(Collectors.toList());
+
+    return builder()
+        .setTableName(tableName)
         .setPrimaryKeyColumns(primaryKeyColumns)
         .setHash(hash)
         .build();
