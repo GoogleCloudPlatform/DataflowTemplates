@@ -9,6 +9,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import java.util.Collections;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
@@ -44,7 +45,8 @@ public class SpannerHashFnTest {
     ArgumentCaptor<ComparisonRecord> argument = ArgumentCaptor.forClass(ComparisonRecord.class);
     verify(context).output(argument.capture());
 
-    ComparisonRecord expected = ComparisonRecord.fromSpannerStruct(inputStruct);
+    ComparisonRecord expected = ComparisonRecord.fromSpannerStruct(inputStruct,
+        Collections.singletonList("id"));
     assertEquals(expected.getHash(), argument.getValue().getHash());
   }
 }

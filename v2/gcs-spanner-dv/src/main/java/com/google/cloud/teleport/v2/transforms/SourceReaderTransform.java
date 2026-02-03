@@ -39,7 +39,7 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
 
     @Override
     public String apply(GenericRecord input) {
-      LOG.info("Avro record: {}", input.toString());
+      // LOG.info("Avro record: {}", input.toString());
       return input.toString();
     }
   }

@@ -19,7 +19,7 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     Ddl ddl = c.sideInput(ddlView);
     List<String> tableNames = ddl.getTablesOrderedByReference();
     tableNames.forEach(tableName -> {
-      String query = String.format("SELECT * FROM %s", tableName);
+      String query = String.format("SELECT *, '%s' as __tableName__ FROM %s", tableName, tableName);
       c.output(ReadOperation.create().withQuery(query));
     });
   }

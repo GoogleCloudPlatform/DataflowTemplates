@@ -7,6 +7,7 @@ import com.google.cloud.Date;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Objects;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.SchemaCoder;
@@ -24,10 +25,15 @@ public class ComparisonRecordTest {
   public void testFromSpannerStruct_String() {
     Struct struct = Struct.newBuilder()
         .set("col1").to(Value.string("test_value"))
+        .set("__tableName__").to(Value.string("test_table"))
         .build();
 
-    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct);
-    assertEquals("8fc7948a4710187bda119d5f18e378d9", record.getHash());
+    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.singletonList("col1"));
+    assertEquals("abefb27f10ddef93dcfa008a1b604b49", record.getHash());
+    assertEquals("test_table", record.getTableName());
+    assertEquals(1, record.getPrimaryKeyColumns().size());
+    assertEquals("col1", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("test_value", record.getPrimaryKeyColumns().get(0).getColValue());
   }
 
   @Test
@@ -40,10 +46,13 @@ public class ComparisonRecordTest {
         .set("col_numeric").to(BigDecimal.valueOf(100.50))
         .set("col_date").to(Date.fromYearMonthDay(2023, 10, 1))
         .set("col_bytes").to(ByteArray.copyFrom("bytes".getBytes()))
+        .set("__tableName__").to(Value.string("test_table"))
         .build();
 
-    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct);
-    assertEquals("dee12649f61da69a8ae3d6319cb35af0", record.getHash());
+    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.emptyList());
+    assertEquals("d4ec581fb3ce3565de614c2b410226fc", record.getHash());
+    assertEquals("test_table", record.getTableName());
+    Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
   }
 
   @Test
@@ -51,17 +60,44 @@ public class ComparisonRecordTest {
     Struct struct = Struct.newBuilder()
         .set("col_string").to(Value.string(null))
         .set("col_int64").to(Value.int64(null))
+        .set("__tableName__").to(Value.string("test_table"))
         .build();
 
-    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct);
-    //This hash is returned for an empty string. This is never expected since Spanner requires
-    //a non-null PK for every row.
-    assertEquals("00000000000000000000000000000000", record.getHash());
+    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.emptyList());
+    assertEquals("7520966e2b92faef4194e6e595e7e57c", record.getHash());
+    assertEquals("test_table", record.getTableName());
+    Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
+  }
+
+  @Test
+  public void testFromSpannerStruct_MultiplePKs() {
+    Struct struct = Struct.newBuilder()
+        .set("pk1").to("val1")
+        .set("pk2").to(123)
+        .set("col_other").to("other")
+        .set("__tableName__").to(Value.string("table_multi_pk"))
+        .build();
+
+    // Pass PKs in specific order
+    ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, java.util.Arrays.asList("pk1", "pk2"));
+
+    assertEquals("table_multi_pk", record.getTableName());
+    assertEquals(2, record.getPrimaryKeyColumns().size());
+
+    // Check first PK
+    assertEquals("pk1", record.getPrimaryKeyColumns().get(0).getColName());
+    assertEquals("val1", record.getPrimaryKeyColumns().get(0).getColValue());
+
+    // Check second PK
+    assertEquals("pk2", record.getPrimaryKeyColumns().get(1).getColName());
+    assertEquals("123", record.getPrimaryKeyColumns().get(1).getColValue());
   }
 
   @Test
   public void testSerialization() throws Exception {
     ComparisonRecord record = ComparisonRecord.builder()
+        .setTableName("test_table")
+        .setPrimaryKeyColumns(Collections.emptyList())
         .setHash("some_hash_123")
         .build();
 

@@ -42,7 +42,7 @@ public class CreateSpannerReadOpsFnTest {
     verify(context, times(2)).output(argument.capture());
 
     // Validate captured arguments
-    verify(context).output(ReadOperation.create().withQuery("SELECT * FROM Table1"));
-    verify(context).output(ReadOperation.create().withQuery("SELECT * FROM Table2"));
+    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'Table1' as __tableName__ FROM Table1"));
+    verify(context).output(ReadOperation.create().withQuery("SELECT *, 'Table2' as __tableName__ FROM Table2"));
   }
 }

@@ -1,15 +1,25 @@
 package com.google.cloud.teleport.v2.dto;
 
-import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import com.google.auto.value.AutoValue;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
-@DefaultCoder(AvroCoder.class)
-public class Column {
+@AutoValue
+@DefaultSchema(AutoValueSchema.class)
+public abstract class Column {
 
-  private String colName;
+  public abstract String getColName();
 
-  private String colValue;
+  public abstract String getColValue();
 
-  public Column() {
+  public static Builder builder() {
+    return new AutoValue_Column.Builder();
+  }
+
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder setColName(String colName);
+    public abstract Builder setColValue(String colValue);
+    public abstract Column build();
   }
 }
