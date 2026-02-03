@@ -367,6 +367,77 @@ public class ComparisonRecordTest {
     assertEquals(spannerRecord.getHash(), sourceRecord.getHash());
   }
 
+  @Test
+  public void testEquivalenceOfSpannerAndAvroRecord_DifferentColumnOrder() {
+      // Spanner: {col1="a", col2="b"}
+      Struct spannerStruct = Struct.newBuilder()
+              .set("col1").to("a")
+              .set("col2").to("b")
+              .set("__tableName__").to("test_table")
+              .build();
+
+      // Avro: {col2="b", col1="a"}
+      Schema payloadSchema = SchemaBuilder.record("payload").fields()
+              .requiredString("col2")
+              .requiredString("col1")
+              .endRecord();
+      GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+              .set("col2", "b")
+              .set("col1", "a")
+              .build();
+
+      ComparisonRecord spannerRecord = ComparisonRecord.fromSpannerStruct(spannerStruct, Collections.emptyList());
+      ComparisonRecord avroRecord = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
+
+      assertEquals(spannerRecord.getHash(), avroRecord.getHash());
+  }
+
+  @Test
+  public void testEquivalenceOfSpannerAndAvroRecord_NullValues() {
+      // Spanner with nulls
+      Struct spannerStruct = Struct.newBuilder()
+              .set("col_string").to(Value.string(null))
+              .set("col_int64").to(Value.int64(null))
+              .set("__tableName__").to("test_table")
+              .build();
+
+      // Avro with nulls
+      Schema payloadSchema = SchemaBuilder.record("payload").fields()
+              .optionalString("col_string")
+              .optionalLong("col_int64")
+              .endRecord();
+      GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+              .set("col_string", null)
+              .set("col_int64", null)
+              .build();
+
+      ComparisonRecord spannerRecord = ComparisonRecord.fromSpannerStruct(spannerStruct, Collections.emptyList());
+      ComparisonRecord avroRecord = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
+
+      assertEquals(spannerRecord.getHash(), avroRecord.getHash());
+  }
+
+  @Test
+  public void testEquivalenceOfSpannerAndAvroRecord_Bytes() {
+      byte[] byteVal = "some-bytes".getBytes();
+      Struct spannerStruct = Struct.newBuilder()
+              .set("col_bytes").to(ByteArray.copyFrom(byteVal))
+              .set("__tableName__").to("test_table")
+              .build();
+
+      Schema payloadSchema = SchemaBuilder.record("payload").fields()
+              .requiredBytes("col_bytes")
+              .endRecord();
+      GenericRecord payload = new GenericRecordBuilder(payloadSchema)
+              .set("col_bytes", java.nio.ByteBuffer.wrap(byteVal))
+              .build();
+
+      ComparisonRecord spannerRecord = ComparisonRecord.fromSpannerStruct(spannerStruct, Collections.emptyList());
+      ComparisonRecord avroRecord = createAvroComparisonRecord("test_table", payload, Collections.emptyList());
+
+      assertEquals(spannerRecord.getHash(), avroRecord.getHash());
+  }
+
   // Helper
   private ComparisonRecord createAvroComparisonRecord(String tableName, GenericRecord payload,
       java.util.List<String> primaryKeys) {
