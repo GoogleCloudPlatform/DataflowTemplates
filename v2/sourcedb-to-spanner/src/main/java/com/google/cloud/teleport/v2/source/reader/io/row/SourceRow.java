@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.row;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
@@ -61,6 +62,8 @@ public abstract class SourceRow implements Serializable {
   @Nullable
   public abstract String shardId();
 
+  public abstract ImmutableList<String> primaryKeyColumns();
+
   /**
    * Get the readTime epoch in microseconds.
    *
@@ -90,6 +93,7 @@ public abstract class SourceRow implements Serializable {
         .fields()
         .name("tableName").type().stringType().noDefault()
         .name("shardId").type().nullable().stringType().noDefault()
+        .name("primaryKeys").type().array().items().stringType().noDefault()
         // We reuse the exact schema from the payload to ensure compatibility
         .name("payload").type(this.getPayload().getSchema()).noDefault()
         .endRecord();
@@ -102,6 +106,7 @@ public abstract class SourceRow implements Serializable {
     return new GenericRecordBuilder(this.gcsSchema())
         .set("tableName", this.tableName())
         .set("shardId", this.shardId())
+        .set("primaryKeys", this.primaryKeyColumns())
         .set("payload", this.getPayload())
         .build();
   }
@@ -152,6 +157,8 @@ public abstract class SourceRow implements Serializable {
     @SuppressWarnings("CheckReturnValue")
     public abstract Builder setShardId(String value);
 
+    public abstract Builder setPrimaryKeyColumns(ImmutableList<String> value);
+
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setRecord(SerializableGenericRecord value);
 
@@ -177,6 +184,7 @@ public abstract class SourceRow implements Serializable {
       this.setTableSchemaUUID(sourceTableSchema.tableSchemaUUID());
       this.setTableName(sourceTableSchema.tableName());
       this.setShardId(shardId);
+      this.setPrimaryKeyColumns(sourceTableSchema.primaryKeyColumns());
       this.recordBuilder = new GenericRecordBuilder(sourceTableSchema.avroSchema());
       this.recordBuilder.set(SourceTableSchema.READ_TIME_STAMP_FIELD_NAME, readTimeMicros);
       this.payloadBuilder =
