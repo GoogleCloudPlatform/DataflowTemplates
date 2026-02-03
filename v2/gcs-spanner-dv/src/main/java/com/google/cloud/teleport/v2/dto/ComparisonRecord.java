@@ -2,8 +2,10 @@ package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Type;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
@@ -44,11 +46,16 @@ public abstract class ComparisonRecord implements Serializable {
       List<String> primaryKeyColumnNames) {
     Hasher hasher = Hashing.murmur3_128().newHasher();
 
-    // 1. Compute hash by iterating all columns by index
+    // 1. Compute hash by iterating all columns sorted by name
     SpannerHasherVisitor hasherVisitor = new SpannerHasherVisitor(hasher);
-    for (int i = 0; i < spannerStruct.getColumnCount(); i++) {
-      SpannerValueVisitor.dispatch(spannerStruct.getValue(i), hasherVisitor);
-    }
+    spannerStruct.getType().getStructFields().stream()
+        .filter(field -> !field.getName().equals("__tableName__"))
+        .sorted(Comparator.comparing(Type.StructField::getName))
+        .forEach(field -> SpannerValueVisitor.dispatch(
+            spannerStruct.getValue(field.getName()), hasherVisitor));
+
+    // Append table name to hash to ensure consistency with Avro
+    SpannerValueVisitor.dispatch(spannerStruct.getValue("__tableName__"), hasherVisitor);
     String hash = hasher.hash().toString();
 
     // 2. Extract primary key columns by looking them up by name
@@ -85,12 +92,14 @@ public abstract class ComparisonRecord implements Serializable {
     GenericRecord payload = (GenericRecord) avroRecord.get("payload");
     org.apache.avro.Schema payloadSchema = payload.getSchema();
 
-    // 1. Compute hash by iterating all fields in the payload schema order
+    // 1. Compute hash by iterating all fields in the payload schema sorted by name
     AvroHasherVisitor hasherVisitor = new AvroHasherVisitor(hasher);
-    for (Field field : payloadSchema.getFields()) {
-      Object value = payload.get(field.pos());
-      AvroValueVisitor.dispatch(value, field.schema(), hasherVisitor);
-    }
+    payloadSchema.getFields().stream()
+        .sorted(Comparator.comparing(Field::name))
+        .forEach(field -> {
+          Object value = payload.get(field.pos());
+          AvroValueVisitor.dispatch(value, field.schema(), hasherVisitor);
+        });
     // Spanner query adds __tableName__ as the last column, so we must hash it too
     // to match.
     if (tableName != null) {

@@ -54,7 +54,7 @@ public class ComparisonRecordTest {
         .build();
 
     ComparisonRecord record = ComparisonRecord.fromSpannerStruct(struct, Collections.emptyList());
-    assertEquals("dc907235a1cefae97f1bc87d84cc5175", record.getHash());
+    assertEquals("e891aa28102bc896303fc5773e7e6457", record.getHash());
     assertEquals("test_table", record.getTableName());
     Assert.assertTrue(record.getPrimaryKeyColumns().isEmpty());
   }
@@ -306,7 +306,7 @@ public class ComparisonRecordTest {
   }
 
   @Test
-  public void testFromAvroRecord_FieldOrderMatters() {
+  public void testFromAvroRecord_FieldOrderDoesNotMatter() {
     // Schema 1: col1, col2
     Schema schema1 = SchemaBuilder.record("payload").fields()
         .requiredString("col1")
@@ -328,9 +328,7 @@ public class ComparisonRecordTest {
         .set("col1", "val1")
         .build();
     ComparisonRecord record2 = createAvroComparisonRecord("t", payload2, Collections.emptyList());
-
-    // Hashes should differ because hashing is order-dependent
-    Assert.assertNotEquals(record1.getHash(), record2.getHash());
+    Assert.assertEquals(record1.getHash(), record2.getHash());
   }
 
   @Test
