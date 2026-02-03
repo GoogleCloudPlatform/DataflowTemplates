@@ -1,14 +1,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
+import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.jetbrains.annotations.NotNull;
-
-import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,10 +24,17 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
 
   @Override
   public @NotNull PCollection<ComparisonRecord> expand(PBegin input) {
-    return input.apply("ReadSourceAvroRecords",
-        AvroIO.parseGenericRecords(new ParseAvroFn())
-            .from(createAvroFilePattern(gcsInputDirectory))
-            .withHintMatchesManyFiles());
+    try {
+      return input.apply("ReadSourceAvroRecords",
+          AvroIO.parseGenericRecords(new ParseAvroFn())
+              .from(createAvroFilePattern(gcsInputDirectory))
+              //AvroIO is not able to automatically infer the coder for ComparisonRecord so be use
+              //coder registry to explicitly set it
+              .withCoder(input.getPipeline().getSchemaRegistry().getSchemaCoder(ComparisonRecord.class))
+              .withHintMatchesManyFiles());
+    } catch (NoSuchSchemaException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private static String createAvroFilePattern(String inputPath) {
