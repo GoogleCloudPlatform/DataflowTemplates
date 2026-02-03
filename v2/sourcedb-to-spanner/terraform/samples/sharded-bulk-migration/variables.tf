@@ -16,7 +16,7 @@ variable "common_params" {
     database_id                      = string
     spanner_project_id               = string
     spanner_host                     = optional(string)
-    local_session_file_path          = string
+    local_session_file_path          = optional(string)
     transformation_jar_path          = optional(string)
     transformation_custom_parameters = optional(string)
     transformation_class_name        = optional(string)

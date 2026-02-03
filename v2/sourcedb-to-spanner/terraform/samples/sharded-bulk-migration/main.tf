@@ -41,14 +41,14 @@ resource "google_compute_firewall" "allow-dataflow-to-source" {
   target_tags = ["databases"]
 }
 
-# upload local session file to the working GCS bucket
-resource "google_storage_bucket_object" "session_file_object" {
-  depends_on   = [google_project_service.enabled_apis]
-  name         = "${var.common_params.working_directory_prefix}/session.json"
-  source       = var.common_params.local_session_file_path
-  content_type = "application/json"
-  bucket       = var.common_params.working_directory_bucket
-}
+# # upload local session file to the working GCS bucket
+# resource "google_storage_bucket_object" "session_file_object" {
+#   depends_on   = [google_project_service.enabled_apis]
+#   name         = "${var.common_params.working_directory_prefix}/session.json"
+#   source       = var.common_params.local_session_file_path
+#   content_type = "application/json"
+#   bucket       = var.common_params.working_directory_bucket
+# }
 
 # Add roles to the service account that will run Dataflow for bulk migration
 resource "google_project_iam_member" "live_migration_roles" {
@@ -69,11 +69,10 @@ resource "google_project_iam_member" "live_migration_roles" {
 resource "google_dataflow_flex_template_job" "generated" {
   count = length(local.source_configs)
   depends_on = [
-    google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload,
-    google_storage_bucket_object.session_file_object
+    google_project_service.enabled_apis, google_storage_bucket_object.source_config_upload
   ]
   provider                = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Sourcedb_to_Spanner_Flex"
+  container_spec_gcs_path = "gs://manit-testing-ck/templates/flex/Sourcedb_to_Spanner_Flex"
 
   parameters = {
     jdbcDriverJars                 = var.common_params.jdbc_driver_jars
@@ -85,7 +84,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     databaseId                     = var.common_params.database_id
     projectId                      = var.common_params.spanner_project_id
     spannerHost                    = var.common_params.spanner_host
-    sessionFilePath                = "${local.working_directory_gcs}/session.json"
+    # sessionFilePath                = "${local.working_directory_gcs}/session.json"
     outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_prefixes[count.index].id}/output/"
     transformationJarPath          = var.common_params.transformation_jar_path
     transformationClassName        = var.common_params.transformation_class_name

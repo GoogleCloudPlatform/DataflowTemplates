@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import java.io.Serializable;
 import javax.annotation.Nullable;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
@@ -78,6 +80,31 @@ public abstract class SourceRow implements Serializable {
   }
 
   abstract SerializableGenericRecord record();
+
+  /**
+   * Generates a schema that wraps the payload with metadata fields.
+   * We prioritize using the payload's existing schema definition.
+   */
+  public Schema gcsSchema() {
+    return SchemaBuilder.record("SourceRowWithMetadata")
+        .fields()
+        .name("tableName").type().stringType().noDefault()
+        .name("shardId").type().nullable().stringType().noDefault()
+        // We reuse the exact schema from the payload to ensure compatibility
+        .name("payload").type(this.getPayload().getSchema()).noDefault()
+        .endRecord();
+  }
+
+  /**
+   * Converts the current SourceRow into a GenericRecord suitable for GCS writing.
+   */
+  public GenericRecord toGcsRecord() {
+    return new GenericRecordBuilder(this.gcsSchema())
+        .set("tableName", this.tableName())
+        .set("shardId", this.shardId())
+        .set("payload", this.getPayload())
+        .build();
+  }
 
   /**
    * returns an initialized builder for SourceRow.
