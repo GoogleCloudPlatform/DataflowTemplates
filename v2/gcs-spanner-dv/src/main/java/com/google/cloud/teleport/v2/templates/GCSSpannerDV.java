@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -24,7 +23,6 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
-import com.google.cloud.teleport.v2.transforms.SpannerHashTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
@@ -140,7 +138,7 @@ public class GCSSpannerDV {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
-    // Fetch source records from GCS
+    // Get Source records hashes
     PCollection<ComparisonRecord> sourceRecords = pipeline.apply("ReadSourceRecords",
         new SourceReaderTransform(options.getGcsInputDirectory())
     );
@@ -154,13 +152,9 @@ public class GCSSpannerDV {
                 new SpannerInformationSchemaProcessorTransform(
                     spannerConfig));
 
-    // Fetch Spanner records
-    PCollection<Struct> spannerRecords = pipeline
+    // Get Spanner records hashes
+    PCollection<ComparisonRecord> spannerRecords = pipeline
         .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig, ddlView));
-
-    // Map Spanner records into hashed records
-    PCollection<ComparisonRecord> spannerHashes = spannerRecords.apply(
-        "HashSpannerRecords", new SpannerHashTransform(ddlView));
 
     return pipeline.run();
   }

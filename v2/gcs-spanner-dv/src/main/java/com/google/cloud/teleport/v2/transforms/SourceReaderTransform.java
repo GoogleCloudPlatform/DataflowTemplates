@@ -9,8 +9,12 @@ import org.apache.beam.sdk.values.PCollection;
 import org.jetbrains.annotations.NotNull;
 
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SourceReaderTransform.class);
 
   private final String gcsInputDirectory;
 
@@ -37,7 +41,9 @@ public class SourceReaderTransform extends PTransform<@NotNull PBegin, @NotNull 
 
     @Override
     public ComparisonRecord apply(GenericRecord input) {
-      return ComparisonRecord.fromAvroRecord(input);
+      ComparisonRecord comparisonRecord = ComparisonRecord.fromAvroRecord(input);
+      LOG.info("source comparison record: {}", comparisonRecord.toString());
+      return comparisonRecord;
     }
   }
 }
