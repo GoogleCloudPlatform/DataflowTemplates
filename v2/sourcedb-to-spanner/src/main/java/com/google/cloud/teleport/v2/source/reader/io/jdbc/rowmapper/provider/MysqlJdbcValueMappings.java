@@ -347,9 +347,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    LOG.warn(
-        "Unknown column type: {}. Defaulting to size: 65,535.",
-        sourceColumnType);
+    LOG.warn("Unknown column type: {}. Defaulting to size: 65,535.", sourceColumnType);
     return 65_535;
   }
 }
