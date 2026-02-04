@@ -37,6 +37,7 @@ public class SchemaTestUtils {
             TEST_FIELD_NAME_1, new SourceColumnType("varchar", new Long[] {20L}, null))
         .addSourceColumnNameToSourceColumnType(
             TEST_FIELD_NAME_2, new SourceColumnType("varchar", new Long[] {20L}, null))
+        .setEstimatedRowSize(0L)
         .build();
   }
 }

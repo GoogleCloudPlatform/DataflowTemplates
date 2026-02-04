@@ -111,4 +111,24 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
+
+  default long estimateRowSize(
+      com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema sourceTableSchema,
+      com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider
+          jdbcValueMappingsProvider) {
+    return estimateRowSize(
+        sourceTableSchema.sourceColumnNameToSourceColumnType(), jdbcValueMappingsProvider);
+  }
+
+  default long estimateRowSize(
+      java.util.Map<String, SourceColumnType> sourceColumnNameToSourceColumnType,
+      com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider
+          jdbcValueMappingsProvider) {
+    long estimatedRowSize = 0;
+    for (java.util.Map.Entry<String, SourceColumnType> entry :
+        sourceColumnNameToSourceColumnType.entrySet()) {
+      estimatedRowSize += jdbcValueMappingsProvider.estimateColumnSize(entry.getValue());
+    }
+    return estimatedRowSize;
+  }
 }

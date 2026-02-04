@@ -1,0 +1,15 @@
+{
+  "renamedTables": {
+    "Singers": "Vocalists"
+  },
+  "renamedColumns": {
+    "Singers": {
+      "SingerName": "TalentName"
+    }
+  },
+  "tableParams": {
+    "Singers": {
+      "fetchSize": 500
+    }
+  }
+}

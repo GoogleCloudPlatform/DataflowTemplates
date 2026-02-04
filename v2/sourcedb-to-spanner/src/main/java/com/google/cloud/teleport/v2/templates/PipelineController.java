@@ -171,7 +171,8 @@ public class PipelineController {
       }
       OnSignal<@UnknownKeyFor @Nullable @Initialized Object> waitOnSignal =
           previousLevelPCollection != null ? Wait.on(previousLevelPCollection) : null;
-      IoWrapper ioWrapper = configContainer.getIOWrapper(sourceTables, waitOnSignal);
+      IoWrapper ioWrapper =
+          configContainer.getIOWrapper(sourceTables, waitOnSignal, tableSelector.getSchemaMapper());
       if (ioWrapper.getTableReaders().isEmpty()) {
         LOG.info("not creating reader as tables are not found at source: {}", sourceTables);
         // If tables of 1 level are ignored in middle, then the subsequent level will not wait to
@@ -299,13 +300,14 @@ public class PipelineController {
   interface JdbcDbConfigContainer extends DbConfigContainer {
 
     JdbcIOWrapperConfig getJDBCIOWrapperConfig(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal, ISchemaMapper schemaMapper);
 
     String getNamespace();
 
     @Override
-    default IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
-      return JdbcIoWrapper.of(getJDBCIOWrapperConfig(sourceTables, waitOnSignal));
+    default IoWrapper getIOWrapper(
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal, ISchemaMapper schemaMapper) {
+      return JdbcIoWrapper.of(getJDBCIOWrapperConfig(sourceTables, waitOnSignal, schemaMapper));
     }
 
     @Override
@@ -347,7 +349,7 @@ public class PipelineController {
     }
 
     public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal, ISchemaMapper schemaMapper) {
       return OptionsToConfigBuilder.getJdbcIOWrapperConfig(
           sqlDialect,
           sourceTables,
@@ -366,7 +368,8 @@ public class PipelineController {
           options.getNumPartitions(),
           waitOnSignal,
           options.getFetchSize(),
-          options.getUniformizationStageCountHint());
+          options.getUniformizationStageCountHint(),
+          schemaMapper);
     }
 
     @Override
@@ -388,9 +391,9 @@ public class PipelineController {
     }
 
     public JdbcIOWrapperConfig getJDBCIOWrapperConfig(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal, ISchemaMapper schemaMapper) {
       return OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-          options, sourceTables, null, waitOnSignal);
+          options, sourceTables, null, waitOnSignal, schemaMapper);
     }
 
     @Override

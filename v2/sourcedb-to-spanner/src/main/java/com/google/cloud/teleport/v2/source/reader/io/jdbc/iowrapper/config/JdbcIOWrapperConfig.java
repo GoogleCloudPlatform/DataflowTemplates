@@ -63,6 +63,9 @@ public abstract class JdbcIOWrapperConfig {
   /** Configured Partition Column. If unspecified for a table, it's auto-inferred. */
   public abstract ImmutableMap<String, ImmutableList<String>> tableVsPartitionColumns();
 
+  /** Configured Fetch Size per table. Overrides maxFetchSize if specified. */
+  public abstract ImmutableMap<String, Integer> tableVsFetchSize();
+
   /** Shard ID. */
   @Nullable
   public abstract String shardID();
@@ -253,6 +256,10 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
+  /** Worker Machine Type. */
+  @Nullable
+  public abstract String workerMachineType();
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
@@ -266,6 +273,7 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryBackOff(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF)
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
+        .setTableVsFetchSize(ImmutableMap.of())
         .setMaxPartitions(null)
         .setWaitOn(null)
         .setMaxFetchSize(null)
@@ -281,7 +289,8 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMachineType(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -297,6 +306,7 @@ public abstract class JdbcIOWrapperConfig {
             PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_DISCOVERY_BACKOFF)
         .setTables(ImmutableList.of())
         .setTableVsPartitionColumns(ImmutableMap.of())
+        .setTableVsFetchSize(ImmutableMap.of())
         .setMaxPartitions(null)
         .setWaitOn(null)
         .setMaxFetchSize(null)
@@ -312,7 +322,8 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMachineType(null);
   }
 
   @AutoValue.Builder
@@ -331,6 +342,8 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setTableVsPartitionColumns(
         ImmutableMap<String, ImmutableList<String>> value);
+
+    public abstract Builder setTableVsFetchSize(ImmutableMap<String, Integer> value);
 
     public abstract Builder setShardID(String value);
 
@@ -384,6 +397,8 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxConnections(Long value);
 
     public abstract Builder setSplitStageCountHint(Long value);
+
+    public abstract Builder setWorkerMachineType(String value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

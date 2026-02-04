@@ -181,6 +181,11 @@ public final class JdbcIoWrapper implements IoWrapper {
             tableConfig -> {
               SourceTableSchema sourceTableSchema =
                   findSourceTableSchema(sourceSchema, tableConfig);
+              long estimatedRowSize = sourceTableSchema.estimatedRowSize();
+              Integer calculatedFetchSize =
+                  FetchSizeCalculator.getFetchSize(
+                      tableConfig, estimatedRowSize, config.workerMachineType());
+              int fetchSize = (calculatedFetchSize == null) ? 0 : calculatedFetchSize;
               return Map.entry(
                   SourceTableReference.builder()
                       .setSourceSchemaReference(sourceSchema.schemaReference())
@@ -193,13 +198,15 @@ public final class JdbcIoWrapper implements IoWrapper {
                           dataSourceConfiguration,
                           sourceSchema.schemaReference(),
                           tableConfig,
-                          sourceTableSchema)
+                          sourceTableSchema,
+                          fetchSize)
                       : getJdbcIO(
                           config,
                           dataSourceConfiguration,
                           sourceSchema.schemaReference(),
                           tableConfig,
-                          sourceTableSchema));
+                          sourceTableSchema,
+                          fetchSize));
             })
         .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
@@ -237,6 +244,11 @@ public final class JdbcIoWrapper implements IoWrapper {
                       colEntry ->
                           sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                               colEntry.getKey(), colEntry.getValue()));
+              long estimatedRowSize =
+                  config
+                      .dialectAdapter()
+                      .estimateRowSize(tableEntry.getValue(), config.valueMappingsProvider());
+              sourceTableSchemaBuilder.setEstimatedRowSize(estimatedRowSize);
               return sourceTableSchemaBuilder.build();
             })
         .forEach(sourceSchemaBuilder::addTableSchema);
@@ -279,6 +291,12 @@ public final class JdbcIoWrapper implements IoWrapper {
     TableConfig.Builder tableConfigBuilder = TableConfig.builder(tableName);
     if (config.maxPartitions() != null && config.maxPartitions() != 0) {
       tableConfigBuilder.setMaxPartitions(config.maxPartitions());
+    }
+    // Set fetch size for the table by priority: table specific fetch size > global fetch size
+    if (config.tableVsFetchSize().containsKey(tableName)) {
+      tableConfigBuilder.setFetchSize(config.tableVsFetchSize().get(tableName));
+    } else if (config.maxFetchSize() != null) {
+      tableConfigBuilder.setFetchSize(config.maxFetchSize());
     }
     /*
      * TODO(vardhanvthigle): Add optional support for non-primary indexes.
@@ -413,7 +431,8 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
             .withTable(delimitIdentifier(tableConfig.tableName()))
@@ -427,9 +446,6 @@ public final class JdbcIoWrapper implements IoWrapper {
                     config.shardID()));
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
-    }
-    if (config.maxFetchSize() != null) {
-      jdbcIO = jdbcIO.withFetchSize(config.maxFetchSize());
     }
     return jdbcIO;
   }
@@ -449,7 +465,8 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
 
     ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
         ReadWithUniformPartitions.<SourceRow>builder()
@@ -458,7 +475,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
-            .setFetchSize(config.maxFetchSize())
+            .setFetchSize(fetchSize)
             .setRowMapper(
                 new JdbcSourceRowMapper(
                     config.valueMappingsProvider(),

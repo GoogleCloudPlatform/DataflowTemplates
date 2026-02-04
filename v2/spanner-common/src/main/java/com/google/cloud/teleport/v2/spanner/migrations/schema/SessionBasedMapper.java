@@ -321,4 +321,16 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       return false;
     }
   }
+
+  @Override
+  public Integer getFetchSize(String namespace, String tableName) {
+    if (schema.getSrcToID().containsKey(tableName)) {
+      String tableId = schema.getSrcToID().get(tableName).getName();
+      Schema.TableParams params = schema.getTableParams().get(tableId);
+      if (params != null) {
+        return params.getFetchSize();
+      }
+    }
+    return null;
+  }
 }

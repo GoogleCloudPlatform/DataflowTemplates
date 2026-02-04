@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Adapter for PostgreSQL dialect of JDBC databases. */
+@SuppressWarnings("null")
 public class PostgreSQLDialectAdapter implements DialectAdapter {
 
   public enum PostgreSQLVersion {
@@ -80,11 +81,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String PAD_SPACE_RETURN_TYPE = "CHAR(5)";
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
-  private final PostgreSQLVersion version;
-
-  public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
-    this.version = version;
-  }
+  public PostgreSQLDialectAdapter(PostgreSQLVersion version) {}
 
   /**
    * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not

@@ -108,4 +108,14 @@ public interface ISchemaMapper extends Serializable {
    * @param namespace is currently not operational.
    */
   boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn);
+
+  /**
+   * Retrieves the fetch size for a given table.
+   *
+   * @param namespace is currently not operational.
+   * @param tableName source table name.
+   */
+  default Integer getFetchSize(String namespace, String tableName) {
+    return null;
+  }
 }

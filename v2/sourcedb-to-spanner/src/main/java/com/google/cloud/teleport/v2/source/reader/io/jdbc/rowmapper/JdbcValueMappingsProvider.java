@@ -25,6 +25,15 @@ import java.io.Serializable;
 public interface JdbcValueMappingsProvider extends Serializable {
 
   /**
+   * Estimate the column size in bytes for a given column type.
+   *
+   * @param sourceColumnType The column type to estimate size for.
+   * @return Estimated size in bytes.
+   */
+  int estimateColumnSize(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType);
+
+  /**
    * Get Mapping of source types to {@link JdbcValueMapper}.
    *
    * @return mapping.
