@@ -115,7 +115,6 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
     icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
-
     // MySql setup
     String tableName = "source_table";
     HashMap<String, String> columns = new HashMap<>();
@@ -146,7 +145,7 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    List<Map<String,Object>> mySqlRecords = mySQLResourceManager.readTable(tableName);
+    List<Map<String, Object>> mySqlRecords = mySQLResourceManager.readTable(tableName);
     LOG.info("MySql records: {}", mySqlRecords);
     assertNotNull(mySqlRecords);
     assertEquals(3, mySqlRecords.size());

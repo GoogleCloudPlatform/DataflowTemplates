@@ -15,12 +15,11 @@
  */
 package com.google.cloud.teleport.templates.yaml;
 
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Validation;
-
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Validation;
 
 @Template(
     name = "Iceberg_To_MySql_Yaml",
@@ -47,7 +46,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     hidden = false)
 public interface IcebergToMySqlYaml {
 
-    // MySql options
+  // MySql options
   @TemplateParameter.Text(
       order = 1,
       name = "jdbcUrl",
@@ -161,7 +160,7 @@ public interface IcebergToMySqlYaml {
       example = "10")
   Integer getAutosharding();
 
-    //   Iceberg options
+  //   Iceberg options
   @TemplateParameter.Text(
       order = 13,
       name = "table",
@@ -227,5 +226,4 @@ public interface IcebergToMySqlYaml {
       helpText = "A filter expression to apply to records from the Iceberg table.",
       example = "age > 18")
   String getFilter();
-
 }
