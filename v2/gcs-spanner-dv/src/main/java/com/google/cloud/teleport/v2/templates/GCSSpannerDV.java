@@ -42,10 +42,13 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,21 +177,27 @@ public class GCSSpannerDV {
     PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
 
     matchResults.get(MATCHED_TAG)
-            .apply("CountMatched", Count.globally())
+            .apply("ExtractTableNameMatched", MapElements.into(TypeDescriptors.strings())
+                    .via(ComparisonRecord::getTableName))
+            .apply("CountMatched", Count.perElement())
             .apply("LogMatched", ParDo.of(new LogCountFn("Matched")));
 
     matchResults.get(MISSING_IN_SPANNER_TAG)
-            .apply("CountMissingInSpanner", Count.globally())
+            .apply("ExtractTableNameMissingInSpanner", MapElements.into(TypeDescriptors.strings())
+                    .via(ComparisonRecord::getTableName))
+            .apply("CountMissingInSpanner", Count.perElement())
             .apply("LogMissingInSpanner", ParDo.of(new LogCountFn("MissingInSpanner")));
 
     matchResults.get(MISSING_IN_SOURCE_TAG)
-            .apply("CountMissingInSource", Count.globally())
+            .apply("ExtractTableNameMissingInSource", MapElements.into(TypeDescriptors.strings())
+                    .via(ComparisonRecord::getTableName))
+            .apply("CountMissingInSource", Count.perElement())
             .apply("LogMissingInSource", ParDo.of(new LogCountFn("MissingInSource")));
 
     return pipeline.run();
   }
 
-  static class LogCountFn extends DoFn<Long, Void> {
+  static class LogCountFn extends DoFn<KV<String, Long>, Void> {
 
       private final String label;
 
@@ -198,7 +207,7 @@ public class GCSSpannerDV {
 
       @ProcessElement
       public void processElement(ProcessContext c) {
-          LOG.info("{}: {}", label, c.element());
+          LOG.info("{}: {} - {}", label, c.element().getKey(), c.element().getValue());
       }
   }
 
