@@ -84,3 +84,27 @@ options:
         example: 60
         required: true
         type: integer
+
+  - name: "iceberg_read_options"
+    parameters:
+      - order: 1
+        name: "drop"
+        description: "A list of field names to drop from the input record before processing."
+        help: "A list of field names to drop from records read from the Iceberg table. Mutually exclusive with 'keep' and 'only'."
+        example: '["field_to_drop_1", "field_to_drop_2"]'
+        required: false
+        type: text
+      - order: 2
+        name: "filter"
+        description: "An optional filter expression to apply to the input records."
+        help: "A filter expression to apply to records from the Iceberg table."
+        example: "age > 18 AND status = 'active'"
+        required: false
+        type: text
+      - order: 3
+        name: "keep"
+        description: "A list of field names to keep in the input record."
+        help: "A list of field names to keep from records read from the Iceberg table. Mutually exclusive with 'drop' and 'only'."
+        example: '["field_to_keep_1", "field_to_keep_2"]'
+        required: false
+        type: text
