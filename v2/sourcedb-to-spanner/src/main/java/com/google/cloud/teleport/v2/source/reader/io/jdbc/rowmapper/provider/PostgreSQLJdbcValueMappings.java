@@ -26,7 +26,6 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -35,9 +34,13 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLJdbcValueMappings.class);
 
   private static final Calendar UTC_CALENDAR =
       Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
@@ -54,13 +57,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static long toMicros(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
         + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
-  }
-
-  private static long toMicros(OffsetTime offsetTime) {
-    return TimeUnit.HOURS.toMicros(offsetTime.getHour())
-        + TimeUnit.MINUTES.toMicros(offsetTime.getMinute())
-        + TimeUnit.SECONDS.toMicros(offsetTime.getSecond())
-        + TimeUnit.NANOSECONDS.toMicros(offsetTime.getNano());
   }
 
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
@@ -286,7 +282,8 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    throw new IllegalArgumentException("Unknown column type: " + sourceColumnType);
+    LOG.warn("Unknown column type: {}. Defaulting to size: 65,535.", sourceColumnType);
+    return 65_535;
   }
 
   private static long getLengthOrPrecision(

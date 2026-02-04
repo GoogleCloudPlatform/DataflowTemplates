@@ -35,11 +35,12 @@ public class PostgreSQLJdbcValueMappingsTest {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testUnknownTypeThrowsException() {
+  @Test
+  public void testUnknownTypeReturnsDefaultSize() {
     PostgreSQLJdbcValueMappings mappings = new PostgreSQLJdbcValueMappings();
     SourceColumnType sourceColumnType =
         new SourceColumnType("UNKNOWN_TYPE", new Long[] {10L}, null);
-    mappings.estimateColumnSize(sourceColumnType);
+    int size = mappings.estimateColumnSize(sourceColumnType);
+    assertTrue("Row size estimate for unknown type should be 65,535", size == 65_535);
   }
 }
