@@ -28,11 +28,18 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.transforms.MatchRecordsTransform;
 import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -140,6 +147,63 @@ public class GCSSpannerDV {
     RpcPriority getSpannerPriority();
 
     void setSpannerPriority(RpcPriority value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 7,
+        optional = true,
+        description =
+            "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
+        helpText =
+            "Session file path in Cloud Storage that contains mapping information from"
+                + " Spanner Migration Tool")
+    @Default.String("")
+    String getSessionFilePath();
+
+    void setSessionFilePath(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 8,
+        optional = true,
+        description = "File based overrides from source to spanner",
+        helpText =
+            "A file which specifies the table and the column name overrides from source to spanner.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 9,
+        optional = true,
+        description = "Table name overrides from source to spanner",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        description = "Column name overrides from source to spanner",
+        example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from source to spanner. They are written in the"
+                + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+                + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
   }
 
   public static void main(String[] args) {
@@ -162,53 +226,53 @@ public class GCSSpannerDV {
     // Fetch Spanner DDL using Info schema
     final PCollectionView<Ddl> ddlView =
         pipeline.apply(
-                    "ReadSpannerInformationSchema",
-                    new SpannerInformationSchemaProcessorTransform(
-                            spannerConfig));
+            "ReadSpannerInformationSchema",
+            new SpannerInformationSchemaProcessorTransform(
+                spannerConfig));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords = pipeline
         .apply("ReadSpannerRecords", new SpannerReaderTransform(spannerConfig, ddlView));
 
     PCollectionTuple inputs = PCollectionTuple.of(SOURCE_TAG, sourceRecords)
-            .and(SPANNER_TAG, spannerRecords);
+        .and(SPANNER_TAG, spannerRecords);
 
     // Match records to determine equivalence
     PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
 
     matchResults.get(MATCHED_TAG)
-            .apply("ExtractTableNameMatched", MapElements.into(TypeDescriptors.strings())
-                    .via(ComparisonRecord::getTableName))
-            .apply("CountMatched", Count.perElement())
-            .apply("LogMatched", ParDo.of(new LogCountFn("Matched")));
+        .apply("ExtractTableNameMatched", MapElements.into(TypeDescriptors.strings())
+            .via(ComparisonRecord::getTableName))
+        .apply("CountMatched", Count.perElement())
+        .apply("LogMatched", ParDo.of(new LogCountFn("Matched")));
 
     matchResults.get(MISSING_IN_SPANNER_TAG)
-            .apply("ExtractTableNameMissingInSpanner", MapElements.into(TypeDescriptors.strings())
-                    .via(ComparisonRecord::getTableName))
-            .apply("CountMissingInSpanner", Count.perElement())
-            .apply("LogMissingInSpanner", ParDo.of(new LogCountFn("MissingInSpanner")));
+        .apply("ExtractTableNameMissingInSpanner", MapElements.into(TypeDescriptors.strings())
+            .via(ComparisonRecord::getTableName))
+        .apply("CountMissingInSpanner", Count.perElement())
+        .apply("LogMissingInSpanner", ParDo.of(new LogCountFn("MissingInSpanner")));
 
     matchResults.get(MISSING_IN_SOURCE_TAG)
-            .apply("ExtractTableNameMissingInSource", MapElements.into(TypeDescriptors.strings())
-                    .via(ComparisonRecord::getTableName))
-            .apply("CountMissingInSource", Count.perElement())
-            .apply("LogMissingInSource", ParDo.of(new LogCountFn("MissingInSource")));
+        .apply("ExtractTableNameMissingInSource", MapElements.into(TypeDescriptors.strings())
+            .via(ComparisonRecord::getTableName))
+        .apply("CountMissingInSource", Count.perElement())
+        .apply("LogMissingInSource", ParDo.of(new LogCountFn("MissingInSource")));
 
     return pipeline.run();
   }
 
   static class LogCountFn extends DoFn<KV<String, Long>, Void> {
 
-      private final String label;
+    private final String label;
 
-      public LogCountFn(String label) {
-          this.label = label;
-      }
+    public LogCountFn(String label) {
+      this.label = label;
+    }
 
-      @ProcessElement
-      public void processElement(ProcessContext c) {
-          LOG.info("{}: {} - {}", label, c.element().getKey(), c.element().getValue());
-      }
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      LOG.info("{}: {} - {}", label, c.element().getKey(), c.element().getValue());
+    }
   }
 
   @VisibleForTesting
@@ -219,5 +283,50 @@ public class GCSSpannerDV {
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+  }
+
+  static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
+    // Check if config types are specified
+    boolean hasSessionFile =
+        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
+    boolean hasSchemaOverridesFile = options.getSchemaOverridesFilePath() != null
+        && !options.getSchemaOverridesFilePath().equals("");
+    boolean hasStringOverrides =
+        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
+            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
+
+    int overrideTypesCount = 0;
+    if (hasSessionFile) {
+      overrideTypesCount++;
+    }
+    if (hasSchemaOverridesFile) {
+      overrideTypesCount++;
+    }
+    if (hasStringOverrides) {
+      overrideTypesCount++;
+    }
+
+    if (overrideTypesCount > 1) {
+      throw new IllegalArgumentException(
+          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
+              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+    }
+
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    if (hasSessionFile) {
+      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
+    } else if (hasSchemaOverridesFile) {
+      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
+    } else if (hasStringOverrides) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
+    }
+    return schemaMapper;
   }
 }
