@@ -1,0 +1,64 @@
+template:
+
+  name: "Iceberg_To_SqlServer_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg to SqlServer (YAML)"
+  description: >
+    The Iceberg to SqlServer template is a batch pipeline that reads data from an Iceberg table
+    and outputs the records to a SqlServer database table.
+  flex_container_name: "iceberg-to-sqlserver-yaml"
+  yamlTemplateFile: "IcebergToSqlServer.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt", "options/iceberg_options.yaml", "options/sqlserver_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Iceberg table must exist and be accessible through the provided catalog.",
+     "The Output SqlServer instance must exist and the target table must exist or be created."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+    - "sqlserver_options"
+
+  parameters:
+    - iceberg_common_options
+    - iceberg_read_options
+    - sqlserver_common_options
+    - sqlserver_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+
+    - type: WriteToSqlServer
+      name: WriteToSqlServer
+      config:
+        driver_class_name: {{ driverClassName | default("com.microsoft.sqlserver.jdbc.SQLServerDriver")}}
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        query: {{ writeQuery }}
+        driver_jars: {{ driverJars }}
+        connection_properties: {{ connectionProperties }}
+        connection_init_sql: {{ connectionInitSql }}
+        write_statement: {{ writeStatement }}
+        table: {{ location }}
+        batch_size: {{ batchSize }}
+        autosharding: {{ autosharding }}
+        type: {{ jdbcType | default("mssql") }}
+
+options:
+  streaming: false
