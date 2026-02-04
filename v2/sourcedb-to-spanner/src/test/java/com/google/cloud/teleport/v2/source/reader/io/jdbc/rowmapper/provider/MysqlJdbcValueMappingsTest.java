@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
@@ -35,11 +36,12 @@ public class MysqlJdbcValueMappingsTest {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testUnknownTypeThrowsException() {
+  @Test
+  public void testUnknownTypeReturnsDefaultSize() {
     MysqlJdbcValueMappings mappings = new MysqlJdbcValueMappings();
     SourceColumnType sourceColumnType =
         new SourceColumnType("UNKNOWN_TYPE", new Long[] {10L}, null);
-    mappings.estimateColumnSize(sourceColumnType);
+    int size = mappings.estimateColumnSize(sourceColumnType);
+    assertEquals(65_535, size);
   }
 }
