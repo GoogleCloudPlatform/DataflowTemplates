@@ -15,9 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MATCHED_TAG;
-import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SOURCE_TAG;
-import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SPANNER_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SOURCE_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.SPANNER_TAG;
 
@@ -31,6 +28,7 @@ import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.transforms.MatchRecordsTransform;
+import com.google.cloud.teleport.v2.transforms.ReportResultsTransform;
 import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.transforms.SpannerReaderTransform;
@@ -42,18 +40,10 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.Count;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.sdk.values.TypeDescriptors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Template(
     name = "GCS_Spanner_DV",
@@ -73,8 +63,6 @@ import org.slf4j.LoggerFactory;
       "The Spanner tables must have a compatible schema."
     })
 public class GCSSpannerDV {
-
-  private static final Logger LOG = LoggerFactory.getLogger(GCSSpannerDV.class);
 
   public interface Options extends PipelineOptions {
 
@@ -248,45 +236,10 @@ public class GCSSpannerDV {
     // Match records to determine equivalence
     PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
 
-    matchResults
-        .get(MATCHED_TAG)
-        .apply(
-            "ExtractTableNameMatched",
-            MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-        .apply("CountMatched", Count.perElement())
-        .apply("LogMatched", ParDo.of(new LogCountFn("Matched")));
-
-    matchResults
-        .get(MISSING_IN_SPANNER_TAG)
-        .apply(
-            "ExtractTableNameMissingInSpanner",
-            MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-        .apply("CountMissingInSpanner", Count.perElement())
-        .apply("LogMissingInSpanner", ParDo.of(new LogCountFn("MissingInSpanner")));
-
-    matchResults
-        .get(MISSING_IN_SOURCE_TAG)
-        .apply(
-            "ExtractTableNameMissingInSource",
-            MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-        .apply("CountMissingInSource", Count.perElement())
-        .apply("LogMissingInSource", ParDo.of(new LogCountFn("MissingInSource")));
+    //Report results of the validation
+    matchResults.apply("ReportResults", new ReportResultsTransform());
 
     return pipeline.run();
-  }
-
-  static class LogCountFn extends DoFn<KV<String, Long>, Void> {
-
-    private final String label;
-
-    public LogCountFn(String label) {
-      this.label = label;
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-      LOG.info("{}: {} - {}", label, c.element().getKey(), c.element().getValue());
-    }
   }
 
   @VisibleForTesting

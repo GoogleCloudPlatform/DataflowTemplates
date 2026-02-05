@@ -35,8 +35,8 @@ public class CreateSpannerReadOpsFn extends DoFn<Void, ReadOperation> {
     List<String> tableNames = ddl.getTablesOrderedByReference();
     tableNames.forEach(
         tableName -> {
-          //We encode the tableName in the query itself to push table information dynamically
-          //and avoid table level stages.
+          // We encode the tableName in the query itself to push table information dynamically
+          // and avoid table level stages.
           String query =
               String.format("SELECT *, '%s' as __tableName__ FROM %s", tableName, tableName);
           c.output(ReadOperation.create().withQuery(query));

@@ -23,12 +23,9 @@ import java.math.BigDecimal;
 /**
  * Visitor interface for Spanner {@link Value}s.
  *
- * <p>
- * This interface implements the Visitor pattern to decouple the operations
- * performed on Spanner
- * values (such as hashing or string formatting) from the underlying data
- * structure. This approach eliminates the need for repetitive {@code switch}
- * statements or type checks across the codebase.
+ * <p>This interface implements the Visitor pattern to decouple the operations performed on Spanner
+ * values (such as hashing or string formatting) from the underlying data structure. This approach
+ * eliminates the need for repetitive {@code switch} statements or type checks across the codebase.
  */
 public interface IUnifiedVisitor {
   void visitString(String s);
