@@ -671,9 +671,9 @@ public class ModelUtilsTest {
           new SourceTransformations(
               original != null && original.enableGrouping(),
               Arrays.asList(aggregations),
-              original == null ? null : original.whereClause(),
-              original == null ? null : original.orderByClauses(),
-              original == null ? null : original.limit());
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private Function<SourceTransformations, SourceTransformations> transformationsWithLimit(
@@ -681,9 +681,9 @@ public class ModelUtilsTest {
       return (original) ->
           new SourceTransformations(
               original != null && original.enableGrouping(),
-              original == null ? null : original.aggregations(),
-              original == null ? null : original.whereClause(),
-              original == null ? null : original.orderByClauses(),
+              original == null ? List.of() : original.aggregations(),
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
               limit);
     }
 
@@ -692,10 +692,10 @@ public class ModelUtilsTest {
       return (original) ->
           new SourceTransformations(
               original != null && original.enableGrouping(),
-              original == null ? null : original.aggregations(),
+              original == null ? List.of() : original.aggregations(),
               where,
-              original == null ? null : original.orderByClauses(),
-              original == null ? null : original.limit());
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private Function<SourceTransformations, SourceTransformations> transformationsWithGroupBy(
@@ -703,10 +703,10 @@ public class ModelUtilsTest {
       return (original) ->
           new SourceTransformations(
               groupBy,
-              original == null ? null : original.aggregations(),
-              original == null ? null : original.whereClause(),
-              original == null ? null : original.orderByClauses(),
-              original == null ? null : original.limit());
+              original == null ? List.of() : original.aggregations(),
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private static RelationshipTarget copyRelationship(

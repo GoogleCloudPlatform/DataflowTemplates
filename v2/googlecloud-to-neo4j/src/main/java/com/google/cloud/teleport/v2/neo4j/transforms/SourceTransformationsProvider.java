@@ -35,11 +35,11 @@ public class SourceTransformationsProvider
         transformations.has("enable_grouping")
             && transformations.get("enable_grouping").asBoolean(),
         !transformations.has("aggregations")
-            ? null
+            ? List.of()
             : mapAggregations(transformations.get("aggregations")),
-        !transformations.has("where") ? null : transformations.get("where").textValue(),
-        !transformations.has("order_by") ? null : mapOrderBys(transformations.get("order_by")),
-        !transformations.has("limit") ? null : transformations.get("limit").asInt());
+        !transformations.has("where") ? "" : transformations.get("where").textValue(),
+        !transformations.has("order_by") ? List.of() : mapOrderBys(transformations.get("order_by")),
+        !transformations.has("limit") ? -1 : transformations.get("limit").asInt());
   }
 
   private List<Aggregation> mapAggregations(JsonNode aggregations) {

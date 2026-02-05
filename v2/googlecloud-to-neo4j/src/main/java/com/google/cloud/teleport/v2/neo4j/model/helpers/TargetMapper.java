@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getBooleanOrDefault;
-import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getIntegerOrNull;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getIntegerOrDefault;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.findNodeTarget;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseEdgeNode;
@@ -233,12 +233,12 @@ class TargetMapper {
         parseAggregations(transform),
         getStringOrDefault(transform, "where", ""),
         parseOrderBy(transform),
-        getIntegerOrNull(transform, "limit"));
+        getIntegerOrDefault(transform, "limit", -1));
   }
 
   private static List<Aggregation> parseAggregations(JSONObject json) {
     if (!json.has("aggregations")) {
-      return null;
+      return List.of();
     }
     JSONArray aggregations = json.getJSONArray("aggregations");
     List<Aggregation> results = new ArrayList<>(aggregations.length());
@@ -252,7 +252,7 @@ class TargetMapper {
   // visible for testing
   static List<OrderBy> parseOrderBy(JSONObject json) {
     if (!json.has("order_by")) {
-      return null;
+      return List.of();
     }
     var orderBy = json.getString("order_by");
     String[] rawClauses = StringUtils.stripAll(orderBy.split(","));

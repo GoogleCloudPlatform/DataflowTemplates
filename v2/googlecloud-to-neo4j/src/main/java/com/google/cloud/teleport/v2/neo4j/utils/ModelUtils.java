@@ -61,17 +61,16 @@ public class ModelUtils {
     if (target.getTargetType() == TargetType.QUERY) {
       return false;
     }
-    Optional<SourceTransformations> sourceTransformations = getSourceTransformations(target);
+    Optional<SourceTransformations> sourceTransformations =
+        ((EntityTarget) target).getExtension(SourceTransformations.class);
     if (sourceTransformations.isEmpty()) {
       return false;
     }
     var transformations = sourceTransformations.get();
-    var aggregations = transformations.aggregations();
-    var orderBys = transformations.orderByClauses();
     return transformations.enableGrouping()
-        || aggregations != null && !aggregations.isEmpty()
-        || orderBys != null && !orderBys.isEmpty()
-        || StringUtils.isNotEmpty(transformations.whereClause());
+        || !transformations.aggregations().isEmpty()
+        || !transformations.orderByClauses().isEmpty()
+        || !transformations.whereClause().isBlank();
   }
 
   public static Set<String> getBeamFieldSet(Schema schema) {
@@ -102,7 +101,7 @@ public class ModelUtils {
           String.format("Expected node or relationship target, got %s", targetType));
     }
 
-    var transformations = getSourceTransformations(target);
+    var transformations = ((EntityTarget) target).getExtension(SourceTransformations.class);
     try {
       var statement = new PlainSelect();
       statement.withFromItem(new Table("PCOLLECTION"));
@@ -173,7 +172,7 @@ public class ModelUtils {
             statement.addGroupByColumnReference(groupByField);
           }
           var limit = transforms.limit();
-          if (limit != null) {
+          if (limit >= 0) {
             statement.setLimit(new Limit().withRowCount(new LongValue(limit)));
           }
         }
@@ -253,14 +252,6 @@ public class ModelUtils {
     }
     return Stream.concat(keyFields, uniqueFields)
         .collect(Collectors.toCollection(LinkedHashSet::new));
-  }
-
-  private static Optional<SourceTransformations> getSourceTransformations(Target target) {
-    if (target instanceof EntityTarget) {
-      return ((EntityTarget) target).getExtension(SourceTransformations.class);
-    }
-    throw new IllegalArgumentException(
-        String.format("Unsupported target type: %s", target.getClass()));
   }
 
   private static OrderByElement convertToJsqlElement(OrderBy orderByClause)

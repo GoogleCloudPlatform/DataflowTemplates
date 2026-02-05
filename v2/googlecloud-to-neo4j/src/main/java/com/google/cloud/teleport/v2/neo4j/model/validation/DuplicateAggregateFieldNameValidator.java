@@ -81,9 +81,6 @@ public class DuplicateAggregateFieldNameValidator implements SpecificationValida
       return;
     }
     var aggregations = sourceTransformations.get().aggregations();
-    if (aggregations == null) {
-      return;
-    }
     var group = target instanceof NodeTarget ? "nodes" : "relationships";
     for (int i = 0; i < aggregations.size(); i++) {
       var path =
