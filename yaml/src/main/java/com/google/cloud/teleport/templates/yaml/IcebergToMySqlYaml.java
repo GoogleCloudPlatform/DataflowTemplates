@@ -27,10 +27,11 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Iceberg to MySql (YAML)",
     description =
-        "The Iceberg to MySql template is a batch pipeline that reads data from an Iceberg table and outputs the records to a MySql database table.",
-    flexContainerName = "pipeline-yaml",
+        "The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg and outputs the records to MySQL table.",
+    flexContainerName = "iceberg-to-mysql-yaml",
     yamlTemplateFile = "IcebergToMySql.yaml",
     filesToCopy = {
+      "template.yaml",
       "main.py",
       "requirements.txt",
       "options/mysql_options.yaml",
@@ -39,14 +40,13 @@ import org.apache.beam.sdk.options.Validation;
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The Input Iceberg instance and table must exist.",
-      "The Output MySql table need not exist, but the storage must exist and passed through catalog_properties."
+      "The Input Iceberg table must exist.",
+      "The Output MySQL table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
     hidden = false)
 public interface IcebergToMySqlYaml {
 
-  // MySql options
   @TemplateParameter.Text(
       order = 1,
       name = "jdbcUrl",
@@ -127,10 +127,11 @@ public interface IcebergToMySqlYaml {
   @TemplateParameter.Text(
       order = 9,
       name = "location",
-      optional = true,
+      optional = false,
       description = "The name of the table to write to.",
       helpText = "The name of the database table to write data to.",
-      example = "public.my_table")
+      example = "public.my_destination_table")
+  @Validation.Required
   String getLocation();
 
   @TemplateParameter.Text(
@@ -142,25 +143,25 @@ public interface IcebergToMySqlYaml {
       example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
   String getWriteStatement();
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 11,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
       helpText = "The number of records to group together for each write.",
-      example = "id")
-  String getBatchSize();
+      example = "1000")
+  @Default.Integer(1000)
+  Integer getBatchSize();
 
-  @TemplateParameter.Integer(
+  @TemplateParameter.Boolean(
       order = 12,
       name = "autosharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "10")
-  Integer getAutosharding();
+      example = "False")
+  Boolean getAutosharding();
 
-  //   Iceberg options
   @TemplateParameter.Text(
       order = 13,
       name = "table",
@@ -211,19 +212,19 @@ public interface IcebergToMySqlYaml {
 
   @TemplateParameter.Text(
       order = 18,
-      name = "keep",
-      optional = true,
-      description = "A list of field names to keep in the input record.",
-      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
-      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
-  String getKeep();
-
-  @TemplateParameter.Text(
-      order = 19,
       name = "filter",
       optional = true,
       description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
       example = "age > 18")
   String getFilter();
+
+  @TemplateParameter.Text(
+      order = 19,
+      name = "keep",
+      optional = true,
+      description = "A list of field names to keep in the input record.",
+      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
+      example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
+  String getKeep();
 }
