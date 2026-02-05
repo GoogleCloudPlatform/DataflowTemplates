@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.mapper.ComparisonRecordMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import java.util.Objects;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -29,7 +30,7 @@ public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
 
-  private transient ComparisonRecordMapper mapper;
+  private transient ComparisonRecordMapper comparisonRecordMapper;
 
   public SpannerHashFn(
       PCollectionView<Ddl> ddlView, SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
@@ -40,9 +41,16 @@ public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
   @ProcessElement
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
-    if (mapper == null) {
-      mapper = new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null);
+    // lazy initialization of the mapper.
+    if (comparisonRecordMapper == null) {
+      comparisonRecordMapper =
+          new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null, ddl);
     }
-    c.output(mapper.mapFrom(c.element(), ddl));
+
+    ComparisonRecord comparisonRecord =
+        comparisonRecordMapper.mapFrom(Objects.requireNonNull(c.element()));
+    if (comparisonRecord != null) {
+      c.output(comparisonRecord);
+    }
   }
 }

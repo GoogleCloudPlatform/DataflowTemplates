@@ -220,7 +220,8 @@ public class GCSSpannerDV {
             "ReadSpannerInformationSchema",
             new SpannerInformationSchemaProcessorTransform(spannerConfig));
 
-    // Get Source records hashes
+    // Get Schema mapper provider, we get Ddl from a side input
+    // so the mapper has to be initialized lazily
     SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider =
         new SchemaMapperProviderFn(
             options.getSessionFilePath(),
@@ -228,6 +229,7 @@ public class GCSSpannerDV {
             options.getTableOverrides(),
             options.getColumnOverrides());
 
+    // Get Source records hashes
     PCollection<ComparisonRecord> sourceRecords =
         pipeline.apply(
             "ReadSourceRecords",

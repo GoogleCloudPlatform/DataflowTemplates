@@ -32,7 +32,6 @@ import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -50,53 +49,44 @@ public class ComparisonRecordMapper implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(ComparisonRecordMapper.class);
   private final ISchemaMapper schemaMapper;
   private final ISpannerMigrationTransformer transformer;
+  private final Ddl ddl;
 
   public ComparisonRecordMapper(
-      ISchemaMapper schemaMapper, ISpannerMigrationTransformer transformer) {
+      ISchemaMapper schemaMapper, ISpannerMigrationTransformer transformer, Ddl ddl) {
     this.schemaMapper = schemaMapper;
     this.transformer = transformer;
+    this.ddl = ddl;
   }
 
-  public ComparisonRecord mapFrom(GenericRecord avroRecord, Ddl ddl) {
+  public ComparisonRecord mapFrom(GenericRecord avroRecord) {
     try {
-      // 1. Extract metadata from SourceRow (wrapped in GenericRecord)
       String tableName = avroRecord.get("tableName").toString();
       String shardId =
           avroRecord.get("shardId") != null ? avroRecord.get("shardId").toString() : "";
       GenericRecord payload = (GenericRecord) avroRecord.get("payload");
-
-      // 2. Convert payload to Map<String, Value> using GenericRecordTypeConvertor
       GenericRecordTypeConvertor convertor =
           new GenericRecordTypeConvertor(schemaMapper, "", shardId, transformer);
       Map<String, Value> values = convertor.transformChangeEvent(payload, tableName);
 
       if (values == null) {
-        return null; // Transformation filtered out the record
+        return null;
       }
-
-      // 3. Get Primary Key names from Spanner DDL (destination table)
-      // Note: GenericRecordTypeConvertor already handles table mapping, so 'values'
-      // keys are Spanner column names.
-      // We need the Spanner table name to look up PKs.
+      // Map to Spanner table using mapper
       String spannerTableName = schemaMapper.getSpannerTableName("", tableName);
       Table table = ddl.table(spannerTableName);
-      //
       if (table == null) {
         throw new RuntimeException("Table not found in DDL: " + spannerTableName);
       }
       List<String> pkNames =
           table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
-
-      return buildRecord(spannerTableName, values, pkNames);
-
+      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames);
     } catch (Exception e) {
       throw new RuntimeException("Error mapping GenericRecord to ComparisonRecord", e);
     }
   }
 
-  public ComparisonRecord mapFrom(Struct spannerStruct, Ddl ddl) {
-    // 1. Convert Struct to Map<String, Value>
-    Map<String, Value> values = new HashMap<>();
+  public ComparisonRecord mapFrom(Struct spannerStruct) {
+    TreeMap<String, Value> values = new TreeMap<>();
     spannerStruct
         .getType()
         .getStructFields()
@@ -108,8 +98,6 @@ public class ComparisonRecordMapper implements Serializable {
             });
 
     String tableName = spannerStruct.getString("__tableName__");
-
-    // 2. Get Primary Key names from DDL
     Table table = ddl.table(tableName);
     if (table == null) {
       throw new RuntimeException("Table not found in DDL: " + tableName);
@@ -120,36 +108,30 @@ public class ComparisonRecordMapper implements Serializable {
     return buildRecord(tableName, values, pkNames);
   }
 
+  // Accepts a TreeMap of values to enforce strict natural ordering of keys during hashing.
   private ComparisonRecord buildRecord(
-      String tableName, Map<String, Value> data, List<String> pkNames) {
-    Map<String, Value> dataToHash = new TreeMap<>(data);
+      String tableName, TreeMap<String, Value> data, List<String> pkNames) {
 
-    dataToHash.put("__tableName__", Value.string(tableName));
-
+    // 1. Use the record data to compute the hash
     Hasher hasher = Hashing.murmur3_128().newHasher();
     UnifiedHasherVisitor hasherVisitor = new UnifiedHasherVisitor(hasher);
     for (Map.Entry<String, Value> entry : data.entrySet()) {
-      // Hash the key
+      // Hash the columnNames
       hasher.putString(entry.getKey(), StandardCharsets.UTF_8);
-      // Hash the value
+      // Hash the columnValues
       IUnifiedVisitor.dispatch(entry.getValue(), hasherVisitor);
     }
-
+    // Add the tableName to the hasher at the end
+    hasher.putString(tableName, StandardCharsets.UTF_8);
     String hash = hasher.hash().toString();
 
+    // 2. Use the pk column names to form the full primary keys from the record data
     UnifiedStringVisitor stringVisitor = new UnifiedStringVisitor();
     List<Column> primaryKeyColumns =
         pkNames.stream()
             .map(
                 pkName -> {
                   Value val = data.get(pkName);
-                  if (val == null) {
-                    throw new RuntimeException(
-                        "Primary key column "
-                            + pkName
-                            + " not found in data for table "
-                            + tableName);
-                  }
                   IUnifiedVisitor.dispatch(val, stringVisitor);
                   return Column.builder()
                       .setColName(pkName)
@@ -158,6 +140,7 @@ public class ComparisonRecordMapper implements Serializable {
                 })
             .collect(Collectors.toList());
 
+    // 3. Build the final record
     return ComparisonRecord.builder()
         .setTableName(tableName)
         .setHash(hash)

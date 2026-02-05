@@ -54,7 +54,7 @@ public class ComparisonRecordMapperTest {
     mockSchemaMapper = mock(ISchemaMapper.class);
     mockTransformer = mock(ISpannerMigrationTransformer.class);
     mockDdl = mock(Ddl.class);
-    mapper = new ComparisonRecordMapper(mockSchemaMapper, mockTransformer);
+    mapper = new ComparisonRecordMapper(mockSchemaMapper, mockTransformer, mockDdl);
   }
 
   @Test
@@ -77,7 +77,7 @@ public class ComparisonRecordMapperTest {
     IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
     when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
 
-    ComparisonRecord record = mapper.mapFrom(struct, mockDdl);
+    ComparisonRecord record = mapper.mapFrom(struct);
 
     assertNotNull(record);
     assertEquals(tableName, record.getTableName());
@@ -149,7 +149,7 @@ public class ComparisonRecordMapperTest {
     // Since we mock schemaMapper, we need to ensure it behaves reasonably for
     // GenericRecordTypeConvertor.
 
-    ComparisonRecord record = mapper.mapFrom(avroRecord, mockDdl);
+    ComparisonRecord record = mapper.mapFrom(avroRecord);
 
     assertNotNull(record);
     assertEquals(tableName, record.getTableName());

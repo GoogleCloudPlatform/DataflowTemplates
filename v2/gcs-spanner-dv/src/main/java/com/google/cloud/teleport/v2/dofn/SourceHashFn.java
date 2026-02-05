@@ -35,7 +35,7 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
 
-  private transient ComparisonRecordMapper mapper;
+  private transient ComparisonRecordMapper comparisonRecordMapper;
 
   public SourceHashFn(
       PCollectionView<Ddl> ddlView, SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
@@ -47,13 +47,16 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
 
-    if (mapper == null) {
-      mapper = new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null);
+    // lazy initialization of the mapper.
+    if (comparisonRecordMapper == null) {
+      comparisonRecordMapper =
+          new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null, ddl);
     }
 
-    ComparisonRecord record = mapper.mapFrom(Objects.requireNonNull(c.element()), ddl);
-    if (record != null) {
-      c.output(record);
+    ComparisonRecord comparisonRecord =
+        comparisonRecordMapper.mapFrom(Objects.requireNonNull(c.element()));
+    if (comparisonRecord != null) {
+      c.output(comparisonRecord);
     }
   }
 }
