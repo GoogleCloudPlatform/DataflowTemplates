@@ -102,7 +102,37 @@ public class ComparisonRecordMapper implements Serializable {
     return buildRecord(tableName, values, pkNames);
   }
 
-  // Accepts a TreeMap of values to enforce strict natural ordering of keys during hashing.
+  /**
+   * Builds the {@link ComparisonRecord} from the mapped data.
+   *
+   * <p>
+   * <b>1. Strict Ordering with TreeMap:</b><br>
+   * A {@link TreeMap} is used to store the data before hashing. This ensures that
+   * the keys (column
+   * names) are always processed in their natural order (alphabetical). This is
+   * critical for
+   * deterministic hashing; regardless of the order in which columns appear in the
+   * input source (Avro
+   * or Spanner), the resulting hash must be identical for the same record
+   * content.
+   *
+   * <p>
+   * <b>2. Type-Aware Hashing:</b><br>
+   * This implementation uses a {@link UnifiedHasherVisitor} to perform type-aware
+   * hashing. Instead of
+   * converting everything to strings (which risks collisions, e.g., "123" vs
+   * 123), specific types are
+   * hashed with unique prefixes (sentinels). This ensures that a string "true"
+   * has a different hash
+   * from a boolean {@code true}, enhancing collision resistance.
+   *
+   * <p>
+   * <b>3. Murmur3 128-bit Hash:</b><br>
+   * We use Murmur3 128-bit hashing. The 128-bit has a one in a quadrillion
+   * probability of collision in a dataset of size 2.6 trillion. This provides
+   * scale assurance for most practical workloads. 128 bit is also small enough
+   * for Dataflow's shuffle and GBK operations to be highly efficient on.
+   */
   private ComparisonRecord buildRecord(
       String tableName, TreeMap<String, Value> data, List<String> pkNames) {
 

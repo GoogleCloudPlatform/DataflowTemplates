@@ -15,9 +15,21 @@
  */
 package com.google.cloud.teleport.v2.visitor;
 
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
+import java.math.BigDecimal;
 
-/** Visitor interface for Spanner {@link Value}s. */
+/**
+ * Visitor interface for Spanner {@link Value}s.
+ *
+ * <p>
+ * This interface implements the Visitor pattern to decouple the operations
+ * performed on Spanner
+ * values (such as hashing or string formatting) from the underlying data
+ * structure. This approach eliminates the need for repetitive {@code switch}
+ * statements or type checks across the codebase.
+ */
 public interface IUnifiedVisitor {
   void visitString(String s);
 
@@ -29,11 +41,11 @@ public interface IUnifiedVisitor {
 
   void visitBytes(byte[] b);
 
-  void visitDate(com.google.cloud.Date d);
+  void visitDate(Date d);
 
-  void visitNumeric(java.math.BigDecimal n);
+  void visitNumeric(BigDecimal n);
 
-  void visitTimestamp(com.google.cloud.Timestamp t);
+  void visitTimestamp(Timestamp t);
 
   void visitJson(String j);
 
@@ -61,7 +73,7 @@ public interface IUnifiedVisitor {
     }
   }
 
-  static String formatDate(com.google.cloud.Date date) {
+  static String formatDate(Date date) {
     return String.format("%04d-%02d-%02d", date.getYear(), date.getMonth(), date.getDayOfMonth());
   }
 }
