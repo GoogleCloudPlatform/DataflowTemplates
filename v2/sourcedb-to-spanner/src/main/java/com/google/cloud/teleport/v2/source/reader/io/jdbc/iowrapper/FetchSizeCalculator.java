@@ -78,7 +78,7 @@ public final class FetchSizeCalculator {
       long calculatedFetchSize = workerMemoryBytes / denominator;
 
       LOG.info(
-          "Auto-inferred fetch size for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
+          "Auto-inferred fetchSize for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
           tableConfig.tableName(),
           calculatedFetchSize,
           workerMemoryBytes,
