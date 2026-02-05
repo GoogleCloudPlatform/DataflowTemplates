@@ -22,7 +22,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Iceberg_To_MySql_Yaml",
+    name = "Iceberg_To_MySql_Yaml ",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Iceberg to MySql (YAML)",
