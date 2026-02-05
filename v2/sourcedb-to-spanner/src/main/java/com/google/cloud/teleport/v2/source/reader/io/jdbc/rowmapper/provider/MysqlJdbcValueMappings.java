@@ -313,20 +313,6 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
                 return (int) (n > 0 ? n * 4 : 65535);
               })
           .put("YEAR", ResultSet::getInt, valuePassThrough, 2)
-          .put("INT", ResultSet::getInt, valuePassThrough, 4)
-          .put("REAL", ResultSet::getDouble, valuePassThrough, 8)
-          .put(
-              "NUMERIC",
-              ResultSet::getBigDecimal,
-              bigDecimalToByteArray,
-              sourceColumnType -> {
-                long m = getLengthOrPrecision(sourceColumnType);
-                // NUMERIC(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
-                // string (+2 for sign and decimal point)
-                // Max number of digits in Numeric is 65. Ref:
-                // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
-                return (int) ((m > 0 ? m : 65) + 2);
-              })
           .build();
 
   /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */

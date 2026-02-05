@@ -264,15 +264,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 long n = getLengthOrPrecision(sourceColumnType);
                 return (int) Math.min(((n > 0 ? n : 10 * 1024 * 1024) * 4) + 24, Integer.MAX_VALUE);
               })
-          .put(
-              "XML",
-              ResultSet::getString,
-              valuePassThrough,
-              sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
-                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
-              })
           .build();
 
   @Override
