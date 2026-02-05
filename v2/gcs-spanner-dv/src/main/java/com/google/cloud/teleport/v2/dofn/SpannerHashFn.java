@@ -1,39 +1,48 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.dofn;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.mapper.ComparisonRecordMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
-import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import java.util.List;
-import java.util.Objects;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerHashFn.class);
-
   private final PCollectionView<Ddl> ddlView;
+  private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
 
-  public SpannerHashFn(PCollectionView<Ddl> ddlView) {
+  private transient ComparisonRecordMapper mapper;
+
+  public SpannerHashFn(
+      PCollectionView<Ddl> ddlView, SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
     this.ddlView = ddlView;
+    this.schemaMapperProvider = schemaMapperProvider;
   }
 
   @ProcessElement
   public void processElement(ProcessContext c) {
     Ddl ddl = c.sideInput(ddlView);
-    String tableName = Objects.requireNonNull(c.element()).getString("__tableName__");
-    Table table = ddl.table(tableName);
-    List<String> primaryKeyColumns = table.primaryKeys().stream()
-        .map(IndexColumn::name)
-        .toList();
-
-    ComparisonRecord comparisonRecord = ComparisonRecord.fromSpannerStruct(
-        Objects.requireNonNull(c.element()), primaryKeyColumns);
-    // LOG.info("spanner comparison record: {}", comparisonRecord.toString());
-    c.output(comparisonRecord);
+    if (mapper == null) {
+      mapper = new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null);
+    }
+    c.output(mapper.mapFrom(c.element(), ddl));
   }
 }

@@ -13,4 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+/** Google Cloud Teleport templates that process data within Google Cloud. */
+/** Mapper classes for Dataflow Templates. */
+package com.google.cloud.teleport.v2.mapper;

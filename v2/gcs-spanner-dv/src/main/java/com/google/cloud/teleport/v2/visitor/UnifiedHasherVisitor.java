@@ -1,4 +1,19 @@
-package com.google.cloud.teleport.v2.dto;
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.visitor;
 
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
@@ -7,13 +22,11 @@ import com.google.common.hash.Hasher;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Visitor that hashes Spanner values using a provided {@link Hasher}.
- */
-public class SpannerHasherVisitor implements SpannerValueVisitor {
+/** Visitor that hashes Spanner values using a provided {@link Hasher}. */
+public class UnifiedHasherVisitor implements IUnifiedVisitor {
   private final Hasher hasher;
 
-  public SpannerHasherVisitor(Hasher hasher) {
+  public UnifiedHasherVisitor(Hasher hasher) {
     this.hasher = hasher;
   }
 
@@ -60,7 +73,7 @@ public class SpannerHasherVisitor implements SpannerValueVisitor {
   @Override
   public void visitDate(Date d) {
     markNonNull();
-    hasher.putString(SpannerValueVisitor.formatDate(d), StandardCharsets.UTF_8);
+    hasher.putString(IUnifiedVisitor.formatDate(d), StandardCharsets.UTF_8);
   }
 
   @Override
