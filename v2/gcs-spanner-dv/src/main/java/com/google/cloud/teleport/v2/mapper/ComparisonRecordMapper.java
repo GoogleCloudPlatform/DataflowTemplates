@@ -87,15 +87,9 @@ public class ComparisonRecordMapper implements Serializable {
 
   public ComparisonRecord mapFrom(Struct spannerStruct) {
     TreeMap<String, Value> values = new TreeMap<>();
-    spannerStruct
-        .getType()
-        .getStructFields()
-        .forEach(
-            field -> {
-              if (!field.getName().equals("__tableName__")) {
-                values.put(field.getName(), spannerStruct.getValue(field.getName()));
-              }
-            });
+    spannerStruct.getType().getStructFields().stream()
+        .filter(field -> !field.getName().equals("__tableName__"))
+        .forEach(field -> values.put(field.getName(), spannerStruct.getValue(field.getName())));
 
     String tableName = spannerStruct.getString("__tableName__");
     Table table = ddl.table(tableName);
