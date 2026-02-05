@@ -28,6 +28,7 @@ import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
 import org.neo4j.importer.v1.targets.NodePointIndex;
 import org.neo4j.importer.v1.targets.NodeRangeIndex;
+import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.NodeTextIndex;
@@ -151,9 +152,9 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "SELF_LINKS_TO",
             WriteMode.MERGE,
             NodeMatchMode.MERGE,
-            null,
-            "node-target",
-            "node-target",
+            List.of(),
+            new NodeReference("node-target"),
+            new NodeReference("node-target"),
             List.of(new PropertyMapping("source_field", "targetRelProperty", null)),
             new RelationshipSchema(
                 null,
@@ -185,7 +186,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of("StartNode"),
             List.of(new PropertyMapping("source_node_field", "targetNodeProperty", null)),
             new NodeSchema(
@@ -207,7 +208,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of("EndNode"),
             List.of(new PropertyMapping("source_node_field", "targetNodeProperty", null)),
             new NodeSchema(
@@ -231,9 +232,9 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "LINKS_TO",
             WriteMode.MERGE,
             NodeMatchMode.MATCH,
-            null,
-            "start-node-target",
-            "end-node-target",
+            List.of(),
+            new NodeReference("start-node-target"),
+            new NodeReference("end-node-target"),
             List.of(new PropertyMapping("source_field", "targetRelProperty", null)),
             new RelationshipSchema(
                 null,
@@ -272,7 +273,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of("Placeholder"),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.BOOLEAN),
@@ -351,7 +352,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of("Placeholder"),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.BOOLEAN),
@@ -428,9 +429,9 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "PLACEHOLDER",
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
-            null,
-            "a-start-node-target",
-            "an-end-node-target",
+            List.of(),
+            new NodeReference("a-start-node-target"),
+            new NodeReference("an-end-node-target"),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.LOCAL_DATETIME_ARRAY),
                 new PropertyMapping("prop2", "prop2", null),
@@ -502,9 +503,9 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "PLACEHOLDER",
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
-            null,
-            "a-start-node-target",
-            "an-end-node-target",
+            List.of(),
+            new NodeReference("a-start-node-target"),
+            new NodeReference("an-end-node-target"),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.LOCAL_DATETIME_ARRAY),
                 new PropertyMapping("prop2", "prop2", null),
@@ -571,9 +572,9 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             "TYPE",
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
-            null,
-            "a-start-node-target",
-            "an-end-node-target",
+            List.of(),
+            new NodeReference("a-start-node-target"),
+            new NodeReference("an-end-node-target"),
             null,
             null);
 

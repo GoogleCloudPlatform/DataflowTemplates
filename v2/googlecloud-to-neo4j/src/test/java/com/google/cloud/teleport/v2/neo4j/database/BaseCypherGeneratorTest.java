@@ -63,12 +63,11 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
   protected void assertSchemaStatements(
       ImportSpecification spec, Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     var statements =
-        spec.getTargets().getAll().stream()
+        spec.getTargets().getAllActive().stream()
             .filter(
                 target ->
-                    target.isActive()
-                        && (target.getTargetType() == TargetType.NODE
-                            || target.getTargetType() == TargetType.RELATIONSHIP))
+                    target.getTargetType() == TargetType.NODE
+                        || target.getTargetType() == TargetType.RELATIONSHIP)
             .map(target -> (EntityTarget) target)
             .flatMap(target -> CypherGenerator.getSchemaStatements(target, capabilities).stream())
             .collect(Collectors.toSet());

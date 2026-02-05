@@ -16,14 +16,17 @@
 package com.google.cloud.teleport.v2.neo4j.model.validation;
 
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
+import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
@@ -93,12 +96,13 @@ public class TextColumnMappingValidator implements SpecificationValidator {
   }
 
   private static Set<String> getAggregatedFields(EntityTarget target) {
-    var sourceTransformations = target.getSourceTransformations();
-    if (sourceTransformations == null) {
-      return new HashSet<>();
-    }
-    return sourceTransformations.getAggregations().stream()
-        .map(Aggregation::getFieldName)
+    return target.getExtension(SourceTransformations.class).stream()
+        .flatMap(
+            transforms -> {
+              List<Aggregation> aggregations = transforms.aggregations();
+              return aggregations == null ? Stream.of() : aggregations.stream();
+            })
+        .map(Aggregation::fieldName)
         .collect(Collectors.toSet());
   }
 }

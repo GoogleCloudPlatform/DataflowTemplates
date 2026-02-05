@@ -113,12 +113,14 @@ public class CypherGenerator {
   private static String unwindRelationships(
       ImportSpecification importSpecification, RelationshipTarget relationship) {
     String nodeClause = relationship.getNodeMatchMode().name();
+    // TODO: check key mappings
     NodeTarget startNode =
-        resolveRelationshipNode(importSpecification, relationship.getStartNodeReference());
+        resolveRelationshipNode(
+            importSpecification, relationship.getStartNodeReference().getName());
     String startNodeKeys =
         CypherPatterns.parsePatterns(startNode, "start", ROW_VARIABLE_NAME).keysPattern();
     NodeTarget endNode =
-        resolveRelationshipNode(importSpecification, relationship.getEndNodeReference());
+        resolveRelationshipNode(importSpecification, relationship.getEndNodeReference().getName());
     String endNodeKeys =
         CypherPatterns.parsePatterns(endNode, "end", ROW_VARIABLE_NAME).keysPattern();
     String relationshipClause = relationship.getWriteMode().name();

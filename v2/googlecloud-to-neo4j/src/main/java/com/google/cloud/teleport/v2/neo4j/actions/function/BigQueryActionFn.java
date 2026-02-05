@@ -19,11 +19,11 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.importer.v1.actions.BigQueryAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ public class BigQueryActionFn extends DoFn<Integer, Row> {
   private final String sql;
 
   public BigQueryActionFn(ActionContext context) {
-    var sql = ((BigQueryAction) context.getAction()).getSql();
+    var sql = ((BigQueryAction) context.getAction()).sql();
     if (StringUtils.isEmpty(sql)) {
       throw new IllegalArgumentException("Options 'sql' not provided for preload query transform.");
     }

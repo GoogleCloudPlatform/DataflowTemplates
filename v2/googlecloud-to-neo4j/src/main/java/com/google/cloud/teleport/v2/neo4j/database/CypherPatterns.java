@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getAllPropertyMappings;
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getKeyProperties;
 import static java.util.stream.Collectors.toMap;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,10 +41,13 @@ public class CypherPatterns {
 
   public static CypherPatterns parsePatterns(
       EntityTarget entity, String entityVariable, String rowVariable) {
-    Set<String> keyProperties = new LinkedHashSet<>(entity.getKeyProperties());
+    Set<String> keyProperties = getKeyProperties(entity);
     String cypherKeyProperties = assignPropertiesInPattern(entity, keyProperties, rowVariable);
-    List<String> nonKeyProperties = new ArrayList<>(entity.getAllProperties());
-    nonKeyProperties.removeAll(keyProperties);
+    List<String> nonKeyProperties =
+        getAllPropertyMappings(entity).stream()
+            .map(PropertyMapping::getTargetProperty)
+            .filter(targetProperty -> !keyProperties.contains(targetProperty))
+            .toList();
     String cypherSetNonKeys =
         assignProperties(entity, nonKeyProperties, entityVariable, rowVariable, "SET ", " = ");
     return new CypherPatterns(cypherKeyProperties, cypherSetNonKeys);
