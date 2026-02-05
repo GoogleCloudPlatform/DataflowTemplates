@@ -70,6 +70,7 @@
     <dlp.version>3.85.0</dlp.version>
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
+    <gson.version>2.13.2</gson.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
@@ -90,7 +91,7 @@
     <surefire.version>3.5.3</surefire.version>
     <testcontainers.version>1.21.3</testcontainers.version>
     <truth.version>1.4.5</truth.version>
-    <netty.version>4.1.125.Final</netty.version>
+    <netty.version>4.1.128.Final</netty.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>

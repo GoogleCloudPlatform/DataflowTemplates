@@ -20,14 +20,17 @@ variable "common_params" {
     transformation_jar_path          = optional(string)
     transformation_custom_parameters = optional(string)
     transformation_class_name        = optional(string)
+    fetch_size                       = optional(number)
+    gcs_output_directory             = optional(string)
 
     # Dataflow runtime parameters
     additional_experiments = optional(list(string), [
       "disable_runner_v2", "use_network_tags=allow-dataflow", "use_network_tags_for_flex_templates=allow-dataflow"
     ])
-    network               = optional(string)
-    subnetwork            = optional(string)
-    service_account_email = optional(string)
+    additional_pipeline_options = optional(list(string))
+    network                     = optional(string)
+    subnetwork                  = optional(string)
+    service_account_email       = optional(string)
     # Recommend using larger launcher VMs. Machine with >= 16 vCPUs should be safe.
     launcher_machine_type = optional(string, "n1-highmem-32")
     machine_type          = optional(string, "n1-highmem-4")

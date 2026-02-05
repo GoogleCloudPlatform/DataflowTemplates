@@ -66,20 +66,23 @@ resource "google_dataflow_flex_template_job" "generated" {
     transformationClassName        = var.transformation_class_name
     transformationCustomParameters = var.transformation_custom_parameters
     defaultSdkHarnessLogLevel      = var.default_log_level
+    fetchSize                      = var.fetch_size
+    gcsOutputDirectory             = var.gcs_output_directory
   }
 
-  service_account_email  = var.service_account_email
-  additional_experiments = var.additional_experiments
-  launcher_machine_type  = var.launcher_machine_type
-  machine_type           = var.machine_type
-  max_workers            = var.max_workers
-  name                   = var.job_name
-  ip_configuration       = var.ip_configuration
-  network                = var.network != null ? var.host_project != null ? "projects/${var.host_project}/global/networks/${var.network}" : "projects/${var.project}/global/networks/${var.network}" : null
-  subnetwork             = var.subnetwork != null ? var.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.host_project}/regions/${var.region}/subnetworks/${var.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.project}/regions/${var.region}/subnetworks/${var.subnetwork}" : null
-  num_workers            = var.num_workers
-  project                = var.project
-  region                 = var.region
+  service_account_email       = var.service_account_email
+  additional_experiments      = var.additional_experiments
+  additional_pipeline_options = var.additional_pipeline_options
+  launcher_machine_type       = var.launcher_machine_type
+  machine_type                = var.machine_type
+  max_workers                 = var.max_workers
+  name                        = var.job_name
+  ip_configuration            = var.ip_configuration
+  network                     = var.network != null ? var.host_project != null ? "projects/${var.host_project}/global/networks/${var.network}" : "projects/${var.project}/global/networks/${var.network}" : null
+  subnetwork                  = var.subnetwork != null ? var.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.host_project}/regions/${var.region}/subnetworks/${var.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.project}/regions/${var.region}/subnetworks/${var.subnetwork}" : null
+  num_workers                 = var.num_workers
+  project                     = var.project
+  region                      = var.region
 
   labels = {
     "migration_id" = var.job_name

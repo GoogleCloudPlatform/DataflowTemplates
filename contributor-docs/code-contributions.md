@@ -488,8 +488,11 @@ Release notes are [automatically generated](https://docs.github.com/en/repositor
 based on the PR labels defined in [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml).
 Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass:
 
-- `ignore-for-release`: Changes that should not appear in release notes (e.g., documentation updates, internal refactoring)
-- `new-template`: Addition of new Dataflow templates
-- `improvement`: Enhancements to existing functionality or performance improvements
+- `addition`: Addition of new functionality
 - `bug-fix`: Fixes for bugs or issues in existing code
+- `ignore-for-release`: Changes that should not appear in release notes (e.g., documentation updates, internal refactoring)
+- `improvement`: Enhancements to existing functionality or performance improvements
+- `new-template`: Addition of new Dataflow templates
 - `package-upgrade`: Updates to dependencies, libraries, or package versions
+
+Note: If updating these labels, also update .github/release.yml and .github/workflows/release-notes-labels.yml.
