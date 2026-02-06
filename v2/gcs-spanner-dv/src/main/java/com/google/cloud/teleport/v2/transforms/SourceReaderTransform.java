@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.dofn.IdentityGenericRecordFn;
+import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.dofn.SourceHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;

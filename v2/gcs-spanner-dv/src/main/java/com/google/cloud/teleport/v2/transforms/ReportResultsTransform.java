@@ -19,15 +19,13 @@ import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MATCH
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SOURCE_TAG;
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SPANNER_TAG;
 
-import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.v2.dto.BigQuerySchemas;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
 import com.google.cloud.teleport.v2.dto.TableValidationStats;
 import com.google.cloud.teleport.v2.dto.ValidationSummary;
-import com.google.common.collect.Lists;
-import java.util.ArrayList;
+import com.google.cloud.teleport.v2.fn.ValidationSummaryCombineFn;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -67,16 +65,14 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
   private static final String TABLE_VALIDATION_STATS_TABLE = "TableValidationStats";
   private static final String MISMATCHED_RECORDS_TABLE = "MismatchedRecords";
   private static final String VALIDATION_SUMMARY_TABLE = "ValidationSummary";
+  public static final String GCS_SOURCE = "GCS";
+  public static final String SPANNER_DESTINATION = "Spanner";
 
   private final String bigQueryDataset;
   private final String runId;
 
   public ReportResultsTransform(String bigQueryDataset, String runId) {
     this.bigQueryDataset = bigQueryDataset;
-    // If runId is not provided, we should ideally handle it.
-    // However, for PTransform, we might expect it to be resolved or passed from
-    // options.
-    // In GCSSpannerDV, we default it if null, but here we just take what's given.
     this.runId = runId;
   }
 
@@ -101,7 +97,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             .setTableName(r.getTableName())
                             .setMismatchType("MISSING_IN_DESTINATION")
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
-                            .setSource("GCS")
+                            .setSource(GCS_SOURCE)
                             .setHash(r.getHash())
                             .build()));
 
@@ -116,7 +112,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             .setTableName(r.getTableName())
                             .setMismatchType("MISSING_IN_SOURCE")
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
-                            .setSource("SPANNER")
+                            .setSource(SPANNER_DESTINATION)
                             .setHash(r.getHash())
                             .build()));
 
@@ -129,38 +125,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
         "WriteMismatchedRecords",
         BigQueryIO.<MismatchedRecord>write()
             .to(String.format("%s.%s", bigQueryDataset, MISMATCHED_RECORDS_TABLE))
-            .withSchema(
-                new TableSchema()
-                    .setFields(
-                        Lists.newArrayList(
-                            new TableFieldSchema()
-                                .setName("run_id")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("table_name")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("mismatch_type")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("record_key")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("source")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("hash")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("mismatched_columns")
-                                .setType("STRING")
-                                .setMode("NULLABLE"))))
+            .withSchema(BigQuerySchemas.MISMATCHED_RECORDS_SCHEMA)
             .withFormatFunction(
                 r ->
                     new TableRow()
@@ -242,46 +207,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
         "WriteTableStats",
         BigQueryIO.<TableValidationStats>write()
             .to(String.format("%s.%s", bigQueryDataset, TABLE_VALIDATION_STATS_TABLE))
-            .withSchema(
-                new TableSchema()
-                    .setFields(
-                        Lists.newArrayList(
-                            new TableFieldSchema()
-                                .setName("run_id")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("table_name")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("status")
-                                .setType("STRING")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("source_row_count")
-                                .setType("INTEGER")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("destination_row_count")
-                                .setType("INTEGER")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("matched_row_count")
-                                .setType("INTEGER")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("mismatch_row_count")
-                                .setType("INTEGER")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("start_timestamp")
-                                .setType("TIMESTAMP")
-                                .setMode("REQUIRED"),
-                            new TableFieldSchema()
-                                .setName("end_timestamp")
-                                .setType("TIMESTAMP")
-                                .setMode("REQUIRED"))))
+            .withSchema(BigQuerySchemas.TABLE_VALIDATION_STATS_SCHEMA)
             .withFormatFunction(
                 stats ->
                     new TableRow()
@@ -296,21 +222,20 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                         .set("end_timestamp", stats.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
+            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
 
     // 3. Validation Summary
     /**
-     * Because the {@link ValidationSummary} is never materialized in the pipeline
-     * and is the output of a Combine operation, beam has never seen it before and
-     * is asked to output a PCollection of it. When this happens, beam looks up for the
-     * coder in the coderRegistry. Now even though the DTO object has been annotated with
-     * a @DefaultSchema(AutoValueSchema.class) this look up process does not seem to be bulletproof.
-     * As a result, the Combine transform fails to find a coder for this object and fail.
-     * Therefore, we explicitly use the SchemaRegistry to create and register the coder in the
-     * coder registry so that beam can use it for encoding/decoding this object.
-     * Think of {@link org.apache.beam.sdk.schemas.SchemaRegistry} as the "recipe" and the
-     * {@link CoderRegistry} as the "product". The recipe is always registered, but the
-     * "automated" product creation may fail in certain scenarios such as this.
+     * Because the {@link ValidationSummary} is never materialized in the pipeline and is the output
+     * of a Combine operation, beam has never seen it before and is asked to output a PCollection of
+     * it. When this happens, beam looks up for the coder in the coderRegistry. Now even though the
+     * DTO object has been annotated with a @DefaultSchema(AutoValueSchema.class) this look up
+     * process does not seem to be bulletproof. As a result, the Combine transform fails to find a
+     * coder for this object and fail. Therefore, we explicitly use the SchemaRegistry to create and
+     * register the coder in the coder registry so that beam can use it for encoding/decoding this
+     * object. Think of {@link org.apache.beam.sdk.schemas.SchemaRegistry} as the "recipe" and the
+     * {@link CoderRegistry} as the "product". The recipe is always registered, but the "automated"
+     * product creation may fail in certain scenarios such as this.
      */
     try {
       SchemaCoder<ValidationSummary> validationSummaryCoder =
@@ -325,56 +250,14 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
         .apply("WindowGlobal", Window.into(new GlobalWindows()))
         .apply(
             "CombineSummary",
-            Combine.globally(new ValidationSummaryCombineFn(resolvedRunId))
+            Combine.globally(
+                    new ValidationSummaryCombineFn(resolvedRunId, GCS_SOURCE, SPANNER_DESTINATION))
                 .withoutDefaults()) // Only output if there is data
         .apply(
             "WriteValidationSummary",
             BigQueryIO.<ValidationSummary>write()
                 .to(String.format("%s.%s", bigQueryDataset, VALIDATION_SUMMARY_TABLE))
-                .withSchema(
-                    new TableSchema()
-                        .setFields(
-                            Lists.newArrayList(
-                                new TableFieldSchema()
-                                    .setName("run_id")
-                                    .setType("STRING")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("source_database")
-                                    .setType("STRING")
-                                    .setMode("NULLABLE"),
-                                new TableFieldSchema()
-                                    .setName("destination_database")
-                                    .setType("STRING")
-                                    .setMode("NULLABLE"),
-                                new TableFieldSchema()
-                                    .setName("status")
-                                    .setType("STRING")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("total_tables_validated")
-                                    .setType("INTEGER")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("tables_with_mismatches")
-                                    .setType("STRING")
-                                    .setMode("NULLABLE"),
-                                new TableFieldSchema()
-                                    .setName("total_rows_matched")
-                                    .setType("INTEGER")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("total_rows_mismatched")
-                                    .setType("INTEGER")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("start_timestamp")
-                                    .setType("TIMESTAMP")
-                                    .setMode("REQUIRED"),
-                                new TableFieldSchema()
-                                    .setName("end_timestamp")
-                                    .setType("TIMESTAMP")
-                                    .setMode("REQUIRED"))))
+                .withSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA)
                 .withFormatFunction(
                     s ->
                         new TableRow()
@@ -390,75 +273,9 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             .set("end_timestamp", s.getEndTimestamp().toString()))
                 .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
+                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
 
     return PDone.in(input.getPipeline());
-  }
-
-  private static class ValidationSummaryCombineFn
-      extends Combine.CombineFn<
-          TableValidationStats, ValidationSummaryAccumulator, ValidationSummary> {
-
-    private final String runId;
-
-    public ValidationSummaryCombineFn(String runId) {
-      this.runId = runId;
-    }
-
-    @Override
-    public ValidationSummaryAccumulator createAccumulator() {
-      return new ValidationSummaryAccumulator();
-    }
-
-    @Override
-    public ValidationSummaryAccumulator addInput(
-        ValidationSummaryAccumulator accumulator, TableValidationStats input) {
-      accumulator.totalTables++;
-      accumulator.totalMatched += input.getMatchedRowCount();
-      accumulator.totalMismatched += input.getMismatchRowCount();
-      if (input.getMismatchRowCount() > 0) {
-        accumulator.tablesWithMismatches.add(input.getTableName());
-      }
-      return accumulator;
-    }
-
-    @Override
-    public ValidationSummaryAccumulator mergeAccumulators(
-        Iterable<ValidationSummaryAccumulator> accumulators) {
-      ValidationSummaryAccumulator merged = new ValidationSummaryAccumulator();
-      for (ValidationSummaryAccumulator acc : accumulators) {
-        merged.totalTables += acc.totalTables;
-        merged.totalMatched += acc.totalMatched;
-        merged.totalMismatched += acc.totalMismatched;
-        merged.tablesWithMismatches.addAll(acc.tablesWithMismatches);
-      }
-      return merged;
-    }
-
-    @Override
-    public ValidationSummary extractOutput(ValidationSummaryAccumulator accumulator) {
-      String status = accumulator.totalMismatched == 0 ? "COMPLETED" : "FAILED";
-      Instant now = Instant.now();
-      return ValidationSummary.builder()
-          .setRunId(runId)
-          .setSourceDatabase("GCS") // Fixed as per template
-          .setDestinationDatabase("Spanner") // Fixed as per template
-          .setStatus(status)
-          .setTotalTablesValidated(accumulator.totalTables)
-          .setTablesWithMismatches(String.join(",", accumulator.tablesWithMismatches))
-          .setTotalRowsMatched(accumulator.totalMatched)
-          .setTotalRowsMismatched(accumulator.totalMismatched)
-          .setStartTimestamp(now)
-          .setEndTimestamp(now)
-          .build();
-    }
-  }
-
-  private static class ValidationSummaryAccumulator implements java.io.Serializable {
-    long totalTables = 0;
-    long totalMatched = 0;
-    long totalMismatched = 0;
-    List<String> tablesWithMismatches = new ArrayList<>();
   }
 
   private String formatRecordKey(List<com.google.cloud.teleport.v2.dto.Column> columns) {
