@@ -21,20 +21,46 @@ import org.apache.beam.sdk.transforms.Combine;
 import org.joda.time.Instant;
 
 /**
- * A {@link Combine.CombineFn} that aggregates {@link TableValidationStats} into a final {@link
- * ValidationSummary}.
+ * A {@link Combine.CombineFn} that aggregates individual {@link TableValidationStats} into a single
+ * global {@link ValidationSummary}.
+ *
+ * <p>In Apache Beam, a {@link Combine.CombineFn} is used to perform associative and commutative
+ * aggregations on a {@link org.apache.beam.sdk.values.PCollection}. It works by distributing the
+ * aggregation across multiple workers:
+ *
+ * <ol>
+ *   <li><b>Create Accumulator:</b> Initializes a new mutable accumulator ({@link
+ *       ValidationSummaryAccumulator}).
+ *   <li><b>Add Input:</b> Adds a single {@link TableValidationStats} input to the accumulator.
+ *   <li><b>Merge Accumulators:</b> Merges multiple accumulators (potentially from different
+ *       workers) into one.
+ *   <li><b>Extract Output:</b> Produces the final {@link ValidationSummary} from the merged
+ *       accumulator.
+ * </ol>
+ *
+ * <p>This specific implementation aggregates validation results by:
+ *
+ * <ul>
+ *   <li>Summing up total matched and mismatched row counts across all tables.
+ *   <li>Collecting a list of tables that contain mismatches (joined as a string).
+ *   <li>Determining the overall validation status ("MATCH" if zero mismatches, otherwise
+ *       "MISMATCH").
+ *   <li>Populating metadata such as Run ID, source/destination database names, and timestamps.
+ * </ul>
  */
 public class ValidationSummaryCombineFn
     extends Combine.CombineFn<
         TableValidationStats, ValidationSummaryAccumulator, ValidationSummary> {
 
   private final String runId;
+  private final Instant startTimestamp;
   private final String sourceDatabase;
   private final String destinationDatabase;
 
   public ValidationSummaryCombineFn(
-      String runId, String sourceDatabase, String destinationDatabase) {
+      String runId, Instant startTimestamp, String sourceDatabase, String destinationDatabase) {
     this.runId = runId;
+    this.startTimestamp = startTimestamp;
     this.sourceDatabase = sourceDatabase;
     this.destinationDatabase = destinationDatabase;
   }
@@ -72,7 +98,6 @@ public class ValidationSummaryCombineFn
   @Override
   public ValidationSummary extractOutput(ValidationSummaryAccumulator accumulator) {
     String status = accumulator.totalMismatched == 0 ? "MATCH" : "MISMATCH";
-    Instant now = Instant.now();
     return ValidationSummary.builder()
         .setRunId(runId)
         .setSourceDatabase(sourceDatabase)
@@ -82,8 +107,8 @@ public class ValidationSummaryCombineFn
         .setTablesWithMismatches(String.join(",", accumulator.tablesWithMismatches))
         .setTotalRowsMatched(accumulator.totalMatched)
         .setTotalRowsMismatched(accumulator.totalMismatched)
-        .setStartTimestamp(now)
-        .setEndTimestamp(now)
+        .setStartTimestamp(startTimestamp)
+        .setEndTimestamp(Instant.now())
         .build();
   }
 }

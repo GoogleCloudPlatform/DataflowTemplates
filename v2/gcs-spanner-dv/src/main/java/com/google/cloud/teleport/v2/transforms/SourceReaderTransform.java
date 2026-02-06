@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
-import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.dofn.SourceHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;

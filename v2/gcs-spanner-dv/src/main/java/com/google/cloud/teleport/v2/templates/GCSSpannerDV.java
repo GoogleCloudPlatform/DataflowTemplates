@@ -23,8 +23,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.transforms.MatchRecordsTransform;
@@ -44,6 +44,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Instant;
 
 @Template(
     name = "GCS_Spanner_DV",
@@ -260,9 +261,15 @@ public class GCSSpannerDV {
     PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
 
     // Report results of the validation
+    Instant startTimestamp = Instant.now();
+    String runId = options.getRunId();
+    if (runId == null) {
+      runId = String.format("%s_%s", options.getJobName(), startTimestamp);
+    }
+
     matchResults.apply(
         "ReportResults",
-        new ReportResultsTransform(options.getBigQueryDataset(), options.getRunId()));
+        new ReportResultsTransform(options.getBigQueryDataset(), runId, startTimestamp));
 
     return pipeline.run();
   }

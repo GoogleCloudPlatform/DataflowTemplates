@@ -24,6 +24,15 @@ import org.joda.time.Instant;
 @AutoValue
 @DefaultSchema(AutoValueSchema.class)
 public abstract class TableValidationStats {
+  public static final String RUN_ID_COLUMN_NAME = "run_id";
+  public static final String TABLE_NAME_COLUMN_NAME = "table_name";
+  public static final String STATUS_COLUMN_NAME = "status";
+  public static final String SOURCE_ROW_COUNT_COLUMN_NAME = "source_row_count";
+  public static final String DESTINATION_ROW_COUNT_COLUMN_NAME = "destination_row_count";
+  public static final String MATCHED_ROW_COUNT_COLUMN_NAME = "matched_row_count";
+  public static final String MISMATCH_ROW_COUNT_COLUMN_NAME = "mismatch_row_count";
+  public static final String START_TIMESTAMP_COLUMN_NAME = "start_timestamp";
+  public static final String END_TIMESTAMP_COLUMN_NAME = "end_timestamp";
 
   public abstract String getRunId();
 

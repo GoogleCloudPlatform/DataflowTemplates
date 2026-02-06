@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
@@ -24,6 +23,12 @@ import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 @AutoValue
 @DefaultSchema(AutoValueSchema.class)
 public abstract class MismatchedRecord {
+  public static final String RUN_ID_COLUMN_NAME = "run_id";
+  public static final String TABLE_NAME_COLUMN_NAME = "table_name";
+  public static final String MISMATCH_TYPE_COLUMN_NAME = "mismatch_type";
+  public static final String RECORD_KEY_COLUMN_NAME = "record_key";
+  public static final String SOURCE_COLUMN_NAME = "source";
+  public static final String HASH_COLUMN_NAME = "hash";
 
   public abstract String getRunId();
 
@@ -36,9 +41,6 @@ public abstract class MismatchedRecord {
   public abstract String getSource();
 
   public abstract String getHash();
-
-  @Nullable
-  public abstract String getMismatchedColumns();
 
   public static Builder builder() {
     return new AutoValue_MismatchedRecord.Builder();
@@ -57,8 +59,6 @@ public abstract class MismatchedRecord {
     public abstract Builder setSource(String source);
 
     public abstract Builder setHash(String hash);
-
-    public abstract Builder setMismatchedColumns(String mismatchedColumns);
 
     public abstract MismatchedRecord build();
   }

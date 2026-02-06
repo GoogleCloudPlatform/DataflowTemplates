@@ -28,58 +28,69 @@ public final class BigQuerySchemas {
       new TableSchema()
           .setFields(
               Lists.newArrayList(
-                  new TableFieldSchema().setName("run_id").setType("STRING").setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("table_name")
+                      .setName(MismatchedRecord.RUN_ID_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("mismatch_type")
+                      .setName(MismatchedRecord.TABLE_NAME_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("record_key")
+                      .setName(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
-                  new TableFieldSchema().setName("source").setType("STRING").setMode("REQUIRED"),
-                  new TableFieldSchema().setName("hash").setType("STRING").setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("mismatched_columns")
+                      .setName(MismatchedRecord.RECORD_KEY_COLUMN_NAME)
                       .setType("STRING")
-                      .setMode("NULLABLE")));
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(MismatchedRecord.SOURCE_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(MismatchedRecord.HASH_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED")));
 
   public static final TableSchema TABLE_VALIDATION_STATS_SCHEMA =
       new TableSchema()
           .setFields(
               Lists.newArrayList(
-                  new TableFieldSchema().setName("run_id").setType("STRING").setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("table_name")
+                      .setName(TableValidationStats.RUN_ID_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
-                  new TableFieldSchema().setName("status").setType("STRING").setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("source_row_count")
+                      .setName(TableValidationStats.TABLE_NAME_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(TableValidationStats.STATUS_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("destination_row_count")
+                      .setName(TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("matched_row_count")
+                      .setName(TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("mismatch_row_count")
+                      .setName(TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("start_timestamp")
+                      .setName(TableValidationStats.START_TIMESTAMP_COLUMN_NAME)
                       .setType("TIMESTAMP")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("end_timestamp")
+                      .setName(TableValidationStats.END_TIMESTAMP_COLUMN_NAME)
                       .setType("TIMESTAMP")
                       .setMode("REQUIRED")));
 
@@ -87,38 +98,44 @@ public final class BigQuerySchemas {
       new TableSchema()
           .setFields(
               Lists.newArrayList(
-                  new TableFieldSchema().setName("run_id").setType("STRING").setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("source_database")
+                      .setName(ValidationSummary.RUN_ID_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(ValidationSummary.SOURCE_DATABASE_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("NULLABLE"),
                   new TableFieldSchema()
-                      .setName("destination_database")
-                      .setType("STRING")
-                      .setMode("NULLABLE"),
-                  new TableFieldSchema().setName("status").setType("STRING").setMode("REQUIRED"),
-                  new TableFieldSchema()
-                      .setName("total_tables_validated")
-                      .setType("INTEGER")
-                      .setMode("REQUIRED"),
-                  new TableFieldSchema()
-                      .setName("tables_with_mismatches")
+                      .setName(ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("NULLABLE"),
                   new TableFieldSchema()
-                      .setName("total_rows_matched")
+                      .setName(ValidationSummary.STATUS_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("total_rows_mismatched")
+                      .setName(ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("NULLABLE"),
+                  new TableFieldSchema()
+                      .setName(ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME)
                       .setType("INTEGER")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("start_timestamp")
+                      .setName(ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME)
+                      .setType("INTEGER")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(ValidationSummary.START_TIMESTAMP_COLUMN_NAME)
                       .setType("TIMESTAMP")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
-                      .setName("end_timestamp")
+                      .setName(ValidationSummary.END_TIMESTAMP_COLUMN_NAME)
                       .setType("TIMESTAMP")
                       .setMode("REQUIRED")));
 }

@@ -26,6 +26,17 @@ import org.joda.time.Instant;
 @DefaultSchema(AutoValueSchema.class)
 public abstract class ValidationSummary {
 
+  public static final String RUN_ID_COLUMN_NAME = "run_id";
+  public static final String SOURCE_DATABASE_COLUMN_NAME = "source_database";
+  public static final String DESTINATION_DATABASE_COLUMN_NAME = "destination_database";
+  public static final String STATUS_COLUMN_NAME = "status";
+  public static final String TOTAL_TABLES_VALIDATED_COLUMN_NAME = "total_tables_validated";
+  public static final String TABLES_WITH_MISMATCHES_COLUMN_NAME = "tables_with_mismatches";
+  public static final String TOTAL_ROWS_MATCHED_COLUMN_NAME = "total_rows_matched";
+  public static final String TOTAL_ROWS_MISMATCHED_COLUMN_NAME = "total_rows_mismatched";
+  public static final String START_TIMESTAMP_COLUMN_NAME = "start_timestamp";
+  public static final String END_TIMESTAMP_COLUMN_NAME = "end_timestamp";
+
   public abstract String getRunId();
 
   @Nullable
