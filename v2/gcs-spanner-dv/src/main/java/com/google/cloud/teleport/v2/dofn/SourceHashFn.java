@@ -24,13 +24,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** A {@link DoFn} that converts {@link GenericRecord} to {@link ComparisonRecord}. */
 public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SourceHashFn.class);
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;

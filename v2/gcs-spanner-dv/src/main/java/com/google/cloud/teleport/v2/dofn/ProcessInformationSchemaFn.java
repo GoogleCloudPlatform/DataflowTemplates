@@ -25,11 +25,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
-  private static final Logger LOG = LoggerFactory.getLogger(ProcessInformationSchemaFn.class);
 
   private final SpannerConfig spannerConfig;
 
