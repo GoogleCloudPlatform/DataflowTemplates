@@ -88,7 +88,6 @@ public class ComparisonRecordMapperTest {
 
   @Test
   public void testMapFromAvroRecord() throws Exception {
-    // Setup Avro record
     Schema payloadSchema = Schema.createRecord("Payload", null, "ns", false);
     payloadSchema.setFields(
         Arrays.asList(
@@ -130,30 +129,20 @@ public class ComparisonRecordMapperTest {
     when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
         .thenReturn(true);
 
-    // Mock SchemaMapper type conversion support if needed?
-    // GenericRecordTypeConvertor uses schemaMapper.getSpannerColumnName/Type.
-    // If not mocked, it might fail. Only simplest mocking here.
-
     Table mockTable = mock(Table.class);
     when(mockDdl.table(tableName)).thenReturn(mockTable);
     IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
     when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
 
-    // We need to ensure valid type conversion can happen.
-    // Mock transformer response
     MigrationTransformationResponse mockResponse = mock(MigrationTransformationResponse.class);
     when(mockResponse.isEventFiltered()).thenReturn(false);
     when(mockResponse.getResponseRow()).thenReturn(Collections.emptyMap());
     when(mockTransformer.toSpannerRow(org.mockito.ArgumentMatchers.any())).thenReturn(mockResponse);
 
-    // Since we mock schemaMapper, we need to ensure it behaves reasonably for
-    // GenericRecordTypeConvertor.
-
     ComparisonRecord record = mapper.mapFrom(avroRecord);
 
     assertNotNull(record);
     assertEquals(tableName, record.getTableName());
-    // Hash should be computed.
     assertNotNull(record.getHash());
   }
 }

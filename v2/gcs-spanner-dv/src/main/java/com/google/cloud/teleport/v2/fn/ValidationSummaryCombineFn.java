@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.fn;
 
 import com.google.cloud.teleport.v2.dto.TableValidationStats;
 import com.google.cloud.teleport.v2.dto.ValidationSummary;
+import com.google.cloud.teleport.v2.dto.ValidationSummaryAccumulator;
 import org.apache.beam.sdk.transforms.Combine;
 import org.joda.time.Instant;
 

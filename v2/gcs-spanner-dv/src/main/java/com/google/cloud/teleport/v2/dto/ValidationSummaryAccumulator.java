@@ -13,8 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.fn;
+package com.google.cloud.teleport.v2.dto;
 
+import com.google.cloud.teleport.v2.fn.ValidationSummaryCombineFn;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
