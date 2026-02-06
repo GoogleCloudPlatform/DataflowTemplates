@@ -61,6 +61,7 @@
     <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
+    <commons-compress.version>1.26.2</commons-compress.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-configuration2.version>2.10.1</commons-configuration2.version>
@@ -152,6 +153,11 @@
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
         <version>${commons-codec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons-compress.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-io</groupId>

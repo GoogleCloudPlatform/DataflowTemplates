@@ -238,4 +238,20 @@ public class SchemaFileOverridesBasedMapper implements ISchemaMapper, Serializab
       return false;
     }
   }
+
+  @Override
+  public boolean isGeneratedColumn(String namespace, String spannerTable, String spannerColumn) {
+    // Namespace is ignored.
+    Table table = ddl.table(spannerTable);
+    if (table == null) {
+      // If table doesn't exist in DDL, it can't have generated columns (or any columns).
+      return false;
+    }
+    Column column = table.column(spannerColumn);
+    if (column == null) {
+      // If column doesn't exist in DDL, it can't be generated.
+      return false;
+    }
+    return column.isGenerated();
+  }
 }
