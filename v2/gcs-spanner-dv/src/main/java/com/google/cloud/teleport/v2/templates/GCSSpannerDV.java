@@ -188,6 +188,29 @@ public class GCSSpannerDV {
     String getColumnOverrides();
 
     void setColumnOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 11,
+        optional = false,
+        regexes = {"^[^ ;]*$"},
+        description = "BigQuery dataset for reporting",
+        helpText = "The BigQuery dataset ID where the validation results will be stored.",
+        example = "validation_report_dataset")
+    String getBigQueryDataset();
+
+    void setBigQueryDataset(String value);
+
+    @TemplateParameter.Text(
+        order = 12,
+        optional = true,
+        regexes = {"^[^ ;]*$"},
+        description = "Run ID for the validation job",
+        helpText =
+            "A unique identifier for the validation run. If not provided, the Dataflow Job Name will be used.",
+        example = "run_20230101_120000")
+    String getRunId();
+
+    void setRunId(String value);
   }
 
   public static void main(String[] args) {
@@ -236,8 +259,10 @@ public class GCSSpannerDV {
     // Match records to determine equivalence
     PCollectionTuple matchResults = inputs.apply("MatchRecords", new MatchRecordsTransform());
 
-    //Report results of the validation
-    matchResults.apply("ReportResults", new ReportResultsTransform());
+    // Report results of the validation
+    matchResults.apply(
+        "ReportResults",
+        new ReportResultsTransform(options.getBigQueryDataset(), options.getRunId()));
 
     return pipeline.run();
   }

@@ -112,6 +112,12 @@ variable "spanner_priority" {
   default     = null
 }
 
+variable "big_query_dataset" {
+  type        = string
+  description = "Name of the BigQuery dataset where results will be reported"
+  default     = null
+}
+
 variable "additional_pipeline_options" {
   type        = list(string)
   description = "Additional Dataflow pipeline options."

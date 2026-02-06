@@ -27,6 +27,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     databaseId                    = var.database_id
     spannerPriority               = var.spanner_priority
     spannerHost                   = var.spanner_host
+    bigQueryDataset               = var.big_query_dataset
   }
 
   service_account_email       = var.service_account_email

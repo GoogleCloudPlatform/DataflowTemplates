@@ -64,7 +64,7 @@ public class SpannerReaderTransform
                 .withTimestampBound(TimestampBound.ofExactStaleness(15, TimeUnit.SECONDS))
                 .withBatching(true))
         .apply(
-            "ConvertSpannerRecordsToHash",
+            "CalculateSpannerRecordsHash",
             ParDo.of(new SpannerHashFn(ddlView, schemaMapperProvider)).withSideInputs(ddlView));
   }
 }

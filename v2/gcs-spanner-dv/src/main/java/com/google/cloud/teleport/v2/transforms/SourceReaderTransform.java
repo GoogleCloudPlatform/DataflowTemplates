@@ -60,7 +60,7 @@ public class SourceReaderTransform
                 .withCoder(GenericRecordCoder.of())
                 .withHintMatchesManyFiles())
         .apply(
-            "CalculateSourceRecordHash",
+            "CalculateSourceRecordsHash",
             ParDo.of(new SourceHashFn(ddlView, schemaMapperProvider)).withSideInputs(ddlView));
   }
 
