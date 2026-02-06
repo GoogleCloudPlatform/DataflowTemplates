@@ -36,8 +36,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class SchemaMapperProviderFnTest {
 
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
   public void testGetSchemaMapper_SessionFile() throws IOException {
@@ -46,7 +45,8 @@ public class SchemaMapperProviderFnTest {
         sessionFile, "{\"SpSchema\": {}, \"SrcSchema\": {}, \"SyntheticPKeys\": {}}".getBytes());
     Ddl ddl = mock(Ddl.class);
 
-    SchemaMapperProviderFn fn = new SchemaMapperProviderFn(sessionFile.toString(), null, null, null);
+    SchemaMapperProviderFn fn =
+        new SchemaMapperProviderFn(sessionFile.toString(), null, null, null);
     ISchemaMapper mapper = fn.apply(ddl);
 
     assertTrue(mapper instanceof SessionBasedMapper);
@@ -58,7 +58,8 @@ public class SchemaMapperProviderFnTest {
     Files.write(overridesFile, "{}".getBytes());
     Ddl ddl = mock(Ddl.class);
 
-    SchemaMapperProviderFn fn = new SchemaMapperProviderFn(null, overridesFile.toString(), null, null);
+    SchemaMapperProviderFn fn =
+        new SchemaMapperProviderFn(null, overridesFile.toString(), null, null);
     ISchemaMapper mapper = fn.apply(ddl);
 
     assertTrue(mapper instanceof SchemaFileOverridesBasedMapper);
@@ -92,7 +93,8 @@ public class SchemaMapperProviderFnTest {
     String tableOverrides = "{{old_table, new_table}}";
     String columnOverrides = "{\"col1\": \"newCol1\"}";
 
-    SchemaMapperProviderFn fn = new SchemaMapperProviderFn(null, null, tableOverrides, columnOverrides);
+    SchemaMapperProviderFn fn =
+        new SchemaMapperProviderFn(null, null, tableOverrides, columnOverrides);
     ISchemaMapper mapper = fn.apply(ddl);
 
     assertTrue(mapper instanceof SchemaStringOverridesBasedMapper);
@@ -107,8 +109,9 @@ public class SchemaMapperProviderFnTest {
     Files.write(overridesFile, "{}".getBytes());
     Ddl ddl = mock(Ddl.class);
 
-    SchemaMapperProviderFn fn = new SchemaMapperProviderFn(
-        sessionFile.toString(), overridesFile.toString(), "{{old, new}}", null);
+    SchemaMapperProviderFn fn =
+        new SchemaMapperProviderFn(
+            sessionFile.toString(), overridesFile.toString(), "{{old, new}}", null);
     ISchemaMapper mapper = fn.apply(ddl);
 
     assertTrue(mapper instanceof SessionBasedMapper);
@@ -120,7 +123,8 @@ public class SchemaMapperProviderFnTest {
     Files.write(overridesFile, "{}".getBytes());
     Ddl ddl = mock(Ddl.class);
 
-    SchemaMapperProviderFn fn = new SchemaMapperProviderFn(null, overridesFile.toString(), "{{old, new}}", null);
+    SchemaMapperProviderFn fn =
+        new SchemaMapperProviderFn(null, overridesFile.toString(), "{{old, new}}", null);
     ISchemaMapper mapper = fn.apply(ddl);
 
     assertTrue(mapper instanceof SchemaFileOverridesBasedMapper);

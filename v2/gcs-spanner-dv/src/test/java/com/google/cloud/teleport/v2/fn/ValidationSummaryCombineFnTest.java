@@ -32,7 +32,8 @@ public class ValidationSummaryCombineFnTest {
 
   @Test
   public void testCreateAccumulator() {
-    ValidationSummaryCombineFn fn = new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
+    ValidationSummaryCombineFn fn =
+        new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
     ValidationSummaryAccumulator acc = fn.createAccumulator();
     assertEquals(0L, acc.totalTables);
     assertEquals(0L, acc.totalMatched);
@@ -42,20 +43,22 @@ public class ValidationSummaryCombineFnTest {
 
   @Test
   public void testAddInput() {
-    ValidationSummaryCombineFn fn = new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
+    ValidationSummaryCombineFn fn =
+        new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
     ValidationSummaryAccumulator acc = fn.createAccumulator();
 
-    TableValidationStats stats = TableValidationStats.builder()
-        .setTableName("table1")
-        .setMatchedRowCount(100L)
-        .setMismatchRowCount(5L)
-        .setRunId("run1")
-        .setStatus("status")
-        .setSourceRowCount(105L)
-        .setDestinationRowCount(105L)
-        .setStartTimestamp(Instant.now())
-        .setEndTimestamp(Instant.now())
-        .build();
+    TableValidationStats stats =
+        TableValidationStats.builder()
+            .setTableName("table1")
+            .setMatchedRowCount(100L)
+            .setMismatchRowCount(5L)
+            .setRunId("run1")
+            .setStatus("status")
+            .setSourceRowCount(105L)
+            .setDestinationRowCount(105L)
+            .setStartTimestamp(Instant.now())
+            .setEndTimestamp(Instant.now())
+            .build();
 
     fn.addInput(acc, stats);
 
@@ -67,7 +70,8 @@ public class ValidationSummaryCombineFnTest {
 
   @Test
   public void testMergeAccumulators() {
-    ValidationSummaryCombineFn fn = new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
+    ValidationSummaryCombineFn fn =
+        new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
 
     ValidationSummaryAccumulator acc1 = new ValidationSummaryAccumulator();
     acc1.totalTables = 1;
@@ -114,7 +118,8 @@ public class ValidationSummaryCombineFnTest {
 
   @Test
   public void testExtractOutput_Mismatch() {
-    ValidationSummaryCombineFn fn = new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
+    ValidationSummaryCombineFn fn =
+        new ValidationSummaryCombineFn("run1", Instant.now(), "src", "dst");
 
     ValidationSummaryAccumulator acc = new ValidationSummaryAccumulator();
     acc.totalTables = 1;
