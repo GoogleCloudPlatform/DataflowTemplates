@@ -177,7 +177,6 @@ class TargetMapper {
     var relationshipType = parseType(mappings);
     var properties = parseMappings(mappings);
     var defaultIndexedProperties = getDefaultIndexedProperties(indexAllProperties, properties);
-    // TODO: fix embedded node mapping
     var sourceNodeReference =
         !mappings.has("source")
             ? null

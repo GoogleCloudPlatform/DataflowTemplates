@@ -378,7 +378,6 @@ public class GoogleCloudToNeo4j {
                 .nullableSourceRows(nullableSourceBeamRows)
                 .sourceBeamSchema(sourceBeamSchema)
                 .target(target)
-                // TODO: check key mappings
                 .startNodeTarget(
                     findNodeTargetByName(
                         allActiveNodeTargets, target.getStartNodeReference().getName()))

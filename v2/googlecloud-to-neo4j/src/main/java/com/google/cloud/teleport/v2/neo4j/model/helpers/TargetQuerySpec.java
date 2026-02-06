@@ -145,7 +145,6 @@ public class TargetQuerySpec {
         throw new IllegalStateException(
             "Relationship targets must specify a start node target, none found");
       }
-      // TODO: check key mapping logic here
       String expectedStartName = relationshipTarget.getStartNodeReference().getName();
       String actualStartName = startNodeTarget.getName();
       if (!expectedStartName.equals(actualStartName)) {

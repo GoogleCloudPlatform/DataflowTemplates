@@ -101,6 +101,19 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
+  public void generates_relationship_import_statement_with_node_key_mapping_overrides() {
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MATCH (start:`Person` {`id`: row.`person_id`}) "
+            + "MATCH (end:`Topic` {`id`: row.`topic_id`}) "
+            + "CREATE (start)-[r:`LIKES`]->(end)";
+
+    assertImportStatementOf(
+        importSpecificationOf(SINGLE_RELATIONSHIP_TARGET_WITH_NODE_KEY_MAPPING_OVERRIDES),
+        expectedCypher);
+  }
+
+  @Test
   public void specifies_keys_in_relationship_merge_pattern_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
     assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypherPrefix);
