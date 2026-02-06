@@ -186,11 +186,14 @@ class TargetMapper {
             ? null
             : findNodeTarget(mappings.getJSONObject("target"), nodes).get();
     var sourceTransformations = parseSourceTransformations(edge);
+    var dependencies = jobIndex.getDependencies(targetName);
+    dependencies.remove(sourceNodeReference);
+    dependencies.remove(targetNodeReference);
     return new RelationshipTarget(
         getBooleanOrDefault(edge, "active", true),
         targetName,
         getStringOrDefault(edge, "source", DEFAULT_SOURCE_NAME),
-        jobIndex.getDependencies(targetName),
+        dependencies,
         relationshipType,
         writeMode,
         nodeMatchMode,

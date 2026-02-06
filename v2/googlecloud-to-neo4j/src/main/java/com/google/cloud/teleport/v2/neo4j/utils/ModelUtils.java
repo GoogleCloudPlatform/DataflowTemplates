@@ -250,8 +250,11 @@ public class ModelUtils {
           "Expected node or relationship target when gathering key properties, found: %s"
               .formatted(entity.getClass()));
     }
-    return Stream.concat(keyFields, uniqueFields)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    var keys = keyFields.collect(Collectors.toCollection(LinkedHashSet::new));
+    if (!keys.isEmpty()) {
+      return keys;
+    }
+    return uniqueFields.collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private static OrderByElement convertToJsqlElement(OrderBy orderByClause)
