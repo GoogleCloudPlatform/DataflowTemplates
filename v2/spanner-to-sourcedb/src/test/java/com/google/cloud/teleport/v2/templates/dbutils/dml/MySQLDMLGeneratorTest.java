@@ -1313,4 +1313,50 @@ public final class MySQLDMLGeneratorTest {
         .filter(word -> word.equalsIgnoreCase(targetWord))
         .count();
   }
+
+  @Test
+  public void generatedColumnDML() {
+    String sessionFile = "src/test/resources/generatedColumnSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    // FullName is generated, so it should be ignored even if present in newValues
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"FullName\":\"kk ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "INSERT";
+
+    /*
+     * The expected sql is:
+     * "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+     * + " UPDATE  FirstName = 'kk', LastName = 'll'";
+     */
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
+    // Verify FullName is NOT in the SQL
+    // It should not be in the column list, values, or update clause
+    // Since we can't easily parse SQL, we check it doesn't appear as a column to be
+    // written
+    // Note: It might appear in values if we were careless, but we want to ensure
+    // it's not set.
+    // Ideally check that `FullName` is not in the column list.
+    // The previous tests check for specific assignments.
+    // I'll check that `FullName` string is NOT present in the SQL at all,
+    // assuming it's not part of any other string.
+    // Or better, check that it's not in the update clause.
+    assertEquals(0, countInSQL(sql, "FullName"));
+  }
 }
