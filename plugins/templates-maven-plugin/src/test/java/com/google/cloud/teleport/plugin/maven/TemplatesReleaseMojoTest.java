@@ -132,7 +132,8 @@ public class TemplatesReleaseMojoTest {
       String blueprintObjectName =
           String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile1.getName());
       String optionsObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
+          String.join(
+              "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
       String manifestName =
           String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
 
@@ -149,19 +150,9 @@ public class TemplatesReleaseMojoTest {
       List<Map<String, String>> actualOptions = actualManifest.get("options");
 
       List<Map<String, String>> expectedBlueprints =
-          List.of(
-              Map.of(
-                  "name",
-                  yamlFile1.getName(),
-                  "path",
-                  blueprintObjectName));
+          List.of(Map.of("name", yamlFile1.getName(), "path", blueprintObjectName));
       List<Map<String, String>> expectedOptions =
-          List.of(
-              Map.of(
-                  "name",
-                  optionsFile1.getName(),
-                  "path",
-                  optionsObjectName));
+          List.of(Map.of("name", optionsFile1.getName(), "path", optionsObjectName));
 
       assertEquals(expectedBlueprints, actualBlueprints);
       assertEquals(expectedOptions, actualOptions);
@@ -169,8 +160,7 @@ public class TemplatesReleaseMojoTest {
   }
 
   @Test
-  public void testExecute_yamlDirectoriesMissing_logsWarning()
-      throws MojoExecutionException {
+  public void testExecute_yamlDirectoriesMissing_logsWarning() throws MojoExecutionException {
     mojo.publishYamlBlueprints = true;
     mojo.yamlBlueprintsPath = "missing-blueprints";
     mojo.yamlOptionsPath = "missing-options";
@@ -265,7 +255,8 @@ public class TemplatesReleaseMojoTest {
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
       String optionsObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
+          String.join(
+              "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
       String manifestName =
           String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
 
