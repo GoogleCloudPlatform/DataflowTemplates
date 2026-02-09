@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -30,7 +29,6 @@ import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -142,44 +140,6 @@ abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTup
       groupName = groupName.substring(0, maxSubstringLength) + "_" + hash;
     }
     return groupName;
-  }
-
-  /**
-   * DoFn to extract the table name from a {@link SourceRow} and delimit it to match the format used
-   * in {@link SourceTableReference}.
-   */
-  private static class ExtractTableNameFn extends DoFn<SourceRow, String> {
-    @ProcessElement
-    public void processElement(@Element SourceRow row, OutputReceiver<String> out) {
-      out.output(delimitIdentifier(row.tableName()));
-    }
-
-    private String delimitIdentifier(String identifier) {
-      return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
-    }
-  }
-
-  /**
-   * DoFn to map the aggregated record counts for each table back to their corresponding {@link
-   * SourceTableReference} and output them with the updated count.
-   */
-  private static class GroupCompletionDoFn extends DoFn<KV<String, Long>, SourceTableReference> {
-    private final Map<String, SourceTableReference> tableReferencesMap;
-
-    public GroupCompletionDoFn(ImmutableList<SourceTableReference> tableReferences) {
-      this.tableReferencesMap =
-          tableReferences.stream()
-              .collect(Collectors.toMap(SourceTableReference::sourceTableName, ref -> ref));
-    }
-
-    @ProcessElement
-    public void processElement(
-        @Element KV<String, Long> element, OutputReceiver<SourceTableReference> out) {
-      SourceTableReference ref = tableReferencesMap.get(element.getKey());
-      if (ref != null) {
-        out.output(ref.toBuilder().setRecordCount(element.getValue()).build());
-      }
-    }
   }
 
   static Builder builder(

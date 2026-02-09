@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
@@ -32,6 +33,19 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class DialectAdapterTest {
   @Mock CassandraSchemaReference mockCassandraSchemaReference;
   @Mock CassandraDataSource mockCassandraDataSource;
+
+  @Test
+  public void testGenerateInClause() {
+    assertThat(DialectAdapter.generateInClause(1)).isEqualTo("(?)");
+    assertThat(DialectAdapter.generateInClause(2)).isEqualTo("(?,?)");
+    assertThat(DialectAdapter.generateInClause(5)).isEqualTo("(?,?,?,?,?)");
+  }
+
+  @Test
+  public void testGenerateInClause_invalidSize() {
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(0));
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(-1));
+  }
 
   @Test
   public void testMismatchedSource() {
