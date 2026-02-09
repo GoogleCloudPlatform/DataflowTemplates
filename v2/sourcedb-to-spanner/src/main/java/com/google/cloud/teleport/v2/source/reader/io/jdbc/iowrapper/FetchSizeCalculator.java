@@ -28,6 +28,7 @@ public final class FetchSizeCalculator {
 
   private static final int MIN_FETCH_SIZE = 1;
   private static final int MAX_FETCH_SIZE = Integer.MAX_VALUE;
+  private static final int SAFETY_FACTOR = 4; // 2 * 2 = 4 (Safety factor)
 
   private FetchSizeCalculator() {}
 
@@ -62,11 +63,16 @@ public final class FetchSizeCalculator {
       }
 
       long workerMemoryBytes = (long) (workerMemoryGB * 1024 * 1024 * 1024);
+      if (workerMemoryBytes < 0) {
+        LOG.warn(
+            "Worker memory is less than overhead constant. FetchSize cannot be calculated. Cursor mode will not be enabled.");
+        return 0;
+      }
 
-      // Formula: (Memory of Dataflow worker VM) / (2 * 2 * (Number of cores on the
+      // Formula: (Memory of Dataflow worker VM) / (SAFETY_FACTOR * (Number of cores
+      // on the
       // Dataflow worker VM) * (Maximum row size))
-      // 2 * 2 = 4 (Safety factor)
-      long denominator = 4L * workerCores * estimatedRowSize;
+      long denominator = SAFETY_FACTOR * workerCores * estimatedRowSize;
 
       if (denominator == 0) { // Should not happen given estimatedRowSize check and cores >= 1
         LOG.warn(

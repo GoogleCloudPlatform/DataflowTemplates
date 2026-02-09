@@ -445,6 +445,9 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
+    if (fetchSize != 0) {
+      jdbcIO = jdbcIO.withFetchSize(fetchSize);
+    }
     return jdbcIO;
   }
 
