@@ -267,16 +267,20 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                         boolean isEventFiltered =
                             InputRecordProcessor.processRecord(
                                 spannerRec,
+                                primaryKey,
                                 schemaMapper,
                                 ddl,
                                 sourceSchema,
                                 sourceDao,
+                                spannerDao,
+                                spannerConfig,
                                 shardId,
                                 sourceDbTimezoneOffset,
                                 sourceProcessor.getDmlGenerator(),
                                 spannerToSourceTransformer,
                                 this.source,
-                                check);
+                                check,
+                                mapper);
                         if (isEventFiltered) {
                           outputWithTag(
                               c,

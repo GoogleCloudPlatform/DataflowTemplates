@@ -233,6 +233,9 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
       }
+      if (sourceColDef.isGenerated()) {
+        continue;
+      }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
         response.put(colName, customTransformationResponse.get(colName).toString());
         continue;
