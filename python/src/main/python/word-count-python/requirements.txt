@@ -752,9 +752,9 @@ google-auth-httplib2==0.2.1 \
     --hash=sha256:1be94c611db91c01f9703e7f62b0a59bbd5587a95571c7b6fade510d648bc08b \
     --hash=sha256:5ef03be3927423c87fb69607b42df23a444e434ddb2555b73b3679793187b7de
     # via apache-beam
-google-cloud-aiplatform==1.135.0 \
-    --hash=sha256:1e42fc4c38147066ad05d93cb9208201514d359fb2a64663333cea2d1ec9ab42 \
-    --hash=sha256:32b53ee61b3f51b14e21dc98fa9d9021c5db171cf7a407bd71abd3da46f5a6a4
+google-cloud-aiplatform==1.136.0 \
+    --hash=sha256:01e64a0d0861486e842bf7e904077c847bcc1b654a29883509d57476de915b7d \
+    --hash=sha256:5c829f002b7b673dcd0e718f55cc0557b571bd10eb5cdb7882d72916cfbf8c0e
     # via apache-beam
 google-cloud-bigquery==3.40.0 \
     --hash=sha256:0469bcf9e3dad3cab65b67cce98180c8c0aacf3253d47f0f8e976f299b49b5ab \
@@ -796,13 +796,13 @@ google-cloud-language==2.19.0 \
     --hash=sha256:3b88f6eabd1c2413a1c6c918cbe40a22a5d14401930309717dbb709b353c6c64 \
     --hash=sha256:a43044632c8aada30a9c3246e00bfc867a56188be0c6e08e8764731296a05e0b
     # via apache-beam
-google-cloud-monitoring==2.29.0 \
-    --hash=sha256:93aa264da0f57f3de2900b0250a37ca27068984f6d94e54175d27aea12a4637f \
-    --hash=sha256:eedb8afd1c4e80e8c62435f05c448e9e65be907250a66d81e6af5909778267b6
+google-cloud-monitoring==2.29.1 \
+    --hash=sha256:86cac55cdd2608561819d19544fb3c129bbb7dcecc445d8de426e34cd6fa8e49 \
+    --hash=sha256:944a57031f20da38617d184d5658c1f938e019e8061f27fd944584831a1b9d5a
     # via google-cloud-spanner
-google-cloud-pubsub==2.34.0 \
-    --hash=sha256:25f98c3ba16a69871f9ebbad7aece3fe63c8afe7ba392aad2094be730d545976 \
-    --hash=sha256:aa11b2471c6d509058b42a103ed1b3643f01048311a34fd38501a16663267206
+google-cloud-pubsub==2.35.0 \
+    --hash=sha256:2c0d1d7ccda52fa12fb73f34b7eb9899381e2fd931c7d47b10f724cdfac06f95 \
+    --hash=sha256:c32e4eb29e532ec784b5abb5d674807715ec07895b7c022b9404871dec09970d
     # via
     #   apache-beam
     #   google-cloud-pubsublite
@@ -836,9 +836,9 @@ google-cloud-videointelligence==2.18.0 \
     --hash=sha256:2cf4a32f64f4e01fdfb78b7bf625aa82df9129c87854796348887eac60290e95 \
     --hash=sha256:b2ae39bd22d186218684a297c2fa2fa636e5874e69d39f719504d729f44639fd
     # via apache-beam
-google-cloud-vision==3.12.0 \
-    --hash=sha256:30009a22c979b3b0f52c1058a6b61bb19a3ea8f268611466fcbf309b74ff4734 \
-    --hash=sha256:479e73459f8d7d7b1dca7719e9c4547950a0207b263eb93261bd7ea1b2f64eba
+google-cloud-vision==3.12.1 \
+    --hash=sha256:8c661bc0e7a6bd3d03a1a645b977af24ae3f21ccf3df8e213298659fd0d40813 \
+    --hash=sha256:f99b83af7588d30e708b87e09ff73e43e380497fe82c799b9f05e03f310027c8
     # via apache-beam
 google-crc32c==1.8.0 \
     --hash=sha256:014a7e68d623e9a4222d663931febc3033c5c7c9730785727de2a81f87d5bab8 \
@@ -878,9 +878,9 @@ google-crc32c==1.8.0 \
     #   google-cloud-bigtable
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==1.61.0 \
-    --hash=sha256:5773a4e8ad5b2ebcd54a633a67d8e9c4f413032fef07977ee47ffa34a6d3bbdf \
-    --hash=sha256:cb073ef8287581476c1c3f4d8e735426ee34478e500a56deef218fa93071e3ca
+google-genai==1.62.0 \
+    --hash=sha256:4c3daeff3d05fafee4b9a1a31f9c07f01bc22051081aa58b4d61f58d16d1bcc0 \
+    --hash=sha256:709468a14c739a080bc240a4f3191df597bf64485b1ca3728e0fb67517774c18
     # via google-cloud-aiplatform
 google-resumable-media==2.8.0 \
     --hash=sha256:dd14a116af303845a8d932ddae161a26e86cc229645bc98b39f026f9b1717582 \
@@ -1671,9 +1671,9 @@ propcache==0.4.1 \
     # via
     #   aiohttp
     #   yarl
-proto-plus==1.27.0 \
-    --hash=sha256:1baa7f81cf0f8acb8bc1f6d085008ba4171eaf669629d1b6d1673b21ed1c0a82 \
-    --hash=sha256:873af56dd0d7e91836aee871e5799e1c6f1bda86ac9a983e0bb9f0c266a568c4
+proto-plus==1.27.1 \
+    --hash=sha256:912a7460446625b792f6448bade9e55cd4e41e6ac10e27009ef71a7f317fa147 \
+    --hash=sha256:e4643061f3a4d0de092d62aa4ad09fa4756b2cbb89d4627f3985018216f9fefc
     # via
     #   apache-beam
     #   google-api-core
@@ -2272,9 +2272,9 @@ sqlparse==0.5.5 \
     --hash=sha256:12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba \
     --hash=sha256:e20d4a9b0b8585fdf63b10d30066c7c94c5d7a7ec47c889a2d83a3caa93ff28e
     # via google-cloud-spanner
-tenacity==9.1.2 \
-    --hash=sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb \
-    --hash=sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138
+tenacity==9.1.4 \
+    --hash=sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55 \
+    --hash=sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a
     # via google-genai
 typing-extensions==4.15.0 \
     --hash=sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466 \
@@ -2611,8 +2611,7 @@ zstandard==0.25.0 \
     # via apache-beam
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==80.10.2 \
-    --hash=sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70 \
-    --hash=sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173
+setuptools==82.0.0 \
+    --hash=sha256:22e0a2d69474c6ae4feb01951cb69d515ed23728cf96d05513d36e42b62b37cb \
+    --hash=sha256:70b18734b607bd1da571d097d236cfcfacaf01de45717d59e6e04b96877532e0
     # via -r python/default_base_python_requirements.txt
-
