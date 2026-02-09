@@ -81,7 +81,8 @@ public class ComparisonRecordMapper implements Serializable {
           table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
       return buildRecord(spannerTableName, new TreeMap<>(values), pkNames);
     } catch (Exception e) {
-      throw new RuntimeException("Error mapping GenericRecord to ComparisonRecord", e);
+      throw new RuntimeException(
+          "Error mapping GenericRecord to ComparisonRecord: " + e.getMessage(), e);
     }
   }
 

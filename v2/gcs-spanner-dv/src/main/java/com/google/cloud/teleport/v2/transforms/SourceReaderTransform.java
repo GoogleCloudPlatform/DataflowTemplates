@@ -29,13 +29,9 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SourceReaderTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollection<ComparisonRecord>> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SourceReaderTransform.class);
 
   private final String gcsInputDirectory;
   private final PCollectionView<Ddl> ddlView;
@@ -67,6 +63,6 @@ public class SourceReaderTransform
   private static String createAvroFilePattern(String inputPath) {
     String cleanPath =
         inputPath.endsWith("/") ? inputPath.substring(0, inputPath.length() - 1) : inputPath;
-    return cleanPath + "/**/*.avro";
+    return cleanPath + "/**.avro";
   }
 }
