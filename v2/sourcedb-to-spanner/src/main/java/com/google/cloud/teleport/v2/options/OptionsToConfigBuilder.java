@@ -227,7 +227,7 @@ public final class OptionsToConfigBuilder {
     LOG.info(
         "FetchSize is {}. Setting MySQL `useCursorFetch=true`.",
         fetchSize == null ? "Auto" : fetchSize);
-    String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "true");
+    String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "false");
     return updatedUrl;
   }
 
