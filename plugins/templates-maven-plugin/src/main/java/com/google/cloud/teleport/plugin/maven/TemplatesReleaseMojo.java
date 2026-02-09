@@ -45,7 +45,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
@@ -193,6 +195,13 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String yamlManifestName;
 
+  @Parameter(
+      defaultValue = "yaml/src/main/python/options",
+      property = "yamlOptionsPath",
+      readonly = true,
+      required = false)
+  protected String yamlOptionsPath;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -279,50 +288,37 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             "Trying to upload Job Builder blueprints to bucket '{}'...",
             bucketNameOnly(bucketName));
         Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
-        if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
-          LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
+        Path yamlOptionsPath = Paths.get(project.getBasedir().getAbsolutePath(), this.yamlOptionsPath);
+
+        if ((!Files.exists(yamlPath) || !Files.isDirectory(yamlPath))
+            && (!Files.exists(yamlOptionsPath) || !Files.isDirectory(yamlOptionsPath))) {
+          LOG.warn(
+              "YAML blueprints and options directory not found, skipping upload for paths: {} and {}",
+              yamlPath,
+              yamlOptionsPath);
         } else {
 
-          try (Storage storage = StorageOptions.getDefaultInstance().getService();
-              Stream<Path> paths = Files.list(yamlPath)) {
+          try (Storage storage = StorageOptions.getDefaultInstance().getService()) {
             List<Blueprint> blueprints = new ArrayList<>();
-            paths
-                .filter(
-                    path ->
-                        Files.isRegularFile(path)
-                            && path.getFileName().toString().endsWith(".yaml"))
-                .forEach(
-                    path -> {
-                      String fileName = path.getFileName().toString();
-                      String objectName =
-                          String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
-                      BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
+            List<Blueprint> options = new ArrayList<>();
 
-                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+            // Upload the main Yaml blueprints
+            uploadYamlFiles(storage, yamlPath, "", blueprints);
 
-                      // Upload every blueprint with retries
-                      Failsafe.with(gcsRetryPolicy())
-                          .run(
-                              () -> {
-                                try (InputStream inputStream = Files.newInputStream(path)) {
-                                  storage.create(blobInfo, inputStream);
-                                }
-                              });
+            // Upload the jinja parameter option files
+            uploadYamlFiles(storage, yamlOptionsPath, "options", options);
 
-                      LOG.info(
-                          "Uploaded blueprint {} to gs://{}/{}",
-                          fileName,
-                          bucketNameOnly(bucketName),
-                          objectName);
-                      blueprints.add(new Blueprint(fileName, objectName));
-                    });
+            // Build the manifest file
             String manifestObjectName =
                 String.join("/", stagePrefix, yamlBlueprintsGCSPath, yamlManifestName);
             BlobId manifestBlobId = BlobId.of(bucketNameOnly(bucketName), manifestObjectName);
             BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
 
             // Upload the manifest file with retries
-            byte[] manifestBytes = GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8);
+            Map<String, List<Blueprint>> manifestMap = new HashMap<>();
+            manifestMap.put("blueprints", blueprints);
+            manifestMap.put("options", options);
+            byte[] manifestBytes = GSON.toJson(manifestMap).getBytes(StandardCharsets.UTF_8);
             Failsafe.with(gcsRetryPolicy())
                 .run(
                     () ->
@@ -351,6 +347,50 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
     } catch (Exception e) {
       throw new MojoExecutionException("Template run failed", e);
     }
+  }
+
+  private void uploadYamlFiles(
+      Storage storage, Path directory, String subFolder, List<Blueprint> blueprints)
+      throws IOException {
+    if (Files.exists(directory) && Files.isDirectory(directory)) {
+      try (Stream<Path> paths = Files.list(directory)) {
+        paths
+            .filter(
+                path ->
+                    Files.isRegularFile(path) && path.getFileName().toString().endsWith(".yaml"))
+            .forEach(
+                path -> {
+                  String fileName = path.getFileName().toString();
+                  String objectName =
+                      subFolder.isEmpty()
+                          ? String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName)
+                          : String.join(
+                              "/", stagePrefix, yamlBlueprintsGCSPath, subFolder, fileName);
+                  uploadToGcs(storage, path, objectName);
+                  blueprints.add(new Blueprint(fileName, objectName));
+                });
+      }
+    }
+  }
+
+  private void uploadToGcs(Storage storage, Path path, String objectName) {
+    BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
+    BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+
+    // Upload every blueprint with retries
+    Failsafe.with(gcsRetryPolicy())
+        .run(
+            () -> {
+              try (InputStream inputStream = Files.newInputStream(path)) {
+                storage.create(blobInfo, inputStream);
+              }
+            });
+
+    LOG.info(
+        "Uploaded file {} to gs://{}/{}",
+        path.getFileName().toString(),
+        bucketNameOnly(bucketName),
+        objectName);
   }
 
   private static <T> RetryPolicy<T> gcsRetryPolicy() {
