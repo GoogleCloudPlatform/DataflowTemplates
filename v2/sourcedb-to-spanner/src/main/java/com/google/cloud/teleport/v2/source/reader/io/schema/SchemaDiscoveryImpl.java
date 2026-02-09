@@ -20,10 +20,19 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryRetriesExhaustedException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default Implementation for {@link SchemaDiscovery}. {@link SchemaDiscoveryImpl} wraps an
@@ -34,8 +43,11 @@ import org.apache.beam.sdk.util.FluentBackoff;
  * RetriableSchemaDiscoveryException} for retriable errors.
  */
 public final class SchemaDiscoveryImpl implements SchemaDiscovery {
+  private static final Logger LOG = LoggerFactory.getLogger(SchemaDiscoveryImpl.class);
   private final RetriableSchemaDiscovery retriableSchemaDiscovery;
   private final FluentBackoff fluentBackoff;
+  private static final int BATCH_SIZE = 500;
+  private static final int THREAD_POOL_SIZE = 4;
 
   public SchemaDiscoveryImpl(
       RetriableSchemaDiscovery retriableSchemaDiscovery, FluentBackoff fluentBackoff) {
@@ -66,6 +78,12 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
   /**
    * Discover the schema of tables to migrate.
    *
+   * <p>To support large-scale migrations (e.g., 5,000+ tables), this method performs "Bulk
+   * Discovery." It partitions the list of tables into batches and executes schema discovery for
+   * each batch in parallel using a managed thread pool. This significantly reduces the total
+   * initialization time by avoiding the overhead of thousands of individual sequential database
+   * queries.
+   *
    * @param dataSource - Provider for source connection.
    * @param sourceSchemaReference - Source database name and (optionally namespace)
    * @param tables - Tables to migrate.
@@ -77,15 +95,74 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
       DataSource dataSource,
       SourceSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
-      throws SchemaDiscoveryException {
-    return doRetries(
-        () ->
-            retriableSchemaDiscovery.discoverTableSchema(
-                dataSource, sourceSchemaReference, tables));
+      throws SchemaDiscoveryRetriesExhaustedException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
+    ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
+        ImmutableMap.builder();
+    // Partition the tables into batches to enable parallel discovery via SQL IN clauses.
+    List<List<String>> batches = partitionWork(tables, BATCH_SIZE);
+
+    // We use a fixed thread pool to bound the resource impact on the Dataflow Launcher VM,
+    // which typically has limited vCPU and memory.
+    ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+    try {
+      List<CompletableFuture<ImmutableMap<String, ImmutableMap<String, SourceColumnType>>>>
+          futures = new ArrayList<>();
+      for (List<String> batch : batches) {
+        ImmutableList<String> immutableBatch = ImmutableList.copyOf(batch);
+        futures.add(
+            CompletableFuture.supplyAsync(
+                () -> {
+                  return doRetries(
+                      () ->
+                          retriableSchemaDiscovery.discoverTableSchema(
+                              dataSource, sourceSchemaReference, immutableBatch));
+                },
+                executor));
+      }
+
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+      for (CompletableFuture<ImmutableMap<String, ImmutableMap<String, SourceColumnType>>> future :
+          futures) {
+        result.putAll(future.join());
+      }
+    } catch (Exception e) {
+      convertException(e);
+    } finally {
+      // Ensure the executor is always shut down to prevent thread leaks in the launcher VM.
+      executor.shutdown();
+    }
+    return result.build();
+  }
+
+  @VisibleForTesting
+  protected static void convertException(Exception e) {
+    Throwable cause = e;
+    while (cause != null) {
+      if (cause instanceof SchemaDiscoveryException) {
+        throw (SchemaDiscoveryException) cause;
+      }
+      if (cause instanceof SchemaDiscoveryRetriesExhaustedException) {
+        throw (SchemaDiscoveryRetriesExhaustedException) cause;
+      }
+      if (cause instanceof java.util.concurrent.CompletionException
+          || cause instanceof java.util.concurrent.ExecutionException
+          || cause instanceof RuntimeException) {
+        cause = cause.getCause();
+      } else {
+        break;
+      }
+    }
+    throw new SchemaDiscoveryException(e);
   }
 
   /**
    * Discover the indexes of tables to migrate.
+   *
+   * <p>Similar to {@link #discoverTableSchema}, this method uses parallel batch processing to
+   * efficiently discover indexes for a large number of tables.
    *
    * @param dataSource Provider for source connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
@@ -98,11 +175,55 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
       DataSource dataSource,
       SourceSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
-      throws SchemaDiscoveryException {
-    return doRetries(
-        () ->
-            retriableSchemaDiscovery.discoverTableIndexes(
-                dataSource, sourceSchemaReference, tables));
+      throws SchemaDiscoveryRetriesExhaustedException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
+    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
+        ImmutableMap.builder();
+    List<List<String>> batches = partitionWork(tables, BATCH_SIZE);
+    ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+    try {
+      List<CompletableFuture<ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>>>> futures =
+          new ArrayList<>();
+      for (List<String> batch : batches) {
+        ImmutableList<String> immutableBatch = ImmutableList.copyOf(batch);
+        futures.add(
+            CompletableFuture.supplyAsync(
+                () -> {
+                  return doRetries(
+                      () ->
+                          retriableSchemaDiscovery.discoverTableIndexes(
+                              dataSource, sourceSchemaReference, immutableBatch));
+                },
+                executor));
+      }
+
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+      for (CompletableFuture<ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>>> future :
+          futures) {
+        result.putAll(future.join());
+      }
+    } catch (Exception e) {
+      convertException(e);
+    } finally {
+      executor.shutdown();
+    }
+    return result.build();
+  }
+
+  /**
+   * Partitions a list of items into smaller batches of a specified size. This is used to break down
+   * large table discovery tasks into manageable chunks for parallel execution.
+   *
+   * @param <T> the type of items in the list.
+   * @param items the list of items to partition.
+   * @param batchSize the maximum size of each batch.
+   * @return a list of batches.
+   */
+  @VisibleForTesting
+  protected static <T> List<List<T>> partitionWork(List<T> items, int batchSize) {
+    return Lists.partition(items, batchSize);
   }
 
   private <T> T doRetries(SchemaDiscoveryOperation<T> operation) throws SchemaDiscoveryException {

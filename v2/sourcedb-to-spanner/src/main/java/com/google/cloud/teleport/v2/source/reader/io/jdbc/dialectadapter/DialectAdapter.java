@@ -128,4 +128,23 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
         .map(jdbcValueMappingsProvider::estimateColumnSize)
         .reduce(0, Integer::sum);
   }
+
+  /**
+   * Utility function that generates a parameterized IN clause string: "(?, ?, ..., ?)".
+   *
+   * @param size number of placeholders.
+   * @return the IN clause string.
+   */
+  static String generateInClause(int size) {
+    Preconditions.checkArgument(size > 0, "size must be greater than 0");
+    StringBuilder sb = new StringBuilder("(");
+    for (int i = 0; i < size; i++) {
+      sb.append("?");
+      if (i < size - 1) {
+        sb.append(",");
+      }
+    }
+    sb.append(")");
+    return sb.toString();
+  }
 }

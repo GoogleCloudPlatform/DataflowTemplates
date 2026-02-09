@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -112,7 +113,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  AND table_schema = ?";
 
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
-    try (PreparedStatement stmt = dataSource.getConnection().prepareStatement(query)) {
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(query)) {
       stmt.setString(1, sourceSchemaReference.dbName());
       stmt.setString(2, sourceSchemaReference.namespace());
       try (ResultSet rs = stmt.executeQuery()) {
@@ -161,6 +163,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
     logger.info(
         "Discovering table schema for Datasource: {}, JdbcSchemaReference: {}, tables: {}",
         dataSource,
@@ -168,7 +173,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     final String query =
-        "SELECT column_name,"
+        "SELECT table_name,"
+            + "  column_name,"
             + "  data_type,"
             + "  character_maximum_length,"
             + "  numeric_precision,"
@@ -176,44 +182,48 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + " FROM information_schema.columns"
             + " WHERE table_catalog = ?"
             + "  AND table_schema = ?"
-            + "  AND table_name = ?";
+            + "  AND table_name IN "
+            + DialectAdapter.generateInClause(tables.size());
 
-    ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> tableSchemaBuilder =
-        ImmutableMap.builder();
-    try (PreparedStatement statement = dataSource.getConnection().prepareStatement(query)) {
-      for (String table : tables) {
-        statement.setString(1, sourceSchemaReference.dbName());
-        statement.setString(2, sourceSchemaReference.namespace());
-        statement.setString(3, table);
-        logger.info("Executing query " + query + ": " + statement);
-        try (ResultSet resultSet = statement.executeQuery()) {
-          ImmutableMap.Builder<String, SourceColumnType> schema = ImmutableMap.builder();
-          while (resultSet.next()) {
-            SourceColumnType sourceColumnType;
-            final String columnName = resultSet.getString("column_name");
-            final String columnType = resultSet.getString("data_type");
-            final long characterMaximumLength = resultSet.getLong("character_maximum_length");
-            boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
-            final long numericPrecision = resultSet.getLong("numeric_precision");
-            boolean typeHasPrecision = !resultSet.wasNull();
-            final long numericScale = resultSet.getLong("numeric_scale");
-            boolean typeHasScale = !resultSet.wasNull();
-            if (typeHasMaximumCharacterLength) {
-              sourceColumnType =
-                  new SourceColumnType(columnType, new Long[] {characterMaximumLength}, null);
-            } else if (typeHasPrecision && typeHasScale) {
-              sourceColumnType =
-                  new SourceColumnType(
-                      columnType, new Long[] {numericPrecision, numericScale}, null);
-            } else if (typeHasPrecision) {
-              sourceColumnType =
-                  new SourceColumnType(columnType, new Long[] {numericPrecision}, null);
-            } else {
-              sourceColumnType = new SourceColumnType(columnType, new Long[] {}, null);
-            }
-            schema.put(columnName, sourceColumnType);
+    Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
+    tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement statement = conn.prepareStatement(query)) {
+      statement.setFetchSize(1000);
+      statement.setString(1, sourceSchemaReference.dbName());
+      statement.setString(2, sourceSchemaReference.namespace());
+      for (int i = 0; i < tables.size(); i++) {
+        statement.setString(i + 3, tables.get(i));
+      }
+      logger.info("Executing query " + query + ": " + statement);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        while (resultSet.next()) {
+          final String tableName = resultSet.getString("table_name");
+          final String columnName = resultSet.getString("column_name");
+          final String columnType = resultSet.getString("data_type");
+          final long characterMaximumLength = resultSet.getLong("character_maximum_length");
+          boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
+          final long numericPrecision = resultSet.getLong("numeric_precision");
+          boolean typeHasPrecision = !resultSet.wasNull();
+          final long numericScale = resultSet.getLong("numeric_scale");
+          boolean typeHasScale = !resultSet.wasNull();
+          SourceColumnType sourceColumnType;
+          if (typeHasMaximumCharacterLength) {
+            sourceColumnType =
+                new SourceColumnType(columnType, new Long[] {characterMaximumLength}, null);
+          } else if (typeHasPrecision && typeHasScale) {
+            sourceColumnType =
+                new SourceColumnType(columnType, new Long[] {numericPrecision, numericScale}, null);
+          } else if (typeHasPrecision) {
+            sourceColumnType =
+                new SourceColumnType(columnType, new Long[] {numericPrecision}, null);
+          } else {
+            sourceColumnType = new SourceColumnType(columnType, new Long[] {}, null);
           }
-          tableSchemaBuilder.put(table, schema.build());
+          if (builders.containsKey(tableName)) {
+            builders.get(tableName).put(columnName, sourceColumnType);
+          }
         }
       }
     } catch (SQLTransientConnectionException e) {
@@ -243,19 +253,18 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           e);
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
-    } catch (SchemaDiscoveryException e) {
-      // Already logged.
-      schemaDiscoveryErrors.inc();
-      throw e;
     }
-    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
-        tableSchemaBuilder.build();
+
+    ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
+        ImmutableMap.builder();
+    builders.forEach((table, builder) -> result.put(table, builder.build()));
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema = result.build();
     logger.info(
-        "Discovered table schema for Datasource: {}, JdbcSchemaReference: {}, tables: {}, schema: {}",
+        "Discovered table schema for Datasource: {}, JdbcSchemaReference: {}, tables: {}",
         dataSource,
         sourceSchemaReference,
-        tables,
-        tableSchema);
+        tables);
 
     return tableSchema;
   }
@@ -277,6 +286,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
     logger.info(
         "Discovering Indexes for DataSource: {}, JdbcSchemaReference: {}, Tables: {}",
         dataSource,
@@ -284,7 +296,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     final String query =
-        "SELECT a.attname AS column_name,"
+        "SELECT ixs.tablename AS table_name,"
+            + "  a.attname AS column_name,"
             + "  ixs.indexname AS index_name,"
             + "  ix.indisunique AS is_unique,"
             + "  ix.indisprimary AS is_primary,"
@@ -305,52 +318,58 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
             + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
             + " WHERE ixs.schemaname = ?"
-            + "  AND ixs.tablename = ?"
+            + "  AND ixs.tablename IN "
+            + DialectAdapter.generateInClause(tables.size())
             + " ORDER BY ix.indexrelid, ordinal_position ASC;";
-    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
-        ImmutableMap.builder();
-    try (PreparedStatement statement = dataSource.getConnection().prepareStatement(query)) {
-      for (String table : tables) {
-        statement.setString(1, sourceSchemaReference.namespace());
-        statement.setString(2, table);
-        ImmutableList.Builder<SourceColumnIndexInfo> indexInfosBuilder = ImmutableList.builder();
-        try (ResultSet resultSet = statement.executeQuery()) {
-          while (resultSet.next()) {
-            SourceColumnIndexInfo.Builder indexBuilder =
-                SourceColumnIndexInfo.builder()
-                    .setColumnName(resultSet.getString("column_name"))
-                    .setIndexName(resultSet.getString("index_name"))
-                    .setIsUnique(resultSet.getBoolean("is_unique"))
-                    .setIsPrimary(resultSet.getBoolean("is_primary"))
-                    .setCardinality(resultSet.getLong("cardinality"))
-                    .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                    .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
 
-            String collation = resultSet.getString("collation");
-            if (collation != null) {
-              String charset = resultSet.getString("charset");
-              String typeName = resultSet.getString("type_name");
-              Integer typeLength = resultSet.getInt("type_length");
-              if (resultSet.wasNull()) {
-                typeLength = null;
-              }
-              // Collation PAD SPACE is not supported in Postgresql
-              // (https://www.postgresql.org/docs/current/infoschema-collations.html)
-              // The only way to have blank space padding is for specific types with fixed length
-              // (https://www.postgresql.org/docs/current/datatype-character.html)
-              boolean shouldPadSpace = isBlankPaddedType(typeName, typeLength);
-              indexBuilder.setCollationReference(
-                  CollationReference.builder()
-                      .setDbCharacterSet(charset)
-                      .setDbCollation(collation)
-                      .setPadSpace(shouldPadSpace)
-                      .build());
-              indexBuilder.setStringMaxLength(typeLength == null ? VARCHAR_MAX_LENGTH : typeLength);
+    Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
+    tables.forEach(table -> builders.put(table, ImmutableList.builder()));
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement statement = conn.prepareStatement(query)) {
+      statement.setFetchSize(1000);
+      statement.setString(1, sourceSchemaReference.namespace());
+      for (int i = 0; i < tables.size(); i++) {
+        statement.setString(i + 2, tables.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        while (resultSet.next()) {
+          final String tableName = resultSet.getString("table_name");
+          SourceColumnIndexInfo.Builder indexBuilder =
+              SourceColumnIndexInfo.builder()
+                  .setColumnName(resultSet.getString("column_name"))
+                  .setIndexName(resultSet.getString("index_name"))
+                  .setIsUnique(resultSet.getBoolean("is_unique"))
+                  .setIsPrimary(resultSet.getBoolean("is_primary"))
+                  .setCardinality(resultSet.getLong("cardinality"))
+                  .setOrdinalPosition(resultSet.getLong("ordinal_position"))
+                  .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
+
+          String collation = resultSet.getString("collation");
+          if (collation != null) {
+            String charset = resultSet.getString("charset");
+            String typeName = resultSet.getString("type_name");
+            Integer typeLength = resultSet.getInt("type_length");
+            if (resultSet.wasNull()) {
+              typeLength = null;
             }
-            indexInfosBuilder.add(indexBuilder.build());
+            // Collation PAD SPACE is not supported in Postgresql
+            // (https://www.postgresql.org/docs/current/infoschema-collations.html)
+            // The only way to have blank space padding is for specific types with fixed length
+            // (https://www.postgresql.org/docs/current/datatype-character.html)
+            boolean shouldPadSpace = isBlankPaddedType(typeName, typeLength);
+            indexBuilder.setCollationReference(
+                CollationReference.builder()
+                    .setDbCharacterSet(charset)
+                    .setDbCollation(collation)
+                    .setPadSpace(shouldPadSpace)
+                    .build());
+            indexBuilder.setStringMaxLength(typeLength == null ? VARCHAR_MAX_LENGTH : typeLength);
+          }
+          if (builders.containsKey(tableName)) {
+            builders.get(tableName).add(indexBuilder.build());
           }
         }
-        tableIndexesBuilder.put(table, indexInfosBuilder.build());
       }
     } catch (SQLTransientConnectionException e) {
       logger.warn(
@@ -379,19 +398,18 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           e);
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
-    } catch (SchemaDiscoveryException e) {
-      // Already logged.
-      schemaDiscoveryErrors.inc();
-      throw e;
     }
-    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
-        tableIndexesBuilder.build();
+
+    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
+        ImmutableMap.builder();
+    builders.forEach((table, builder) -> result.put(table, builder.build()));
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes = result.build();
     logger.info(
-        "Discovered Indexes for DataSource: {}, JdbcSchemaReference: {}, Tables: {}.\nIndexes: {}",
+        "Discovered Indexes for DataSource: {}, JdbcSchemaReference: {}, Tables: {}",
         dataSource,
         sourceSchemaReference,
-        tables,
-        tableIndexes);
+        tables);
     return tableIndexes;
   }
 
