@@ -23,10 +23,9 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Beam transform which reads the information schema of the Spanner database and returns a Ddl
@@ -34,8 +33,6 @@ import org.slf4j.LoggerFactory;
  */
 public class SpannerInformationSchemaProcessorTransform
     extends PTransform<@NotNull PBegin, @NotNull PCollectionView<Ddl>> {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerInformationSchemaProcessorTransform.class);
 
   private final SpannerConfig spannerConfig;
 
@@ -46,8 +43,11 @@ public class SpannerInformationSchemaProcessorTransform
   @Override
   public @NotNull PCollectionView<Ddl> expand(PBegin p) {
     return p.apply("Pulse", Create.of((Void) null))
-        .apply(
-            "ReadSpannerInformationSchema", ParDo.of(new ProcessInformationSchemaFn(spannerConfig)))
+        .apply("ReadSpannerInformationSchema", readInformationSchema())
         .apply("FetchDdlAsView", View.asSingleton());
+  }
+
+  protected PTransform<@NotNull PCollection<? extends Void>, @NotNull PCollection<Ddl>> readInformationSchema() {
+    return ParDo.of(new ProcessInformationSchemaFn(spannerConfig));
   }
 }

@@ -53,6 +53,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.jetbrains.annotations.NotNull;
 import org.joda.time.Instant;
 
 /**
@@ -78,7 +79,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
   }
 
   @Override
-  public PDone expand(PCollectionTuple input) {
+  public @NotNull PDone expand(PCollectionTuple input) {
     PCollection<ComparisonRecord> matched = input.get(MATCHED_TAG);
     PCollection<ComparisonRecord> missingInSpanner = input.get(MISSING_IN_SPANNER_TAG);
     PCollection<ComparisonRecord> missingInSource = input.get(MISSING_IN_SOURCE_TAG);

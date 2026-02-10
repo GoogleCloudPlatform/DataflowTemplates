@@ -32,8 +32,7 @@ import org.junit.Test;
 
 public class ComputeTableStatsFnTest {
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testComputeTableStats_Match() {
@@ -43,19 +42,24 @@ public class ComputeTableStatsFnTest {
     TupleTag<Long> missInSpannerTag = new TupleTag<>();
     TupleTag<Long> missInSourceTag = new TupleTag<>();
 
-    PCollection<KV<String, Long>> matched = pipeline.apply("CreateMatched", Create.of(KV.of("Table1", 10L)));
-    PCollection<KV<String, Long>> missInSpanner = pipeline.apply("CreateMissSpanner", Create.empty(matched.getCoder()));
-    PCollection<KV<String, Long>> missInSource = pipeline.apply("CreateMissSource", Create.empty(matched.getCoder()));
+    PCollection<KV<String, Long>> matched =
+        pipeline.apply("CreateMatched", Create.of(KV.of("Table1", 10L)));
+    PCollection<KV<String, Long>> missInSpanner =
+        pipeline.apply("CreateMissSpanner", Create.empty(matched.getCoder()));
+    PCollection<KV<String, Long>> missInSource =
+        pipeline.apply("CreateMissSource", Create.empty(matched.getCoder()));
 
-    PCollection<KV<String, CoGbkResult>> coGbk = KeyedPCollectionTuple.of(matchedTag, matched)
-        .and(missInSpannerTag, missInSpanner)
-        .and(missInSourceTag, missInSource)
-        .apply(CoGroupByKey.create());
+    PCollection<KV<String, CoGbkResult>> coGbk =
+        KeyedPCollectionTuple.of(matchedTag, matched)
+            .and(missInSpannerTag, missInSpanner)
+            .and(missInSourceTag, missInSource)
+            .apply(CoGroupByKey.create());
 
-    PCollection<TableValidationStats> stats = coGbk.apply(
-        ParDo.of(
-            new ComputeTableStatsFn(
-                runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
+    PCollection<TableValidationStats> stats =
+        coGbk.apply(
+            ParDo.of(
+                new ComputeTableStatsFn(
+                    runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
 
     PAssert.that(stats)
         .satisfies(
@@ -94,19 +98,24 @@ public class ComputeTableStatsFnTest {
     TupleTag<Long> missInSourceTag = new TupleTag<>();
 
     // Matched=10, MissInSpanner=5, MissInSource=2
-    PCollection<KV<String, Long>> matched = pipeline.apply("CreateMatched", Create.of(KV.of("Table1", 10L)));
-    PCollection<KV<String, Long>> missInSpanner = pipeline.apply("CreateMissSpanner", Create.of(KV.of("Table1", 5L)));
-    PCollection<KV<String, Long>> missInSource = pipeline.apply("CreateMissSource", Create.of(KV.of("Table1", 2L)));
+    PCollection<KV<String, Long>> matched =
+        pipeline.apply("CreateMatched", Create.of(KV.of("Table1", 10L)));
+    PCollection<KV<String, Long>> missInSpanner =
+        pipeline.apply("CreateMissSpanner", Create.of(KV.of("Table1", 5L)));
+    PCollection<KV<String, Long>> missInSource =
+        pipeline.apply("CreateMissSource", Create.of(KV.of("Table1", 2L)));
 
-    PCollection<KV<String, CoGbkResult>> coGbk = KeyedPCollectionTuple.of(matchedTag, matched)
-        .and(missInSpannerTag, missInSpanner)
-        .and(missInSourceTag, missInSource)
-        .apply(CoGroupByKey.create());
+    PCollection<KV<String, CoGbkResult>> coGbk =
+        KeyedPCollectionTuple.of(matchedTag, matched)
+            .and(missInSpannerTag, missInSpanner)
+            .and(missInSourceTag, missInSource)
+            .apply(CoGroupByKey.create());
 
-    PCollection<TableValidationStats> stats = coGbk.apply(
-        ParDo.of(
-            new ComputeTableStatsFn(
-                runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
+    PCollection<TableValidationStats> stats =
+        coGbk.apply(
+            ParDo.of(
+                new ComputeTableStatsFn(
+                    runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
 
     PAssert.that(stats)
         .satisfies(

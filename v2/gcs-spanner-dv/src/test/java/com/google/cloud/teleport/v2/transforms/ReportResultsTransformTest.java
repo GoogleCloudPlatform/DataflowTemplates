@@ -38,8 +38,8 @@ import org.junit.Test;
  * This unit test does not test the expand() method of the {@link ReportResultsTransform} directly,
  * but instead tests all the logical units inside it (transforming records for BQ write, and
  * calculation of stats). This is because testing the full expand() method requires instrumenting
- * BigQuery writes, which is hard in a unit testing environment. While testing the BQ sink from
- * a functionality standpoint is not really a validation concern, we will cover this in the
+ * BigQuery writes, which is hard in a unit testing environment. While testing the BQ sink from a
+ * functionality standpoint is not really a validation concern, we will cover this in the
  * integration tests for completeness.
  */
 public class ReportResultsTransformTest implements Serializable {
