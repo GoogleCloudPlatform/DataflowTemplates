@@ -15,13 +15,16 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.v2.dofn.CreateSpannerReadOpsFn;
 import com.google.cloud.teleport.v2.dofn.SpannerHashFn;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.concurrent.TimeUnit;
+import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.transforms.Create;
@@ -55,16 +58,23 @@ public class SpannerReaderTransform
     return p.apply("Pulse", Create.of((Void) null))
         .apply(
             "CreateReadOps", ParDo.of(new CreateSpannerReadOpsFn(ddlView)).withSideInputs(ddlView))
-        .apply(
-            "ReadSpannerRecords",
-            SpannerIO.readAll()
-                .withSpannerConfig(spannerConfig)
-                // we read from a snapshot ~15s ago to avoid locking, 15s is okay because
-                // we expect batch validation to start >> 15s after bulk migration is finished.
-                .withTimestampBound(TimestampBound.ofExactStaleness(15, TimeUnit.SECONDS))
-                .withBatching(true))
+        .apply("ReadSpannerRecords", readFromSpanner())
         .apply(
             "CalculateSpannerRecordsHash",
             ParDo.of(new SpannerHashFn(ddlView, schemaMapperProvider)).withSideInputs(ddlView));
+  }
+
+  /**
+   * Returns a PTransform that reads data from Spanner.
+   * Note: This method is extracted to enable unit testing.
+   */
+  @VisibleForTesting
+  protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>> readFromSpanner() {
+    return SpannerIO.readAll()
+        .withSpannerConfig(spannerConfig)
+        // we read from a snapshot ~15s ago to avoid locking, 15s is okay because
+        // we expect batch validation to start >> 15s after bulk migration is finished.
+        .withTimestampBound(TimestampBound.ofExactStaleness(15, TimeUnit.SECONDS))
+        .withBatching(true);
   }
 }
