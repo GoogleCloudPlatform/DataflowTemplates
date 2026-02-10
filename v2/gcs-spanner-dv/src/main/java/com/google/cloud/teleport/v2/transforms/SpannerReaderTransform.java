@@ -65,11 +65,12 @@ public class SpannerReaderTransform
   }
 
   /**
-   * Returns a PTransform that reads data from Spanner.
-   * Note: This method is extracted to enable unit testing.
+   * Returns a PTransform that reads data from Spanner. Note: This method is extracted to enable
+   * unit testing.
    */
   @VisibleForTesting
-  protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>> readFromSpanner() {
+  protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
+      readFromSpanner() {
     return SpannerIO.readAll()
         .withSpannerConfig(spannerConfig)
         // we read from a snapshot ~15s ago to avoid locking, 15s is okay because

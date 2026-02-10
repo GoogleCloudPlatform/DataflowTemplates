@@ -40,61 +40,65 @@ import org.junit.Test;
 
 public class SpannerReaderTransformTest implements Serializable {
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testReadAndMapRecords() {
     // 1. Setup Ddl
-    Ddl ddl = Ddl.builder()
-        .createTable("SpannerTable")
-        .column("id")
-        .int64()
-        .notNull()
-        .endColumn()
-        .column("name")
-        .string()
-        .endColumn()
-        .primaryKey()
-        .asc("id")
-        .end()
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("SpannerTable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
 
-    PCollectionView<Ddl> ddlView = pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
     // 2. Mock Spanner Data
-    Struct struct1 = Struct.newBuilder()
-        .set("id")
-        .to(1L)
-        .set("name")
-        .to("name1")
-        .set("__tableName__")
-        .to("SpannerTable")
-        .build();
+    Struct struct1 =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to("name1")
+            .set("__tableName__")
+            .to("SpannerTable")
+            .build();
 
-    Struct struct2 = Struct.newBuilder()
-        .set("id")
-        .to(2L)
-        .set("name")
-        .to("name2")
-        .set("__tableName__")
-        .to("SpannerTable")
-        .build();
+    Struct struct2 =
+        Struct.newBuilder()
+            .set("id")
+            .to(2L)
+            .set("name")
+            .to("name2")
+            .set("__tableName__")
+            .to("SpannerTable")
+            .build();
 
     // 3. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
-    SpannerReaderTransform transform = new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
-      @Override
-      protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
-        return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
+    SpannerReaderTransform transform =
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
           @Override
-          public PCollection<Struct> expand(PCollection<ReadOperation> input) {
-            return input.getPipeline().apply("MockRead", Create.of(struct1, struct2));
+          protected PTransform<PCollection<ReadOperation>, PCollection<Struct>> readFromSpanner() {
+            return new PTransform<PCollection<ReadOperation>, PCollection<Struct>>() {
+              @Override
+              public PCollection<Struct> expand(PCollection<ReadOperation> input) {
+                return input.getPipeline().apply("MockRead", Create.of(struct1, struct2));
+              }
+            };
           }
         };
-      }
-    };
 
     // 4. Run Pipeline
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
@@ -122,28 +126,31 @@ public class SpannerReaderTransformTest implements Serializable {
     // 1. Setup Empty Ddl
     Ddl ddl = Ddl.builder().build();
 
-    PCollectionView<Ddl> ddlView = pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
     // 2. Create Transform with overridden readFromSpanner
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
-    SpannerReaderTransform transform = new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
-      @Override
-      protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>> readFromSpanner() {
-        return new PTransform<>() {
+    SpannerReaderTransform transform =
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
           @Override
-          public @NotNull PCollection<Struct> expand(@NotNull PCollection<ReadOperation> input) {
-            Struct dummy = Struct.newBuilder().set("id").to(1L).build();
-            return input
-                .getPipeline()
-                .apply("MockRead", Create.of(dummy))
-                .apply(
-                    "FilterDummy",
-                    Filter.by(
-                        (SerializableFunction<Struct, Boolean>) input1 -> false));
+          protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
+              readFromSpanner() {
+            return new PTransform<>() {
+              @Override
+              public @NotNull PCollection<Struct> expand(
+                  @NotNull PCollection<ReadOperation> input) {
+                Struct dummy = Struct.newBuilder().set("id").to(1L).build();
+                return input
+                    .getPipeline()
+                    .apply("MockRead", Create.of(dummy))
+                    .apply(
+                        "FilterDummy",
+                        Filter.by((SerializableFunction<Struct, Boolean>) input1 -> false));
+              }
+            };
           }
         };
-      }
-    };
 
     // 3. Run Pipeline
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
@@ -157,46 +164,52 @@ public class SpannerReaderTransformTest implements Serializable {
   @Test
   public void testReadWithNullFields() {
     // 1. Setup Ddl
-    Ddl ddl = Ddl.builder()
-        .createTable("SpannerTable")
-        .column("id")
-        .int64()
-        .notNull()
-        .endColumn()
-        .column("name")
-        .string()
-        .endColumn()
-        .primaryKey()
-        .asc("id")
-        .end()
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("SpannerTable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("name")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
 
-    PCollectionView<Ddl> ddlView = pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL", Create.of(ddl)).apply(View.asSingleton());
 
-    //struct with a value set as NULL
-    Struct struct1 = Struct.newBuilder()
-        .set("id")
-        .to(1L)
-        .set("name")
-        .to((String) null)
-        .set("__tableName__")
-        .to("SpannerTable")
-        .build();
+    // struct with a value set as NULL
+    Struct struct1 =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("name")
+            .to((String) null)
+            .set("__tableName__")
+            .to("SpannerTable")
+            .build();
 
     // 3. Create Transform
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
-    SpannerReaderTransform transform = new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
-      @Override
-      protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>> readFromSpanner() {
-        return new PTransform<>() {
+    SpannerReaderTransform transform =
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new) {
           @Override
-          public @NotNull PCollection<Struct> expand(@NotNull PCollection<ReadOperation> input) {
-            return input.getPipeline().apply("MockRead", Create.of(struct1));
+          protected PTransform<@NotNull PCollection<ReadOperation>, @NotNull PCollection<Struct>>
+              readFromSpanner() {
+            return new PTransform<>() {
+              @Override
+              public @NotNull PCollection<Struct> expand(
+                  @NotNull PCollection<ReadOperation> input) {
+                return input.getPipeline().apply("MockRead", Create.of(struct1));
+              }
+            };
           }
         };
-      }
-    };
 
     // 4. Run Pipeline
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
@@ -217,10 +230,12 @@ public class SpannerReaderTransformTest implements Serializable {
   @Test
   public void testOriginalReadFromSpanner() {
     Ddl ddl = Ddl.builder().build();
-    PCollectionView<Ddl> ddlView = pipeline.apply("CreateDDL_Ref", Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("CreateDDL_Ref", Create.of(ddl)).apply(View.asSingleton());
     SpannerConfig spannerConfig = SpannerConfig.create().withProjectId("test-project");
 
-    SpannerReaderTransform transform = new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new);
+    SpannerReaderTransform transform =
+        new SpannerReaderTransform(spannerConfig, ddlView, IdentityMapper::new);
 
     assertNotNull(transform.readFromSpanner());
     pipeline.run();
