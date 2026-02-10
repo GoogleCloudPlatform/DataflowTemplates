@@ -70,8 +70,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesReleaseMojo.class);
 
-  private record Blueprint(String name, String path) {}
-  ;
+  private record ManifestEntry(String name, String path) {}
 
   private static final Gson GSON = new Gson();
 
@@ -195,6 +194,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       required = false)
   protected String yamlManifestName;
 
+  // Options directory for additional parameter files for yaml blueprints.
+  // These files provide more context for jinja variables used in the yaml
+  // blueprints.
   @Parameter(
       defaultValue = "yaml/src/main/python/options",
       property = "yamlOptionsPath",
@@ -294,20 +296,20 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         if ((!Files.exists(yamlPath) || !Files.isDirectory(yamlPath))
             && (!Files.exists(yamlOptionsPath) || !Files.isDirectory(yamlOptionsPath))) {
           LOG.warn(
-              "YAML blueprints and options directory not found, skipping upload for paths: {} and {}",
+              "YAML blueprints {} and/or options directory {} not found, skipping upload for paths.",
               yamlPath,
               yamlOptionsPath);
         } else {
 
           try (Storage storage = StorageOptions.getDefaultInstance().getService()) {
-            List<Blueprint> blueprints = new ArrayList<>();
-            List<Blueprint> options = new ArrayList<>();
+            List<ManifestEntry> blueprints = new ArrayList<>();
+            List<ManifestEntry> options = new ArrayList<>();
 
             // Upload the main Yaml blueprints
-            uploadYamlFiles(storage, yamlPath, "", blueprints);
+            uploadArtifacts(storage, yamlPath, "", blueprints);
 
             // Upload the jinja parameter option files
-            uploadYamlFiles(storage, yamlOptionsPath, "options", options);
+            uploadArtifacts(storage, yamlOptionsPath, "options", options);
 
             // Build the manifest file
             String manifestObjectName =
@@ -316,7 +318,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
 
             // Upload the manifest file with retries
-            Map<String, List<Blueprint>> manifestMap = new HashMap<>();
+            Map<String, List<ManifestEntry>> manifestMap = new HashMap<>();
             manifestMap.put("blueprints", blueprints);
             manifestMap.put("options", options);
             byte[] manifestBytes = GSON.toJson(manifestMap).getBytes(StandardCharsets.UTF_8);
@@ -350,8 +352,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void uploadYamlFiles(
-      Storage storage, Path directory, String subFolder, List<Blueprint> blueprints)
+  private void uploadArtifacts(
+      Storage storage, Path directory, String subFolder, List<ManifestEntry> entries)
       throws IOException {
     if (Files.exists(directory) && Files.isDirectory(directory)) {
       try (Stream<Path> paths = Files.list(directory)) {
@@ -368,7 +370,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           : String.join(
                               "/", stagePrefix, yamlBlueprintsGCSPath, subFolder, fileName);
                   uploadToGcs(storage, path, objectName);
-                  blueprints.add(new Blueprint(fileName, objectName));
+                  entries.add(new ManifestEntry(fileName, objectName));
                 });
       }
     }

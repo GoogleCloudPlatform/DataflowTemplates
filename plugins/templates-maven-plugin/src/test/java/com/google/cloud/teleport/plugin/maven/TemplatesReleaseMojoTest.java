@@ -184,9 +184,7 @@ public class TemplatesReleaseMojoTest {
             .anyMatch(
                 r ->
                     r.getLevel() == Level.WARNING
-                        && r.getMessage()
-                            .contains(
-                                "YAML blueprints and options directory not found, skipping upload for paths: "));
+                        && r.getMessage().contains("not found, skipping upload for paths."));
     assertTrue("Did not find expected warning log message.", foundWarning);
   }
 
