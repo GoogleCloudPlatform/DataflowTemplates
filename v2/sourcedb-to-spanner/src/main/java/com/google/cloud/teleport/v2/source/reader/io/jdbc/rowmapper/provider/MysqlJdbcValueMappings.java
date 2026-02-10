@@ -31,6 +31,7 @@ import com.google.re2j.Pattern;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.time.Instant;
@@ -163,32 +164,75 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
       (value, schema) -> instantToMicro(value.toInstant());
 
   /**
-   * Map Time type to {@link TimeIntervalMicros}. Note Time type records an interval between 2
-   * timestamps in microseconds, and is independent of timezone.
+   * Map raw byte[] Time type to {@link TimeIntervalMicros}. This handles both Text Protocol (String
+   * bytes) and Binary Protocol (Packed bytes) from MySQL.
    */
-  private static final ResultSetValueMapper<String> timeStringToAvroTimeInterval =
+  private static final ResultSetValueMapper<byte[]> bytesToAvroTimeInterval =
       (value, schema) -> {
-        /* MySQL output is always hours:minutes:seconds.fractionalSeconds */
-        Matcher matcher = TIME_STRING_PATTERN.matcher(value);
-        Preconditions.checkArgument(
-            matcher.matches(),
-            "The time string " + value + " does not match " + TIME_STRING_PATTERN);
-        boolean isNegative = matcher.group(1) != null;
-        int hours = Integer.parseInt(matcher.group(2));
-        int minutes = Integer.parseInt(matcher.group(3));
-        int seconds = Integer.parseInt(matcher.group(4));
-        long nanoSeconds =
-            matcher.group(5) == null
-                ? 0
-                : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
-        Long micros =
-            TimeUnit.NANOSECONDS.toMicros(
-                TimeUnit.HOURS.toNanos(hours)
-                    + TimeUnit.MINUTES.toNanos(minutes)
-                    + TimeUnit.SECONDS.toNanos(seconds)
-                    + nanoSeconds);
-        // Negate if negative.
-        return isNegative ? -1 * micros : micros;
+        if (value == null || value.length == 0) {
+          return 0L;
+        }
+
+        // Binary Protocol decoding (uses 0x00 or 0x01 as the first byte for sign flag)
+        // In Text Protocol, first byte is '-' (0x2D) or an ASCII digit (>= 0x30).
+        if (value[0] == 0 || value[0] == 1) {
+          boolean isNegative = (value[0] == 1);
+          int days = 0;
+          int hours = 0;
+          int minutes = 0;
+          int seconds = 0;
+          long micros = 0;
+
+          if (value.length >= 8) {
+            days =
+                (value[1] & 0xFF)
+                    | ((value[2] & 0xFF) << 8)
+                    | ((value[3] & 0xFF) << 16)
+                    | ((value[4] & 0xFF) << 24);
+            hours = value[5] & 0xFF;
+            minutes = value[6] & 0xFF;
+            seconds = value[7] & 0xFF;
+          }
+          if (value.length >= 12) {
+            micros =
+                ((value[8] & 0xFF)
+                    | ((value[9] & 0xFF) << 8)
+                    | ((value[10] & 0xFF) << 16)
+                    | ((value[11] & 0xFF) << 24));
+          }
+
+          long totalMicros =
+              TimeUnit.HOURS.toMicros((days * 24L) + hours)
+                  + TimeUnit.MINUTES.toMicros(minutes)
+                  + TimeUnit.SECONDS.toMicros(seconds)
+                  + micros;
+
+          return isNegative ? -totalMicros : totalMicros;
+        } else {
+          // Text Protocol handling
+          String timeStr = new String(value, StandardCharsets.UTF_8);
+          /* MySQL output is always hours:minutes:seconds.fractionalSeconds */
+          Matcher matcher = TIME_STRING_PATTERN.matcher(timeStr);
+          Preconditions.checkArgument(
+              matcher.matches(),
+              "The time string " + timeStr + " does not match " + TIME_STRING_PATTERN);
+          boolean isNegative = matcher.group(1) != null;
+          int hours = Integer.parseInt(matcher.group(2));
+          int minutes = Integer.parseInt(matcher.group(3));
+          int seconds = Integer.parseInt(matcher.group(4));
+          long nanoSeconds =
+              matcher.group(5) == null
+                  ? 0
+                  : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
+          Long micros =
+              TimeUnit.NANOSECONDS.toMicros(
+                  TimeUnit.HOURS.toNanos(hours)
+                      + TimeUnit.MINUTES.toNanos(minutes)
+                      + TimeUnit.SECONDS.toNanos(seconds)
+                      + nanoSeconds);
+          // Negate if negative.
+          return isNegative ? -1 * micros : micros;
+        }
       };
 
   private static final JdbcMappings JDBC_MAPPINGS =
@@ -287,7 +331,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           // https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html
           .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
           .put("TEXT", ResultSet::getString, valuePassThrough, 65_535)
-          .put("TIME", ResultSet::getString, timeStringToAvroTimeInterval, 12)
+          .put("TIME", ResultSet::getBytes, bytesToAvroTimeInterval, 12)
           .put("TIMESTAMP", utcTimeStampExtractor, sqlTimestampToAvroTimestampMicros, 11)
           .put("TINYBLOB", ResultSet::getBlob, blobToHexString, 255)
           .put("TINYINT", ResultSet::getInt, valuePassThrough, 1)
