@@ -65,7 +65,7 @@ public class OptionsToConfigBuilderTest {
     assertThat(config.sourceDbURL())
         .isEqualTo(
             testUrl
-                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=false");
+                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
@@ -136,10 +136,10 @@ public class OptionsToConfigBuilderTest {
 
     assertThat(configWithConnectionProperties.sourceDbURL())
         .isEqualTo(
-            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=false");
+            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(configWithoutConnectionProperties.sourceDbURL())
         .isEqualTo(
-            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=false");
+            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
   }
 
   @Test
@@ -309,7 +309,7 @@ public class OptionsToConfigBuilderTest {
         IllegalArgumentException.class,
         () ->
             OptionsToConfigBuilder.addParamToJdbcUrl(
-                "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=false",
+                "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=true",
                 "allowMultiQueries",
                 "true"));
   }
@@ -319,11 +319,11 @@ public class OptionsToConfigBuilderTest {
     assertThat(
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=false");
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
     assertThat(
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", null))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=false");
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
     assertThat(
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
@@ -372,7 +372,7 @@ public class OptionsToConfigBuilderTest {
     String url = "jdbc:mysql://localhost:3306/testDB";
     String updatedUrl =
         OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, null);
-    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=false");
+    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
   }
 
   @Test
@@ -387,7 +387,7 @@ public class OptionsToConfigBuilderTest {
     String url = "jdbc:mysql://localhost:3306/testDB";
     String updatedUrl =
         OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, -1);
-    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=false");
+    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
   }
 
   @Test
