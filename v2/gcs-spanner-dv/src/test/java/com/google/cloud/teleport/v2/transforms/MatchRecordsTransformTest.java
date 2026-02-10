@@ -34,16 +34,16 @@ import org.junit.Test;
 
 public class MatchRecordsTransformTest implements Serializable {
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testMatchRecords() {
-    ComparisonRecord record = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("hash1")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord record =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("hash1")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
     PCollection<ComparisonRecord> source = pipeline.apply("CreateSource", Create.of(record));
     PCollection<ComparisonRecord> spanner = pipeline.apply("CreateSpanner", Create.of(record));
@@ -61,17 +61,19 @@ public class MatchRecordsTransformTest implements Serializable {
 
   @Test
   public void testMissingInSpanner() {
-    ComparisonRecord record = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("hash1")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord record =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("hash1")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
     PCollection<ComparisonRecord> source = pipeline.apply("CreateSource", Create.of(record));
-    //we re-use the coder from the source PCollection for Spanner while creating the empty
-    //PCollection for ease-of-use. The alternative is to construct a coder which is not trivial
-    //given that ComparisonRecord is an autoValue class using a SchemaCoder under the hood.
-    PCollection<ComparisonRecord> spanner = pipeline.apply("CreateSpanner", Create.empty(source.getCoder()));
+    // we re-use the coder from the source PCollection for Spanner while creating the empty
+    // PCollection for ease-of-use. The alternative is to construct a coder which is not trivial
+    // given that ComparisonRecord is an autoValue class using a SchemaCoder under the hood.
+    PCollection<ComparisonRecord> spanner =
+        pipeline.apply("CreateSpanner", Create.empty(source.getCoder()));
 
     PCollectionTuple input = PCollectionTuple.of(SOURCE_TAG, source).and(SPANNER_TAG, spanner);
 
@@ -86,14 +88,16 @@ public class MatchRecordsTransformTest implements Serializable {
 
   @Test
   public void testMissingInSource() {
-    ComparisonRecord record = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("hash1")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord record =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("hash1")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
     PCollection<ComparisonRecord> spanner = pipeline.apply("CreateSpanner", Create.of(record));
-    PCollection<ComparisonRecord> sourceEmpty = pipeline.apply("CreateSource", Create.empty(spanner.getCoder()));
+    PCollection<ComparisonRecord> sourceEmpty =
+        pipeline.apply("CreateSource", Create.empty(spanner.getCoder()));
 
     PCollectionTuple input = PCollectionTuple.of(SOURCE_TAG, sourceEmpty).and(SPANNER_TAG, spanner);
 
@@ -108,26 +112,31 @@ public class MatchRecordsTransformTest implements Serializable {
 
   @Test
   public void testMixedScenarios() {
-    ComparisonRecord matched = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("matched")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord matched =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("matched")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
-    ComparisonRecord missingInSpanner = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("missingInSpanner")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord missingInSpanner =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("missingInSpanner")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
-    ComparisonRecord missingInSource = ComparisonRecord.builder()
-        .setTableName("Table1")
-        .setHash("missingInSource")
-        .setPrimaryKeyColumns(Collections.emptyList())
-        .build();
+    ComparisonRecord missingInSource =
+        ComparisonRecord.builder()
+            .setTableName("Table1")
+            .setHash("missingInSource")
+            .setPrimaryKeyColumns(Collections.emptyList())
+            .build();
 
-    PCollection<ComparisonRecord> source = pipeline.apply("CreateSource", Create.of(matched, missingInSpanner));
-    PCollection<ComparisonRecord> spanner = pipeline.apply("CreateSpanner", Create.of(matched, missingInSource));
+    PCollection<ComparisonRecord> source =
+        pipeline.apply("CreateSource", Create.of(matched, missingInSpanner));
+    PCollection<ComparisonRecord> spanner =
+        pipeline.apply("CreateSpanner", Create.of(matched, missingInSource));
 
     PCollectionTuple input = PCollectionTuple.of(SOURCE_TAG, source).and(SPANNER_TAG, spanner);
 

@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSI
 import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SPANNER_TAG;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.dofn.ComputeTableStatsFn;
 import com.google.cloud.teleport.v2.dto.BigQuerySchemas;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
@@ -36,12 +37,10 @@ import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Count;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
@@ -85,40 +84,8 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     PCollection<ComparisonRecord> missingInSource = input.get(MISSING_IN_SOURCE_TAG);
 
     // 1. Write Mismatched Records
-    PCollection<MismatchedRecord> mismatchFromSpannerMiss =
-        missingInSpanner.apply(
-            "TransformMissingInSpanner",
-            MapElements.into(TypeDescriptor.of(MismatchedRecord.class))
-                .via(
-                    r ->
-                        MismatchedRecord.builder()
-                            .setRunId(this.runId)
-                            .setTableName(r.getTableName())
-                            .setMismatchType("MISSING_IN_DESTINATION")
-                            .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
-                            .setSource(GCS_SOURCE)
-                            .setHash(r.getHash())
-                            .build()));
-
-    PCollection<MismatchedRecord> mismatchFromSourceMiss =
-        missingInSource.apply(
-            "TransformMissingInSource",
-            MapElements.into(TypeDescriptor.of(MismatchedRecord.class))
-                .via(
-                    r ->
-                        MismatchedRecord.builder()
-                            .setRunId(this.runId)
-                            .setTableName(r.getTableName())
-                            .setMismatchType("MISSING_IN_SOURCE")
-                            .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
-                            .setSource(SPANNER_DESTINATION)
-                            .setHash(r.getHash())
-                            .build()));
-
     PCollection<MismatchedRecord> allMismatches =
-        PCollectionList.of(mismatchFromSpannerMiss)
-            .and(mismatchFromSourceMiss)
-            .apply("FlattenMismatches", Flatten.pCollections());
+        transformMismatchedRecords(missingInSpanner, missingInSource);
 
     allMismatches.apply(
         "WriteMismatchedRecords",
@@ -139,67 +106,8 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
             .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
 
     // 2. Aggregate Stats
-    PCollection<KV<String, Long>> matchedCounts =
-        matched
-            .apply(
-                "ExtractTableNameMatched",
-                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-            .apply("CountMatched", Count.perElement());
-
-    PCollection<KV<String, Long>> missingInSpannerCounts =
-        missingInSpanner
-            .apply(
-                "ExtractTableNameMissInSpanner",
-                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-            .apply("CountMissInSpanner", Count.perElement());
-
-    PCollection<KV<String, Long>> missingInSourceCounts =
-        missingInSource
-            .apply(
-                "ExtractTableNameMissInSource",
-                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
-            .apply("CountMissInSource", Count.perElement());
-
-    final TupleTag<Long> matchedTag = new TupleTag<>();
-    final TupleTag<Long> missInSpannerTag = new TupleTag<>();
-    final TupleTag<Long> missInSourceTag = new TupleTag<>();
-
     PCollection<TableValidationStats> tableStats =
-        KeyedPCollectionTuple.of(matchedTag, matchedCounts)
-            .and(missInSpannerTag, missingInSpannerCounts)
-            .and(missInSourceTag, missingInSourceCounts)
-            .apply("CoGroupByKeyStats", CoGroupByKey.create())
-            .apply(
-                "ComputeTableStats",
-                ParDo.of(
-                    new DoFn<KV<String, CoGbkResult>, TableValidationStats>() {
-                      @ProcessElement
-                      public void processElement(ProcessContext c) {
-                        String tableName = c.element().getKey();
-                        CoGbkResult result = c.element().getValue();
-
-                        long matched = result.getOnly(matchedTag, 0L);
-                        long onlyInGcs = result.getOnly(missInSpannerTag, 0L);
-                        long onlyInSpanner = result.getOnly(missInSourceTag, 0L);
-                        long mismatch = onlyInGcs + onlyInSpanner;
-
-                        String status = mismatch == 0 ? "MATCH" : "MISMATCH";
-                        Instant now = Instant.now(); // Approximation for start/end in batch
-
-                        c.output(
-                            TableValidationStats.builder()
-                                .setRunId(ReportResultsTransform.this.runId)
-                                .setTableName(tableName)
-                                .setStatus(status)
-                                .setSourceRowCount(matched + onlyInGcs)
-                                .setDestinationRowCount(matched + onlyInSpanner)
-                                .setMatchedRowCount(matched)
-                                .setMismatchRowCount(mismatch)
-                                .setStartTimestamp(now)
-                                .setEndTimestamp(now)
-                                .build());
-                      }
-                    }));
+        calculateTableStats(matched, missingInSpanner, missingInSource);
 
     tableStats.apply(
         "WriteTableStats",
@@ -256,53 +164,135 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
       throw new RuntimeException("Unable to retrieve SchemaCoder for ValidationSummary", e);
     }
 
-    tableStats
+    PCollection<ValidationSummary> validationSummary = calculateValidationSummary(tableStats);
+
+    validationSummary.apply(
+        "WriteValidationSummary",
+        BigQueryIO.<ValidationSummary>write()
+            .to(String.format("%s.%s", this.bigQueryDataset, VALIDATION_SUMMARY_TABLE))
+            .withSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA)
+            .withFormatFunction(
+                s ->
+                    new TableRow()
+                        .set(ValidationSummary.RUN_ID_COLUMN_NAME, s.getRunId())
+                        .set(ValidationSummary.SOURCE_DATABASE_COLUMN_NAME, s.getSourceDatabase())
+                        .set(
+                            ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME,
+                            s.getDestinationDatabase())
+                        .set(ValidationSummary.STATUS_COLUMN_NAME, s.getStatus())
+                        .set(
+                            ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME,
+                            s.getTotalTablesValidated())
+                        .set(
+                            ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME,
+                            s.getTablesWithMismatches())
+                        .set(
+                            ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME,
+                            s.getTotalRowsMatched())
+                        .set(
+                            ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME,
+                            s.getTotalRowsMismatched())
+                        .set(
+                            ValidationSummary.START_TIMESTAMP_COLUMN_NAME,
+                            s.getStartTimestamp().toString())
+                        .set(
+                            ValidationSummary.END_TIMESTAMP_COLUMN_NAME,
+                            s.getEndTimestamp().toString()))
+            .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+            .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
+
+    return PDone.in(input.getPipeline());
+  }
+
+  PCollection<MismatchedRecord> transformMismatchedRecords(
+      PCollection<ComparisonRecord> missingInSpanner,
+      PCollection<ComparisonRecord> missingInSource) {
+    PCollection<MismatchedRecord> spannerMismatchedRecords =
+        missingInSpanner.apply(
+            "ConvertToMismatchedRecordsFromSpanner",
+            MapElements.into(TypeDescriptor.of(MismatchedRecord.class))
+                .via(
+                    r ->
+                        MismatchedRecord.builder()
+                            .setRunId(this.runId)
+                            .setTableName(r.getTableName())
+                            .setMismatchType("MISSING_IN_DESTINATION")
+                            .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
+                            .setSource(GCS_SOURCE)
+                            .setHash(r.getHash())
+                            .build()));
+
+    PCollection<MismatchedRecord> sourceMismatchedRecords =
+        missingInSource.apply(
+            "ConvertToMismatchedRecordsFromSource",
+            MapElements.into(TypeDescriptor.of(MismatchedRecord.class))
+                .via(
+                    r ->
+                        MismatchedRecord.builder()
+                            .setRunId(this.runId)
+                            .setTableName(r.getTableName())
+                            .setMismatchType("MISSING_IN_SOURCE")
+                            .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
+                            .setSource(SPANNER_DESTINATION)
+                            .setHash(r.getHash())
+                            .build()));
+
+    return PCollectionList.of(spannerMismatchedRecords)
+        .and(sourceMismatchedRecords)
+        .apply("FlattenMismatches", Flatten.pCollections());
+  }
+
+  PCollection<TableValidationStats> calculateTableStats(
+      PCollection<ComparisonRecord> matched,
+      PCollection<ComparisonRecord> missingInSpanner,
+      PCollection<ComparisonRecord> missingInSource) {
+    PCollection<KV<String, Long>> matchedCounts =
+        matched
+            .apply(
+                "ExtractMatchedTableNames",
+                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
+            .apply("CountMatched", Count.perElement());
+
+    PCollection<KV<String, Long>> missingInSpannerCounts =
+        missingInSpanner
+            .apply(
+                "ExtractTableNamesMissedInSpanner",
+                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
+            .apply("CountMissInSpanner", Count.perElement());
+
+    PCollection<KV<String, Long>> missingInSourceCounts =
+        missingInSource
+            .apply(
+                "ExtractTableNameMissedInSource",
+                MapElements.into(TypeDescriptors.strings()).via(ComparisonRecord::getTableName))
+            .apply("CountMissInSource", Count.perElement());
+
+    final TupleTag<Long> matchedTag = new TupleTag<>();
+    final TupleTag<Long> missInSpannerTag = new TupleTag<>();
+    final TupleTag<Long> missInSourceTag = new TupleTag<>();
+
+    return KeyedPCollectionTuple.of(matchedTag, matchedCounts)
+        .and(missInSpannerTag, missingInSpannerCounts)
+        .and(missInSourceTag, missingInSourceCounts)
+        .apply("CoGroupByKeyStats", CoGroupByKey.create())
+        .apply(
+            "ComputeTableStats",
+            ParDo.of(
+                new ComputeTableStatsFn(
+                    runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
+  }
+
+  PCollection<ValidationSummary> calculateValidationSummary(
+      PCollection<TableValidationStats> tableStats) {
+    return tableStats
         .apply("WindowGlobal", Window.into(new GlobalWindows()))
         .apply(
             "CombineSummary",
             Combine.globally(
                     new ValidationSummaryCombineFn(
                         this.runId, this.startTimestamp, GCS_SOURCE, SPANNER_DESTINATION))
-                .withoutDefaults()) // Only output if there is data
-        .apply(
-            "WriteValidationSummary",
-            BigQueryIO.<ValidationSummary>write()
-                .to(String.format("%s.%s", bigQueryDataset, VALIDATION_SUMMARY_TABLE))
-                .withSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA)
-                .withFormatFunction(
-                    s ->
-                        new TableRow()
-                            .set(ValidationSummary.RUN_ID_COLUMN_NAME, s.getRunId())
-                            .set(
-                                ValidationSummary.SOURCE_DATABASE_COLUMN_NAME,
-                                s.getSourceDatabase())
-                            .set(
-                                ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME,
-                                s.getDestinationDatabase())
-                            .set(ValidationSummary.STATUS_COLUMN_NAME, s.getStatus())
-                            .set(
-                                ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME,
-                                s.getTotalTablesValidated())
-                            .set(
-                                ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME,
-                                s.getTablesWithMismatches())
-                            .set(
-                                ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME,
-                                s.getTotalRowsMatched())
-                            .set(
-                                ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME,
-                                s.getTotalRowsMismatched())
-                            .set(
-                                ValidationSummary.START_TIMESTAMP_COLUMN_NAME,
-                                s.getStartTimestamp().toString())
-                            .set(
-                                ValidationSummary.END_TIMESTAMP_COLUMN_NAME,
-                                s.getEndTimestamp().toString()))
-                .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
-
-    return PDone.in(input.getPipeline());
+                .withoutDefaults());
   }
 
   private String formatRecordKey(List<com.google.cloud.teleport.v2.dto.Column> columns) {
