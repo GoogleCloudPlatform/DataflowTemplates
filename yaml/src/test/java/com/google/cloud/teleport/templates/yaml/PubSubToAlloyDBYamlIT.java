@@ -109,13 +109,14 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
                 .addParameter(
                     "schema",
                     "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
+                .addParameter("windowingType", "fixed")
+                .addParameter("windowingSize", "10s")
                 .addParameter("language", "python")
                 .addParameter(
                     "fields",
                     "{"
-                        + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"integer\"},"
-                        + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"string\"}"
+                        + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"INT64\"},"
+                        + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"STRING\"}"
                         + "}")
                 .addParameter("jdbcUrl", postgresResourceManager.getUri())
                 .addParameter("username", postgresResourceManager.getUsername())

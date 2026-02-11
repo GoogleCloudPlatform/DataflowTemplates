@@ -8,7 +8,7 @@ template:
     The PubSub to AlloyDb template is a streaming pipeline which ingests
     data from a PubSub topic, executes a user-defined mapping, and
     writes the resulting records to AlloyDb. Any errors which occur in the
-    transformation of the data are written to a separate Pub/Sub topic.
+    transformation of the data or writing to AlloyDb are written to a separate Pub/Sub topic.
   flex_container_name: "pubsub-to-alloydb-yaml"
   yamlTemplateFile: "PubSubToAlloyDb.yaml"
   filesToCopy: >
@@ -39,7 +39,7 @@ template:
 
     - name: "outputDeadLetterPubSubTopic"
       description: "Pub/Sub transformation error topic"
-      help: "Pub/Sub error topic for failed transformation messages."
+      help: "Pub/Sub error topic for failed transformation and write messages."
       example: "projects/your-project-id/topics/your-error-topic-name"
       required: true
       type: text
@@ -52,50 +52,58 @@ pipeline:
     - type: ReadFromPubSub
       name: ReadMessages
       config:
-        topic: {{ topic }}
         subscription: {{ subscription }}
         format: {{ format }}
+        {% if schema %}
         schema: {{ schema }}
+        {% endif %}
         attributes: {{ attributes }}
         attribute_map: {{ attributeMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
+        error_handling:
+          output: errors
+    - type: WindowInto
+      name: WindowInto
+      input: ReadMessages
+      config:
+        windowing:
+          type: {{ windowingType | default("fixed") }}
+          size: {{ windowingSize | default("60s") }}
     - type: MapToFields
       name: ConvertStringsToBytes
-      input: ReadMessages
+      input: WindowInto
       config:
         language: {{ language }}
         fields: {{ fields }}
         error_handling:
           output: errors
-    - type: WindowInto
-      name: WindowInto
-      input: ConvertStringsToBytes
-      config:
-        windowing: {{ windowing }}
     - type: WriteToPostgres
       name: WriteGoodMessagesToAlloyDb
-      input: WindowInto
+      input: ConvertStringsToBytes
       config:
         driver_class_name: {{ driverClassName | default("org.postgresql.Driver")}}
-        url: {{ jdbcUrl }}
-        username: {{ username }}
-        password: {{ password }}
-        table: {{ location }}
-        write_statement: {{ writeStatement }}
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        table: "{{ location }}"
+        write_statement: "{{ writeStatement }}"
         batch_size: {{ batchSize }}
         autosharding: {{ autosharding }}
         type: {{ jdbcType | default("postgres") }}
         connection_properties: {{ connectionProperties }}
         connection_init_sql: {{ connectionInitSql }}
+        error_handling:
+          output: errors
     - type: WriteToPubSub
       name: WriteTransformationErrorsToDeadLetterQueue
-      input: ConvertStringsToBytes.errors
+      input: [ReadMessages.errors, ConvertStringsToBytes.errors, WriteGoodMessagesToAlloyDb.errors]
       config:
         topic: {{ outputDeadLetterPubSubTopic }}
         format: {{ format }}
-        schema: |
-          {{ schema }}
+        {% if schema %}
+        schema: {{ schema }}
+        {% endif %}
 
 options:
   streaming: true
