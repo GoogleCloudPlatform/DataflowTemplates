@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
+import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
@@ -179,7 +180,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
       return query;
     }
 
-    var capabilities = connectionSupplier.get().capabilities();
+    var capabilities = getNeo4jCapabilities();
     var query =
         CypherGenerator.getImportStatement(
             importSpecification, (EntityTarget) target, capabilities);
@@ -192,56 +193,46 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private static int batchSize(TargetType targetType, Configuration config) {
-    switch (targetType) {
-      case NODE:
-        return config
-            .get(Integer.class, NODE_BATCH_SIZE_SETTING, LEGACY_NODE_BATCH_SIZE_SETTING)
-            .orElse(DEFAULT_NODE_BATCH_SIZE);
-      case RELATIONSHIP:
-        return config
-            .get(
-                Integer.class,
-                RELATIONSHIP_BATCH_SIZE_SETTING,
-                LEGACY_RELATIONSHIP_BATCH_SIZE_SETTING)
-            .orElse(DEFAULT_RELATIONSHIP_BATCH_SIZE);
-      case QUERY:
-        return config
-            .get(Integer.class, QUERY_BATCH_SIZE_SETTING, LEGACY_QUERY_BATCH_SIZE_SETTING)
-            .orElse(DEFAULT_QUERY_BATCH_SIZE);
-      default:
-        throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
-    }
+    return switch (targetType) {
+      case NODE -> config
+          .get(Integer.class, NODE_BATCH_SIZE_SETTING, LEGACY_NODE_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_NODE_BATCH_SIZE);
+      case RELATIONSHIP -> config
+          .get(
+              Integer.class,
+              RELATIONSHIP_BATCH_SIZE_SETTING,
+              LEGACY_RELATIONSHIP_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_RELATIONSHIP_BATCH_SIZE);
+      case QUERY -> config
+          .get(Integer.class, QUERY_BATCH_SIZE_SETTING, LEGACY_QUERY_BATCH_SIZE_SETTING)
+          .orElse(DEFAULT_QUERY_BATCH_SIZE);
+    };
   }
 
   private static int parallelismFactor(TargetType targetType, Configuration config) {
-    switch (targetType) {
-      case NODE:
-        return config
-            .get(Integer.class, NODE_PARALLELISM_SETTING, LEGACY_NODE_PARALLELISM_SETTING)
-            .orElse(DEFAULT_NODE_PARALLELISM_FACTOR);
-      case RELATIONSHIP:
-        return config
-            .get(
-                Integer.class,
-                RELATIONSHIP_PARALLELISM_SETTING,
-                LEGACY_RELATIONSHIP_PARALLELISM_SETTING)
-            .orElse(DEFAULT_RELATIONSHIP_PARALLELISM_FACTOR);
-      case QUERY:
-        return config
-            .get(Integer.class, QUERY_PARALLELISM_SETTING, LEGACY_QUERY_PARALLELISM_SETTING)
-            .orElse(DEFAULT_QUERY_PARALLELISM_FACTOR);
-      default:
-        throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
+    return switch (targetType) {
+      case NODE -> config
+          .get(Integer.class, NODE_PARALLELISM_SETTING, LEGACY_NODE_PARALLELISM_SETTING)
+          .orElse(DEFAULT_NODE_PARALLELISM_FACTOR);
+      case RELATIONSHIP -> config
+          .get(
+              Integer.class,
+              RELATIONSHIP_PARALLELISM_SETTING,
+              LEGACY_RELATIONSHIP_PARALLELISM_SETTING)
+          .orElse(DEFAULT_RELATIONSHIP_PARALLELISM_FACTOR);
+      case QUERY -> config
+          .get(Integer.class, QUERY_PARALLELISM_SETTING, LEGACY_QUERY_PARALLELISM_SETTING)
+          .orElse(DEFAULT_QUERY_PARALLELISM_FACTOR);
+    };
+  }
+
+  private Neo4jCapabilities getNeo4jCapabilities() {
+    try (Neo4jConnection neo4jConnection = connectionSupplier.get()) {
+      return neo4jConnection.capabilities();
     }
   }
 
-  private static class ThreadLocalRandomInt implements SerializableFunction<Row, Integer> {
-
-    private final int bound;
-
-    private ThreadLocalRandomInt(int bound) {
-      this.bound = bound;
-    }
+  private record ThreadLocalRandomInt(int bound) implements SerializableFunction<Row, Integer> {
 
     public static SerializableFunction<Row, Integer> of(int bound) {
       return new ThreadLocalRandomInt(bound);
