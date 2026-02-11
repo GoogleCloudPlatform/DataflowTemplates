@@ -16,12 +16,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
+* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.
 * **language**: The language used to define (and execute) the expressions and callables in fields. For example, `python`.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **jdbcUrl**: The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
+* **url**: The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
 * **username**: Username for AlloyDb authentication For example, `postgres`.
 * **password**: Password for AlloyDb authentication.
 * **location**: The name of the table where records will be written For example, `my_table`.
@@ -30,7 +30,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.
 * **attributeMap**: Name of a field in which to store the full set of attributes associated with this message.
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute will be used for deduplication of messages.
@@ -38,10 +37,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
 * **driverClassName**: The JDBC driver class name for connecting to AlloyDb For example, `org.postgresql.Driver`.
 * **connectionProperties**: Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10 For example, `sslmode=require;connectTimeout=10`.
-* **connectionInitSqls**: Optional SQL statements to run when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
+* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
 * **batchSize**: Number of records to batch before writing to the database For example, `100`.
 * **autosharding**: Whether to use autosharding for distributing writes across multiple connections.
-* **maxConnections**: Maximum number of connections in the connection pool For example, `10`.
 * **network**: The VPC network where AlloyDB is located. For example, `default`.
 * **subnetwork**: The subnetwork for Dataflow workers. Required for custom VPCs. For example, `regions/us-central1/subnetworks/my-subnet`.
 
@@ -136,12 +134,12 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_AlloyDb_Yaml"
 
 ### Required
-export TOPIC=<topic>
+export SUBSCRIPTION=<subscription>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export JDBC_URL=<jdbcUrl>
+export URL=<url>
 export USERNAME=<username>
 export PASSWORD=<password>
 export LOCATION=<location>
@@ -149,7 +147,6 @@ export WRITE_STATEMENT=<writeStatement>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
-export SUBSCRIPTION=<subscription>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTE_MAP=<attributeMap>
 export ID_ATTRIBUTE=<idAttribute>
@@ -157,10 +154,9 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export WINDOWING=<windowing>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQLS=<connectionInitSqls>
+export CONNECTION_INIT_SQL=<connectionInitSql>
 export BATCH_SIZE=<batchSize>
 export AUTOSHARDING=<autosharding>
-export MAX_CONNECTIONS=<maxConnections>
 export NETWORK=<network>
 export SUBNETWORK=<subnetwork>
 
@@ -168,7 +164,6 @@ gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
-  --parameters "topic=$TOPIC" \
   --parameters "subscription=$SUBSCRIPTION" \
   --parameters "format=$FORMAT" \
   --parameters "schema=$SCHEMA" \
@@ -179,17 +174,16 @@ gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --parameters "language=$LANGUAGE" \
   --parameters "fields=$FIELDS" \
   --parameters "windowing=$WINDOWING" \
-  --parameters "jdbcUrl=$JDBC_URL" \
+  --parameters "url=$URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "driverClassName=$DRIVER_CLASS_NAME" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSqls=$CONNECTION_INIT_SQLS" \
+  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
   --parameters "location=$LOCATION" \
   --parameters "writeStatement=$WRITE_STATEMENT" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autosharding=$AUTOSHARDING" \
-  --parameters "maxConnections=$MAX_CONNECTIONS" \
   --parameters "network=$NETWORK" \
   --parameters "subnetwork=$SUBNETWORK" \
   --parameters "outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC"
@@ -211,12 +205,12 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TOPIC=<topic>
+export SUBSCRIPTION=<subscription>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export JDBC_URL=<jdbcUrl>
+export URL=<url>
 export USERNAME=<username>
 export PASSWORD=<password>
 export LOCATION=<location>
@@ -224,7 +218,6 @@ export WRITE_STATEMENT=<writeStatement>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
-export SUBSCRIPTION=<subscription>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTE_MAP=<attributeMap>
 export ID_ATTRIBUTE=<idAttribute>
@@ -232,10 +225,9 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export WINDOWING=<windowing>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQLS=<connectionInitSqls>
+export CONNECTION_INIT_SQL=<connectionInitSql>
 export BATCH_SIZE=<batchSize>
 export AUTOSHARDING=<autosharding>
-export MAX_CONNECTIONS=<maxConnections>
 export NETWORK=<network>
 export SUBNETWORK=<subnetwork>
 
@@ -246,7 +238,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-alloydb-yaml-job" \
 -DtemplateName="PubSub_To_AlloyDb_Yaml" \
--Dparameters="topic=$TOPIC,subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributeMap=$ATTRIBUTE_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSqls=$CONNECTION_INIT_SQLS,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING,maxConnections=$MAX_CONNECTIONS,network=$NETWORK,subnetwork=$SUBNETWORK,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributeMap=$ATTRIBUTE_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,url=$URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING,network=$NETWORK,subnetwork=$SUBNETWORK,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
 -f yaml
 ```
 
@@ -291,18 +283,17 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
   name              = "pubsub-to-alloydb-yaml"
   region            = var.region
   parameters        = {
-    topic = "<topic>"
+    subscription = "<subscription>"
     format = "<format>"
     schema = "<schema>"
     language = "<language>"
     fields = "<fields>"
-    jdbcUrl = "<jdbcUrl>"
+    url = "<url>"
     username = "<username>"
     password = "<password>"
     location = "<location>"
     writeStatement = "<writeStatement>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
-    # subscription = "<subscription>"
     # attributes = "<attributes>"
     # attributeMap = "<attributeMap>"
     # idAttribute = "<idAttribute>"
@@ -310,10 +301,9 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
     # windowing = "<windowing>"
     # driverClassName = "<driverClassName>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSqls = "<connectionInitSqls>"
+    # connectionInitSql = "<connectionInitSql>"
     # batchSize = "<batchSize>"
     # autosharding = "<autosharding>"
-    # maxConnections = "<maxConnections>"
     # network = "<network>"
     # subnetwork = "<subnetwork>"
   }

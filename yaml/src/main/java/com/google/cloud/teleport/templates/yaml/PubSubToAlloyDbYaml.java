@@ -26,7 +26,7 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "PubSub to AlloyDb (YAML)",
     description =
-        "The PubSub to AlloyDb template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to AlloyDb. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+        "The PubSub to AlloyDb template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to AlloyDb. Any errors which occur in the transformation of the data or writing to AlloyDb are written to a separate Pub/Sub topic.",
     flexContainerName = "pubsub-to-alloydb-yaml",
     yamlTemplateFile = "PubSubToAlloyDb.yaml",
     filesToCopy = {
@@ -51,25 +51,16 @@ public interface PubSubToAlloyDbYaml {
 
   @TemplateParameter.Text(
       order = 1,
-      name = "topic",
-      optional = false,
-      description = "Pub/Sub input topic",
-      helpText = "Pub/Sub topic to read the input from.",
-      example = "projects/your-project-id/topics/your-topic-name")
-  @Validation.Required
-  String getTopic();
-
-  @TemplateParameter.Text(
-      order = 2,
       name = "subscription",
-      optional = true,
+      optional = false,
       description = "Pub/Sub subscription",
       helpText = "Pub/Sub subscription to read the input from.",
       example = "projects/your-project-id/subscriptions/your-subscription-name")
+  @Validation.Required
   String getSubscription();
 
   @TemplateParameter.Text(
-      order = 3,
+      order = 2,
       name = "format",
       optional = false,
       description = "The message format.",
@@ -79,18 +70,17 @@ public interface PubSubToAlloyDbYaml {
   String getFormat();
 
   @TemplateParameter.Text(
-      order = 4,
+      order = 3,
       name = "schema",
       optional = false,
       description = "Data schema.",
       helpText =
-          "A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.",
-      example = "")
-  @Validation.Required
+          "A schema is required if data format is JSON, AVRO or PROTO. The schema should be in Beam schema format (with 'fields' list), provided as a YAML string.",
+      example = "fields:\n  - name: \"message_body\"\n    type: \"STRING\"")
   String getSchema();
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 4,
       name = "attributes",
       optional = true,
       description = "List of attribute keys.",
@@ -100,7 +90,7 @@ public interface PubSubToAlloyDbYaml {
   String getAttributes();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 5,
       name = "attributeMap",
       optional = true,
       description = "Name of a field in which to store the full set of attributes.",
@@ -110,7 +100,7 @@ public interface PubSubToAlloyDbYaml {
   String getAttributeMap();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 6,
       name = "idAttribute",
       optional = true,
       description =
@@ -121,7 +111,7 @@ public interface PubSubToAlloyDbYaml {
   String getIdAttribute();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 7,
       name = "timestampAttribute",
       optional = true,
       description = "Message value to use as element timestamp.",
@@ -131,7 +121,7 @@ public interface PubSubToAlloyDbYaml {
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
-      order = 9,
+      order = 8,
       name = "language",
       optional = false,
       description = "Language used to define the expressions.",
@@ -142,7 +132,7 @@ public interface PubSubToAlloyDbYaml {
   String getLanguage();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 9,
       name = "fields",
       optional = false,
       description = "Field mapping configuration",
@@ -153,18 +143,28 @@ public interface PubSubToAlloyDbYaml {
   String getFields();
 
   @TemplateParameter.Text(
-      order = 11,
-      name = "windowing",
+      order = 10,
+      name = "windowingType",
       optional = true,
-      description = "Windowing options",
+      description = "Windowing type",
       helpText =
-          "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
-      example = "")
-  String getWindowing();
+          "The type of windowing to use. Supported types: fixed, sliding, sessions, global. Defaults to 'fixed'.",
+      example = "fixed")
+  String getWindowingType();
+
+  @TemplateParameter.Text(
+      order = 11,
+      name = "windowingSize",
+      optional = true,
+      description = "Window size",
+      helpText =
+          "The size of the window. For fixed windows, this is the duration of each window. For sliding windows, this is the window duration. Format: duration string (e.g., '60s', '5m', '1h'). Defaults to '60s'.",
+      example = "60s")
+  String getWindowingSize();
 
   @TemplateParameter.Text(
       order = 12,
-      name = "url",
+      name = "jdbcUrl",
       optional = false,
       description = "JDBC connection URL for AlloyDb",
       helpText =
@@ -281,7 +281,7 @@ public interface PubSubToAlloyDbYaml {
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",
-      helpText = "Pub/Sub error topic for failed transformation messages.",
+      helpText = "Pub/Sub error topic for failed transformation and write messages.",
       example = "projects/your-project-id/topics/your-error-topic-name")
   @Validation.Required
   String getOutputDeadLetterPubSubTopic();
