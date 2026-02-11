@@ -364,7 +364,7 @@ public class PipelineControllerTest {
     assertThat(config.sourceDbURL())
         .isEqualTo(
             testUrl
-                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=false");
+                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
