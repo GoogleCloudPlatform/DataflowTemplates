@@ -183,15 +183,12 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     return sourceRows.apply(
         "WriteAvroToGCS",
         FileIO.<AvroDestination, SourceRow>writeDynamic()
-            .by(
-                (record) ->
-                    AvroDestination.of(
-                        record.tableName(), record.getPayload().getSchema().toString()))
+            .by((record) -> AvroDestination.of(record.tableName(), record.gcsSchema().toString()))
             .via(
                 Contextful.fn(
                     record -> {
                       Metrics.counter(MigrateTableTransform.class, metricName).inc();
-                      return record.getPayload();
+                      return record.toGcsRecord();
                     }),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
