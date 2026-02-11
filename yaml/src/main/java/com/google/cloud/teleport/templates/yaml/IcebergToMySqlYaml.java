@@ -31,7 +31,6 @@ import org.apache.beam.sdk.options.Validation;
     flexContainerName = "iceberg-to-mysql-yaml",
     yamlTemplateFile = "IcebergToMySql.yaml",
     filesToCopy = {
-      "template.yaml",
       "main.py",
       "requirements.txt",
       "options/mysql_options.yaml",
