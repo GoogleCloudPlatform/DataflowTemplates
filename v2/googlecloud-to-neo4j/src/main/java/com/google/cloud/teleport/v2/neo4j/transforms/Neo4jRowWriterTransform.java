@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
+import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
@@ -179,7 +180,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
       return query;
     }
 
-    var capabilities = connectionSupplier.get().capabilities();
+    Neo4jCapabilities capabilities = getNeo4jCapabilities();
     var query =
         CypherGenerator.getImportStatement(
             importSpecification, (EntityTarget) target, capabilities);
@@ -233,6 +234,14 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
       default:
         throw new IllegalStateException(String.format("Unsupported target type: %s", targetType));
     }
+  }
+
+  private Neo4jCapabilities getNeo4jCapabilities() {
+    Neo4jCapabilities capabilities;
+    try (Neo4jConnection neo4jConnection = connectionSupplier.get()) {
+      capabilities = neo4jConnection.capabilities();
+    }
+    return capabilities;
   }
 
   private static class ThreadLocalRandomInt implements SerializableFunction<Row, Integer> {
