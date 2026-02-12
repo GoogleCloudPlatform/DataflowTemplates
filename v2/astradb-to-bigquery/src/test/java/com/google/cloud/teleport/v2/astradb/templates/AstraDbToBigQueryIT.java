@@ -69,7 +69,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   private static final String ASTRA_DB = "dataflow_integration_tests";
 
-  private static final String ASTRA_DB_REGION = "us-east1";
+  private static final String ASTRA_DB_REGION = System.getProperty("region", "us-east1");
 
   private static final String ASTRA_KS = "beam";
 
@@ -85,6 +85,8 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
   public void setup() throws Exception {
     // Setup bigQuery
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    // Setup bigQuery Dataset
+    bigQueryClient.createDataset(ASTRA_DB_REGION);
     // Setup Astra Db
     createOrResumeAstraDatabase();
     // Setup Astra Data
@@ -105,7 +107,9 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
             // Specialized to a table (created and populated if not exists)
             .addParameter("astraTable", ASTRA_TBL)
             // Specialized to a table (created and populated if not exists)
-            .addParameter("minTokenRangesCount", ASTRA_TOKEN_COUNTS);
+            .addParameter("minTokenRangesCount", ASTRA_TOKEN_COUNTS)
+            .addParameter(
+                "outputTableSpec", PROJECT + ":" + bigQueryClient.getDatasetId() + "." + ASTRA_TBL);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -113,7 +117,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
     LOGGER.debug("Pipeline is now running");
 
     // Destination table
-    TableId tableId = TableId.of(PROJECT, ASTRA_KS, ASTRA_TBL);
+    TableId tableId = TableId.of(PROJECT, bigQueryClient.getDatasetId(), ASTRA_TBL);
     LOGGER.debug("Destination Table: {}", tableId);
     PipelineOperator.Result result =
         pipelineOperator()
