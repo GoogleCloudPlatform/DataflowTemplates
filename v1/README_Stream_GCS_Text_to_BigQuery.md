@@ -1,5 +1,5 @@
 
-Cloud Storage Text to BigQuery (Stream) template
+Cloud Storage Text to BigQuery (Stream) Classic template
 ---
 The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that
 allows you to stream text files stored in Cloud Storage, transform them using a
@@ -68,7 +68,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ## User-Defined functions (UDFs)
 
-The Cloud Storage Text to BigQuery (Stream) Template supports User-Defined functions (UDFs).
+The Cloud Storage Text to BigQuery (Stream) Classic Template supports User-Defined functions (UDFs).
 UDFs allow you to customize functionality by providing a JavaScript function
 without having to maintain or build the entire template code.
 
