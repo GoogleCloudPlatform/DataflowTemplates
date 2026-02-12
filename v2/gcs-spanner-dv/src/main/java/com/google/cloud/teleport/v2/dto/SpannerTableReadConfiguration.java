@@ -27,12 +27,18 @@ public abstract class SpannerTableReadConfiguration {
 
   public abstract String getTableName();
 
+  /** Stores the list of columns when reading from Spanner. By default, all columns are read. */
   @Nullable
   public abstract List<String> getColumnsToInclude();
 
+  /**
+   * Stores the list of columns to exclude when reading from Spanner. By default, all columns are
+   * read.
+   */
   @Nullable
   public abstract List<String> getColumnsToExclude();
 
+  /** Allows the user to specify a custom query at a table level for reading from Spanner. */
   @Nullable
   public abstract String getCustomQuery();
 
@@ -42,6 +48,7 @@ public abstract class SpannerTableReadConfiguration {
 
   @AutoValue.Builder
   public abstract static class Builder {
+
     public abstract Builder setTableName(String tableName);
 
     public abstract Builder setColumnsToInclude(List<String> columnsToInclude);

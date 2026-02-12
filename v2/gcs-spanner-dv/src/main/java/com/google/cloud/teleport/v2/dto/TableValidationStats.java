@@ -25,6 +25,7 @@ import org.joda.time.Instant;
 @DefaultSchema(AutoValueSchema.class)
 public abstract class TableValidationStats {
   public static final String RUN_ID_COLUMN_NAME = "run_id";
+  public static final String SCHEMA_NAME = "schema_name";
   public static final String TABLE_NAME_COLUMN_NAME = "table_name";
   public static final String STATUS_COLUMN_NAME = "status";
   public static final String SOURCE_ROW_COUNT_COLUMN_NAME = "source_row_count";
@@ -35,6 +36,8 @@ public abstract class TableValidationStats {
   public static final String END_TIMESTAMP_COLUMN_NAME = "end_timestamp";
 
   public abstract String getRunId();
+
+  public abstract String getSchemaName();
 
   public abstract String getTableName();
 
@@ -59,6 +62,8 @@ public abstract class TableValidationStats {
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setRunId(String runId);
+
+    public abstract Builder setSchemaName(String schemaName);
 
     public abstract Builder setTableName(String tableName);
 

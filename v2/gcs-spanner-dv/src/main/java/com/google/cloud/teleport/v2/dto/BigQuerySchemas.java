@@ -33,6 +33,10 @@ public final class BigQuerySchemas {
                       .setType("STRING")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()
+                      .setName(MismatchedRecord.SCHEMA_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
                       .setName(MismatchedRecord.TABLE_NAME_COLUMN_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
@@ -59,6 +63,10 @@ public final class BigQuerySchemas {
               Lists.newArrayList(
                   new TableFieldSchema()
                       .setName(TableValidationStats.RUN_ID_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(TableValidationStats.SCHEMA_NAME)
                       .setType("STRING")
                       .setMode("REQUIRED"),
                   new TableFieldSchema()

@@ -24,6 +24,7 @@ import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 @DefaultSchema(AutoValueSchema.class)
 public abstract class MismatchedRecord {
   public static final String RUN_ID_COLUMN_NAME = "run_id";
+  public static final String SCHEMA_NAME = "schema_name";
   public static final String TABLE_NAME_COLUMN_NAME = "table_name";
   public static final String MISMATCH_TYPE_COLUMN_NAME = "mismatch_type";
   public static final String RECORD_KEY_COLUMN_NAME = "record_key";
@@ -31,6 +32,8 @@ public abstract class MismatchedRecord {
   public static final String HASH_COLUMN_NAME = "hash";
 
   public abstract String getRunId();
+
+  public abstract String getSchemaName();
 
   public abstract String getTableName();
 
@@ -49,6 +52,8 @@ public abstract class MismatchedRecord {
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setRunId(String runId);
+
+    public abstract Builder setSchemaName(String schemaName);
 
     public abstract Builder setTableName(String tableName);
 
