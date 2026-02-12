@@ -33,11 +33,7 @@ class JsonObjects {
     return getOrDefault(object, property, () -> object.getBoolean(property), defaultValue);
   }
 
-  public static Integer getIntegerOrNull(JSONObject object, String property) {
-    return getIntegerOrDefault(object, property, null);
-  }
-
-  private static Integer getIntegerOrDefault(
+  public static Integer getIntegerOrDefault(
       JSONObject object, String property, Integer defaultValue) {
     return getOrDefault(object, property, () -> object.getInt(property), defaultValue);
   }

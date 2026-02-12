@@ -117,7 +117,7 @@ class MappingMapper {
         getStringOrDefault(edge, "source", DEFAULT_SOURCE_NAME),
         null,
         writeMode,
-        null,
+        List.of(),
         labels,
         new ArrayList<>(keyMappings.values()),
         new NodeSchema(null, keyConstraints, null, null, null, null, null, null, null));

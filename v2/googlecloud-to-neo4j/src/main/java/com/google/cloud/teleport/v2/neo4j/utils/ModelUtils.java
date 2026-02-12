@@ -16,15 +16,21 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.cloud.teleport.v2.neo4j.database.CypherPatterns;
+import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.Order;
+import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.LongValue;
@@ -37,14 +43,10 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.Order;
-import org.neo4j.importer.v1.targets.OrderBy;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.SourceTransformations;
 import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
@@ -59,14 +61,16 @@ public class ModelUtils {
     if (target.getTargetType() == TargetType.QUERY) {
       return false;
     }
-    var sourceTransformations = getSourceTransformations(target);
-    if (sourceTransformations == null) {
+    Optional<SourceTransformations> sourceTransformations =
+        ((EntityTarget) target).getExtension(SourceTransformations.class);
+    if (sourceTransformations.isEmpty()) {
       return false;
     }
-    return sourceTransformations.isEnableGrouping()
-        || !sourceTransformations.getAggregations().isEmpty()
-        || !sourceTransformations.getOrderByClauses().isEmpty()
-        || StringUtils.isNotEmpty(sourceTransformations.getWhereClause());
+    var transformations = sourceTransformations.get();
+    return transformations.enableGrouping()
+        || !transformations.aggregations().isEmpty()
+        || !transformations.orderByClauses().isEmpty()
+        || !transformations.whereClause().isBlank();
   }
 
   public static Set<String> getBeamFieldSet(Schema schema) {
@@ -97,44 +101,47 @@ public class ModelUtils {
           String.format("Expected node or relationship target, got %s", targetType));
     }
 
-    var entityTarget = (EntityTarget) target;
-    var transformations = entityTarget.getSourceTransformations();
+    var transformations = ((EntityTarget) target).getExtension(SourceTransformations.class);
     try {
       var statement = new PlainSelect();
       statement.withFromItem(new Table("PCOLLECTION"));
       if (generateSqlSort) {
-        List<OrderByElement> orderBy = new ArrayList<>();
+        List<OrderByElement> sqlOrderBy = new ArrayList<>();
         if (targetType == TargetType.RELATIONSHIP) {
           var reversedMappings =
               endNodeTarget.getProperties().stream()
                   .collect(
                       Collectors.toMap(
                           PropertyMapping::getTargetProperty, PropertyMapping::getSourceField));
-          for (String key : endNodeTarget.getKeyProperties()) {
+          for (String key : getKeyProperties(endNodeTarget)) {
             String keyField = reversedMappings.get(key);
             String field = CypherPatterns.sanitize(keyField);
-            orderBy.add(
+            sqlOrderBy.add(
                 new OrderByElement().withExpression(CCJSqlParserUtil.parseExpression(field)));
           }
         }
-        if (orderBy.isEmpty() && transformations != null) {
-          for (OrderBy orderByClause : transformations.getOrderByClauses()) {
-            orderBy.add(convertToJsqlElement(orderByClause));
+        if (sqlOrderBy.isEmpty() && transformations.isPresent()) {
+          var orderBys = transformations.get().orderByClauses();
+          if (orderBys != null) {
+            for (OrderBy orderByClause : orderBys) {
+              sqlOrderBy.add(convertToJsqlElement(orderByClause));
+            }
           }
         }
 
-        if (!orderBy.isEmpty()) {
-          statement.withOrderByElements(orderBy);
+        if (!sqlOrderBy.isEmpty()) {
+          statement.withOrderByElements(sqlOrderBy);
         }
       }
 
-      if (transformations != null) {
+      if (transformations.isPresent()) {
         /////////////////////////////////
         // Grouping transform
-        List<Aggregation> aggregations = transformations.getAggregations();
-        if (transformations.isEnableGrouping() || !aggregations.isEmpty()) {
+        var transforms = transformations.get();
+        List<Aggregation> aggregations = transforms.aggregations();
+        if (transforms.enableGrouping() || aggregations != null && !aggregations.isEmpty()) {
           Set<PropertyMapping> allProperties =
-              allPropertyMappings(entityTarget, startNodeTarget, endNodeTarget);
+              getAllPropertyMappings((EntityTarget) target, startNodeTarget, endNodeTarget);
           Column[] groupByFields =
               allProperties.stream()
                   .map(PropertyMapping::getSourceField)
@@ -148,24 +155,24 @@ public class ModelUtils {
                     target.getName()));
           }
           statement.addSelectItems(groupByFields);
-          if (!aggregations.isEmpty()) {
+          if (aggregations != null) {
             for (Aggregation aggregation : aggregations) {
-              String keyField = aggregation.getFieldName();
+              String keyField = aggregation.fieldName();
               statement.addSelectItem(
-                  CCJSqlParserUtil.parseExpression(aggregation.getExpression()),
+                  CCJSqlParserUtil.parseExpression(aggregation.expression()),
                   new Alias(CypherPatterns.sanitize(keyField)));
             }
           }
 
-          String whereClause = transformations.getWhereClause();
+          String whereClause = transforms.whereClause();
           if (StringUtils.isNotBlank(whereClause)) {
             statement.withWhere(CCJSqlParserUtil.parseExpression(whereClause));
           }
           for (Column groupByField : groupByFields) {
             statement.addGroupByColumnReference(groupByField);
           }
-          var limit = transformations.getLimit() != null ? transformations.getLimit() : -1;
-          if (limit > -1) {
+          var limit = transforms.limit();
+          if (limit >= 0) {
             statement.setLimit(new Limit().withRowCount(new LongValue(limit)));
           }
         }
@@ -185,7 +192,11 @@ public class ModelUtils {
     }
   }
 
-  public static Set<PropertyMapping> allPropertyMappings(
+  public static Set<PropertyMapping> getAllPropertyMappings(EntityTarget entityTarget) {
+    return getAllPropertyMappings(entityTarget, null, null);
+  }
+
+  public static Set<PropertyMapping> getAllPropertyMappings(
       EntityTarget entityTarget, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
     Set<PropertyMapping> result = new LinkedHashSet<>(entityTarget.getProperties());
     if (startNodeTarget != null && endNodeTarget != null) {
@@ -217,28 +228,44 @@ public class ModelUtils {
     return replacedText;
   }
 
-  private static SourceTransformations getSourceTransformations(Target target) {
-    SourceTransformations sourceTransformations;
-    if (target instanceof NodeTarget) {
-      sourceTransformations = ((NodeTarget) target).getSourceTransformations();
-    } else if (target instanceof RelationshipTarget) {
-      sourceTransformations = ((RelationshipTarget) target).getSourceTransformations();
+  public static Set<String> getKeyProperties(EntityTarget entity) {
+    Stream<String> keyFields;
+    Stream<String> uniqueFields;
+    if (entity instanceof NodeTarget nodeTarget) {
+      keyFields =
+          nodeTarget.getSchema().getKeyConstraints().stream()
+              .flatMap(constraint -> constraint.getProperties().stream());
+      uniqueFields =
+          nodeTarget.getSchema().getUniqueConstraints().stream()
+              .flatMap(constraint -> constraint.getProperties().stream());
+    } else if (entity instanceof RelationshipTarget relationshipTarget) {
+      keyFields =
+          relationshipTarget.getSchema().getKeyConstraints().stream()
+              .flatMap(constraint -> constraint.getProperties().stream());
+      uniqueFields =
+          relationshipTarget.getSchema().getUniqueConstraints().stream()
+              .flatMap(constraint -> constraint.getProperties().stream());
     } else {
       throw new IllegalArgumentException(
-          String.format("Unsupported target type: %s", target.getClass()));
+          "Expected node or relationship target when gathering key properties, found: %s"
+              .formatted(entity.getClass()));
     }
-    return sourceTransformations;
+    var keys = keyFields.collect(Collectors.toCollection(LinkedHashSet::new));
+    if (!keys.isEmpty()) {
+      return keys;
+    }
+    return uniqueFields.collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private static OrderByElement convertToJsqlElement(OrderBy orderByClause)
       throws JSQLParserException {
     var element =
         new OrderByElement()
-            .withExpression(CCJSqlParserUtil.parseExpression(orderByClause.getExpression()));
-    var order = orderByClause.getOrder();
-    if (order != null) {
-      element = element.withAscDescPresent(true).withAsc(order == Order.ASC);
+            .withExpression(CCJSqlParserUtil.parseExpression(orderByClause.expression()));
+    var order = orderByClause.order();
+    if (order == null) {
+      return element;
     }
-    return element;
+    return element.withAscDescPresent(true).withAsc(order == Order.ASC);
   }
 }

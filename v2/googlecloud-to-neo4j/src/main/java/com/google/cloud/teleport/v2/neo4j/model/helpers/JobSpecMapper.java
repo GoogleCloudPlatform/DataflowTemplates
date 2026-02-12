@@ -106,7 +106,7 @@ public class JobSpecMapper {
                 (boolean) configuration.getOrDefault("index_all_properties", false)),
             ActionMapper.parse(actions, options));
     try {
-      ImportSpecificationDeserializer.validate(specification);
+      ImportSpecificationDeserializer.validateStatically(specification);
     } catch (SpecificationException e) {
       throw validationFailure(e);
     }

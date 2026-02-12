@@ -27,8 +27,8 @@ import org.apache.beam.sdk.transforms.SerializableBiFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.importer.v1.actions.Action;
-import org.neo4j.importer.v1.actions.CypherAction;
-import org.neo4j.importer.v1.actions.CypherExecutionMode;
+import org.neo4j.importer.v1.actions.plugin.CypherAction;
+import org.neo4j.importer.v1.actions.plugin.CypherExecutionMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

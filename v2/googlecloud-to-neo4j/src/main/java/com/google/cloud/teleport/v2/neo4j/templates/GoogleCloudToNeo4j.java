@@ -274,10 +274,7 @@ public class GoogleCloudToNeo4j {
                     Entry::getKey, mapping(Entry::getValue, Collectors.<PCollection<?>>toList())));
     var sourceRows = new ArrayList<PCollection<?>>(importSpecification.getSources().size());
     var targetRows = new HashMap<TargetType, List<PCollection<?>>>(targetCount());
-    var allActiveTargets =
-        importSpecification.getTargets().getAll().stream()
-            .filter(Target::isActive)
-            .collect(toList());
+    var allActiveTargets = importSpecification.getTargets().getAllActive().stream().toList();
     var allActiveNodeTargets =
         importSpecification.getTargets().getNodes().stream()
             .filter(Target::isActive)
@@ -382,9 +379,11 @@ public class GoogleCloudToNeo4j {
                 .sourceBeamSchema(sourceBeamSchema)
                 .target(target)
                 .startNodeTarget(
-                    findNodeTargetByName(allActiveNodeTargets, target.getStartNodeReference()))
+                    findNodeTargetByName(
+                        allActiveNodeTargets, target.getStartNodeReference().getName()))
                 .endNodeTarget(
-                    findNodeTargetByName(allActiveNodeTargets, target.getEndNodeReference()))
+                    findNodeTargetByName(
+                        allActiveNodeTargets, target.getEndNodeReference().getName()))
                 .build();
         String relationshipStepDescription =
             targetSequence.getSequenceNumber(target)
@@ -406,8 +405,8 @@ public class GoogleCloudToNeo4j {
         List<PCollection<?>> dependencies =
             new ArrayList<>(preActionRows.getOrDefault(ActionStage.PRE_RELATIONSHIPS, List.of()));
         Set<String> dependencyNames = new LinkedHashSet<>(target.getDependencies());
-        dependencyNames.add(target.getStartNodeReference());
-        dependencyNames.add(target.getEndNodeReference());
+        dependencyNames.add(target.getStartNodeReference().getName());
+        dependencyNames.add(target.getEndNodeReference().getName());
         dependencies.add(
             processingQueue.resolveOutputs(dependencyNames, relationshipStepDescription));
 
