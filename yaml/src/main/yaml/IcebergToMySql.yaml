@@ -45,7 +45,7 @@ pipeline:
     - type: WriteToMySql
       name: WriteToMySql
       config:
-        url: {{ url }}
+        url: {{ jdbcUrl }}
         auto_sharding: {{ autosharding }}
         connection_init_sql: {{ connectionInitSql }}
         connection_properties: {{ connectionProperties }}

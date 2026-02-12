@@ -28,7 +28,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
@@ -137,7 +136,7 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
             .addParameter("location", tableName);
 
     // Act
-    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
