@@ -1130,15 +1130,15 @@ public class InformationSchemaScanner {
   private boolean isUdfSupported() {
     Statement preconditionStatement;
     switch (dialect) {
-      case GOOGLE_STANDARD_SQL:
+      case POSTGRESQL:
         preconditionStatement =
             Statement.of(
                 "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c"
-                    + " WHERE c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'PARAMETERS'"
-                    + " AND c.COLUMN_NAME = 'PARAMETER_DEFAULT'");
+                    + " WHERE c.TABLE_SCHEMA = 'information_schema' AND c.TABLE_NAME = 'routines'"
+                    + " AND c.COLUMN_NAME = 'spanner_determinism'");
         break;
       default:
-        return false;
+        return true;
     }
     try (ResultSet resultSet = context.executeQuery(preconditionStatement)) {
       // Returns a single row with a 1 if the information schema can export all function properties
@@ -1146,8 +1146,8 @@ public class InformationSchemaScanner {
       resultSet.next();
       if (resultSet.getLong(0) == 0) {
         LOG.info(
-            "INFORMATION_SCHEMA.PARAMETERS.PARAMETER_DEFAULT is not present. Cannot export"
-                + " user-defined functions.");
+            "information_schema.routines.spanner_determinism is not present. Cannot export"
+                + " PostgreSQL dialect user-defined functions.");
         return false;
       }
     }
