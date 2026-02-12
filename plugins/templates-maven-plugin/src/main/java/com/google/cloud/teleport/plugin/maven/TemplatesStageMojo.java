@@ -31,7 +31,6 @@ import static org.twdata.maven.mojoexecutor.MojoExecutor.goal;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.plugin;
 
 import com.google.cloud.teleport.metadata.Template;
-import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.DockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplatePluginUtils;
@@ -204,7 +203,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   private boolean internalMaven;
   // used to track if same images are scanned
-  private static final Set<ImmutablePair<String, TemplateType>> SCANNED_TYPES = new HashSet<>();
+  private static final Set<ImmutablePair<String, Template.TemplateType>> SCANNED_TYPES =
+      new HashSet<>();
 
   private String mavenRepo;
 
@@ -338,9 +338,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       File commandSpecFile;
       Template annotation = definition.getTemplateAnnotation();
       String containerName = annotation.flexContainerName();
-      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA) {
+      if (definition.getTemplateAnnotation().type() == Template.TemplateType.JAVA) {
         commandSpecFile = generator.saveCommandSpec(definition, outputClassesDirectory);
-      } else if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+      } else if (definition.getTemplateAnnotation().type() == Template.TemplateType.XLANG) {
         xlangOutputDir =
             new File(outputClassesDirectory.getPath() + "/" + containerName + "/resources");
         commandSpecFile = generator.saveCommandSpec(definition, xlangOutputDir);
@@ -527,8 +527,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
     File imageSpecFile = null;
 
-    if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
-        || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+    if (definition.getTemplateAnnotation().type() == Template.TemplateType.JAVA
+        || definition.getTemplateAnnotation().type() == Template.TemplateType.XLANG) {
       stageFlexJavaTemplate(
           definition,
           pluginManager,
@@ -553,7 +553,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             templatePath,
             imageSpecFile.getName());
       }
-    } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
+    } else if (definition.getTemplateAnnotation().type() == Template.TemplateType.PYTHON) {
       stageFlexPythonTemplate(
           definition,
           currentTemplateName,
@@ -562,7 +562,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           metadataFile,
           containerName,
           templatePath);
-    } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
+    } else if (definition.getTemplateAnnotation().type() == Template.TemplateType.YAML) {
 
       stageFlexYamlTemplate(
           definition,
@@ -709,7 +709,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     // X-lang templates need to have a custom image which builds both python and java.
     String[] flexTemplateBuildCmd;
-    if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+    if (definition.getTemplateAnnotation().type() == Template.TemplateType.XLANG) {
       String dockerfileContainer = outputClassesDirectory.getPath() + "/" + containerName;
       String dockerfilePath = dockerfileContainer + "/Dockerfile";
       File dockerfile = new File(dockerfilePath);
@@ -1469,13 +1469,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir, TemplateType imageType)
+      String imagePathTag, String buildProjectId, File buildDir, Template.TemplateType imageType)
       throws IOException, InterruptedException {
     LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
 
     // Continuous scanning is expensive. Images are built on identical dependencies and only differ
     // by entry point. We only need to check once.
-    ImmutablePair<String, TemplateType> uniqueImage =
+    ImmutablePair<String, Template.TemplateType> uniqueImage =
         ImmutablePair.of(buildDir.getPath(), imageType);
     String maybeScan = "";
     if (!SCANNED_TYPES.contains(uniqueImage)) {
