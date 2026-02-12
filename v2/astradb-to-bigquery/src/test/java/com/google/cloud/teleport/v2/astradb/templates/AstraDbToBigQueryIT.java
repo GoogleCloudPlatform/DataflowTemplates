@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.astradb.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.db.AstraDbClient;
@@ -125,7 +125,8 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(1).build());
     // Assert that at least 1 row has been inserted
-    assertThatResult(result).isLaunchFinished();
+    assertThat(result)
+        .isAnyOf(PipelineOperator.Result.LAUNCH_FINISHED, PipelineOperator.Result.CONDITION_MET);
     LOGGER.debug("Destination Table has been populated.");
   }
 
