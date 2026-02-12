@@ -54,6 +54,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SPANNER_DETERMINISM;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
@@ -689,6 +690,39 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
     assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
     assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+
+    assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
+  }
+
+
+  @Test
+  public void pgUdfSimple() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo")
+            .type("bigint")
+            .spannerDeterminism("DETERMINISTIC")
+            .definition("SELECT 1")
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("bigint"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_SPANNER_DETERMINISM), equalTo("DETERMINISTIC"));
 
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }
