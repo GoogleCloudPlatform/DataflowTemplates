@@ -1064,7 +1064,7 @@ public class InformationSchemaScanner {
       String functionSecurityType = resultSet.isNull(6) ? null : resultSet.getString(6);
       String spannerDeterminism = null;
       if (dialect == Dialect.POSTGRESQL) {
-        spannerDeterminism = resultSet.isNull(8) ? null : resultSet.getString(8);
+        spannerDeterminism = resultSet.isNull(7) ? null : resultSet.getString(7);
       }
       LOG.debug("Schema user-defined function {}", functionName);
       builder
