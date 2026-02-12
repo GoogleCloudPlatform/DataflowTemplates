@@ -38,6 +38,7 @@ on:
       - 'v2/gcs-to-sourcedb/**'
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
+      - 'v2/gcs-spanner-dv/**'
       # Git action files
       - '.github/workflows/spanner-pr.yml'
   schedule:
