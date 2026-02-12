@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL;
+import static com.google.cloud.spanner.Dialect.POSTGRESQL;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
 import com.google.auto.value.AutoValue;
@@ -70,6 +72,9 @@ public abstract class Udf implements Serializable {
   @Nullable
   public abstract SqlSecurity security();
 
+  @Nullable
+  public abstract String spannerDeterminism();
+
   public abstract ImmutableList<UdfParameter> parameters();
 
   public abstract ImmutableList<String> options();
@@ -89,7 +94,6 @@ public abstract class Udf implements Serializable {
     if (type() != null) {
       appendable.append(" RETURNS ").append(type());
     }
-
     // Determinism should be added to INFORMATION_SCHEMA.ROUTINES.
     // For now, we infer it from the language.
     if (language() != null && language().equalsIgnoreCase("REMOTE")) {
@@ -100,6 +104,21 @@ public abstract class Udf implements Serializable {
         determinism = "VOLATILE";
       }
       appendable.append(" ").append(determinism);
+    } else if (spannerDeterminism() != null && dialect() == Dialect.POSTGRESQL) {
+      switch (spannerDeterminism()) {
+        case "DETERMINISTIC":
+          appendable.append(" IMMUTABLE");
+          break;
+        case "NOT_DETERMINISTIC_STABLE":
+          appendable.append(" STABLE");
+          break;
+        case "NOT_DETERMINISTIC_VOLATILE":
+          appendable.append(" VOLATILE");
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unrecognized UDF determinism: " + spannerDeterminism());
+      }
     }
 
     if (language() != null && !language().isEmpty()) {
@@ -112,7 +131,10 @@ public abstract class Udf implements Serializable {
     if (security() != null) {
       // Remote UDF don't use SQL SECURITY, but it is marked NOT NULL in IS.
       if (!"REMOTE".equalsIgnoreCase(language())) {
-        appendable.append(" SQL SECURITY ").append(security().toString());
+        if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
+          appendable.append(" SQL");
+        }
+        appendable.append(" SECURITY ").append(security().toString());
       }
     }
 
@@ -235,6 +257,10 @@ public abstract class Udf implements Serializable {
 
     public abstract ImmutableList<String> options();
 
+    public abstract Builder spannerDeterminism(String spannerDeterminism);
+
+    public abstract String spannerDeterminism();
+
     public abstract Builder parameters(ImmutableList<UdfParameter> parameters);
 
     public ImmutableList<UdfParameter> parameters() {
@@ -277,6 +303,7 @@ public abstract class Udf implements Serializable {
           .language(language())
           .security(security())
           .options(options())
+          .spannerDeterminism(spannerDeterminism())
           .parameters(ImmutableList.copyOf(parameters()))
           .autoBuild();
     }

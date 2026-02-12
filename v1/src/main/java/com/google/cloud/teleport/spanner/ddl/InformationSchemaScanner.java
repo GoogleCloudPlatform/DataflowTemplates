@@ -1043,14 +1043,13 @@ public class InformationSchemaScanner {
         queryStatement =
             Statement.of(
                 "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name,"
-                    + " r.data_type, r.routine_body, r.routine_definition, r.security_type"
+                    + " r.spanner_type, r.routine_body, r.routine_definition, r.security_type, r.spanner_determinism"
                     + " FROM information_schema.routines AS r WHERE"
                     + " r.routine_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
                     + " AND r.routine_type = 'FUNCTION'");
         break;
       default:
-        throw new IllegalArgumentException(
-            "User-defined functions are not supported in dialect: " + dialect);
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
 
     ResultSet resultSet = context.executeQuery(queryStatement);
@@ -1065,6 +1064,10 @@ public class InformationSchemaScanner {
       String language = resultSet.isNull(5) ? null : resultSet.getString(5);
       String functionDefinition = resultSet.isNull(6) ? null : resultSet.getString(6);
       String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
+      String spannerDeterminism = null;
+      if (dialect == Dialect.POSTGRESQL) {
+        spannerDeterminism = resultSet.isNull(8) ? null : resultSet.getString(8);
+      }
 
       // Built-in functions such as Change Stream READ_X are marked as External.
       // Skip and do not re-create they will be autmatically added by change streams.
@@ -1080,6 +1083,7 @@ public class InformationSchemaScanner {
           .language(language)
           .definition(functionDefinition)
           .security(Udf.SqlSecurity.valueOf(functionSecurityType))
+          .spannerDeterminism(spannerDeterminism)
           .endUdf();
     }
   }
@@ -1169,13 +1173,18 @@ public class InformationSchemaScanner {
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name = r.specific_name and"
                 + " r.routine_type = 'FUNCTION' ORDER BY"
                 + " p.specific_schema, p.specific_name, p.ordinal_position");
-
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
   }
 
-  // TODO: b/398890992 - Add support for UDFs in POSTGRESQL.
   private boolean isUdfSupported() {
     Statement preconditionStatement;
     switch (dialect) {
