@@ -28,14 +28,11 @@ public class ActionDoFnFactory {
   public static DoFn<Integer, Row> of(ActionContext context) {
     var action = context.getAction();
     var actionType = action.getType();
-    switch (actionType) {
-      case BIGQUERY:
-        return new BigQueryActionFn(context);
-      case CYPHER:
-        return new CypherActionFn(context);
-      case HTTP:
-        return new HttpActionFn(context);
-    }
-    throw new RuntimeException("Unsupported action type: " + action.getClass());
+    return switch (actionType) {
+      case "bigquery" -> new BigQueryActionFn(context);
+      case "cypher" -> new CypherActionFn(context);
+      case "http" -> new HttpActionFn(context);
+      default -> throw new RuntimeException("Unsupported action type: %s".formatted(actionType));
+    };
   }
 }

@@ -51,7 +51,7 @@ public class BeamUtils {
 
     List<Schema.Field> fields = new ArrayList<>();
     for (PropertyMapping mapping :
-        ModelUtils.allPropertyMappings(entityTarget, startNodeTarget, endNodeTarget)) {
+        ModelUtils.getAllPropertyMappings(entityTarget, startNodeTarget, endNodeTarget)) {
       // map source column names to order
       String field = mapping.getSourceField();
       if (StringUtils.isEmpty(field)) {

@@ -15,23 +15,22 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.cloud.teleport.v2.neo4j.actions.HttpMethod;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
-import org.neo4j.importer.v1.actions.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,27 +40,15 @@ public class HttpUtils {
   private static final Logger LOG = LoggerFactory.getLogger(HttpUtils.class);
 
   public static CloseableHttpResponse getHttpResponse(
-      boolean post, String uri, Map<String, String> headers)
+      HttpMethod method, String uri, Map<String, String> headers)
       throws IOException, URISyntaxException {
 
-    try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
-
-      List<NameValuePair> headerPairs = getNvPairs(headers);
-
-      if (post) {
-        HttpPost httpPost = new HttpPost(uri);
-        for (NameValuePair t : headerPairs) {
-          httpPost.addHeader(t.getName(), t.getValue());
-        }
-        return httpclient.execute(httpPost);
-      } else {
-        URIBuilder builder = new URIBuilder(uri);
-        HttpGet httpGet = new HttpGet(builder.build());
-        for (NameValuePair t : headerPairs) {
-          httpGet.addHeader(t.getName(), t.getValue());
-        }
-        return httpclient.execute(httpGet);
+    try (CloseableHttpClient client = HttpClients.createDefault()) {
+      HttpUriRequest request = buildRequest(method, uri);
+      for (NameValuePair t : getHeaderPairs(headers)) {
+        request.addHeader(t.getName(), t.getValue());
       }
+      return client.execute(request);
     }
   }
 
@@ -87,26 +74,23 @@ public class HttpUtils {
     }
   }
 
-  public static boolean isPostRequest(HttpMethod method) {
-    switch (method) {
-      case GET:
-        return false;
-      case POST:
-        return true;
-      default:
-        throw new RuntimeException(
-            String.format("Unsupported HTTP method: %s, please specify GET or POST", method));
-    }
+  private static HttpUriRequest buildRequest(HttpMethod method, String uri)
+      throws URISyntaxException {
+    return switch (method) {
+      case POST -> new HttpPost(uri);
+      case GET -> {
+        URIBuilder builder = new URIBuilder(uri);
+        yield new HttpGet(builder.build());
+      }
+    };
   }
 
-  private static List<NameValuePair> getNvPairs(Map<String, String> options) {
-    Iterator<String> optionsIterator = options.keySet().iterator();
-    List<NameValuePair> nvps = new ArrayList<>();
-    while (optionsIterator.hasNext()) {
-      String key = String.valueOf(optionsIterator.next());
-      String value = options.get(key);
-      nvps.add(new BasicNameValuePair(key, value));
+  private static List<NameValuePair> getHeaderPairs(Map<String, String> headers) {
+    if (headers == null) {
+      return List.of();
     }
-    return nvps;
+    return headers.entrySet().stream()
+        .map(entry -> (NameValuePair) new BasicNameValuePair(entry.getKey(), entry.getValue()))
+        .toList();
   }
 }

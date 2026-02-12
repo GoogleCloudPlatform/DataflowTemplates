@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import java.util.List;
 import org.junit.Test;
+import org.neo4j.importer.v1.targets.NodeReference;
 
 public class JobSpecMapperTest {
 
@@ -82,8 +83,10 @@ public class JobSpecMapperTest {
     assertThat(relationship.getType()).isEqualTo("LINKS");
     assertThat(relationship.getWriteMode().name()).isEqualTo("CREATE");
     assertThat(relationship.getNodeMatchMode().name()).isEqualTo("MERGE");
-    assertThat(relationship.getStartNodeReference()).isEqualTo("Source CSV rel file-source");
-    assertThat(relationship.getEndNodeReference()).isEqualTo("Source CSV rel file-target");
+    assertThat(relationship.getStartNodeReference())
+        .isEqualTo(new NodeReference("Source CSV rel file-source"));
+    assertThat(relationship.getEndNodeReference())
+        .isEqualTo(new NodeReference("Source CSV rel file-target"));
     assertThat(relationship.getProperties()).hasSize(1);
     assertThat(relationship.getProperties().get(0).getSourceField()).isEqualTo("timestamp");
     assertThat(relationship.getProperties().get(0).getTargetProperty()).isEqualTo("ts");
@@ -151,8 +154,8 @@ public class JobSpecMapperTest {
     assertThat(relationship.getType()).isEqualTo("TYPE");
     assertThat(relationship.getWriteMode().name()).isEqualTo("CREATE");
     assertThat(relationship.getNodeMatchMode().name()).isEqualTo("MERGE");
-    assertThat(relationship.getStartNodeReference()).isEqualTo("a-node-target");
-    assertThat(relationship.getEndNodeReference()).isEqualTo("b-node-target");
+    assertThat(relationship.getStartNodeReference()).isEqualTo(new NodeReference("a-node-target"));
+    assertThat(relationship.getEndNodeReference()).isEqualTo(new NodeReference("b-node-target"));
     assertThat(relationship.getProperties()).hasSize(1);
     assertThat(relationship.getProperties().get(0).getSourceField()).isEqualTo("field_1");
     assertThat(relationship.getProperties().get(0).getTargetProperty()).isEqualTo("id");
@@ -226,8 +229,8 @@ public class JobSpecMapperTest {
     assertThat(relationship.getType()).isEqualTo("TYPE");
     assertThat(relationship.getWriteMode().name()).isEqualTo("CREATE");
     assertThat(relationship.getNodeMatchMode().name()).isEqualTo("MERGE");
-    assertThat(relationship.getStartNodeReference()).isEqualTo("a-node-target");
-    assertThat(relationship.getEndNodeReference()).isEqualTo("b-node-target");
+    assertThat(relationship.getStartNodeReference()).isEqualTo(new NodeReference("a-node-target"));
+    assertThat(relationship.getEndNodeReference()).isEqualTo(new NodeReference("b-node-target"));
     assertThat(relationship.getProperties()).hasSize(1);
     assertThat(relationship.getProperties().get(0).getSourceField()).isEqualTo("field_1");
     assertThat(relationship.getProperties().get(0).getTargetProperty()).isEqualTo("id");

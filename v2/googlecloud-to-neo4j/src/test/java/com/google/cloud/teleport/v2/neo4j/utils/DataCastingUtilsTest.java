@@ -64,6 +64,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
@@ -464,7 +465,7 @@ public class DataCastingUtilsTest {
             "a-source",
             null,
             WriteMode.CREATE,
-            null,
+            List.of(),
             List.of("Label"),
             List.of(
                 mapping("id", PropertyType.INTEGER),
@@ -528,7 +529,7 @@ public class DataCastingUtilsTest {
             "a-source",
             null,
             WriteMode.CREATE,
-            null,
+            List.of(),
             List.of("Label"),
             List.of(
                 mapping("int64", PropertyType.INTEGER),
@@ -578,7 +579,7 @@ public class DataCastingUtilsTest {
             "a-source",
             null,
             WriteMode.CREATE,
-            null,
+            List.of(),
             labels,
             List.of(mapping),
             null);
@@ -601,9 +602,9 @@ public class DataCastingUtilsTest {
             "STATION",
             WriteMode.CREATE,
             NodeMatchMode.MATCH,
-            null,
-            "a-node",
-            "a-node",
+            List.of(),
+            new NodeReference("a-node"),
+            new NodeReference("a-node"),
             List.of(new PropertyMapping("STATION", "STATION", PropertyType.STRING)),
             null);
 

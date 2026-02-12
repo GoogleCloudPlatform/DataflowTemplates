@@ -31,6 +31,7 @@ import org.neo4j.importer.v1.targets.RelationshipExistenceConstraint;
 import org.neo4j.importer.v1.targets.RelationshipSchema;
 import org.neo4j.importer.v1.targets.WriteMode;
 
+@SuppressWarnings("deprecation")
 public class MappingMapperTest {
 
   @Test
@@ -56,7 +57,7 @@ public class MappingMapperTest {
     assertThat(result.getSource()).isEqualTo("a-source");
     assertThat(result.getDependencies()).isEmpty();
     assertThat(result.getWriteMode()).isEqualTo(WriteMode.CREATE);
-    assertThat(result.getSourceTransformations()).isNull();
+    assertThat(result.getExtensions()).isEmpty();
     assertThat(result.getProperties())
         .containsExactly(
             new PropertyMapping("key1", "value1", null),
@@ -106,7 +107,7 @@ public class MappingMapperTest {
     assertThat(result.getSource()).isEqualTo("a-source");
     assertThat(result.getDependencies()).isEmpty();
     assertThat(result.getWriteMode()).isEqualTo(WriteMode.MERGE);
-    assertThat(result.getSourceTransformations()).isNull();
+    assertThat(result.getExtensions()).isEmpty();
     assertThat(result.getProperties())
         .containsExactly(
             new PropertyMapping("key1", "value1", null),
@@ -164,7 +165,7 @@ public class MappingMapperTest {
                 "a-source",
                 null,
                 WriteMode.CREATE,
-                null,
+                List.of(),
                 List.of("Placeholder"),
                 List.of(
                     new PropertyMapping("value1", "value1", null),
@@ -207,7 +208,7 @@ public class MappingMapperTest {
                 "a-source",
                 null,
                 WriteMode.MERGE,
-                null,
+                List.of(),
                 List.of("Placeholder"),
                 List.of(
                     new PropertyMapping("value1", "value1", null),

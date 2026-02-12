@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.validation;
 
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -75,18 +76,18 @@ public class DuplicateAggregateFieldNameValidator implements SpecificationValida
       return;
     }
     var sourceFields = this.sourceFields.get(source);
-    var sourceTransformations = target.getSourceTransformations();
-    if (sourceTransformations == null) {
+    var sourceTransformations = target.getExtension(SourceTransformations.class);
+    if (sourceTransformations.isEmpty()) {
       return;
     }
-    var aggregations = sourceTransformations.getAggregations();
+    var aggregations = sourceTransformations.get().aggregations();
     var group = target instanceof NodeTarget ? "nodes" : "relationships";
     for (int i = 0; i < aggregations.size(); i++) {
       var path =
           String.format(
               "$.targets.%s[%d].source_transformations.aggregations[%d].field_name",
               group, index, i);
-      var aggregatedField = aggregations.get(i).getFieldName();
+      var aggregatedField = aggregations.get(i).fieldName();
       if (sourceFields.contains(aggregatedField)) {
         duplicatedAggregateFields.put(path, aggregatedField);
       }

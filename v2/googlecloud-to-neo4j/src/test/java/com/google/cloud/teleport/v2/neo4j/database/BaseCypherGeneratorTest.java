@@ -39,6 +39,8 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
       "single-target-relation-import-with-keys-spec.json";
   protected static final String SINGLE_TARGET_WITHOUT_KEYS =
       "single-target-relation-import-without-keys-spec.json";
+  protected static final String SINGLE_RELATIONSHIP_TARGET_WITH_NODE_KEY_MAPPING_OVERRIDES =
+      "single-relationship-target-with-node-key-mapping-overrides.json";
 
   protected static ImportSpecification importSpecificationOf(String specFile) {
     return JobSpecMapper.parse(SPEC_PATH + specFile, new OptionsParams());
@@ -63,12 +65,11 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
   protected void assertSchemaStatements(
       ImportSpecification spec, Neo4jCapabilities capabilities, Set<String> expectedStatements) {
     var statements =
-        spec.getTargets().getAll().stream()
+        spec.getTargets().getAllActive().stream()
             .filter(
                 target ->
-                    target.isActive()
-                        && (target.getTargetType() == TargetType.NODE
-                            || target.getTargetType() == TargetType.RELATIONSHIP))
+                    target.getTargetType() == TargetType.NODE
+                        || target.getTargetType() == TargetType.RELATIONSHIP)
             .map(target -> (EntityTarget) target)
             .flatMap(target -> CypherGenerator.getSchemaStatements(target, capabilities).stream())
             .collect(Collectors.toSet());
