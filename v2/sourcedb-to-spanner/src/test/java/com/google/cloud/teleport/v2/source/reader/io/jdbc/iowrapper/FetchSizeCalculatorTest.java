@@ -113,4 +113,37 @@ public final class FetchSizeCalculatorTest {
     // Null cores
     assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 16.0, null));
   }
+
+  @Test
+  public void testGetFetchSize_LessThanMinFetchSize() {
+    // Memory: 1 GB (1,073,741,824 bytes)
+    // Cores: 100
+    // Row Size: 10,000,000 bytes
+    // Denominator = 4 * 100 * 10,000,000 = 4,000,000,000
+    // Expected Fetch Size is 0, which gets capped up to 1 (MIN_FETCH_SIZE)
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10000000L, 1.0, 100);
+    assertEquals(1, fetchSize);
+  }
+
+  @Test
+  public void testGetFetchSize_GreaterThanMaxFetchSize() {
+    // Memory: 100 GB
+    // Cores: 1
+    // Row Size: 1 byte
+    // Expected Fetch Size cap to Integer.MAX_VALUE
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1L, 100.0, 1);
+    assertEquals(Integer.MAX_VALUE, fetchSize);
+  }
+
+  @Test
+  public void testGetFetchSize_ExceptionThrown() {
+    TableConfig mockTableConfig = org.mockito.Mockito.mock(TableConfig.class);
+    org.mockito.Mockito.when(mockTableConfig.fetchSize()).thenReturn(null);
+    org.mockito.Mockito.when(mockTableConfig.tableName())
+        .thenThrow(new RuntimeException("Mock Exception"))
+        .thenReturn("mock_table");
+
+    int fetchSize = FetchSizeCalculator.getFetchSize(mockTableConfig, 100L, 16.0, 4);
+    assertEquals(0, fetchSize);
+  }
 }
