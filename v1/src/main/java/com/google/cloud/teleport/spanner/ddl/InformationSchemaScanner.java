@@ -1066,7 +1066,7 @@ public class InformationSchemaScanner {
       String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
       String spannerDeterminism = null;
       if (dialect == Dialect.POSTGRESQL) {
-        spannerDeterminism = resultSet.isNull(8) ? null : resultSet.getString(8);
+        spannerDeterminism = resultSet.isNull(7) ? null : resultSet.getString(7);
       }
 
       // Built-in functions such as Change Stream READ_X are marked as External.
