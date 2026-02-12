@@ -37,6 +37,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
@@ -69,7 +70,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   private static final String ASTRA_DB = "dataflow_integration_tests";
 
-  private static final String ASTRA_DB_REGION = System.getProperty("region", "us-east1");
+  private static final String ASTRA_DB_REGION = TestProperties.region();
 
   private static final String ASTRA_KS = "beam";
 
