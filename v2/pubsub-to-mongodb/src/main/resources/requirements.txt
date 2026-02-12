@@ -771,9 +771,9 @@ google-auth-httplib2==0.2.1 \
     --hash=sha256:1be94c611db91c01f9703e7f62b0a59bbd5587a95571c7b6fade510d648bc08b \
     --hash=sha256:5ef03be3927423c87fb69607b42df23a444e434ddb2555b73b3679793187b7de
     # via apache-beam
-google-cloud-aiplatform==1.136.0 \
-    --hash=sha256:01e64a0d0861486e842bf7e904077c847bcc1b654a29883509d57476de915b7d \
-    --hash=sha256:5c829f002b7b673dcd0e718f55cc0557b571bd10eb5cdb7882d72916cfbf8c0e
+google-cloud-aiplatform==1.137.0 \
+    --hash=sha256:76e66e2c3879936e51039d8bbd82581451510b4c7a840a588daaecee893d7d1e \
+    --hash=sha256:e99dd235c237cbbeb0e73b0fc4b1ca9588b4144ac243a6242b2005b339b40ce8
     # via apache-beam
 google-cloud-bigquery==3.40.0 \
     --hash=sha256:0469bcf9e3dad3cab65b67cce98180c8c0aacf3253d47f0f8e976f299b49b5ab \
