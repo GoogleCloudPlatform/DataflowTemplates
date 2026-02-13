@@ -254,7 +254,8 @@ public class ChangeEventSessionConvertor {
     if (!roundJsonDecimals) {
       return changeEvent;
     }
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    String tableName =
+        changeEvent.get(EVENT_TABLE_NAME_KEY).asText(); // does bulk change metadata table as well
     if (ddl.table(tableName) == null) {
       throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
     }

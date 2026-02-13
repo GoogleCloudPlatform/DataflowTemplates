@@ -23,9 +23,10 @@ public interface ISpannerMigrationTransformer {
   MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException;
 
-  MigrationTransformationResponse toSpannerRowFromMutation(MigrationTransformationRequest request)
-      throws InvalidTransformationException;
-
   MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException;
+
+  MigrationTransformationResponse transformFailedSpannerMutation(MigrationTransformationRequest request)
+      throws InvalidTransformationException;
+
 }
