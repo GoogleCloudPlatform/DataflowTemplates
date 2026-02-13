@@ -46,10 +46,8 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -392,8 +390,7 @@ public class PubSubToRedis {
    *
    * <p>If no UDF is configured, returns the input messages unchanged.
    *
-   * <p>This follows the same pattern as {@code PubsubProtoToBigQuery.runUdf} and {@code
-   * PubSubToMongoDB.PubSubMessageToJsonDocument}.
+   * <p>This follows the same pattern as {@code PubsubProtoToBigQuery.runUdf}.
    *
    * @param messages the input PubSub messages
    * @param options the pipeline options
@@ -408,13 +405,12 @@ public class PubSubToRedis {
       return messages;
     }
 
-    PCollectionTuple udfResult =
-        messages.apply(
-            "Apply UDF",
-            new PubSubMessageTransform(
-                options.getJavascriptTextTransformGcsPath(),
-                options.getJavascriptTextTransformFunctionName(),
-                options.getJavascriptTextTransformReloadIntervalMinutes()));
+    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
+      throw new IllegalArgumentException(
+          "JavaScript function name cannot be null or empty if file is set");
+    }
+
+    PCollectionTuple udfResult = performUdf(messages, options);
 
     // Write UDF failures to the dead-letter topic using the shared
     // ConvertFailsafeElementToPubsubMessage transform, following the pattern
@@ -449,6 +445,24 @@ public class PubSubToRedis {
                 }));
   }
 
+  static PCollectionTuple performUdf(
+      PCollection<PubsubMessage> messages, PubSubToRedisOptions options) {
+    // Map incoming messages to FailsafeElement so we can recover from failures
+    // across multiple transforms.
+    PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
+        messages.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
+
+    return failsafeElements.apply(
+        "InvokeUDF",
+        JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+            .setFunctionName(options.getJavascriptTextTransformFunctionName())
+            .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
+            .setSuccessTag(UDF_OUT)
+            .setFailureTag(UDF_DEADLETTER_OUT)
+            .build());
+  }
+
   /**
    * Returns a {@link PubsubIO.Write} configured to write UDF failures to the dead-letter topic.
    *
@@ -456,59 +470,6 @@ public class PubSubToRedis {
    */
   private static PubsubIO.Write<PubsubMessage> writeUdfFailures(PubSubToRedisOptions options) {
     return PubsubIO.writeMessages().to(options.getDeadletterTopic());
-  }
-
-  /**
-   * The {@link PubSubMessageTransform} transform processes PubSubMessages using a JavaScript UDF.
-   *
-   * <p>Incoming messages are wrapped in {@link FailsafeElement} and passed to {@link
-   * JavascriptTextTransformer.FailsafeJavascriptUdf}. Messages that fail UDF processing are sent to
-   * the dead-letter output. This follows the same pattern as {@code
-   * PubSubToMongoDB.PubSubMessageToJsonDocument}.
-   */
-  public static class PubSubMessageTransform
-      extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
-
-    private final String javascriptTextTransformGcsPath;
-    private final String javascriptTextTransformFunctionName;
-    private final Integer javascriptTextTransformReloadIntervalMinutes;
-
-    public PubSubMessageTransform(
-        String javascriptTextTransformGcsPath,
-        String javascriptTextTransformFunctionName,
-        Integer javascriptTextTransformReloadIntervalMinutes) {
-      this.javascriptTextTransformGcsPath = javascriptTextTransformGcsPath;
-      this.javascriptTextTransformFunctionName = javascriptTextTransformFunctionName;
-      this.javascriptTextTransformReloadIntervalMinutes =
-          javascriptTextTransformReloadIntervalMinutes;
-    }
-
-    @Override
-    public PCollectionTuple expand(PCollection<PubsubMessage> input) {
-      // Map incoming messages to FailsafeElement so we can recover from failures
-      // across multiple transforms.
-      PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
-          input.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
-
-      // Apply UDF if provided
-      if (javascriptTextTransformGcsPath != null) {
-        return failsafeElements.apply(
-            "InvokeUDF",
-            JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                .setFileSystemPath(javascriptTextTransformGcsPath)
-                .setFunctionName(javascriptTextTransformFunctionName)
-                .setReloadIntervalMinutes(javascriptTextTransformReloadIntervalMinutes)
-                .setSuccessTag(UDF_OUT)
-                .setFailureTag(UDF_DEADLETTER_OUT)
-                .build());
-      } else {
-        // No UDF - just pass through
-        return PCollectionTuple.of(UDF_OUT, failsafeElements)
-            .and(
-                UDF_DEADLETTER_OUT,
-                input.getPipeline().apply(Create.empty(FAILSAFE_ELEMENT_CODER)));
-      }
-    }
   }
 
   /**

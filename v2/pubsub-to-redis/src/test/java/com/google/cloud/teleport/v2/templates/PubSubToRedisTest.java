@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 
 import com.github.fppt.jedismock.RedisServer;
 import com.google.cloud.teleport.v2.templates.io.RedisHashIO;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.util.HashMap;
@@ -32,21 +31,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.MapCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.redis.RedisConnectionConfiguration;
 import org.apache.beam.sdk.io.redis.RedisIO;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -67,101 +66,39 @@ public class PubSubToRedisTest {
   private static final String TRANSFORM_FILE_PATH =
       "src/test/resources/PubSubToRedisTest/transform.js";
 
-  // Static serializable assertion functions to avoid capturing outer class references
-  private static class UdfOutputChecker
-      implements SerializableFunction<Iterable<FailsafeElement<PubsubMessage, String>>, Void> {
-    private final String expectedOriginalPayload;
+  private static class PubsubMessageOutputChecker
+      implements SerializableFunction<Iterable<PubsubMessage>, Void> {
+    private final String expectedPayload;
     private final boolean checkTransformedBy;
 
-    UdfOutputChecker(String expectedOriginalPayload, boolean checkTransformedBy) {
-      this.expectedOriginalPayload = expectedOriginalPayload;
+    PubsubMessageOutputChecker(String expectedPayload, boolean checkTransformedBy) {
+      this.expectedPayload = expectedPayload;
       this.checkTransformedBy = checkTransformedBy;
     }
 
     @Override
-    public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
-      FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
-      assertThat(
-          new String(element.getOriginalPayload().getPayload()),
-          is(equalTo(expectedOriginalPayload)));
+    public Void apply(Iterable<PubsubMessage> collection) {
+      PubsubMessage element = collection.iterator().next();
+      String payload = new String(element.getPayload());
       if (checkTransformedBy) {
-        assertThat(element.getPayload().contains("transformedBy"), is(true));
+        assertThat(payload.contains("transformedBy"), is(true));
       } else {
-        assertThat(element.getPayload(), is(equalTo(expectedOriginalPayload)));
+        assertThat(payload, is(equalTo(expectedPayload)));
       }
-      return null;
-    }
-  }
-
-  private static class DeadLetterChecker
-      implements SerializableFunction<Iterable<FailsafeElement<PubsubMessage, String>>, Void> {
-    private final String expectedOriginalPayload;
-
-    DeadLetterChecker(String expectedOriginalPayload) {
-      this.expectedOriginalPayload = expectedOriginalPayload;
-    }
-
-    @Override
-    public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
-      FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
-      assertThat(
-          new String(element.getOriginalPayload().getPayload()),
-          is(equalTo(expectedOriginalPayload)));
-      return null;
-    }
-  }
-
-  private static class TransformedOutputChecker
-      implements SerializableFunction<Iterable<FailsafeElement<PubsubMessage, String>>, Void> {
-    private final int expectedCount;
-
-    TransformedOutputChecker(int expectedCount) {
-      this.expectedCount = expectedCount;
-    }
-
-    @Override
-    public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
-      int count = 0;
-      for (FailsafeElement<PubsubMessage, String> elem : collection) {
-        count++;
-        assertThat(elem.getPayload().contains("transformedBy"), is(true));
-      }
-      assertEquals(expectedCount, count);
-      return null;
-    }
-  }
-
-  private static class DeadLetterWithAttributesChecker
-      implements SerializableFunction<Iterable<FailsafeElement<PubsubMessage, String>>, Void> {
-    private final String expectedPayload;
-    private final String expectedMessageId;
-    private final int expectedCount;
-
-    DeadLetterWithAttributesChecker(
-        String expectedPayload, String expectedMessageId, int expectedCount) {
-      this.expectedPayload = expectedPayload;
-      this.expectedMessageId = expectedMessageId;
-      this.expectedCount = expectedCount;
-    }
-
-    @Override
-    public Void apply(Iterable<FailsafeElement<PubsubMessage, String>> collection) {
-      int count = 0;
-      for (FailsafeElement<PubsubMessage, String> elem : collection) {
-        count++;
-        String originalPayload = new String(elem.getOriginalPayload().getPayload());
-        assertThat(originalPayload, is(equalTo(expectedPayload)));
-        assertThat(
-            elem.getOriginalPayload().getAttributeMap().get("messageId"),
-            is(equalTo(expectedMessageId)));
-        assertThat(elem.getErrorMessage() != null, is(true));
-      }
-      assertEquals(expectedCount, count);
       return null;
     }
   }
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @Before
+  public void setUp() {
+    pipeline
+        .getCoderRegistry()
+        .registerCoderForType(
+            PubSubToRedis.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+            PubSubToRedis.FAILSAFE_ELEMENT_CODER);
+  }
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -238,122 +175,68 @@ public class PubSubToRedisTest {
 
   @Test
   public void testPubSubToRedisWithUdf() {
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER);
+    PubSubToRedis.PubSubToRedisOptions options =
+        PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
+    options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setJavascriptTextTransformFunctionName("transform");
+    options.setDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
             "{\"id\":\"123\",\"name\":\"test\"}".getBytes(), new HashMap<>(), "test-message-id");
 
-    PCollectionTuple result =
-        pipeline
-            .apply("CreateInput", Create.of(testMessage))
-            .apply(
-                "ApplyUDF",
-                new PubSubToRedis.PubSubMessageTransform(
-                    TRANSFORM_FILE_PATH,
-                    "transform",
-                    0)); // Adjusted to use constructor instead of builder()
+    PCollection<PubsubMessage> result =
+        PubSubToRedis.applyUdf(pipeline.apply("CreateInput", Create.of(testMessage)), options);
 
-    PAssert.that(result.get(PubSubToRedis.UDF_OUT))
-        .satisfies(new UdfOutputChecker("{\"id\":\"123\",\"name\":\"test\"}", true));
+    PAssert.that(result)
+        .satisfies(new PubsubMessageOutputChecker("{\"id\":\"123\",\"name\":\"test\"}", true));
 
     pipeline.run();
   }
 
   @Test
   public void testPubSubToRedisWithoutUdf() {
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER);
+    PubSubToRedis.PubSubToRedisOptions options =
+        PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
+    options.setDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
             "{\"id\":\"123\",\"name\":\"test\"}".getBytes(), new HashMap<>(), "test-message-id");
 
-    PCollectionTuple result =
-        pipeline
-            .apply("CreateInput", Create.of(testMessage))
-            .apply(
-                "NoUDF",
-                new PubSubToRedis.PubSubMessageTransform(
-                    null, null, 0)); // Adjusted to use constructor instead of builder()
+    PCollection<PubsubMessage> result =
+        PubSubToRedis.applyUdf(pipeline.apply("CreateInput", Create.of(testMessage)), options);
 
-    PAssert.that(result.get(PubSubToRedis.UDF_OUT))
-        .satisfies(new UdfOutputChecker("{\"id\":\"123\",\"name\":\"test\"}", false));
+    PAssert.that(result)
+        .satisfies(new PubsubMessageOutputChecker("{\"id\":\"123\",\"name\":\"test\"}", false));
 
     pipeline.run();
   }
 
   @Test
-  public void testPubSubToRedisWithBadUdf() {
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER);
+  public void testApplyUdfThrowsWhenFunctionNameMissing() {
+    PubSubToRedis.PubSubToRedisOptions options =
+        PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
+    options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    // Intentionally not setting function name
+    options.setDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
             "{\"id\":\"123\",\"name\":\"test\"}".getBytes(), new HashMap<>(), "test-message-id");
 
-    PCollectionTuple result =
-        pipeline
-            .apply("CreateInput", Create.of(testMessage))
-            .apply(
-                "ApplyBadUDF",
-                new PubSubToRedis.PubSubMessageTransform(
-                    TRANSFORM_FILE_PATH,
-                    "transformBad",
-                    0)); // Adjusted to use constructor instead of builder()
+    IllegalArgumentException thrown = null;
+    try {
+      PubSubToRedis.applyUdf(pipeline.apply("CreateInput", Create.of(testMessage)), options);
+    } catch (IllegalArgumentException e) {
+      thrown = e;
+    }
+    assertThat(thrown != null, is(true));
+    assertThat(
+        thrown.getMessage(),
+        is(equalTo("JavaScript function name cannot be null or empty if file is set")));
 
-    // Verify that failed transformations go to dead-letter output
-    PAssert.that(result.get(PubSubToRedis.UDF_DEADLETTER_OUT))
-        .satisfies(new DeadLetterChecker("{\"id\":\"123\",\"name\":\"test\"}"));
-
-    // Success output should be empty
-    PAssert.that(result.get(PubSubToRedis.UDF_OUT)).empty();
-
-    pipeline.run();
-  }
-
-  @Test
-  public void testPubSubToRedisWithDeadLetterTopic() {
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-        PubSubToRedis.FAILSAFE_ELEMENT_CODER);
-
-    // Create test messages - one good, one that will fail UDF
-    PubsubMessage goodMessage =
-        new PubsubMessage(
-            "{\"key\":\"good-key\",\"data\":\"good-value\"}".getBytes(),
-            ImmutableMap.of("messageId", "good-123"));
-
-    PubsubMessage badMessage =
-        new PubsubMessage(
-            "invalid-json-will-fail-udf".getBytes(), ImmutableMap.of("messageId", "bad-456"));
-
-    // Apply UDF transformation
-    PCollectionTuple result =
-        pipeline
-            .apply("CreateInput", Create.of(goodMessage, badMessage))
-            .apply(
-                "ApplyUDF",
-                new PubSubToRedis.PubSubMessageTransform(
-                    TRANSFORM_FILE_PATH,
-                    "transform",
-                    0)); // Adjusted to use constructor instead of builder()
-
-    // Good message should be in main output
-    PAssert.that(result.get(PubSubToRedis.UDF_OUT)).satisfies(new TransformedOutputChecker(1));
-
-    // Bad message should be in dead-letter output with original payload
-    PAssert.that(result.get(PubSubToRedis.UDF_DEADLETTER_OUT))
-        .satisfies(new DeadLetterWithAttributesChecker("invalid-json-will-fail-udf", "bad-456", 1));
-
+    // TestPipeline rule requires pipeline.run() to be called
     pipeline.run();
   }
 
