@@ -410,7 +410,21 @@ public class PubSubToRedis {
           "JavaScript function name cannot be null or empty if file is set");
     }
 
-    PCollectionTuple udfResult = performUdf(messages, options);
+    // Map incoming messages to FailsafeElement so we can recover from failures
+    // across multiple transforms.
+    PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
+        messages.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
+
+    PCollectionTuple udfResult =
+        failsafeElements.apply(
+            "InvokeUDF",
+            JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
+                .setSuccessTag(UDF_OUT)
+                .setFailureTag(UDF_DEADLETTER_OUT)
+                .build());
 
     // Write UDF failures to the dead-letter topic using the shared
     // ConvertFailsafeElementToPubsubMessage transform, following the pattern
@@ -443,24 +457,6 @@ public class PubSubToRedis {
                             element.getOriginalPayload().getMessageId()));
                   }
                 }));
-  }
-
-  static PCollectionTuple performUdf(
-      PCollection<PubsubMessage> messages, PubSubToRedisOptions options) {
-    // Map incoming messages to FailsafeElement so we can recover from failures
-    // across multiple transforms.
-    PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
-        messages.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
-
-    return failsafeElements.apply(
-        "InvokeUDF",
-        JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-            .setFunctionName(options.getJavascriptTextTransformFunctionName())
-            .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
-            .setSuccessTag(UDF_OUT)
-            .setFailureTag(UDF_DEADLETTER_OUT)
-            .build());
   }
 
   /**

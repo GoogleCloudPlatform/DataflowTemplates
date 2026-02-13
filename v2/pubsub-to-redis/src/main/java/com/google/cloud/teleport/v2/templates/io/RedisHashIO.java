@@ -39,7 +39,7 @@ public abstract class RedisHashIO {
 
   public static class WriteHash
       extends PTransform<@NonNull PCollection<KV<String, KV<String, String>>>, @NonNull PDone> {
-    
+
     private final RedisConnectionConfiguration connectionConfiguration;
     private final Long expireTime;
 
