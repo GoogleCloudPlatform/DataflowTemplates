@@ -24,25 +24,37 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.io.RedisHashIO;
 import com.google.cloud.teleport.v2.templates.transforms.MessageTransformation;
+import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.ConvertFailsafeElementToPubsubMessage;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.io.redis.RedisConnectionConfiguration;
 import org.apache.beam.sdk.io.redis.RedisIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.ArrayUtils;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -93,6 +105,9 @@ import org.slf4j.LoggerFactory;
       "The Pub/Sub to Redis template is a streaming pipeline that reads messages from a Pub/Sub subscription and "
           + "writes the message payload to Redis. The most common use case of this template is to export logs to Redis "
           + "Enterprise for advanced search-based log analysis in real time.",
+      "Before writing to Redis, you can apply a JavaScript user-defined function to the message payload. Any "
+          + "messages that experience processing failures are forwarded to a Pub/Sub unprocessed topic for further "
+          + "troubleshooting and reprocessing.",
       "For added security, enable an SSL connection when setting up your database endpoint connection."
     },
     optionsClass = PubSubToRedis.PubSubToRedisOptions.class,
@@ -102,6 +117,7 @@ import org.slf4j.LoggerFactory;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-redis",
     requirements = {
       "The source Pub/Sub subscription must exist prior to running the pipeline.",
+      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
       "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
     },
     preview = true,
@@ -117,13 +133,26 @@ public class PubSubToRedis {
   /** The log to output status messages to. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToRedis.class);
 
+  /** The tag for the main output for the UDF. */
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+
+  /** The tag for the dead-letter output of the udf. */
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_DEADLETTER_OUT =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+
+  /** Pubsub message/string coder for FailsafeElement. */
+  public static final FailsafeElementCoder<PubsubMessage, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+
   /**
    * The {@link PubSubToRedisOptions} class provides the custom execution options passed by the
    * executor at the command-line.
    *
    * <p>Inherits standard configuration options.
    */
-  public interface PubSubToRedisOptions extends PipelineOptions {
+  public interface PubSubToRedisOptions
+      extends JavascriptTextTransformer.JavascriptTextTransformerOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         groupName = "Source",
@@ -224,6 +253,17 @@ public class PubSubToRedis {
     Long getTtl();
 
     void setTtl(Long ttl);
+
+    @TemplateParameter.PubsubTopic(
+        order = 9,
+        description = "Output deadletter Pub/Sub topic",
+        helpText =
+            "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation or cannot be written to Redis are forwarded here.",
+        example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
+    @Validation.Required
+    String getDeadletterTopic();
+
+    void setDeadletterTopic(String deadletterTopic);
   }
 
   /** Allowed list of sink types. */
@@ -259,7 +299,10 @@ public class PubSubToRedis {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    PCollection<PubsubMessage> input;
+    // Register the coders for pipeline
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
     RedisConnectionConfiguration redisConnectionConfiguration =
         RedisConnectionConfiguration.create()
@@ -271,9 +314,9 @@ public class PubSubToRedis {
 
     /*
      * Steps: 1) Read PubSubMessage with attributes and messageId from input PubSub subscription.
-     *        2) Extract PubSubMessage message to PCollection<String>.
-     *        3) Transform PCollection<String> to PCollection<KV<String, String>> so it can be consumed by RedisIO
-     *        4) Write to Redis using SET
+     *        2) Apply JavaScript UDF transformation to message payload (if configured).
+     *        3) Extract PubSubMessage message to appropriate Redis format.
+     *        4) Write to Redis using the configured sink type.
      *
      */
 
@@ -281,14 +324,16 @@ public class PubSubToRedis {
         "Starting PubSub-To-Redis Pipeline. Reading from subscription: {}",
         options.getInputSubscription());
 
-    input =
+    PCollection<PubsubMessage> messages =
         pipeline.apply(
             "Read PubSub Events",
             MessageTransformation.readFromPubSub(options.getInputSubscription()));
 
+    PCollection<PubsubMessage> maybeTransformed = applyUdf(messages, options);
+
     if (options.getRedisSinkType().equals(STRING_SINK)) {
       PCollection<String> pCollectionString =
-          input.apply(
+          maybeTransformed.apply(
               "Map to Redis String", ParDo.of(new MessageTransformation.MessageToRedisString()));
 
       PCollection<KV<String, String>> kvStringCollection =
@@ -306,7 +351,7 @@ public class PubSubToRedis {
     }
     if (options.getRedisSinkType().equals(HASH_SINK)) {
       PCollection<KV<String, KV<String, String>>> pCollectionHash =
-          input.apply(
+          maybeTransformed.apply(
               "Map to Redis Hash", ParDo.of(new MessageTransformation.MessageToRedisHash()));
 
       pCollectionHash.apply(
@@ -317,7 +362,7 @@ public class PubSubToRedis {
     }
     if (options.getRedisSinkType().equals(LOGGING_SINK)) {
       PCollection<KV<String, KV<String, String>>> pCollectionHash =
-          input.apply(
+          maybeTransformed.apply(
               "Map to Redis Logs", ParDo.of(new MessageTransformation.MessageToRedisLogs()));
 
       pCollectionHash.apply(
@@ -328,7 +373,7 @@ public class PubSubToRedis {
     }
     if (options.getRedisSinkType().equals(STREAMS_SINK)) {
       PCollection<KV<String, Map<String, String>>> pCollectionStreams =
-          input.apply(
+          maybeTransformed.apply(
               "Map to Redis Streams", ParDo.of(new MessageTransformation.MessageToRedisStreams()));
 
       pCollectionStreams.apply(
@@ -337,5 +382,105 @@ public class PubSubToRedis {
     }
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  /**
+   * Applies the JavaScript UDF to messages if configured, and writes UDF failures to the
+   * dead-letter topic.
+   *
+   * <p>If no UDF is configured, returns the input messages unchanged.
+   *
+   * <p>This follows the same pattern as {@code PubsubProtoToBigQuery.runUdf}.
+   *
+   * @param messages the input PubSub messages
+   * @param options the pipeline options
+   * @return the (possibly transformed) PubSub messages
+   */
+  static PCollection<PubsubMessage> applyUdf(
+      PCollection<PubsubMessage> messages, PubSubToRedisOptions options) {
+
+    boolean useJavascriptUdf = !Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath());
+
+    if (!useJavascriptUdf) {
+      return messages;
+    }
+
+    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
+      throw new IllegalArgumentException(
+          "JavaScript function name cannot be null or empty if file is set");
+    }
+
+    // Map incoming messages to FailsafeElement so we can recover from failures
+    // across multiple transforms.
+    PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
+        messages.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
+
+    PCollectionTuple udfResult =
+        failsafeElements.apply(
+            "InvokeUDF",
+            JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
+                .setSuccessTag(UDF_OUT)
+                .setFailureTag(UDF_DEADLETTER_OUT)
+                .build());
+
+    // Write UDF failures to the dead-letter topic using the shared
+    // ConvertFailsafeElementToPubsubMessage transform, following the pattern
+    // from PubsubProtoToBigQuery.
+    udfResult
+        .get(UDF_DEADLETTER_OUT)
+        .setCoder(FAILSAFE_ELEMENT_CODER)
+        .apply(
+            "Get UDF Failures",
+            ConvertFailsafeElementToPubsubMessage.<PubsubMessage, String>builder()
+                .setOriginalPayloadSerializeFn(msg -> ArrayUtils.toObject(msg.getPayload()))
+                .setErrorMessageAttributeKey("udfErrorMessage")
+                .build())
+        .apply("Write Failed UDF", writeUdfFailures(options));
+
+    // Extract the successfully transformed messages
+    return udfResult
+        .get(UDF_OUT)
+        .apply(
+            "Extract Transformed Payload",
+            ParDo.of(
+                new DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    FailsafeElement<PubsubMessage, String> element = c.element();
+                    c.output(
+                        new PubsubMessage(
+                            element.getPayload().getBytes(),
+                            element.getOriginalPayload().getAttributeMap(),
+                            element.getOriginalPayload().getMessageId()));
+                  }
+                }));
+  }
+
+  /**
+   * Returns a {@link PubsubIO.Write} configured to write UDF failures to the dead-letter topic.
+   *
+   * <p>Follows the same pattern as {@code PubsubProtoToBigQuery.writeUdfFailures}.
+   */
+  private static PubsubIO.Write<PubsubMessage> writeUdfFailures(PubSubToRedisOptions options) {
+    return PubsubIO.writeMessages().to(options.getDeadletterTopic());
+  }
+
+  /**
+   * The {@link PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
+   * {@link FailsafeElement} class so errors can be recovered from and the original message can be
+   * output to a dead-letter output.
+   */
+  static class PubsubMessageToFailsafeElementFn
+      extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      PubsubMessage message = context.element();
+      context.output(
+          FailsafeElement.of(
+              message, new String(message.getPayload(), java.nio.charset.StandardCharsets.UTF_8)));
+    }
   }
 }
