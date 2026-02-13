@@ -321,6 +321,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "bit_varying",
             "bit_varying_to_string",
             "bytea",
+            "json",
+            "json_to_string",
             "macaddr",
             "macaddr8",
             "uuid_to_bytes",
