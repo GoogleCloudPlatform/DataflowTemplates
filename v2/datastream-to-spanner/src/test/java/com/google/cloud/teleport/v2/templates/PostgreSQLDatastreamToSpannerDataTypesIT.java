@@ -334,6 +334,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_bool_array_to_string",
             "t_box_to_float64_array",
             "t_circle_to_float64_array",
+            "t_daterange",
             "t_float_array_to_float64_array",
             "t_float_array_to_string",
             "t_int_array_to_int64_array",
