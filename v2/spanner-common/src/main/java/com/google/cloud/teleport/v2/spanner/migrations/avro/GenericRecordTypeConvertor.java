@@ -158,6 +158,11 @@ public class GenericRecordTypeConvertor {
           continue;
         }
 
+        // If the column is generated, we skip it as it's read-only in Spanner.
+        if (schemaMapper.isGeneratedColumn(namespace, spannerTableName, spannerColName)) {
+          continue;
+        }
+
         // For session based mapper, populate synthetic primary key with UUID. For identity mapper,
         // the schemaMapper returns null.
         if (spannerColName.equals(
@@ -260,9 +265,22 @@ public class GenericRecordTypeConvertor {
       String spannerColName = entry.getKey();
       Type spannerType =
           schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
-      Value val =
-          getSpannerValueFromObject(
-              entry.getValue(), CUSTOM_TRANSFORMATION_AVRO_SCHEMA, spannerColName, spannerType);
+      Schema schema = CUSTOM_TRANSFORMATION_AVRO_SCHEMA;
+      if (entry.getValue() instanceof Long || entry.getValue() instanceof Integer) {
+        /*
+         * When a custom transformation returns a Long or Integer, we must treat it as a LONG schema.
+         * This is critical for BIT columns which are read as Longs from the source (e.g. MySQL).
+         * If we use the default CUSTOM_TRANSFORMATION_AVRO_SCHEMA (which is STRING),
+         * AvroToValueMapper will convert the Long to a String (e.g. "9223372036854775807") and then
+         * attempt to interpret that decimal string as a Hex-encoded string if the target Spanner type is BYTES.
+         * This results in incorrect byte values (e.g. 0x0922...).
+         *
+         * By passing a LONG schema, AvroToValueMapper uses the correct conversion path:
+         * Long -> BigInteger -> ByteArray, which preserves the correct binary representation (e.g. 0x7F...).
+         */
+        schema = Schema.create(Schema.Type.LONG);
+      }
+      Value val = getSpannerValueFromObject(entry.getValue(), schema, spannerColName, spannerType);
       result.put(spannerColName, val);
     }
     LOG.debug("Updated record with custom transformations for table {}: {}", srcTableName, result);

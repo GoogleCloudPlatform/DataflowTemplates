@@ -23,12 +23,8 @@ on:
     paths:
       - '**.java'
       - '**.xml'
-      # Include python files and Dockerfiles used for YAML and xlang templates.
-      - '**.py'
-      # Include Python requirements files for dependency updates
+      # Include Python requirements files for dependency updates (e.g., for v2 templates).
       - '**/requirements.txt'
-      - 'python/default_base_*.txt'
-      - 'python/generate_all_dependencies.sh'
       - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
@@ -42,6 +38,14 @@ on:
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
+      # Exclude kafka paths from global run (covered in kafka-pr.yml)
+      - '!v2/kafka-to-bigquery/**'
+      - '!v2/kafka-to-gcs/**'
+      - '!v2/kafka-to-kafka/**'
+      - '!v2/pubsub-to-kafka/**'
+      # Exclude yaml and python paths from global run (covered in yaml-pr.yml)
+      - '!yaml/**'
+      - '!python/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
@@ -63,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -75,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -87,7 +91,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -102,7 +106,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -135,7 +139,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -168,7 +172,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -216,7 +220,7 @@ jobs:
     runs-on: [self-hosted, perf]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env

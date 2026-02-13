@@ -36,7 +36,6 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-    <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
   <dependencies>
@@ -74,7 +73,7 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>iceberg</artifactId>
+      <artifactId>it-iceberg</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
@@ -82,6 +81,17 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql-jdbc.version}</version>
+    </dependency>  
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysql-connector-java.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

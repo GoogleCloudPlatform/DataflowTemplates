@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName"
       },
-      flexContainerName = "gcs-to-elasticsearch",
+      flexContainerName = "googlecloud-to-elasticsearch",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",
@@ -100,7 +100,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformFunctionName",
         "javascriptTextTransformReloadIntervalMinutes"
       },
-      flexContainerName = "gcs-to-elasticsearch-xlang",
+      flexContainerName = "googlecloud-to-elasticsearch-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",

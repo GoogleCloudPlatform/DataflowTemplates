@@ -148,4 +148,10 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
   public boolean colExistsAtSource(String namespace, String spannerTable, String spannerColumn) {
     return true;
   }
+
+  @Override
+  public boolean isGeneratedColumn(String namespace, String spannerTable, String spannerColumn) {
+    Column col = getCol(namespace, spannerTable, spannerColumn);
+    return col.isGenerated();
+  }
 }

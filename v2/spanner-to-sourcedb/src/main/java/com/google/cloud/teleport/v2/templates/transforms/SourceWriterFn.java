@@ -15,18 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -48,12 +45,10 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorF
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
+import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
-import java.sql.SQLDataException;
-import java.sql.SQLNonTransientConnectionException;
-import java.sql.SQLSyntaxErrorException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -204,10 +199,14 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
     String shardId = spannerRec.getShard();
-    if (shardId == null) {
-      // no shard found, move to permanent error
+    if (shardId == null || shardId.equals(Constants.SEVERE_ERROR_SHARD_ID)) {
+      // if no shard or permanent error shard id found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
+    } else if (shardId.equals(Constants.RETRYABLE_ERROR_SHARD_ID)) {
+      // if retryable error shard id found, move to retryable error
+      outputWithTag(
+          c, Constants.RETRYABLE_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
     } else if (shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();
@@ -314,7 +313,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
-        TupleTag<String> errorTag = classifyException(ex);
+        TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(ex);
         outputWithTag(c, errorTag, message, spannerRec);
         UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }
@@ -363,38 +362,5 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       retryableRecordCountMetric.inc();
     }
     c.output(tag, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
-  }
-
-  TupleTag<String> classifyException(Exception exception) {
-    if (exception instanceof SpannerException e) {
-      return classifySpannerException(e);
-    } else if (exception instanceof ChangeEventConvertorException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    }
-    return Constants.RETRYABLE_ERROR_TAG;
-  }
-
-  TupleTag<String> classifySpannerException(SpannerException exception) {
-    // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
-    // wrapped inside a SpannerException.
-    // We need to get and inspect the cause while handling the exception.
-    Throwable cause = exception.getCause();
-
-    if (cause instanceof InvalidTransformationException
-        || cause instanceof ChangeEventConvertorException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof CodecNotFoundException
-        || cause instanceof SQLSyntaxErrorException
-        || cause instanceof SQLDataException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof SQLNonTransientConnectionException e
-        && e.getErrorCode() != 1053
-        && e.getErrorCode() != 1159
-        && e.getErrorCode() != 1161) {
-      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-      // error codes 1053,1161 and 1159 can be retried
-      return Constants.PERMANENT_ERROR_TAG;
-    }
-    return Constants.RETRYABLE_ERROR_TAG;
   }
 }

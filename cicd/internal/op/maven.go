@@ -22,6 +22,9 @@ import (
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 )
 
+const IncludeDependencies string = "-am"
+const DoNotIncludeDependencies string = "-no-am"
+
 // Runs the given Maven command on a specified POM file. Considering the input, this is equivalent to:
 //
 //	mvn -B {cmd} -f {pom} {args...}
@@ -30,12 +33,23 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs = append(fullArgs, strings.Split(cmd, " ")...)
 	fullArgs = append(fullArgs, "-f", pom)
 	fullArgs = append(fullArgs, "-e")
-	fullArgs = append(fullArgs, args...)
+	includeDep := true
+	for _, arg := range args {
+		if arg == DoNotIncludeDependencies {
+			includeDep = false
+		} else if arg == IncludeDependencies {
+			includeDep = true
+		} else {
+			fullArgs = append(fullArgs, arg)
+		}
+	}
 	modules := flags.ModulesToBuild()
 	if len(modules) != 0 {
 		moduleArgs := []string{"-pl", strings.Join(modules, ",")}
 		fullArgs = append(fullArgs, moduleArgs...)
-		fullArgs = append(fullArgs, "-am")
+		if includeDep {
+			fullArgs = append(fullArgs, "-am")
+		}
 	}
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }

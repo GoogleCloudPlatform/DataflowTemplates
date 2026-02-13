@@ -45,7 +45,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class SecretManagerIT extends TemplateTestBase {
   private Neo4jResourceManager neo4jClient;
-
+  private String databaseName;
   private SecretManagerResourceManager secretClient;
 
   @Before
@@ -56,6 +56,7 @@ public class SecretManagerIT extends TemplateTestBase {
             .setHost(TestProperties.hostIp())
             .build();
     secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
+    databaseName = neo4jClient.createTestDatabase();
   }
 
   @After
@@ -67,7 +68,7 @@ public class SecretManagerIT extends TemplateTestBase {
   public void runsTemplateWithNeo4jConnectionSecret() throws IOException {
     gcsClient.createArtifact("spec.json", contentOf("/testing-specs/secret-manager/spec.json"));
     String secretId = "neo4j-connection-secret-" + testId;
-    secretClient.createSecret(secretId, jsonBasicPayload(neo4jClient));
+    secretClient.createSecret(secretId, jsonBasicPayload(neo4jClient, databaseName));
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -84,6 +85,7 @@ public class SecretManagerIT extends TemplateTestBase {
                 createConfig(info),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery("MATCH (n:Word) RETURN n.word AS word ORDER BY word ASC")
+                    .setDatabaseName(databaseName)
                     .setExpectedResult(
                         List.of(
                             Map.of("word", "word1"),

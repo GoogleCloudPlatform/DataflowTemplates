@@ -53,8 +53,10 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
@@ -99,6 +101,7 @@ public class SourceWriterFnTest {
   @Mock private Options mockOptions;
   @Mock private PCollectionView<Ddl> mockDdlView;
   @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
+  @Mock private IDMLGenerator mockDMLGenerator;
   private static Gson gson = new Gson();
 
   private Shard testShard;
@@ -814,6 +817,70 @@ public class SourceWriterFnTest {
   }
 
   @Test
+  public void testRetryableSentinelShardId() throws Exception {
+    TrimmedShardedDataChangeRecord record =
+        getParent1TrimmedDataChangeRecord(Constants.RETRYABLE_ERROR_SHARD_ID);
+    record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.processElement(processContext);
+
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), any());
+  }
+
+  @Test
+  public void testSevereSentinelShardId() throws Exception {
+    TrimmedShardedDataChangeRecord record =
+        getParent1TrimmedDataChangeRecord(Constants.SEVERE_ERROR_SHARD_ID);
+    record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.processElement(processContext);
+
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), any());
+  }
+
+  @Test
   public void testPermanentErrorWithInvalidTransformationException() throws Exception {
     TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 8888);
     record.setShard("shardA");
@@ -1033,6 +1100,48 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never()).write(contains("567890"), any());
+    verify(mockSqlDao, never()).write(contains("567890"), any());
+  }
+
+  @Test
+  public void testPermanentErrorWithInvalidDMLGenerationException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
+    when(mockDMLGenerator.getDMLStatement(any()))
+        .thenThrow(new InvalidDMLGenerationException("bad dml generation"));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(mockSourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("bad dml generation"));
   }
 
   @Test

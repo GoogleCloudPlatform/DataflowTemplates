@@ -24,6 +24,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline to ensure that the metadata table from the original job is carried over.
 * **startTimestamp**: Read changes from the given timestamp. Defaults to empty.
 * **endTimestamp**: Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
 * **shadowTablePrefix**: The prefix used to name shadow tables. Default: `shadow_`.
@@ -152,6 +153,7 @@ export METADATA_DATABASE=<metadataDatabase>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
+export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export SHADOW_TABLE_PREFIX=rev_shadow_
@@ -190,6 +192,7 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "spannerProjectId=$SPANNER_PROJECT_ID" \
   --parameters "metadataInstance=$METADATA_INSTANCE" \
   --parameters "metadataDatabase=$METADATA_DATABASE" \
+  --parameters "spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME" \
   --parameters "startTimestamp=$START_TIMESTAMP" \
   --parameters "endTimestamp=$END_TIMESTAMP" \
   --parameters "shadowTablePrefix=$SHADOW_TABLE_PREFIX" \
@@ -245,6 +248,7 @@ export METADATA_DATABASE=<metadataDatabase>
 export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 
 ### Optional
+export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
 export SHADOW_TABLE_PREFIX=rev_shadow_
@@ -280,7 +284,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,spannerPriority=$SPANNER_PRIORITY" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,spannerPriority=$SPANNER_PRIORITY" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -332,6 +336,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     metadataInstance = "<metadataInstance>"
     metadataDatabase = "<metadataDatabase>"
     sourceShardsFilePath = "<sourceShardsFilePath>"
+    # spannerMetadataTableName = "<spannerMetadataTableName>"
     # startTimestamp = ""
     # endTimestamp = ""
     # shadowTablePrefix = "rev_shadow_"

@@ -56,9 +56,18 @@
       <version>${dataflow.api.version}</version>
     </dependency>
     <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-storage</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.twdata.maven</groupId>
       <artifactId>mojo-executor</artifactId>
       <version>${mojo.executor.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
     </dependency>
     <dependency>
       <groupId>dev.failsafe</groupId>
@@ -108,6 +117,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
       <version>${slf4j.version}</version>
@@ -117,6 +132,12 @@
       <groupId>org.apache.maven.plugin-testing</groupId>
       <artifactId>maven-plugin-testing-harness</artifactId>
       <version>3.3.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <version>${hamcrest.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

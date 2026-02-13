@@ -80,7 +80,7 @@ import org.json.JSONObject;
       },
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
-      flexContainerName = "text-to-bigquery",
+      flexContainerName = "googlecloud-to-googlecloud",
       contactInformation = "https://cloud.google.com/support",
       requirements = {
         "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"
@@ -150,7 +150,7 @@ import org.json.JSONObject;
       optionalOptions = {"javascriptTextTransformGcsPath", "javascriptTextTransformFunctionName"},
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
-      flexContainerName = "text-to-bigquery-xlang",
+      flexContainerName = "googlecloud-to-googlecloud-xlang",
       contactInformation = "https://cloud.google.com/support",
       requirements = {
         "Create a JSON file that describes your {{bigquery_name_short}} schema.\n"

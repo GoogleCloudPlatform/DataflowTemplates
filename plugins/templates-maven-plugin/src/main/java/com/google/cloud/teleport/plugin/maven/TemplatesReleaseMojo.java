@@ -23,14 +23,31 @@ import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_LAUNCH
 import static com.google.cloud.teleport.plugin.DockerfileGenerator.PYTHON_VERSION;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.gson.Gson;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.BuildPluginManager;
@@ -51,11 +68,19 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplatesReleaseMojo.class);
 
+  private record Blueprint(String name, String path) {}
+  ;
+
+  private static final Gson GSON = new Gson();
+
   @Parameter(defaultValue = "${projectId}", readonly = true, required = true)
   protected String projectId;
 
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
+
+  @Parameter(defaultValue = "${flexContainerName}", readonly = true, required = false)
+  protected String flexContainerName;
 
   @Parameter(defaultValue = "${bucketName}", readonly = true, required = true)
   protected String bucketName;
@@ -140,6 +165,34 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
   protected boolean generateSBOM;
 
+  @Parameter(
+      defaultValue = "true",
+      property = "publishYamlBlueprints",
+      readonly = true,
+      required = false)
+  protected boolean publishYamlBlueprints;
+
+  @Parameter(
+      defaultValue = "src/main/yaml",
+      property = "yamlBlueprintsPath",
+      readonly = true,
+      required = false)
+  protected String yamlBlueprintsPath;
+
+  @Parameter(
+      defaultValue = "yaml-blueprints",
+      property = "yamlBlueprintsGCSPath",
+      readonly = true,
+      required = false)
+  protected String yamlBlueprintsGCSPath;
+
+  @Parameter(
+      defaultValue = "yaml-manifest.json",
+      property = "yamlManifestName",
+      readonly = true,
+      required = false)
+  protected String yamlManifestName;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -165,51 +218,48 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 .collect(Collectors.toList());
       }
 
-      if (templateDefinitions.isEmpty()) {
-        LOG.warn("Not found templates to release in this module.");
-        return;
+      if ((!templateDefinitions.isEmpty() || publishYamlBlueprints)
+          && (stagePrefix == null || stagePrefix.isEmpty())) {
+        throw new IllegalArgumentException(
+            "Stage Prefix must be informed for releases, when releasing templates or yaml blueprints.");
       }
+
+      String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+      TemplatesStageMojo configuredMojo =
+          new TemplatesStageMojo(
+              project,
+              session,
+              outputDirectory,
+              outputClassesDirectory,
+              resourcesDirectory,
+              targetDirectory,
+              projectId,
+              templateName,
+              flexContainerName,
+              bucketName,
+              librariesBucketName,
+              stagePrefix,
+              useRegion,
+              artifactRegion,
+              gcpTempLocation,
+              baseContainerImage,
+              basePythonContainerImage,
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
+              unifiedWorker,
+              generateSBOM);
+      configuredMojo.stageCommandSpecs(templateDefinitions);
 
       for (TemplateDefinitions definition : templateDefinitions) {
 
         ImageSpec imageSpec = definition.buildSpecModel(true);
         String currentTemplateName = imageSpec.getMetadata().getName();
 
-        if (stagePrefix == null || stagePrefix.isEmpty()) {
-          throw new IllegalArgumentException("Stage Prefix must be informed for releases");
-        }
-
         LOG.info("Staging template {}...", currentTemplateName);
-
-        String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
-
-        // TODO: is there a better way to get the plugin on the _same project_?
-        TemplatesStageMojo configuredMojo =
-            new TemplatesStageMojo(
-                project,
-                session,
-                outputDirectory,
-                outputClassesDirectory,
-                resourcesDirectory,
-                targetDirectory,
-                projectId,
-                templateName,
-                bucketName,
-                librariesBucketName,
-                stagePrefix,
-                useRegion,
-                artifactRegion,
-                gcpTempLocation,
-                baseContainerImage,
-                basePythonContainerImage,
-                pythonTemplateLauncherEntryPoint,
-                javaTemplateLauncherEntryPoint,
-                pythonVersion,
-                beamVersion,
-                artifactRegistry,
-                stagingArtifactRegistry,
-                unifiedWorker,
-                generateSBOM);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
 
@@ -224,14 +274,90 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         }
       }
 
+      if (publishYamlBlueprints) {
+        LOG.info(
+            "Trying to upload Job Builder blueprints to bucket '{}'...",
+            bucketNameOnly(bucketName));
+        Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
+        if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
+          LOG.warn("YAML blueprints directory not found, skipping upload for path: ", yamlPath);
+        } else {
+
+          try (Storage storage = StorageOptions.getDefaultInstance().getService();
+              Stream<Path> paths = Files.list(yamlPath)) {
+            List<Blueprint> blueprints = new ArrayList<>();
+            paths
+                .filter(
+                    path ->
+                        Files.isRegularFile(path)
+                            && path.getFileName().toString().endsWith(".yaml"))
+                .forEach(
+                    path -> {
+                      String fileName = path.getFileName().toString();
+                      String objectName =
+                          String.join("/", stagePrefix, yamlBlueprintsGCSPath, fileName);
+                      BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
+
+                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+
+                      // Upload every blueprint with retries
+                      Failsafe.with(gcsRetryPolicy())
+                          .run(
+                              () -> {
+                                try (InputStream inputStream = Files.newInputStream(path)) {
+                                  storage.create(blobInfo, inputStream);
+                                }
+                              });
+
+                      LOG.info(
+                          "Uploaded blueprint {} to gs://{}/{}",
+                          fileName,
+                          bucketNameOnly(bucketName),
+                          objectName);
+                      blueprints.add(new Blueprint(fileName, objectName));
+                    });
+            String manifestObjectName =
+                String.join("/", stagePrefix, yamlBlueprintsGCSPath, yamlManifestName);
+            BlobId manifestBlobId = BlobId.of(bucketNameOnly(bucketName), manifestObjectName);
+            BlobInfo manifestBlobInfo = BlobInfo.newBuilder(manifestBlobId).build();
+
+            // Upload the manifest file with retries
+            byte[] manifestBytes = GSON.toJson(blueprints).getBytes(StandardCharsets.UTF_8);
+            Failsafe.with(gcsRetryPolicy())
+                .run(
+                    () ->
+                        storage.create(manifestBlobInfo, new ByteArrayInputStream(manifestBytes)));
+            LOG.info(
+                "Uploaded {} to gs://{}/{}",
+                yamlManifestName,
+                bucketNameOnly(bucketName),
+                manifestObjectName);
+          } catch (Exception e) {
+            throw new MojoExecutionException("Error uploading YAML blueprints", e);
+          }
+        }
+      } else {
+        LOG.warn("YAML blueprints not published in this module.");
+      }
+
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);
     } catch (MalformedURLException e) {
       throw new MojoExecutionException("URL generation failed", e);
     } catch (InvalidArgumentException e) {
       throw new MojoExecutionException("Invalid run argument", e);
+    } catch (MojoExecutionException e) {
+      throw e;
     } catch (Exception e) {
       throw new MojoExecutionException("Template run failed", e);
     }
+  }
+
+  private static <T> RetryPolicy<T> gcsRetryPolicy() {
+    return RetryPolicy.<T>builder()
+        .handle(IOException.class)
+        .withBackoff(Duration.ofSeconds(2), Duration.ofSeconds(30))
+        .withMaxRetries(3)
+        .build();
   }
 }

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.cdc.dlq;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.io.Serializable;
@@ -50,11 +51,31 @@ public class DeadLetterQueueManager implements Serializable {
   public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERRORS =
       new TupleTag<FailsafeElement<String, String>>();
 
+  private static final String RETRY_COUNT_KEY = "_metadata_retry_count";
+  private static final String HISTORICAL_COUNT_KEY = "_metadata_historical_retry_count";
+  private static final String ERROR_KEY = "_metadata_error";
+
+  /**
+   * Indicates whether to reset the retry count for severe errors that have exhausted their retry
+   * attempts.
+   *
+   * <p>If true, when an element exceeds {@code maxRetries}, its {@code _metadata_retry_count} is
+   * reset to 0, and the elapsed retries are accumulated in {@code
+   * _metadata_historical_retry_count}. The element is then routed to the severe queue
+   * (PERMANENT_ERRORS). This allows users to manually move these severe errors back to the retry
+   * queue to trigger a fresh set of retry attempts.
+   */
+  private final boolean enableSevereRetryReset;
+
   private DeadLetterQueueManager(
-      String retryDlqDirectory, String severeDlqDirectory, int maxRetries) {
+      String retryDlqDirectory,
+      String severeDlqDirectory,
+      int maxRetries,
+      boolean enableSevereRetryReset) {
     this.retryDlqDirectory = retryDlqDirectory;
     this.severeDlqDirectory = severeDlqDirectory;
     this.maxRetries = maxRetries;
+    this.enableSevereRetryReset = enableSevereRetryReset;
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory) {
@@ -62,6 +83,11 @@ public class DeadLetterQueueManager implements Serializable {
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory, int maxRetries) {
+    return create(dlqDirectory, maxRetries, false);
+  }
+
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, int maxRetries, boolean enableSevereRetryReset) {
     String retryDlqUri =
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("retry", StandardResolveOptions.RESOLVE_DIRECTORY)
@@ -70,16 +96,23 @@ public class DeadLetterQueueManager implements Serializable {
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
             .toString();
-    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+    return new DeadLetterQueueManager(
+        retryDlqUri, severeDlqUri, maxRetries, enableSevereRetryReset);
   }
 
   public static DeadLetterQueueManager create(
       String dlqDirectory, String retryDlqUri, int maxRetries) {
+    return create(dlqDirectory, retryDlqUri, maxRetries, false);
+  }
+
+  public static DeadLetterQueueManager create(
+      String dlqDirectory, String retryDlqUri, int maxRetries, boolean enableSevereRetryReset) {
     String severeDlqUri =
         FileSystems.matchNewResource(dlqDirectory, true)
             .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
             .toString();
-    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
+    return new DeadLetterQueueManager(
+        retryDlqUri, severeDlqUri, maxRetries, enableSevereRetryReset);
   }
 
   public String getRetryDlqDirectory() {
@@ -130,12 +163,41 @@ public class DeadLetterQueueManager implements Serializable {
                        */
                       ObjectMapper mapper = new ObjectMapper();
                       JsonNode jsonDLQElement = mapper.readTree(input);
-                      int retryCount = jsonDLQElement.get("_metadata_retry_count").asInt();
+
+                      int retryCount = jsonDLQElement.get(RETRY_COUNT_KEY).asInt();
                       if (retryCount <= maxRetries) {
                         output.get(RETRYABLE_ERRORS).output(element);
                         return;
                       }
-                      String error = jsonDLQElement.get("_metadata_error").asText();
+
+                      if (enableSevereRetryReset) {
+                        LOG.info("Resetting retry count for exhausted error: {}", retryCount);
+                        ObjectNode objectNode = (ObjectNode) jsonDLQElement;
+                        long historicalCount = 0;
+                        if (objectNode.has(HISTORICAL_COUNT_KEY)) {
+                          historicalCount = objectNode.get(HISTORICAL_COUNT_KEY).asLong();
+                        }
+                        // retryCount includes the current attempt which is about to be aborted
+                        // (since it failed check),
+                        // so we subtract 1 to get the actual number of failed retries.
+                        historicalCount += retryCount - 1;
+
+                        objectNode.put(HISTORICAL_COUNT_KEY, historicalCount);
+                        objectNode.put(RETRY_COUNT_KEY, 0); // Reset current count
+
+                        String error =
+                            jsonDLQElement.has(ERROR_KEY)
+                                ? jsonDLQElement.get(ERROR_KEY).asText()
+                                : "";
+
+                        FailsafeElement<String, String> validElement =
+                            FailsafeElement.of(objectNode.toString(), objectNode.toString());
+                        validElement.setErrorMessage(error);
+                        output.get(PERMANENT_ERRORS).output(validElement);
+                        return;
+                      }
+
+                      String error = jsonDLQElement.get(ERROR_KEY).asText();
                       element.setErrorMessage(error);
                       output.get(PERMANENT_ERRORS).output(element);
                     } catch (IOException e) {

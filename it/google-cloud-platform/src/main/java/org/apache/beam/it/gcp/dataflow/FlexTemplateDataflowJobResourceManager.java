@@ -36,6 +36,11 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Used when additional flex template is needed for integration tests (e.g. using another template
+ * to generate data). For generic template integration test, Use TemplateTestBase's subclasses to
+ * manage the templates.
+ */
 public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
 
   private static final Logger LOG =
@@ -49,6 +54,9 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
   private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
+  // TODO(yathu): we should use TemplateTestBase.stagedTemplates to managed all staged templates
+  // during workflow run.
+  //  Currently templates involved here get compiled and staged twice.
   private static Map<String, String> specPaths = new HashMap<>();
 
   private FlexTemplateDataflowJobResourceManager(Builder builder) {
@@ -173,6 +181,11 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     }
   }
 
+  // TODO(yathu) this method was forked and diverged from TemplateTestBase.buildAndStageTemplate,
+  // causing involved
+  //  templates get compiled and staged twice. We should use TemplateTestBase.stagedTemplates to
+  // managed all staged
+  //  templates during workflow run.
   private void buildAndStageTemplate(
       String templateName, String modulePath, String additionalMavenProfile) {
     LOG.info("Building and Staging {} template", templateName);

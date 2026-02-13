@@ -1187,6 +1187,35 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void onUpdateColumns() throws Exception {
+    String statement =
+        "CREATE TABLE `T` ("
+            + " `id` INT64 NOT NULL,"
+            + " `on_update` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP()) "
+            + "    ON UPDATE (PENDING_COMMIT_TIMESTAMP()) "
+            + "    OPTIONS (allow_commit_timestamp=TRUE),"
+            + " ) PRIMARY KEY (`id` ASC)";
+
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void pgOnUpdateColumns() throws Exception {
+    String statement =
+        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+            + " \"on_update\" SPANNER.COMMIT_TIMESTAMP "
+            + "    DEFAULT (SPANNER.PENDING_COMMIT_TIMESTAMP()) "
+            + "    ON UPDATE (SPANNER.PENDING_COMMIT_TIMESTAMP()),"
+            + " PRIMARY KEY (\"id\") )";
+
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
   public void identityColumns() throws Exception {
     List<String> statements =
         Arrays.asList(

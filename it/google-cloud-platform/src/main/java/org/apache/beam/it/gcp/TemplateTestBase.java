@@ -26,6 +26,8 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.dataflow.model.Job;
 import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
@@ -52,6 +54,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
@@ -75,6 +78,7 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.Cache;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.CacheBuilder;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.RemovalNotification;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.parquet.Strings;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.After;
 import org.junit.Before;
@@ -142,7 +146,14 @@ public abstract class TemplateTestBase {
               })
           .build();
 
+  public static final String STAGING_PREFIX;
+
   static {
+    STAGING_PREFIX =
+        new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date())
+            + "-"
+            + UUID.randomUUID().toString().substring(0, 6)
+            + "_IT";
     Runtime.getRuntime().addShutdownHook(new Thread(stagedTemplates::invalidateAll));
   }
 
@@ -303,12 +314,33 @@ public abstract class TemplateTestBase {
       LOG.info("A spec path was given, not staging template {}", templateMetadata.name());
       return TestProperties.specPath();
     } else {
-      return stagedTemplates.get(
-          templateMetadata.name(),
+      boolean flex = !Strings.isNullOrEmpty(templateMetadata.flexContainerName());
+
+      // Use bucketName unless only artifactBucket is provided
+      String bucketName;
+      if (TestProperties.hasStageBucket()) {
+        bucketName = TestProperties.stageBucket();
+      } else if (TestProperties.hasArtifactBucket()) {
+        bucketName = TestProperties.artifactBucket();
+        LOG.warn(
+            "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
+            bucketName);
+      } else {
+        throw new IllegalArgumentException(
+            "-DstageBucket was not specified, so Template can not be staged. Either give a"
+                + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
+      }
+
+      String blobPath =
+          String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
+      String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
+
+      String identifier = flex ? template.flexContainerName() : templateMetadata.name();
+
+      stagedTemplates.get(
+          identifier,
           () -> {
             LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
-
-            String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
             File pom = new File(pomPath).getAbsoluteFile();
             if (!pom.exists()) {
@@ -317,22 +349,18 @@ public abstract class TemplateTestBase {
                       + " containing the template.");
             }
 
-            // Use bucketName unless only artifactBucket is provided
-            String bucketName;
-            if (TestProperties.hasStageBucket()) {
-              bucketName = TestProperties.stageBucket();
-            } else if (TestProperties.hasArtifactBucket()) {
-              bucketName = TestProperties.artifactBucket();
-              LOG.warn(
-                  "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
-                  bucketName);
-            } else {
-              throw new IllegalArgumentException(
-                  "-DstageBucket was not specified, so Template can not be staged. Either give a"
-                      + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
+            // Check template metadata file existence
+            try (Storage storage = ArtifactUtils.createStorageClient(credentials)) {
+              Blob blob =
+                  storage.get(
+                      bucketName, blobPath, Storage.BlobGetOption.fields(Storage.BlobField.SIZE));
+              if (blob != null && blob.exists() && blob.getSize() > 0) {
+                LOG.info("Find templates at {}", stagePath);
+                return stagePath;
+              }
             }
 
-            String[] mavenCmd = buildMavenStageCommand(prefix, pom, bucketName, template);
+            String[] mavenCmd = buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, template);
             LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
             try {
@@ -344,17 +372,12 @@ public abstract class TemplateTestBase {
                 throw new RuntimeException("Error staging template, check Maven logs.");
               }
 
-              boolean flex =
-                  templateMetadata.flexContainerName() != null
-                      && !templateMetadata.flexContainerName().isEmpty();
-              return String.format(
-                  "gs://%s/%s/%s%s",
-                  bucketName, prefix, flex ? "flex/" : "", templateMetadata.name());
-
+              return stagePath;
             } catch (Exception e) {
               throw new IllegalArgumentException("Error staging template", e);
             }
           });
+      return stagePath;
     }
   }
 
@@ -417,6 +440,14 @@ public abstract class TemplateTestBase {
     // that will copy only the shaded jar to the docker image.
     boolean skipShade = templateMetadata.type() != TemplateType.XLANG;
 
+    String templateOrContainer;
+    @Nullable String flexContainerName = templateMetadata.flexContainerName();
+    if (Strings.isNullOrEmpty(flexContainerName)) {
+      templateOrContainer = "-DtemplateName=" + templateMetadata.name();
+    } else {
+      templateOrContainer = "-DflexContainerName=" + flexContainerName;
+    }
+
     return new String[] {
       "mvn",
       "compile",
@@ -442,7 +473,7 @@ public abstract class TemplateTestBase {
       "-DbucketName=" + bucketName,
       "-DgcpTempLocation=" + bucketName,
       "-DstagePrefix=" + prefix,
-      "-DtemplateName=" + templateMetadata.name(),
+      templateOrContainer,
       "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
       // Print stacktrace when command fails
       "-e"
@@ -451,15 +482,15 @@ public abstract class TemplateTestBase {
 
   public GcsResourceManager setUpSpannerITGcsResourceManager() {
     GcsResourceManager spannerTestsGcsClient;
-    if (TestProperties.project().equals("cloud-teleport-testing")) {
-      List<String> bucketList = TestConstants.SPANNER_TEST_BUCKETS;
+    List<String> bucketList =
+        TestConstants.SPANNER_TEST_BUCKETS.getOrDefault(TestProperties.project(), null);
+    if (bucketList != null) {
       Random random = new Random();
       int randomIndex = random.nextInt(bucketList.size());
       String randomBucketName = bucketList.get(randomIndex);
       spannerTestsGcsClient =
           GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
               .build();
-
     } else {
       spannerTestsGcsClient = gcsClient;
     }
@@ -814,7 +845,7 @@ public abstract class TemplateTestBase {
           if (cmd != null) {
             Process exec = Runtime.getRuntime().exec(cmd);
             if (exec.waitFor() != 0) {
-              LOG.warn("Error deleting staged image {}", imgName);
+              LOG.warn("Error deleting staged image {}. It might already be deleted.", imgName);
             }
           }
         } else {

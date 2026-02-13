@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download Test Report
-      uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
+      uses: dawidd6/action-download-artifact@5c98f0b039f36ef966fdb7dfa9779262785ecb05 # v14
       with:
         name: surefire-.*test-results
         name_is_regexp: true
@@ -39,7 +39,7 @@ jobs:
         run_id: ${{ github.event.workflow_run.id }}
         if_no_artifact_found: warn
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@e08919a3b1fb83a78393dfb775a9c37f17d8eea6 # v6.0.1
+      uses: mikepenz/action-junit-report@74626db7353a25a20a72816467ebf035f674c5f8 # v6.2.0
       with:
         commit: ${{github.event.workflow_run.head_sha}}
         report_paths: |

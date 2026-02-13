@@ -48,8 +48,10 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -62,7 +64,7 @@ import org.slf4j.LoggerFactory;
 public class KafkaToGcsIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaToGcsIT.class);
-
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
   private KafkaResourceManager kafkaResourceManager;
   private Schema avroSchema;
 
