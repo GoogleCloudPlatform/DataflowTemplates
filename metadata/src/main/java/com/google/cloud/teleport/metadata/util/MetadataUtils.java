@@ -184,10 +184,10 @@ public final class MetadataUtils {
         return List.of("^(true|false)$");
       case "Integer":
         TemplateParameter.Integer integerParam = (TemplateParameter.Integer) parameterAnnotation;
-        return List.of("^[0-9]+$");
+        return List.of("^-?[0-9]+$");
       case "Long":
         TemplateParameter.Long longParam = (TemplateParameter.Long) parameterAnnotation;
-        return List.of("^[0-9]+$");
+        return List.of("^-?[0-9]+$");
       case "Float":
         TemplateParameter.Float floatParam = (TemplateParameter.Float) parameterAnnotation;
         return List.of("^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?$");
