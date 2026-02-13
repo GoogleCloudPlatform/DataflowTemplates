@@ -54,6 +54,8 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +74,13 @@ public class MongoDbUtils implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
   static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();
+
+  /**
+   * JsonWriterSettings configured to output Relaxed JSON format for consistent ISO-8601 date
+   * serialization.
+   */
+  public static final JsonWriterSettings EXTENDED_JSON_WRITER_SETTINGS =
+      JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build();
 
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
@@ -141,8 +150,21 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
-                String data = GSON.toJson(value);
+                String data = ((Document) value).toJson(EXTENDED_JSON_WRITER_SETTINGS);
                 row.set(key, data);
+                break;
+              case "java.util.Date":
+                // Format dates as ISO-8601 strings
+                Document tempDoc = new Document("date", value);
+                String dateJson = tempDoc.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+                // Extract just the date value from {"date":{"$date":"2026-02-03T15:31:41.924Z"}}
+                try {
+                  JsonObject dateObj = GSON.fromJson(dateJson, JsonObject.class);
+                  String dateStr = dateObj.getAsJsonObject("date").get("$date").getAsString();
+                  row.set(key, dateStr);
+                } catch (Exception e) {
+                  row.set(key, value.toString());
+                }
                 break;
               default:
                 row.set(key, value.toString());
@@ -150,7 +172,8 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
-      JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
+      String jsonString = document.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+      JsonObject sourceDataJsonObject = GSON.fromJson(jsonString, JsonObject.class);
 
       // Convert to a Map
       Map<String, Object> sourceDataMap =
@@ -160,7 +183,7 @@ public class MongoDbUtils implements Serializable {
           .set("source_data", sourceDataMap)
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
-      String sourceData = GSON.toJson(document);
+      String sourceData = document.toJson(EXTENDED_JSON_WRITER_SETTINGS);
 
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
@@ -188,7 +211,8 @@ public class MongoDbUtils implements Serializable {
     }
 
     Document doc;
-    Object result = invocable.invokeFunction(udfFunctionName, document.toJson());
+    Object result =
+        invocable.invokeFunction(udfFunctionName, document.toJson(EXTENDED_JSON_WRITER_SETTINGS));
     if (result == null || ScriptObjectMirror.isUndefined(result)) {
       return null;
     } else if (result instanceof Document) {
