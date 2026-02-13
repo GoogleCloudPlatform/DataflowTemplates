@@ -61,6 +61,7 @@
     <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
+    <commons-compress.version>1.26.2</commons-compress.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-configuration2.version>2.10.1</commons-configuration2.version>
@@ -70,6 +71,7 @@
     <dlp.version>3.85.0</dlp.version>
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
+    <gson.version>2.13.2</gson.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
@@ -90,7 +92,7 @@
     <surefire.version>3.5.3</surefire.version>
     <testcontainers.version>1.21.3</testcontainers.version>
     <truth.version>1.4.5</truth.version>
-    <netty.version>4.1.125.Final</netty.version>
+    <netty.version>4.1.128.Final</netty.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -151,6 +153,11 @@
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
         <version>${commons-codec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons-compress.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-io</groupId>

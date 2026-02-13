@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
+import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
+import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
+import com.google.cloud.teleport.v2.neo4j.actions.HttpMethod;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
@@ -26,11 +29,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.neo4j.importer.v1.actions.Action;
 import org.neo4j.importer.v1.actions.ActionStage;
-import org.neo4j.importer.v1.actions.BigQueryAction;
-import org.neo4j.importer.v1.actions.CypherAction;
-import org.neo4j.importer.v1.actions.CypherExecutionMode;
-import org.neo4j.importer.v1.actions.HttpAction;
-import org.neo4j.importer.v1.actions.HttpMethod;
+import org.neo4j.importer.v1.actions.plugin.CypherAction;
+import org.neo4j.importer.v1.actions.plugin.CypherExecutionMode;
 
 /**
  * Helper class for parsing legacy json into {@link Action}.
@@ -60,46 +60,41 @@ class ActionMapper {
     var active = JsonObjects.getBooleanOrDefault(json, "active", true);
     var name = json.getString("name");
     var options = flattenObjectList(json, "options");
-    switch (type) {
-      case "bigquery":
-        return new BigQueryAction(
-            active,
-            name,
-            mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-            ModelUtils.replaceVariableTokens(
-                (String) options.get("sql"), templateOptions.getTokenMap()));
-      case "cypher":
-        return new CypherAction(
-            active,
-            name,
-            mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-            ModelUtils.replaceVariableTokens(
-                (String) options.get("cypher"), templateOptions.getTokenMap()),
-            CypherExecutionMode.AUTOCOMMIT);
-      case "http_get":
-        return new HttpAction(
-            active,
-            name,
-            mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-            ModelUtils.replaceVariableTokens(
-                (String) options.get("url"), templateOptions.getTokenMap()),
-            HttpMethod.GET,
-            processValues(flattenObjectList(json, "headers"), templateOptions));
-      case "http_post":
-        return new HttpAction(
-            active,
-            name,
-            mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-            ModelUtils.replaceVariableTokens(
-                (String) options.get("url"), templateOptions.getTokenMap()),
-            HttpMethod.POST,
-            processValues(flattenObjectList(json, "headers"), templateOptions));
-      default:
-        throw new IllegalArgumentException(
-            String.format(
-                "Unsupported action type %s, expected one of: cypher, bigquery, http_get, http_post",
-                type));
-    }
+    return switch (type) {
+      case "bigquery" -> new BigQueryAction(
+          active,
+          name,
+          mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
+          ModelUtils.replaceVariableTokens(
+              (String) options.get("sql"), templateOptions.getTokenMap()));
+      case "cypher" -> new CypherAction(
+          active,
+          name,
+          mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
+          ModelUtils.replaceVariableTokens(
+              (String) options.get("cypher"), templateOptions.getTokenMap()),
+          CypherExecutionMode.AUTOCOMMIT);
+      case "http_get" -> new HttpAction(
+          active,
+          name,
+          mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
+          ModelUtils.replaceVariableTokens(
+              (String) options.get("url"), templateOptions.getTokenMap()),
+          HttpMethod.GET,
+          processValues(flattenObjectList(json, "headers"), templateOptions));
+      case "http_post" -> new HttpAction(
+          active,
+          name,
+          mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
+          ModelUtils.replaceVariableTokens(
+              (String) options.get("url"), templateOptions.getTokenMap()),
+          HttpMethod.POST,
+          processValues(flattenObjectList(json, "headers"), templateOptions));
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Unsupported action type %s, expected one of: cypher, bigquery, http_get, http_post",
+              type));
+    };
   }
 
   private static ActionStage mapStage(Object executeAfter, Object executeAfterName) {
@@ -123,7 +118,7 @@ class ActionMapper {
 
   private static Map<String, Object> flattenObjectList(JSONObject json, String key) {
     if (!json.has(key)) {
-      return Map.of();
+      return null;
     }
     JSONArray headers = json.getJSONArray(key);
     Map<String, Object> result = new HashMap<>(2 * headers.length());

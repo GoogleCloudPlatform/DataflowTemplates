@@ -24,14 +24,18 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -63,7 +67,7 @@ public class TemplatesReleaseMojoTest {
   public void setUp() throws IOException {
     mojo = new TemplatesReleaseMojo();
     mavenProject = mock(MavenProject.class);
-    baseDir = temporaryFolder.newFolder("yaml");
+    baseDir = temporaryFolder.newFolder();
     File outputDirectory = temporaryFolder.newFolder("output");
 
     when(mavenProject.getBasedir()).thenReturn(baseDir);
@@ -73,20 +77,28 @@ public class TemplatesReleaseMojoTest {
     mojo.outputDirectory = outputDirectory;
     mojo.stagePrefix = "test-prefix";
     mojo.bucketName = "gs://test-bucket";
+    mojo.yamlBlueprintsPath = "src/main/yaml";
+    mojo.yamlOptionsPath = "yaml/src/main/python/options";
+    mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
+    mojo.yamlManifestName = "yaml-manifest.json";
   }
 
   @Test
-  public void testExecute_publishesYamlBlueprints() throws MojoExecutionException, IOException {
+  public void testExecute_publishesYamlBlueprintsAndOptionsAndCreatesManifest()
+      throws MojoExecutionException, IOException {
     mojo.publishYamlBlueprints = true;
-    mojo.yamlBlueprintsPath = "src/main/yaml";
-    mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
 
-    // Create a fake yaml file to be uploaded
-    File yamlDir = new File(baseDir, "src/main/yaml");
+    // Create fake yaml files for blueprints
+    File yamlDir = new File(baseDir, mojo.yamlBlueprintsPath);
     yamlDir.mkdirs();
-    File yamlFile = new File(yamlDir, "my-blueprint.yaml");
-    String yamlContent = getYamlContent();
-    Files.write(yamlFile.toPath(), yamlContent.getBytes(StandardCharsets.UTF_8));
+    File yamlFile1 = new File(yamlDir, "my-blueprint.yaml");
+    Files.write(yamlFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
+
+    // Create fake yaml files for options
+    File optionsDir = new File(baseDir, mojo.yamlOptionsPath);
+    optionsDir.mkdirs();
+    File optionsFile1 = new File(optionsDir, "my-options.yaml");
+    Files.write(optionsFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
 
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
     try (MockedStatic<StorageOptions> storageOptionsMock =
@@ -96,14 +108,14 @@ public class TemplatesReleaseMojoTest {
       storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
       when(mockStorageOptions.getService()).thenReturn(mockStorage);
 
+      Map<String, byte[]> uploadedFiles = new HashMap<>();
       ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-      final AtomicReference<byte[]> uploadedBytes = new AtomicReference<>();
 
-      // Read the input stream upon call, as it will be closed afterwards.
       Mockito.doAnswer(
               invocation -> {
+                BlobInfo blobInfo = invocation.getArgument(0);
                 InputStream inputStream = invocation.getArgument(1);
-                uploadedBytes.set(inputStream.readAllBytes());
+                uploadedFiles.put(blobInfo.getName(), inputStream.readAllBytes());
                 return null;
               })
           .when(mockStorage)
@@ -113,24 +125,45 @@ public class TemplatesReleaseMojoTest {
       mojo.execute();
 
       // Assert
-      BlobInfo capturedBlobInfo = blobInfoCaptor.getValue();
+      // 1 blueprint + 1 option + 1 manifest = 3 calls
+      verify(mockStorage, Mockito.times(3))
+          .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
-      // Check bucketname
-      assertEquals("test-bucket", capturedBlobInfo.getBucket());
-      // Check yaml file name captured
-      assertEquals("test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
+      String blueprintObjectName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile1.getName());
+      String optionsObjectName =
+          String.join(
+              "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
+      String manifestName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
 
-      // Check yaml content
-      assertEquals(yamlContent, new String(uploadedBytes.get(), StandardCharsets.UTF_8));
+      assertTrue(uploadedFiles.containsKey(blueprintObjectName));
+      assertTrue(uploadedFiles.containsKey(optionsObjectName));
+      assertTrue(uploadedFiles.containsKey(manifestName));
+
+      String manifestContent = new String(uploadedFiles.get(manifestName), StandardCharsets.UTF_8);
+
+      Gson gson = new Gson();
+      Type type = new TypeToken<Map<String, List<Map<String, String>>>>() {}.getType();
+      Map<String, List<Map<String, String>>> actualManifest = gson.fromJson(manifestContent, type);
+      List<Map<String, String>> actualBlueprints = actualManifest.get("blueprints");
+      List<Map<String, String>> actualOptions = actualManifest.get("options");
+
+      List<Map<String, String>> expectedBlueprints =
+          List.of(Map.of("name", yamlFile1.getName(), "path", blueprintObjectName));
+      List<Map<String, String>> expectedOptions =
+          List.of(Map.of("name", optionsFile1.getName(), "path", optionsObjectName));
+
+      assertEquals(expectedBlueprints, actualBlueprints);
+      assertEquals(expectedOptions, actualOptions);
     }
   }
 
   @Test
-  public void testExecute_yamlBlueprintsDirectoryMissing_logsWarning()
-      throws MojoExecutionException {
+  public void testExecute_yamlDirectoriesMissing_logsWarning() throws MojoExecutionException {
     mojo.publishYamlBlueprints = true;
-    mojo.yamlBlueprintsPath = "a-path-that-does-not-exist";
-    mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
+    mojo.yamlBlueprintsPath = "missing-blueprints";
+    mojo.yamlOptionsPath = "missing-options";
 
     Logger logger = Logger.getLogger(TemplatesReleaseMojo.class.getName());
     MemoryHandler memoryHandler = new MemoryHandler();
@@ -151,9 +184,7 @@ public class TemplatesReleaseMojoTest {
             .anyMatch(
                 r ->
                     r.getLevel() == Level.WARNING
-                        && r.getMessage()
-                            .equals(
-                                "YAML blueprints directory not found, skipping upload for path: "));
+                        && r.getMessage().contains("not found, skipping upload for paths."));
     assertTrue("Did not find expected warning log message.", foundWarning);
   }
 
@@ -179,6 +210,63 @@ public class TemplatesReleaseMojoTest {
       // Verify that no file was uploaded
       verify(mockStorage, Mockito.never())
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
+    }
+  }
+
+  @Test
+  public void testExecute_uploadsOnlyOptionsWhenBlueprintsMissing()
+      throws MojoExecutionException, IOException {
+    mojo.publishYamlBlueprints = true;
+    mojo.yamlBlueprintsPath = "missing-blueprints";
+
+    // Create fake yaml files for options
+    File optionsDir = new File(baseDir, mojo.yamlOptionsPath);
+    optionsDir.mkdirs();
+    File optionsFile1 = new File(optionsDir, "my-options.yaml");
+    Files.write(optionsFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
+
+    // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
+    try (MockedStatic<StorageOptions> storageOptionsMock =
+        Mockito.mockStatic(StorageOptions.class)) {
+      Storage mockStorage = mock(Storage.class);
+      StorageOptions mockStorageOptions = mock(StorageOptions.class);
+      storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
+      when(mockStorageOptions.getService()).thenReturn(mockStorage);
+
+      Map<String, byte[]> uploadedFiles = new HashMap<>();
+      Mockito.doAnswer(
+              invocation -> {
+                BlobInfo blobInfo = invocation.getArgument(0);
+                InputStream inputStream = invocation.getArgument(1);
+                uploadedFiles.put(blobInfo.getName(), inputStream.readAllBytes());
+                return null;
+              })
+          .when(mockStorage)
+          .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
+
+      // Act
+      mojo.execute();
+
+      // Assert
+      // 1 option + 1 manifest = 2 calls
+      verify(mockStorage, Mockito.times(2))
+          .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
+
+      String optionsObjectName =
+          String.join(
+              "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
+      String manifestName =
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, mojo.yamlManifestName);
+
+      assertTrue(uploadedFiles.containsKey(optionsObjectName));
+      assertTrue(uploadedFiles.containsKey(manifestName));
+
+      String manifestContent = new String(uploadedFiles.get(manifestName), StandardCharsets.UTF_8);
+      Gson gson = new Gson();
+      Type type = new TypeToken<Map<String, List<Map<String, String>>>>() {}.getType();
+      Map<String, List<Map<String, String>>> actualManifest = gson.fromJson(manifestContent, type);
+      assertTrue(actualManifest.get("blueprints").isEmpty());
+      assertEquals(1, actualManifest.get("options").size());
     }
   }
 

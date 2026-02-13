@@ -18,8 +18,8 @@ name: Spanner Load Tests
 
 on:
   schedule:
-  # at 02:00 weekly on every Friday.
-  - cron: '0 2 * * 5'
+  # at 02:00 weekly on every Tuesday.
+  - cron: '0 2 * * 2'
   workflow_dispatch:
 
 permissions: write-all
@@ -52,15 +52,6 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-    - name: Create Github issue on failure
-      if: failure()
-      uses: JasonEtco/create-an-issue@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        DATE: ${{ steps.date.outputs.date }}
-      with:
-        filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@v6
       if: always() # always run even if the previous step fails
@@ -112,15 +103,6 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics"
-    - name: Create Github issue on failure
-      if: failure()
-      uses: JasonEtco/create-an-issue@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        DATE: ${{ steps.date.outputs.date }}
-      with:
-        filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
     - name: Upload Load Test Observer Report
       uses: actions/upload-artifact@v6
       if: always() # always run even if the previous step fails

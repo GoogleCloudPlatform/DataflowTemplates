@@ -204,7 +204,7 @@ public class InputValidatorTest {
         result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
     assertThat(errors)
         .containsExactly(
-            "$.auth_type: does not have a value in the enumeration [basic, none, kerberos, bearer, custom]");
+            "$.auth_type: does not have a value in the enumeration [\"basic\", \"none\", \"kerberos\", \"bearer\", \"custom\"]");
   }
 
   @Test

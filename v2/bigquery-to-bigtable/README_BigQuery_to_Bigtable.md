@@ -40,6 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableBulkWriteLatencyTargetMs**: The latency target of Bigtable in milliseconds for latency-based throttling.
 * **bigtableBulkWriteMaxRowKeyCount**: The maximum number of row keys in a Bigtable batch write operation.
 * **bigtableBulkWriteMaxRequestSizeBytes**: The maximum bytes to include per Bigtable batch write operation.
+* **bigtableBulkWriteFlowControl**: When set to true, enables bulk write flow control which will useserver's signal to throttle the writes. Defaults to: false.
 
 
 
@@ -155,6 +156,7 @@ export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
 export BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS=<bigtableBulkWriteLatencyTargetMs>
 export BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT=<bigtableBulkWriteMaxRowKeyCount>
 export BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES=<bigtableBulkWriteMaxRequestSizeBytes>
+export BIGTABLE_BULK_WRITE_FLOW_CONTROL=false
 
 gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --project "$PROJECT" \
@@ -180,7 +182,8 @@ gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --parameters "bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID" \
   --parameters "bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS" \
   --parameters "bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT" \
-  --parameters "bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES"
+  --parameters "bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+  --parameters "bigtableBulkWriteFlowControl=$BIGTABLE_BULK_WRITE_FLOW_CONTROL"
 ```
 
 For more information about the command, please check:
@@ -222,6 +225,7 @@ export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
 export BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS=<bigtableBulkWriteLatencyTargetMs>
 export BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT=<bigtableBulkWriteMaxRowKeyCount>
 export BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES=<bigtableBulkWriteMaxRequestSizeBytes>
+export BIGTABLE_BULK_WRITE_FLOW_CONTROL=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -230,7 +234,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-bigtable-job" \
 -DtemplateName="BigQuery_to_Bigtable" \
--Dparameters="readIdColumn=$READ_ID_COLUMN,timestampColumn=$TIMESTAMP_COLUMN,skipNullValues=$SKIP_NULL_VALUES,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+-Dparameters="readIdColumn=$READ_ID_COLUMN,timestampColumn=$TIMESTAMP_COLUMN,skipNullValues=$SKIP_NULL_VALUES,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES,bigtableBulkWriteFlowControl=$BIGTABLE_BULK_WRITE_FLOW_CONTROL" \
 -f v2/bigquery-to-bigtable
 ```
 
@@ -296,6 +300,7 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     # bigtableBulkWriteLatencyTargetMs = "<bigtableBulkWriteLatencyTargetMs>"
     # bigtableBulkWriteMaxRowKeyCount = "<bigtableBulkWriteMaxRowKeyCount>"
     # bigtableBulkWriteMaxRequestSizeBytes = "<bigtableBulkWriteMaxRequestSizeBytes>"
+    # bigtableBulkWriteFlowControl = "false"
   }
 }
 ```
