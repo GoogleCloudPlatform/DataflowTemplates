@@ -30,6 +30,9 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.iam.IAMCheckResult;
+import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
+import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
@@ -53,6 +56,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -86,19 +90,8 @@ import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
-import org.apache.beam.sdk.transforms.Contextful;
-import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.GroupByKey;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Requirements;
-import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.transforms.SerializableFunctions;
-import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
@@ -184,6 +177,19 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   public WriteFilesResult<String> expand(PBegin begin) {
     Pipeline p = begin.getPipeline();
 
+      PCollection<Void> validationSignal =
+              begin
+                      .apply("Trigger Validation", Create.of((Void) null))
+                      .apply(
+                              "Validate Config",
+                              ParDo.of(
+                                      new DoFn<Void, Void>() {
+                                          @ProcessElement
+                                          public void processElement(ProcessContext c) {
+                                              validateRequiredPermissions(spannerConfig);
+                                          }
+                                      }));
+
     /*
      * Allow users to specify read timestamp.
      * CreateTransaction and CreateTransactionFn classes in SpannerIO
@@ -198,6 +204,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply(
                 "Create transaction",
                 ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))
+                .apply("Validate", Wait.on(validationSignal))
             .apply("Tx As PCollectionView", View.asSingleton());
 
     PCollectionView<Dialect> dialectView =
@@ -1120,4 +1127,33 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       return result.build();
     }
   }
+
+
+    private static void validateRequiredPermissions(SpannerConfig spannerConfig) {
+        String instanceId = spannerConfig.getInstanceId().get();
+        String databaseId = spannerConfig.getDatabaseId().get();
+        IAMCheckResult iamCheckResult;
+        try {
+            IAMPermissionsChecker iamPermissionsChecker =
+                    new IAMPermissionsChecker(spannerConfig.getProjectId().get());
+            iamCheckResult =
+                    iamPermissionsChecker.checkSpannerDatabaseRequirements(
+                            IAMRequirementsCreator.createSpannerWriteResourceRequirement(),
+                            instanceId,
+                            databaseId);
+            if (iamCheckResult.isPermissionsAvailable()) {
+                return;
+            }
+            String errorString =
+                    "For resource: "
+                            + iamCheckResult.getResourceName()
+                            + ", missing permissions: "
+                            + iamCheckResult.getMissingPermissions()
+                            + ";";
+            throw new RuntimeException(errorString);
+        } catch (GeneralSecurityException | IOException e) {
+            LOG.error("Error while validating permissions for spanner", e);
+            throw new RuntimeException(e);
+        }
+    }
 }
