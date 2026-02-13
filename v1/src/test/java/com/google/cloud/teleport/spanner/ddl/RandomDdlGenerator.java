@@ -242,6 +242,11 @@ public abstract class RandomDdlGenerator {
     if (getRandom().nextBoolean()) {
       udfBuilder.security(SqlSecurity.INVOKER);
     }
+    if (getDialect() == Dialect.POSTGRESQL) {
+      if (getRandom().nextBoolean()) {
+        udfBuilder.spannerDeterminism("DETERMINISTIC");
+      }
+    }
     int numUdfParameters = getRandom().nextInt(getMaxUdfParameters() + 1);
     for (int i = 0; i < numUdfParameters; i++) {
       String paramName = generateIdentifier(getMaxIdLength());
