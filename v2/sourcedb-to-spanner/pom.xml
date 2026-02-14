@@ -212,13 +212,13 @@
         <dependency>
             <groupId>com.datastax.astra</groupId>
             <artifactId>beam-sdks-java-io-astra</artifactId>
-            <version>4.18.1</version>
+            <version>${astra-io.version}</version>
         </dependency>
         <!-- Downloading Secure Bundle -->
         <dependency>
             <groupId>com.datastax.astra</groupId>
             <artifactId>astra-sdk-devops</artifactId>
-            <version>0.6.3</version>
+            <version>${astra-sdk.version}</version>
         </dependency>
 
         <!-- test dependencies for localCassandraIO end -->
