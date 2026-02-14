@@ -167,7 +167,7 @@ public class DataplexBigQueryToGcsTest {
     GenericData.get().addLogicalTypeConversion(new TimeConversions.TimeMicrosConversion());
     GenericData.get().addLogicalTypeConversion(new TimeConversions.TimeMillisConversion());
     GenericData.get().addLogicalTypeConversion(new TimeConversions.DateConversion());
-    
+
     options = TestPipeline.testingPipelineOptions().as(DataplexBigQueryToGcsOptions.class);
     options.setProject(PROJECT);
     options.setUpdateDataplexMetadata(true);
