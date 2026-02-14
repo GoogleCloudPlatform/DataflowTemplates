@@ -19,15 +19,18 @@ import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.schema.RetriableSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 
 /**
  * Interface to support various dialects of JDBC databases.
@@ -111,4 +114,21 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException;
+
+  default long estimateRowSize(
+      SourceTableSchema sourceTableSchema, JdbcValueMappingsProvider jdbcValueMappingsProvider) {
+    return estimateRowSize(
+        sourceTableSchema.sourceColumnNameToSourceColumnType(), jdbcValueMappingsProvider);
+  }
+
+  default long estimateRowSize(
+      Map<String, SourceColumnType> sourceColumnNameToSourceColumnType,
+      JdbcValueMappingsProvider jdbcValueMappingsProvider) {
+    long estimatedRowSize = 0;
+    for (Map.Entry<String, SourceColumnType> entry :
+        sourceColumnNameToSourceColumnType.entrySet()) {
+      estimatedRowSize += jdbcValueMappingsProvider.estimateColumnSize(entry.getValue());
+    }
+    return estimatedRowSize;
+  }
 }

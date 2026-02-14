@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcI
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.re2j.Matcher;
@@ -33,6 +34,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -42,6 +45,21 @@ public final class OptionsToConfigBuilder {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptionsToConfigBuilder.class);
   public static final String DEFAULT_POSTGRESQL_NAMESPACE = "public";
+
+  /**
+   * Extracts the worker zone from the options.
+   *
+   * @param options Pipeline options.
+   * @return The worker zone or null if not found.
+   */
+  public static String extractWorkerZone(PipelineOptions options) {
+    try {
+      return options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerZone();
+    } catch (Exception e) {
+      LOG.warn("Could not extract worker zone from options. Defaulting to null.", e);
+      return null;
+    }
+  }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
@@ -60,6 +78,12 @@ public final class OptionsToConfigBuilder {
     long maxConnections =
         options.getMaxConnections() > 0 ? (long) (options.getMaxConnections()) : 0;
     Integer numPartitions = options.getNumPartitions();
+    String workerZone = extractWorkerZone(options);
+
+    Integer fetchSize = options.getFetchSize();
+    if (fetchSize != null && fetchSize < 0) {
+      fetchSize = null;
+    }
 
     return getJdbcIOWrapperConfig(
         sqlDialect,
@@ -78,8 +102,11 @@ public final class OptionsToConfigBuilder {
         maxConnections,
         numPartitions,
         waitOn,
-        options.getFetchSize(),
-        options.getUniformizationStageCountHint());
+        fetchSize,
+        options.getUniformizationStageCountHint(),
+        options.getProjectId(),
+        workerZone,
+        options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType());
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
@@ -100,7 +127,10 @@ public final class OptionsToConfigBuilder {
       Integer numPartitions,
       Wait.OnSignal<?> waitOn,
       Integer fetchSize,
-      Long uniformizationStageCountHint) {
+      Long uniformizationStageCountHint,
+      String projectId,
+      String workerZone,
+      String workerMachineType) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     SourceSchemaReference sourceSchemaReference =
         sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
@@ -115,6 +145,14 @@ public final class OptionsToConfigBuilder {
                     .build())
             .setJdbcDriverClassName(jdbcDriverClassName)
             .setJdbcDriverJars(jdbcDriverJars);
+
+    if (workerMachineType != null && !workerMachineType.isEmpty()) {
+      builder.setWorkerMemoryGB(
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(
+              projectId, workerZone, workerMachineType));
+      builder.setWorkerCores(
+          DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, workerZone, workerMachineType));
+    }
     if (maxConnections != 0) {
       builder = builder.setMaxConnections(maxConnections);
     }
@@ -161,27 +199,34 @@ public final class OptionsToConfigBuilder {
   }
 
   /**
-   * For MySQL Dialect, if Fetchsize is expecitly set by the user, enables `useCursorFetch`.
+   * For MySQL Dialect, if Fetchsize is explicitly set by the user or if it's auto-inferred (null),
+   * enables `useCursorFetch`. It is disabled only if user explicitly sets FetchSize to 0.
    *
    * @param sqlDialect Sql Dialect.
    * @param url DB Url from passed configs.
    * @param fetchSize FetchSize Setting (Null if user has not explicitly set)
-   * @return Updated URL with `useCursorFetch` only if dialect is MySql and Fetchsize is not null.
-   *     Same as input URL in all other cases.
+   * @return Updated URL with `useCursorFetch` only if dialect is MySql and Fetchsize is not 0. Same
+   *     as input URL in all other cases.
    */
   @VisibleForTesting
   @Nullable
   protected static String mysqlSetCursorModeIfNeeded(
       SQLDialect sqlDialect, String url, @Nullable Integer fetchSize) {
-    if (fetchSize == null) {
-      LOG.info(
-          "FetchSize is not explicitly configured. In case of out of memory errors, please set `FetchSize` according to the available memory and maximum size of a row.");
-      return url;
-    }
     if (sqlDialect != SQLDialect.MYSQL) {
       return url;
     }
-    LOG.info("For Mysql, Fetchsize is explicitly configured. So setting `useCursorMode=true`.");
+    // For MySQL, to enable streaming/cursor mode, useCursorFetch must be true.
+    // We enable it if fetchSize is NULL (Auto-infer) or > 0.
+    // We only disable it if fetchSize is explicitly 0 (Fetch All).
+    if (fetchSize != null && fetchSize == 0) {
+      LOG.info(
+          "FetchSize is explicitly 0. MySQL cursor mode (useCursorFetch) will not be enabled explicitly.");
+      return url;
+    }
+
+    LOG.info(
+        "FetchSize is {}. Setting MySQL `useCursorFetch=true`.",
+        fetchSize == null ? "Auto" : fetchSize);
     String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "true");
     return updatedUrl;
   }

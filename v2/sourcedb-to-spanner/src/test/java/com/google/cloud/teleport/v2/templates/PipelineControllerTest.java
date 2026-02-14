@@ -362,7 +362,9 @@ public class PipelineControllerTest {
             List.of("table1", "table2"), Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
-        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+        .isEqualTo(
+            testUrl
+                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=false");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
@@ -410,7 +412,9 @@ public class PipelineControllerTest {
 
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
-        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+        .isEqualTo(
+            testUrl
+                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
