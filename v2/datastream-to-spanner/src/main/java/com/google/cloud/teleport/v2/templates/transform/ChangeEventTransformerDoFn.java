@@ -180,10 +180,21 @@ public abstract class ChangeEventTransformerDoFn
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
+      boolean isSpannerMutation =
+          changeEvent.has("_metadata_spanner_mutation")
+              && changeEvent.get("_metadata_spanner_mutation").asBoolean();
+
+      LOG.info("aastha changeEvent: " + changeEvent.toString());
+      LOG.info("aastha sourceRecord: " + sourceRecord);
+      LOG.info("aastha isSpannerMutation: " + isSpannerMutation);
+
       // TODO: Transformation via session file should be marked deprecated and removed.
-      if (!schema().isEmpty()) {
+      if (!schema().isEmpty() && !isSpannerMutation) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
+        LOG.info(
+            "aastha changeEvent after transformChangeEventViaSessionFile: "
+                + changeEvent.toString());
       }
 
       if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
@@ -191,20 +202,25 @@ public abstract class ChangeEventTransformerDoFn
       }
 
       // Perform mapping as per overrides
-      if (schemaOverridesParser() != null) {
+      if (schemaOverridesParser() != null && !isSpannerMutation) {
         changeEvent = changeEventSessionConvertor.transformChangeEventViaOverrides(changeEvent);
+        LOG.info(
+            "aastha changeEvent after transformChangeEventViaOverrides: " + changeEvent.toString());
       }
 
-      changeEvent =
-          changeEventSessionConvertor.transformChangeEventData(
-              changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+      if (!isSpannerMutation) {
+        changeEvent =
+            changeEventSessionConvertor.transformChangeEventData(
+                changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+        LOG.info("aastha changeEvent after transformChangeEventData: " + changeEvent.toString());
+      }
 
       // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
         MigrationTransformationResponse migrationTransformationResponse = null;
         try {
           migrationTransformationResponse =
-              getCustomTransformationResponse(changeEvent, sourceRecord);
+              getTransformationResponse(changeEvent, sourceRecord, isSpannerMutation);
           if (migrationTransformationResponse.isEventFiltered()) {
             filteredEvents.inc();
             c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getOriginalPayload());
@@ -215,6 +231,9 @@ public abstract class ChangeEventTransformerDoFn
             changeEvent =
                 ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(
                     changeEvent, migrationTransformationResponse.getResponseRow());
+            LOG.info(
+                "aastha changeEvent after migrationTransformationResponse: "
+                    + changeEvent.toString());
             if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
               migrationShardId =
                   changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
@@ -265,20 +284,35 @@ public abstract class ChangeEventTransformerDoFn
     }
   }
 
-  MigrationTransformationResponse getCustomTransformationResponse(
-      JsonNode changeEvent, Map<String, Object> sourceRecord)
+  MigrationTransformationResponse getTransformationResponse(
+      JsonNode changeEvent, Map<String, Object> sourceRecord, boolean isSpannerMutation)
       throws InvalidTransformationException {
     String shardId = changeEventSessionConvertor.getShardId(changeEvent);
-    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    String tableName =
+        changeEvent
+            .get(EVENT_TABLE_NAME_KEY)
+            .asText(); // does bulk overwrite this too if its transformed?
+    LOG.info("aastha _metadata_table: " + tableName);
     Instant startTimestamp = Instant.now();
     MigrationTransformationRequest migrationTransformationRequest =
         new MigrationTransformationRequest(
             tableName, sourceRecord, shardId, changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
-    MigrationTransformationResponse migrationTransformationResponse =
-        datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
+    LOG.info("aastha migrationTransformationRequest: " + migrationTransformationRequest.toString());
+    MigrationTransformationResponse migrationTransformationResponse;
+    if (isSpannerMutation) {
+      migrationTransformationResponse =
+          datastreamToSpannerTransformer.transformFailedSpannerMutation(
+              migrationTransformationRequest);
+    } else {
+      migrationTransformationResponse =
+          datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
+    }
+
     Instant endTimestamp = Instant.now();
     applyCustomTransformationResponseTimeMetric.update(
         new Duration(startTimestamp, endTimestamp).getMillis());
+    LOG.info(
+        "aastha migrationTransformationResponse: " + migrationTransformationResponse.toString());
     return migrationTransformationResponse;
   }
 

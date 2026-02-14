@@ -234,4 +234,10 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
     }
     return new MigrationTransformationResponse(null, false);
   }
+
+  @Override
+  public MigrationTransformationResponse transformFailedSpannerMutation(
+      MigrationTransformationRequest request) throws InvalidTransformationException {
+    return new MigrationTransformationResponse(null, false);
+  }
 }

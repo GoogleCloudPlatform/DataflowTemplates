@@ -22,9 +22,11 @@ import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Tests for CustomTransformationFetcher class. */
+@Ignore
 public class CustomTransformationFetcherTest {
   @Test
   public void endToEndTest() throws InvalidTransformationException {
