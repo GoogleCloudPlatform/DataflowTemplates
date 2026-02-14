@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
@@ -75,7 +75,7 @@ public abstract class AstraDbDataSource implements Serializable {
     /*
      * Accessing the devops Api to retrieve the secure bundle.
      */
-    DatabaseClient astraDbClient = new DatabaseClient(astraToken, databaseId());
+    DbOpsClient astraDbClient = new DbOpsClient(astraToken, databaseId());
     if (!astraDbClient.exist()) {
       throw new AstraDBNotFoundException(
           "Astra Database does not exist, please check your Astra Token and Database ID. Please ensure that the database is active.");
