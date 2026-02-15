@@ -19,12 +19,14 @@ import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.Connect;
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.FileDatabaseHistory;
-import io.debezium.relational.history.MemoryDatabaseHistory;
-import io.debezium.util.Clock;
+import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -36,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +77,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
 
   private final Set<String> whitelistedTables;
 
-  private EmbeddedEngine engine;
+  private DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
   private ExecutorService executorService;
 
   public DebeziumToPubSubDataSender(
@@ -122,8 +125,8 @@ public class DebeziumToPubSubDataSender implements Runnable {
         Configuration.empty()
             .withSystemProperties(Function.identity())
             .edit()
-            .with(EmbeddedEngine.CONNECTOR_CLASS, RDBMS_TO_CONNECTOR_MAP.get(rdbms))
-            .with(EmbeddedEngine.ENGINE_NAME, APP_NAME)
+            .with("connector.class", RDBMS_TO_CONNECTOR_MAP.get(rdbms))
+            .with("name", APP_NAME)
             // Database connection information.
             .with("database.hostname", this.databaseAddress)
             .with("database.port", this.databasePort)
@@ -132,35 +135,33 @@ public class DebeziumToPubSubDataSender implements Runnable {
             .with("database.server.name", databaseName)
             .with("decimal.handling.mode", "string")
             .with(
-                HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-                MemoryDatabaseHistory.class.getName());
+                HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY.name(),
+                MemorySchemaHistory.class.getName());
 
     if (!whitelistedTables.isEmpty()) {
       LOG.info("Whitelisting tables: {}", dbzWhitelistedTables);
       configBuilder =
           configBuilder.with(
-              RelationalDatabaseConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables);
+              RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST.name(), dbzWhitelistedTables);
     }
 
     if (this.inMemoryOffsetStorage) {
       LOG.info("Setting up in memory offset storage.");
       configBuilder =
           configBuilder.with(
-              EmbeddedEngine.OFFSET_STORAGE,
+              "offset.storage",
               "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
     } else {
       LOG.info("Setting up in File-based offset storage in {}.", this.offsetStorageFile);
       configBuilder =
           configBuilder
+              .with("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+              .with("offset.storage.file.filename", this.offsetStorageFile)
+              .with(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, DEFAULT_FLUSH_INTERVAL_MS)
               .with(
-                  EmbeddedEngine.OFFSET_STORAGE,
-                  "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-              .with(EmbeddedEngine.OFFSET_STORAGE_FILE_FILENAME, this.offsetStorageFile)
-              .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, DEFAULT_FLUSH_INTERVAL_MS)
-              .with(
-                  HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-                  FileDatabaseHistory.class.getName())
-              .with("database.history.file.filename", this.databaseHistoryFile);
+                  HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY.name(),
+                  FileSchemaHistory.class.getName())
+              .with(FileSchemaHistory.FILE_PATH.name(), this.databaseHistoryFile);
     }
 
     Iterator<String> keys = debeziumConfig.getKeys();
@@ -182,10 +183,10 @@ public class DebeziumToPubSubDataSender implements Runnable {
             PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
     engine =
-        EmbeddedEngine.create()
-            .using(config)
+        DebeziumEngine.create(Connect.class)
+            .using(config.asProperties())
             .using(this.getClass().getClassLoader())
-            .using(Clock.SYSTEM)
+            .using(java.time.Clock.systemUTC())
             .notifying(changeConsumer)
             .build();
 
@@ -198,14 +199,22 @@ public class DebeziumToPubSubDataSender implements Runnable {
             new Thread(
                 () -> {
                   LOG.info("Requesting embedded engine to shut down");
-                  engine.stop();
+                  try {
+                    engine.close();
+                  } catch (IOException e) {
+                    LOG.error("Error closing the engine", e);
+                  }
                 }));
 
     awaitTermination(future);
   }
 
   public void stop() {
-    engine.stop();
+    try {
+      engine.close();
+    } catch (IOException e) {
+      LOG.error("Error closing the engine", e);
+    }
     executorService.shutdown();
   }
 
@@ -217,7 +226,11 @@ public class DebeziumToPubSubDataSender implements Runnable {
       try {
         future.get(30, TimeUnit.SECONDS);
         if (future.isDone() || future.isCancelled()) {
-          engine.stop();
+          try {
+            engine.close();
+          } catch (IOException e) {
+            LOG.error("Error closing the engine", e);
+          }
           executorService.shutdown();
           break;
         }

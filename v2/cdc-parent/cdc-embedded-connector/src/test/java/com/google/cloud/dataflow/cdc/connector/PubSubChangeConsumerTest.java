@@ -23,7 +23,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.pubsub.v1.PubsubMessage;
-import io.debezium.embedded.EmbeddedEngine.RecordCommitter;
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -87,9 +88,10 @@ public class PubSubChangeConsumerTest {
 
     // We are going to pass two records to be checked, but only one of them belongs to a table that
     // is whitelisted, therefore, only one will be published to pubsub.
-    List<SourceRecord> recordBatch =
-        ImmutableList.of(
-            new SourceRecord(
+    ChangeEvent<SourceRecord, SourceRecord> mockEvent1 = Mockito.mock(ChangeEvent.class);
+    ChangeEvent<SourceRecord, SourceRecord> mockEvent2 = Mockito.mock(ChangeEvent.class);
+    
+    SourceRecord record1 = new SourceRecord(
                 ImmutableMap.of("server", "mainstance"),
                 ImmutableMap.of(
                     "file",
@@ -106,8 +108,9 @@ public class PubSubChangeConsumerTest {
                 keySchema,
                 key,
                 valueSchema,
-                value),
-            new SourceRecord(
+                value);
+    
+    SourceRecord record2 = new SourceRecord(
                 ImmutableMap.of("server", "mainstance"),
                 ImmutableMap.of(
                     "file",
@@ -124,9 +127,14 @@ public class PubSubChangeConsumerTest {
                 keySchema,
                 key,
                 valueSchema,
-                value));
+                value);
 
-    RecordCommitter mockCommitter = Mockito.mock(RecordCommitter.class);
+    Mockito.when(mockEvent1.value()).thenReturn(record1);
+    Mockito.when(mockEvent2.value()).thenReturn(record2);
+
+    List<ChangeEvent<SourceRecord, SourceRecord>> recordBatch = ImmutableList.of(mockEvent1, mockEvent2);
+
+    RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> mockCommitter = Mockito.mock(RecordCommitter.class);
 
     changeConsumer.handleBatch(recordBatch, mockCommitter);
 
