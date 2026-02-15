@@ -83,6 +83,7 @@
 
         <!-- Needed for Beam CassandraIO -->
         <!-- https://mvnrepository.com/artifact/com.codahale.metrics/metrics-core -->
+        <!-- https://mvnrepository.com/artifact/info.archinnov/achilles-embedded -->
         <dependency>
             <groupId>com.codahale.metrics</groupId>
             <artifactId>metrics-core</artifactId>
@@ -189,8 +190,6 @@
             <version>2.64.0</version>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/info.archinnov/achilles-embedded -->
-
         <!-- https://mvnrepository.com/artifact/com.github.stefanbirkner/system-rules -->
         <dependency>
             <groupId>com.github.stefanbirkner</groupId>
