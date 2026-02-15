@@ -41,7 +41,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.LoggerFactory;
 
 /** Implements Debezium's Embedded Engine change consumer to push data to PubSub. */
-public class PubSubChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<SourceRecord, SourceRecord>> {
+public class PubSubChangeConsumer
+    implements DebeziumEngine.ChangeConsumer<ChangeEvent<SourceRecord, SourceRecord>> {
 
   private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(PubSubChangeConsumer.class);
 
@@ -101,7 +102,9 @@ public class PubSubChangeConsumer implements DebeziumEngine.ChangeConsumer<Chang
   }
 
   @Override
-  public void handleBatch(List<ChangeEvent<SourceRecord, SourceRecord>> records, RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> committer)
+  public void handleBatch(
+      List<ChangeEvent<SourceRecord, SourceRecord>> records,
+      RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> committer)
       throws InterruptedException {
 
     ImmutableList.Builder<ApiFuture<String>> futureListBuilder = ImmutableList.builder();

@@ -149,8 +149,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
       LOG.info("Setting up in memory offset storage.");
       configBuilder =
           configBuilder.with(
-              "offset.storage",
-              "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
+              "offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
     } else {
       LOG.info("Setting up in File-based offset storage in {}.", this.offsetStorageFile);
       configBuilder =
