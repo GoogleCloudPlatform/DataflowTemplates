@@ -72,9 +72,9 @@ public class CustomTransformationForCassandraAllDataTypesIT
         "This test custom transform is not intended for reverse replication.");
   }
 
-    @Override
-    public MigrationTransformationResponse transformFailedSpannerMutation(
-            MigrationTransformationRequest request) throws InvalidTransformationException {
-        return new MigrationTransformationResponse(null, false);
-    }
+  @Override
+  public MigrationTransformationResponse transformFailedSpannerMutation(
+      MigrationTransformationRequest request) throws InvalidTransformationException {
+    return new MigrationTransformationResponse(null, false);
+  }
 }
