@@ -90,51 +90,55 @@ public class PubSubChangeConsumerTest {
     // is whitelisted, therefore, only one will be published to pubsub.
     ChangeEvent<SourceRecord, SourceRecord> mockEvent1 = Mockito.mock(ChangeEvent.class);
     ChangeEvent<SourceRecord, SourceRecord> mockEvent2 = Mockito.mock(ChangeEvent.class);
-    
-    SourceRecord record1 = new SourceRecord(
-                ImmutableMap.of("server", "mainstance"),
-                ImmutableMap.of(
-                    "file",
-                    "mysql-bin.000023",
-                    "pos",
-                    110489,
-                    "gtids",
-                    "36797132-a366-11e9-ac33-42010a800456:1-6407169",
-                    "row",
-                    1,
-                    "snapshot",
-                    true),
-                topicName,
-                keySchema,
-                key,
-                valueSchema,
-                value);
-    
-    SourceRecord record2 = new SourceRecord(
-                ImmutableMap.of("server", "mainstance"),
-                ImmutableMap.of(
-                    "file",
-                    "mysql-bin.000023",
-                    "pos",
-                    110490,
-                    "gtids",
-                    "36797132-a366-11e9-ac33-42010a800456:1-6407169",
-                    "row",
-                    1,
-                    "snapshot",
-                    true),
-                "NOTWHITELISTEDTOPIC!", // A topic that was NOT whitelisted
-                keySchema,
-                key,
-                valueSchema,
-                value);
+
+    SourceRecord record1 =
+        new SourceRecord(
+            ImmutableMap.of("server", "mainstance"),
+            ImmutableMap.of(
+                "file",
+                "mysql-bin.000023",
+                "pos",
+                110489,
+                "gtids",
+                "36797132-a366-11e9-ac33-42010a800456:1-6407169",
+                "row",
+                1,
+                "snapshot",
+                true),
+            topicName,
+            keySchema,
+            key,
+            valueSchema,
+            value);
+
+    SourceRecord record2 =
+        new SourceRecord(
+            ImmutableMap.of("server", "mainstance"),
+            ImmutableMap.of(
+                "file",
+                "mysql-bin.000023",
+                "pos",
+                110490,
+                "gtids",
+                "36797132-a366-11e9-ac33-42010a800456:1-6407169",
+                "row",
+                1,
+                "snapshot",
+                true),
+            "NOTWHITELISTEDTOPIC!", // A topic that was NOT whitelisted
+            keySchema,
+            key,
+            valueSchema,
+            value);
 
     Mockito.when(mockEvent1.value()).thenReturn(record1);
     Mockito.when(mockEvent2.value()).thenReturn(record2);
 
-    List<ChangeEvent<SourceRecord, SourceRecord>> recordBatch = ImmutableList.of(mockEvent1, mockEvent2);
+    List<ChangeEvent<SourceRecord, SourceRecord>> recordBatch =
+        ImmutableList.of(mockEvent1, mockEvent2);
 
-    RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> mockCommitter = Mockito.mock(RecordCommitter.class);
+    RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> mockCommitter =
+        Mockito.mock(RecordCommitter.class);
 
     changeConsumer.handleBatch(recordBatch, mockCommitter);
 
