@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -132,7 +133,8 @@ public class DebeziumToPubSubDataSender implements Runnable {
             .with("database.port", this.databasePort)
             .with("database.user", this.userName)
             .with("database.password", this.userPassword)
-            .with("database.server.name", databaseName)
+            .with("topic.prefix", databaseName)
+            .with("database.server.id", ThreadLocalRandom.current().nextInt(10000, 1000000))
             .with("decimal.handling.mode", "string")
             .with(
                 HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY.name(),
