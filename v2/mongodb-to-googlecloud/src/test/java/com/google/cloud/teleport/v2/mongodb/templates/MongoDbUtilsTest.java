@@ -101,6 +101,41 @@ public class MongoDbUtilsTest {
   }
 
   @Test
+  public void testGetTableSchemaFlattenWithNestedDocument() {
+    Document nested = new Document("nestedKey", "nestedValue").append("count", 42);
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("metadata", nested);
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "FLATTEN");
+
+    assertNotNull(result);
+    // Nested document should be serialized as JSON string via EXTENDED_JSON_WRITER_SETTINGS
+    String metadataJson = (String) result.get("metadata");
+    assertNotNull("metadata should be serialized", metadataJson);
+    assertTrue("Should contain nestedKey", metadataJson.contains("nestedKey"));
+    assertTrue("Should contain nestedValue", metadataJson.contains("nestedValue"));
+  }
+
+  @Test
+  public void testGetTableSchemaFlattenWithDateField() {
+    Date testDate = new Date(1738598501924L); // 2025-02-03T15:41:41.924Z
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("createdAt", testDate);
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "FLATTEN");
+
+    assertNotNull(result);
+    String dateValue = (String) result.get("createdAt");
+    assertNotNull("createdAt should be set", dateValue);
+    // Should be ISO-8601 format like "2025-02-03T15:41:41.924Z"
+    assertTrue(
+        "Date should be in ISO-8601 format",
+        dateValue.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z"));
+  }
+
+  @Test
   public void testExtendedJsonWithMultipleDateTypes() {
     Document document = new Document();
     document.put("_id", "test-id");
