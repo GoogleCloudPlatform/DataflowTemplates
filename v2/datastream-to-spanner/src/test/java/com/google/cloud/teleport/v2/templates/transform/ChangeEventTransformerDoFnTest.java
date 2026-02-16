@@ -616,4 +616,146 @@ public class ChangeEventTransformerDoFnTest {
     assertEquals(
         "Invalid byte array value for column: invalidKey", argument.getValue().getErrorMessage());
   }
+
+  @Test
+  public void testProcessElementWithSpannerMutationAndColumnRename() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    // Create failsafe element input for the DoFn
+    // Simulating a failed Spanner mutation where column "first_name" (Source) was renamed to
+    // "full_name" (Spanner)
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("full_name", "Johnny Rose"); // Spanner column name
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put("_metadata_spanner_mutation", true);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    Map<String, Object> sourceRecord =
+        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+    MigrationTransformationRequest expectedRequest =
+        new MigrationTransformationRequest("Users", sourceRecord, "", "INSERT");
+    Map<String, Object> spannerRecord = new HashMap<>(sourceRecord);
+    // The transformer returns the record as is (i.e. custom transformation is a no-op)
+    MigrationTransformationResponse migrationTransformationResponse =
+        new MigrationTransformationResponse(spannerRecord, false);
+
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    // Explicitly return false for schema.isEmpty() to prove that we would have entered the schema
+    // check block if not bypassed
+    when(schema.isEmpty()).thenReturn(false);
+    // Throw if verifyTableInSession IS called - proving bypass
+    doThrow(new RuntimeException("Schema check should be bypassed for spanner mutations"))
+        .when(schema)
+        .verifyTableInSession(any());
+    when(spannerMigrationTransformer.transformFailedSpannerMutation(refEq(expectedRequest)))
+        .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), argument.capture());
+
+    // Verify standard transformations bypassed (which would have failed or looked for "first_name"
+    // if session was checking)
+    verify(schema, times(0)).verifyTableInSession(any());
+
+    assertEquals(
+        "{\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"full_name\":\"Johnny Rose\",\"_metadata_change_type\":\"INSERT\",\"_metadata_spanner_mutation\":true}",
+        argument.getValue().getPayload());
+  }
+
+  @Test
+  public void testProcessElementWithSpannerMutationAndCustomTransformation() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    ISpannerMigrationTransformer spannerMigrationTransformer =
+        mock(ISpannerMigrationTransformer.class);
+    PCollectionView<Ddl> ddl = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put("_metadata_spanner_mutation", true);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    Map<String, Object> sourceRecord =
+        ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
+    MigrationTransformationRequest expectedRequest =
+        new MigrationTransformationRequest("Users", sourceRecord, "", "INSERT");
+    Map<String, Object> spannerRecord = new HashMap<>(sourceRecord);
+    spannerRecord.put("first_name", "Johnny Rose");
+    MigrationTransformationResponse migrationTransformationResponse =
+        new MigrationTransformationResponse(spannerRecord, false);
+
+    // Explicitly return false for schema.isEmpty() to prove that we would have entered the schema
+    // check block if not bypassed
+    when(schema.isEmpty()).thenReturn(false);
+    // Throw if verifyTableInSession IS called - proving bypass
+    doThrow(new RuntimeException("Schema check should be bypassed for spanner mutations"))
+        .when(schema)
+        .verifyTableInSession(any());
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(spannerMigrationTransformer.transformFailedSpannerMutation(refEq(expectedRequest)))
+        .thenReturn(migrationTransformationResponse);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.getShardId(changeEvent)).thenReturn("");
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, null, null, "mysql", customTransformation, false, ddl, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setDatastreamToSpannerTransformer(spannerMigrationTransformer);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), argument.capture());
+
+    // Verify standard transformations bypassed
+    verify(schema, times(0)).verifyTableInSession(any());
+    verify(changeEventSessionConvertor, times(0)).transformChangeEventViaSessionFile(any());
+
+    assertEquals(
+        "{\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"first_name\":\"Johnny Rose\",\"_metadata_change_type\":\"INSERT\",\"_metadata_spanner_mutation\":true}",
+        argument.getValue().getPayload());
+  }
 }

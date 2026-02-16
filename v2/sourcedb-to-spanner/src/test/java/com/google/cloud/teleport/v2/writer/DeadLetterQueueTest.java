@@ -494,6 +494,15 @@ public class DeadLetterQueueTest {
     assertTrue(payload.contains("\"bytes_array_col\":[\"7465737431\",\"7465737432\"]"));
   }
 
+  @Test
+  public void testMutationToDlqElementWithMutationFlag() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, null, SQLDialect.MYSQL, null);
+    Mutation mutation = Mutation.newInsertBuilder("srcTable").set("firstName").to("abc").build();
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+    assertNotNull(dlqElement);
+    assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_spanner_mutation\":true"));
+  }
+
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
     return new IdentityMapper(spannerDdl);
   }
