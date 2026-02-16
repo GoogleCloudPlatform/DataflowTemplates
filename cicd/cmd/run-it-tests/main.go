@@ -75,7 +75,9 @@ func main() {
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
 		flags.UnifiedWorkerHarnessContainerImage(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		mvnFlags.SpecificTest(flags.TestToRun()),
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
