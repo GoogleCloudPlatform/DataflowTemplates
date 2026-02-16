@@ -56,7 +56,7 @@
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
     <autovalue.service.version>1.0.2</autovalue.service.version>
-    <avro.version>1.11.4</avro.version>
+    <avro.version>1.11.5</avro.version>
     <caffeine.version>3.2.2</caffeine.version>
     <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     <checkstyle.version>12.3.0</checkstyle.version>
