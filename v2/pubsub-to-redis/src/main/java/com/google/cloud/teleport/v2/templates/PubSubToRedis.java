@@ -390,12 +390,11 @@ public class PubSubToRedis {
    *
    * <p>If no UDF is configured, returns the input messages unchanged.
    *
-   * <p>This follows the same pattern as {@code PubsubProtoToBigQuery.runUdf}.
-   *
    * @param messages the input PubSub messages
    * @param options the pipeline options
    * @return the (possibly transformed) PubSub messages
    */
+  // This follows the same pattern as PubsubProtoToBigQuery.runUdf
   static PCollection<PubsubMessage> applyUdf(
       PCollection<PubsubMessage> messages, PubSubToRedisOptions options) {
 

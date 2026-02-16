@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.io;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Preconditions;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
@@ -34,36 +36,33 @@ import redis.clients.jedis.Transaction;
 public abstract class RedisHashIO {
 
   public static WriteHash write() {
-    return new WriteHash(RedisConnectionConfiguration.create(), null);
+
+    return (new AutoValue_RedisHashIO_WriteHash.Builder())
+        .setConnectionConfiguration(RedisConnectionConfiguration.create())
+        .build();
   }
 
-  public static class WriteHash
+  @AutoValue
+  public abstract static class WriteHash
       extends PTransform<@NonNull PCollection<KV<String, KV<String, String>>>, @NonNull PDone> {
+    public WriteHash() {}
 
-    private final RedisConnectionConfiguration connectionConfiguration;
-    private final Long expireTime;
+    @Nullable
+    abstract RedisConnectionConfiguration connectionConfiguration();
 
-    private WriteHash(RedisConnectionConfiguration connectionConfiguration, Long expireTime) {
-      this.connectionConfiguration = connectionConfiguration;
-      this.expireTime = expireTime;
-    }
+    @Nullable
+    abstract Long expireTime();
 
-    public RedisConnectionConfiguration connectionConfiguration() {
-      return connectionConfiguration;
-    }
-
-    public Long expireTime() {
-      return expireTime;
-    }
+    abstract RedisHashIO.WriteHash.Builder builder();
 
     public RedisHashIO.WriteHash withConnectionConfiguration(
         RedisConnectionConfiguration connectionConfiguration) {
       Preconditions.checkArgument(connectionConfiguration != null, "connection cannot be null");
-      return new WriteHash(connectionConfiguration, this.expireTime);
+      return this.builder().setConnectionConfiguration(connectionConfiguration).build();
     }
 
     public RedisHashIO.WriteHash withTtl(Long expireTimeMillis) {
-      return new WriteHash(this.connectionConfiguration, expireTimeMillis);
+      return this.builder().setExpireTime(expireTimeMillis).build();
     }
 
     @NonNull
@@ -148,6 +147,18 @@ public abstract class RedisHashIO {
       public void teardown() {
         this.jedis.close();
       }
+    }
+
+    @AutoValue.Builder
+    abstract static class Builder {
+      Builder() {}
+
+      abstract WriteHash.Builder setExpireTime(Long expireTimeMillis);
+
+      abstract WriteHash.Builder setConnectionConfiguration(
+          RedisConnectionConfiguration connectionConfiguration);
+
+      abstract WriteHash build();
     }
   }
 }
