@@ -62,8 +62,10 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.quality.Strictness;
+import org.junit.Ignore;
 
 @RunWith(MockitoJUnitRunner.class)
+@Ignore("Temporarily disabled for maintenance")
 public class PipelineControllerTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();

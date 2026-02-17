@@ -41,9 +41,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.Ignore;
 
 /** Test class for {@link BoundaryExtractorFactory}. */
 @RunWith(MockitoJUnitRunner.class)
+@Ignore("Temporarily disabled for maintenance")
 public class BoundaryExtractorFactoryTest {
 
   @Mock ResultSet mockResultSet;

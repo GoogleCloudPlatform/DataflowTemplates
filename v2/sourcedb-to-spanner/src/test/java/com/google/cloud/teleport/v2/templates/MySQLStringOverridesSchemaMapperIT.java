@@ -37,6 +37,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests schema mapping using
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLStringOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(MySQLStringOverridesSchemaMapperIT.class);

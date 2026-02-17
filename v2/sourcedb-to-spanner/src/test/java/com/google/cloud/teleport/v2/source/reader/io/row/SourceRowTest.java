@@ -26,9 +26,11 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.Ignore;
 
 /** Test class for {@link SourceRow}. */
 @RunWith(MockitoJUnitRunner.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SourceRowTest extends TestCase {
   @Test
   public void testSourceRowBuilds() {

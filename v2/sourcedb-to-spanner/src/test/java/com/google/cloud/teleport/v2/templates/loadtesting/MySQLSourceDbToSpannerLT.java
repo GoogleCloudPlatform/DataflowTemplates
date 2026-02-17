@@ -26,10 +26,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";

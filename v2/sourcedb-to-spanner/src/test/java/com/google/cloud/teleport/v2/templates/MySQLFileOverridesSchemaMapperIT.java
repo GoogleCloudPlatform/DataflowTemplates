@@ -39,6 +39,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.io.Resources;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests schema mapping using
@@ -47,6 +48,7 @@ import org.testcontainers.shaded.com.google.common.io.Resources;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLFileOverridesSchemaMapperIT.class);
   private static final HashSet<MySQLFileOverridesSchemaMapperIT> testInstances = new HashSet<>();

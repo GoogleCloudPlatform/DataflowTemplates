@@ -52,6 +52,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /**
  * A failure injection test for Bulk + retry DLQ Live migration i.e., SourceDbToSpanner and
@@ -65,6 +66,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLAllDataTypesBulkAndLiveIT.class);

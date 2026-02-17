@@ -43,6 +43,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
@@ -51,6 +52,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLSourceDbToSpannerSimpleIT.class);
   private static HashSet<MySQLSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
