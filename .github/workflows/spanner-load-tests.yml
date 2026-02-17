@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       specific_test:
-        description: 'Specific Integration Test (passed to -Dtest=)'
+        description: 'Specific Load Test (passed to -Dtest=)'
         required: false
         type: string
 

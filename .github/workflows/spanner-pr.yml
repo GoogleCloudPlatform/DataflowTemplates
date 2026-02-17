@@ -106,6 +106,8 @@ jobs:
   java_unit_tests:
     name: Unit Tests
     needs: [java_build]
+    # Skip if event is workflow_dispatch and inputs.specific_test is set.
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.specific_test == ''
     timeout-minutes: 60
     runs-on: [self-hosted, spanner-it]
     steps:
@@ -138,7 +140,9 @@ jobs:
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
+    # Skip if event is workflow_dispatch and inputs.specific_test is set.
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.specific_test == ''
     timeout-minutes: 60
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, spanner-it]
@@ -172,6 +176,12 @@ jobs:
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
+    # Continue if previous workflows is skipped.
+    if: |
+      always() && 
+      (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped')) &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, spanner-it]
