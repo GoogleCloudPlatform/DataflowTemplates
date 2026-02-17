@@ -58,7 +58,6 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 @Ignore("Triaging flaky test") // TODO(b/424087344)
-@Ignore("Temporarily disabled for maintenance")
 public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStreamToSpannerITBase {
 
   private static final Integer NUM_EVENTS = 1;

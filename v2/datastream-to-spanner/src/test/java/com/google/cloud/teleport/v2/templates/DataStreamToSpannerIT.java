@@ -74,7 +74,6 @@ import org.junit.runners.Parameterized;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
 @Ignore("Triaging flaky test") // TODO(b/424086159)
-@Ignore("Temporarily disabled for maintenance")
 public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
   enum JDBCType {

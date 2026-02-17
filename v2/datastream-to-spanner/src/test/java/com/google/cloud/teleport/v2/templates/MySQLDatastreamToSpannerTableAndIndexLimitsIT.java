@@ -55,7 +55,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Temporarily disabled for maintenance")
 public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToSpannerITBase {
 
   private static final Logger LOG =
