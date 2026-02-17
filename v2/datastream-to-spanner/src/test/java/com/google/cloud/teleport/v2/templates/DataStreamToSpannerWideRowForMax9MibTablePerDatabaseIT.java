@@ -62,7 +62,6 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 @Ignore("Triaging flaky test") // TODO(b/424087272)
-@Ignore("Temporarily disabled for maintenance")
 public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
     extends DataStreamToSpannerITBase {
   private static final int STRING_LENGTH = 200;
