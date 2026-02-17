@@ -21,6 +21,11 @@ on:
   # at 02:00 weekly on every Tuesday.
   - cron: '0 2 * * 2'
   workflow_dispatch:
+    inputs:
+      specific_test:
+        description: 'Specific Load Test (passed to -Dtest=)'
+        required: false
+        type: string
 
 permissions: write-all
 
@@ -102,7 +107,8 @@ jobs:
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
-        --lt-export-table="template_performance_metrics"
+        --lt-export-table="template_performance_metrics" \
+        --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Test Observer Report
       uses: actions/upload-artifact@v6
       if: always() # always run even if the previous step fails
