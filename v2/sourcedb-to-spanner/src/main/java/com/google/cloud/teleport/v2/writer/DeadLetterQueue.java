@@ -197,8 +197,10 @@ public class DeadLetterQueue implements Serializable {
       /*
        * We take special care that if GenericRecordTypeConvertor throws an exception,
        * we would still preserve the original record in DLQ.
-       * Also note that here we are calling a static utility from GenericRecordTypeConvertor
-       * Which just marshals types like logical, record etc. It does not pass the data via custom transform.
+       * Also note that here we are calling a static utility from
+       * GenericRecordTypeConvertor
+       * Which just marshals types like logical, record etc. It does not pass the data
+       * via custom transform.
        */
       try {
         value =
@@ -214,7 +216,8 @@ public class DeadLetterQueue implements Serializable {
       putValueToJson(json, f.name(), value);
     }
     if (r.row().shardId() != null) {
-      // Added default to not fail in the DLQ flow if the src table is not found in map
+      // Added default to not fail in the DLQ flow if the src table is not found in
+      // map
       json.put(
           srcTableToShardIdColumnMap.getOrDefault(r.row().tableName(), "migration_shard_id"),
           r.row().shardId());
@@ -232,7 +235,8 @@ public class DeadLetterQueue implements Serializable {
   public void failedMutationsToDLQ(
       PCollection<@UnknownKeyFor @NonNull @Initialized MutationGroup> failedMutations) {
     // TODO - add the exception message
-    // TODO - Explore windowing with CoGroupByKey to extract source row based on mutation
+    // TODO - Explore windowing with CoGroupByKey to extract source row based on
+    // mutation
     LOG.warn("added mutation output to pipeline");
     failedMutations
         .apply(
@@ -262,6 +266,7 @@ public class DeadLetterQueue implements Serializable {
   @VisibleForTesting
   protected FailsafeElement<String, String> mutationToDlqElement(Mutation m) {
     JSONObject json = new JSONObject();
+    json.put("_metadata_spanner_mutation", true);
 
     Instant instant = Instant.now();
     initializeJsonNode(
