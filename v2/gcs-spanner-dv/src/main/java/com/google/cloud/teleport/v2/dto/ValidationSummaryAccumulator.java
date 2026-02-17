@@ -19,7 +19,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Accumulator for the custom CombineFn */
+/** Accumulator for the custom CombineFn. */
 public class ValidationSummaryAccumulator implements Serializable {
   public long totalTables = 0;
   public long totalMatched = 0;
