@@ -756,15 +756,15 @@ google-cloud-aiplatform==1.137.0 \
     --hash=sha256:76e66e2c3879936e51039d8bbd82581451510b4c7a840a588daaecee893d7d1e \
     --hash=sha256:e99dd235c237cbbeb0e73b0fc4b1ca9588b4144ac243a6242b2005b339b40ce8
     # via apache-beam
-google-cloud-bigquery==3.40.0 \
-    --hash=sha256:0469bcf9e3dad3cab65b67cce98180c8c0aacf3253d47f0f8e976f299b49b5ab \
-    --hash=sha256:b3ccb11caf0029f15b29569518f667553fe08f6f1459b959020c83fbbd8f2e68
+google-cloud-bigquery==3.40.1 \
+    --hash=sha256:75afcfb6e007238fe1deefb2182105249321145ff921784fe7b1de2b4ba24506 \
+    --hash=sha256:9082a6b8193aba87bed6a2c79cf1152b524c99bb7e7ac33a785e333c09eac868
     # via
     #   apache-beam
     #   google-cloud-aiplatform
-google-cloud-bigquery-storage==2.36.0 \
-    --hash=sha256:1769e568070db672302771d2aec18341de10712aa9c4a8c549f417503e0149f0 \
-    --hash=sha256:d3c1ce9d2d3a4d7116259889dcbe3c7c70506f71f6ce6bbe54aa0a68bbba8f8f
+google-cloud-bigquery-storage==2.36.1 \
+    --hash=sha256:99ad6b8810d028f0cf368ea0cc54b3cda20e856f05eb4cda51f1db2a70692286 \
+    --hash=sha256:fd3917584a41f7a9d9c633b31ff43103869b108224e8a4b765537eb1ea83148c
     # via apache-beam
 google-cloud-bigtable==2.35.0 \
     --hash=sha256:f355bfce1f239453ec2bb3839b0f4f9937cf34ef06ef29e1ca63d58fd38d0c50 \
@@ -822,9 +822,9 @@ google-cloud-secret-manager==2.26.0 \
     --hash=sha256:0d1d6f76327685a0ed78a4cf50f289e1bfbbe56026ed0affa98663b86d6d50d6 \
     --hash=sha256:940a5447a6ec9951446fd1a0f22c81a4303fde164cd747aae152c5f5c8e6723e
     # via apache-beam
-google-cloud-spanner==3.62.0 \
-    --hash=sha256:a25bdbfda84bc7a819f04e45473187d8670711fd5ec827cf442e3664661d1d23 \
-    --hash=sha256:b59d7b731463ce998439c1998730760e36f3d699510608d896f2ca8bc57613a9
+google-cloud-spanner==3.63.0 \
+    --hash=sha256:6ffae0ed589bbbd2d8831495e266198f3d069005cfe65c664448c9a727c88e7b \
+    --hash=sha256:e2a4fb3bdbad4688645f455d498705d3f935b7c9011f5c94c137b77569b47a62
     # via apache-beam
 google-cloud-storage==2.19.0 \
     --hash=sha256:aeb971b5c29cf8ab98445082cbfe7b161a1f48ed275822f59ed3f1524ea54fba \
@@ -878,9 +878,9 @@ google-crc32c==1.8.0 \
     #   google-cloud-bigtable
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==1.62.0 \
-    --hash=sha256:4c3daeff3d05fafee4b9a1a31f9c07f01bc22051081aa58b4d61f58d16d1bcc0 \
-    --hash=sha256:709468a14c739a080bc240a4f3191df597bf64485b1ca3728e0fb67517774c18
+google-genai==1.63.0 \
+    --hash=sha256:6206c13fc20f332703ca7375bea7c191c82f95d6781c29936c6982d86599b359 \
+    --hash=sha256:dc76cab810932df33cbec6c7ef3ce1538db5bef27aaf78df62ac38666c476294
     # via google-cloud-aiplatform
 google-resumable-media==2.8.0 \
     --hash=sha256:dd14a116af303845a8d932ddae161a26e86cc229645bc98b39f026f9b1717582 \
@@ -2615,3 +2615,4 @@ setuptools==82.0.0 \
     --hash=sha256:22e0a2d69474c6ae4feb01951cb69d515ed23728cf96d05513d36e42b62b37cb \
     --hash=sha256:70b18734b607bd1da571d097d236cfcfacaf01de45717d59e6e04b96877532e0
     # via -r python/default_base_python_requirements.txt
+
