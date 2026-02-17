@@ -39,12 +39,12 @@ import org.apache.beam.sdk.io.cassandra.CassandraIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link CassandraIoWrapper}. */
 @RunWith(MockitoJUnitRunner.class)

@@ -19,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link Range}. */
 @RunWith(MockitoJUnitRunner.class)

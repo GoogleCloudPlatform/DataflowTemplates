@@ -22,10 +22,10 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import java.io.Serializable;
 import java.math.BigDecimal;
 import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link Boundary}. */
 @RunWith(MockitoJUnitRunner.class)

@@ -19,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.common.collect.ImmutableList;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link TableConfig}. */
 @RunWith(MockitoJUnitRunner.class)

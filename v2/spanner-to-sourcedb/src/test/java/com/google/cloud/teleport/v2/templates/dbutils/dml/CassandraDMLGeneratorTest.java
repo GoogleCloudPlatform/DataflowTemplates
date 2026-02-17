@@ -37,10 +37,10 @@ import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 @RunWith(MockitoJUnitRunner.class)
 @Ignore("Temporarily disabled for maintenance")

@@ -69,13 +69,13 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.util.concurren
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.junit.Ignore;
 
 /** Tests of {@link CassandraIO}. */
 @RunWith(JUnit4.class)

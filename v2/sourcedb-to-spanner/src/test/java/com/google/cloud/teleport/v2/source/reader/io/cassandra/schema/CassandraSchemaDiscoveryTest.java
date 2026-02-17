@@ -47,12 +47,12 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link CassandraSchemaDiscovery}. */
 @RunWith(MockitoJUnitRunner.class)

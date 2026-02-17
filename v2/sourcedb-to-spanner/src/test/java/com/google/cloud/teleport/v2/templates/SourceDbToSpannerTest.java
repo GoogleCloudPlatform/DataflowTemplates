@@ -30,11 +30,11 @@ import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.joda.time.Duration;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.junit.Ignore;
 
 @Ignore("Temporarily disabled for maintenance")
 public class SourceDbToSpannerTest {

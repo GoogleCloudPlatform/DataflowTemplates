@@ -25,10 +25,10 @@ import static org.mockito.Mockito.when;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.junit.Ignore;
 
 @Ignore("Temporarily disabled for maintenance")
 public class SpannerWriterTest {

@@ -25,11 +25,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
-import org.junit.Ignore;
 
 /** Test class for {@link DbConfigContainerDefaultImpl}. */
 @RunWith(MockitoJUnitRunner.class)

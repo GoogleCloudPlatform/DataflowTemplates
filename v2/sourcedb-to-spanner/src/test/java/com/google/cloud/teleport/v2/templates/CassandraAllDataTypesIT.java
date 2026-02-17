@@ -54,6 +54,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -61,7 +62,6 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
-import org.junit.Ignore;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types for

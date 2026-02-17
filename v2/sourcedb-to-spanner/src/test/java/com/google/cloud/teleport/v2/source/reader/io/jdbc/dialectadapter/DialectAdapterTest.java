@@ -23,11 +23,11 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.common.collect.ImmutableList;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 @RunWith(MockitoJUnitRunner.class)
 @Ignore("Temporarily disabled for maintenance")

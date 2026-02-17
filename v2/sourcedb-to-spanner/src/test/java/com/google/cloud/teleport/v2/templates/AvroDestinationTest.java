@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.templates;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.Ignore;
 
 /** Unit tests for {@link AvroDestination}. */
 @RunWith(JUnit4.class)

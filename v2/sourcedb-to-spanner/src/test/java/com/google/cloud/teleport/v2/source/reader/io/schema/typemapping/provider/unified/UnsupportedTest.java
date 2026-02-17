@@ -19,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link Unsupported}. */
 @RunWith(MockitoJUnitRunner.class)

@@ -19,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 
 import junit.framework.TestCase;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link JdbcSchemaReference}. */
 @RunWith(MockitoJUnitRunner.class)

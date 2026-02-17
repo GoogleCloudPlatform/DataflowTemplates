@@ -53,6 +53,7 @@ import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -62,7 +63,6 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.quality.Strictness;
-import org.junit.Ignore;
 
 @RunWith(MockitoJUnitRunner.class)
 @Ignore("Temporarily disabled for maintenance")
