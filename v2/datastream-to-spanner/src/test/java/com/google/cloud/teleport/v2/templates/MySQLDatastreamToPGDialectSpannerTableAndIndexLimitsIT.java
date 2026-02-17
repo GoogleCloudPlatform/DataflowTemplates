@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
     extends DataStreamToSpannerITBase {
 

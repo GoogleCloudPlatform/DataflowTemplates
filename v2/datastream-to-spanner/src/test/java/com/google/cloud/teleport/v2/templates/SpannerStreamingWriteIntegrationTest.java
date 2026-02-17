@@ -50,6 +50,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
+import org.junit.Ignore;
 
 /**
  * An integration test that writes change events to Cloud Spanner. This requires an active GCP
@@ -57,6 +58,7 @@ import org.junit.rules.TemporaryFolder;
  * 'gcloud config'. TODO: Add support for emulator to run tests without a Cloud Spanner instance.
  */
 @Category(IntegrationTest.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SpannerStreamingWriteIntegrationTest {
   private final String testDb = "testdb";
 

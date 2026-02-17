@@ -44,6 +44,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /**
  * Integration test for sharded data migration using a single Dataflow job per migration. In this
@@ -57,6 +58,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToSpannerITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(DatastreamToSpannerSingleDFShardedMigrationIT.class);

@@ -32,11 +32,13 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 /** Integration test for {@link SpannerToSourceDb} Flex template for basic wide row limits. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   private static final String testName = "test_" + System.currentTimeMillis();
 

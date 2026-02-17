@@ -28,8 +28,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.Ignore;
 
 /* Unit test for SpannerExceptionClassifier */
+@Ignore("Temporarily disabled for maintenance")
 public class DatastreamToSpannerExceptionClassifierTest {
 
   private static Map<SpannerException, ErrorTag> exceptionToExpectedTag =

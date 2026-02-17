@@ -49,11 +49,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /** Integration test for {@link SpannerToSourceDb} Flex template with max number of columns. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =

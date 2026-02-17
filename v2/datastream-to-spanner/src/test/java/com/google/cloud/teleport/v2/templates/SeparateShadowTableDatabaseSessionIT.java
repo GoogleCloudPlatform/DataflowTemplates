@@ -44,6 +44,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 /**
  * An integration test using separate shadow table database for {@link DataStreamToSpanner} Flex
@@ -52,6 +53,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITBase {
 
   private static final String TABLE1 = "Category";

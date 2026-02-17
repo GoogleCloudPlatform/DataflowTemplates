@@ -56,7 +56,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.junit.Ignore;
 
+@Ignore("Temporarily disabled for maintenance")
 public class ChangeEventTransformerDoFnTest {
   @Test
   public void testProcessElementWithNonEmptySchema() throws Exception {

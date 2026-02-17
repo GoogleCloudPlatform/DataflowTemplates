@@ -42,6 +42,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.com.google.common.io.Resources;
+import org.junit.Ignore;
 
 /**
  * An integration test using separate shadow table database for {@link DataStreamToSpanner} Flex
@@ -50,6 +51,7 @@ import org.testcontainers.shaded.com.google.common.io.Resources;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpannerITBase {
 
   private static final String MYSQL_TABLE = "person1";

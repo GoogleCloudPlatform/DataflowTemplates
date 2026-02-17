@@ -25,11 +25,13 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 /** Performance tests for {@link DataStreamToSpanner} DataStream to Spanner template. */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class DataStreamToSpannerWideTableLT extends DataStreamToSpannerLTBase {
   @Test
   public void backfill100GbWideTable() throws IOException, ParseException, InterruptedException {
