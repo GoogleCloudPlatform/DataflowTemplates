@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.common.collect.ImmutableList;
 import junit.framework.TestCase;
 import org.apache.avro.SchemaBuilder;
 import org.junit.Assert;
@@ -48,6 +49,22 @@ public class SourceTableSchemaTest extends TestCase {
             sourceTableSchema.getAvroPayload().getField(SchemaTestUtils.TEST_FIELD_NAME_2).schema())
         .isEqualTo(SchemaBuilder.unionOf().nullType().and().stringType().endUnion());
     assertThat(sourceTableSchema.tableName()).isEqualTo(testTableName);
+    assertThat(sourceTableSchema.primaryKeyColumns()).isEmpty();
+  }
+
+  @Test
+  public void testTableSchemaWithPrimaryKey() {
+    final String testTableName = "testTableName";
+    var sourceTableSchema =
+        SchemaTestUtils.generateTestTableSchemaBuilder(testTableName)
+            .setPrimaryKeyColumns(
+                ImmutableList.of(
+                    SchemaTestUtils.TEST_FIELD_NAME_1, SchemaTestUtils.TEST_FIELD_NAME_2))
+            .build();
+    assertThat(sourceTableSchema.tableName()).isEqualTo(testTableName);
+    assertThat(sourceTableSchema.primaryKeyColumns())
+        .containsExactly(SchemaTestUtils.TEST_FIELD_NAME_1, SchemaTestUtils.TEST_FIELD_NAME_2)
+        .inOrder();
   }
 
   @Test

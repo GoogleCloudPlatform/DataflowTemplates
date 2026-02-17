@@ -125,6 +125,7 @@ public class JdbcIoWrapperTest {
     assertThat(tableSchema.tableName()).isEqualTo("testTable");
     assertThat(tableSchema.sourceColumnNameToSourceColumnType())
         .isEqualTo(ImmutableMap.of(testCol, testColType));
+    assertThat(tableSchema.primaryKeyColumns()).isEqualTo(ImmutableList.of(testCol));
     ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
         jdbcIoWrapper.getTableReaders();
     assertThat(tableReaders.size()).isEqualTo(1);
@@ -177,6 +178,7 @@ public class JdbcIoWrapperTest {
     assertThat(tableSchema.tableName()).isEqualTo("testTable");
     assertThat(tableSchema.sourceColumnNameToSourceColumnType())
         .isEqualTo(ImmutableMap.of(testCol, testColType));
+    assertThat(tableSchema.primaryKeyColumns()).isEqualTo(ImmutableList.of(testCol));
     ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
         jdbcIoWrapper.getTableReaders();
     assertThat(tableReaders.size()).isEqualTo(1);
