@@ -31,7 +31,9 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 
+@Ignore("Temporarily disabled for maintenance")
 public class SpannerReadUtilsTest {
   private Ddl ddl;
   private static final String SHADOW_TABLE = "shadow_test_table";

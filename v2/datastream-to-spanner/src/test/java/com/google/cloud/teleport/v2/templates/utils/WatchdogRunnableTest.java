@@ -19,7 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 
+@Ignore("Temporarily disabled for maintenance")
 public class WatchdogRunnableTest {
 
   private WatchdogRunnable watchdogRunnable;

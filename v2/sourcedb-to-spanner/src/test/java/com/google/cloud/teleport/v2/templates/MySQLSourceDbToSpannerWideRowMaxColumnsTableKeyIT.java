@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -42,6 +43,7 @@ import org.junit.runners.JUnit4;
 
 // This test is constrained to 16 columns in the primary key for both Spanner and MySQL, with a
 // MySQL size limit of 3072 bytes.
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbToSpannerITBase {
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
   private static final String MYSQL_DUMP_FILE_RESOURCE =

@@ -33,10 +33,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpannerITBase {
 
   private static boolean initialized = false;

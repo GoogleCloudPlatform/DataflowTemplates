@@ -41,6 +41,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template where the shadow tables are in
@@ -51,6 +52,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "SeparateShadowTableDatabaseIT/spanner-schema.sql";

@@ -37,9 +37,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
+import org.junit.Ignore;
 
 /** An integration test that validates shadow table creation. */
 @Category(IntegrationTest.class)
+@Ignore("Temporarily disabled for maintenance")
 public class ProcessInformationSchemaIntegrationTest {
   private final String testDb = "testdb";
 

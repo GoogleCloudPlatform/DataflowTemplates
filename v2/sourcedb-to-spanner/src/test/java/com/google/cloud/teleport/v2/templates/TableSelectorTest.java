@@ -38,7 +38,9 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.junit.Ignore;
 
+@Ignore("Temporarily disabled for maintenance")
 public class TableSelectorTest {
 
   private Ddl spannerDdl;

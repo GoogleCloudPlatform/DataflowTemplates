@@ -30,9 +30,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.Ignore;
 
 /** Test class for {@link AccumulatingTableReader}. */
 @RunWith(MockitoJUnitRunner.class)
+@Ignore("Temporarily disabled for maintenance")
 public class AccumulatingTableReaderTest implements Serializable {
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
 

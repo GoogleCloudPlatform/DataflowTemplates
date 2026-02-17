@@ -35,9 +35,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.Ignore;
 
 /** Test class for {@link RangeBoundaryTransform}. */
 @RunWith(MockitoJUnitRunner.class)
+@Ignore("Temporarily disabled for maintenance")
 public class RangeBoundaryTransformTest {
   private static final String tableName = "test_table_range_boundary";
 

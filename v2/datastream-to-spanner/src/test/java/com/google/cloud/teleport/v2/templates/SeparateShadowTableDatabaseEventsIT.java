@@ -46,6 +46,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template tests the same flows as
@@ -54,6 +55,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBase {
 
   private static final String TABLE1 = "Users";

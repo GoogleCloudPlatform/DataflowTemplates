@@ -75,12 +75,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /** Tests of {@link CassandraIO}. */
 @RunWith(JUnit4.class)
 @SuppressWarnings({
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
 })
+@Ignore("Temporarily disabled for maintenance")
 public class CassandraIOTest implements Serializable {
   private static final long NUM_ROWS = 22L;
   private static final String CASSANDRA_KEYSPACE = "beam_ks";

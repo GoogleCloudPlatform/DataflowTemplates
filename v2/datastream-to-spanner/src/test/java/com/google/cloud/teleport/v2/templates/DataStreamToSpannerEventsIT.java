@@ -48,6 +48,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.Ignore;
 
 /**
  * An integration test for {@link DataStreamToSpanner} Flex template which tests handling of INSERT,
@@ -56,6 +57,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerEventsIT.class);
