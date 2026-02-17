@@ -18,11 +18,11 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.datastax.driver.core.SSLOptions;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link SSLOptionsProvider}. */
 @RunWith(MockitoJUnitRunner.class)

@@ -40,8 +40,8 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 
 /** Unit tests for ProcessInformationSchema class. */
 @Ignore("Temporarily disabled for maintenance")

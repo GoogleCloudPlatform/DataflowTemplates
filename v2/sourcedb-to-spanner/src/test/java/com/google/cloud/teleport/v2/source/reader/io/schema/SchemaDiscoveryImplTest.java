@@ -35,11 +35,11 @@ import java.sql.SQLTransientConnectionException;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.joda.time.Duration;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link SchemaDiscoveryImpl}. */
 @RunWith(MockitoJUnitRunner.class)

@@ -19,8 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 
 @Ignore("Temporarily disabled for maintenance")
 public class PostgreSQLMappingProviderTest {

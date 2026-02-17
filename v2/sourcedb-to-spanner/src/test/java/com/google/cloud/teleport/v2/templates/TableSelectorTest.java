@@ -36,9 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.junit.Ignore;
 
 @Ignore("Temporarily disabled for maintenance")
 public class TableSelectorTest {

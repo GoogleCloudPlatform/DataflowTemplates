@@ -48,12 +48,12 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import javax.sql.DataSource;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.OngoingStubbing;
-import org.junit.Ignore;
 
 /** Test class for {@link MysqlDialectAdapter}. */
 @RunWith(MockitoJUnitRunner.class)

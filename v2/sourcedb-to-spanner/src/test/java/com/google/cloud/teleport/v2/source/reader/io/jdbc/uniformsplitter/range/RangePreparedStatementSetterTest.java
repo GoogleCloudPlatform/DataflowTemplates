@@ -29,10 +29,10 @@ import java.sql.Statement;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link RangePreparedStatementSetter}. */
 @RunWith(MockitoJUnitRunner.class)

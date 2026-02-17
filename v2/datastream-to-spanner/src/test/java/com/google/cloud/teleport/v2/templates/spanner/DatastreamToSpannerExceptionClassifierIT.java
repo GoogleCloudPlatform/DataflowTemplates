@@ -38,9 +38,9 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.Ignore;
 
 /** Integration test for {@link DatastreamToSpannerExceptionClassifier}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})

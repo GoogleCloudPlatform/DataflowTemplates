@@ -53,9 +53,9 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.junit.Ignore;
 
 /** Unit tests for SpannerTransactionWriterDoFn class. */
 @Ignore("Temporarily disabled for maintenance")

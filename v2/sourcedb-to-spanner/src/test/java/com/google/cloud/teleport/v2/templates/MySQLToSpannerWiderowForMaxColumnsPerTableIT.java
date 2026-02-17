@@ -31,11 +31,11 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.Ignore;
 
 /** Integration test for testing MySQL to Spanner migration with wide tables (1016 columns). */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})

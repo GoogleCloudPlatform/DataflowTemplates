@@ -23,10 +23,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link Decimal}. */
 @RunWith(MockitoJUnitRunner.class)

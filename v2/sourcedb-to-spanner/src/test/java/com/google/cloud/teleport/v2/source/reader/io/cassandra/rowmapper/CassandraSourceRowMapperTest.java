@@ -65,11 +65,11 @@ import javax.net.ssl.SSLContext;
 import org.jetbrains.annotations.NotNull;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.junit.Ignore;
 
 /** Test class for {@link CassandraSourceRowMapper}. */
 @RunWith(MockitoJUnitRunner.class)
