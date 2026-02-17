@@ -31,10 +31,10 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.junit.Ignore;
 
 @Ignore("Temporarily disabled for maintenance")
 public class CassandraSourceSchemaReaderTest {

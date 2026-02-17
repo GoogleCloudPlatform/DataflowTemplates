@@ -35,10 +35,10 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.junit.Ignore;
 
 @Ignore("Temporarily disabled for maintenance")
 public class CassandraConnectionHelperTest {

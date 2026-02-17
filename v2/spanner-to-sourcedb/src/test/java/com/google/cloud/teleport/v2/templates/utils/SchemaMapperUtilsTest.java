@@ -28,11 +28,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.MockedConstruction;
-import org.junit.Ignore;
 
 /** Unit tests for {@link SchemaMapperUtils}. */
 @RunWith(JUnit4.class)

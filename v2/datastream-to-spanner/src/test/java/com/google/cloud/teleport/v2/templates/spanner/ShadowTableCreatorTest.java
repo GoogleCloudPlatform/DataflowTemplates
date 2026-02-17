@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 
 /** Unit tests ShadowTableCreator class. */
 @Ignore("Temporarily disabled for maintenance")
