@@ -142,6 +142,17 @@ public class IcebergToSqlServerYamlIT extends TemplateTestBase {
             .addParameter("password", mssqlResourceManager.getPassword())
             .addParameter("location", SQLSERVER_TABLE_NAME);
 
+    // FOR INTEGRATION TESTS DEBUGGING PURPOSE: Logging the configuration parameters
+    LOG.info("=== Pipeline Parameters ===");
+    LOG.info("table: {}", ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("catalogName: {}", CATALOG_NAME);
+    LOG.info("catalogProperties: {}", new org.json.JSONObject(getCatalogProperties()).toString());
+    LOG.info("jdbcUrl: {}", mssqlResourceManager.getUri());
+    LOG.info("username: {}", mssqlResourceManager.getUsername());
+    LOG.info("location: {}", SQLSERVER_TABLE_NAME);
+    LOG.info("specPath: {}", specPath);
+    LOG.info("=== End Pipeline Parameters ===");
+
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
