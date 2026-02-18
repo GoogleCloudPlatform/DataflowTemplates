@@ -78,7 +78,7 @@ public class TemplatesReleaseMojoTest {
     mojo.stagePrefix = "test-prefix";
     mojo.bucketName = "gs://test-bucket";
     mojo.yamlBlueprintsPath = "src/main/yaml";
-    mojo.yamlOptionsPath = "yaml/src/main/python/options";
+    mojo.yamlOptionsPath = "src/main/python/options";
     mojo.yamlBlueprintsGCSPath = "yaml-blueprints";
     mojo.yamlManifestName = "yaml-manifest.json";
   }
@@ -130,7 +130,7 @@ public class TemplatesReleaseMojoTest {
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
       String blueprintObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, yamlFile1.getName());
+          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "blueprints", yamlFile1.getName());
       String optionsObjectName =
           String.join(
               "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
