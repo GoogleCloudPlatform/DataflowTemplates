@@ -38,6 +38,7 @@ on:
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
+      - '!v2/gcs-spanner-dv/**'
       # Exclude kafka paths from global run (covered in kafka-pr.yml)
       - '!v2/kafka-to-bigquery/**'
       - '!v2/kafka-to-gcs/**'
