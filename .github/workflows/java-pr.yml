@@ -47,7 +47,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Spotless
-        run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-spotless --changed-files="${STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES}"
+        env:
+          STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES: ${{ steps.setup-env.outputs.changed-files }}
   java_build:
     name: Build
     timeout-minutes: 60
@@ -59,7 +61,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Build
-        run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-build --changed-files="${STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES}"
+        env:
+          STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES: ${{ steps.setup-env.outputs.changed-files }}
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_unit_tests:
@@ -73,7 +77,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-unit-tests --changed-files="${STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES}"
+        env:
+          STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES: ${{ steps.setup-env.outputs.changed-files }}
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
@@ -91,10 +97,12 @@ jobs:
       - name: Run Integration Smoke Tests
         run: | 
           ./cicd/run-it-smoke-tests \
-          --changed-files="${{ steps.setup-env.outputs.changed-files }}" \
+          --changed-files="${STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES}" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
+        env:
+          STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES: ${{ steps.setup-env.outputs.changed-files }}
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
