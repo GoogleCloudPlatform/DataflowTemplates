@@ -130,7 +130,8 @@ public class TemplatesReleaseMojoTest {
           .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
 
       String blueprintObjectName =
-          String.join("/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "blueprints", yamlFile1.getName());
+          String.join(
+              "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "blueprints", yamlFile1.getName());
       String optionsObjectName =
           String.join(
               "/", mojo.stagePrefix, mojo.yamlBlueprintsGCSPath, "options", optionsFile1.getName());
