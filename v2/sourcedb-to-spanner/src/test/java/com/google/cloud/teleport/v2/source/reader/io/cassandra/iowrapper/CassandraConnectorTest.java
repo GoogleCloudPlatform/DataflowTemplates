@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -109,9 +109,9 @@ public class CassandraConnectorTest {
         ValueProvider.StaticValueProvider.of("testKeySpace");
     String testAstraDbRegion = "testRegion";
     String testAstraDBID = "testID";
-    try (MockedConstruction<DatabaseClient> mockedConstruction =
+    try (MockedConstruction<DbOpsClient> mockedConstruction =
         mockConstruction(
-            DatabaseClient.class,
+            DbOpsClient.class,
             (mock, context) -> {
               when(mock.exist()).thenReturn(true);
               when(mock.downloadSecureConnectBundle(testAstraDbRegion))
