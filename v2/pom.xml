@@ -706,15 +706,16 @@
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>gcs-to-sourcedb</module>
+        <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
-        <module>googlecloud-to-mongodb</module>
+        <module>googlecloud-and-jms</module>
+        <module>googlecloud-and-mongodb</module>
         <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
         <module>google-ads-to-googlecloud</module>
         <module>jdbc-common</module>
         <module>jdbc-and-googlecloud</module>
-        <module>jms-to-pubsub</module>
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
@@ -723,16 +724,13 @@
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>managed-io-to-managed-io</module>
-        <module>mongodb-to-googlecloud</module>
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
-        <module>pubsub-to-jms</module>
         <module>pubsub-to-kafka</module>
-        <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>

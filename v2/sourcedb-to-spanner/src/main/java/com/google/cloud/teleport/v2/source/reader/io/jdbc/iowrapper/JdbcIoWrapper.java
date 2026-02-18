@@ -230,6 +230,10 @@ public final class JdbcIoWrapper implements IoWrapper {
         tableConfigs.stream().map(TableConfig::tableName).collect(ImmutableList.toImmutableList());
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchemas =
         schemaDiscovery.discoverTableSchema(dataSource, config.sourceSchemaReference(), tables);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
+        schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
+
     LOG.info("Found table schemas: {}", tableSchemas);
     tableSchemas.entrySet().stream()
         .map(
@@ -249,6 +253,15 @@ public final class JdbcIoWrapper implements IoWrapper {
                       .dialectAdapter()
                       .estimateRowSize(tableEntry.getValue(), config.valueMappingsProvider());
               sourceTableSchemaBuilder.setEstimatedRowSize(estimatedRowSize);
+
+              if (tableIndexes.containsKey(tableEntry.getKey())) {
+                sourceTableSchemaBuilder.setPrimaryKeyColumns(
+                    tableIndexes.get(tableEntry.getKey()).stream()
+                        .filter(SourceColumnIndexInfo::isPrimary)
+                        .sorted()
+                        .map(SourceColumnIndexInfo::columnName)
+                        .collect(ImmutableList.toImmutableList()));
+              }
               return sourceTableSchemaBuilder.build();
             })
         .forEach(sourceSchemaBuilder::addTableSchema);

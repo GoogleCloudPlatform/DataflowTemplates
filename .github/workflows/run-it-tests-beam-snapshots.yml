@@ -29,7 +29,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+  MAVEN_OPTS: >-
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+    --add-opens java.base/java.nio=ALL-UNNAMED
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+    --add-opens java.base/java.lang=ALL-UNNAMED
+    --add-opens java.base/java.util=ALL-UNNAMED
 
 permissions:
   contents: write # Required to modify pom.xml and then revert it

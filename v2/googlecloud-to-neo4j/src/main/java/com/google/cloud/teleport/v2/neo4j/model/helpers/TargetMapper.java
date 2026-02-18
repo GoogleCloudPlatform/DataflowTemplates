@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getBooleanOrDefault;
-import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getIntegerOrNull;
+import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getIntegerOrDefault;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.JsonObjects.getStringOrDefault;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.findNodeTarget;
 import static com.google.cloud.teleport.v2.neo4j.model.helpers.MappingMapper.parseEdgeNode;
@@ -29,6 +29,10 @@ import static com.google.cloud.teleport.v2.neo4j.model.helpers.SourceMapper.DEFA
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.Order;
+import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,15 +43,12 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.CustomQueryTarget;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.Order;
-import org.neo4j.importer.v1.targets.OrderBy;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.SourceTransformations;
 import org.neo4j.importer.v1.targets.Targets;
 import org.neo4j.importer.v1.targets.WriteMode;
 
@@ -150,13 +151,14 @@ class TargetMapper {
     var targetName = normalizeName(index, node.getString("name"), ArtifactType.node);
     var properties = parseMappings(mappings);
     var defaultIndexedProperties = getDefaultIndexedProperties(indexAllProperties, properties);
+    var sourceTransformations = parseSourceTransformations(node);
     return new NodeTarget(
         getBooleanOrDefault(node, "active", true),
         targetName,
         getStringOrDefault(node, "source", DEFAULT_SOURCE_NAME),
         jobIndex.getDependencies(targetName),
         parseWriteMode(node.getString("mode")),
-        parseSourceTransformations(node),
+        sourceTransformations == null ? List.of() : List.of(sourceTransformations),
         labels,
         properties,
         parseNodeSchema(targetName, labels, mappings, defaultIndexedProperties));
@@ -183,17 +185,21 @@ class TargetMapper {
         !mappings.has("target")
             ? null
             : findNodeTarget(mappings.getJSONObject("target"), nodes).get();
+    var sourceTransformations = parseSourceTransformations(edge);
+    var dependencies = jobIndex.getDependencies(targetName);
+    dependencies.remove(sourceNodeReference);
+    dependencies.remove(targetNodeReference);
     return new RelationshipTarget(
         getBooleanOrDefault(edge, "active", true),
         targetName,
         getStringOrDefault(edge, "source", DEFAULT_SOURCE_NAME),
-        jobIndex.getDependencies(targetName),
+        dependencies,
         relationshipType,
         writeMode,
         nodeMatchMode,
-        parseSourceTransformations(edge),
-        sourceNodeReference,
-        targetNodeReference,
+        sourceTransformations == null ? List.of() : List.of(sourceTransformations),
+        new NodeReference(sourceNodeReference),
+        new NodeReference(targetNodeReference),
         properties,
         parseEdgeSchema(targetName, relationshipType, mappings, defaultIndexedProperties));
   }
@@ -229,12 +235,12 @@ class TargetMapper {
         parseAggregations(transform),
         getStringOrDefault(transform, "where", ""),
         parseOrderBy(transform),
-        getIntegerOrNull(transform, "limit"));
+        getIntegerOrDefault(transform, "limit", -1));
   }
 
   private static List<Aggregation> parseAggregations(JSONObject json) {
     if (!json.has("aggregations")) {
-      return null;
+      return List.of();
     }
     JSONArray aggregations = json.getJSONArray("aggregations");
     List<Aggregation> results = new ArrayList<>(aggregations.length());
@@ -246,10 +252,9 @@ class TargetMapper {
   }
 
   // visible for testing
-
   static List<OrderBy> parseOrderBy(JSONObject json) {
     if (!json.has("order_by")) {
-      return null;
+      return List.of();
     }
     var orderBy = json.getString("order_by");
     String[] rawClauses = StringUtils.stripAll(orderBy.split(","));
@@ -262,22 +267,19 @@ class TargetMapper {
                 return new OrderBy(clause, null);
               }
               String expression = clause.substring(0, lastPosition).trim();
-              Order order = clauseLowerCase.charAt(lastPosition) == 'a' ? Order.ASC : Order.DESC;
+              var order = clauseLowerCase.charAt(lastPosition) == 'a' ? Order.ASC : Order.DESC;
               return new OrderBy(expression, order);
             })
         .collect(Collectors.toList());
   }
 
   private static WriteMode parseWriteMode(String mode) {
-    switch (mode.toLowerCase(Locale.ROOT)) {
-      case "append":
-        return WriteMode.CREATE;
-      case "merge":
-        return WriteMode.MERGE;
-      default:
-        throw new IllegalArgumentException(
-            "Unsupported node \"%s\": expected one of \"append\", \"merge\"");
-    }
+    return switch (mode.toLowerCase(Locale.ROOT)) {
+      case "append" -> WriteMode.CREATE;
+      case "merge" -> WriteMode.MERGE;
+      default -> throw new IllegalArgumentException(
+          "Unsupported write mode \"%s\": expected one of \"append\", \"merge\"");
+    };
   }
 
   private static NodeMatchMode edgeNodeMatchMode(JSONObject edge) {

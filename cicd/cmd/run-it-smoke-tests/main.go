@@ -72,7 +72,9 @@ func main() {
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		mvnFlags.SpecificTest(flags.TestToRun()),
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

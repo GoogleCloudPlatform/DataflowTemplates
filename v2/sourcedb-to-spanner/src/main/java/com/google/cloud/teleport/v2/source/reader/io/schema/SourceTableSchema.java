@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.util.UUID;
@@ -63,6 +64,8 @@ public abstract class SourceTableSchema implements Serializable {
   // Mapped Avro Schema (to unified types) that each row will carry.
   public abstract Schema avroSchema();
 
+  public abstract ImmutableList<String> primaryKeyColumns();
+
   public Schema getAvroPayload() {
     return avroSchema().getField(PAYLOAD_FIELD_NAME).schema();
   }
@@ -96,6 +99,8 @@ public abstract class SourceTableSchema implements Serializable {
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
+
+    public abstract Builder setPrimaryKeyColumns(ImmutableList<String> value);
 
     private FieldAssembler<RecordDefault<Schema>> payloadFieldAssembler;
 
@@ -138,6 +143,7 @@ public abstract class SourceTableSchema implements Serializable {
 
     public Builder initialize(UnifiedTypeMapper.MapperType mapperType) {
       this.mapperType = mapperType;
+      this.setPrimaryKeyColumns(ImmutableList.of());
       return this;
     }
 
