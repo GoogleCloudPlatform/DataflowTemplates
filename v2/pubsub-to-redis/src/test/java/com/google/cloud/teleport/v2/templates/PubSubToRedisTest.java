@@ -52,6 +52,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.resps.StreamEntry;
 
 /** Test cases for the {@link PubSubToRedis} class. */
 @RunWith(JUnit4.class)
@@ -290,7 +291,16 @@ public class PubSubToRedisTest {
     write.apply(RedisIO.writeStreams().withEndpoint(REDIS_HOST, port));
     pipeline.run();
 
-    // Verify that the data was written to Redis Streams (additional verification logic may be
-    // needed)
+    // Verify that the data was written to Redis Streams
+    assertEquals(1L, client.xlen("stream1"));
+    assertEquals(1L, client.xlen("stream2"));
+
+    // Verify the content of stream1 using full range
+    List<StreamEntry> stream1Entries = client.xrange("stream1", "-", "+");
+    assertThat(stream1Entries.isEmpty(), is(false));
+
+    // Verify the content of stream2 using full range
+    List<StreamEntry> stream2Entries = client.xrange("stream2", "-", "+");
+    assertThat(stream2Entries.isEmpty(), is(false));
   }
 }
