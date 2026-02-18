@@ -47,7 +47,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Spotless
-        run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-spotless --changed-files="${STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES}"
+        env:
+          STEPS_SETUP_ENV_OUTPUTS_CHANGED_FILES: ${{ steps.setup-env.outputs.changed-files }}
   java_build:
     name: Build
     timeout-minutes: 60
