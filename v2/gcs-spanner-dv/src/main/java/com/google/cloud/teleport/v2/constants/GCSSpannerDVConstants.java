@@ -27,4 +27,6 @@ public class GCSSpannerDVConstants {
       new TupleTag<ComparisonRecord>() {};
   public static final TupleTag<ComparisonRecord> MISSING_IN_SOURCE_TAG =
       new TupleTag<ComparisonRecord>() {};
+
+  public static final String TABLE_NAME_COLUMN = "__tableName__";
 }

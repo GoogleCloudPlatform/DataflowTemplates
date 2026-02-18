@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -111,7 +112,7 @@ public class ComparisonRecordMapperIdentityTest {
             .to(1L)
             .set("name")
             .to("Alice")
-            .set("__tableName__")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
             .to(tableName)
             .build();
 
@@ -133,7 +134,7 @@ public class ComparisonRecordMapperIdentityTest {
             .to(1L)
             .set("name")
             .to((String) null)
-            .set("__tableName__")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
             .to(tableName)
             .build();
 
@@ -178,7 +179,7 @@ public class ComparisonRecordMapperIdentityTest {
             .to(1L)
             .set("name")
             .to("Alice")
-            .set("__tableName__")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
             .to(tableName)
             .build();
 

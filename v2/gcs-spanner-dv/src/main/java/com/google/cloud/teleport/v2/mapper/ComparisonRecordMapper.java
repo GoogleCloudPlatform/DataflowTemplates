@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.mapper;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants;
 import com.google.cloud.teleport.v2.dto.Column;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -89,10 +90,10 @@ public class ComparisonRecordMapper implements Serializable {
   public ComparisonRecord mapFrom(Struct spannerStruct) {
     TreeMap<String, Value> values = new TreeMap<>();
     spannerStruct.getType().getStructFields().stream()
-        .filter(field -> !field.getName().equals("__tableName__"))
+        .filter(field -> !field.getName().equals(GCSSpannerDVConstants.TABLE_NAME_COLUMN))
         .forEach(field -> values.put(field.getName(), spannerStruct.getValue(field.getName())));
 
-    String tableName = spannerStruct.getString("__tableName__");
+    String tableName = spannerStruct.getString(GCSSpannerDVConstants.TABLE_NAME_COLUMN);
     Table table = ddl.table(tableName);
     if (table == null) {
       throw new RuntimeException("Table not found in DDL: " + tableName);

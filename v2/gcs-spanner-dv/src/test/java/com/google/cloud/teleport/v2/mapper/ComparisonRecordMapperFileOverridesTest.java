@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -159,7 +160,7 @@ public class ComparisonRecordMapperFileOverridesTest {
             .to(100L)
             .set("name")
             .to("Bob")
-            .set("__tableName__")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
             .to("SpannerUsers")
             .build();
 

@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
@@ -69,7 +70,7 @@ public class ComparisonRecordMapperBasicTest {
             .to(1L)
             .set("name")
             .to("Alice")
-            .set("__tableName__")
+            .set(GCSSpannerDVConstants.TABLE_NAME_COLUMN)
             .to(tableName)
             .build();
 
@@ -214,7 +215,8 @@ public class ComparisonRecordMapperBasicTest {
 
   @Test(expected = RuntimeException.class)
   public void testMapFromSpannerStruct_TableNotFound() {
-    Struct struct = Struct.newBuilder().set("__tableName__").to("UnknownTable").build();
+    Struct struct =
+        Struct.newBuilder().set(GCSSpannerDVConstants.TABLE_NAME_COLUMN).to("UnknownTable").build();
 
     when(mockDdl.table("UnknownTable")).thenReturn(null);
     mapper.mapFrom(struct);
