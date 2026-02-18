@@ -80,7 +80,7 @@
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
-    <log4j-2.version>2.24.3</log4j-2.version>
+    <log4j-2.version>2.25.3</log4j-2.version>
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
