@@ -451,7 +451,7 @@ public class PubSubToRedis {
                     FailsafeElement<PubsubMessage, String> element = c.element();
                     c.output(
                         new PubsubMessage(
-                            element.getPayload().getBytes(),
+                            element.getPayload().getBytes(java.nio.charset.StandardCharsets.UTF_8),
                             element.getOriginalPayload().getAttributeMap(),
                             element.getOriginalPayload().getMessageId()));
                   }
