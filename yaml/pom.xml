@@ -36,6 +36,8 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
+    <postgresql.version>42.6.1</postgresql.version>
+    <ojdbc17.version>23.9.0.25.07</ojdbc17.version> 
   </properties>
 
   <dependencies>
@@ -82,6 +84,12 @@
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc17</artifactId>
+      <version>${ojdbc17.version}</version>
+    <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.microsoft.sqlserver</groupId>
