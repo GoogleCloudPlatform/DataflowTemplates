@@ -62,7 +62,7 @@ jobs:
 
       - name: Update pom.xml for Beam Snapshot
         run: |
-          SNAPSHOT_VERSION="${{ steps.calculate_beam_snapshot.outputs.beam_snapshot_version }}"
+          SNAPSHOT_VERSION="${STEPS_CALCULATE_BEAM_SNAPSHOT_OUTPUTS_BEAM_SNAPSHOT_VERSION}"
           echo "Updating pom.xml to use Beam version: $SNAPSHOT_VERSION"
 
           # 1. Update Beam version
@@ -88,6 +88,8 @@ jobs:
           echo "Final pom.xml changes:"
           git diff pom.xml.bak # Show changes against the original .bak file created by sed
         shell: bash
+        env:
+          STEPS_CALCULATE_BEAM_SNAPSHOT_OUTPUTS_BEAM_SNAPSHOT_VERSION: ${{ steps.calculate_beam_snapshot.outputs.beam_snapshot_version }}
 
       - name: Run Build
         run: ./cicd/run-build
