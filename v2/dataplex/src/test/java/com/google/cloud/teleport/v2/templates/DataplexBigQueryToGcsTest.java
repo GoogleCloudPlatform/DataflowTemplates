@@ -89,6 +89,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.avro.Schema;
+import org.apache.avro.data.TimeConversions;
+import org.apache.avro.generic.GenericData;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
@@ -160,6 +162,12 @@ public class DataplexBigQueryToGcsTest {
 
   @Before
   public void setUp() throws InterruptedException, IOException {
+    GenericData.get().addLogicalTypeConversion(new TimeConversions.TimestampMicrosConversion());
+    GenericData.get().addLogicalTypeConversion(new TimeConversions.TimestampMillisConversion());
+    GenericData.get().addLogicalTypeConversion(new TimeConversions.TimeMicrosConversion());
+    GenericData.get().addLogicalTypeConversion(new TimeConversions.TimeMillisConversion());
+    GenericData.get().addLogicalTypeConversion(new TimeConversions.DateConversion());
+
     options = TestPipeline.testingPipelineOptions().as(DataplexBigQueryToGcsOptions.class);
     options.setProject(PROJECT);
     options.setUpdateDataplexMetadata(true);
@@ -296,15 +304,15 @@ public class DataplexBigQueryToGcsTest {
 
     defaultExpectedRecords =
         new String[] {
-          "{\"ts\": 1, \"s1\": \"1001\", \"d1\": 0, \"t1\": 1, \"dt\": \"2020-01-01T00:42:00.123\","
+          "{\"ts\": \"1970-01-01T00:00:00.000001Z\", \"s1\": \"1001\", \"d1\": \"1970-01-01\", \"t1\": \"00:00:00.000001\", \"dt\": \"2020-01-01T00:42:00.123\","
               + " \"i1\": 2001}",
-          "{\"ts\": 2, \"s1\": \"1002\", \"d1\": 1, \"t1\": 2, \"dt\": \"2020-01-02T00:42:00.123\","
+          "{\"ts\": \"1970-01-01T00:00:00.000002Z\", \"s1\": \"1002\", \"d1\": \"1970-01-02\", \"t1\": \"00:00:00.000002\", \"dt\": \"2020-01-02T00:42:00.123\","
               + " \"i1\": 2002}",
-          "{\"ts\": 3, \"s1\": \"1003\", \"d1\": 2, \"t1\": 3, \"dt\": \"2020-01-03T00:42:00.123\","
+          "{\"ts\": \"1970-01-01T00:00:00.000003Z\", \"s1\": \"1003\", \"d1\": \"1970-01-03\", \"t1\": \"00:00:00.000003\", \"dt\": \"2020-01-03T00:42:00.123\","
               + " \"i1\": 2003}",
-          "{\"ts\": 4, \"s1\": \"1004\", \"d1\": 3, \"t1\": 4, \"dt\": \"2020-01-04T00:42:00.123\","
+          "{\"ts\": \"1970-01-01T00:00:00.000004Z\", \"s1\": \"1004\", \"d1\": \"1970-01-04\", \"t1\": \"00:00:00.000004\", \"dt\": \"2020-01-04T00:42:00.123\","
               + " \"i1\": null}",
-          "{\"ts\": 5, \"s1\": \"1005\", \"d1\": 4, \"t1\": 5, \"dt\": \"2020-01-05T00:42:00.123\","
+          "{\"ts\": \"1970-01-01T00:00:00.000005Z\", \"s1\": \"1005\", \"d1\": \"1970-01-05\", \"t1\": \"00:00:00.000005\", \"dt\": \"2020-01-05T00:42:00.123\","
               + " \"i1\": 2005}"
         };
 
@@ -588,18 +596,18 @@ public class DataplexBigQueryToGcsTest {
 
     String[] expectedRecords1 =
         new String[] {
-          "{\"ts_pkey\": 1, \"s1\": \"1001\", \"d1\": 0, \"t1\": 1, \"dt\":"
+          "{\"ts_pkey\": \"1970-01-01T00:00:00.000001Z\", \"s1\": \"1001\", \"d1\": \"1970-01-01\", \"t1\": \"00:00:00.000001\", \"dt\":"
               + " \"2020-01-01T00:42:00.123\", \"i1\": 2001}",
-          "{\"ts_pkey\": 2, \"s1\": \"1002\", \"d1\": 1, \"t1\": 2, \"dt\":"
+          "{\"ts_pkey\": \"1970-01-01T00:00:00.000002Z\", \"s1\": \"1002\", \"d1\": \"1970-01-02\", \"t1\": \"00:00:00.000002\", \"dt\":"
               + " \"2020-01-02T00:42:00.123\", \"i1\": 2002}"
         };
     String[] expectedRecords2 =
         new String[] {
-          "{\"ts_pkey\": 3, \"s1\": \"1003\", \"d1\": 2, \"t1\": 3, \"dt\":"
+          "{\"ts_pkey\": \"1970-01-01T00:00:00.000003Z\", \"s1\": \"1003\", \"d1\": \"1970-01-03\", \"t1\": \"00:00:00.000003\", \"dt\":"
               + " \"2020-01-03T00:42:00.123\", \"i1\": 2003}",
-          "{\"ts_pkey\": 4, \"s1\": \"1004\", \"d1\": 3, \"t1\": 4, \"dt\":"
+          "{\"ts_pkey\": \"1970-01-01T00:00:00.000004Z\", \"s1\": \"1004\", \"d1\": \"1970-01-04\", \"t1\": \"00:00:00.000004\", \"dt\":"
               + " \"2020-01-04T00:42:00.123\", \"i1\": null}",
-          "{\"ts_pkey\": 5, \"s1\": \"1005\", \"d1\": 4, \"t1\": 5, \"dt\":"
+          "{\"ts_pkey\": \"1970-01-01T00:00:00.000005Z\", \"s1\": \"1005\", \"d1\": \"1970-01-05\", \"t1\": \"00:00:00.000005\", \"dt\":"
               + " \"2020-01-05T00:42:00.123\", \"i1\": 2005}"
         };
 

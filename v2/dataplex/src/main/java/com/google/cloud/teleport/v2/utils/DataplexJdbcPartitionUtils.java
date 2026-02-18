@@ -136,6 +136,8 @@ public class DataplexJdbcPartitionUtils {
       return (Long) value;
     } else if (value instanceof ReadableInstant) {
       return ((ReadableInstant) value).getMillis();
+    } else if (value instanceof java.time.Instant) {
+      return ((java.time.Instant) value).toEpochMilli();
     } else {
       throw new IllegalArgumentException(
           "The partition column value is an instance of unsupported class: " + value.getClass());

@@ -67,4 +67,19 @@ public class CustomTransformationFetcherTest {
     MigrationTransformationResponse response = customTransformationFetcher.toSpannerRow(request);
     assertEquals(response.getResponseRow(), null);
   }
+
+  @Test
+  public void testTransformFailedSpannerMutation() throws InvalidTransformationException {
+    CustomTransformationFetcher customTransformationFetcher = new CustomTransformationFetcher();
+    Map<String, Object> requestRow = new HashMap<>();
+    requestRow.put("first_name", "abc");
+    requestRow.put("last_name", "xyz");
+    requestRow.put("id", "123");
+    MigrationTransformationRequest request =
+        new MigrationTransformationRequest("xyz", requestRow, "ls1", "");
+    MigrationTransformationResponse response =
+        customTransformationFetcher.transformFailedSpannerMutation(request);
+    assertEquals(response.getResponseRow(), null);
+    assertEquals(response.isEventFiltered(), false);
+  }
 }

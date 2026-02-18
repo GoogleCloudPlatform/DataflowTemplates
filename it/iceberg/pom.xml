@@ -27,7 +27,6 @@
 
     <properties>
         <iceberg.version>1.10.1</iceberg.version>
-        <avro.version>1.12.1</avro.version>
     </properties>
 
     <dependencies>
