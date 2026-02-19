@@ -56,6 +56,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLTBase.class);
   public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
+  public static final String SESSION_FILE_NAME = "input/session.json";
+  public static final String SCHEMA_FILE_NAME = "input/schema.json";
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
@@ -76,7 +78,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
 
     gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResource).getPath());
+        SESSION_FILE_NAME, Resources.getResource(sessionFileResource).getPath());
 
     pubsubResourceManager = setUpPubSubResourceManager();
     subscriptionName =
@@ -193,16 +195,19 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       int maxWorkers,
       CustomTransformation customTransformation,
       String sourceType,
-      String shardFileName)
+      String shardFileName,
+      String sessionFileName)
       throws IOException {
     // default parameters
 
     Map<String, String> params =
         new HashMap<>() {
           {
-            put(
-                "sessionFilePath",
-                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager));
+            if (sessionFileName != null) {
+              put(
+                  "sessionFilePath",
+                  getGcsPath(artifactBucket, sessionFileName, gcsResourceManager));
+            }
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", project);

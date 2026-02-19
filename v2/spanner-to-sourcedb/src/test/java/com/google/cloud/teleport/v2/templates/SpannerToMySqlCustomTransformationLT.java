@@ -72,8 +72,7 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
             artifactBucket,
             gcsResourceManager
                 .uploadArtifact(
-                    "input/schema.json",
-                    Resources.getResource(dataGeneratorSchemaResource).getPath())
+                    SCHEMA_FILE_NAME, Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
@@ -89,7 +88,8 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
             maxWorkers,
             customTransformation,
             MYSQL_SOURCE_TYPE,
-            SOURCE_SHARDS_FILE_NAME);
+            SOURCE_SHARDS_FILE_NAME,
+            SESSION_FILE_NAME);
   }
 
   @After
