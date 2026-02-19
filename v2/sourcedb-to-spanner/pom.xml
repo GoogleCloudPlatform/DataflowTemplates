@@ -168,7 +168,7 @@
         <dependency>
             <groupId>com.github.nosan</groupId>
             <artifactId>embedded-cassandra</artifactId>
-            <version>5.0.3</version>
+            <version>5.0.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
