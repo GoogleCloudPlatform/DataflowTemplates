@@ -32,7 +32,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableStopRow**: The row where to stop the export, defaults to the last row.
 * **bigtableMaxVersions**: Maximum number of cell versions. Defaults to: 2147483647.
 * **bigtableFilter**: Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
-
+* **bigtableReadRpcTimeoutMs**: The operation timeout of the Bigtable read. Default is 12 hours.
+* **bigtableReadRpcAttemptTimeoutMs**: The attempt timeout of the Bigtable read. Default is 10 minutes.
 
 
 ## Getting Started
