@@ -361,7 +361,7 @@ public abstract class TemplateTestBase {
             }
 
             String[] mavenCmd = buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, template);
-            LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
+            LOG.info("Running command to stage templates: {}", mavenCmd[20]);
 
             try {
               Process exec = Runtime.getRuntime().exec(mavenCmd);
