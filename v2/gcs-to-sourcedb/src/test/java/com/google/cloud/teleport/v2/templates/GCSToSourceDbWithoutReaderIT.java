@@ -279,7 +279,7 @@ public class GCSToSourceDbWithoutReaderIT extends TemplateTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
     // Run
-    jobInfo = launchTemplate(options, false);
+    jobInfo = launchTemplate(options);
   }
 
   private void createAndUploadShardConfigToGcs(
