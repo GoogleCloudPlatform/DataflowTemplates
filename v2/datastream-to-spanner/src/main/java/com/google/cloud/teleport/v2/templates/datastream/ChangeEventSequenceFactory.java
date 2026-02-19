@@ -54,6 +54,8 @@ public class ChangeEventSequenceFactory {
       return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
     } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
       return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
+    } else if (DatastreamConstants.SQLSERVER_SOURCE_TYPE.equals(sourceType)) {
+      return SqlServerChangeEventSequence.createFromChangeEvent(changeEventContext);
     }
     throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
   }
@@ -79,6 +81,9 @@ public class ChangeEventSequenceFactory {
           transactionContext, changeEventContext, shadowDdl, useSqlStatements);
     } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
       return PostgresChangeEventSequence.createFromShadowTable(
+          transactionContext, changeEventContext, shadowDdl, useSqlStatements);
+    } else if (DatastreamConstants.SQLSERVER_SOURCE_TYPE.equals(sourceType)) {
+      return SqlServerChangeEventSequence.createFromShadowTable(
           transactionContext, changeEventContext, shadowDdl, useSqlStatements);
     }
     throw new InvalidChangeEventException("Unsupported source database: " + sourceType);

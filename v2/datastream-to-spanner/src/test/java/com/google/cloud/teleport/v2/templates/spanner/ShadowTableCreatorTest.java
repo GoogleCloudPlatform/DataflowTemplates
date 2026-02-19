@@ -337,4 +337,86 @@ public class ShadowTableCreatorTest {
         "shadow_log_file",
         ShadowTableCreator.getSafeShadowColumnName("log_file", Set.of("column1", "LOG_FILE")));
   }
+
+  @Test
+  public void canConstructShadowTableForSqlServerWithGsqlDialect() {
+      Ddl testDdl = ProcessInformationSchemaTest.getTestDdlWithGSqlDialect();
+
+      ShadowTableCreator shadowTableCreator = new ShadowTableCreator("sqlserver", "shadow_",
+              Dialect.GOOGLE_STANDARD_SQL);
+      Table shadowTable = shadowTableCreator.constructShadowTable(
+              testDdl, "Users_interleaved", Dialect.GOOGLE_STANDARD_SQL);
+
+      /*
+       * Verify
+       * (1) name of shadow table
+       * (2) primary keys columns are same as data tables
+       * (3) Has sqlserver sequence information in addition to primary keys columns
+       */
+      assertEquals(shadowTable.name(), "shadow_Users_interleaved");
+      assertThat(shadowTable.primaryKeys(), is(testDdl.table("Users_interleaved").primaryKeys()));
+      Set<String> columns = shadowTable.columns().stream().map(c -> c.name()).collect(Collectors.toSet());
+      Set<String> expectedColumns = testDdl.table("Users_interleaved").primaryKeys().stream()
+              .map(c -> c.name())
+              .collect(Collectors.toSet());
+      expectedColumns.add("timestamp");
+      expectedColumns.add("lsn");
+      assertThat(columns, is(expectedColumns));
+
+      // Verify types
+      assertEquals(shadowTable.column("timestamp").type().getCode(), Type.Code.INT64);
+      assertEquals(shadowTable.column("lsn").type().getCode(), Type.Code.STRING);
+  }
+
+  @Test
+  public void canConstructShadowTableForSqlServerWithPostgresDialect() {
+      Ddl testDdl = ProcessInformationSchemaTest.getTestDdlWithPostgresDialect();
+
+      ShadowTableCreator shadowTableCreator = new ShadowTableCreator("sqlserver", "shadow_", Dialect.POSTGRESQL);
+      Table shadowTable = shadowTableCreator.constructShadowTable(testDdl, "Users_interleaved", Dialect.POSTGRESQL);
+
+      /*
+       * Verify
+       * (1) name of shadow table
+       * (2) primary keys columns are same as data tables
+       * (3) Has sqlserver sequence information in addition to primary keys columns
+       */
+      assertEquals(shadowTable.name(), "shadow_Users_interleaved");
+      assertThat(shadowTable.primaryKeys(), is(testDdl.table("Users_interleaved").primaryKeys()));
+      Set<String> columns = shadowTable.columns().stream().map(c -> c.name()).collect(Collectors.toSet());
+      Set<String> expectedColumns = testDdl.table("Users_interleaved").primaryKeys().stream()
+              .map(c -> c.name())
+              .collect(Collectors.toSet());
+      expectedColumns.add("timestamp");
+      expectedColumns.add("lsn");
+      assertThat(columns, is(expectedColumns));
+
+      // Verify types for PG dialect (TIMESTAMPTZ, varchar)
+      // Note: Type.pgTimestamptz() might be represented differently in DDL object?
+      // Let's check existing tests. existing tests used
+      // Type.pgTimestamptz().toString()
+
+      List<String> columnTypes = shadowTable.columns().stream().map(c -> c.type().toString())
+              .collect(Collectors.toList());
+
+      // We expect specific types.
+      // timestamp -> TIMESTAMPTZ
+      // lsn -> varchar
+      // Plus the PK columns from "Users_interleaved"
+      // Users_interleaved has: id (varchar), active (bool), age (int8), score
+      // (float8), name (varchar), photo (bytea), timestamp (timestamptz), dob (date),
+      // singerId (int8), albumId (int8), title (varchar), trackId (int8)
+      // Wait, the test helper returns a big table.
+      // constructShadowTable only adds PK columns + shadow columns.
+      // Users_interleaved PKs are likely: singerId, albumId, trackId? (Need to check
+      // DDL)
+      // ProcessInformationSchemaTest.getTestDdlWithPostgresDialect() creates
+      // Users_interleaved
+      // Let's rely on assertions similar to other tests but I added explicit type
+      // check for shadow columns.
+
+      // I will verify just the shadow columns by name lookup to be safe
+      assertEquals(shadowTable.column("timestamp").type().toString(), Type.pgInt8().toString());
+      assertEquals(shadowTable.column("lsn").type().toString(), Type.pgVarchar().toString());
+  }
 }

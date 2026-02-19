@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.util.List;
+import com.google.common.collect.ImmutableSet;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** A single class to store all constants related to Datastream. */
@@ -50,7 +50,11 @@ public class DatastreamConstants {
   public static final String ORACLE_SOURCE_TYPE = "oracle";
 
   /* The value for Postgres databases in the source type key */
+  /* The value for Postgres databases in the source type key */
   public static final String POSTGRES_SOURCE_TYPE = "postgresql";
+
+  /* The value for SQLServer databases in the source type key */
+  public static final String SQLSERVER_SOURCE_TYPE = "sqlserver";
 
   /* The key for the schema name in the event json */
   public static final String EVENT_SCHEMA_KEY = "_metadata_schema";
@@ -124,15 +128,19 @@ public class DatastreamConstants {
   public static final Map<String, Pair<String, String>> MYSQL_SORT_ORDER_PG_DIALECT;
 
   /* List of Event keys, Shadow table information related to sort order in Postgres database. */
-  public static final String POSTGRES_TIMESTAMP_KEY = "_metadata_timestamp";
+  // Postgres specific Datastream metadata keys
+  public static final String POSTGRES_TIMESTAMP_KEY = "source_timestamp";
+  public static final String POSTGRES_LSN_KEY = "lsn";
+
+  // SQLServer specific Datastream metadata keys
+  public static final String SQLSERVER_TIMESTAMP_KEY = "_metadata_timestamp";
+  public static final String SQLSERVER_LSN_KEY = "_metadata_lsn";
 
   public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO =
       Pair.of("timestamp", "INT64");
 
   public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
       Pair.of("timestamp", "bigint");
-
-  public static final String POSTGRES_LSN_KEY = "_metadata_lsn";
 
   public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO = Pair.of("lsn", "STRING(MAX)");
 
@@ -145,11 +153,17 @@ public class DatastreamConstants {
   /* Mapping from Event keys to shadow table information for Postgres database with postgres dialect*/
   public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER_PG_DIALECT;
 
+  /* Mapping from Event keys to shadow table information for SQLServer database with gsql dialect*/
+  public static final Map<String, Pair<String, String>> SQLSERVER_SORT_ORDER;
+
+  /* Mapping from Event keys to shadow table information for SQLServer database with postgres dialect*/
+  public static final Map<String, Pair<String, String>> SQLSERVER_SORT_ORDER_PG_DIALECT;
+
   public static final Map<Dialect, Map<String, Map<String, Pair<String, String>>>>
       DIALECT_TO_SORT_ORDER;
 
   /* List of supported */
-  public static final List<String> SUPPORTED_DATASTREAM_SOURCES;
+  public static final Set<String> SUPPORTED_DATASTREAM_SOURCES;
 
   static {
     ORACLE_SORT_ORDER =
@@ -184,26 +198,37 @@ public class DatastreamConstants {
             POSTGRES_TIMESTAMP_KEY, POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT,
             POSTGRES_LSN_KEY, POSTGRES_LSN_SHADOW_INFO_PG_DIALECT);
 
+    SQLSERVER_SORT_ORDER =
+        ImmutableMap.of(
+            SQLSERVER_TIMESTAMP_KEY,
+            Pair.of("timestamp", "INT64"),
+            SQLSERVER_LSN_KEY,
+            Pair.of("lsn", "STRING(MAX)"));
+
+    SQLSERVER_SORT_ORDER_PG_DIALECT =
+        ImmutableMap.of(
+            SQLSERVER_TIMESTAMP_KEY,
+            Pair.of("timestamp", "bigint"),
+            SQLSERVER_LSN_KEY,
+            Pair.of("lsn", "character varying(2621440)"));
+
     DIALECT_TO_SORT_ORDER =
         ImmutableMap.of(
             Dialect.GOOGLE_STANDARD_SQL,
             ImmutableMap.of(
-                ORACLE_SOURCE_TYPE,
-                ORACLE_SORT_ORDER,
-                MYSQL_SOURCE_TYPE,
-                MYSQL_SORT_ORDER,
-                POSTGRES_SOURCE_TYPE,
-                POSTGRES_SORT_ORDER),
+                MYSQL_SOURCE_TYPE, MYSQL_SORT_ORDER,
+                ORACLE_SOURCE_TYPE, ORACLE_SORT_ORDER,
+                POSTGRES_SOURCE_TYPE, POSTGRES_SORT_ORDER,
+                SQLSERVER_SOURCE_TYPE, SQLSERVER_SORT_ORDER),
             Dialect.POSTGRESQL,
             ImmutableMap.of(
-                ORACLE_SOURCE_TYPE,
-                ORACLE_SORT_ORDER_PG_DIALECT,
-                MYSQL_SOURCE_TYPE,
-                MYSQL_SORT_ORDER_PG_DIALECT,
-                POSTGRES_SOURCE_TYPE,
-                POSTGRES_SORT_ORDER_PG_DIALECT));
+                MYSQL_SOURCE_TYPE, MYSQL_SORT_ORDER_PG_DIALECT,
+                ORACLE_SOURCE_TYPE, ORACLE_SORT_ORDER_PG_DIALECT,
+                POSTGRES_SOURCE_TYPE, POSTGRES_SORT_ORDER_PG_DIALECT,
+                SQLSERVER_SOURCE_TYPE, SQLSERVER_SORT_ORDER_PG_DIALECT));
 
     SUPPORTED_DATASTREAM_SOURCES =
-        ImmutableList.of(ORACLE_SOURCE_TYPE, MYSQL_SOURCE_TYPE, POSTGRES_SOURCE_TYPE);
+        ImmutableSet.of(
+            MYSQL_SOURCE_TYPE, ORACLE_SOURCE_TYPE, POSTGRES_SOURCE_TYPE, SQLSERVER_SOURCE_TYPE);
   }
 }

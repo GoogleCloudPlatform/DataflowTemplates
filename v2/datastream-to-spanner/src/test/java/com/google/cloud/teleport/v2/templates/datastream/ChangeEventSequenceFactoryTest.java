@@ -127,6 +127,35 @@ public final class ChangeEventSequenceFactoryTest {
     return mockContext;
   }
 
+  ChangeEventContext getMockSqlServerChangeEventContext(
+      boolean addSqlServerPositionFields, boolean cdcEvent) throws Exception {
+    // Create dummy sqlserver change event.
+    JSONObject sqlServerChangeEvent = new JSONObject();
+    sqlServerChangeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.SQLSERVER_SOURCE_TYPE);
+    sqlServerChangeEvent.put(
+        DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.INSERT_EVENT);
+    sqlServerChangeEvent.put(DatastreamConstants.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
+    if (addSqlServerPositionFields) {
+      if (cdcEvent) {
+        sqlServerChangeEvent.put(DatastreamConstants.SQLSERVER_LSN_KEY, "00000016:00000123:0001");
+      } else {
+        sqlServerChangeEvent.put(DatastreamConstants.SQLSERVER_LSN_KEY, JSONObject.NULL);
+      }
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    JsonNode jsonNode = mapper.readTree(sqlServerChangeEvent.toString());
+
+    // Prepare mock ChangeEventContext.
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getChangeEvent()).thenReturn(jsonNode);
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of("test"));
+    when(mockContext.getShadowTable()).thenReturn("test");
+
+    return mockContext;
+  }
+
   @Test
   public void canCreateMySqlChangeEventSequenceFromChangeEvent() throws Exception {
 
@@ -557,5 +586,73 @@ public final class ChangeEventSequenceFactoryTest {
             mockTransaction, mockContext, null, false);
 
     assertNull(postgresChangeEventSequence);
+  }
+
+  @Test
+  public void canCreateSqlServerChangeEventSequenceFromChangeEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockSqlServerChangeEventContext(
+            /* addSqlServerPositionFields= */ true, /* cdcEvent= */ true);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(SqlServerChangeEventSequence.class));
+    SqlServerChangeEventSequence sqlServerChangeEventSequence =
+        (SqlServerChangeEventSequence) changeEventSequence;
+    assertEquals(sqlServerChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(sqlServerChangeEventSequence.getLsn(), "00000016:00000123:0001");
+  }
+
+  @Test
+  public void canCreateSqlServerChangeEventSequenceFromBackfillEvent() throws Exception {
+
+    ChangeEventContext mockContext =
+        getMockSqlServerChangeEventContext(
+            /* addSqlServerPositionFields= */ true, /* cdcEvent= */ false);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(mockContext);
+
+    assertThat(changeEventSequence, instanceOf(SqlServerChangeEventSequence.class));
+    SqlServerChangeEventSequence sqlServerChangeEventSequence =
+        (SqlServerChangeEventSequence) changeEventSequence;
+    assertEquals(sqlServerChangeEventSequence.getTimestamp(), new Long(eventTimestamp));
+    assertEquals(sqlServerChangeEventSequence.getLsn(), "");
+  }
+
+  @Test
+  public void canCreateSqlServerChangeEventSequenceFromShadowTable() throws Exception {
+
+    long previousEventTimestamp = 1615159727L;
+
+    ChangeEventContext mockContext =
+        getMockSqlServerChangeEventContext(
+            /* addSqlServerPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.SQLSERVER_TIMESTAMP_KEY))
+        .thenReturn(DatastreamConstants.SQLSERVER_TIMESTAMP_KEY);
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.SQLSERVER_LSN_KEY))
+        .thenReturn(DatastreamConstants.SQLSERVER_LSN_KEY);
+
+    // Mock transaction which can read a row from shadow table.
+    TransactionContext mockTransaction = mock(TransactionContext.class);
+    Struct mockRow = mock(Struct.class);
+    when(mockRow.getLong(DatastreamConstants.SQLSERVER_TIMESTAMP_KEY))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getString(DatastreamConstants.SQLSERVER_LSN_KEY))
+        .thenReturn("00000016:00000123:0001");
+    when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
+        .thenReturn(mockRow);
+
+    ChangeEventSequence changeEventSequence =
+        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+            mockTransaction, mockContext, null, false);
+
+    assertThat(changeEventSequence, instanceOf(SqlServerChangeEventSequence.class));
+    SqlServerChangeEventSequence sqlServerChangeEventSequence =
+        (SqlServerChangeEventSequence) changeEventSequence;
+    assertEquals(sqlServerChangeEventSequence.getTimestamp(), new Long(previousEventTimestamp));
+    assertEquals(sqlServerChangeEventSequence.getLsn(), "00000016:00000123:0001");
   }
 }
