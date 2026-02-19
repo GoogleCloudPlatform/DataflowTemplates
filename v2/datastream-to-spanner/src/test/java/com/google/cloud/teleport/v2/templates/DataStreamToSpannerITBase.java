@@ -82,6 +82,17 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
+  public String generateSessionFileWithoutResource(
+      int numOfTables, String srcDb, String spannerDb, List<String> tableNames, String sessionFile)
+      throws IOException {
+    String sessionFileContent =
+        sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
+    for (int i = 1; i <= numOfTables; i++) {
+      sessionFileContent = sessionFileContent.replaceAll("TABLE" + i, tableNames.get(i - 1));
+    }
+    return sessionFileContent;
+  }
+
   public String generateSessionFile(
       int numOfTables, String srcDb, String spannerDb, List<String> tableNames, String sessionFile)
       throws IOException {

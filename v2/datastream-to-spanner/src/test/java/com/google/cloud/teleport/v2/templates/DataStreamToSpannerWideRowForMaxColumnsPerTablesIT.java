@@ -101,7 +101,7 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         String sessionContent =
-            generateSessionFile(
+            generateSessionFileWithoutResource(
                 NUM_TABLES,
                 cloudSqlResourceManager.getDatabaseName(),
                 spannerResourceManager.getDatabaseId(),
