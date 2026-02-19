@@ -28,7 +28,7 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "Iceberg to Oracle (YAML)",
     description =
         "The Iceberg to Oracle template is a batch pipeline that reads data from an Iceberg table and outputs the records to a Oracle database table.",
-    flexContainerName = "iceberg-to-oracle-yaml",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "IcebergToOracle.yaml",
     filesToCopy = {
       "template.yaml",
