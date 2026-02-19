@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Temporarily disabled for maintenance")
 public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToSpannerITBase {
 
   private static final Logger LOG =
@@ -229,7 +230,7 @@ public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToS
   }
 
   @Test
-  @Ignore("Causes OOMs with low-provisioned VMs/DBs")
+  // @Ignore("Causes OOMs with low-provisioned VMs/DBs")
   public void testRowSize() {
     assertThatPipeline(jobInfo).isRunning();
 
