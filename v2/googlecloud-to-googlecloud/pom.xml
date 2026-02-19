@@ -28,9 +28,6 @@
 
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
-  <properties>
-    <dataplex.api.version>v1-rev20251113-2.0.0</dataplex.api.version>
-  </properties>
 
   <build>
     <plugins>
