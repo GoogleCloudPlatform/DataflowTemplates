@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.joda.time.Instant;
@@ -37,6 +38,7 @@ public abstract class TableValidationStats {
 
   public abstract String getRunId();
 
+  @Nullable
   public abstract String getSchemaName();
 
   public abstract String getTableName();
