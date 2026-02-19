@@ -341,7 +341,6 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     List<ConditionCheck> conditions = new ArrayList<>(expectedData.size());
 
     ConditionCheck combinedCondition = null;
-    int numCombinedConditions = 0;
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       if (ignoredTables.contains(entry.getKey())) {
         continue;
@@ -355,13 +354,8 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
       } else {
         combinedCondition.and(c);
       }
-      numCombinedConditions += 1;
-      if (numCombinedConditions >= 3) {
-        conditions.add(combinedCondition);
-        combinedCondition = null;
-        numCombinedConditions = 0;
-      }
     }
+    conditions.add(combinedCondition);
 
     ConditionCheck unsupportedTableCondition = null;
     for (String unsupportedTypeTable : UNSUPPORTED_TYPE_TABLES) {
