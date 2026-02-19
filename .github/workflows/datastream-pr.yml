@@ -37,7 +37,7 @@ on:
       - 'v2/datastream-to-spanner/**'
       - 'v2/datastream-to-sql/**'
   schedule:
-    - cron: "6 */12 * * *"
+    - cron: "6 9/12 * * *"
   workflow_dispatch:
 
 concurrency:
