@@ -32,7 +32,6 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,7 +42,6 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("Disabling incorrect LT. b/446480838")
 public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceLT.class);
@@ -68,8 +66,7 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
             artifactBucket,
             gcsResourceManager
                 .uploadArtifact(
-                    "input/schema.json",
-                    Resources.getResource(dataGeneratorSchemaResource).getPath())
+                    SCHEMA_FILE_NAME, Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
     jobInfo =
         launchDataflowJob(
@@ -78,7 +75,8 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
             maxWorkers,
             null,
             CASSANDRA_SOURCE_TYPE,
-            SOURCE_SHARDS_FILE_NAME);
+            SOURCE_SHARDS_FILE_NAME,
+            null);
   }
 
   @After
