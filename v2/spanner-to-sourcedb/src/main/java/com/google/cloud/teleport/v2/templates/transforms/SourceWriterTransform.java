@@ -48,6 +48,7 @@ public class SourceWriterTransform
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
+  private final SpannerConfig spannerMetaConfig;
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Ddl> shadowTableDdlView;
   private final SourceSchema sourceSchema;
@@ -64,6 +65,7 @@ public class SourceWriterTransform
   public SourceWriterTransform(
       List<Shard> shards,
       SpannerConfig spannerConfig,
+      SpannerConfig spannerMetaConfig,
       String sourceDbTimezoneOffset,
       PCollectionView<Ddl> ddlView,
       PCollectionView<Ddl> shadowTableDdlView,
@@ -81,6 +83,7 @@ public class SourceWriterTransform
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
+    this.spannerMetaConfig = spannerMetaConfig;
     this.ddlView = ddlView;
     this.shadowTableDdlView = shadowTableDdlView;
     this.sourceSchema = sourceSchema;
@@ -105,6 +108,7 @@ public class SourceWriterTransform
                     new SourceWriterFn(
                         this.shards,
                         this.spannerConfig,
+                        this.spannerMetaConfig,
                         this.sourceDbTimezoneOffset,
                         this.sourceSchema,
                         this.shadowTablePrefix,
