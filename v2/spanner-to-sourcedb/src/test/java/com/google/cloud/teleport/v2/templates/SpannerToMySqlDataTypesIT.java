@@ -200,7 +200,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
       if (combinedCondition == null) {
         combinedCondition = c;
       } else {
-        combinedCondition.and(c);
+        combinedCondition = combinedCondition.and(c);
       }
     }
 
