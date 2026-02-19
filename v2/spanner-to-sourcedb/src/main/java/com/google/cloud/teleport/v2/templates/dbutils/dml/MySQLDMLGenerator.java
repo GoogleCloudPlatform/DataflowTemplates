@@ -305,6 +305,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       customTransformColumns = customTransformationResponse.keySet();
     }
 
+    boolean isGeneratedColumnExist = false;
+
     for (int i = 0; i < sourcePKs.size(); i++) {
       String sourceColName = sourcePKs.get(i);
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
@@ -312,6 +314,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "The source column definition for {} was not found in source schema", sourceColName);
         return null;
+      }
+
+      if (sourceColDef.isGenerated()) {
+        isGeneratedColumnExist = true;
+        continue;
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
@@ -362,6 +369,19 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       }
 
       response.put(sourceColName, columnValue);
+    }
+
+    if (isGeneratedColumnExist) {
+      Map<String, String> generatedColumnValues =
+          getColumnValues(
+              schemaMapper,
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
+      response.putAll(generatedColumnValues);
     }
 
     return response;

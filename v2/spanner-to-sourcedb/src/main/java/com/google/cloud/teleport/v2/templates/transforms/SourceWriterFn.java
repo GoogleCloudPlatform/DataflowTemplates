@@ -221,6 +221,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
+        InputRecordProcessor.updateChangeEnventToIncludeGeneratedColumns(
+            spannerRec,
+            primaryKey,
+            schemaMapper,
+            ddl,
+            sourceSchema,
+            spannerDao,
+            spannerConfig,
+            mapper);
         spannerDao
             .getDatabaseClient()
             .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
@@ -267,20 +276,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                         boolean isEventFiltered =
                             InputRecordProcessor.processRecord(
                                 spannerRec,
-                                primaryKey,
                                 schemaMapper,
                                 ddl,
                                 sourceSchema,
                                 sourceDao,
-                                spannerDao,
-                                spannerConfig,
                                 shardId,
                                 sourceDbTimezoneOffset,
                                 sourceProcessor.getDmlGenerator(),
                                 spannerToSourceTransformer,
-                                this.source,
-                                check,
-                                mapper);
+                                this.source);
                         if (isEventFiltered) {
                           outputWithTag(
                               c,
