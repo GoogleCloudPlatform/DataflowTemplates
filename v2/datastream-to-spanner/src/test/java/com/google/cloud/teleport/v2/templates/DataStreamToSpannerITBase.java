@@ -417,7 +417,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
-    LaunchInfo jobInfo = launchTemplate(options, false);
+    LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
