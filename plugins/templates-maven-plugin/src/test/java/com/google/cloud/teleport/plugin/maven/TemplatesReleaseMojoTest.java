@@ -91,13 +91,13 @@ public class TemplatesReleaseMojoTest {
     // Create fake yaml files for blueprints
     File yamlDir = new File(baseDir, mojo.yamlBlueprintsPath);
     yamlDir.mkdirs();
-    File yamlFile1 = new File(yamlDir, "my-blueprint.yaml");
+    File yamlFile1 = new File(yamlDir, "MyBlueprint.yaml");
     Files.write(yamlFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
 
     // Create fake yaml files for options
     File optionsDir = new File(baseDir, mojo.yamlOptionsPath);
     optionsDir.mkdirs();
-    File optionsFile1 = new File(optionsDir, "my-options.yaml");
+    File optionsFile1 = new File(optionsDir, "MyOptions.yaml");
     Files.write(optionsFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
 
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
@@ -151,9 +151,9 @@ public class TemplatesReleaseMojoTest {
       List<Map<String, String>> actualOptions = actualManifest.get("options");
 
       List<Map<String, String>> expectedBlueprints =
-          List.of(Map.of("name", yamlFile1.getName(), "path", blueprintObjectName));
+          List.of(Map.of("name", "My Blueprint", "path", blueprintObjectName));
       List<Map<String, String>> expectedOptions =
-          List.of(Map.of("name", optionsFile1.getName(), "path", optionsObjectName));
+          List.of(Map.of("name", "My Options", "path", optionsObjectName));
 
       assertEquals(expectedBlueprints, actualBlueprints);
       assertEquals(expectedOptions, actualOptions);
@@ -223,7 +223,7 @@ public class TemplatesReleaseMojoTest {
     // Create fake yaml files for options
     File optionsDir = new File(baseDir, mojo.yamlOptionsPath);
     optionsDir.mkdirs();
-    File optionsFile1 = new File(optionsDir, "my-options.yaml");
+    File optionsFile1 = new File(optionsDir, "MyOptions.yaml");
     Files.write(optionsFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
 
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
@@ -268,6 +268,7 @@ public class TemplatesReleaseMojoTest {
       Map<String, List<Map<String, String>>> actualManifest = gson.fromJson(manifestContent, type);
       assertTrue(actualManifest.get("blueprints").isEmpty());
       assertEquals(1, actualManifest.get("options").size());
+      assertEquals("My Options", actualManifest.get("options").get(0).get("name"));
     }
   }
 
