@@ -372,8 +372,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                   uploadToGcs(storage, path, objectName);
                   String displayName =
                       StringUtils.join(
-                          StringUtils.splitByCharacterTypeCamelCase(
-                              fileName.replace(".yaml", "")),
+                          StringUtils.splitByCharacterTypeCamelCase(fileName.replace(".yaml", "")),
                           " ");
                   entries.add(new ManifestEntry(displayName, objectName));
                 });
