@@ -69,4 +69,23 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <!-- Jacoco configuration -->
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+         <version>${jacoco.version}</version>
+        <configuration>
+          <excludes combine.children="append">
+            <!-- combine.children appends to the existing exclusions in the
+             parent POM(s). -->
+            <exclude>com/google/cloud/teleport/v2/dto/**</exclude>
+            <exclude>com/google/cloud/teleport/v2/constants/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>
