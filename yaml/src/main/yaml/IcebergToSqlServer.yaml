@@ -7,10 +7,10 @@ template:
   description: >
     The Iceberg to SqlServer template is a batch pipeline that reads data from an Iceberg table
     and outputs the records to a SqlServer database table.
-  flex_container_name: "iceberg-to-sqlserver-yaml"
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "IcebergToSqlServer.yaml"
   filesToCopy: >
-    {"template.yaml", "main.py", "requirements.txt", "options/iceberg_options.yaml", "options/sqlserver_options.yaml"}
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/sqlserver_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input Iceberg table must exist and be accessible through the provided catalog.",
