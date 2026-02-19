@@ -33,10 +33,6 @@
 
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
-  <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
-  </properties>
 
   <dependencies>
 
