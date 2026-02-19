@@ -370,7 +370,12 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           : String.join(
                               "/", stagePrefix, yamlBlueprintsGCSPath, subFolder, fileName);
                   uploadToGcs(storage, path, objectName);
-                  entries.add(new ManifestEntry(fileName, objectName));
+                  String displayName =
+                      StringUtils.join(
+                          StringUtils.splitByCharacterTypeCamelCase(
+                              fileName.replace(".yaml", "")),
+                          " ");
+                  entries.add(new ManifestEntry(displayName, objectName));
                 });
       }
     }
