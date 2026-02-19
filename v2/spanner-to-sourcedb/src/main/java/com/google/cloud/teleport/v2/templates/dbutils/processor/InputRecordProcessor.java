@@ -142,6 +142,7 @@ public class InputRecordProcessor {
         }
       }
 
+      LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
       if (!columnsToFetch.isEmpty()) {
 
         Struct fetchedRow =
