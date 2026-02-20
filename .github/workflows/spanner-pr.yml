@@ -183,7 +183,7 @@ jobs:
       (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped')) &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    timeout-minutes: 180
+    timeout-minutes: 25
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, spanner-it]
     steps:
