@@ -30,7 +30,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **redisHost**: The Redis database host. For example, `your.cloud.db.redislabs.com`. Defaults to: 127.0.0.1.
 * **redisPort**: The Redis database port. For example, `12345`. Defaults to: 6379.
 * **redisPassword**: The Redis database password. Defaults to `empty`.
-* **deadletterTopic**: The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation or cannot be written to Redis are forwarded here. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **deadletterTopic**: The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 

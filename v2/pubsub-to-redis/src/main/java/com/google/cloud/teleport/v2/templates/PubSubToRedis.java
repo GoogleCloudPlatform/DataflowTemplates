@@ -258,7 +258,7 @@ public class PubSubToRedis {
         order = 9,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation or cannot be written to Redis are forwarded here.",
+            "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here.",
         example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
     @Validation.Required
     String getDeadletterTopic();
