@@ -25,8 +25,8 @@ def is_retryable(exception):
 RETRY_POLICY = retry.Retry(predicate=is_retryable, initial=1.0, maximum=60.0, multiplier=1.3, deadline=900.0)
 LRO_TIMEOUT = 1800 # 30 minutes
 
-def delete_streams(client, parent):
-    """Deletes Datastream streams older than 1 day and returns their connection profiles."""
+def delete_streams(client, parent, look_back_period=7):
+    """Deletes Datastream streams older than look_back_period days and returns their connection profiles."""
     profiles_to_delete = set()
     try:
         streams = client.list_streams(parent=parent)
@@ -34,7 +34,7 @@ def delete_streams(client, parent):
             create_time = stream.create_time
             if create_time:
                 age = datetime.datetime.now(datetime.timezone.utc) - create_time
-                if age > datetime.timedelta(days=1):
+                if age > datetime.timedelta(days=look_back_period):
                     print(f"Deleting stream {stream.name} (age: {age})")
                     
                     # Collect connection profiles before deleting the stream
@@ -51,11 +51,6 @@ def delete_streams(client, parent):
                         print(f"Stream {stream.name} already deleted.")
                     except Exception as e:
                         print(f"Error deleting stream {stream.name}: {e}")
-                        # If stream deletion failed, we might not want to try deleting its profiles?
-                        # But for now, we kept them in the set. 
-                        # Actually, if stream deletion fails, the profile is likely still in use.
-                        # So strictly we should maybe remove them from the set if deletion failed.
-                        # However, the set is just candidates. The delete_connection_profiles will try and fail if in use.
                 else:
                     print(f"Skipping stream {stream.name} (age: {age})")
     except Exception as e:
@@ -63,8 +58,8 @@ def delete_streams(client, parent):
     
     return profiles_to_delete
 
-def find_old_connection_profiles(client, parent):
-    """Finds Datastream connection profiles older than 1 day."""
+def find_old_connection_profiles(client, parent, look_back_period=7):
+    """Finds Datastream connection profiles older than look_back_period days."""
     old_profiles = set()
     try:
         profiles = client.list_connection_profiles(parent=parent)
@@ -72,7 +67,7 @@ def find_old_connection_profiles(client, parent):
             create_time = profile.create_time
             if create_time:
                 age = datetime.datetime.now(datetime.timezone.utc) - create_time
-                if age > datetime.timedelta(days=1):
+                if age > datetime.timedelta(days=look_back_period):
                     old_profiles.add(profile.name)
     except Exception as e:
         print(f"Error listing connection profiles in {parent}: {e}")
@@ -87,17 +82,17 @@ def delete_connection_profiles(client, profiles):
             operation.result(timeout=LRO_TIMEOUT)
             print(f"Successfully deleted connection profile {profile_name}")
         except exceptions.NotFound:
-             print(f"Connection profile {profile_name} already deleted.")
+            print(f"Connection profile {profile_name} already deleted.")
         except exceptions.FailedPrecondition as e:
-             print(f"Skipping connection profile {profile_name} as it is in use: {e.message if hasattr(e, 'message') else e}")
+            print(f"Skipping connection profile {profile_name} as it is in use: {e}")
         except Exception as e:
             # Check for "in use" message if exception type isn't exactly FailedPrecondition or if wrapped
             if "is being used" in str(e):
-                 print(f"Skipping connection profile {profile_name} as it is in use.")
+                print(f"Skipping connection profile {profile_name} as it is in use.")
             else:
                 print(f"Error deleting connection profile {profile_name}: {e}")
 
-def delete_old_datastream_resources(project_id=None):
+def delete_old_datastream_resources(project_id=None, look_back_period=7):
     projects_to_process = resources
     if project_id:
         if project_id in resources:
@@ -119,8 +114,8 @@ def delete_old_datastream_resources(project_id=None):
             parent = f"projects/{project}/locations/{location}"
             print(f"Checking location: {location}")
 
-            profiles_from_streams = delete_streams(client, parent)
-            old_profiles = find_old_connection_profiles(client, parent)
+            profiles_from_streams = delete_streams(client, parent, look_back_period)
+            old_profiles = find_old_connection_profiles(client, parent, look_back_period)
             
             # Combine sets
             all_profiles_to_delete = profiles_from_streams.union(old_profiles)
@@ -133,6 +128,7 @@ def delete_old_datastream_resources(project_id=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cleanup old Datastream resources.')
     parser.add_argument('--project', type=str, help='Project ID to cleanup')
+    parser.add_argument('--look_back_period', type=int, default=7, help='Look back period in days')
     args = parser.parse_args()
     
-    delete_old_datastream_resources(args.project)
+    delete_old_datastream_resources(args.project, args.look_back_period)
