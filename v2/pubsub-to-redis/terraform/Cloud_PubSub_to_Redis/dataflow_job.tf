@@ -83,7 +83,7 @@ variable "ttl" {
 
 variable "deadletterTopic" {
   type = string
-  description = "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation or cannot be written to Redis are forwarded here. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
+  description = "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
   
 }
 
