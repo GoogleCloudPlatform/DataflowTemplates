@@ -1107,6 +1107,43 @@ public class CopyDbTest {
   }
 
   @Test
+  public void pgUdfs() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl =
+        ddlBuilder
+            .createSchema("s1")
+            .endNamedSchema()
+            .createUdf("s1.Foo1")
+            .dialect(Dialect.POSTGRESQL)
+            .name("s1.Foo1")
+            .definition("(SELECT 'bar')")
+            .type("text")
+            .endUdf()
+            .createUdf("s1.Foo2")
+            .dialect(Dialect.POSTGRESQL)
+            .name("s1.Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("text")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 text", "s1.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 text DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void sequences() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder();
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();

@@ -63,6 +63,31 @@ public class UdfTest {
   }
 
   @Test
+  public void testPgUdfWithAllOptions() {
+    Udf udf =
+        Udf.builder()
+            .name("foo")
+            .specificName("s1.foo")
+            .dialect(Dialect.POSTGRESQL)
+            .type("text")
+            .definition("(SELECT 1)")
+            .security(SqlSecurity.INVOKER)
+            .spannerDeterminism("NOT_DETERMINISTIC_VOLATILE")
+            .addParameter(UdfParameter.parse("p1 bigint", "s1.foo", Dialect.POSTGRESQL))
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text SECURITY INVOKER VOLATILE RETURN (SELECT 1)"));
+
+    assertThat(
+        udf.toBuilder().build().toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text SECURITY INVOKER VOLATILE RETURN (SELECT 1)"));
+  }
+
+  @Test
   public void testUdfWithInvalidParameter() {
     Udf.Builder udf =
         Udf.builder()
