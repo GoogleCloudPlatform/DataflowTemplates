@@ -107,7 +107,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner</artifactId>
-            <version>6.104.0</version>
+            <version>6.102.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
@@ -115,7 +115,19 @@
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-pubsublite</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-datastore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore-admin</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
