@@ -316,8 +316,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
           lagMetric.update(replicationLag);
           SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
-        } else {
-          skippedRecordCountMetric.inc();
         }
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
