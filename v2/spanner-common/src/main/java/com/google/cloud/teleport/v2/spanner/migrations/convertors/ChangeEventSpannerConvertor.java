@@ -59,81 +59,16 @@ public class ChangeEventSpannerConvertor {
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(tableName);
 
     for (String columnName : columnNames) {
-      Type columnType = table.column(columnName).type();
-      Value columnValue = null;
+      Column col = table.column(columnName);
+      if (col.isGenerated()) {
+        continue;
+      }
+      Type columnType = col.type();
 
       String colName = convertNameToLowerCase ? columnName.toLowerCase() : columnName;
       boolean requiredField = keyColumnNames.contains(columnName);
-      switch (columnType.getCode()) {
-        case BOOL:
-        case PG_BOOL:
-          columnValue =
-              Value.bool(ChangeEventTypeConvertor.toBoolean(changeEvent, colName, requiredField));
-          break;
-        case INT64:
-        case PG_INT8:
-          columnValue =
-              Value.int64(ChangeEventTypeConvertor.toLong(changeEvent, colName, requiredField));
-          break;
-        case FLOAT64:
-        case PG_FLOAT8:
-          columnValue =
-              Value.float64(ChangeEventTypeConvertor.toDouble(changeEvent, colName, requiredField));
-          break;
-        case FLOAT32:
-        case PG_FLOAT4:
-          columnValue =
-              Value.float32(ChangeEventTypeConvertor.toFloat(changeEvent, colName, requiredField));
-          break;
-        case STRING:
-        case PG_VARCHAR:
-        case PG_TEXT:
-          columnValue =
-              Value.string(ChangeEventTypeConvertor.toString(changeEvent, colName, requiredField));
-          break;
-        case NUMERIC:
-        case PG_NUMERIC:
-          columnValue =
-              Value.numeric(
-                  ChangeEventTypeConvertor.toNumericBigDecimal(
-                      changeEvent, colName, requiredField));
-          break;
-        case JSON:
-        case PG_JSONB:
-          columnValue =
-              Value.string(ChangeEventTypeConvertor.toString(changeEvent, colName, requiredField));
-          break;
-        case BYTES:
-        case PG_BYTEA:
-          columnValue =
-              Value.bytes(
-                  ChangeEventTypeConvertor.toByteArray(changeEvent, colName, requiredField));
-          break;
-        case TIMESTAMP:
-        case PG_COMMIT_TIMESTAMP:
-        case PG_TIMESTAMPTZ:
-          columnValue =
-              Value.timestamp(
-                  ChangeEventTypeConvertor.toTimestamp(changeEvent, colName, requiredField));
-          break;
-        case DATE:
-        case PG_DATE:
-          columnValue =
-              Value.date(ChangeEventTypeConvertor.toDate(changeEvent, colName, requiredField));
-          break;
-        case ARRAY:
-          // TODO(b/422928714): Add support for Array types.
-          columnValue = null;
-          break;
-          // TODO(b/179070999) - Add support for other data types.
-        default:
-          throw new IllegalArgumentException(
-              "Column name("
-                  + columnName
-                  + ") has unsupported column type("
-                  + columnType.getCode()
-                  + ")");
-      }
+      Value columnValue =
+          ChangeEventTypeConvertor.toValue(changeEvent, columnType, colName, requiredField);
       // TODO(b/422928714): Add support for Array types.
       if (columnType.getCode() != Code.ARRAY) {
         builder.set(columnName).to(columnValue);

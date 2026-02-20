@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import kotlin.Pair;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -60,12 +61,13 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBase {
+public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStreamToSpannerITBase {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(MySQLDatastreamToSpannerDataTypesIT.class);
+      LoggerFactory.getLogger(MySQLDatastreamToSpannerDataTypesAndExpressionIT.class);
 
   private static final String MYSQL_DDL_RESOURCE = "MySQLDataTypesIT/mysql-data-types.sql";
+  private static final String MYSQL_DML_RESOURCE = "MySQLDataTypesIT/mysql-generated-col.sql";
   private static final String SPANNER_DDL_RESOURCE = "MySQLDataTypesIT/spanner-schema.sql";
   private static final String PG_DIALECT_SPANNER_DDL_RESOURCE =
       "MySQLDataTypesIT/pg-dialect-spanner-schema.sql";
@@ -89,12 +91,13 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
   private static PubsubResourceManager pubsubResourceManager;
   private static DatastreamResourceManager datastreamResourceManager;
 
-  private static HashSet<MySQLDatastreamToSpannerDataTypesIT> testInstances = new HashSet<>();
+  private static HashSet<MySQLDatastreamToSpannerDataTypesAndExpressionIT> testInstances =
+      new HashSet<>();
 
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (MySQLDatastreamToSpannerDataTypesIT.class) {
+    synchronized (MySQLDatastreamToSpannerDataTypesAndExpressionIT.class) {
       testInstances.add(this);
       if (!initialized) {
         LOG.info("Setting up MySQL resource manager...");
@@ -135,7 +138,7 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
   @AfterClass
   public static void cleanUp() throws IOException {
     LOG.info("Cleaning up resources...");
-    for (MySQLDatastreamToSpannerDataTypesIT instance : testInstances) {
+    for (MySQLDatastreamToSpannerDataTypesAndExpressionIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -148,9 +151,11 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
   }
 
   @Test
-  public void testMySqlDataTypes() throws Exception {
+  public void testMySqlDataTypesAndExpression() throws Exception {
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
+    addInitialExpectedDataGeneratedColumns(expectedData);
 
     MySQLSource mySQLSource =
         MySQLSource.builder(
@@ -158,7 +163,8 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
                 mySQLResourceManager.getUsername(),
                 mySQLResourceManager.getPassword(),
                 mySQLResourceManager.getPort())
-            .setAllowedTables(Map.of(mySQLResourceManager.getDatabaseName(), getAllowedTables()))
+            .setAllowedTables(
+                Map.of(mySQLResourceManager.getDatabaseName(), getAllowedTables(expectedData)))
             .build();
 
     LOG.info("Launching Dataflow job...");
@@ -179,11 +185,23 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
             mySQLSource);
     assertThatPipeline(jobInfo).isRunning();
 
-    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
-
     ChainedConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
+    assertThatResult(result).meetsConditions();
+
+    validateResult(spannerResourceManager, expectedData);
+
+    LOG.info("Executing MySQL DML script...");
+    executeSqlScript(mySQLResourceManager, MYSQL_DML_RESOURCE);
+    expectedData = getExpectedData();
+    addUpdatedExpectedDataGeneratedColumns(expectedData);
+
+    condition = buildConditionCheck(spannerResourceManager, expectedData);
+    LOG.info("Waiting for pipeline to process DML data...");
+    result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
     assertThatResult(result).meetsConditions();
@@ -195,6 +213,7 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
   public void testMySqlDataTypesPGDialect() throws Exception {
     LOG.info("Creating PG Dialect Spanner DDL...");
     createSpannerDDL(pgDialectSpannerResourceManager, PG_DIALECT_SPANNER_DDL_RESOURCE);
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
 
     MySQLSource mySQLSource =
         MySQLSource.builder(
@@ -202,7 +221,8 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
                 mySQLResourceManager.getUsername(),
                 mySQLResourceManager.getPassword(),
                 mySQLResourceManager.getPort())
-            .setAllowedTables(Map.of(mySQLResourceManager.getDatabaseName(), getAllowedTables()))
+            .setAllowedTables(
+                Map.of(mySQLResourceManager.getDatabaseName(), getAllowedTables(expectedData)))
             .build();
 
     LOG.info("Launching Dataflow job...");
@@ -223,8 +243,6 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
             mySQLSource);
     assertThatPipeline(jobInfo).isRunning();
 
-    Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
-
     ChainedConditionCheck condition =
         buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
@@ -238,7 +256,8 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
 
   private void validateResult(
       SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-    // These types are not mapped as expected, ignore them to avoid failing the test.
+    // These types are not mapped as expected, ignore them to avoid failing the
+    // test.
     Set<String> ignoredTypeMappings =
         Set.of("bit_to_string", "date_to_string", "set_to_array", "spatial_geometrycollection");
     // Validate supported data types.
@@ -251,10 +270,10 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
         continue;
       }
       String tableName = String.format("%s_table", type);
-      String colName = String.format("%s_col", type);
       LOG.info("Asserting type: {}", type);
 
-      List<Struct> rows = resourceManager.readTableRecords(tableName, "id", colName);
+      List<Struct> rows =
+          resourceManager.readTableRecords(tableName, entry.getValue().get(0).keySet());
       for (Struct row : rows) {
         // Limit logs printed for very large strings.
         String rowString = row.toString();
@@ -292,8 +311,20 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
     return rows;
   }
 
-  private List<String> getAllowedTables() {
-    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
+  private List<Map<String, Object>> createMultiColumnRows(
+      List<List<Pair<String, Object>>> rowsValues) {
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (List<Pair<String, Object>> rowValues : rowsValues) {
+      Map<String, Object> row = new HashMap<>();
+      for (Pair<String, Object> colValue : rowValues) {
+        row.put(colValue.getFirst(), colValue.getSecond());
+      }
+      rows.add(row);
+    }
+    return rows;
+  }
+
+  private List<String> getAllowedTables(Map<String, List<Map<String, Object>>> expectedData) {
     List<String> tableNames = new ArrayList<>(expectedData.size() + UNSUPPORTED_TYPE_TABLES.size());
     for (String tablePrefix : expectedData.keySet()) {
       tableNames.add(tablePrefix + "_table");
@@ -304,7 +335,8 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
 
   private ChainedConditionCheck buildConditionCheck(
       SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
-    // These tables fail to migrate any rows, ignore them to avoid having to wait for the timeout.
+    // These tables fail to migrate any rows, ignore them to avoid having to wait
+    // for the timeout.
     Set<String> ignoredTables = Set.of("set_to_array", "spatial_geometrycollection");
     List<ConditionCheck> conditions = new ArrayList<>(expectedData.size());
 
@@ -582,9 +614,109 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
     return expectedData;
   }
 
+  private void addInitialExpectedDataGeneratedColumns(
+      Map<String, List<Map<String, Object>>> expectedData) {
+    expectedData.put(
+        "generated_pk_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA ")))));
+
+    expectedData.put(
+        "generated_non_pk_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("id", 1),
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA ")),
+                Arrays.asList(
+                    new Pair<>("id", 10),
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA ")))));
+
+    expectedData.put(
+        "non_generated_to_generated_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA "),
+                    new Pair<>("generated_column_pk_col", "AA ")))));
+
+    expectedData.put(
+        "generated_to_non_generated_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA "),
+                    new Pair<>("generated_column_pk_col", "AA ")))));
+  }
+
+  private void addUpdatedExpectedDataGeneratedColumns(
+      Map<String, List<Map<String, Object>>> expectedData) {
+    expectedData.put(
+        "generated_pk_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC ")))));
+    expectedData.put(
+        "generated_non_pk_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("id", 2),
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC ")),
+                Arrays.asList(
+                    new Pair<>("id", 3),
+                    new Pair<>("first_name_col", "DD"),
+                    new Pair<>("last_name_col", "EE"),
+                    new Pair<>("generated_column_col", "DD ")),
+                Arrays.asList(
+                    new Pair<>("id", 11),
+                    new Pair<>("first_name_col", "AA"),
+                    new Pair<>("last_name_col", "BB"),
+                    new Pair<>("generated_column_col", "AA ")))));
+
+    expectedData.put(
+        "non_generated_to_generated_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC "),
+                    new Pair<>("generated_column_pk_col", "CC ")))));
+
+    expectedData.put(
+        "generated_to_non_generated_column",
+        createMultiColumnRows(
+            Arrays.asList(
+                Arrays.asList(
+                    new Pair<>("first_name_col", "CC"),
+                    new Pair<>("last_name_col", "CC"),
+                    new Pair<>("generated_column_col", "CC "),
+                    new Pair<>("generated_column_pk_col", "CC ")))));
+  }
+
   private Map<String, List<Map<String, Object>>> getExpectedDataPGDialect() {
-    // Expected data for PG dialect is roughly similar to the spanner dialect data, with some minor
-    // differences. Notably, some data types like numeric have slightly different behaviour.
+    // Expected data for PG dialect is roughly similar to the spanner dialect data,
+    // with some minor
+    // differences. Notably, some data types like numeric have slightly different
+    // behaviour.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
     expectedData.put(
