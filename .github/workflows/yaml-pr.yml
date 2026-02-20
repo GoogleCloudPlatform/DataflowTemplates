@@ -33,6 +33,10 @@ on:
       # Plugin updates
       - 'plugins/core-plugin/**'
       - 'plugins/templates-maven-plugin/**'
+      # Include pom.xml files except in v1 and v2
+      - '**/pom.xml'
+      - '!v1/**/pom.xml'
+      - '!v2/**/pom.xml'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
