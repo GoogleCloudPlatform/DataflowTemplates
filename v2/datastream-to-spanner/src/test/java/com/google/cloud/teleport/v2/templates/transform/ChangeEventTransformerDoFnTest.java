@@ -758,4 +758,69 @@ public class ChangeEventTransformerDoFnTest {
         "{\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"first_name\":\"Johnny Rose\",\"_metadata_change_type\":\"INSERT\",\"_metadata_spanner_mutation\":true}",
         argument.getValue().getPayload());
   }
+
+  @Test
+  public void testProcessElementWithGeneratedColumn() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    Schema schema = mock(Schema.class);
+    CustomTransformation customTransformation = mock(CustomTransformation.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        mock(ChangeEventSessionConvertor.class);
+
+    // Create failsafe element input for the DoFn
+    ObjectNode changeEvent = mapper.createObjectNode();
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put("first_name", "Johnny");
+    changeEvent.put("gen_col", "123");
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
+
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("gen_col")
+            .int64()
+            .generatedAs("1")
+            .endColumn()
+            .endTable()
+            .build();
+
+    when(schema.isEmpty()).thenReturn(false);
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(processContextMock.sideInput(ddlView)).thenReturn(ddl);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent))
+        .thenReturn(changeEvent);
+    when(changeEventSessionConvertor.transformChangeEventData(changeEvent, databaseClientMock, ddl))
+        .thenReturn(changeEvent);
+
+    ChangeEventTransformerDoFn changeEventTransformerDoFn =
+        ChangeEventTransformerDoFn.create(
+            schema, null, null, null, "mysql", customTransformation, false, ddlView, spannerConfig);
+    changeEventTransformerDoFn.setMapper(mapper);
+    changeEventTransformerDoFn.setSpannerAccessor(spannerAccessor);
+    changeEventTransformerDoFn.setChangeEventSessionConvertor(changeEventSessionConvertor);
+    changeEventTransformerDoFn.processElement(processContextMock);
+
+    verify(changeEventSessionConvertor, times(1))
+        .transformChangeEventData(changeEvent, databaseClientMock, ddl);
+
+    ArgumentCaptor<FailsafeElement> argument = ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG), argument.capture());
+    assertEquals(
+        "{\"_metadata_source_type\":\"mysql\",\"_metadata_table\":\"Users\",\"first_name\":\"Johnny\",\"gen_col\":\"123\"}",
+        argument.getValue().getPayload());
+  }
 }

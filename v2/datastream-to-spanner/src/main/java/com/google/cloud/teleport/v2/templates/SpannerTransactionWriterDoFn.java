@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -279,7 +280,7 @@ class SpannerTransactionWriterDoFn
             c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       } else {
         processSingleDatabaseTransaction(
-            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       }
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
@@ -378,7 +379,8 @@ class SpannerTransactionWriterDoFn
       ProcessContext c,
       ChangeEventContext changeEventContext,
       ChangeEventSequence currentChangeEventSequence,
-      Ddl shadowDdl) {
+      Ddl shadowDdl,
+      Ddl ddl) {
 
     spannerAccessor
         .getDatabaseClient()
@@ -403,7 +405,14 @@ class SpannerTransactionWriterDoFn
                     skippedEvents.inc();
                     return null;
                   }
-                  // Apply shadow and data table mutations.
+                  // Execute DML if applicable
+                  Statement dataDml = changeEventContext.getDataDmlStatement(ddl);
+
+                  if (dataDml != null) {
+                    transaction.executeUpdate(dataDml);
+                  }
+
+                  // Apply shadow and data table mutations (only if they exist)
                   transaction.buffer(changeEventContext.getMutations());
                   isInTransaction.set(false);
                   return null;
@@ -504,8 +513,17 @@ class SpannerTransactionWriterDoFn
                                       "Shadow table sequence changed during transaction");
                                 }
 
+                                // Execute Data DML if applicable
+                                Statement dataDml =
+                                    changeEventContext.getDataDmlStatement(dataTableDdl);
+                                if (dataDml != null) {
+                                  mainTxn.executeUpdate(dataDml);
+                                }
+
                                 // Write to main table
-                                mainTxn.buffer(changeEventContext.getDataMutation());
+                                if (changeEventContext.getDataMutation() != null) {
+                                  mainTxn.buffer(changeEventContext.getDataMutation());
+                                }
                                 return null;
                               });
 
