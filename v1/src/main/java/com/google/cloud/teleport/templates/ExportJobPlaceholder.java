@@ -147,7 +147,7 @@ public class ExportJobPlaceholder {
         optional = true,
         description = "Bigtable read Rpc timeout",
         helpText = "Bigtable read RPC timeout in milliseconds.")
-    ValueProvider<Integer> getBigtableReadRpcTimeoutMs();
+    ValueProvider<String> getBigtableReadRpcTimeoutMs();
 
     @TemplateParameter.Text(
         order = 12,
@@ -155,7 +155,7 @@ public class ExportJobPlaceholder {
         optional = true,
         description = "Bigtable read Rpc attempt timeout",
         helpText = "Bigtable read RPC attempt timeout in milliseconds.")
-    ValueProvider<Integer> getBigtableReadRpcAttemptTimeoutMs();
+    ValueProvider<String> getBigtableReadRpcAttemptTimeoutMs();
 
     @TemplateCreationParameter(value = "false")
     @Description("Wait for pipeline to finish.")
