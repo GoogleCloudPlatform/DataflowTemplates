@@ -254,21 +254,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                           && shadowTableRecord.getRecordSequence()
                                               >= Long.parseLong(spannerRec.getRecordSequence())));
 
-                          if (shadowTableRecord != null
-                              && shadowTableRecord
-                                      .getProcessedCommitTimestamp()
-                                      .compareTo(spannerRec.getCommitTimestamp())
-                                  == 0
-                              && shadowTableRecord.getRecordSequence()
-                                  == Long.parseLong(spannerRec.getRecordSequence())) {
-                            LOG.info(
-                                "Duplicate record detected. Shadow Table: [{}, {}], Record: [{}, {}]",
-                                shadowTableRecord.getProcessedCommitTimestamp(),
-                                shadowTableRecord.getRecordSequence(),
-                                spannerRec.getCommitTimestamp(),
-                                spannerRec.getRecordSequence());
-                          }
-
                           if (!isSourceAhead) {
                             IDao sourceDao = sourceProcessor.getSourceDao(shardId);
                             TransactionalCheck check =
@@ -319,8 +304,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                           }
                           return isRecordWritten[0];
                         });
-        successRecordCountMetric.inc();
         if (Boolean.TRUE.equals(transactionResult)) {
+          successRecordCountMetric.inc();
           Counter recordsWrittenToSource =
               Metrics.counter(shardId, "records_written_to_source_" + shardId);
           recordsWrittenToSource.inc(1);
@@ -330,6 +315,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           Instant commitTsInst = spannerRec.getCommitTimestamp().toSqlTimestamp().toInstant();
           long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
           lagMetric.update(replicationLag);
+          SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
+        } else {
+          skippedRecordCountMetric.inc();
         }
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
@@ -339,7 +327,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
-        SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
