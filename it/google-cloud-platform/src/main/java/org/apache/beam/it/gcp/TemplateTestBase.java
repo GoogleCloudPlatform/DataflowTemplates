@@ -365,10 +365,10 @@ public abstract class TemplateTestBase {
 
             try {
               Process exec = Runtime.getRuntime().exec(mavenCmd);
-              IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-              IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
               if (exec.waitFor() != 0) {
+                IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+                IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
                 throw new RuntimeException("Error staging template, check Maven logs.");
               }
 
