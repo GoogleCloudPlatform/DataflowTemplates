@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.ads.googleads.v19.enums.CampaignStatusEnum.CampaignStatus;
-import com.google.ads.googleads.v19.resources.Campaign;
-import com.google.ads.googleads.v19.services.GoogleAdsRow;
+import com.google.ads.googleads.v23.enums.CampaignStatusEnum.CampaignStatus;
+import com.google.ads.googleads.v23.resources.Campaign;
+import com.google.ads.googleads.v23.services.GoogleAdsRow;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -35,14 +35,14 @@ public class GoogleAdsRowToReportRowJsonFnTest {
   @Test
   public void testRowToJsonWithValidInput() {
     String query =
-        "SELECT campaign.id, campaign.name, campaign.start_date, campaign.status FROM campaign";
+        "SELECT campaign.id, campaign.name, campaign.start_date_time, campaign.status FROM campaign";
     GoogleAdsRow row =
         GoogleAdsRow.newBuilder()
             .setCampaign(
                 Campaign.newBuilder()
                     .setId(1234567890L)
                     .setName("foo")
-                    .setStartDate("1970-01-01")
+                    .setStartDateTime("1970-01-01")
                     .setStatus(CampaignStatus.ENABLED))
             .build();
 
@@ -52,7 +52,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
             .apply(ParDo.of(new GoogleAdsRowToReportRowJsonFn(query)));
 
     String expected =
-        "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date\":\"1970-01-01\",\"campaign_status\":\"ENABLED\"}";
+        "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date_time\":\"1970-01-01\",\"campaign_status\":\"ENABLED\"}";
     PAssert.that(actual).containsInAnyOrder(expected);
     pipeline.run();
   }
