@@ -17,12 +17,15 @@ package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
 import com.google.common.collect.Sets;
-import io.debezium.embedded.EmbeddedEngine;
-import io.debezium.util.Clock;
+import io.debezium.embedded.Connect;
+import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.DebeziumEngine;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,11 +52,11 @@ public class DebeziumMysqlToPubSubDataSenderTest {
             DataCatalogSchemaUtils.getSchemaManager(GCP_PROJECT, PUBSUB_PREFIX, false),
             PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
-    final EmbeddedEngine engine =
-        EmbeddedEngine.create()
+    final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine =
+        DebeziumEngine.create(Connect.class)
             // .using(config)
             .using(this.getClass().getClassLoader())
-            .using(Clock.SYSTEM)
+            .using(java.time.Clock.systemUTC())
             .notifying(changeConsumer)
             .build();
 
@@ -66,7 +69,11 @@ public class DebeziumMysqlToPubSubDataSenderTest {
             new Thread(
                 () -> {
                   LOG.info("Requesting embedded engine to shut down");
-                  engine.stop();
+                  try {
+                    engine.close();
+                  } catch (IOException e) {
+                    LOG.error("Failed to close embedded engine", e);
+                  }
                 }));
 
     try {
