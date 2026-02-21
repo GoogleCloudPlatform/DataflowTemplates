@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.ResultSetValueExtractor;
@@ -25,20 +26,21 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** PostgreSQL data type mapping to AVRO types. */
 public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLJdbcValueMappings.class);
 
   private static final Calendar UTC_CALENDAR =
       Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
@@ -55,13 +57,6 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
   private static long toMicros(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond())
         + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
-  }
-
-  private static long toMicros(OffsetTime offsetTime) {
-    return TimeUnit.HOURS.toMicros(offsetTime.getHour())
-        + TimeUnit.MINUTES.toMicros(offsetTime.getMinute())
-        + TimeUnit.SECONDS.toMicros(offsetTime.getSecond())
-        + TimeUnit.NANOSECONDS.toMicros(offsetTime.getNano());
   }
 
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
@@ -109,63 +104,187 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                   TimeUnit.SECONDS.toMillis(value.getOffset().getTotalSeconds()))
               .build();
 
-  private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
-      ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
-          .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIGSERIAL", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIT", Pair.of(bytesExtractor, valuePassThrough))
-          .put("BIT VARYING", Pair.of(bytesExtractor, valuePassThrough))
-          .put("BOOL", Pair.of(ResultSet::getBoolean, valuePassThrough))
-          .put("BOOLEAN", Pair.of(ResultSet::getBoolean, valuePassThrough))
-          .put("BYTEA", Pair.of(bytesExtractor, valuePassThrough))
-          .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CHARACTER", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CHARACTER VARYING", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("CITEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("DATE", Pair.of(dateExtractor, dateToAvro))
-          .put("DECIMAL", Pair.of(ResultSet::getObject, numericToAvro))
-          .put("DOUBLE PRECISION", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("FLOAT4", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("FLOAT8", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("INT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INTEGER", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT2", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT4", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("INT8", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("JSON", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("JSONB", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("MONEY", Pair.of(ResultSet::getDouble, valuePassThrough))
-          .put("NUMERIC", Pair.of(ResultSet::getObject, numericToAvro))
-          .put("OID", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("REAL", Pair.of(ResultSet::getFloat, valuePassThrough))
-          .put("SERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL2", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL4", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SERIAL8", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("SMALLINT", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("SMALLSERIAL", Pair.of(ResultSet::getInt, valuePassThrough))
-          .put("TEXT", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("TIMESTAMP", Pair.of(timestampExtractor, timestampToAvro))
-          .put("TIMESTAMPTZ", Pair.of(timestamptzExtractor, timestamptzToAvro))
-          .put("TIMESTAMP WITH TIME ZONE", Pair.of(timestamptzExtractor, timestamptzToAvro))
-          .put("TIMESTAMP WITHOUT TIME ZONE", Pair.of(timestampExtractor, timestampToAvro))
-          .put("UUID", Pair.of(ResultSet::getString, valuePassThrough))
-          .put("VARBIT", Pair.of(bytesExtractor, valuePassThrough))
-          .put("VARCHAR", Pair.of(ResultSet::getString, valuePassThrough))
-          .build()
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  Map.entry(
-                      entry.getKey(),
-                      new JdbcValueMapper<>(
-                          entry.getValue().getLeft(), entry.getValue().getRight())))
-          .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+  private static final JdbcMappings JDBC_MAPPINGS =
+      /*
+      Postgres JDBC uses binary encoding for most types ref:org.postgresql.jdbc.PgConnection.getSupportedBinaryOids()
+      */
+      JdbcMappings.builder()
+          .put("BIGINT", ResultSet::getLong, valuePassThrough, 8) // -
+          .put("BIGSERIAL", ResultSet::getLong, valuePassThrough, 8) // -
+          .put(
+              "BIT",
+              bytesExtractor,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) ((n > 0 ? n : 1)); // bit uses text protocol.
+              })
+          .put(
+              "BIT VARYING",
+              bytesExtractor,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int)
+                    ((n > 0
+                        ? n
+                        : 10 * 1024
+                            * 1024)); // bit varying without a length specification means unlimited
+                // length. ref:
+                // https://www.postgresql.org/docs/current/datatype-bit.html
+              })
+          .put("BOOL", ResultSet::getBoolean, valuePassThrough, 1)
+          .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 1)
+          .put(
+              "BYTEA",
+              bytesExtractor,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min(length, Integer.MAX_VALUE);
+              })
+          .put(
+              "CHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                // CHAR(N) -> N * 4 bytes (UTF-8 max) + overhead.
+                return (int) Math.min(((n > 0 ? n : 255) * 4), Integer.MAX_VALUE);
+              })
+          .put(
+              "CHARACTER",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put(
+              "CHARACTER VARYING",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put(
+              "CITEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("DATE", dateExtractor, dateToAvro, 4)
+          .put(
+              "DECIMAL",
+              ResultSet::getObject,
+              numericToAvro,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) (n / 2 + 8);
+              })
+          .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 8)
+          .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 4)
+          .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 8)
+          .put("INT", ResultSet::getInt, valuePassThrough, 4)
+          .put("INTEGER", ResultSet::getInt, valuePassThrough, 4)
+          .put("INT2", ResultSet::getInt, valuePassThrough, 2)
+          .put("INT4", ResultSet::getInt, valuePassThrough, 4)
+          .put("INT8", ResultSet::getLong, valuePassThrough, 8)
+          .put(
+              "JSON",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put(
+              "JSONB",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("MONEY", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "NUMERIC",
+              ResultSet::getObject,
+              numericToAvro,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) (n / 2 + 8);
+              })
+          .put(
+              "OID",
+              ResultSet::getLong,
+              valuePassThrough,
+              4) // Usually unsigned int, mapped to long for safety
+          .put("REAL", ResultSet::getFloat, valuePassThrough, 4)
+          .put("SERIAL", ResultSet::getInt, valuePassThrough, 4)
+          .put("SERIAL2", ResultSet::getInt, valuePassThrough, 2)
+          .put("SERIAL4", ResultSet::getInt, valuePassThrough, 4)
+          .put("SERIAL8", ResultSet::getLong, valuePassThrough, 8)
+          .put("SMALLINT", ResultSet::getInt, valuePassThrough, 2)
+          .put("SMALLSERIAL", ResultSet::getInt, valuePassThrough, 2)
+          .put(
+              "TEXT",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                long length = n > 0 ? n : 10 * 1024 * 1024;
+                return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
+              })
+          .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
+          .put("TIMESTAMPTZ", timestamptzExtractor, timestamptzToAvro, 8)
+          .put("TIMESTAMP WITH TIME ZONE", timestamptzExtractor, timestamptzToAvro, 8)
+          .put("TIMESTAMP WITHOUT TIME ZONE", timestampExtractor, timestampToAvro, 8)
+          .put("UUID", ResultSet::getString, valuePassThrough, 16)
+          .put(
+              "VARBIT",
+              bytesExtractor,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) ((n > 0 ? n : 10 * 1024 * 1024) + 24);
+              })
+          .put(
+              "VARCHAR",
+              ResultSet::getString,
+              valuePassThrough,
+              sourceColumnType -> {
+                long n = getLengthOrPrecision(sourceColumnType);
+                return (int) Math.min(((n > 0 ? n : 10 * 1024 * 1024) * 4) + 24, Integer.MAX_VALUE);
+              })
+          .build();
 
-  /** Get static mapping of SourceColumnType to {@link JdbcValueMapper}. */
+  @Override
+  public int estimateColumnSize(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+    String typeName = sourceColumnType.getName().toUpperCase();
+    if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
+      return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
+    }
+    LOG.warn("Unknown column type: {}. Defaulting to size: 65,535.", sourceColumnType);
+    return 65_535;
+  }
+
+  private static long getLengthOrPrecision(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
+    Long[] mods = sourceColumnType.getMods();
+    return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
+  }
+
   @Override
   public ImmutableMap<String, JdbcValueMapper<?>> getMappings() {
-    return SCHEMA_MAPPINGS;
+    return JDBC_MAPPINGS.mappings();
   }
 }
