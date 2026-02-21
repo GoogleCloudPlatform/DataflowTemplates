@@ -134,7 +134,8 @@ public class SpannerTransactionWriter
                         TupleTagList.of(
                             Arrays.asList(
                                 DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
-                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG,
+                                DatastreamToSpannerConstants.SKIPPED_EVENT_TAG))));
 
     PCollection<FailsafeElement<String, String>> keyedEventsErrorRecords =
         keyedEvents.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
@@ -148,7 +149,8 @@ public class SpannerTransactionWriter
     return Result.create(
         spannerWriteResults.get(DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG),
         permanentErrorRecords,
-        spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG));
+        spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG),
+        spannerWriteResults.get(DatastreamToSpannerConstants.SKIPPED_EVENT_TAG));
   }
 
   /**
@@ -163,12 +165,14 @@ public class SpannerTransactionWriter
     private static Result create(
         PCollection<Timestamp> successfulSpannerWrites,
         PCollection<FailsafeElement<String, String>> permanentErrors,
-        PCollection<FailsafeElement<String, String>> retryableErrors) {
+        PCollection<FailsafeElement<String, String>> retryableErrors,
+        PCollection<FailsafeElement<String, String>> skippedEvents) {
       Preconditions.checkNotNull(successfulSpannerWrites);
       Preconditions.checkNotNull(permanentErrors);
       Preconditions.checkNotNull(retryableErrors);
+      Preconditions.checkNotNull(skippedEvents);
       return new AutoValue_SpannerTransactionWriter_Result(
-          successfulSpannerWrites, permanentErrors, retryableErrors);
+          successfulSpannerWrites, permanentErrors, retryableErrors, skippedEvents);
     }
 
     public abstract PCollection<Timestamp> successfulSpannerWrites();
@@ -176,6 +180,8 @@ public class SpannerTransactionWriter
     public abstract PCollection<FailsafeElement<String, String>> permanentErrors();
 
     public abstract PCollection<FailsafeElement<String, String>> retryableErrors();
+
+    public abstract PCollection<FailsafeElement<String, String>> skippedEvents();
 
     @Override
     public void finishSpecifyingOutput(
@@ -196,7 +202,9 @@ public class SpannerTransactionWriter
           DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
           permanentErrors(),
           DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG,
-          retryableErrors());
+          retryableErrors(),
+          DatastreamToSpannerConstants.SKIPPED_EVENT_TAG,
+          skippedEvents());
     }
   }
 }

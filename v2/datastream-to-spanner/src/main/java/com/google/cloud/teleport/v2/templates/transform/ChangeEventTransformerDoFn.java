@@ -241,10 +241,9 @@ public abstract class ChangeEventTransformerDoFn
           DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG,
           FailsafeElement.of(msg.getOriginalPayload(), changeEvent.toString()));
     } catch (DroppedTableException e) {
-      // Errors when table exists in source but was dropped during conversion. We do not output any
-      // errors to dlq for this.
-      // Note that this message is not added to DLQ!!
-      LOG.error("Dropped Table for changeEventMessage {}", msg, e.getMessage());
+      // Errors when table exists in source but was dropped during conversion.
+      LOG.warn("Dropped Table for changeEventMessage {}", msg, e.getMessage());
+      outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.SKIPPED_EVENT_TAG);
       droppedTableExceptions.inc();
     } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
