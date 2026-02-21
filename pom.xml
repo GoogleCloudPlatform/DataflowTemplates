@@ -64,7 +64,7 @@
     <commons-compress.version>1.28.0</commons-compress.version>
     <commons-io.version>2.18.0</commons-io.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
-    <commons-configuration2.version>2.10.1</commons-configuration2.version>
+    <commons-configuration2.version>2.13.0</commons-configuration2.version>
     <commons-text.version>1.10.0</commons-text.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
