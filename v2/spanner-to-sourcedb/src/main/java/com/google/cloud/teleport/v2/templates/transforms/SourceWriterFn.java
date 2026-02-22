@@ -89,10 +89,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
-  private final SpannerConfig spannerSourceConfig;
-  private final SpannerConfig spannerMetaConfig;
-  private transient SpannerDao spannerMetaDao;
-  private transient SpannerDao spannerSourceDao;
+  private final SpannerConfig spannerConfig;
+  private transient SpannerDao spannerDao;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
@@ -112,8 +110,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   public SourceWriterFn(
       List<Shard> shards,
-      SpannerConfig spannerSourceConfig,
-      SpannerConfig spannerMetaConfig,
+      SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
@@ -130,8 +127,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
-    this.spannerMetaConfig = spannerMetaConfig;
-    this.spannerSourceConfig = spannerSourceConfig;
+    this.spannerConfig = spannerConfig;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
@@ -147,13 +143,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   }
 
   // for unit testing purposes
-  public void setSpannerSourceDao(SpannerDao spannerSourceDao) {
-    this.spannerSourceDao = spannerSourceDao;
-  }
-
-  // for unit testing purposes
-  public void setSpannerMetaDao(SpannerDao spannerDao) {
-    this.spannerMetaDao = spannerDao;
+  public void setSpannerDao(SpannerDao spannerDao) {
+    this.spannerDao = spannerDao;
   }
 
   // for unit testing purposes
@@ -179,8 +170,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceProcessor =
         SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
-    spannerMetaDao = new SpannerDao(spannerMetaConfig);
-    spannerSourceDao = new SpannerDao(spannerSourceConfig);
+    spannerDao = new SpannerDao(spannerConfig);
     spannerToSourceTransformer =
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
   }
@@ -188,11 +178,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() throws Exception {
-    if (spannerMetaDao != null) {
-      spannerMetaDao.close();
-    }
-    if (spannerSourceDao != null) {
-      spannerSourceDao.close();
+    if (spannerDao != null) {
+      spannerDao.close();
     }
     if (sourceProcessor != null) {
       sourceProcessor.close();
@@ -234,24 +221,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
-        InputRecordProcessor.updateChangeEnventToIncludeGeneratedColumns(
-            spannerRec,
-            primaryKey,
-            schemaMapper,
-            ddl,
-            sourceSchema,
-            spannerSourceDao,
-            spannerMetaConfig,
-            mapper);
-        spannerMetaDao
+        spannerDao
             .getDatabaseClient()
-            .readWriteTransaction(Options.priority(spannerMetaConfig.getRpcPriority().get()))
+            .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
             .run(
                 (TransactionRunner.TransactionCallable<Void>)
                     shadowTransaction -> {
                       boolean isSourceAhead = false;
                       ShadowTableRecord shadowTableRecord =
-                          spannerMetaDao.readShadowTableRecordWithExclusiveLock(
+                          spannerDao.readShadowTableRecordWithExclusiveLock(
                               shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
                       isSourceAhead =
                           shadowTableRecord != null
@@ -275,7 +253,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                         TransactionalCheck check =
                             () -> {
                               ShadowTableRecord newShadowTableRecord =
-                                  spannerMetaDao.readShadowTableRecordWithExclusiveLock(
+                                  spannerDao.readShadowTableRecordWithExclusiveLock(
                                       shadowTableName,
                                       primaryKey,
                                       shadowTableDdl,
@@ -307,7 +285,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                               spannerRec);
                         }
 
-                        spannerMetaDao.updateShadowTable(
+                        spannerDao.updateShadowTable(
                             getShadowTableMutation(
                                 tableName,
                                 shadowTableName,

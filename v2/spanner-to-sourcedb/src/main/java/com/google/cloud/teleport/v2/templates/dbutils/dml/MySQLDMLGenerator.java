@@ -372,6 +372,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
 
     if (isGeneratedColumnExist) {
+      // Generated column expression between source DB and and spanner can be
+      // differences. Hence, generated column values cannot be used from the change
+      // stream. If Primary key is generated column, then the DML statment need to
+      // have the respective dependent column values. Since we cannot identify the
+      // dependent columns, we are adding all the non-generated columns to the
+      // response.
       Map<String, String> generatedColumnValues =
           getColumnValues(
               schemaMapper,

@@ -18,13 +18,22 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.spanner.KeySet;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
@@ -34,16 +43,22 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
-import com.google.cloud.teleport.v2.templates.utils.SpannerReadUtils;
 import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -282,8 +297,95 @@ public class AssignShardIdFn
               ddl);
     } else {
       spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson, ddl);
+      updateChangeEnventToIncludeGeneratedColumns(
+          record, keysJson, schemaMapper, ddl, sourceSchema, spannerConfig, mapper);
     }
     return spannerRecord;
+  }
+
+  public void updateChangeEnventToIncludeGeneratedColumns(
+      TrimmedShardedDataChangeRecord spannerRecord,
+      JsonNode keysJson,
+      ISchemaMapper schemaMapper,
+      Ddl ddl,
+      SourceSchema sourceSchema,
+      SpannerConfig spannerConfig,
+      ObjectMapper objectMapper)
+      throws Exception {
+
+    String tableName = spannerRecord.getTableName();
+    // Check for generated columns in Spanner that are not generated in Source
+    // and fetch them if missing.
+    List<String> spannerCols = schemaMapper.getSpannerColumns(null, tableName);
+    List<String> columnsToFetch = new ArrayList<>();
+    String sourceTableName = schemaMapper.getSourceTableName(null, tableName);
+    SourceTable sourceTable = sourceSchema.table(sourceTableName);
+    Set<String> pkColumns =
+        ddl.table(tableName).primaryKeys().stream()
+            .map(IndexColumn::name)
+            .collect(Collectors.toSet());
+
+    for (String col : spannerCols) {
+      boolean isGeneratedInSpanner = schemaMapper.isGeneratedColumn(null, tableName, col);
+      boolean existsAtSource = schemaMapper.colExistsAtSource(null, tableName, col);
+      boolean isPk = pkColumns.contains(col);
+      if (isGeneratedInSpanner && existsAtSource && !isPk) {
+        String sourceColName = schemaMapper.getSourceColumnName(null, tableName, col);
+        SourceColumn sourceColumn = sourceTable.column(sourceColName);
+        // If source column is NOT generated, we need the value from Spanner
+        if (sourceColumn != null && !sourceColumn.isGenerated()) {
+          columnsToFetch.add(col);
+        }
+      }
+    }
+
+    LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
+    if (columnsToFetch.isEmpty()) {
+      return;
+    }
+    com.google.cloud.Timestamp commitTimestamp = spannerRecord.getCommitTimestamp();
+
+    java.time.Instant commitInstant =
+        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
+
+    java.time.Instant staleInstant = commitInstant.plus(LOOKBACK_DURATION_FOR_DELETE);
+
+    com.google.cloud.Timestamp staleReadTs =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+            staleInstant.getEpochSecond(), staleInstant.getNano());
+    com.google.cloud.spanner.Key primaryKey = generateKey(tableName, keysJson, ddl);
+    LOG.error(
+        "Stale read timestamp: "
+            + staleReadTs
+            + " for table: "
+            + tableName
+            + " and primary key: "
+            + primaryKey
+            + " and commit timestamp: "
+            + commitTimestamp);
+    LOG.error(
+        "Spanner Config: "
+            + spannerConfig
+            + " Database Id: "
+            + spannerConfig.getDatabaseId()
+            + " Instance Id: "
+            + spannerConfig.getInstanceId()
+            + " Project Id: "
+            + spannerConfig.getProjectId());
+    Struct fetchedRow =
+        readRowAsStruct(
+            tableName,
+            commitTimestamp,
+            spannerRecord.getServerTransactionId(),
+            commitTimestamp,
+            columnsToFetch,
+            primaryKey);
+    if (fetchedRow == null) {
+      LOG.warn("Failed to fetch row for primary key: " + primaryKey);
+    } else {
+      Map<String, Object> rowAsMap = getRowAsMap(fetchedRow, columnsToFetch, tableName, ddl);
+      updateColumnValues(spannerRecord, sourceTableName, ddl, fetchedRow, rowAsMap, objectMapper);
+    }
   }
 
   private Map<String, Object> fetchSpannerRecord(
@@ -312,30 +414,214 @@ public class AssignShardIdFn
             .map(Column::name)
             .collect(Collectors.toList());
 
-    Struct row =
-        SpannerReadUtils.readRowAsStruct(
-            spannerAccessor.getDatabaseClient(),
-            tableName,
-            keysJson,
-            ddl,
-            columns,
-            staleReadTs,
-            spannerConfig.getRpcPriority().get());
-    if (row == null) {
-      throw new Exception(
-          "stale read on Spanner returned null for table: "
-              + tableName
-              + ", commitTimestamp: "
-              + commitTimestamp
-              + " and serverTxnId:"
-              + serverTxnId);
-    }
-    Map<String, Object> rowAsMap = SpannerReadUtils.getRowAsMap(row, columns, tableName, ddl);
+    com.google.cloud.spanner.Key pk = generateKey(tableName, keysJson, ddl);
+
+    Struct row = readRowAsStruct(tableName, commitTimestamp, serverTxnId, staleReadTs, columns, pk);
+    Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName, ddl);
     // TODO find a way to not make a special case from Cassandra.
     if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
-      SpannerReadUtils.updateColumnValues(record, tableName, ddl, row, rowAsMap, mapper);
+      updateColumnValues(record, tableName, ddl, row, rowAsMap, mapper);
     }
     return rowAsMap;
+  }
+
+  public void updateColumnValues(
+      TrimmedShardedDataChangeRecord record,
+      String tableName,
+      Ddl ddl,
+      Struct row,
+      Map<String, Object> rowAsMap,
+      ObjectMapper mapper)
+      throws Exception {
+    Table table = ddl.table(tableName);
+    ImmutableSet<String> keyColumns =
+        table.primaryKeys().stream().map(k -> k.name()).collect(ImmutableSet.toImmutableSet());
+    ObjectNode newValuesJsonNode = (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
+    rowAsMap.keySet().stream()
+        .filter(k -> !keyColumns.contains(k))
+        .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
+    String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
+    record.setMod(
+        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
+  }
+
+  private Struct readRowAsStruct(
+      String tableName,
+      com.google.cloud.Timestamp commitTimestamp,
+      String serverTxnId,
+      com.google.cloud.Timestamp staleReadTs,
+      List<String> columns,
+      com.google.cloud.spanner.Key pk)
+      throws Exception {
+    try (ResultSet rs =
+        spannerAccessor
+            .getDatabaseClient()
+            .singleUse(TimestampBound.ofReadTimestamp(staleReadTs))
+            .read(
+                tableName,
+                KeySet.singleKey(pk),
+                columns,
+                Options.priority(spannerConfig.getRpcPriority().get()))) {
+      if (!rs.next()) {
+        throw new Exception(
+            "stale read on Spanner returned null for table: "
+                + tableName
+                + ", commitTimestamp: "
+                + commitTimestamp
+                + " and serverTxnId:"
+                + serverTxnId);
+      }
+      return rs.getCurrentRowAsStruct();
+    }
+  }
+
+  /*
+   * Marshals Spanner's read row values to match CDC stream's representation.
+   */
+  private void marshalSpannerValues(
+      ObjectNode newValuesJsonNode, String tableName, String colName, Struct row, Ddl ddl) {
+    if (row.isNull(colName)) {
+      newValuesJsonNode.putNull(colName);
+      return;
+    }
+
+    // TODO(b/430495490): Add support for string arrays on Spanner side.
+    switch (ddl.table(tableName).column(colName).type().getCode()) {
+      case FLOAT32:
+        float val32 = row.getFloat(colName);
+        if (Float.isNaN(val32) || !Float.isFinite(val32)) {
+          newValuesJsonNode.put(colName, val32);
+
+        } else {
+          newValuesJsonNode.put(colName, new BigDecimal(val32));
+        }
+        break;
+      case FLOAT64:
+        double val = row.getDouble(colName);
+        if (Double.isNaN(val) || !Double.isFinite(val)) {
+          newValuesJsonNode.put(colName, val);
+
+        } else {
+          newValuesJsonNode.put(colName, new BigDecimal(val));
+        }
+        break;
+      case BOOL:
+        newValuesJsonNode.put(colName, row.getBoolean(colName));
+        break;
+      case BYTES:
+        // We need to trim the base64 string to remove newlines added at the end.
+        // Older version of Base64 lik e(MIME) or Privacy-Enhanced Mail (PEM), often
+        // included line
+        // breaks.
+        // MySql adheres to RFC 4648 (the standard MySQL uses) which states that
+        // implementations
+        // MUST
+        // NOT add line feeds to base-encoded data unless explicitly directed by a
+        // referring
+        // specification.
+        newValuesJsonNode.put(
+            colName,
+            Base64.getEncoder()
+                .encodeToString(row.getValue(colName).getBytes().toByteArray())
+                .trim());
+        break;
+      default:
+        newValuesJsonNode.put(colName, row.getValue(colName).toString());
+    }
+  }
+
+  public Map<String, Object> getRowAsMap(
+      Struct row, List<String> columns, String tableName, Ddl ddl) throws Exception {
+    Map<String, Object> spannerRecord = new HashMap<>();
+    Table table = ddl.table(tableName);
+    for (String columnName : columns) {
+      Column column = table.column(columnName);
+      Object columnValue =
+          row.isNull(columnName) ? null : getColumnValueFromRow(column, row.getValue(columnName));
+      spannerRecord.put(columnName, columnValue);
+    }
+    return spannerRecord;
+  }
+
+  // Refer https://cloud.google.com/spanner/docs/reference/standard-sql/data-types
+  // and https://cloud.google.com/spanner/docs/reference/postgresql/data-types
+  // for allowed primary key types
+  private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson, Ddl ddl)
+      throws Exception {
+    try {
+      Table table = ddl.table(tableName);
+      ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
+      com.google.cloud.spanner.Key.Builder pk = com.google.cloud.spanner.Key.newBuilder();
+
+      for (IndexColumn keyColumn : keyColumns) {
+        Column key = table.column(keyColumn.name());
+        Type keyColType = key.type();
+        String keyColName = key.name();
+        switch (keyColType.getCode()) {
+          case BOOL:
+          case PG_BOOL:
+            pk.append(
+                DataChangeRecordTypeConvertor.toBoolean(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case INT64:
+          case PG_INT8:
+            pk.append(
+                DataChangeRecordTypeConvertor.toLong(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case FLOAT32:
+          case PG_FLOAT4:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDouble(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case FLOAT64:
+          case PG_FLOAT8:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDouble(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case STRING:
+          case PG_VARCHAR:
+          case PG_TEXT:
+            pk.append(
+                DataChangeRecordTypeConvertor.toString(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case NUMERIC:
+          case PG_NUMERIC:
+            pk.append(
+                DataChangeRecordTypeConvertor.toNumericBigDecimal(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case BYTES:
+          case PG_BYTEA:
+            pk.append(
+                DataChangeRecordTypeConvertor.toByteArray(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case TIMESTAMP:
+          case PG_TIMESTAMPTZ:
+            pk.append(
+                DataChangeRecordTypeConvertor.toTimestamp(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          case DATE:
+          case PG_DATE:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDate(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Column name(" + keyColName + ") has unsupported column type(" + keyColType + ")");
+        }
+      }
+      return pk.build();
+    } catch (Exception e) {
+      throw new Exception("Error generating key: " + e.getMessage());
+    }
   }
 
   private Object getColumnValueFromJson(Column column, JsonNode valuesJson) throws Exception {
@@ -380,6 +666,52 @@ public class AssignShardIdFn
       }
     } catch (Exception e) {
       throw new Exception("Error getting column value from json: " + e.getMessage());
+    }
+  }
+
+  private Object getColumnValueFromRow(Column column, Value value) throws Exception {
+    try {
+      Type colType = column.type();
+      String colName = column.name();
+      switch (colType.getCode()) {
+        case BOOL:
+        case PG_BOOL:
+          return value.getBool();
+        case INT64:
+        case PG_INT8:
+          return value.getInt64();
+        case FLOAT32:
+        case PG_FLOAT4:
+          return (double) value.getFloat32();
+        case FLOAT64:
+        case PG_FLOAT8:
+          return value.getFloat64();
+        case STRING:
+        case PG_VARCHAR:
+        case PG_TEXT:
+          return value.getString();
+        case NUMERIC:
+        case PG_NUMERIC:
+          return value.getNumeric();
+        case JSON:
+        case PG_JSONB:
+          return value.getString();
+        case BYTES:
+          return value.getBytes();
+        case PG_BYTEA:
+          return value.getBytesArray();
+        case TIMESTAMP:
+        case PG_TIMESTAMPTZ:
+          return value.getTimestamp();
+        case DATE:
+        case PG_DATE:
+          return value.getDate();
+        default:
+          throw new IllegalArgumentException(
+              "Column name(" + colName + ") has unsupported column type(" + colType + ")");
+      }
+    } catch (Exception e) {
+      throw new Exception("Error getting column value from row: " + e.getMessage());
     }
   }
 
