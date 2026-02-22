@@ -22,11 +22,11 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -52,10 +51,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -66,12 +63,10 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
-  @Rule public Timeout timeout = new Timeout(25, TimeUnit.MINUTES);
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlDataTypesIT.class);
   private static final String SPANNER_DDL_RESOURCE = "SpannerToMySqlDataTypesIT/spanner-schema.sql";
-  // private static final String SESSION_FILE_RESOURCE =
-  // "SpannerToMySqlDataTypesIT/session.json";
+  private static final String SESSION_FILE_RESOURCE = "SpannerToMySqlDataTypesIT/session.json";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToMySqlDataTypesIT/mysql-schema.sql";
 
@@ -98,9 +93,8 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
-    // gcsResourceManager.uploadArtifact(
-    // "input/session.json",
-    // Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+    gcsResourceManager.uploadArtifact(
+        "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
     pubsubResourceManager = setUpPubSubResourceManager();
     SubscriptionName subscriptionName =
         createPubsubResources(
@@ -112,7 +106,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     Map<String, String> jobParameters =
         new HashMap<>() {
           {
-            // put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
           }
         };
     jobInfo =
@@ -131,8 +125,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
   }
 
   @After
-  public void cleanUp() throws Exception {
-    this.tearDownBase();
+  public void cleanUp() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         jdbcResourceManager,
@@ -143,45 +136,11 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToMySqlDataTypes() {
-    LOG.info("Starting Spanner to MySQL Data Types IT");
     assertThatPipeline(jobInfo).isRunning();
-    LOG.info("Spanner to MySQL Data Types IT is running");
 
-    Map<String, List<Map<String, Value>>> spannerTableData = getSpannerTableData();
-    addInitialMultiColSpannerData(spannerTableData);
-    LOG.info("Spanner Table Data: " + spannerTableData.size());
-    LOG.info("Spanner Table Data: " + spannerTableData.keySet());
-    try {
-      writeRowsInSpanner(spannerTableData);
-    } catch (Exception e) {
-      LOG.error("Failed to write rows to Spanner", e);
-    }
-    LOG.info("Spanner table ended");
+    Map<String, List<Value>> spannerTableData = getSpannerTableData();
+    writeRowsInSpanner(spannerTableData);
 
-    try {
-      PipelineOperator.Result result =
-          pipelineOperator()
-              .waitForCondition(
-                  createConfig(jobInfo, Duration.ofMinutes(10)),
-                  buildConditionCheck(spannerTableData));
-      assertThatResult(result).meetsConditions();
-    } catch (Exception e) {
-      LOG.error("Failed to wait for condition", e);
-    }
-
-    for (String table : spannerTableData.keySet()) {
-      LOG.info("Table: " + table);
-      LOG.info("Table row count: " + jdbcResourceManager.getRowCount(getTableName(table)));
-    }
-
-    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
-    addInitailGeneratedColumnData(expectedData);
-    // Assert events on Mysql
-    assertRowInMySQL(expectedData);
-
-    Map<String, List<Map<String, Value>>> updateSpannerTableData =
-        updateGeneratedColRowsInSpanner();
-    spannerTableData.putAll(updateSpannerTableData);
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -189,132 +148,38 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
                 buildConditionCheck(spannerTableData));
     assertThatResult(result).meetsConditions();
 
-    expectedData = getExpectedData();
-    addUpdatedGeneratedColumnData(expectedData);
-    assertRowInMySQL(expectedData);
+    // Assert events on Mysql
+    assertRowInMySQL();
   }
 
-  private void addInitialMultiColSpannerData(
-      Map<String, List<Map<String, Value>>> spannerTableData) {
-    spannerTableData.put(
-        "generated_pk_column",
-        List.of(
-            Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB")),
-            Map.of(
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"))));
-
-    spannerTableData.put(
-        "generated_non_pk_column",
-        List.of(
-            Map.of(
-                "id", Value.int64(1),
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB")),
-            Map.of(
-                "id", Value.int64(2),
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"))));
-
-    // spannerTableData.put(
-    // "non_generated_to_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("BB")),
-    // Map.of(
-    // "first_name", Value.string("BB"),
-    // "last_name", Value.string("CC"))));
-
-    // spannerTableData.put(
-    // "generated_to_non_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("BB"),
-    // "generated_column", Value.string("AA "),
-    // "generated_column_pk", Value.string("AA ")),
-    // Map.of(
-    // "first_name", Value.string("BB"),
-    // "last_name", Value.string("CC"),
-    // "generated_column", Value.string("BB "),
-    // "generated_column_pk", Value.string("BB "))));
-  }
-
-  private Map<String, List<Map<String, Value>>> updateGeneratedColRowsInSpanner() {
-    Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
-    spannerTableData.put(
-        "generated_pk_column",
-        List.of(
-            Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"))));
-    spannerTableData.put(
-        "generated_non_pk_column",
-        List.of(
-            Map.of(
-                "id", Value.int64(1),
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"))));
-    // spannerTableData.put(
-    // "non_generated_to_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("CC"))));
-    // spannerTableData.put(
-    // "generated_to_non_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("CC"),
-    // "generated_column", Value.string("AA "),
-    // "generated_column_pk", Value.string("AA "))));
-
-    writeRowsInSpanner(spannerTableData);
-    List<Mutation> deleteMutations = new ArrayList<>();
-    deleteMutations.add(Mutation.delete("generated_pk_column_table", Key.of("BB ")));
-    deleteMutations.add(Mutation.delete("generated_non_pk_column_table", Key.of(2)));
-    // deleteMutations.add(Mutation.delete("non_generated_to_generated_column_table",
-    // Key.of("BB ")));
-    // deleteMutations.add(Mutation.delete("generated_to_non_generated_column_table",
-    // Key.of("BB ")));
-    spannerResourceManager.write(deleteMutations);
-
-    return spannerTableData;
-  }
-
-  private void writeRowsInSpanner(Map<String, List<Map<String, Value>>> spannerTableData) {
-    LOG.info("Spanner Table Data");
-    for (Map.Entry<String, List<Map<String, Value>>> tableDataEntry : spannerTableData.entrySet()) {
-      LOG.info("Table Data Entry");
-      String tableName = getTableName(tableDataEntry.getKey());
-      LOG.info("Table Name: " + tableName);
-      List<Map<String, Value>> rows = tableDataEntry.getValue();
-      List<Mutation> mutations = new ArrayList<>(rows.size());
-      for (Map<String, Value> row : rows) {
-        Mutation.WriteBuilder m = Mutation.newInsertOrUpdateBuilder(tableName);
-        for (Map.Entry<String, Value> entry : row.entrySet()) {
-          m.set(getColumnName(entry.getKey())).to(entry.getValue());
-        }
-        mutations.add(m.build());
+  private void writeRowsInSpanner(Map<String, List<Value>> spannerTableData) {
+    for (Map.Entry<String, List<Value>> tableDataEntry : spannerTableData.entrySet()) {
+      String type = tableDataEntry.getKey();
+      String tableName = getTableName(type);
+      String columnName = getColumnName(type);
+      List<Value> vals = tableDataEntry.getValue();
+      List<Mutation> mutations = new ArrayList<>(vals.size());
+      for (int i = 0; i < vals.size(); i++) {
+        Mutation m =
+            Mutation.newInsertOrUpdateBuilder(tableName)
+                .set("id")
+                .to(i + 1)
+                .set(columnName)
+                .to(vals.get(i))
+                .build();
+        mutations.add(m);
       }
-      LOG.info("Writing " + mutations.size() + " rows to table " + tableName);
       spannerResourceManager.write(mutations);
     }
-    LOG.info("Spanner table ended");
   }
 
-  private ConditionCheck buildConditionCheck(
-      Map<String, List<Map<String, Value>>> spannerTableData) {
+  private ConditionCheck buildConditionCheck(Map<String, List<Value>> spannerTableData) {
     // These tables fail to migrate all expected rows, ignore them to avoid having to wait for the
     // timeout.
     Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
 
     ConditionCheck combinedCondition = null;
-    for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
+    for (Map.Entry<String, List<Value>> entry : spannerTableData.entrySet()) {
       if (ignoredTables.contains(entry.getKey())) {
         continue;
       }
@@ -329,21 +194,21 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
 
             @Override
             protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
-              return new CheckResult(
-                  jdbcResourceManager.getRowCount(tableName) >= numRows, getDescription());
+              return new CheckResult(jdbcResourceManager.getRowCount(tableName) >= numRows);
             }
           };
       if (combinedCondition == null) {
         combinedCondition = c;
       } else {
-        combinedCondition = combinedCondition.and(c);
+        combinedCondition.and(c);
       }
     }
 
     return combinedCondition;
   }
 
-  private void assertRowInMySQL(Map<String, List<Map<String, Object>>> expectedData) {
+  private void assertRowInMySQL() {
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
     for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
       String type = expectedTableData.getKey();
       String tableName = getTableName(type);
@@ -389,22 +254,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     return rows;
   }
 
-  private Map<String, List<Map<String, Value>>> convertSingleToMultiColSpannerData(
-      Map<String, List<Value>> spannerRowData) {
-    Map<String, List<Map<String, Value>>> multiColSpannerData = new HashMap<>();
-    for (Map.Entry<String, List<Value>> entry : spannerRowData.entrySet()) {
-      String tableName = entry.getKey();
-      List<Map<String, Value>> rows = new ArrayList<>();
-      int i = 1;
-      for (Value value : entry.getValue()) {
-        rows.add(Map.of(tableName, value, "id", Value.int64(i++)));
-      }
-      multiColSpannerData.put(tableName, rows);
-    }
-    return multiColSpannerData;
-  }
-
-  private Map<String, List<Map<String, Value>>> getSpannerTableData() {
+  private Map<String, List<Value>> getSpannerTableData() {
     Map<String, List<Value>> spannerRowData = new HashMap<>(72, 1.0f);
     spannerRowData.put(
         "bigint",
@@ -452,10 +302,9 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             Value.bytesFromBase64("eDU4MDA="),
             Value.bytesFromBase64("/".repeat(87380)),
             Value.bytesFromBase64(null)));
-    // spannerRowData.put(
-    // "blob_to_string",
-    // List.of(Value.string("7835383030"), Value.string("FF".repeat(65535)),
-    // Value.string(null)));
+    spannerRowData.put(
+        "blob_to_string",
+        List.of(Value.string("7835383030"), Value.string("FF".repeat(65535)), Value.string(null)));
     spannerRowData.put("bool", List.of(Value.bool(false), Value.bool(true), Value.bool(null)));
     spannerRowData.put(
         "bool_to_string", List.of(Value.string("0"), Value.string("1"), Value.string(null)));
@@ -606,10 +455,9 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             Value.bytesFromBase64("eDU4MDA="),
             Value.bytesFromBase64("/".repeat(87380)),
             Value.bytesFromBase64(null)));
-    // spannerRowData.put(
-    // "longblob_to_string",
-    // List.of(Value.string("7835383030"), Value.string("ff".repeat(65535)),
-    // Value.string(null)));
+    spannerRowData.put(
+        "longblob_to_string",
+        List.of(Value.string("7835383030"), Value.string("ff".repeat(65535)), Value.string(null)));
     spannerRowData.put(
         "longtext",
         List.of(Value.string("longtext"), Value.string("a".repeat(65535)), Value.string(null)));
@@ -619,10 +467,9 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             Value.bytesFromBase64("eDU4MDA="),
             Value.bytesFromBase64("/".repeat(87380)),
             Value.bytesFromBase64(null)));
-    // spannerRowData.put(
-    // "mediumblob_to_string",
-    // List.of(Value.string("7835383030"), Value.string("ff".repeat(65535)),
-    // Value.string(null)));
+    spannerRowData.put(
+        "mediumblob_to_string",
+        List.of(Value.string("7835383030"), Value.string("ff".repeat(65535)), Value.string(null)));
     spannerRowData.put("mediumint", List.of(Value.int64(20), Value.int64(null)));
     spannerRowData.put("mediumint_to_string", List.of(Value.string("20"), Value.string(null)));
     spannerRowData.put(
@@ -701,9 +548,9 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             Value.bytesFromBase64("eDU4MDA="),
             Value.bytesFromBase64("/".repeat(340)),
             Value.bytesFromBase64(null)));
-    // spannerRowData.put(
-    //     "tinyblob_to_string",
-    //     List.of(Value.string("7835383030"), Value.string("ff".repeat(255)), Value.string(null)));
+    spannerRowData.put(
+        "tinyblob_to_string",
+        List.of(Value.string("7835383030"), Value.string("ff".repeat(255)), Value.string(null)));
     spannerRowData.put(
         "tinyint",
         List.of(Value.int64(10), Value.int64(127), Value.int64(-128), Value.int64(null)));
@@ -731,7 +578,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
         "year",
         List.of(
             Value.string("2022"), Value.string("1901"), Value.string("2155"), Value.string(null)));
-    return convertSingleToMultiColSpannerData(spannerRowData);
+    return spannerRowData;
   }
 
   private List<Map<String, Object>> createRows(String type, Object... values) {
@@ -744,76 +591,6 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
       rows.add(row);
     }
     return rows;
-  }
-
-  private void addInitailGeneratedColumnData(Map<String, List<Map<String, Object>>> expectedData) {
-    expectedData.put(
-        "generated_pk_column",
-        List.of(
-            Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB"),
-                "generated_column", Value.string("AA ")),
-            Map.of(
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("BB "))));
-
-    expectedData.put(
-        "generated_non_pk_column",
-        List.of(
-            Map.of(
-                "id", Value.int64(1),
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB"),
-                "generated_column", Value.string("AA ")),
-            Map.of(
-                "id", Value.int64(2),
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("BB "))));
-
-    // expectedData.put(
-    // "generated_to_non_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("BB"),
-    // "generated_column", Value.string("AA "),
-    // "generated_column_pk", Value.string("AA ")),
-    // Map.of(
-    // "first_name", Value.string("BB"),
-    // "last_name", Value.string("CC"),
-    // "generated_column", Value.string("BB "),
-    // "generated_column_pk", Value.string("BB "))));
-  }
-
-  private void addUpdatedGeneratedColumnData(Map<String, List<Map<String, Object>>> expectedData) {
-    expectedData.put(
-        "generated_pk_column",
-        List.of(
-            Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("AA "))));
-
-    expectedData.put(
-        "generated_non_pk_column",
-        List.of(
-            Map.of(
-                "id", Value.int64(1),
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("AA "))));
-
-    // expectedData.put(
-    // "generated_to_non_generated_column",
-    // List.of(
-    // Map.of(
-    // "first_name", Value.string("AA"),
-    // "last_name", Value.string("CC"),
-    // "generated_column", Value.string("AA "),
-    // "generated_column_pk", Value.string("AA "))));
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -1041,9 +818,6 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
   }
 
   private String getColumnName(String type) {
-    if (type.equals("id")) {
-      return type;
-    }
     return type + "_col";
   }
 }

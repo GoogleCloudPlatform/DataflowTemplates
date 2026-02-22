@@ -52,6 +52,9 @@ import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -149,6 +152,67 @@ public class AssignShardIdFnTest {
         .thenReturn(mockRow);
 
     doNothing().when(spannerAccessor).close();
+  }
+
+  @Test
+  public void testGetRowAsMap() throws Exception {
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    List<String> columns =
+        List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
+    Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
+    Map<String, Object> expected = new HashMap<>();
+    expected.put("accountId", "Id1");
+    expected.put("accountName", "xyz");
+    expected.put("migration_shard_id", "shard1");
+    expected.put("accountNumber", 1L);
+    assertEquals(actual, expected);
+  }
+
+  @Test(expected = Exception.class)
+  public void cannotGetRowAsMap() throws Exception {
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    List<String> columns =
+        List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
+
+    assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
   }
 
   @Test

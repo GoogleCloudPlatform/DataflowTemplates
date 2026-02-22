@@ -776,7 +776,6 @@ public class SpannerToSourceDb {
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    spannerConfig,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddlView,

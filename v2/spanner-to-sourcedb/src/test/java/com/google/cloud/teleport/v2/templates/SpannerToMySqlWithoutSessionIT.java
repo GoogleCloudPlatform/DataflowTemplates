@@ -71,7 +71,7 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlWithoutSessionIT.class);
 
   // Test timeout configuration - can be adjusted if tests need more time
-  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(5);
+  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(10);
 
   private static final String SPANNER_DDL_RESOURCE = "SpannerToMySqlDataTypesIT/spanner-schema.sql";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
@@ -448,29 +448,33 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
         "generated_to_non_generated_column",
         List.of(
             Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB"),
-                "generated_column", Value.string("AA "),
-                "generated_column_pk", Value.string("AA ")),
+                "first_name_col", Value.string("AA"),
+                "last_name_col", Value.string("BB"),
+                "generated_column_col", Value.string("AA "),
+                "generated_column_pk_col", Value.string("AA ")),
             Map.of(
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("BB "),
-                "generated_column_pk", Value.string("BB "))));
+                "first_name_col", Value.string("BB"),
+                "last_name_col", Value.string("CC"),
+                "generated_column_col", Value.string("BB "),
+                "generated_column_pk_col", Value.string("BB "))));
 
     expectedData.put(
         "non_generated_to_generated_column",
         List.of(
             Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("BB"),
-                "generated_column", Value.string("AA "),
-                "generated_column_pk", Value.string("AA ")),
+                "first_name_col",
+                Value.string("AA"),
+                "last_name_col",
+                Value.string("BB"),
+                "generated_column_col",
+                Value.string("AA "),
+                "generated_column_pk_col",
+                Value.string("AA ")),
             Map.of(
-                "first_name", Value.string("BB"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("BB "),
-                "generated_column_pk", Value.string("BB "))));
+                "first_name_col", Value.string("BB"),
+                "last_name_col", Value.string("CC"),
+                "generated_column_col", Value.string("BB "),
+                "generated_column_pk_col", Value.string("BB "))));
   }
 
   private void addUpdatedGeneratedColumnData(Map<String, List<Map<String, Object>>> expectedData) {
@@ -495,19 +499,19 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
         "generated_to_non_generated_column",
         List.of(
             Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("AA "),
-                "generated_column_pk", Value.string("AA "))));
+                "first_name_col", Value.string("AA"),
+                "last_name_col", Value.string("CC"),
+                "generated_column_col", Value.string("AA "),
+                "generated_column_pk_col", Value.string("AA "))));
 
     expectedData.put(
         "non_generated_to_generated_column",
         List.of(
             Map.of(
-                "first_name", Value.string("AA"),
-                "last_name", Value.string("CC"),
-                "generated_column", Value.string("AA "),
-                "generated_column_pk", Value.string("AA "))));
+                "first_name_col", Value.string("AA"),
+                "last_name_col", Value.string("CC"),
+                "generated_column_col", Value.string("AA "),
+                "generated_column_pk_col", Value.string("AA "))));
   }
 
   private String getTableName(String type) {

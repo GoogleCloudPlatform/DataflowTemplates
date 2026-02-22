@@ -17,37 +17,24 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.spanner.Key;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
-import com.google.cloud.teleport.v2.templates.utils.SpannerReadUtils;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -63,94 +50,6 @@ public class InputRecordProcessor {
   private static final Distribution applyCustomTransformationResponseTimeMetric =
       Metrics.distribution(
           InputRecordProcessor.class, "apply_custom_transformation_impl_latency_ms");
-  private static final java.time.Duration LOOKBACK_DURATION_FOR_DELETE =
-      java.time.Duration.ofNanos(1000);
-
-  public static void updateChangeEnventToIncludeGeneratedColumns(
-      TrimmedShardedDataChangeRecord spannerRecord,
-      Key primaryKey,
-      ISchemaMapper schemaMapper,
-      Ddl ddl,
-      SourceSchema sourceSchema,
-      SpannerDao spannerDao,
-      SpannerConfig spannerConfig,
-      ObjectMapper objectMapper)
-      throws Exception {
-
-    String tableName = spannerRecord.getTableName();
-    // Check for generated columns in Spanner that are not generated in Source
-    // and fetch them if missing.
-    List<String> spannerCols = schemaMapper.getSpannerColumns(null, tableName);
-    List<String> columnsToFetch = new ArrayList<>();
-    String sourceTableName = schemaMapper.getSourceTableName(null, tableName);
-    SourceTable sourceTable = sourceSchema.table(sourceTableName);
-    Set<String> pkColumns =
-        ddl.table(tableName).primaryKeys().stream()
-            .map(IndexColumn::name)
-            .collect(Collectors.toSet());
-
-    for (String col : spannerCols) {
-      boolean isGeneratedInSpanner = schemaMapper.isGeneratedColumn(null, tableName, col);
-      boolean existsAtSource = schemaMapper.colExistsAtSource(null, tableName, col);
-      boolean isPk = pkColumns.contains(col);
-      if (isGeneratedInSpanner && existsAtSource && !isPk) {
-        String sourceColName = schemaMapper.getSourceColumnName(null, tableName, col);
-        SourceColumn sourceColumn = sourceTable.column(sourceColName);
-        // If source column is NOT generated, we need the value from Spanner
-        if (sourceColumn != null && !sourceColumn.isGenerated()) {
-          columnsToFetch.add(col);
-        }
-      }
-    }
-
-    LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
-    if (!columnsToFetch.isEmpty()) {
-      com.google.cloud.Timestamp commitTimestamp = spannerRecord.getCommitTimestamp();
-
-      java.time.Instant commitInstant =
-          java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
-
-      java.time.Instant staleInstant = commitInstant.plus(LOOKBACK_DURATION_FOR_DELETE);
-
-      com.google.cloud.Timestamp staleReadTs =
-          com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-              staleInstant.getEpochSecond(), staleInstant.getNano());
-      LOG.error(
-          "Stale read timestamp: "
-              + staleReadTs
-              + " for table: "
-              + tableName
-              + " and primary key: "
-              + primaryKey
-              + " and commit timestamp: "
-              + commitTimestamp);
-      LOG.error(
-          "Spanner Config: "
-              + spannerConfig
-              + " Database Id: "
-              + spannerConfig.getDatabaseId()
-              + " Instance Id: "
-              + spannerConfig.getInstanceId()
-              + " Project Id: "
-              + spannerConfig.getProjectId());
-      Struct fetchedRow =
-          SpannerReadUtils.readRowAsStruct(
-              spannerDao.getDatabaseClient(),
-              tableName,
-              primaryKey,
-              columnsToFetch,
-              commitTimestamp,
-              spannerConfig.getRpcPriority().get());
-      if (fetchedRow == null) {
-        LOG.warn("Failed to fetch row for primary key: " + primaryKey);
-      } else {
-        Map<String, Object> rowAsMap =
-            SpannerReadUtils.getRowAsMap(fetchedRow, columnsToFetch, tableName, ddl);
-        SpannerReadUtils.updateColumnValues(
-            spannerRecord, sourceTableName, ddl, fetchedRow, rowAsMap, objectMapper);
-      }
-    }
-  }
 
   public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
@@ -166,9 +65,9 @@ public class InputRecordProcessor {
       TransactionalCheck check)
       throws Exception {
 
-    String tableName = spannerRecord.getTableName();
     try {
 
+      String tableName = spannerRecord.getTableName();
       String modType = spannerRecord.getModType().name();
       String keysJsonStr = spannerRecord.getMod().getKeysJson();
       String newValueJsonStr = spannerRecord.getMod().getNewValuesJson();
@@ -200,7 +99,6 @@ public class InputRecordProcessor {
           customTransformationResponse = migrationTransformationResponse.getResponseRow();
         }
       }
-
       DMLGeneratorRequest dmlGeneratorRequest =
           new DMLGeneratorRequest.Builder(
                   modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
@@ -225,11 +123,6 @@ public class InputRecordProcessor {
        *         Adding unit tests for SOURCE_CASSANDRA would require a significant refactoring of the entire unit test file.
        *         Given the current implementation, such refactoring is deemed unnecessary as it would not provide substantial value or impact.
        */
-      LOG.error(
-          "DML Table Name: "
-              + tableName
-              + " DML Generator Response: "
-              + dmlGeneratorResponse.getDmlStatement());
       switch (source) {
         case SOURCE_CASSANDRA:
           dao.write(dmlGeneratorResponse, null);
@@ -253,7 +146,6 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
       return false;
     } catch (Exception e) {
-      LOG.error("Error processing input record for Table: " + tableName, e);
       // Not logging the error here since the error can be retryable error and high number of them
       // could have side effects on the pipeline execution.
       throw e; // throw the original exception since it needs to go to DLQ
