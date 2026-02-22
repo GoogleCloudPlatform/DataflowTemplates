@@ -58,6 +58,9 @@ public final class BigQueryDefaultSchemas {
           // MySQL Specific Metadata
           put("_metadata_log_file", StandardSQLTypeName.STRING);
           put("_metadata_log_position", StandardSQLTypeName.INT64);
+
+          // PostgreSQL / SQL Server Specific Metadata
+          put("_metadata_lsn", StandardSQLTypeName.STRING);
         }
       };
 }

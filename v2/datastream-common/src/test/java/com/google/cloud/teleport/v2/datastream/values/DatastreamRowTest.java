@@ -64,4 +64,17 @@ public class DatastreamRowTest {
     assertEquals(pks.get(0), "id");
     assertEquals(pks.get(1), "name");
   }
+
+  @Test
+  public void testSqlServerSortFields() {
+    TableRow r1 = new TableRow();
+    r1.set("_metadata_source_type", "sqlserver");
+    r1.set("_metadata_primary_keys", Arrays.asList("id"));
+    DatastreamRow row = DatastreamRow.of(r1);
+    List<String> sortFields = row.getSortFields();
+
+    assertEquals(2, sortFields.size());
+    assertEquals("_metadata_timestamp", sortFields.get(0));
+    assertEquals("_metadata_lsn", sortFields.get(1));
+  }
 }
