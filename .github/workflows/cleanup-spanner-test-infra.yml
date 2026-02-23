@@ -52,6 +52,9 @@ jobs:
         run: python test-infra/cleanup_spanner_databases.py --project cloud-teleport-testing
       - name: Run delete_spanner_instances.sh
         run: bash test-infra/delete_spanner_instances.sh
+      - name: Run cleanup_datastream_resources.py
+        # Look back period for cloud-teleport-testing is 5 days since the load tests can run upto 3 days + including some buffer.
+        run: python test-infra/cleanup_datastream_resources.py --project cloud-teleport-testing --look_back_period 5
   cleanup_spanner_project:
     name: Cleanup spanner project
     runs-on: [self-hosted, spanner-it]
@@ -71,3 +74,6 @@ jobs:
         run: python test-infra/cleanup_pubsub_notifications.py --project span-cloud-teleport-testing
       - name: Run cleanup_spanner_databases.py
         run: python test-infra/cleanup_spanner_databases.py --project span-cloud-teleport-testing
+      - name: Run cleanup_datastream_resources.py
+        # Look back period for span-cloud-teleport-testing is 1 day since we only run Integration tests in that project which execute in the order of hours.
+        run: python test-infra/cleanup_datastream_resources.py --project span-cloud-teleport-testing --look_back_period 1
