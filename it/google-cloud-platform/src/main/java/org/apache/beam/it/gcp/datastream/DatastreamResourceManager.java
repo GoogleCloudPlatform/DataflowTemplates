@@ -87,7 +87,7 @@ public final class DatastreamResourceManager implements ResourceManager {
       java.time.Duration.ofMinutes(15);
 
   // Retry settings for client operations
-  private static final int FAILSAFE_MAX_RETRIES = 2;
+  private static final int FAILSAFE_MAX_RETRIES = 5;
   private static final java.time.Duration FAILSAFE_RETRY_DELAY = java.time.Duration.ofSeconds(10);
   private static final java.time.Duration FAILSAFE_RETRY_MAX_DELAY =
       java.time.Duration.ofSeconds(180);
