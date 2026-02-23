@@ -35,7 +35,6 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.plugin.DockerfileGenerator;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
-import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
@@ -46,9 +45,12 @@ import com.google.gson.GsonBuilder;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import freemarker.template.TemplateException;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -1789,9 +1791,31 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     LOG.info("Running: {}", String.join(" ", gcloudBuildsCmd));
 
     Process process = Runtime.getRuntime().exec(gcloudBuildsCmd, null, directory);
-    TemplatePluginUtils.redirectLinesLog(process.getInputStream(), LOG, cloudBuildLogs);
-    TemplatePluginUtils.redirectLinesLog(process.getErrorStream(), LOG, cloudBuildLogs);
+    redirectLinesLog(process.getInputStream(), LOG, cloudBuildLogs);
+    redirectLinesLog(process.getErrorStream(), LOG, cloudBuildLogs);
     return process;
+  }
+
+  private static void redirectLinesLog(
+      InputStream inputStream, Logger log, StringBuilder cloudBuildLogs) {
+    new Thread(
+            () -> {
+              try (InputStreamReader isr =
+                      new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+                  BufferedReader bis = new BufferedReader(isr)) {
+
+                String line;
+                while ((line = bis.readLine()) != null) {
+                  log.info(line);
+                  if (cloudBuildLogs != null && line.contains("Logs are available at")) {
+                    cloudBuildLogs.append(line);
+                  }
+                }
+              } catch (Exception e) {
+                log.error("Error redirecting stream", e);
+              }
+            })
+        .start();
   }
 
   private static String getCacheFolder(String imagePathTag) {

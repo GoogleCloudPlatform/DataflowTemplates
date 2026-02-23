@@ -20,7 +20,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -32,7 +31,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ClasspathResourceManager;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -70,13 +69,15 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
   private OracleResourceManager oracleResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager; // For Iceberg warehouse
+  // GCS artifact bucket used to upload driver jars and other artifacts
+  protected final String artifactBucket = TestProperties.artifactBucket();
 
   @Before
   public void setUp() throws IOException {
     // Initialize GCS resource manager for artifacts
     // artifactBucket is inherited from TemplateTestBase
     gcsResourceManager =
-        GcsResourceManager.builder(testName + "-artifacts", credentials, artifactBucket).build();
+      GcsResourceManager.builder(artifactBucket, testName + "-artifacts", credentials).build();
 
     // Initialize Oracle resource manager
     oracleResourceManager = OracleResourceManager.builder(testName).build();
@@ -106,8 +107,15 @@ public class IcebergToOracleYamlIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(
-        oracleResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+    if (oracleResourceManager != null) {
+      oracleResourceManager.cleanupAll();
+    }
+    if (icebergResourceManager != null) {
+      icebergResourceManager.cleanupAll();
+    }
+    if (warehouseGcsResourceManager != null) {
+      warehouseGcsResourceManager.cleanupAll();
+    }
   }
 
   @Test

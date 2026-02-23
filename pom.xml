@@ -122,6 +122,28 @@
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <name>Confluent Maven Repository</name>
+      <url>https://packages.confluent.io/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>confluent</id>
+      <name>Confluent Maven Repository</name>
+      <url>https://packages.confluent.io/maven/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
