@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.astradb.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.db.AstraDbClient;
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.AstraDBOpsClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.dtsx.astra.sdk.db.domain.Database;
 import com.dtsx.astra.sdk.db.domain.DatabaseCreationRequest;
 import com.dtsx.astra.sdk.db.domain.DatabaseStatusType;
@@ -37,6 +37,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
@@ -69,7 +70,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   private static final String ASTRA_DB = "dataflow_integration_tests";
 
-  private static final String ASTRA_DB_REGION = "us-east1";
+  private static final String ASTRA_DB_REGION = TestProperties.region();
 
   private static final String ASTRA_KS = "beam";
 
@@ -77,7 +78,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   private static final String ASTRA_TOKEN_COUNTS = "18";
 
-  private static DatabaseClient dbClient;
+  private static DbOpsClient dbClient;
 
   private BigQueryResourceManager bigQueryClient;
 
@@ -85,6 +86,8 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
   public void setup() throws Exception {
     // Setup bigQuery
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
+    // Setup bigQuery Dataset
+    bigQueryClient.createDataset(ASTRA_DB_REGION);
     // Setup Astra Db
     createOrResumeAstraDatabase();
     // Setup Astra Data
@@ -105,7 +108,9 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
             // Specialized to a table (created and populated if not exists)
             .addParameter("astraTable", ASTRA_TBL)
             // Specialized to a table (created and populated if not exists)
-            .addParameter("minTokenRangesCount", ASTRA_TOKEN_COUNTS);
+            .addParameter("minTokenRangesCount", ASTRA_TOKEN_COUNTS)
+            .addParameter(
+                "outputTableSpec", PROJECT + ":" + bigQueryClient.getDatasetId() + "." + ASTRA_TBL);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -113,7 +118,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
     LOGGER.debug("Pipeline is now running");
 
     // Destination table
-    TableId tableId = TableId.of(PROJECT, ASTRA_KS, ASTRA_TBL);
+    TableId tableId = TableId.of(PROJECT, bigQueryClient.getDatasetId(), ASTRA_TBL);
     LOGGER.debug("Destination Table: {}", tableId);
     PipelineOperator.Result result =
         pipelineOperator()
@@ -121,7 +126,8 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(1).build());
     // Assert that at least 1 row has been inserted
-    assertThatResult(result).isLaunchFinished();
+    assertThat(result)
+        .isAnyOf(PipelineOperator.Result.LAUNCH_FINISHED, PipelineOperator.Result.CONDITION_MET);
     LOGGER.debug("Destination Table has been populated.");
   }
 
@@ -136,7 +142,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   @SuppressWarnings("BusyWait")
   private void createOrResumeAstraDatabase() throws InterruptedException {
-    AstraDbClient databasesClient = new AstraDbClient(test());
+    AstraDBOpsClient databasesClient = new AstraDBOpsClient(test());
     if (databasesClient.findByName(ASTRA_DB).findAny().isEmpty()) {
       LOGGER.debug("Create a new Database {}", ASTRA_DB);
       databasesClient.create(

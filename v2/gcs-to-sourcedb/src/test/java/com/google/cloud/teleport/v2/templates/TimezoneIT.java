@@ -244,7 +244,7 @@ public class TimezoneIT extends TemplateTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
     // Run
-    writerJobInfo = launchTemplate(options, false);
+    writerJobInfo = launchTemplate(options);
   }
 
   private void launchReaderDataflowJob() throws IOException {

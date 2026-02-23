@@ -28,15 +28,15 @@ public class ActionPreloadFactory {
   public static PreloadAction of(Action action, ActionContext context) {
     var actionType = action.getType();
     switch (actionType) {
-      case CYPHER:
+      case "cypher":
         PreloadCypherAction cypher = new PreloadCypherAction();
         cypher.configure(action, context);
         return cypher;
-      case HTTP:
+      case "http":
         PreloadHttpAction http = new PreloadHttpAction();
         http.configure(action, context);
         return http;
-      case BIGQUERY:
+      case "bigquery":
         PreloadBigQueryAction bigQuery = new PreloadBigQueryAction();
         bigQuery.configure(action, context);
         return bigQuery;

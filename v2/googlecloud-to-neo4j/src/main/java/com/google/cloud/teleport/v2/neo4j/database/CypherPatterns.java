@@ -15,9 +15,10 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getAllPropertyMappings;
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.getKeyProperties;
 import static java.util.stream.Collectors.toMap;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,6 +27,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.neo4j.cypherdsl.support.schema_name.SchemaNames;
 import org.neo4j.importer.v1.targets.EntityTarget;
+import org.neo4j.importer.v1.targets.KeyMapping;
+import org.neo4j.importer.v1.targets.NodeReference;
+import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
 
@@ -39,12 +43,34 @@ public class CypherPatterns {
     this.nonKeyPropertiesSet = nonKeyPropertiesSet;
   }
 
+  public static CypherPatterns parseRelationshipNodePatterns(
+      NodeTarget entity, NodeReference reference, String entityVariable, String rowVariable) {
+
+    var keyMappings = reference.getKeyMappings();
+    if (keyMappings.isEmpty()) {
+      return parsePatterns(entity, entityVariable, rowVariable);
+    }
+    var keyProperties =
+        keyMappings.stream()
+            .map(KeyMapping::getNodeProperty)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    var fieldsByProperty =
+        keyMappings.stream()
+            .collect(toMap(KeyMapping::getNodeProperty, KeyMapping::getSourceField));
+    var cypherKeyProperties =
+        assignProperties(keyProperties, "", rowVariable, "", ": ", fieldsByProperty);
+    return new CypherPatterns(cypherKeyProperties, "");
+  }
+
   public static CypherPatterns parsePatterns(
       EntityTarget entity, String entityVariable, String rowVariable) {
-    Set<String> keyProperties = new LinkedHashSet<>(entity.getKeyProperties());
+    Set<String> keyProperties = getKeyProperties(entity);
     String cypherKeyProperties = assignPropertiesInPattern(entity, keyProperties, rowVariable);
-    List<String> nonKeyProperties = new ArrayList<>(entity.getAllProperties());
-    nonKeyProperties.removeAll(keyProperties);
+    List<String> nonKeyProperties =
+        getAllPropertyMappings(entity).stream()
+            .map(PropertyMapping::getTargetProperty)
+            .filter(targetProperty -> !keyProperties.contains(targetProperty))
+            .toList();
     String cypherSetNonKeys =
         assignProperties(entity, nonKeyProperties, entityVariable, rowVariable, "SET ", " = ");
     return new CypherPatterns(cypherKeyProperties, cypherSetNonKeys);
@@ -86,55 +112,32 @@ public class CypherPatterns {
   }
 
   public static String propertyType(PropertyType propertyType) {
-    switch (propertyType) {
-      case BOOLEAN:
-        return "BOOLEAN";
-      case BOOLEAN_ARRAY:
-        return "LIST<BOOLEAN NOT NULL>";
-      case DATE:
-        return "DATE";
-      case DATE_ARRAY:
-        return "LIST<DATE NOT NULL>";
-      case DURATION:
-        return "DURATION";
-      case DURATION_ARRAY:
-        return "LIST<DURATION NOT NULL>";
-      case FLOAT:
-        return "FLOAT";
-      case FLOAT_ARRAY:
-        return "LIST<FLOAT NOT NULL>";
-      case INTEGER:
-        return "INTEGER";
-      case INTEGER_ARRAY:
-        return "LIST<INTEGER NOT NULL>";
-      case LOCAL_DATETIME:
-        return "LOCAL DATETIME";
-      case LOCAL_DATETIME_ARRAY:
-        return "LIST<LOCAL DATETIME NOT NULL>";
-      case LOCAL_TIME:
-        return "LOCAL TIME";
-      case LOCAL_TIME_ARRAY:
-        return "LIST<LOCAL TIME NOT NULL>";
-      case POINT:
-        return "POINT";
-      case POINT_ARRAY:
-        return "LIST<POINT NOT NULL>";
-      case STRING:
-        return "STRING";
-      case STRING_ARRAY:
-        return "LIST<STRING NOT NULL>";
-      case ZONED_DATETIME:
-        return "ZONED DATETIME";
-      case ZONED_DATETIME_ARRAY:
-        return "LIST<ZONED DATETIME NOT NULL>";
-      case ZONED_TIME:
-        return "ZONED TIME";
-      case ZONED_TIME_ARRAY:
-        return "LIST<ZONED TIME NOT NULL>";
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unsupported property type: %s", propertyType));
-    }
+    return switch (propertyType) {
+      case BOOLEAN -> "BOOLEAN";
+      case BOOLEAN_ARRAY -> "LIST<BOOLEAN NOT NULL>";
+      case DATE -> "DATE";
+      case DATE_ARRAY -> "LIST<DATE NOT NULL>";
+      case DURATION -> "DURATION";
+      case DURATION_ARRAY -> "LIST<DURATION NOT NULL>";
+      case FLOAT -> "FLOAT";
+      case FLOAT_ARRAY -> "LIST<FLOAT NOT NULL>";
+      case INTEGER -> "INTEGER";
+      case INTEGER_ARRAY -> "LIST<INTEGER NOT NULL>";
+      case LOCAL_DATETIME -> "LOCAL DATETIME";
+      case LOCAL_DATETIME_ARRAY -> "LIST<LOCAL DATETIME NOT NULL>";
+      case LOCAL_TIME -> "LOCAL TIME";
+      case LOCAL_TIME_ARRAY -> "LIST<LOCAL TIME NOT NULL>";
+      case POINT -> "POINT";
+      case POINT_ARRAY -> "LIST<POINT NOT NULL>";
+      case STRING -> "STRING";
+      case STRING_ARRAY -> "LIST<STRING NOT NULL>";
+      case ZONED_DATETIME -> "ZONED DATETIME";
+      case ZONED_DATETIME_ARRAY -> "LIST<ZONED DATETIME NOT NULL>";
+      case ZONED_TIME -> "ZONED TIME";
+      case ZONED_TIME_ARRAY -> "LIST<ZONED TIME NOT NULL>";
+      default -> throw new IllegalArgumentException(
+          String.format("Unsupported property type: %s", propertyType));
+    };
   }
 
   public String keysPattern() {
@@ -175,6 +178,17 @@ public class CypherPatterns {
         target.getProperties().stream()
             .collect(toMap(PropertyMapping::getTargetProperty, PropertyMapping::getSourceField));
 
+    return assignProperties(
+        properties, entityVariable, rowVariable, prefix, separator, fieldsByProperty);
+  }
+
+  private static String assignProperties(
+      Collection<String> properties,
+      String entityVariable,
+      String rowVariable,
+      String prefix,
+      String separator,
+      Map<String, String> fieldsByProperty) {
     return properties.stream()
         .map(
             property -> {

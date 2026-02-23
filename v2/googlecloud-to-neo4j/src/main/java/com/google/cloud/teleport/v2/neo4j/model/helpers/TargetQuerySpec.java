@@ -145,7 +145,7 @@ public class TargetQuerySpec {
         throw new IllegalStateException(
             "Relationship targets must specify a start node target, none found");
       }
-      String expectedStartName = relationshipTarget.getStartNodeReference();
+      String expectedStartName = relationshipTarget.getStartNodeReference().getName();
       String actualStartName = startNodeTarget.getName();
       if (!expectedStartName.equals(actualStartName)) {
         throw new IllegalStateException(
@@ -157,7 +157,7 @@ public class TargetQuerySpec {
         throw new IllegalStateException(
             "Relationship targets must specify an end node target, none found");
       }
-      String expectedEndName = relationshipTarget.getEndNodeReference();
+      String expectedEndName = relationshipTarget.getEndNodeReference().getName();
       String actualEndName = endNodeTarget.getName();
       if (!expectedEndName.equals(actualEndName)) {
         throw new IllegalStateException(

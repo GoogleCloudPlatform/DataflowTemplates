@@ -27,8 +27,8 @@ import java.util.Map;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.importer.v1.actions.ActionStage;
-import org.neo4j.importer.v1.actions.CypherAction;
-import org.neo4j.importer.v1.actions.CypherExecutionMode;
+import org.neo4j.importer.v1.actions.plugin.CypherAction;
+import org.neo4j.importer.v1.actions.plugin.CypherExecutionMode;
 
 public class PreloadCypherActionTest {
 

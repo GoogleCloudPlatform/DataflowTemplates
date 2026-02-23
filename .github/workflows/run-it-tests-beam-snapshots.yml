@@ -29,7 +29,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+  MAVEN_OPTS: >-
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+    --add-opens java.base/java.nio=ALL-UNNAMED
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+    --add-opens java.base/java.lang=ALL-UNNAMED
+    --add-opens java.base/java.util=ALL-UNNAMED
 
 permissions:
   contents: write # Required to modify pom.xml and then revert it
@@ -50,8 +55,8 @@ jobs:
       - name: Calculate Next Beam Snapshot Version
         id: calculate_beam_snapshot
         run: |
-          if [ -n "${{ github.event.inputs.snapshot_version }}" ]; then
-            BEAM_SNAPSHOT_VERSION="${{ github.event.inputs.snapshot_version }}"
+          if [ -n "${GITHUB_EVENT_INPUTS_SNAPSHOT_VERSION}" ]; then
+            BEAM_SNAPSHOT_VERSION="${GITHUB_EVENT_INPUTS_SNAPSHOT_VERSION}"
             echo "Using provided Beam snapshot version: $BEAM_SNAPSHOT_VERSION"
           else
             CURRENT_BEAM_VERSION=$(mvn help:evaluate -Dexpression=beam.version -q -DforceStdout)
@@ -69,10 +74,12 @@ jobs:
 
           echo "beam_snapshot_version=$BEAM_SNAPSHOT_VERSION" >> $GITHUB_OUTPUT
         shell: bash
+        env:
+          GITHUB_EVENT_INPUTS_SNAPSHOT_VERSION: ${{ github.event.inputs.snapshot_version }}
 
       - name: Update pom.xml for Beam Snapshot
         run: |
-          SNAPSHOT_VERSION="${{ steps.calculate_beam_snapshot.outputs.beam_snapshot_version }}"
+          SNAPSHOT_VERSION="${STEPS_CALCULATE_BEAM_SNAPSHOT_OUTPUTS_BEAM_SNAPSHOT_VERSION}"
           echo "Updating pom.xml to use Beam version: $SNAPSHOT_VERSION"
 
           # 1. Update Beam version
@@ -98,6 +105,8 @@ jobs:
           echo "Final pom.xml changes:"
           git diff pom.xml.bak # Show changes against the original .bak file created by sed
         shell: bash
+        env:
+          STEPS_CALCULATE_BEAM_SNAPSHOT_OUTPUTS_BEAM_SNAPSHOT_VERSION: ${{ steps.calculate_beam_snapshot.outputs.beam_snapshot_version }}
 
       - name: Run Build
         run: ./cicd/run-build

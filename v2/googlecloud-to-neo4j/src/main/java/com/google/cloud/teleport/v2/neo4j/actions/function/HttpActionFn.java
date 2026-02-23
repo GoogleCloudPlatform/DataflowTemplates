@@ -15,15 +15,13 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.function;
 
-import static com.google.cloud.teleport.v2.neo4j.utils.HttpUtils.isPostRequest;
-
+import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.neo4j.importer.v1.actions.HttpAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +33,7 @@ public class HttpActionFn extends DoFn<Integer, Row> {
 
   public HttpActionFn(ActionContext context) {
     this.action = ((HttpAction) context.getAction());
-    if (StringUtils.isEmpty(action.getUrl())) {
+    if (StringUtils.isEmpty(action.url())) {
       throw new RuntimeException("URL not provided for HTTP action.");
     }
   }
@@ -43,8 +41,7 @@ public class HttpActionFn extends DoFn<Integer, Row> {
   @ProcessElement
   public void processElement(ProcessContext context) throws InterruptedException {
     try (CloseableHttpResponse response =
-        HttpUtils.getHttpResponse(
-            isPostRequest(action.getMethod()), action.getUrl(), action.getHeaders())) {
+        HttpUtils.getHttpResponse(action.method(), action.url(), action.headers())) {
       LOG.info(
           "Executing HTTP {} transform, returned: {}",
           action.getName(),

@@ -19,6 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec.TargetQuerySpecBuilder;
+import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -30,16 +32,15 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
 import org.junit.Assert;
 import org.junit.Test;
-import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
+import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.RelationshipKeyConstraint;
 import org.neo4j.importer.v1.targets.RelationshipSchema;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.SourceTransformations;
 import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.WriteMode;
 
@@ -474,7 +475,7 @@ public class ModelUtilsTest {
             "a-source",
             null,
             WriteMode.CREATE,
-            null,
+            List.of(),
             List.of(label),
             mappings,
             schema);
@@ -502,7 +503,7 @@ public class ModelUtilsTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of(sourceLabel),
             propertyMappings(sourceKeys),
             new NodeSchema(
@@ -522,7 +523,7 @@ public class ModelUtilsTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            null,
+            List.of(),
             List.of(targetLabel),
             propertyMappings(targetKeys),
             new NodeSchema(
@@ -544,9 +545,9 @@ public class ModelUtilsTest {
             type,
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
-            null,
-            "start-node-target",
-            "end-node-target",
+            List.of(),
+            new NodeReference("start-node-target"),
+            new NodeReference("end-node-target"),
             propertyMappings(fieldToPropMapping),
             new RelationshipSchema(
                 null, relKeyConstraints(keyFields), null, null, null, null, null, null, null));
@@ -628,22 +629,26 @@ public class ModelUtilsTest {
     private static Target copyTarget(
         Target previousTarget,
         Function<SourceTransformations, SourceTransformations> copyTransform) {
-      switch (previousTarget.getTargetType()) {
-        case NODE:
+      return switch (previousTarget.getTargetType()) {
+        case NODE -> {
           var originalNode = (NodeTarget) previousTarget;
-          return copyNode(
+          yield copyNode(
               (NodeTarget) previousTarget,
-              copyTransform.apply(originalNode.getSourceTransformations()));
-        case RELATIONSHIP:
+              copyTransform.apply(
+                  originalNode.getExtension(SourceTransformations.class).orElse(null)));
+        }
+        case RELATIONSHIP -> {
           var originalRelationship = (RelationshipTarget) previousTarget;
-          return copyRelationship(
+          yield copyRelationship(
               originalRelationship,
-              copyTransform.apply(originalRelationship.getSourceTransformations()));
-        case QUERY:
-        default:
+              copyTransform.apply(
+                  originalRelationship.getExtension(SourceTransformations.class).orElse(null)));
+        }
+        default -> {
           Assert.fail("expected node or relationship target");
-          return null;
-      }
+          yield null;
+        }
+      };
     }
 
     private static NodeTarget copyNode(
@@ -654,7 +659,7 @@ public class ModelUtilsTest {
           original.getSource(),
           original.getDependencies(),
           original.getWriteMode(),
-          newTransformations,
+          newTransformations == null ? List.of() : List.of(newTransformations),
           original.getLabels(),
           original.getProperties(),
           original.getSchema());
@@ -664,21 +669,21 @@ public class ModelUtilsTest {
         transformationsWithAggregations(Aggregation[] aggregations) {
       return (original) ->
           new SourceTransformations(
-              original != null && original.isEnableGrouping(),
+              original != null && original.enableGrouping(),
               Arrays.asList(aggregations),
-              original == null ? null : original.getWhereClause(),
-              original == null ? null : original.getOrderByClauses(),
-              original == null ? null : original.getLimit());
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private Function<SourceTransformations, SourceTransformations> transformationsWithLimit(
         int limit) {
       return (original) ->
           new SourceTransformations(
-              original != null && original.isEnableGrouping(),
-              original == null ? null : original.getAggregations(),
-              original == null ? null : original.getWhereClause(),
-              original == null ? null : original.getOrderByClauses(),
+              original != null && original.enableGrouping(),
+              original == null ? List.of() : original.aggregations(),
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
               limit);
     }
 
@@ -686,11 +691,11 @@ public class ModelUtilsTest {
         String where) {
       return (original) ->
           new SourceTransformations(
-              original != null && original.isEnableGrouping(),
-              original == null ? null : original.getAggregations(),
+              original != null && original.enableGrouping(),
+              original == null ? List.of() : original.aggregations(),
               where,
-              original == null ? null : original.getOrderByClauses(),
-              original == null ? null : original.getLimit());
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private Function<SourceTransformations, SourceTransformations> transformationsWithGroupBy(
@@ -698,10 +703,10 @@ public class ModelUtilsTest {
       return (original) ->
           new SourceTransformations(
               groupBy,
-              original == null ? null : original.getAggregations(),
-              original == null ? null : original.getWhereClause(),
-              original == null ? null : original.getOrderByClauses(),
-              original == null ? null : original.getLimit());
+              original == null ? List.of() : original.aggregations(),
+              original == null ? "" : original.whereClause(),
+              original == null ? List.of() : original.orderByClauses(),
+              original == null ? -1 : original.limit());
     }
 
     private static RelationshipTarget copyRelationship(
@@ -714,7 +719,7 @@ public class ModelUtilsTest {
           original.getType(),
           original.getWriteMode(),
           original.getNodeMatchMode(),
-          transformations,
+          transformations == null ? List.of() : List.of(transformations),
           original.getStartNodeReference(),
           original.getEndNodeReference(),
           original.getProperties(),

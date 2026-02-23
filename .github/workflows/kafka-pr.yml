@@ -36,7 +36,7 @@ on:
       - 'v2/kafka-to-kafka/**'
       - 'v2/pubsub-to-kafka/**'
   schedule:
-    - cron: "6 */12 * * *"
+    - cron: "6 6/12 * * *"
   workflow_dispatch:
 
 concurrency:

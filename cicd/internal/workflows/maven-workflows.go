@@ -61,6 +61,8 @@ type MavenFlags interface {
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
 	InternalMaven() string
+	SpecificTest(string) string
+	FailIfNoTests(bool) string
 }
 
 type mvnFlags struct{}
@@ -161,6 +163,20 @@ func (*mvnFlags) SpannerHost(host string) string {
 
 func (*mvnFlags) InternalMaven() string {
 	return "--settings=.mvn/settings.xml"
+}
+
+func (*mvnFlags) SpecificTest(test string) string {
+	if test == "" {
+		return ""
+	}
+	return "-Dtest=" + test
+}
+
+func (*mvnFlags) FailIfNoTests(skip bool) string {
+	if skip {
+		return "-Dsurefire.failIfNoSpecifiedTests=false"
+	}
+	return ""
 }
 
 func NewMavenFlags() MavenFlags {

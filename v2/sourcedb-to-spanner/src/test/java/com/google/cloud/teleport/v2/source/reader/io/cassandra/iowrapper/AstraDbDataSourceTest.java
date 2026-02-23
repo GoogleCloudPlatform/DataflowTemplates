@@ -21,7 +21,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.exception.AstraDBNotFoundException;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import org.junit.Test;
@@ -44,9 +44,9 @@ public class AstraDbDataSourceTest {
     byte[] testSecureBundleWithRegion = "Secure-Bundle-With-Region".getBytes();
     byte[] testSecureBundleWithoutRegion = "Secure-Bundle-Default".getBytes();
 
-    try (MockedConstruction<DatabaseClient> mockedConstruction =
+    try (MockedConstruction<DbOpsClient> mockedConstruction =
         mockConstruction(
-            DatabaseClient.class,
+            DbOpsClient.class,
             (mock, context) -> {
               when(mock.exist()).thenReturn(true);
               when(mock.downloadSecureConnectBundle(testRegion))
@@ -86,9 +86,9 @@ public class AstraDbDataSourceTest {
     byte[] testSecureBundleWithRegion = "Secure-Bundle-With-Region".getBytes();
     try (MockedStatic<SecretManagerUtils> mockedStatic = mockStatic(SecretManagerUtils.class)) {
       mockedStatic.when(() -> SecretManagerUtils.getSecret(testToken)).thenReturn(testToken);
-      try (MockedConstruction<DatabaseClient> mockedConstruction =
+      try (MockedConstruction<DbOpsClient> mockedConstruction =
           mockConstruction(
-              DatabaseClient.class,
+              DbOpsClient.class,
               (mock, context) -> {
                 when(mock.exist()).thenReturn(true);
                 when(mock.downloadSecureConnectBundle(testRegion))
@@ -123,9 +123,9 @@ public class AstraDbDataSourceTest {
     byte[] testSecureBundleWithRegion = "Secure-Bundle-With-Region".getBytes();
     byte[] testSecureBundleWithoutRegion = "Secure-Bundle-Default".getBytes();
 
-    try (MockedConstruction<DatabaseClient> mockedConstruction =
+    try (MockedConstruction<DbOpsClient> mockedConstruction =
         mockConstruction(
-            DatabaseClient.class,
+            DbOpsClient.class,
             (mock, context) -> {
               when(mock.exist()).thenReturn(false);
               when(mock.downloadSecureConnectBundle(testRegion))

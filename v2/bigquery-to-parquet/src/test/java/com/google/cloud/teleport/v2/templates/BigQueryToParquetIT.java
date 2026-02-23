@@ -164,11 +164,11 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
       // prep expected dataset used for assertion, we expect timestamps that satisfy ROW_RESTRICTION
       if (expectedTimestamps.contains(timestampString)) {
-        // Convert to Epoch since timestamps stored in Parquet files are in Epoch
+        // With AVRO >= 1.12.0 and parquet-avro, timestamps are read as java.time.Instant
+        // and formatted as ISO-8601 strings in the assertions.
         Instant instant = Instant.parse(timestampString);
-        long epochMillis = instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
         Map<String, Object> expectedContent = new HashMap<>(generatedRow.getContent());
-        expectedContent.put(PARTITION_FIELD, epochMillis);
+        expectedContent.put(PARTITION_FIELD, instant.toString());
         expectedBigQueryRows.add(RowToInsert.of(expectedContent));
       }
     }
