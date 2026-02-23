@@ -21,7 +21,10 @@ on:
     branches:
       - 'main'
     paths:
-      - 'pom.xml'
+      # Include pom.xml files except in v1 and v2
+      - '**/pom.xml'
+      - '!v1/**/pom.xml'
+      - '!v2/**/pom.xml'
       - 'yaml/**'
       - 'python/**'
       # Include python files and Dockerfiles used for YAML and xlang templates.
