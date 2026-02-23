@@ -1,0 +1,1304 @@
+diff --git a/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScanner.java b/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScanner.java
+index cab418622..1d98f6f90 100644
+--- a/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScanner.java
++++ b/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScanner.java
+@@ -101,7 +101,7 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
+     String query =
+         String.format(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = '%s' AND table_name = '%s' "
+                 + "ORDER BY ordinal_position",
+@@ -116,6 +116,8 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
+                 .type(rs.getString("data_type"))
+                 .isNullable("YES".equals(rs.getString("is_nullable")))
+                 .isPrimaryKey("PRI".equals(rs.getString("column_key")));
++        String generationExpression = rs.getString("generation_expression");
++        columnBuilder.isGenerated(generationExpression != null && !generationExpression.isEmpty());
+ 
+         // Handle size/precision/scale
+         String maxLength = rs.getString("character_maximum_length");
+diff --git a/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/SourceColumn.java b/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/SourceColumn.java
+index 93157649e..62897a036 100644
+--- a/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/SourceColumn.java
++++ b/v2/spanner-common/src/main/java/com/google/cloud/teleport/v2/spanner/sourceddl/SourceColumn.java
+@@ -47,11 +47,14 @@ public abstract class SourceColumn implements Serializable {
+ 
+   public abstract SourceDatabaseType sourceType();
+ 
++  public abstract boolean isGenerated();
++
+   public static Builder builder(SourceDatabaseType sourceType) {
+     return new AutoValue_SourceColumn.Builder()
+         .sourceType(sourceType)
+         .isNullable(true)
+         .isPrimaryKey(false)
++        .isGenerated(false)
+         .columnOptions(ImmutableList.of());
+   }
+ 
+@@ -68,6 +71,8 @@ public abstract class SourceColumn implements Serializable {
+ 
+     public abstract Builder isPrimaryKey(boolean isPrimaryKey);
+ 
++    public abstract Builder isGenerated(boolean isGenerated);
++
+     public abstract Builder size(Long size);
+ 
+     public abstract Builder precision(Integer precision);
+diff --git a/v2/spanner-common/src/test/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScannerTest.java b/v2/spanner-common/src/test/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScannerTest.java
+index a5d4bc6aa..2635d790e 100644
+--- a/v2/spanner-common/src/test/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScannerTest.java
++++ b/v2/spanner-common/src/test/java/com/google/cloud/teleport/v2/spanner/sourceddl/MySqlInformationSchemaScannerTest.java
+@@ -16,6 +16,8 @@
+ package com.google.cloud.teleport.v2.spanner.sourceddl;
+ 
+ import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.when;
+ 
+@@ -51,7 +53,7 @@ public class MySqlInformationSchemaScannerTest {
+     // Mock column query
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                 + "ORDER BY ordinal_position"))
+@@ -64,6 +66,7 @@ public class MySqlInformationSchemaScannerTest {
+     when(columnRs.getString("character_maximum_length")).thenReturn("10");
+     when(columnRs.getString("numeric_precision")).thenReturn(null);
+     when(columnRs.getString("numeric_scale")).thenReturn(null);
++    when(columnRs.getString("generation_expression")).thenReturn("");
+ 
+     // Mock primary key query
+     when(stmt.executeQuery(
+@@ -91,6 +94,7 @@ public class MySqlInformationSchemaScannerTest {
+     assertEquals("INT", column.type());
+     assertEquals(false, column.isNullable());
+     assertEquals(true, column.isPrimaryKey());
++    assertEquals(false, column.isGenerated());
+     assertEquals(Long.valueOf(10L), column.size());
+     assertEquals(1, table.primaryKeyColumns().size());
+     assertEquals("id", table.primaryKeyColumns().get(0));
+@@ -117,7 +121,7 @@ public class MySqlInformationSchemaScannerTest {
+ 
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
+                 + "ORDER BY ordinal_position"))
+@@ -161,7 +165,7 @@ public class MySqlInformationSchemaScannerTest {
+ 
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
+                 + "ORDER BY ordinal_position"))
+@@ -174,6 +178,7 @@ public class MySqlInformationSchemaScannerTest {
+     when(columnRs.getString("character_maximum_length")).thenReturn("255");
+     when(columnRs.getString("numeric_precision")).thenReturn(null);
+     when(columnRs.getString("numeric_scale")).thenReturn(null);
++    when(columnRs.getString("generation_expression")).thenReturn("concat(`first_name`,' ')");
+ 
+     when(stmt.executeQuery(
+             "SELECT column_name "
+@@ -235,7 +240,7 @@ public class MySqlInformationSchemaScannerTest {
+     // Simulate SQLException when scanning columns
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                 + "ORDER BY ordinal_position"))
+@@ -269,7 +274,7 @@ public class MySqlInformationSchemaScannerTest {
+     // users table
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                 + "ORDER BY ordinal_position"))
+@@ -282,6 +287,8 @@ public class MySqlInformationSchemaScannerTest {
+     when(columnRs1.getString("character_maximum_length")).thenReturn("10");
+     when(columnRs1.getString("numeric_precision")).thenReturn(null);
+     when(columnRs1.getString("numeric_scale")).thenReturn(null);
++    when(columnRs1.getString("generation_expression")).thenReturn(null);
++
+     when(stmt.executeQuery(
+             "SELECT column_name "
+                 + "FROM information_schema.key_column_usage "
+@@ -295,7 +302,7 @@ public class MySqlInformationSchemaScannerTest {
+     // orders table
+     when(stmt.executeQuery(
+             "SELECT column_name, data_type, character_maximum_length, "
+-                + "numeric_precision, numeric_scale, is_nullable, column_key "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                 + "FROM information_schema.columns "
+                 + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
+                 + "ORDER BY ordinal_position"))
+@@ -308,6 +315,8 @@ public class MySqlInformationSchemaScannerTest {
+     when(columnRs2.getString("character_maximum_length")).thenReturn(null);
+     when(columnRs2.getString("numeric_precision")).thenReturn("20");
+     when(columnRs2.getString("numeric_scale")).thenReturn(null);
++    when(columnRs2.getString("generation_expression")).thenReturn(null);
++
+     when(stmt.executeQuery(
+             "SELECT column_name "
+                 + "FROM information_schema.key_column_usage "
+@@ -324,4 +333,73 @@ public class MySqlInformationSchemaScannerTest {
+     assertEquals("users", schema.tables().get("users").name());
+     assertEquals("orders", schema.tables().get("orders").name());
+   }
++
++  @Test
++  public void testScanGeneratedColumn() throws SQLException {
++    // Mock JDBC objects
++    Connection connection = mock(Connection.class);
++    Statement stmt = mock(Statement.class);
++    ResultSet tableRs = mock(ResultSet.class);
++    ResultSet columnRs = mock(ResultSet.class);
++    ResultSet pkRs = mock(ResultSet.class);
++
++    // Mock table query
++    when(connection.createStatement()).thenReturn(stmt);
++    when(stmt.executeQuery(
++            "SELECT table_name, table_schema "
++                + "FROM information_schema.tables "
++                + "WHERE table_schema = 'testdb' "
++                + "AND table_type = 'BASE TABLE'"))
++        .thenReturn(tableRs);
++    when(tableRs.next()).thenReturn(true, false);
++    when(tableRs.getString(1)).thenReturn("generated_table");
++    when(tableRs.getString(2)).thenReturn("testdb");
++
++    // Mock column query
++    when(stmt.executeQuery(
++            "SELECT column_name, data_type, character_maximum_length, "
++                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
++                + "FROM information_schema.columns "
++                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
++                + "ORDER BY ordinal_position"))
++        .thenReturn(columnRs);
++    when(columnRs.next()).thenReturn(true, true, false);
++
++    // Normal column
++    when(columnRs.getString("column_name")).thenReturn("id", "full_name");
++    when(columnRs.getString("data_type")).thenReturn("INT", "VARCHAR");
++    when(columnRs.getString("is_nullable")).thenReturn("NO", "YES");
++    when(columnRs.getString("column_key")).thenReturn("PRI", "");
++    when(columnRs.getString("character_maximum_length")).thenReturn("10", "255");
++    when(columnRs.getString("numeric_precision")).thenReturn(null, null);
++    when(columnRs.getString("numeric_scale")).thenReturn(null, null);
++    // Extra column for generated column
++    when(columnRs.getString("generation_expression")).thenReturn("", "(id * 2)");
++
++    // Mock primary key query
++    when(stmt.executeQuery(
++            "SELECT column_name "
++                + "FROM information_schema.key_column_usage "
++                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
++                + "AND constraint_name = 'PRIMARY' "
++                + "ORDER BY ordinal_position"))
++        .thenReturn(pkRs);
++    when(pkRs.next()).thenReturn(true, false);
++    when(pkRs.getString("column_name")).thenReturn("id");
++
++    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
++    SourceSchema schema = scanner.scan();
++
++    assertEquals(1, schema.tables().size());
++    SourceTable table = schema.tables().get("generated_table");
++    assertEquals(2, table.columns().size());
++
++    SourceColumn idCol = table.columns().get(0);
++    assertEquals("id", idCol.name());
++    assertFalse(idCol.isGenerated());
++
++    SourceColumn fullNameCol = table.columns().get(1);
++    assertEquals("full_name", fullNameCol.name());
++    assertTrue("Column should be generated", fullNameCol.isGenerated());
++  }
+ }
+diff --git a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGenerator.java b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGenerator.java
+index 36e05efb8..9cfdee21b 100644
+--- a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGenerator.java
++++ b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGenerator.java
+@@ -233,6 +233,9 @@ public class MySQLDMLGenerator implements IDMLGenerator {
+       if (sourcePKs.contains(colName)) {
+         continue; // we only need non-primary keys
+       }
++      if (sourceColDef.isGenerated()) {
++        continue;
++      }
+       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
+         response.put(colName, customTransformationResponse.get(colName).toString());
+         continue;
+@@ -302,6 +305,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
+       customTransformColumns = customTransformationResponse.keySet();
+     }
+ 
++    boolean isGeneratedColumnExist = false;
++
+     for (int i = 0; i < sourcePKs.size(); i++) {
+       String sourceColName = sourcePKs.get(i);
+       SourceColumn sourceColDef = sourceTable.column(sourceColName);
+@@ -311,6 +316,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
+         return null;
+       }
+ 
++      if (sourceColDef.isGenerated()) {
++        isGeneratedColumnExist = true;
++        continue;
++      }
++
+       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
+         response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
+         continue;
+@@ -361,6 +371,25 @@ public class MySQLDMLGenerator implements IDMLGenerator {
+       response.put(sourceColName, columnValue);
+     }
+ 
++    if (isGeneratedColumnExist) {
++      // Generated column expression between source DB and and spanner can be
++      // differences. Hence, generated column values cannot be used from the change
++      // stream. If Primary key is generated column, then the DML statment need to
++      // have the respective dependent column values. Since we cannot identify the
++      // dependent columns, we are adding all the non-generated columns to the
++      // response.
++      Map<String, String> generatedColumnValues =
++          getColumnValues(
++              schemaMapper,
++              spannerTable,
++              sourceTable,
++              newValuesJson,
++              keyValuesJson,
++              sourceDbTimezoneOffset,
++              customTransformationResponse);
++      response.putAll(generatedColumnValues);
++    }
++
+     return response;
+   }
+ 
+diff --git a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/AssignShardIdFn.java b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/AssignShardIdFn.java
+index 673dacf6f..882a25a6f 100644
+--- a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/AssignShardIdFn.java
++++ b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/AssignShardIdFn.java
+@@ -31,7 +31,9 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
+ import com.google.cloud.teleport.v2.spanner.ddl.Table;
+ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
++import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
++import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+ import com.google.cloud.teleport.v2.spanner.type.Type;
+ import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
+ import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
+@@ -45,12 +47,14 @@ import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionCl
+ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.ImmutableSet;
+ import java.math.BigDecimal;
++import java.util.ArrayList;
+ import java.util.Base64;
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
++import java.util.Set;
+ import java.util.stream.Collectors;
+ import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+@@ -293,10 +297,97 @@ public class AssignShardIdFn
+               ddl);
+     } else {
+       spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson, ddl);
++      updateChangeEnventToIncludeGeneratedColumns(
++          record, keysJson, schemaMapper, ddl, sourceSchema, spannerConfig, mapper);
+     }
+     return spannerRecord;
+   }
+ 
++  public void updateChangeEnventToIncludeGeneratedColumns(
++      TrimmedShardedDataChangeRecord spannerRecord,
++      JsonNode keysJson,
++      ISchemaMapper schemaMapper,
++      Ddl ddl,
++      SourceSchema sourceSchema,
++      SpannerConfig spannerConfig,
++      ObjectMapper objectMapper)
++      throws Exception {
++
++    String tableName = spannerRecord.getTableName();
++    // Check for generated columns in Spanner that are not generated in Source
++    // and fetch them if missing.
++    List<String> spannerCols = schemaMapper.getSpannerColumns(null, tableName);
++    List<String> columnsToFetch = new ArrayList<>();
++    String sourceTableName = schemaMapper.getSourceTableName(null, tableName);
++    SourceTable sourceTable = sourceSchema.table(sourceTableName);
++    Set<String> pkColumns =
++        ddl.table(tableName).primaryKeys().stream()
++            .map(IndexColumn::name)
++            .collect(Collectors.toSet());
++
++    for (String col : spannerCols) {
++      boolean isGeneratedInSpanner = schemaMapper.isGeneratedColumn(null, tableName, col);
++      boolean existsAtSource = schemaMapper.colExistsAtSource(null, tableName, col);
++      boolean isPk = pkColumns.contains(col);
++      if (isGeneratedInSpanner && existsAtSource && !isPk) {
++        String sourceColName = schemaMapper.getSourceColumnName(null, tableName, col);
++        SourceColumn sourceColumn = sourceTable.column(sourceColName);
++        // If source column is NOT generated, we need the value from Spanner
++        if (sourceColumn != null && !sourceColumn.isGenerated()) {
++          columnsToFetch.add(col);
++        }
++      }
++    }
++
++    LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
++    if (columnsToFetch.isEmpty()) {
++      return;
++    }
++    com.google.cloud.Timestamp commitTimestamp = spannerRecord.getCommitTimestamp();
++
++    java.time.Instant commitInstant =
++        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
++
++    java.time.Instant staleInstant = commitInstant.plus(LOOKBACK_DURATION_FOR_DELETE);
++
++    com.google.cloud.Timestamp staleReadTs =
++        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
++            staleInstant.getEpochSecond(), staleInstant.getNano());
++    com.google.cloud.spanner.Key primaryKey = generateKey(tableName, keysJson, ddl);
++    LOG.error(
++        "Stale read timestamp: "
++            + staleReadTs
++            + " for table: "
++            + tableName
++            + " and primary key: "
++            + primaryKey
++            + " and commit timestamp: "
++            + commitTimestamp);
++    LOG.error(
++        "Spanner Config: "
++            + spannerConfig
++            + " Database Id: "
++            + spannerConfig.getDatabaseId()
++            + " Instance Id: "
++            + spannerConfig.getInstanceId()
++            + " Project Id: "
++            + spannerConfig.getProjectId());
++    Struct fetchedRow =
++        readRowAsStruct(
++            tableName,
++            commitTimestamp,
++            spannerRecord.getServerTransactionId(),
++            commitTimestamp,
++            columnsToFetch,
++            primaryKey);
++    if (fetchedRow == null) {
++      LOG.warn("Failed to fetch row for primary key: " + primaryKey);
++    } else {
++      Map<String, Object> rowAsMap = getRowAsMap(fetchedRow, columnsToFetch, tableName, ddl);
++      updateColumnValues(spannerRecord, sourceTableName, ddl, fetchedRow, rowAsMap, objectMapper);
++    }
++  }
++
+   private Map<String, Object> fetchSpannerRecord(
+       String tableName,
+       com.google.cloud.Timestamp commitTimestamp,
+@@ -329,24 +420,31 @@ public class AssignShardIdFn
+     Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName, ddl);
+     // TODO find a way to not make a special case from Cassandra.
+     if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
+-
+-      Table table = ddl.table(tableName);
+-      ImmutableSet<String> keyColumns =
+-          table.primaryKeys().stream().map(k -> k.name()).collect(ImmutableSet.toImmutableSet());
+-      ObjectNode newValuesJsonNode =
+-          (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
+-      rowAsMap.keySet().stream()
+-          .filter(k -> !keyColumns.contains(k))
+-          .forEach(
+-              colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
+-      String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
+-      record.setMod(
+-          new Mod(
+-              record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
++      updateColumnValues(record, tableName, ddl, row, rowAsMap, mapper);
+     }
+     return rowAsMap;
+   }
+ 
++  public void updateColumnValues(
++      TrimmedShardedDataChangeRecord record,
++      String tableName,
++      Ddl ddl,
++      Struct row,
++      Map<String, Object> rowAsMap,
++      ObjectMapper mapper)
++      throws Exception {
++    Table table = ddl.table(tableName);
++    ImmutableSet<String> keyColumns =
++        table.primaryKeys().stream().map(k -> k.name()).collect(ImmutableSet.toImmutableSet());
++    ObjectNode newValuesJsonNode = (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
++    rowAsMap.keySet().stream()
++        .filter(k -> !keyColumns.contains(k))
++        .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
++    String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
++    record.setMod(
++        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
++  }
++
+   private Struct readRowAsStruct(
+       String tableName,
+       com.google.cloud.Timestamp commitTimestamp,
+@@ -412,11 +510,14 @@ public class AssignShardIdFn
+         break;
+       case BYTES:
+         // We need to trim the base64 string to remove newlines added at the end.
+-        // Older version of Base64 lik e(MIME) or Privacy-Enhanced Mail (PEM), often included line
++        // Older version of Base64 lik e(MIME) or Privacy-Enhanced Mail (PEM), often
++        // included line
+         // breaks.
+-        // MySql adheres to RFC 4648 (the standard MySQL uses) which states that implementations
++        // MySql adheres to RFC 4648 (the standard MySQL uses) which states that
++        // implementations
+         // MUST
+-        // NOT add line feeds to base-encoded data unless explicitly directed by a referring
++        // NOT add line feeds to base-encoded data unless explicitly directed by a
++        // referring
+         // specification.
+         newValuesJsonNode.put(
+             colName,
+diff --git a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/SourceWriterFn.java b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/SourceWriterFn.java
+index 408fc282c..5089ca9f4 100644
+--- a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/SourceWriterFn.java
++++ b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/transforms/SourceWriterFn.java
+@@ -308,6 +308,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
+         // We need to get and inspect the cause while handling the exception.
+         SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
+       } catch (Exception ex) {
++        LOG.error("Error processing record: " + spannerRec, ex);
+         Throwable cause = ex.getCause();
+         String message = ex.getMessage();
+         if (cause != null) {
+diff --git a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/utils/ShadowTableCreator.java b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/utils/ShadowTableCreator.java
+index 8a1a6751b..da94a0a2d 100644
+--- a/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/utils/ShadowTableCreator.java
++++ b/v2/spanner-to-sourcedb/src/main/java/com/google/cloud/teleport/v2/templates/utils/ShadowTableCreator.java
+@@ -157,6 +157,9 @@ public class ShadowTableCreator {
+             .filter(col -> primaryKeyColNames.contains(col.name()))
+             .collect(Collectors.toList());
+     for (Column col : primaryKeyCols) {
++      // Generated expression should be removed from the shadow table columns.
++      // This is requried as shadow table only contains primary key columns.
++      col = col.toBuilder().isGenerated(false).generationExpression("").autoBuild();
+       shadowTableBuilder.addColumn(col);
+     }
+ 
+diff --git a/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/SpannerToMySqlWithoutSessionIT.java b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/SpannerToMySqlWithoutSessionIT.java
+new file mode 100644
+index 000000000..6079a15af
+--- /dev/null
++++ b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/SpannerToMySqlWithoutSessionIT.java
+@@ -0,0 +1,527 @@
++/*
++ * Copyright (C) 2024 Google LLC
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
++ * use this file except in compliance with the License. You may obtain a copy of
++ * the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++ * License for the specific language governing permissions and limitations under
++ * the License.
++ */
++package com.google.cloud.teleport.v2.templates;
++
++import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
++import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
++import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
++import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
++
++import com.google.cloud.spanner.Key;
++import com.google.cloud.spanner.Mutation;
++import com.google.cloud.spanner.Value;
++import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
++import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
++import com.google.pubsub.v1.SubscriptionName;
++import java.io.IOException;
++import java.time.Duration;
++import java.util.ArrayList;
++import java.util.Base64;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.concurrent.TimeUnit;
++import org.apache.beam.it.common.PipelineLauncher;
++import org.apache.beam.it.common.PipelineOperator;
++import org.apache.beam.it.common.utils.ResourceManagerUtils;
++import org.apache.beam.it.conditions.ConditionCheck;
++import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
++import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
++import org.apache.beam.it.gcp.storage.GcsResourceManager;
++import org.apache.beam.it.jdbc.MySQLResourceManager;
++import org.checkerframework.checker.initialization.qual.Initialized;
++import org.checkerframework.checker.nullness.qual.NonNull;
++import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
++import org.junit.AfterClass;
++import org.junit.Before;
++import org.junit.Rule;
++import org.junit.Test;
++import org.junit.experimental.categories.Category;
++import org.junit.rules.Timeout;
++import org.junit.runner.RunWith;
++import org.junit.runners.JUnit4;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/**
++ * Integration test for {@link SpannerToSourceDb} Flex template for basic run including new spanner
++ * tables with generated column without session file.
++ */
++@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
++@TemplateIntegrationTest(SpannerToSourceDb.class)
++@RunWith(JUnit4.class)
++public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
++  @Rule public Timeout timeout = new Timeout(25, TimeUnit.MINUTES);
++
++  private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlWithoutSessionIT.class);
++
++  // Test timeout configuration - can be adjusted if tests need more time
++  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(10);
++
++  private static final String SPANNER_DDL_RESOURCE = "SpannerToMySqlDataTypesIT/spanner-schema.sql";
++  private static final String MYSQL_SCHEMA_FILE_RESOURCE =
++      "SpannerToMySqlDataTypesIT/mysql-schema.sql";
++
++  private static final HashSet<SpannerToMySqlWithoutSessionIT> testInstances = new HashSet<>();
++  private static PipelineLauncher.LaunchInfo jobInfo;
++  public static SpannerResourceManager spannerResourceManager;
++  private static SpannerResourceManager spannerMetadataResourceManager;
++  private static MySQLResourceManager jdbcResourceManager;
++  private static GcsResourceManager gcsResourceManager;
++  private static PubsubResourceManager pubsubResourceManager;
++  private SubscriptionName subscriptionName;
++
++  /**
++   * Setup resource managers and Launch dataflow job once during the execution of this test class.
++   *
++   * @throws IOException
++   */
++  @Before
++  public void setUp() throws IOException {
++    skipBaseCleanup = true;
++    synchronized (SpannerToMySqlWithoutSessionIT.class) {
++      testInstances.add(this);
++      if (jobInfo == null) {
++        spannerResourceManager =
++            createSpannerDatabase(SpannerToMySqlWithoutSessionIT.SPANNER_DDL_RESOURCE);
++        spannerMetadataResourceManager = createSpannerMetadataDatabase();
++
++        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
++
++        createMySQLSchema(
++            jdbcResourceManager, SpannerToMySqlWithoutSessionIT.MYSQL_SCHEMA_FILE_RESOURCE);
++
++        gcsResourceManager = setUpSpannerITGcsResourceManager();
++        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
++        pubsubResourceManager = setUpPubSubResourceManager();
++        subscriptionName =
++            createPubsubResources(
++                getClass().getSimpleName(),
++                pubsubResourceManager,
++                getGcsPath("dlq", gcsResourceManager)
++                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
++                gcsResourceManager);
++        Map<String, String> jobParameters = new HashMap<>();
++        jobInfo =
++            launchDataflowJob(
++                gcsResourceManager,
++                spannerResourceManager,
++                spannerMetadataResourceManager,
++                subscriptionName.toString(),
++                null,
++                null,
++                null,
++                null,
++                null,
++                MYSQL_SOURCE_TYPE,
++                jobParameters);
++      }
++    }
++  }
++
++  /**
++   * Cleanup dataflow job and all the resources and resource managers.
++   *
++   * @throws IOException
++   */
++  @AfterClass
++  public static void cleanUp() throws IOException {
++    for (SpannerToMySqlWithoutSessionIT instance : testInstances) {
++      instance.tearDownBase();
++    }
++    ResourceManagerUtils.cleanResources(
++        spannerResourceManager,
++        jdbcResourceManager,
++        spannerMetadataResourceManager,
++        gcsResourceManager,
++        pubsubResourceManager);
++  }
++
++  @Test
++  public void spannerToMySqlDataTypes() {
++    LOG.info("Starting Spanner to MySQL Data Types IT");
++    assertThatPipeline(jobInfo).isRunning();
++    LOG.info("Spanner to MySQL Data Types IT is running");
++
++    Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
++    addInitialMultiColSpannerData(spannerTableData);
++    LOG.info("Spanner Table Data: " + spannerTableData.size());
++    LOG.info("Spanner Table Data: " + spannerTableData.keySet());
++    try {
++      writeRowsInSpanner(spannerTableData);
++    } catch (Exception e) {
++      LOG.error("Failed to write rows to Spanner", e);
++    }
++    LOG.info("Spanner table ended");
++
++    try {
++      PipelineOperator.Result result =
++          pipelineOperator()
++              .waitForCondition(
++                  createConfig(jobInfo, TEST_TIMEOUT), buildConditionCheck(spannerTableData));
++      assertThatResult(result).meetsConditions();
++    } catch (Exception e) {
++      LOG.error("Failed to wait for condition", e);
++    }
++
++    for (String table : spannerTableData.keySet()) {
++      LOG.info("Table: " + table);
++      LOG.info("Table row count: " + jdbcResourceManager.getRowCount(getTableName(table)));
++    }
++
++    Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
++    addInitailGeneratedColumnData(expectedData);
++    // Assert events on Mysql
++    assertRowInMySQL(expectedData);
++
++    Map<String, List<Map<String, Value>>> updateSpannerTableData =
++        updateGeneratedColRowsInSpanner();
++    spannerTableData.putAll(updateSpannerTableData);
++    PipelineOperator.Result result =
++        pipelineOperator()
++            .waitForCondition(
++                createConfig(jobInfo, TEST_TIMEOUT), buildConditionCheck(spannerTableData));
++    assertThatResult(result).meetsConditions();
++
++    for (String table : spannerTableData.keySet()) {
++      LOG.info("Table: " + table);
++      LOG.info("Table row count: " + jdbcResourceManager.getRowCount(getTableName(table)));
++      List<Map<String, Object>> rawRows = jdbcResourceManager.readTable(getTableName(table));
++      List<Map<String, Object>> rows = cleanValues(rawRows);
++      for (Map<String, Object> row : rows) {
++        // Limit logs printed for very large strings.
++        String rowString = row.toString();
++        if (rowString.length() > 1000) {
++          rowString = rowString.substring(0, 1000);
++        }
++        LOG.info("Found row: {}", rowString);
++      }
++    }
++
++    expectedData = new HashMap<>();
++    addUpdatedGeneratedColumnData(expectedData);
++    assertRowInMySQL(expectedData);
++  }
++
++  private ConditionCheck buildConditionCheck(
++      Map<String, List<Map<String, Value>>> spannerTableData) {
++    // These tables fail to migrate all expected rows, ignore them to avoid having
++    // to wait for the
++    // timeout.
++    Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
++
++    ConditionCheck combinedCondition = null;
++    for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
++      if (ignoredTables.contains(entry.getKey())) {
++        continue;
++      }
++      String tableName = getTableName(entry.getKey());
++      int numRows = entry.getValue().size();
++      ConditionCheck c =
++          new ConditionCheck() {
++            @Override
++            protected @UnknownKeyFor @NonNull @Initialized String getDescription() {
++              return "Checking num rows in table " + tableName + " with " + numRows + " rows";
++            }
++
++            @Override
++            protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
++              return new CheckResult(
++                  jdbcResourceManager.getRowCount(tableName) == numRows, getDescription());
++            }
++          };
++      if (combinedCondition == null) {
++        combinedCondition = c;
++      } else {
++        combinedCondition = combinedCondition.and(c);
++      }
++    }
++
++    return combinedCondition;
++  }
++
++  private void assertRowInMySQL(Map<String, List<Map<String, Object>>> expectedData) {
++    for (Map.Entry<String, List<Map<String, Object>>> expectedTableData : expectedData.entrySet()) {
++      String type = expectedTableData.getKey();
++      String tableName = getTableName(type);
++
++      List<Map<String, Object>> rawRows;
++      if (tableName.equals("time_table")) {
++        // JDBC Time objects represent a wall-clock time and not a duration (as MySQL
++        // treats them).
++        // Need to read them as a string to avoid a DataReadException
++        rawRows =
++            jdbcResourceManager.runSQLQuery(
++                "SELECT id, CAST(time_col as char) as time_col FROM time_table");
++      } else {
++        rawRows = jdbcResourceManager.readTable(tableName);
++      }
++
++      List<Map<String, Object>> rows = cleanValues(rawRows);
++      for (Map<String, Object> row : rows) {
++        // Limit logs printed for very large strings.
++        String rowString = row.toString();
++        if (rowString.length() > 1000) {
++          rowString = rowString.substring(0, 1000);
++        }
++        LOG.info("Found row: {}", rowString);
++      }
++
++      assertThatRecords(rows)
++          .hasRecordsUnorderedCaseInsensitiveColumns(cleanValues(expectedTableData.getValue()));
++    }
++  }
++
++  // Replaces `null` values with the string "NULL" and byte arrays with the base64
++  // encoding of the
++  // bytes
++  private List<Map<String, Object>> cleanValues(List<Map<String, Object>> rows) {
++    for (Map<String, Object> row : rows) {
++      for (Map.Entry<String, Object> entry : row.entrySet()) {
++        if (entry.getValue() == null) {
++          entry.setValue("NULL");
++        } else if (entry.getValue() instanceof byte[]) {
++          entry.setValue(Base64.getEncoder().encodeToString((byte[]) entry.getValue()));
++        }
++      }
++    }
++    return rows;
++  }
++
++  private void writeRowsInSpanner(Map<String, List<Map<String, Value>>> spannerTableData) {
++    LOG.info("Spanner Table Data");
++    for (Map.Entry<String, List<Map<String, Value>>> tableDataEntry : spannerTableData.entrySet()) {
++      LOG.info("Table Data Entry");
++      String tableName = getTableName(tableDataEntry.getKey());
++      LOG.info("Table Name: " + tableName);
++      List<Map<String, Value>> rows = tableDataEntry.getValue();
++      List<Mutation> mutations = new ArrayList<>(rows.size());
++      for (Map<String, Value> row : rows) {
++        Mutation.WriteBuilder m = Mutation.newInsertOrUpdateBuilder(tableName);
++        for (Map.Entry<String, Value> entry : row.entrySet()) {
++          m.set(getColumnName(entry.getKey())).to(entry.getValue());
++        }
++        mutations.add(m.build());
++      }
++      LOG.info("Writing " + mutations.size() + " rows to table " + tableName);
++      spannerResourceManager.write(mutations);
++    }
++    LOG.info("Spanner table ended");
++  }
++
++  private void addInitialMultiColSpannerData(
++      Map<String, List<Map<String, Value>>> spannerTableData) {
++    spannerTableData.put(
++        "generated_pk_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("BB")),
++            Map.of(
++                "first_name", Value.string("BB"),
++                "last_name", Value.string("CC"))));
++
++    spannerTableData.put(
++        "generated_non_pk_column",
++        List.of(
++            Map.of(
++                "id", Value.int64(1),
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("BB")),
++            Map.of(
++                "id", Value.int64(2),
++                "first_name", Value.string("BB"),
++                "last_name", Value.string("CC"))));
++
++    spannerTableData.put(
++        "non_generated_to_generated_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("BB")),
++            Map.of(
++                "first_name", Value.string("BB"),
++                "last_name", Value.string("CC"))));
++
++    spannerTableData.put(
++        "generated_to_non_generated_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("BB"),
++                "generated_column", Value.string("AA "),
++                "generated_column_pk", Value.string("AA ")),
++            Map.of(
++                "first_name", Value.string("BB"),
++                "last_name", Value.string("CC"),
++                "generated_column", Value.string("BB "),
++                "generated_column_pk", Value.string("BB "))));
++  }
++
++  private Map<String, List<Map<String, Value>>> updateGeneratedColRowsInSpanner() {
++    Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
++    spannerTableData.put(
++        "generated_pk_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("CC"))));
++    spannerTableData.put(
++        "generated_non_pk_column",
++        List.of(
++            Map.of(
++                "id", Value.int64(1),
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("CC"))));
++    spannerTableData.put(
++        "non_generated_to_generated_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("CC"))));
++    spannerTableData.put(
++        "generated_to_non_generated_column",
++        List.of(
++            Map.of(
++                "first_name", Value.string("AA"),
++                "last_name", Value.string("CC"),
++                "generated_column", Value.string("AA "),
++                "generated_column_pk", Value.string("AA "))));
++
++    writeRowsInSpanner(spannerTableData);
++    List<Mutation> deleteMutations = new ArrayList<>();
++    deleteMutations.add(Mutation.delete("generated_pk_column_table", Key.of("BB ")));
++    deleteMutations.add(Mutation.delete("generated_non_pk_column_table", Key.of(2)));
++    deleteMutations.add(Mutation.delete("non_generated_to_generated_column_table", Key.of("BB ")));
++    deleteMutations.add(Mutation.delete("generated_to_non_generated_column_table", Key.of("BB ")));
++    spannerResourceManager.write(deleteMutations);
++
++    return spannerTableData;
++  }
++
++  private void addInitailGeneratedColumnData(Map<String, List<Map<String, Object>>> expectedData) {
++    expectedData.put(
++        "generated_pk_column",
++        List.of(
++            Map.of(
++                "first_name_col",
++                Value.string("AA"),
++                "last_name_col",
++                Value.string("BB"),
++                "generated_column_col",
++                Value.string("AA ")),
++            Map.of(
++                "first_name_col", Value.string("BB"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("BB "))));
++
++    expectedData.put(
++        "generated_non_pk_column",
++        List.of(
++            Map.of(
++                "id", Value.int64(1),
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("BB"),
++                "generated_column_col", Value.string("AA ")),
++            Map.of(
++                "id", Value.int64(2),
++                "first_name_col", Value.string("BB"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("BB "))));
++
++    expectedData.put(
++        "generated_to_non_generated_column",
++        List.of(
++            Map.of(
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("BB"),
++                "generated_column_col", Value.string("AA "),
++                "generated_column_pk_col", Value.string("AA ")),
++            Map.of(
++                "first_name_col", Value.string("BB"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("BB "),
++                "generated_column_pk_col", Value.string("BB "))));
++
++    expectedData.put(
++        "non_generated_to_generated_column",
++        List.of(
++            Map.of(
++                "first_name_col",
++                Value.string("AA"),
++                "last_name_col",
++                Value.string("BB"),
++                "generated_column_col",
++                Value.string("AA "),
++                "generated_column_pk_col",
++                Value.string("AA ")),
++            Map.of(
++                "first_name_col", Value.string("BB"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("BB "),
++                "generated_column_pk_col", Value.string("BB "))));
++  }
++
++  private void addUpdatedGeneratedColumnData(Map<String, List<Map<String, Object>>> expectedData) {
++    expectedData.put(
++        "generated_pk_column",
++        List.of(
++            Map.of(
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("AA "))));
++
++    expectedData.put(
++        "generated_non_pk_column",
++        List.of(
++            Map.of(
++                "id", Value.int64(1),
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("AA "))));
++
++    expectedData.put(
++        "generated_to_non_generated_column",
++        List.of(
++            Map.of(
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("AA "),
++                "generated_column_pk_col", Value.string("AA "))));
++
++    expectedData.put(
++        "non_generated_to_generated_column",
++        List.of(
++            Map.of(
++                "first_name_col", Value.string("AA"),
++                "last_name_col", Value.string("CC"),
++                "generated_column_col", Value.string("AA "),
++                "generated_column_pk_col", Value.string("AA "))));
++  }
++
++  private String getTableName(String type) {
++    return type + "_table";
++  }
++
++  private String getColumnName(String type) {
++    if (type.equals("id")) {
++      return type;
++    }
++    return type + "_col";
++  }
++}
+diff --git a/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGeneratorTest.java b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGeneratorTest.java
+index 1c04919cc..3b507883a 100644
+--- a/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGeneratorTest.java
++++ b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/dbutils/dml/MySQLDMLGeneratorTest.java
+@@ -1313,4 +1313,50 @@ public final class MySQLDMLGeneratorTest {
+         .filter(word -> word.equalsIgnoreCase(targetWord))
+         .count();
+   }
++
++  @Test
++  public void generatedColumnDML() {
++    String sessionFile = "src/test/resources/generatedColumnSession.json";
++    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
++    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
++    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
++
++    String tableName = "Singers";
++    // FullName is generated, so it should be ignored even if present in newValues
++    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"FullName\":\"kk ll\"}";
++    JSONObject newValuesJson = new JSONObject(newValuesString);
++    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
++    String modType = "INSERT";
++
++    /*
++     * The expected sql is:
++     * "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
++     * + " UPDATE  FirstName = 'kk', LastName = 'll'";
++     */
++    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
++    DMLGeneratorResponse dmlGeneratorResponse =
++        mySQLDMLGenerator.getDMLStatement(
++            new DMLGeneratorRequest.Builder(
++                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
++                .setSchemaMapper(schemaMapper)
++                .setDdl(ddl)
++                .setSourceSchema(sourceSchema)
++                .build());
++    String sql = dmlGeneratorResponse.getDmlStatement();
++
++    assertTrue(sql.contains("`FirstName` = 'kk'"));
++    assertTrue(sql.contains("`LastName` = 'll'"));
++    // Verify FullName is NOT in the SQL
++    // It should not be in the column list, values, or update clause
++    // Since we can't easily parse SQL, we check it doesn't appear as a column to be
++    // written
++    // Note: It might appear in values if we were careless, but we want to ensure
++    // it's not set.
++    // Ideally check that `FullName` is not in the column list.
++    // The previous tests check for specific assignments.
++    // I'll check that `FullName` string is NOT present in the SQL at all,
++    // assuming it's not part of any other string.
++    // Or better, check that it's not in the update clause.
++    assertEquals(0, countInSQL(sql, "FullName"));
++  }
+ }
+diff --git a/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/utils/SchemaUtils.java b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/utils/SchemaUtils.java
+index 8690c5018..8491c688f 100644
+--- a/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/utils/SchemaUtils.java
++++ b/v2/spanner-to-sourcedb/src/test/java/com/google/cloud/teleport/v2/templates/utils/SchemaUtils.java
+@@ -56,6 +56,8 @@ public final class SchemaUtils {
+   private static final String KEY_SCHEMA = "Schema";
+   private static final String KEY_LEN = "Len";
+   private static final String KEY_NOT_NULL = "NotNull";
++  private static final String KEY_GENERATED = "GeneratedColumn";
++  private static final String KEY_GENERATED_IS_PRESENT = "IsPresent";
+ 
+   // Defines constants for Spanner data types found in the session file.
+   private static final String SPANNER_TYPE_STRING = "STRING";
+@@ -194,12 +196,19 @@ public final class SchemaUtils {
+               if (len instanceof Number) {
+                 size = ((Number) len).longValue();
+               }
++              boolean isGenerated = false;
++              if (colMap.get(KEY_GENERATED) != null) {
++                Map<String, Object> generatedColDefinition =
++                    (Map<String, Object>) colMap.get(KEY_GENERATED);
++                isGenerated = generatedColDefinition.containsKey(KEY_GENERATED_IS_PRESENT);
++              }
+               SourceColumn.Builder colBuilder =
+                   SourceColumn.builder(dbType)
+                       .name((String) colMap.get(KEY_NAME))
+                       .type(typeName)
+                       .isNullable(
+                           !(colMap.get(KEY_NOT_NULL) != null && (Boolean) colMap.get(KEY_NOT_NULL)))
++                      .isGenerated(isGenerated)
+                       .size(size);
+               columnsBuilder.add(colBuilder.build());
+             }
+diff --git a/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/mysql-schema.sql b/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/mysql-schema.sql
+index f02aff6e1..e915e9484 100644
+--- a/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/mysql-schema.sql
++++ b/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/mysql-schema.sql
+@@ -356,3 +356,34 @@ CREATE TABLE IF NOT EXISTS json_to_string_table (
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   json_to_string_col JSON
+ );
++
++CREATE TABLE IF NOT EXISTS `generated_pk_column_table` ( 
++	`first_name_col` varchar(50) DEFAULT NULL,
++	`last_name_col` varchar(50) DEFAULT NULL,
++	`generated_column_col` varchar(100) GENERATED ALWAYS AS (concat(`first_name_col`,' ')) STORED NOT NULL,
++	PRIMARY KEY (`generated_column_col`)
++);
++
++CREATE TABLE IF NOT EXISTS `generated_non_pk_column_table` ( 
++	`first_name_col` varchar(50) DEFAULT NULL,
++	`last_name_col` varchar(50) DEFAULT NULL,
++	`generated_column_col` varchar(100) GENERATED ALWAYS AS (concat(`first_name_col`,' ')) STORED NOT NULL,
++  `id` int not null,
++	PRIMARY KEY (`id`)
++);
++
++CREATE TABLE IF NOT EXISTS `non_generated_to_generated_column_table` ( 
++	`first_name_col` varchar(50) DEFAULT NULL,
++	`last_name_col` varchar(50) DEFAULT NULL,
++  `generated_column_col` varchar(100) NOT NULL,
++	`generated_column_pk_col` varchar(100) NOT NULL,
++	PRIMARY KEY (`generated_column_pk_col`)
++);
++
++CREATE TABLE IF NOT EXISTS `generated_to_non_generated_column_table` ( 
++	`first_name_col` varchar(50) DEFAULT NULL,
++	`last_name_col` varchar(50) DEFAULT NULL,
++  `generated_column_col` varchar(100) GENERATED ALWAYS AS (concat(`first_name_col`,' ')) STORED NOT NULL,
++	`generated_column_pk_col` varchar(100) GENERATED ALWAYS AS (concat(`first_name_col`,' ')) STORED NOT NULL,
++	PRIMARY KEY (`generated_column_pk_col`)
++);
+diff --git a/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/spanner-schema.sql b/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/spanner-schema.sql
+index e98b406b7..560dda91d 100644
+--- a/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/spanner-schema.sql
++++ b/v2/spanner-to-sourcedb/src/test/resources/SpannerToMySqlDataTypesIT/spanner-schema.sql
+@@ -358,6 +358,33 @@ CREATE TABLE IF NOT EXISTS year_table (
+   year_col STRING(MAX),
+ ) PRIMARY KEY(id);
+ 
++CREATE TABLE IF NOT EXISTS `generated_pk_column_table` ( 
++	`first_name_col` STRING(50),
++	`last_name_col` STRING(50) DEFAULT(NULL),
++	`generated_column_col` STRING(100) AS (concat(`first_name_col`,' ')) STORED,	
++) PRIMARY KEY (`generated_column_col`);
++
++CREATE TABLE IF NOT EXISTS `generated_non_pk_column_table` ( 
++	`first_name_col` STRING(50),
++	`last_name_col` STRING(50) DEFAULT(NULL),
++	`generated_column_col` STRING(100) AS (concat(`first_name_col`,' ')) STORED,
++  `id` INT64 not null,
++) PRIMARY KEY (`id`);
++
++CREATE TABLE IF NOT EXISTS `non_generated_to_generated_column_table` ( 
++	`first_name_col` STRING(50),
++	`last_name_col` STRING(50) DEFAULT(NULL),
++	`generated_column_col` STRING(100) AS (concat(`first_name_col`,' ')) STORED,
++	`generated_column_pk_col` STRING(100) AS (concat(`first_name_col`,' ')) STORED,
++) PRIMARY KEY (`generated_column_pk_col`);
++
++CREATE TABLE IF NOT EXISTS `generated_to_non_generated_column_table` ( 
++	`first_name_col` STRING(50),
++	`last_name_col` STRING(50) DEFAULT(NULL),
++	`generated_column_col` STRING(100) DEFAULT(NULL),
++	`generated_column_pk_col` STRING(100) DEFAULT(NULL),
++) PRIMARY KEY (`generated_column_pk_col`);
++
+ CREATE CHANGE STREAM allstream
+   FOR ALL OPTIONS (
+   value_capture_type = 'NEW_ROW',
+diff --git a/v2/spanner-to-sourcedb/src/test/resources/generatedColumnSession.json b/v2/spanner-to-sourcedb/src/test/resources/generatedColumnSession.json
+new file mode 100644
+index 000000000..31fcf2f57
+--- /dev/null
++++ b/v2/spanner-to-sourcedb/src/test/resources/generatedColumnSession.json
+@@ -0,0 +1,89 @@
++{
++  "SessionName": "GeneratedColumnSession",
++  "EditorName": "",
++  "DatabaseType": "mysql",
++  "DatabaseName": "test_db",
++  "Dialect": "google_standard_sql",
++  "Notes": null,
++  "Tags": null,
++  "SpSchema": {
++    "t1": {
++      "Name": "Singers",
++      "ColIds": ["c1", "c2", "c3", "c4"],
++      "ColDefs": {
++        "c1": {
++          "Name": "SingerId",
++          "T": { "Name": "INT64", "IsArray": false },
++          "NotNull": true,
++          "Id": "c1"
++        },
++        "c2": {
++          "Name": "FirstName",
++          "T": { "Name": "STRING", "IsArray": false },
++          "NotNull": false,
++          "Id": "c2"
++        },
++        "c3": {
++          "Name": "LastName",
++          "T": { "Name": "STRING", "IsArray": false },
++          "NotNull": false,
++          "Id": "c3"
++        },
++        "c4": {
++          "Name": "FullName",
++          "T": { "Name": "STRING", "IsArray": false },
++          "NotNull": false,
++          "Id": "c4"
++        }
++      },
++      "PrimaryKeys": [
++        { "ColId": "c1", "Desc": false, "Order": 1 }
++      ],
++      "Id": "t1"
++    }
++  },
++  "SyntheticPKeys": {},
++  "SrcSchema": {
++    "t1": {
++      "Name": "Singers",
++      "Schema": "test_db",
++      "ColIds": ["c1", "c2", "c3", "c4"],
++      "ColDefs": {
++        "c1": {
++          "Name": "SingerId",
++          "Type": { "Name": "bigint" },
++          "NotNull": true,
++          "Id": "c1"
++        },
++        "c2": {
++          "Name": "FirstName",
++          "Type": { "Name": "varchar" },
++          "Mods": [1024],
++          "NotNull": false,
++          "Id": "c2"
++        },
++        "c3": {
++          "Name": "LastName",
++          "Type": { "Name": "varchar" },
++          "Mods": [1024],
++          "NotNull": false,
++          "Id": "c3"
++        },
++        "c4": {
++          "Name": "FullName",
++          "Type": { "Name": "varchar" },
++          "Mods": [2048],
++          "NotNull": false,
++          "GeneratedColumn": {
++            "IsPresent": true
++          },
++          "Id": "c4"
++        }
++      },
++      "PrimaryKeys": [
++        { "ColId": "c1", "Desc": false, "Order": 1 }
++      ],
++      "Id": "t1"
++    }
++  }
++}

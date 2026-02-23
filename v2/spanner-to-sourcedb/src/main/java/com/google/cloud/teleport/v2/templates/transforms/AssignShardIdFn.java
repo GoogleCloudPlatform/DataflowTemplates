@@ -339,39 +339,13 @@ public class AssignShardIdFn
       }
     }
 
-    LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
     if (columnsToFetch.isEmpty()) {
       return;
     }
     com.google.cloud.Timestamp commitTimestamp = spannerRecord.getCommitTimestamp();
 
-    java.time.Instant commitInstant =
-        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
-
-    java.time.Instant staleInstant = commitInstant.plus(LOOKBACK_DURATION_FOR_DELETE);
-
-    com.google.cloud.Timestamp staleReadTs =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-            staleInstant.getEpochSecond(), staleInstant.getNano());
     com.google.cloud.spanner.Key primaryKey = generateKey(tableName, keysJson, ddl);
-    LOG.error(
-        "Stale read timestamp: "
-            + staleReadTs
-            + " for table: "
-            + tableName
-            + " and primary key: "
-            + primaryKey
-            + " and commit timestamp: "
-            + commitTimestamp);
-    LOG.error(
-        "Spanner Config: "
-            + spannerConfig
-            + " Database Id: "
-            + spannerConfig.getDatabaseId()
-            + " Instance Id: "
-            + spannerConfig.getInstanceId()
-            + " Project Id: "
-            + spannerConfig.getProjectId());
+
     Struct fetchedRow =
         readRowAsStruct(
             tableName,

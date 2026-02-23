@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -73,9 +72,10 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
   // Test timeout configuration - can be adjusted if tests need more time
   private static final Duration TEST_TIMEOUT = Duration.ofMinutes(10);
 
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToMySqlDataTypesIT/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerToMySqlWithoutSessionIT/spanner-schema.sql";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToMySqlDataTypesIT/mysql-schema.sql";
+      "SpannerToMySqlWithoutSessionIT/mysql-schema.sql";
 
   private static final HashSet<SpannerToMySqlWithoutSessionIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -156,62 +156,31 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
   public void spannerToMySqlDataTypes() {
     LOG.info("Starting Spanner to MySQL Data Types IT");
     assertThatPipeline(jobInfo).isRunning();
-    LOG.info("Spanner to MySQL Data Types IT is running");
-
     Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
     addInitialMultiColSpannerData(spannerTableData);
-    LOG.info("Spanner Table Data: " + spannerTableData.size());
-    LOG.info("Spanner Table Data: " + spannerTableData.keySet());
-    try {
-      writeRowsInSpanner(spannerTableData);
-    } catch (Exception e) {
-      LOG.error("Failed to write rows to Spanner", e);
-    }
-    LOG.info("Spanner table ended");
 
-    try {
-      PipelineOperator.Result result =
-          pipelineOperator()
-              .waitForCondition(
-                  createConfig(jobInfo, TEST_TIMEOUT), buildConditionCheck(spannerTableData));
-      assertThatResult(result).meetsConditions();
-    } catch (Exception e) {
-      LOG.error("Failed to wait for condition", e);
-    }
+    writeRowsInSpanner(spannerTableData);
 
-    for (String table : spannerTableData.keySet()) {
-      LOG.info("Table: " + table);
-      LOG.info("Table row count: " + jdbcResourceManager.getRowCount(getTableName(table)));
-    }
-
-    Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
-    addInitailGeneratedColumnData(expectedData);
-    // Assert events on Mysql
-    assertRowInMySQL(expectedData);
-
-    Map<String, List<Map<String, Value>>> updateSpannerTableData =
-        updateGeneratedColRowsInSpanner();
-    spannerTableData.putAll(updateSpannerTableData);
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT), buildConditionCheck(spannerTableData));
     assertThatResult(result).meetsConditions();
 
-    for (String table : spannerTableData.keySet()) {
-      LOG.info("Table: " + table);
-      LOG.info("Table row count: " + jdbcResourceManager.getRowCount(getTableName(table)));
-      List<Map<String, Object>> rawRows = jdbcResourceManager.readTable(getTableName(table));
-      List<Map<String, Object>> rows = cleanValues(rawRows);
-      for (Map<String, Object> row : rows) {
-        // Limit logs printed for very large strings.
-        String rowString = row.toString();
-        if (rowString.length() > 1000) {
-          rowString = rowString.substring(0, 1000);
-        }
-        LOG.info("Found row: {}", rowString);
-      }
-    }
+    Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
+    addInitailGeneratedColumnData(expectedData);
+    // Assert events on Mysql
+    assertRowInMySQL(expectedData);
+
+    // Validating update and delete events.
+    Map<String, List<Map<String, Value>>> updateSpannerTableData =
+        updateGeneratedColRowsInSpanner();
+    spannerTableData.putAll(updateSpannerTableData);
+    result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT), buildConditionCheck(spannerTableData));
+    assertThatResult(result).meetsConditions();
 
     expectedData = new HashMap<>();
     addUpdatedGeneratedColumnData(expectedData);
@@ -220,16 +189,8 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
 
   private ConditionCheck buildConditionCheck(
       Map<String, List<Map<String, Value>>> spannerTableData) {
-    // These tables fail to migrate all expected rows, ignore them to avoid having
-    // to wait for the
-    // timeout.
-    Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
-
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Map<String, Value>>> entry : spannerTableData.entrySet()) {
-      if (ignoredTables.contains(entry.getKey())) {
-        continue;
-      }
       String tableName = getTableName(entry.getKey());
       int numRows = entry.getValue().size();
       ConditionCheck c =
@@ -304,11 +265,8 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
   }
 
   private void writeRowsInSpanner(Map<String, List<Map<String, Value>>> spannerTableData) {
-    LOG.info("Spanner Table Data");
     for (Map.Entry<String, List<Map<String, Value>>> tableDataEntry : spannerTableData.entrySet()) {
-      LOG.info("Table Data Entry");
       String tableName = getTableName(tableDataEntry.getKey());
-      LOG.info("Table Name: " + tableName);
       List<Map<String, Value>> rows = tableDataEntry.getValue();
       List<Mutation> mutations = new ArrayList<>(rows.size());
       for (Map<String, Value> row : rows) {
@@ -318,10 +276,8 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
         }
         mutations.add(m.build());
       }
-      LOG.info("Writing " + mutations.size() + " rows to table " + tableName);
       spannerResourceManager.write(mutations);
     }
-    LOG.info("Spanner table ended");
   }
 
   private void addInitialMultiColSpannerData(
