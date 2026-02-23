@@ -7,7 +7,7 @@ template:
   description: >
     The Iceberg to Oracle template is a batch pipeline that reads data from an Iceberg table
     and outputs the records to a Oracle database table.
-  flex_container_name: "iceberg-to-oracle-yaml"
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "IcebergToOracle.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/oracle_options.yaml"}
@@ -62,4 +62,3 @@ pipeline:
 
 options:
   streaming: false
-

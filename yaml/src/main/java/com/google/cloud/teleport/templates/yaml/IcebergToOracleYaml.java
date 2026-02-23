@@ -201,6 +201,7 @@ public interface IcebergToOracleYaml {
       description = "The name of the table to write to.",
       helpText = "The name of the database table to write data to.",
       example = "public.my_table")
+  @Validation.Required
   String getLocation();
 
   @TemplateParameter.Text(
