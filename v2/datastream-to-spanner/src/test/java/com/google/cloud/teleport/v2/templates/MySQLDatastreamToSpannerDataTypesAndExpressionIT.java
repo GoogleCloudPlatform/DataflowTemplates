@@ -205,6 +205,13 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
     assertThatResult(result).meetsConditions();
 
+    // Sleep for cutover time to wait till all CDCs propagate.
+    // A real world customer also has a small cut over time to reach consistency.
+    try {
+      Thread.sleep(CUTOVER_MILLIS);
+    } catch (InterruptedException e) {
+    }
+
     validateResult(spannerResourceManager, expectedData);
   }
 
