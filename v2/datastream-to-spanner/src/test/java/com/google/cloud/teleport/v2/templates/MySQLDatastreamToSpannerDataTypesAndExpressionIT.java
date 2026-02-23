@@ -242,8 +242,6 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
             mySQLSource);
     assertThatPipeline(jobInfo).isRunning();
 
-    expectedData = getExpectedDataPGDialect();
-
     ConditionCheck condition = buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
