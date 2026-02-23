@@ -52,6 +52,14 @@ public class FormatDatastreamJsonToJsonTest {
           + " Relations"
           + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
 
+  private static final String EXAMPLE_SQLSERVER_DATASTREAM_JSON =
+      "{\"uuid\":\"11aabb22-cc33-dd44-ee55-ff6677889900\",\"read_timestamp\":\"2024-01-15"
+          + " 10:30:00.000\","
+          + "\"source_timestamp\":\"2024-01-15T10:30:00.000\",\"object\":\"dbo_EMPLOYEES\",\"read_method\":\"sqlserver-cdc\",\"stream_name\":\"projects/123/locations/us-central1/streams/sqlserver-stream\",\"schema_key\":\"def456\",\"sort_keys\":[1705314600000,0],\"source_metadata\":{\"schema\":\"dbo\",\"table\":\"EMPLOYEES\",\"database\":\"TestDB\",\"is_deleted\":false,\"change_type\":\"INSERT\",\"lsn\":\"00000027:00000ac0:0003\",\"tx_id\":\"0000001a\",\"replication_index\":[\"EMPLOYEE_ID\"]},\"payload\":{\"EMPLOYEE_ID\":101,\"FIRST_NAME\":\"John\",\"LAST_NAME\":\"Doe\"}}";
+
+  private static final String EXAMPLE_SQLSERVER_DATASTREAM_RECORD =
+      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1705314600,\"_metadata_read_timestamp\":1705314600,\"_metadata_read_method\":\"sqlserver-cdc\",\"_metadata_source_type\":\"sqlserver\",\"_metadata_deleted\":false,\"_metadata_database\":\"TestDB\",\"_metadata_schema\":\"dbo\",\"_metadata_table\":\"EMPLOYEES\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"EMPLOYEE_ID\"],\"_metadata_uuid\":\"11aabb22-cc33-dd44-ee55-ff6677889900\",\"_metadata_lsn\":\"00000027:00000ac0:0003\",\"_metadata_tx_id\":\"0000001a\",\"EMPLOYEE_ID\":101,\"FIRST_NAME\":\"John\",\"LAST_NAME\":\"Doe\",\"_metadata_source\":{\"schema\":\"dbo\",\"table\":\"EMPLOYEES\",\"database\":\"TestDB\",\"is_deleted\":false,\"change_type\":\"INSERT\",\"lsn\":\"00000027:00000ac0:0003\",\"tx_id\":\"0000001a\",\"replication_index\":[\"EMPLOYEE_ID\"]}}";
+
   private static final String EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID =
       "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_database\":\"XE\",\"_metadata_schema\":\"HR\",\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_uuid\":\"00c32134-f50e-4460-a6c0-399900010010\",\"_metadata_row_id\":1019670290924988842,\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
           + " Relations"
@@ -112,6 +120,34 @@ public class FormatDatastreamJsonToJsonTest {
                             .withLowercaseSourceColumns(false)))
             .setCoder(failsafeElementCoder)
             .apply("RemoveDataflowTimestampProperty", ParDo.of(new RemoveTimestampPropertyFn()))
+            .setCoder(failsafeElementCoder);
+
+    PAssert.that(pCollection).containsInAnyOrder(expectedElement);
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testProcessElement_sqlServerJson() {
+    FailsafeElement<String, String> expectedElement =
+        FailsafeElement.of(
+            EXAMPLE_SQLSERVER_DATASTREAM_RECORD, EXAMPLE_SQLSERVER_DATASTREAM_RECORD);
+
+    FailsafeElementCoder<String, String> failsafeElementCoder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    PCollection<FailsafeElement<String, String>> pCollection =
+        pipeline
+            .apply("CreateInput", Create.of(EXAMPLE_SQLSERVER_DATASTREAM_JSON))
+            .apply(
+                "FormatDatastreamJsonToJson",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(failsafeElementCoder)
+            .apply("RemoveTimestampProperty", ParDo.of(new RemoveTimestampPropertyFn()))
             .setCoder(failsafeElementCoder);
 
     PAssert.that(pCollection).containsInAnyOrder(expectedElement);
