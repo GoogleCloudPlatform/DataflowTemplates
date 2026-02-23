@@ -99,7 +99,8 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("sqlserver")) {
-      outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
+      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
       // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
@@ -241,7 +242,11 @@ public final class FormatDatastreamJsonToJson
       return null;
     }
 
-    return md.get("primary_keys");
+    JsonNode primaryKeys = md.get("primary_keys");
+    if (primaryKeys == null || primaryKeys.isNull()) {
+      primaryKeys = md.get("replication_index");
+    }
+    return primaryKeys;
   }
 
   private Long getSourceMetadataAsLong(JsonNode record, String fieldName) {
