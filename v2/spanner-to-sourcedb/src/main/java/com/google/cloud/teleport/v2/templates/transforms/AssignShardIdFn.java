@@ -286,24 +286,48 @@ public class AssignShardIdFn
     Map<String, Object> spannerRecord = new HashMap<>();
     // Query the spanner database in case of a DELETE event
     if (record.getModType() == ModType.DELETE) {
+
+      com.google.cloud.Timestamp commitTimestamp = record.getCommitTimestamp();
+      // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
+      // DELETE event
+      java.time.Instant commitInstant =
+          java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
+
+      java.time.Instant staleInstant = commitInstant.minus(LOOKBACK_DURATION_FOR_DELETE);
+
+      com.google.cloud.Timestamp staleReadTs =
+          com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+              staleInstant.getEpochSecond(), staleInstant.getNano());
+      ModType modType = record.getModType();
+
+      // TODO find a way to not make a special case from Cassandra.
+      boolean updateReadValuesToSpannerRecord = (sourceType != Constants.SOURCE_CASSANDRA);
+
+      List<String> columns =
+          ddl.table(tableName).columns().stream()
+              .filter(column -> (!column.isGenerated() || column.isStored()))
+              .map(Column::name)
+              .collect(Collectors.toList());
       spannerRecord =
           fetchSpannerRecord(
               tableName,
-              record.getCommitTimestamp(),
+              commitTimestamp,
+              staleReadTs,
               record.getServerTransactionId(),
               keysJson,
               record,
-              record.getModType(),
-              ddl);
+              columns,
+              ddl,
+              updateReadValuesToSpannerRecord);
     } else {
       spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson, ddl);
-      updateChangeEnventToIncludeGeneratedColumns(
+      updateChangeEventToIncludeGeneratedColumns(
           record, keysJson, schemaMapper, ddl, sourceSchema, spannerConfig, mapper);
     }
     return spannerRecord;
   }
 
-  public void updateChangeEnventToIncludeGeneratedColumns(
+  public void updateChangeEventToIncludeGeneratedColumns(
       TrimmedShardedDataChangeRecord spannerRecord,
       JsonNode keysJson,
       ISchemaMapper schemaMapper,
@@ -339,93 +363,47 @@ public class AssignShardIdFn
       }
     }
 
-    LOG.error("Columns to fetch: " + columnsToFetch + " for table: " + tableName);
     if (columnsToFetch.isEmpty()) {
       return;
     }
     com.google.cloud.Timestamp commitTimestamp = spannerRecord.getCommitTimestamp();
 
-    java.time.Instant commitInstant =
-        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
-
-    java.time.Instant staleInstant = commitInstant.plus(LOOKBACK_DURATION_FOR_DELETE);
-
-    com.google.cloud.Timestamp staleReadTs =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-            staleInstant.getEpochSecond(), staleInstant.getNano());
-    com.google.cloud.spanner.Key primaryKey = generateKey(tableName, keysJson, ddl);
-    LOG.error(
-        "Stale read timestamp: "
-            + staleReadTs
-            + " for table: "
-            + tableName
-            + " and primary key: "
-            + primaryKey
-            + " and commit timestamp: "
-            + commitTimestamp);
-    LOG.error(
-        "Spanner Config: "
-            + spannerConfig
-            + " Database Id: "
-            + spannerConfig.getDatabaseId()
-            + " Instance Id: "
-            + spannerConfig.getInstanceId()
-            + " Project Id: "
-            + spannerConfig.getProjectId());
-    Struct fetchedRow =
-        readRowAsStruct(
-            tableName,
-            commitTimestamp,
-            spannerRecord.getServerTransactionId(),
-            commitTimestamp,
-            columnsToFetch,
-            primaryKey);
-    if (fetchedRow == null) {
-      LOG.warn("Failed to fetch row for primary key: " + primaryKey);
-    } else {
-      Map<String, Object> rowAsMap = getRowAsMap(fetchedRow, columnsToFetch, tableName, ddl);
-      updateColumnValues(spannerRecord, sourceTableName, ddl, fetchedRow, rowAsMap, objectMapper);
-    }
+    fetchSpannerRecord(
+        tableName,
+        commitTimestamp,
+        commitTimestamp,
+        spannerRecord.getServerTransactionId(),
+        keysJson,
+        spannerRecord,
+        columnsToFetch,
+        ddl,
+        /* updateColumnValues= */ true);
   }
 
   private Map<String, Object> fetchSpannerRecord(
       String tableName,
       com.google.cloud.Timestamp commitTimestamp,
+      com.google.cloud.Timestamp readTimestamp,
       String serverTxnId,
       JsonNode keysJson,
       TrimmedShardedDataChangeRecord record,
-      ModType modType,
-      Ddl ddl)
+      List<String> columnsToFetch,
+      Ddl ddl,
+      boolean updateColumnValues)
       throws Exception {
-
-    // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
-    // DELETE event
-    java.time.Instant commitInstant =
-        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
-
-    java.time.Instant staleInstant = commitInstant.minus(LOOKBACK_DURATION_FOR_DELETE);
-
-    com.google.cloud.Timestamp staleReadTs =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-            staleInstant.getEpochSecond(), staleInstant.getNano());
-    List<String> columns =
-        ddl.table(tableName).columns().stream()
-            .filter(column -> (!column.isGenerated() || column.isStored()))
-            .map(Column::name)
-            .collect(Collectors.toList());
 
     com.google.cloud.spanner.Key pk = generateKey(tableName, keysJson, ddl);
 
-    Struct row = readRowAsStruct(tableName, commitTimestamp, serverTxnId, staleReadTs, columns, pk);
-    Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName, ddl);
-    // TODO find a way to not make a special case from Cassandra.
-    if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
-      updateColumnValues(record, tableName, ddl, row, rowAsMap, mapper);
+    Struct row =
+        readRowAsStruct(tableName, commitTimestamp, serverTxnId, readTimestamp, columnsToFetch, pk);
+    Map<String, Object> rowAsMap = getRowAsMap(row, columnsToFetch, tableName, ddl);
+    if (updateColumnValues) {
+      updateRowDataToSpannerRecord(record, tableName, ddl, row, rowAsMap, mapper);
     }
     return rowAsMap;
   }
 
-  public void updateColumnValues(
+  public void updateRowDataToSpannerRecord(
       TrimmedShardedDataChangeRecord record,
       String tableName,
       Ddl ddl,

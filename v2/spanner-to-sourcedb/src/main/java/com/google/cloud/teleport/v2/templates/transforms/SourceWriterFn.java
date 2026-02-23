@@ -308,7 +308,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // We need to get and inspect the cause while handling the exception.
         SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
-        LOG.error("Error processing record: " + spannerRec, ex);
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
         if (cause != null) {

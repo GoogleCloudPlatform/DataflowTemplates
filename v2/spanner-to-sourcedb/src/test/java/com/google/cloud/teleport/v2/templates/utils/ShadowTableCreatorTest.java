@@ -136,6 +136,48 @@ public final class ShadowTableCreatorTest {
     verify(mockDatabaseClient, never()).updateDatabaseDdl(any(), any(), any(), any());
   }
 
+  @Test
+  public void testShadowTableCreatedWithGeneratedColumn() {
+    Ddl ddlWithGeneratedPk =
+        Ddl.builder()
+            .createTable("table_with_generated_pk")
+            .column("id")
+            .int64()
+            .generatedAs("SOME_EXPRESSION")
+            .endColumn()
+            .column("update_ts")
+            .timestamp()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Ddl primaryDbDdl = getPrimaryDbDdl();
+    // Merge the ddlWithGeneratedPk with primaryDbDdl
+    Ddl.Builder builder = primaryDbDdl.toBuilder();
+    builder.addTable(ddlWithGeneratedPk.table("table_with_generated_pk"));
+    primaryDbDdl = builder.build();
+
+    Ddl metadataDbDdl = getMetadataDbDdl();
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    Table shadowTable = shadowTableCreator.constructShadowTable("table_with_generated_pk");
+    assertThat(shadowTable.name()).isEqualTo("shadow_table_with_generated_pk");
+    assertThat(shadowTable.columns()).hasSize(3);
+    assertThat(shadowTable.columns().get(0).name()).isEqualTo("id");
+    // Verify that the expression is removed and it is not marked as generated
+    assertThat(shadowTable.columns().get(0).isGenerated()).isFalse();
+    assertThat(shadowTable.columns().get(0).generationExpression()).isEqualTo("");
+  }
+
   private Ddl getPrimaryDbDdl() {
     Ddl ddl =
         Ddl.builder()

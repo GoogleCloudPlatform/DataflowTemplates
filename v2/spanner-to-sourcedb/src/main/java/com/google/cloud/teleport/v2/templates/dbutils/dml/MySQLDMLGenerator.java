@@ -305,7 +305,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       customTransformColumns = customTransformationResponse.keySet();
     }
 
-    boolean isGeneratedColumnExist = false;
+    boolean doesGeneratedColumnExist = false;
 
     for (int i = 0; i < sourcePKs.size(); i++) {
       String sourceColName = sourcePKs.get(i);
@@ -317,7 +317,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       }
 
       if (sourceColDef.isGenerated()) {
-        isGeneratedColumnExist = true;
+        doesGeneratedColumnExist = true;
         continue;
       }
 
@@ -371,10 +371,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       response.put(sourceColName, columnValue);
     }
 
-    if (isGeneratedColumnExist) {
-      // Generated column expression between source DB and and spanner can be
-      // differences. Hence, generated column values cannot be used from the change
-      // stream. If Primary key is generated column, then the DML statment need to
+    if (doesGeneratedColumnExist) {
+      // Generated column expression between source DB and spanner can have
+      // differences. Hence, values of generated column cannot be used from the change
+      // stream. If Primary key is generated column, then the DML statement need to
       // have the respective dependent column values. Since we cannot identify the
       // dependent columns, we are adding all the non-generated columns to the
       // response.
