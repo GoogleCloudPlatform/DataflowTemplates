@@ -157,9 +157,8 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
     assertThatResult(result).isLaunchFinished();
 
-    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(COLLECTION_ID);
-    // TODO: check actual doc count.
-    assertThat(documents.size()).isGreaterThan(0);
+    long destDocCount = destinationFirestoreResourceManager.readDocCount(COLLECTION_ID);
+    assertThat(destDocCount).isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
@@ -179,9 +178,8 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
 
     pipeline.run();
 
-    List<QueryDocumentSnapshot> documents = sourceFirestoreResourceManager.read(COLLECTION_ID);
-    // TODO: check actual doc count.
-    assertThat(documents.size()).isGreaterThan(0);
+    long sourceDocCount = sourceFirestoreResourceManager.readDocCount(COLLECTION_ID);
+    assertThat(sourceDocCount).isGreaterThan(0);
     // ... assertions after pipeline run ...
   }
 }

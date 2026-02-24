@@ -22,6 +22,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.core.ApiFuture;
 import com.google.auth.Credentials;
+import com.google.cloud.firestore.AggregateField;
+import com.google.cloud.firestore.AggregateQuerySnapshot;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.Firestore;
@@ -94,6 +96,16 @@ public class FirestoreResourceManager implements ResourceManager {
       return query.get().getDocuments();
     } catch (InterruptedException | ExecutionException e) {
       throw new FirestoreResourceManagerException("Error reading documents from Firestore", e);
+    }
+  }
+
+  public long readDocCount(String collectionName) {
+    try {
+      AggregateField countField = AggregateField.count();
+      ApiFuture<AggregateQuerySnapshot> query = firestore.collection(collectionName).aggregate(countField).get();
+      return query.get().getLong(countField);
+    } catch (InterruptedException | ExecutionException e) {
+      throw new FirestoreResourceManagerException("Error reading the document count from Firestore", e);
     }
   }
 
