@@ -239,6 +239,7 @@ public class PubSubToRedisTest {
     // TestPipeline rule requires pipeline.run() to be called
     pipeline.run();
   }
+
   @Test
   public void testRedisStringSink() {
     String key = "testStringKey";
