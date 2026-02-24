@@ -279,6 +279,7 @@ public class DeadLetterQueue implements Serializable {
   @VisibleForTesting
   protected FailsafeElement<String, String> mutationToDlqElement(Mutation m) {
     JSONObject json = new JSONObject();
+    json.put("_metadata_spanner_mutation", true);
 
     Instant instant = Instant.now();
     initializeJsonNode(
