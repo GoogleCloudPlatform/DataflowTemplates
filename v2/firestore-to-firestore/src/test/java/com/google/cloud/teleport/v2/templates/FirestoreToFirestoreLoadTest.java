@@ -70,7 +70,7 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   private static final String TEST_ROOT_DIR =
       FirestoreToFirestoreLoadTest.class.getSimpleName().toLowerCase();
 
-  private static final int LOAD_DATA_TARGET_SIZE_GIB = 10;
+  private static final double LOAD_DATA_TARGET_SIZE_GIB = 0.01;
   private static final int LOAD_DATA_MAX_WORKERS = 500;
   private static final String INPUT_PCOLLECTION =
       "Read all records/Read from Cloud Firestore/Read from Partitions.out0";

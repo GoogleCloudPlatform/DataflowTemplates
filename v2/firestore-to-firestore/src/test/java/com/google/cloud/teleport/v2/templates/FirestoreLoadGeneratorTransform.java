@@ -52,7 +52,7 @@ public class FirestoreLoadGeneratorTransform extends PTransform<PBegin, PDone> {
   private final String projectId;
   private final String databaseId;
   private final String collectionId;
-  private final int targetSizeGib;
+  private final double targetSizeGib;
   private final RpcQosOptions rpcQosOptions;
 
   /**
@@ -68,7 +68,7 @@ public class FirestoreLoadGeneratorTransform extends PTransform<PBegin, PDone> {
       String projectId,
       String databaseId,
       String collectionId,
-      int targetSizeGib,
+      double targetSizeGib,
       RpcQosOptions rpcQosOptions) {
     this.projectId = projectId;
     this.databaseId = databaseId;
