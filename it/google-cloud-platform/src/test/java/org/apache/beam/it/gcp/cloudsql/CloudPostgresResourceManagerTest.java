@@ -84,7 +84,12 @@ public class CloudPostgresResourceManagerTest {
     assertThat(info.getReplicationSlotName()).startsWith("slot_");
     assertThat(info.getPublicationName()).startsWith("pub_");
 
-    verify(mockStatement).execute("SELECT pg_advisory_xact_lock(12345)");
+    // Verify timeouts are set
+    verify(mockStatement).execute("SET statement_timeout = '60s'");
+    verify(mockStatement).execute("SET idle_in_transaction_session_timeout = '60s'");
+
+    // Verify 3 separate transactions (lock + commit for each)
+    verify(mockStatement, times(3)).execute("SELECT pg_advisory_xact_lock(12345)");
     verify(mockStatement).execute("ALTER USER CURRENT_USER WITH REPLICATION");
     verify(mockStatement)
         .execute(
@@ -95,7 +100,7 @@ public class CloudPostgresResourceManagerTest {
         .execute(
             String.format(
                 "CREATE PUBLICATION %s FOR TABLE table1, table2", info.getPublicationName()));
-    verify(mockConnection).commit();
+    verify(mockConnection, times(3)).commit();
   }
 
   @Test
@@ -105,7 +110,12 @@ public class CloudPostgresResourceManagerTest {
     assertThat(info.getReplicationSlotName()).startsWith("slot_");
     assertThat(info.getPublicationName()).startsWith("pub_");
 
-    verify(mockStatement).execute("SELECT pg_advisory_xact_lock(12345)");
+    // Verify timeouts are set
+    verify(mockStatement).execute("SET statement_timeout = '60s'");
+    verify(mockStatement).execute("SET idle_in_transaction_session_timeout = '60s'");
+
+    // Verify 3 separate transactions (lock + commit for each)
+    verify(mockStatement, times(3)).execute("SELECT pg_advisory_xact_lock(12345)");
     verify(mockStatement).execute("ALTER USER CURRENT_USER WITH REPLICATION");
     verify(mockStatement)
         .execute(
@@ -114,7 +124,7 @@ public class CloudPostgresResourceManagerTest {
                 info.getReplicationSlotName()));
     verify(mockStatement)
         .execute(String.format("CREATE PUBLICATION %s FOR ALL TABLES", info.getPublicationName()));
-    verify(mockConnection).commit();
+    verify(mockConnection, times(3)).commit();
   }
 
   @Test
@@ -122,20 +132,18 @@ public class CloudPostgresResourceManagerTest {
     // Create resources first
     CloudPostgresResourceManager.ReplicationInfo info = testManager.createLogicalReplication();
 
-    // Reset mock to clear previous interactions
-    org.mockito.Mockito.clearInvocations(mockStatement, mockConnection);
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-
     testManager.cleanupAll();
 
-    verify(mockStatement, times(2))
-        .execute("SELECT pg_advisory_xact_lock(12345)"); // Once for pub, once for slot
+    verify(mockStatement, times(5))
+        .execute("SELECT pg_advisory_xact_lock(12345)"); // 3 for creation, 2 for cleanup
+    verify(mockStatement, times(3)).execute("SET statement_timeout = '60s'");
+    verify(mockStatement, times(3)).execute("SET idle_in_transaction_session_timeout = '60s'");
     verify(mockStatement)
         .execute(String.format("DROP PUBLICATION IF EXISTS %s", info.getPublicationName()));
     verify(mockStatement)
         .execute(
             String.format("SELECT pg_drop_replication_slot('%s')", info.getReplicationSlotName()));
-    verify(mockConnection, times(2)).commit(); // Once for pub, once for slot
+    verify(mockConnection, times(5)).commit(); // 3 for creation, 2 for cleanup
   }
 
   @Test
