@@ -28,7 +28,7 @@ import org.apache.beam.sdk.options.Validation;
     displayName = "Iceberg to MySql (YAML)",
     description =
         "The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg and outputs the records to MySQL table.",
-    flexContainerName = "iceberg-to-mysql-yaml",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "IcebergToMySql.yaml",
     filesToCopy = {
       "main.py",
