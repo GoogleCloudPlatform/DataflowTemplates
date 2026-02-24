@@ -122,10 +122,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_tsvector",
           "t_txid_snapshot",
           "t_varbit_to_bool_array");
-  private static final String PUBLICATION_NAME = "data_types_test_publication";
-  private static final String REPLICATION_SLOT_NAME = "data_types_test_replication_slot";
-  private static final String PG_DIALECT_REPLICATION_SLOT_NAME =
-      "pg_dialect_data_types_test_replication_slot";
+  private static CloudPostgresResourceManager.ReplicationInfo replicationInfo;
+  private static CloudPostgresResourceManager.ReplicationInfo pgDialectReplicationInfo;
 
   private static boolean initialized = false;
   private static CloudPostgresResourceManager postgresResourceManager;
@@ -174,6 +172,9 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         LOG.info("Executing PostgreSQL DDL script...");
         executeSqlScript(postgresResourceManager, POSTGRESQL_DDL_RESOURCE);
 
+        replicationInfo = postgresResourceManager.createLogicalReplication();
+        pgDialectReplicationInfo = postgresResourceManager.createLogicalReplication();
+
         initialized = true;
       }
     }
@@ -188,24 +189,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
 
     // It is important to clean up Datastream before trying to drop the replication slot.
     ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    try {
-      postgresResourceManager.runSQLQuery(
-          "SELECT pg_drop_replication_slot('" + REPLICATION_SLOT_NAME + "')");
-    } catch (Exception e) {
-      LOG.warn("Failed to drop replication slot {}:", REPLICATION_SLOT_NAME, e);
-    }
-    try {
-      postgresResourceManager.runSQLQuery(
-          "SELECT pg_drop_replication_slot('" + PG_DIALECT_REPLICATION_SLOT_NAME + "')");
-    } catch (Exception e) {
-      LOG.warn("Failed to drop replication slot {}:", PG_DIALECT_REPLICATION_SLOT_NAME, e);
-    }
-    try {
-      postgresResourceManager.runSQLUpdate("DROP PUBLICATION IF EXISTS " + PUBLICATION_NAME);
-    } catch (Exception e) {
-      LOG.warn("Failed to drop publication {}:", PUBLICATION_NAME, e);
-    }
 
     ResourceManagerUtils.cleanResources(
         postgresResourceManager,
@@ -227,8 +210,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
                 postgresResourceManager.getPassword(),
                 postgresResourceManager.getPort(),
                 postgresResourceManager.getDatabaseName(),
-                REPLICATION_SLOT_NAME,
-                PUBLICATION_NAME)
+                replicationInfo.getReplicationSlotName(),
+                replicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
             .build();
 
@@ -274,8 +257,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
                 postgresResourceManager.getPassword(),
                 postgresResourceManager.getPort(),
                 postgresResourceManager.getDatabaseName(),
-                PG_DIALECT_REPLICATION_SLOT_NAME,
-                PUBLICATION_NAME)
+                pgDialectReplicationInfo.getReplicationSlotName(),
+                pgDialectReplicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
             .build();
 
