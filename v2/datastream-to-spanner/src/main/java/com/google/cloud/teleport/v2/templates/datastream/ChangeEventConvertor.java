@@ -47,11 +47,9 @@ public class ChangeEventConvertor {
     List<String> changeEventColumns = ChangeEventUtils.getEventColumnKeys(changeEvent);
     for (String changeEventColumn : changeEventColumns) {
       if (ddl.table(tableName).column(changeEventColumn) == null) {
-        throw new ChangeEventConvertorException(
-            "Column from change event doesn't exist in Spanner. column="
-                + changeEventColumn
-                + ", table="
-                + tableName);
+        // Log a warning and remove the column from the change event.
+        // This allows the pipeline to proceed even if there are extra columns in the source.
+        ((ObjectNode) changeEvent).remove(changeEventColumn);
       }
     }
     Set<String> keyColumns =
@@ -62,7 +60,7 @@ public class ChangeEventConvertor {
     Set<String> changeEventColumnsAsSet = new HashSet<>(changeEventColumns);
     if (!changeEventColumnsAsSet.containsAll(keyColumns)) {
       throw new ChangeEventConvertorException(
-          "Key columns from change event do not exist in Spanner. keyColumns=" + keyColumns);
+          "Change event is missing required Spanner Primary Key columns: " + keyColumns);
     }
   }
 
