@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.Convert
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -117,7 +118,7 @@ import org.slf4j.LoggerFactory;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-redis",
     requirements = {
       "The source Pub/Sub subscription must exist prior to running the pipeline.",
-      "The Pub/Sub unprocessed topic must exist prior to running the pipeline.",
+      "The Pub/Sub unprocessed (dead-letter) topic must exist prior to running the pipeline if using a JavaScript UDF.",
       "The Redis database endpoint must be accessible from the Dataflow workers' subnetwork.",
     },
     preview = true,
@@ -256,14 +257,14 @@ public class PubSubToRedis {
 
     @TemplateParameter.PubsubTopic(
         order = 9,
+        optional = true,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here.",
+            "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here, Required if using a JavaScript UDF.",
         example = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>")
-    @Validation.Required
-    String getDeadletterTopic();
+    String getOutputDeadletterTopic();
 
-    void setDeadletterTopic(String deadletterTopic);
+    void setOutputDeadletterTopic(String outputDeadletterTopic);
   }
 
   /** Allowed list of sink types. */
@@ -409,6 +410,11 @@ public class PubSubToRedis {
           "JavaScript function name cannot be null or empty if file is set");
     }
 
+    if (Strings.isNullOrEmpty(options.getOutputDeadletterTopic())) {
+      throw new IllegalArgumentException(
+          "A dead-letter Pub/Sub topic (--outputDeadletterTopic) must be provided when using a JavaScript UDF.");
+    }
+
     // Map incoming messages to FailsafeElement so we can recover from failures
     // across multiple transforms.
     PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
@@ -451,7 +457,7 @@ public class PubSubToRedis {
                     FailsafeElement<PubsubMessage, String> element = c.element();
                     c.output(
                         new PubsubMessage(
-                            element.getPayload().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            element.getPayload().getBytes(StandardCharsets.UTF_8),
                             element.getOriginalPayload().getAttributeMap(),
                             element.getOriginalPayload().getMessageId()));
                   }
@@ -464,7 +470,7 @@ public class PubSubToRedis {
    * <p>Follows the same pattern as {@code PubsubProtoToBigQuery.writeUdfFailures}.
    */
   private static PubsubIO.Write<PubsubMessage> writeUdfFailures(PubSubToRedisOptions options) {
-    return PubsubIO.writeMessages().to(options.getDeadletterTopic());
+    return PubsubIO.writeMessages().to(options.getOutputDeadletterTopic());
   }
 
   /**
@@ -478,8 +484,7 @@ public class PubSubToRedis {
     public void processElement(ProcessContext context) {
       PubsubMessage message = context.element();
       context.output(
-          FailsafeElement.of(
-              message, new String(message.getPayload(), java.nio.charset.StandardCharsets.UTF_8)));
+          FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
     }
   }
 }

@@ -180,7 +180,7 @@ public class PubSubToRedisTest {
         PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
-    options.setDeadletterTopic("projects/test-project/topics/deadletter");
+    options.setOutputDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
@@ -199,7 +199,6 @@ public class PubSubToRedisTest {
   public void testPubSubToRedisWithoutUdf() {
     PubSubToRedis.PubSubToRedisOptions options =
         PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
-    options.setDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
@@ -220,7 +219,7 @@ public class PubSubToRedisTest {
         PipelineOptionsFactory.create().as(PubSubToRedis.PubSubToRedisOptions.class);
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     // Intentionally not setting function name
-    options.setDeadletterTopic("projects/test-project/topics/deadletter");
+    options.setOutputDeadletterTopic("projects/test-project/topics/deadletter");
 
     PubsubMessage testMessage =
         new PubsubMessage(
@@ -240,7 +239,6 @@ public class PubSubToRedisTest {
     // TestPipeline rule requires pipeline.run() to be called
     pipeline.run();
   }
-
   @Test
   public void testRedisStringSink() {
     String key = "testStringKey";

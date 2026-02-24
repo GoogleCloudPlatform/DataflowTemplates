@@ -81,10 +81,10 @@ variable "ttl" {
   default = null
 }
 
-variable "deadletterTopic" {
+variable "outputDeadletterTopic" {
   type = string
-  description = "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
-  
+  description = "The Pub/Sub topic to forward unprocessable messages to. Messages that fail UDF transformation are forwarded here, Required if using a JavaScript UDF. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
+  default = null
 }
 
 variable "javascriptTextTransformGcsPath" {
@@ -238,7 +238,7 @@ resource "google_dataflow_flex_template_job" "generated" {
         redisSinkType = var.redisSinkType
         connectionTimeout = tostring(var.connectionTimeout)
         ttl = tostring(var.ttl)
-        deadletterTopic = var.deadletterTopic
+        outputDeadletterTopic = var.outputDeadletterTopic
         javascriptTextTransformGcsPath = var.javascriptTextTransformGcsPath
         javascriptTextTransformFunctionName = var.javascriptTextTransformFunctionName
         javascriptTextTransformReloadIntervalMinutes = tostring(var.javascriptTextTransformReloadIntervalMinutes)
