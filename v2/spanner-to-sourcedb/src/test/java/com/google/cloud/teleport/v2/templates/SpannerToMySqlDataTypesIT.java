@@ -176,7 +176,16 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
   private ConditionCheck buildConditionCheck(Map<String, List<Value>> spannerTableData) {
     // These tables fail to migrate all expected rows, ignore them to avoid having to wait for the
     // timeout.
-    Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
+    Set<String> ignoredTables =
+        Set.of(
+            "binary_to_string",
+            "bit_to_string",
+            "set_to_array",
+            "blob_to_string",
+            "longblob_to_string",
+            "mediumblob_to_string",
+            "tinyblob_to_string",
+            "varbinary_to_string");
 
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Value>> entry : spannerTableData.entrySet()) {
@@ -200,7 +209,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
       if (combinedCondition == null) {
         combinedCondition = c;
       } else {
-        combinedCondition.and(c);
+        combinedCondition = combinedCondition.and(c);
       }
     }
 

@@ -1,4 +1,3 @@
-ALTER USER CURRENT_USER WITH REPLICATION;
 CREATE TABLE "true" (
   id serial PRIMARY KEY,
   "ALL" text,
@@ -140,5 +139,3 @@ CREATE TABLE "true" (
   "WITHIN" text
 );
 INSERT INTO "true" (id, "ALL", "AND", "AS") VALUES (1, 'all', 'and', 'as');
-CREATE PUBLICATION PUBLICATION_NAME FOR ALL TABLES;
-SELECT pg_create_logical_replication_slot('REPLICATION_SLOT_NAME', 'pgoutput');
