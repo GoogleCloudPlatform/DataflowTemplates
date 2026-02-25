@@ -151,7 +151,12 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     LOG.info("DLQ directory: {}", dlqDirectory);
     DeadLetterQueue dlq =
         DeadLetterQueue.create(
-            dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, this.schemaMapper);
+            dlqDirectory,
+            ddl,
+            srcTableToShardIdColumnMap,
+            sqlDialect,
+            this.schemaMapper,
+            this.shardId);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -165,7 +170,12 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     DeadLetterQueue filteredEventsQueue =
         DeadLetterQueue.create(
-            filterEventsDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, this.schemaMapper);
+            filterEventsDirectory,
+            ddl,
+            srcTableToShardIdColumnMap,
+            sqlDialect,
+            this.schemaMapper,
+            this.shardId);
     filteredEventsQueue.filteredEventsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
@@ -183,12 +193,15 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     return sourceRows.apply(
         "WriteAvroToGCS",
         FileIO.<AvroDestination, SourceRow>writeDynamic()
-            .by((record) -> AvroDestination.of(record.tableName(), record.gcsSchema().toString()))
+            .by(
+                (record) ->
+                    AvroDestination.of(
+                        record.tableName(), record.getPayload().getSchema().toString()))
             .via(
                 Contextful.fn(
                     record -> {
                       Metrics.counter(MigrateTableTransform.class, metricName).inc();
-                      return record.toGcsRecord();
+                      return record.getPayload();
                     }),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
