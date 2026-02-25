@@ -1,5 +1,4 @@
-DROP TABLE IF EXISTS customers;
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id int PRIMARY KEY,
     full_name text,
     first_name text,
