@@ -1,15 +1,15 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id int PRIMARY KEY,
     full_name text,
     "from" text
 );
 
-CREATE TABLE users2 (
+CREATE TABLE IF NOT EXISTS users2 (
     id int PRIMARY KEY,
     full_name text
 );
 
-CREATE TABLE AllDatatypeTransformation (
+CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
     varchar_column text PRIMARY KEY,
     tinyint_column tinyint,
     text_column text,
@@ -58,7 +58,7 @@ CREATE TABLE AllDatatypeTransformation (
     bytes_column BLOB
 );
 
-CREATE TABLE AllDatatypeColumns (
+CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
     varchar_column text PRIMARY KEY,
     tinyint_column tinyint,
     text_column text,
@@ -110,7 +110,7 @@ CREATE TABLE AllDatatypeColumns (
 
 );
 
-CREATE TABLE BoundaryConversionTestTable (
+CREATE TABLE IF NOT EXISTS BoundaryConversionTestTable (
     varchar_column text PRIMARY KEY,
     tinyint_column tinyint,
     smallint_column smallint,
@@ -151,7 +151,7 @@ CREATE TABLE BoundaryConversionTestTable (
     map_inet_column map<inet, inet>
 );
 
-CREATE TABLE EmptyStringJsonTable (
+CREATE TABLE IF NOT EXISTS EmptyStringJsonTable (
     varchar_column TEXT PRIMARY KEY,
     empty_column TEXT,
     double_float_map_col MAP<DOUBLE, FLOAT>,
@@ -217,7 +217,7 @@ CREATE TABLE EmptyStringJsonTable (
     frozen_ascii_set_col frozen<SET<ASCII>>
 );
 
-CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
+CREATE TABLE IF NOT EXISTS testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
     id TEXT PRIMARY KEY,
     col_qcbf69rmxtre3b_03tpcovf16ed TEXT
 );
