@@ -50,4 +50,7 @@ public class Constants {
 
   /* The key for shard id in the event json */
   public static final String EVENT_SHARD_ID = "_metadata_shard_id";
+
+  /* The default value we use for shard id column name */
+  public static final String DEFAULT_SHARD_ID_COLUMN = "migration_shard_id";
 }

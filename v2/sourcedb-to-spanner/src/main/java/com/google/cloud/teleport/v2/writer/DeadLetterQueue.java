@@ -331,32 +331,7 @@ public class DeadLetterQueue implements Serializable {
       putValueToJson(json, entry.getKey(), val);
     }
 
-    // Attempt to extract and populate shard ID metadata
-    try {
-      if (this.shardId != null && !this.shardId.isEmpty()) {
-        json.put(Constants.EVENT_SHARD_ID, this.shardId);
-        populateShardIdColumnAndValue(json, m.getTable(), this.shardId);
-      } else {
-        // Just try to find if the mutation has the shard id column and populate it in metadata
-        // We know that if the mutation has the shard id column, it must have the shard id value
-        String shardIdColName = getShardIdColumnName(m.getTable());
-        if (mutationMap.containsKey(shardIdColName)) {
-          Value shardIdValue = mutationMap.get(shardIdColName);
-          if (shardIdValue != null && !shardIdValue.isNull()) {
-            String shardIdStr = shardIdValue.toString();
-            if (shardIdValue.getType().getCode() == Type.Code.STRING) {
-              shardIdStr = shardIdValue.getString();
-            } else if (shardIdValue.getType().getCode() == Type.Code.INT64) {
-              shardIdStr = Long.toString(shardIdValue.getInt64());
-            }
-            json.put(Constants.EVENT_SHARD_ID, shardIdStr);
-            json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to populate shard ID metadata for DLQ mutation", e);
-    }
+    populateShardIdMetadataForMutation(json, m, mutationMap);
 
     return FailsafeElement.of(json.toString(), json.toString())
         .setErrorMessage("SpannerWriteFailed");
@@ -394,6 +369,31 @@ public class DeadLetterQueue implements Serializable {
     }
   }
 
+  private void populateShardIdMetadataForMutation(
+      JSONObject json, Mutation m, Map<String, Value> mutationMap) {
+    // Attempt to extract and populate shard ID metadata
+    try {
+      if (this.shardId != null && !this.shardId.isEmpty()) {
+        json.put(Constants.EVENT_SHARD_ID, this.shardId);
+        populateShardIdColumnAndValue(json, m.getTable(), this.shardId);
+      } else {
+        // Just try to find if the mutation has the shard id column and populate it in metadata
+        // We know that if the mutation has the shard id column, it must have the shard id value
+        String shardIdColName = getShardIdColumnName(m.getTable());
+        if (mutationMap.containsKey(shardIdColName)) {
+          Value shardIdValue = mutationMap.get(shardIdColName);
+          if (shardIdValue != null && !shardIdValue.isNull()) {
+            String shardIdStr = shardIdValue.toString();
+            json.put(Constants.EVENT_SHARD_ID, shardIdStr);
+            json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to populate shard ID metadata for DLQ mutation", e);
+    }
+  }
+
   private void populateShardIdColumnAndValue(
       JSONObject json, String spannerTableName, String shardIdValue) {
     String shardIdColName = getShardIdColumnName(spannerTableName);
@@ -417,14 +417,15 @@ public class DeadLetterQueue implements Serializable {
           if (shardIdColName != null && !shardIdColName.isEmpty()) {
             return shardIdColName;
           }
-          shardIdColName =
-              "migration_shard_id"; // we can fallback to this as we explicitly check the Spanner
-          // DDL
         }
       } catch (Exception e) {
         LOG.debug("Could not get shard ID column for Spanner table {}", spannerTableName);
       }
     }
+    shardIdColName =
+        Constants
+            .DEFAULT_SHARD_ID_COLUMN; // we can fallback to this as we explicitly check the Spanner
+    // DDL
     return shardIdColName;
   }
 }
