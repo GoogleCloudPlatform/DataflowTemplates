@@ -109,7 +109,7 @@ public class CreatePartitionQueryRequestFnTest {
   public void testTransformWithDefaultDatabase() {
     String collectionId = "items";
     String defaultDbId = "(default)";
-    String expectedParentPath = "projects/test-project/databases/(default)";
+    String expectedParentPath = "projects/test-project/databases/(default)/documents";
 
     PCollection<String> input = p.apply(Create.of(collectionId));
 

@@ -98,7 +98,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   @Test
-  public void testFirestoreToFirestore() throws IOException {
+  public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
+      throws IOException {
     String collectionId = "input-" + testName;
     int numDocuments = 10;
 
@@ -126,6 +127,49 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     assertThat(documents).hasSize(numDocuments);
 
     for (QueryDocumentSnapshot document : documents) {
+      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+    }
+  }
+
+  @Test
+  public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
+      throws IOException {
+    String collectionId1 = "inputA-" + testName;
+    int numDocs1 = 5;
+    Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
+    sourceFirestoreResourceManager.write(collectionId1, inputData1);
+
+    String collectionId2 = "inputB-" + testName;
+    int numDocs2 = 5;
+    Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
+    sourceFirestoreResourceManager.write(collectionId2, inputData2);
+
+    LaunchConfig options =
+        LaunchConfig.builder(testName + "-all", SPEC_PATH)
+            .addParameter("sourceProjectId", PROJECT)
+            .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
+            .addParameter("destinationProjectId", PROJECT)
+            .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
+            .addParameter("maxNumWorkers", "10")
+            .build();
+
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
+    assertThatResult(result).isLaunchFinished();
+
+    List<QueryDocumentSnapshot> documents1 =
+        destinationFirestoreResourceManager.read(collectionId1);
+    assertThat(documents1).hasSize(numDocs1);
+    for (QueryDocumentSnapshot document : documents1) {
+      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+    }
+
+    List<QueryDocumentSnapshot> documents2 =
+        destinationFirestoreResourceManager.read(collectionId2);
+    assertThat(documents2).hasSize(numDocs2);
+    for (QueryDocumentSnapshot document : documents2) {
       assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
     }
   }

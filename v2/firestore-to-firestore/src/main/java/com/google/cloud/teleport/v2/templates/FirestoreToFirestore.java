@@ -54,7 +54,8 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Firestore to Firestore template is a batch pipeline that reads documents from one"
           + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database.",
+          + " them to another Firestore database. It is not supported for Enterprise edition databases"
+          + " to be the source.",
       "Data consistency is guaranteed only at the end of the pipeline when all data has been"
           + " written to the destination database.\n",
     },
@@ -171,8 +172,12 @@ public class FirestoreToFirestore {
         try {
           collectionIdsList = getAllCollectionIds(sourceProjectId, sourceDatabaseId);
         } catch (Exception e) {
-          LOG.error("Failed to list collections: {}", e.getMessage(), e);
-          return;
+          throw new RuntimeException(
+              "Failed to list collections for project: "
+                  + sourceProjectId
+                  + ", database: "
+                  + sourceDatabaseId,
+              e);
         }
       } else {
         collectionIdsList =
