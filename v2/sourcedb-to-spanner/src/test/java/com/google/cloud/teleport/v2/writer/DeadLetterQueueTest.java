@@ -284,9 +284,15 @@ public class DeadLetterQueueTest {
             .build();
 
     Map<String, String> srcTableToShardId = Map.of(testTable, "migration_id");
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("srcTable");
+    Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
+        .thenReturn("migration_id");
+
     DeadLetterQueue dlq =
         DeadLetterQueue.create(
-            "testDir", ddl, srcTableToShardId, SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+            "testDir", ddl, srcTableToShardId, SQLDialect.MYSQL, mockSchemaMapper);
 
     RowContext r1 =
         RowContext.builder()

@@ -229,12 +229,21 @@ public class DeadLetterQueue implements Serializable {
       }
       putValueToJson(json, f.name(), value);
     }
+
+    String spannerTable = r.row().tableName();
+    try {
+      if (schemaMapper != null) {
+        spannerTable = schemaMapper.getSpannerTableName("", r.row().tableName());
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not map source table {} to Spanner table", r.row().tableName(), e);
+    }
     if (r.row().shardId() != null) {
       json.put(Constants.EVENT_SHARD_ID, r.row().shardId());
-      populateShardIdColumnAndValue(json, r.row().tableName(), r.row().shardId());
+      populateShardIdColumnAndValue(json, spannerTable, r.row().shardId());
     } else if (this.shardId != null && !this.shardId.isEmpty()) {
       json.put(Constants.EVENT_SHARD_ID, this.shardId);
-      populateShardIdColumnAndValue(json, r.row().tableName(), this.shardId);
+      populateShardIdColumnAndValue(json, spannerTable, this.shardId);
     }
     FailsafeElement<String, String> dlqElement =
         FailsafeElement.of(json.toString(), json.toString());
@@ -385,47 +394,34 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private void populateShardIdColumnAndValue(
-      JSONObject json, String tableName, String shardIdValue) {
+      JSONObject json, String spannerTableName, String shardIdValue) {
+    String shardIdColName = getShardIdColumnName(spannerTableName);
 
-    String shardIdColName = getShardIdColumnName(tableName);
-    // We only add the shard id if the column exists in Spanner ddl.
-    String spannerTableName = null;
-    try {
-      spannerTableName = schemaMapper.getSpannerTableName("", tableName);
-    } catch (Exception e) {
-      // If we are looking up spanner table name, it means tableName is source table name.
-      // If it fails, it might be because tableName is already spanner table name (e.g. in mutation
-      // case).
-      spannerTableName = tableName;
-      System.out.println("DEBUG: populateShardIdColumnAndValue catch block: " + spannerTableName);
-    }
     // We want to populate these in the change event only if Spanner has a dedicated shard id
     // column.
-    System.out.println(
-        "DEBUG: populateShardIdColumnAndValue ddl.table(spannerTableName): "
-            + ddl.table(spannerTableName));
-
     if (spannerTableName != null
         && ddl.table(spannerTableName) != null
         && ddl.table(spannerTableName).column(shardIdColName) != null) {
-      System.out.println("DEBUG: populateShardIdColumnAndValue here");
       json.put(shardIdColName, shardIdValue);
       json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
     }
   }
 
-  private String getShardIdColumnName(String tableName) {
-    String shardIdColName =
-        "migration_shard_id"; // we can default to this as we explicitly check the Spanner DDL
-    // before adding the metadata
+  private String getShardIdColumnName(String spannerTableName) {
+    String shardIdColName = null;
     if (schemaMapper != null) {
       try {
-        String srcTable = schemaMapper.getSourceTableName("", tableName);
-        if (srcTable != null) {
-          shardIdColName = srcTableToShardIdColumnMap.getOrDefault(tableName, "migration_shard_id");
+        if (spannerTableName != null) {
+          shardIdColName = schemaMapper.getShardIdColumnName("", spannerTableName);
+          if (shardIdColName != null && !shardIdColName.isEmpty()) {
+            return shardIdColName;
+          }
+          shardIdColName =
+              "migration_shard_id"; // we can fallback to this as we explicitly check the Spanner
+          // DDL
         }
       } catch (Exception e) {
-        LOG.debug("Could not map Spanner table {} to source table", tableName);
+        LOG.debug("Could not get shard ID column for Spanner table {}", spannerTableName);
       }
     }
     return shardIdColName;
