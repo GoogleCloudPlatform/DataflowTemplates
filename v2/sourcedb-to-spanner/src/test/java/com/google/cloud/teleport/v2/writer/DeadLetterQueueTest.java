@@ -461,7 +461,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testRowContextToDlqElementWithSpannerShardIdColumn() {
-    // 1. Setup DDL with shard ID column
+    // Setup DDL with shard ID column
     Ddl ddlWithShardId =
         Ddl.builder()
             .createTable("srcTable")
@@ -478,7 +478,7 @@ public class DeadLetterQueueTest {
             .endTable()
             .build();
 
-    // 2. Mock SchemaMapper to return "shard_id" as the column name
+    // Mock SchemaMapper to return "shard_id" as the column name
     ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
     Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
         .thenReturn("srcTable");
@@ -490,7 +490,6 @@ public class DeadLetterQueueTest {
     Map<String, String> srcTableToShardIdColumnMap = new HashMap<>();
     srcTableToShardIdColumnMap.put("srcTable", "shard_id");
 
-    // 3. Create DLQ
     DeadLetterQueue dlq =
         DeadLetterQueue.create(
             "testDir",
@@ -499,7 +498,6 @@ public class DeadLetterQueueTest {
             SQLDialect.MYSQL,
             mockSchemaMapper);
 
-    // 4. Create RowContext
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
     RowContext r =
@@ -513,10 +511,8 @@ public class DeadLetterQueueTest {
             .setErr(new Exception("test"))
             .build();
 
-    // 5. Execute
     FailsafeElement<String, String> result = dlq.rowContextToDlqElement(r);
 
-    // 6. Verify
     String payload = result.getOriginalPayload();
     assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-1\""));
     assertTrue(payload.contains("\"shard_id\":\"shard-1\""));
@@ -525,7 +521,7 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testRowContextToDlqElementWithoutSpannerShardIdColumn() {
-    // 1. Setup DDL WITHOUT shard ID column
+    // Setup DDL WITHOUT shard ID column
     Ddl ddlNoShardId =
         Ddl.builder()
             .createTable("srcTable")
@@ -538,19 +534,16 @@ public class DeadLetterQueueTest {
             .endTable()
             .build();
 
-    // 2. Mock SchemaMapper
     ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
     Mockito.when(mockSchemaMapper.getSpannerTableName(Mockito.anyString(), Mockito.eq("srcTable")))
         .thenReturn("srcTable");
     Mockito.when(mockSchemaMapper.getShardIdColumnName(Mockito.anyString(), Mockito.eq("srcTable")))
         .thenReturn("shard_id"); // Even if mapper knows the name, DDL doesn't have it
 
-    // 3. Create DLQ
     DeadLetterQueue dlq =
         DeadLetterQueue.create(
             "testDir", ddlNoShardId, new HashMap<>(), SQLDialect.MYSQL, mockSchemaMapper);
 
-    // 4. Create RowContext
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("srcTable");
     RowContext r =
@@ -564,10 +557,8 @@ public class DeadLetterQueueTest {
             .setErr(new Exception("test"))
             .build();
 
-    // 5. Execute
     FailsafeElement<String, String> result = dlq.rowContextToDlqElement(r);
 
-    // 6. Verify
     String payload = result.getOriginalPayload();
     assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-1\""));
     assertFalse(payload.contains("\"shard_id\":\"shard-1\"")); // Should NOT be present as column
@@ -709,7 +700,6 @@ public class DeadLetterQueueTest {
     String payload = dlqElement.getOriginalPayload();
     assertTrue(payload.contains("\"_metadata_table\":\"srcTable\""));
     assertTrue(payload.contains("\"firstName\":\"abc\""));
-    // Verify shard ID from class field is used
     assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-456\""));
   }
 

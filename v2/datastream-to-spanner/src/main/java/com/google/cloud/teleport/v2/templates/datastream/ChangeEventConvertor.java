@@ -47,8 +47,8 @@ public class ChangeEventConvertor {
     List<String> changeEventColumns = ChangeEventUtils.getEventColumnKeys(changeEvent);
     for (String changeEventColumn : changeEventColumns) {
       if (ddl.table(tableName).column(changeEventColumn) == null) {
-        // Log a warning and remove the column from the change event.
-        // This allows the pipeline to proceed even if there are extra columns in the source.
+        // Ignore and remove the column from the change event. This allows the pipeline to proceed
+        // even if there are extra columns in the source.
         ((ObjectNode) changeEvent).remove(changeEventColumn);
       }
     }

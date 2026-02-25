@@ -201,7 +201,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
                 Contextful.fn(
                     record -> {
                       Metrics.counter(MigrateTableTransform.class, metricName).inc();
-                      return record.getPayload();
+                      return record.toGcsRecord();
                     }),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
