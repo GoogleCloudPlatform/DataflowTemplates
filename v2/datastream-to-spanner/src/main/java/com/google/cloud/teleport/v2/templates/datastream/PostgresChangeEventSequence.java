@@ -24,8 +24,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Implementation of ChangeEventSequence for Postgres database which stores change event sequence
@@ -77,24 +77,25 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
    */
   public static PostgresChangeEventSequence createFromShadowTable(
       final TransactionContext transactionContext,
-      String shadowTable,
+      ChangeEventContext context,
       Ddl shadowTableDdl,
-      Key primaryKey,
       boolean useSqlStatements)
       throws ChangeEventSequenceCreationException {
 
     try {
+      String shadowTable = context.getShadowTable();
+      Key primaryKey = context.getPrimaryKey();
       // Read columns from shadow table
       List<String> readColumnList =
-          DatastreamConstants.POSTGRES_SORT_ORDER.values().stream()
-              .map(p -> p.getLeft())
-              .collect(Collectors.toList());
+          java.util.Arrays.asList(
+              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.
       if (useSqlStatements) {
         Statement sql =
-            ShadowTableReadUtils.generateShadowTableReadSQL(
+            SpannerReadUtils.generateReadSQLWithExclusiveLock(
                 shadowTable, readColumnList, primaryKey, shadowTableDdl);
         ResultSet resultSet = transactionContext.executeQuery(sql);
         if (!resultSet.next()) {
@@ -157,5 +158,10 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
           ? parsedLeftLSNComparisonResult
           : this.getParsedLSN(1).compareTo(other.getParsedLSN(1));
     }
+  }
+
+  @Override
+  public String toString() {
+    return "PostgresChangeEventSequence{" + "timestamp=" + timestamp + ", lsn=" + lsn + '}';
   }
 }

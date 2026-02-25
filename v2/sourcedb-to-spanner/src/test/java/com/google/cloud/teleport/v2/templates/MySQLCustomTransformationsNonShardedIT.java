@@ -75,7 +75,7 @@ public class MySQLCustomTransformationsNonShardedIT extends SourceDbToSpannerITB
   }
 
   @Test
-  public void simpleTest() throws Exception {
+  public void testCustomTransformationsNonSharded() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     createAndUploadJarToGcs("CustomTransformationAllTypes");
@@ -113,7 +113,7 @@ public class MySQLCustomTransformationsNonShardedIT extends SourceDbToSpannerITB
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("varbinary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
     row.put("char_column", "newchar");
     row.put("longblob_column", "V29ybWQ=");

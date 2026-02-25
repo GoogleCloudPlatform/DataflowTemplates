@@ -75,6 +75,10 @@ public class FormatDatastreamRecordToJson
   private String rowIdColumnName;
   private Map<String, String> renameColumns = new HashMap<String, String>();
   private boolean hashRowId = false;
+  private String datastreamSourceType;
+
+  private static final Long DATETIME_POSITIVE_INFINITY = 9223372036825200000L;
+  private static final Long DATETIME_NEGATIVE_INFINITY = -9223372036832400000L;
 
   private FormatDatastreamRecordToJson() {}
 
@@ -105,6 +109,12 @@ public class FormatDatastreamRecordToJson
   /** Set the reader to hash Oracle ROWID values into int. */
   public FormatDatastreamRecordToJson withHashRowId(Boolean hashRowId) {
     this.hashRowId = hashRowId;
+    return this;
+  }
+
+  /** Set the Datastream source type override. */
+  public FormatDatastreamRecordToJson withDatastreamSourceType(String datastreamSourceType) {
+    this.datastreamSourceType = datastreamSourceType;
     return this;
   }
 
@@ -144,6 +154,12 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_lsn", getPostgresLsn(record));
       outputObject.put("_metadata_tx_id", getPostgresTxId(record));
+    } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      outputObject.put("_metadata_database", getSourceMetadata(record, "database"));
+      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -160,7 +176,6 @@ public class FormatDatastreamRecordToJson
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadataJson(record));
-
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
 
@@ -200,6 +215,11 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getSourceType(GenericRecord record) {
+    // If datastreamSourceType is provided, use it as override
+    if (this.datastreamSourceType != null && !this.datastreamSourceType.isEmpty()) {
+      return this.datastreamSourceType;
+    }
+
     String sourceType = record.get("read_method").toString().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     return sourceType;
@@ -239,7 +259,13 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getMetadataTable(GenericRecord record) {
-    return ((GenericRecord) record.get("source_metadata")).get("table").toString();
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.getSchema().getField("table") != null
+        && sourceMetadata.get("table") != null) {
+      return sourceMetadata.get("table").toString();
+    }
+
+    return null;
   }
 
   private String getMetadataChangeType(GenericRecord record) {
@@ -338,6 +364,22 @@ public class FormatDatastreamRecordToJson
     return null;
   }
 
+  private String getSecondsFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(0).toString();
+    }
+
+    return null;
+  }
+
+  private String getNanosFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(1).toString();
+    }
+
+    return null;
+  }
+
   private String getPostgresLsn(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
     if (sourceMetadata.getSchema().getField("lsn") != null && sourceMetadata.get("lsn") != null) {
@@ -386,7 +428,22 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, (Boolean) record.get(fieldName));
           break;
         case BYTES:
-          jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          if (record.get(fieldName) instanceof ByteBuffer) {
+            ByteBuffer byteBuffer = (ByteBuffer) record.get(fieldName);
+            byte[] byteArray = new byte[byteBuffer.remaining()];
+            byteBuffer.get(byteArray);
+            jsonObject.put(fieldName, byteArray);
+          } else if (record.get(fieldName) instanceof byte[]) {
+            jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          } else {
+            // Handle other types appropriately, possibly throwing an exception
+            // if the type is unexpected. Or log it.
+            throw new IllegalArgumentException(
+                "Unexpected type for field "
+                    + fieldName
+                    + ": "
+                    + record.get(fieldName).getClass().getName());
+          }
           break;
         case FLOAT:
           String value = record.get(fieldName).toString();
@@ -491,12 +548,19 @@ public class FormatDatastreamRecordToJson
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Duration duration =
-            Duration.ofSeconds(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(fieldName, duration.toString());
+        Long microseconds = (Long) element.get(fieldName);
+        if (microseconds.equals(DATETIME_POSITIVE_INFINITY)) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds.equals(DATETIME_NEGATIVE_INFINITY)) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
+          Duration duration =
+              Duration.ofSeconds(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
+          jsonObject.put(fieldName, duration.toString());
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
@@ -504,11 +568,17 @@ public class FormatDatastreamRecordToJson
         Long microseconds = (Long) element.get(fieldName);
         Long millis = TimeUnit.MICROSECONDS.toMillis(microseconds);
         Instant instant = Instant.ofEpochMilli(millis);
-        // adding the microsecond after it was removed in the millisecond conversion
-        instant = instant.plusNanos(microseconds % 1000 * 1000L);
-        jsonObject.put(
-            fieldName,
-            instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+        if (microseconds.equals(DATETIME_POSITIVE_INFINITY)) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds.equals(DATETIME_NEGATIVE_INFINITY)) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          // adding the microsecond after it was removed in the millisecond conversion
+          instant = instant.plusNanos(microseconds % 1000 * 1000L);
+          jsonObject.put(
+              fieldName,
+              instant.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
         Instant timestamp = Instant.ofEpochMilli(((Long) element.get(fieldName)));
         jsonObject.put(
@@ -608,8 +678,6 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, convertedIntervalNano);
           break;
         default:
-          LOG.warn(
-              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, element);
           ObjectMapper mapper = new ObjectMapper();
           JsonNode dataInput;
           try {

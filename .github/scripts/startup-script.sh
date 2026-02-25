@@ -34,7 +34,14 @@ sudo apt install openjdk-17-jdk-headless -y
 sudo apt install jq -y
 
 # install maven
-sudo apt install git maven -y
+pushd /opt/
+MAVEN_VER=3.9.9
+sudo wget https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VER}/apache-maven-${MAVEN_VER}-bin.tar.gz
+sudo tar -xvzf apache-maven-${MAVEN_VER}-bin.tar.gz apache-maven-${MAVEN_VER}
+sudo rm -f /opt/apache-maven-${MAVEN_VER}-bin.tar.gz
+sudo ln -s /opt/apache-maven-${MAVEN_VER} /opt/maven
+sudo ln -s /opt/maven/bin/mvn /usr/local/bin/mvn
+popd
 
 # install gh
 sudo apt install curl -y \

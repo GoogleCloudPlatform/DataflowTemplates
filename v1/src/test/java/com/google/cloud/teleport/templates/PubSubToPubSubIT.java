@@ -105,7 +105,7 @@ public class PubSubToPubSubIT extends TemplateTestBase {
             .setMinMessages(expectedMessages.size())
             .build();
 
-    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
 
     // Assert
     List<String> actualMessages =

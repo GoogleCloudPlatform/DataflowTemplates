@@ -20,6 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -249,5 +250,120 @@ public class ShadowTableCreatorTest {
     expectedColumnTypes.add(Type.pgInt8().toString());
     expectedColumnTypes.add(Type.pgVarchar().toString());
     assertThat(columnTypes, is(expectedColumnTypes));
+  }
+
+  @Test
+  public void canHandlePkColumnNameCollision() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("timestamp")
+            .timestamp()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("timestamp")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("mysql", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_MyTable");
+    // The original PK column should exist.
+    assertEquals(shadowTable.column("timestamp").type().getCode(), Type.Code.TIMESTAMP);
+    // The new shadow column should have been renamed.
+    assertEquals(shadowTable.column("shadow_timestamp").type().getCode(), Type.Code.INT64);
+  }
+
+  @Test
+  public void canHandleMultiplePkColumnNameCollisions() {
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("MyTable")
+            .column("log_file")
+            .string()
+            .max()
+            .endColumn()
+            .column("shadow_log_file")
+            .int64()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("log_file")
+            .asc("shadow_log_file")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("mysql", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_MyTable");
+    // The original PK columns should exist.
+    assertEquals(shadowTable.column("log_file").type().getCode(), Type.Code.STRING);
+    assertEquals(shadowTable.column("shadow_log_file").type().getCode(), Type.Code.INT64);
+    // The new shadow column should have been renamed twice.
+    assertEquals(shadowTable.column("shadow_shadow_log_file").type().getCode(), Type.Code.STRING);
+  }
+
+  @Test
+  public void testGetSafeShadowColumnName() {
+    // Base case: no collision
+    assertEquals(
+        "log_file",
+        ShadowTableCreator.getSafeShadowColumnName("log_file", Set.of("column1", "column2")));
+
+    // Single collision: should add one prefix
+    assertEquals(
+        "shadow_log_file",
+        ShadowTableCreator.getSafeShadowColumnName("log_file", Set.of("column1", "log_file")));
+
+    // Multiple collisions: should add two prefixes
+    assertEquals(
+        "shadow_shadow_log_file",
+        ShadowTableCreator.getSafeShadowColumnName(
+            "log_file", Set.of("log_file", "shadow_log_file")));
+
+    // Case-insensitivity test
+    assertEquals(
+        "shadow_log_file",
+        ShadowTableCreator.getSafeShadowColumnName("log_file", Set.of("column1", "LOG_FILE")));
+  }
+
+  @Test
+  public void canConstructShadowTableWithGeneratedPrimaryKey() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("id")
+            .int64()
+            .isGenerated(true)
+            .generationExpression("id_gen")
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("mysql", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_MyTable");
+    // The shadow table column should be present but NOT generated
+    Column idColumn = shadowTable.column("id");
+    assertThat(idColumn.isGenerated(), is(false));
+    assertThat(idColumn.generationExpression(), is(""));
   }
 }

@@ -35,13 +35,15 @@
     <packaging>pom</packaging>
 
     <properties>
-        <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <jib.maven.version>3.4.0</jib.maven.version>
         <kafka-clients.version>3.7.0</kafka-clients.version>
-        <opencensus.version>0.31.0</opencensus.version>
-        <protoc.version>3.21.12</protoc.version>
-
+        <opencensus.version>0.31.1</opencensus.version>
+        <protoc.version>4.29.4</protoc.version>
+        <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
+        <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
+        <astra-sdk.version>2.1.4</astra-sdk.version>
+        <astra-io.version>4.18.1</astra-io.version>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
@@ -161,6 +163,11 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>4.33.1</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -190,7 +197,7 @@
                         <from>
                             <!--
                             The Dataflow Template base image to use. This
-                             should not need to change unless we want to use the JDK11
+                             should not need to change unless we want to overwrite image path
                              -->
                             <image>${base-container-image}:${base-container-image.version}</image>
                         </from>
@@ -237,7 +244,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>1.6.0</version>
+                    <version>3.6.2</version>
                     <configuration>
                         <cleanupDaemonThreads>false</cleanupDaemonThreads>
                     </configuration>
@@ -278,12 +285,12 @@
                         <id>copy-dependencies</id>
                         <phase>package</phase>
                         <goals>
-                          <goal>copy-dependencies</goal>
+                            <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                          <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
-                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
-                          <stripVersion>true</stripVersion>
+                            <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
+                            <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
+                            <stripVersion>true</stripVersion>
                         </configuration>
                     </execution>
                     <execution>
@@ -490,13 +497,13 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
+                                    <skip>${skipShade}</skip>
                                     <extraDirectories>
                                         <paths>
                                             <path>${project.build.directory}/extra_libs</path>
                                         </paths>
                                     </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
-                                    <shadeTestJar>true</shadeTestJar>
                                     <artifactSet>
                                         <excludes>
                                             <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
@@ -514,10 +521,22 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                             </excludes>
                                         </filter>
+                                        <filter>
+                                            <artifact>org.apache.hbase:hbase-shaded-client</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/**</exclude>
+                                            </excludes>
+                                        </filter>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/com.squareup.okio/**</exclude>
+                                            </excludes>
+                                        </filter>
                                     </filters>
                                     <transformers>
                                         <transformer
-                                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                     </transformers>
                                 </configuration>
                             </execution>
@@ -682,22 +701,23 @@
         <module>dataplex</module>
         <module>datastream-common</module>
         <module>datastream-to-bigquery</module>
+        <module>datastream-mongodb-to-firestore</module>
         <module>datastream-to-mongodb</module>
-        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>gcs-to-sourcedb</module>
+        <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
-        <module>googlecloud-to-mongodb</module>
+        <module>googlecloud-and-jms</module>
+        <module>googlecloud-and-mongodb</module>
         <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
         <module>google-ads-to-googlecloud</module>
         <module>jdbc-common</module>
-        <module>jdbc-to-googlecloud</module>
-        <module>jms-to-pubsub</module>
+        <module>jdbc-and-googlecloud</module>
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
@@ -705,16 +725,14 @@
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
-        <module>mongodb-to-googlecloud</module>
+        <module>managed-io-to-managed-io</module>
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
-        <module>pubsub-to-jms</module>
         <module>pubsub-to-kafka</module>
-        <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>
@@ -724,6 +742,11 @@
         <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+        <module>googlecloud-to-clickhouse</module>
+        <module>clickhouse-common</module>
+        <module>real-spanner-service</module>
+        <module>failure-injected-spanner-service</module>
+        <module>failure-injection-policies</module>
     </modules>
 
 </project>

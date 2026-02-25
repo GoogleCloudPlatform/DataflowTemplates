@@ -83,7 +83,7 @@ public class PostgreSQLReservedKeywordsIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
 
     ImmutableList<Struct> reservedKeywordsSpanner =
-        spannerResourceManager.readTableRecords("reserved_keywords", "id");
+        spannerResourceManager.readTableRecords("true", "id");
     SpannerAsserts.assertThatStructs(reservedKeywordsSpanner).hasRows(1);
 
     ImmutableList<Struct> reservedKeywordsPkSpanner =

@@ -17,20 +17,23 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -49,12 +52,6 @@ import org.slf4j.LoggerFactory;
           + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
           + " the relational database. You can use this template to copy data from any relational"
           + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-          + " Base64-encoded username, password, and connection string parameters encrypted with"
-          + " the Cloud KMS key. See the <a"
-          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-          + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
@@ -70,8 +67,6 @@ import org.slf4j.LoggerFactory;
     })
 public class SourceDbToSpanner {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
-
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -82,10 +77,19 @@ public class SourceDbToSpanner {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
+    SourceDbToSpannerOptions options = getSourceDbToSpannerOptions(args);
+    run(options);
+  }
+
+  @VisibleForTesting
+  protected static SourceDbToSpannerOptions getSourceDbToSpannerOptions(String[] args) {
     // Parse the user options passed from the command-line
     SourceDbToSpannerOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
-    run(options);
+    // Stage SSL certificates to extraFiles if required as per the pipeline options.
+    // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
+    new CommonTemplateJvmInitializer().beforeProcessing(options);
+    return options;
   }
 
   /**
@@ -98,6 +102,9 @@ public class SourceDbToSpanner {
   static PipelineResult run(SourceDbToSpannerOptions options) {
     // TODO - Validate if options are as expected
     Pipeline pipeline = Pipeline.create(options);
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
@@ -105,10 +112,19 @@ public class SourceDbToSpanner {
     // TODO(vardhanvthigle): Move this within pipelineController.
     switch (options.getSourceDbDialect()) {
       case SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT:
+        Preconditions.checkArgument(
+            StringUtils.isNotEmpty(options.getSourceConfigURL()),
+            "Cassandra Dialect needs sourceConfigURL to be set.");
         return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+      case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT:
+        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+
       default:
         /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
         /* Making jdbc as default case which includes MYSQL and PG. */
+        Preconditions.checkArgument(
+            StringUtils.isNotEmpty(options.getSourceConfigURL()),
+            "JDBC based source needs sourceConfigURL to be set.");
         return executeJdbcMigration(options, pipeline, spannerConfig);
     }
   }
@@ -130,10 +146,16 @@ public class SourceDbToSpanner {
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
-    return SpannerConfig.create()
-        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    if (options.getMaxCommitDelay() >= 0) {
+      spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
+    }
+    return spannerConfig;
   }
 }

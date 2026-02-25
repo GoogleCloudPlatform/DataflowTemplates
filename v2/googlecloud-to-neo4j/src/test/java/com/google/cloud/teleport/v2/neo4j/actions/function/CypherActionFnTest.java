@@ -28,8 +28,8 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.importer.v1.actions.ActionStage;
-import org.neo4j.importer.v1.actions.CypherAction;
-import org.neo4j.importer.v1.actions.CypherExecutionMode;
+import org.neo4j.importer.v1.actions.plugin.CypherAction;
+import org.neo4j.importer.v1.actions.plugin.CypherExecutionMode;
 
 public class CypherActionFnTest {
   private final Neo4jConnection connection = mock(Neo4jConnection.class);

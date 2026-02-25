@@ -26,6 +26,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
@@ -39,6 +41,7 @@ import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.Wait;
@@ -106,7 +109,8 @@ public class PipelineController {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
     LOG.info(
-        "running migration for shards: {}",
+        "running migration for {} shards: {}",
+        shards.stream().count(),
         shards.stream().map(Shard::getHost).collect(Collectors.toList()));
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
@@ -157,7 +161,7 @@ public class PipelineController {
           spannerTables.stream()
               .map(t -> tableSelector.getSchemaMapper().getSourceTableName("", t))
               .collect(Collectors.toList());
-      LOG.info("level: {} source tables: {}", currentLevel, spannerTables);
+      LOG.info("level: {} source tables: {}", currentLevel, sourceTables);
       PCollection<Void> previousLevelPCollection = levelVsOutputMap.get(currentLevel - 1);
       if (currentLevel > 0 && previousLevelPCollection == null) {
         LOG.warn(
@@ -180,6 +184,13 @@ public class PipelineController {
       Map<String, String> srcTableToShardIdColumnMap =
           configContainer.getSrcTableToShardIdColumnMap(
               tableSelector.getSchemaMapper(), spannerTables);
+
+      if (options.getFailureInjectionParameter() != null
+          && !options.getFailureInjectionParameter().isBlank()) {
+        spannerConfig =
+            SpannerServiceFactoryImpl.createSpannerService(
+                spannerConfig, options.getFailureInjectionParameter());
+      }
 
       PCollection<Void> output =
           pipeline.apply(
@@ -239,9 +250,47 @@ public class PipelineController {
 
   @VisibleForTesting
   static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
+    // Check if config types are specified
+    boolean hasSessionFile =
+        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
+    boolean hasSchemaOverridesFile =
+        options.getSchemaOverridesFilePath() != null
+            && !options.getSchemaOverridesFilePath().equals("");
+    boolean hasStringOverrides =
+        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
+            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
+
+    int overrideTypesCount = 0;
+    if (hasSessionFile) {
+      overrideTypesCount++;
+    }
+    if (hasSchemaOverridesFile) {
+      overrideTypesCount++;
+    }
+    if (hasStringOverrides) {
+      overrideTypesCount++;
+    }
+
+    if (overrideTypesCount > 1) {
+      throw new IllegalArgumentException(
+          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
+              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+    }
+
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
+    if (hasSessionFile) {
       schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
+    } else if (hasSchemaOverridesFile) {
+      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
+    } else if (hasStringOverrides) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
     }
     return schemaMapper;
   }
@@ -316,7 +365,8 @@ public class PipelineController {
           options.getMaxConnections(),
           options.getNumPartitions(),
           waitOnSignal,
-          options.getFetchSize());
+          options.getFetchSize(),
+          options.getUniformizationStageCountHint());
     }
 
     @Override

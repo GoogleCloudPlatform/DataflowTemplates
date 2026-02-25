@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
@@ -93,18 +94,37 @@ public final class CSVRecordToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
 
-    CSVRecord csvRecord =
+    List<CSVRecord> csvRecords =
         CSVParser.parse(
-                "123,a string,`another"
-                    + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
-                    + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`",
+                List.<String>of(
+                        "123,a string,`another"
+                            + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                            + "-439.25335679,`{\"a\":[1,null,true],"
+                            + "\"b\":{\"a\":\"\\\"hello\\\"\"}}`,11111111-1111-1111-1111-111111111111",
+                        "124,a string,`another"
+                            + " string`,1.23,false,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                            + "-439.25335679,`{\"a\":[1,null,true],"
+                            + "\"b\":{\"a\":\"\\\"hello\\\"\"}}`,11111111-1111-1111-1111-111111111111",
+                        "125,a string,`another"
+                            + " string`,1.23,0,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                            + "-439.25335679,`{\"a\":[1,null,true],"
+                            + "\"b\":{\"a\":\"\\\"hello\\\"\"}}`,11111111-1111-1111-1111-111111111111",
+                        "126,a string,`another"
+                            + " string`,1.23,100,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                            + "-439.25335679,`{\"a\":[1,null,true],"
+                            + "\"b\":{\"a\":\"\\\"hello\\\"\"}}`,11111111-1111-1111-1111-111111111111")
+                    .stream()
+                    .collect(Collectors.joining("\r\n")),
                 csvFormat.withQuote('`').withTrailingDelimiter(true))
-            .getRecords()
-            .get(0);
+            .getRecords();
+    var kVRecords =
+        csvRecords.stream()
+            .map(record -> KV.of(testTableName, record))
+            .collect(Collectors.toList());
     PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(KV.of(testTableName, csvRecord))
+            Create.of(kVRecords)
                 .withCoder(
                     KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
@@ -118,33 +138,113 @@ public final class CSVRecordToMutationTest {
                         invalidOutputPath,
                         errorTag))
                 .withSideInputs(ddlView, tableColumnsMapView));
-
     PAssert.that(mutations)
         .containsInAnyOrder(
-            Mutation.newInsertOrUpdateBuilder(testTableName)
-                .set("int_col")
-                .to(123)
-                .set("str_10_col")
-                .to("a string")
-                .set("str_max_col")
-                .to("another string")
-                .set("float_col")
-                .to(1.23)
-                .set("bool_col")
-                .to(true)
-                .set("date_col")
-                .to(Value.date(Date.parseDate("2019-01-01")))
-                .set("timestamp_col")
-                .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
-                .set("timestamp_col_epoch")
-                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
-                .set("byte_col")
-                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
-                .set("numeric_col")
-                .to("-439.25335679")
-                .set("json_col")
-                .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
-                .build());
+            List.of(
+                Mutation.newInsertOrUpdateBuilder(testTableName)
+                    .set("int_col")
+                    .to(123)
+                    .set("str_10_col")
+                    .to("a string")
+                    .set("str_max_col")
+                    .to("another string")
+                    .set("float_col")
+                    .to(1.23)
+                    .set("bool_col")
+                    .to(true)
+                    .set("date_col")
+                    .to(Value.date(Date.parseDate("2019-01-01")))
+                    .set("timestamp_col")
+                    .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                    .set("timestamp_col_epoch")
+                    .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                    .set("byte_col")
+                    .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                    .set("numeric_col")
+                    .to("-439.25335679")
+                    .set("json_col")
+                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .set("uuid_col")
+                    .to("11111111-1111-1111-1111-111111111111")
+                    .build(),
+                Mutation.newInsertOrUpdateBuilder(testTableName)
+                    .set("int_col")
+                    .to(124)
+                    .set("str_10_col")
+                    .to("a string")
+                    .set("str_max_col")
+                    .to("another string")
+                    .set("float_col")
+                    .to(1.23)
+                    .set("bool_col")
+                    .to(false)
+                    .set("date_col")
+                    .to(Value.date(Date.parseDate("2019-01-01")))
+                    .set("timestamp_col")
+                    .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                    .set("timestamp_col_epoch")
+                    .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                    .set("byte_col")
+                    .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                    .set("numeric_col")
+                    .to("-439.25335679")
+                    .set("json_col")
+                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .set("uuid_col")
+                    .to("11111111-1111-1111-1111-111111111111")
+                    .build(),
+                Mutation.newInsertOrUpdateBuilder(testTableName)
+                    .set("int_col")
+                    .to(125)
+                    .set("str_10_col")
+                    .to("a string")
+                    .set("str_max_col")
+                    .to("another string")
+                    .set("float_col")
+                    .to(1.23)
+                    .set("bool_col")
+                    .to(false)
+                    .set("date_col")
+                    .to(Value.date(Date.parseDate("2019-01-01")))
+                    .set("timestamp_col")
+                    .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                    .set("timestamp_col_epoch")
+                    .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                    .set("byte_col")
+                    .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                    .set("numeric_col")
+                    .to("-439.25335679")
+                    .set("json_col")
+                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .set("uuid_col")
+                    .to("11111111-1111-1111-1111-111111111111")
+                    .build(),
+                Mutation.newInsertOrUpdateBuilder(testTableName)
+                    .set("int_col")
+                    .to(126)
+                    .set("str_10_col")
+                    .to("a string")
+                    .set("str_max_col")
+                    .to("another string")
+                    .set("float_col")
+                    .to(1.23)
+                    .set("bool_col")
+                    .to(true)
+                    .set("date_col")
+                    .to(Value.date(Date.parseDate("2019-01-01")))
+                    .set("timestamp_col")
+                    .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                    .set("timestamp_col_epoch")
+                    .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                    .set("byte_col")
+                    .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                    .set("numeric_col")
+                    .to("-439.25335679")
+                    .set("json_col")
+                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .set("uuid_col")
+                    .to("11111111-1111-1111-1111-111111111111")
+                    .build()));
 
     pipeline.run();
   }
@@ -661,7 +761,7 @@ public final class CSVRecordToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
     CSVRecord csvRecord =
-        CSVParser.parse("123,a string,yet another string,1.23,True,,,,,,,", csvFormat)
+        CSVParser.parse("123,a string,yet another string,1.23,True,,,,,,,,", csvFormat)
             .getRecords()
             .get(0);
     PCollection<KV<String, CSVRecord>> input =
@@ -776,7 +876,7 @@ public final class CSVRecordToMutationTest {
         CSVParser.parse(
                 "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
                     + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
-                    + ", \"dsafaaf\"]}',1910-01-01,2017-10-28T12:59:59Z",
+                    + ", \"dsafaaf\"]}',1910-01-01,2017-10-28T12:59:59Z,11111111-1111-1111-1111-111111111111",
                 csvFormat.withQuote('\'').withTrailingDelimiter(true))
             .getRecords()
             .get(0);
@@ -826,6 +926,8 @@ public final class CSVRecordToMutationTest {
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .set("commit_timestamp_col")
                 .to(Value.timestamp(Timestamp.parseTimestamp("2017-10-28T12:59:59Z")))
+                .set("uuid_col")
+                .to("11111111-1111-1111-1111-111111111111")
                 .build());
 
     pipeline.run();
@@ -1061,6 +1163,9 @@ public final class CSVRecordToMutationTest {
             .column("json_col")
             .json()
             .endColumn()
+            .column("uuid_col")
+            .uuid()
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -1111,6 +1216,9 @@ public final class CSVRecordToMutationTest {
             .endColumn()
             .column("commit_timestamp_col")
             .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("uuid_col")
+            .pgUuid()
             .endColumn()
             .primaryKey()
             .asc("int_col")

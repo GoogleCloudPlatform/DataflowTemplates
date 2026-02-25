@@ -20,7 +20,6 @@ import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
-import com.datastax.oss.driver.api.core.type.CqlVectorType;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.ListType;
 import com.datastax.oss.driver.api.core.type.SetType;
@@ -149,10 +148,12 @@ public class AstraDbToBigQueryMappingFn
         return StandardSQLTypeName.BOOL;
 
       case ProtocolConstants.DataType.CUSTOM:
-        if (type instanceof CqlVectorType) {
+        // Check if this is a vector type by examining the CQL representation
+        String cqlType = type.asCql(false, false);
+        if (cqlType.toLowerCase().startsWith("vector<")) {
           return StandardSQLTypeName.BYTES;
         } else {
-          throw new IllegalArgumentException("Invalid custom type " + type.asCql(false, false));
+          throw new IllegalArgumentException("Invalid custom type " + cqlType);
         }
       default:
         throw new IllegalArgumentException(

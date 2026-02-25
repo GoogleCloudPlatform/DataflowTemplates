@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.jline.utils.Log;
 import org.json.JSONObject;
 
 public class ChangeEventToMapConvertor {
@@ -82,6 +83,8 @@ public class ChangeEventToMapConvertor {
       } else if (columnValue instanceof String) {
         ((ObjectNode) changeEvent).put(columnName, (String) columnValue);
       } else {
+        Log.error(
+            "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
         throw new InvalidTransformationException(
             "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
       }

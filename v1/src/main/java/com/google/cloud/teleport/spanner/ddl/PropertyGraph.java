@@ -94,6 +94,22 @@ public abstract class PropertyGraph implements Serializable {
     public ImmutableList<String> properties;
   }
 
+  public static class GraphDynamicLabelExpression implements Serializable {
+    public GraphDynamicLabelExpression(String dynamicLabelExpression) {
+      this.dynamicLabelExpression = dynamicLabelExpression;
+    }
+
+    public String dynamicLabelExpression;
+  }
+
+  public static class GraphDynamicPropertiesExpression implements Serializable {
+    public GraphDynamicPropertiesExpression(String dynamicPropertiesExpression) {
+      this.dynamicPropertiesExpression = dynamicPropertiesExpression;
+    }
+
+    public String dynamicPropertiesExpression;
+  }
+
   public abstract ImmutableList<GraphElementLabel> labels();
 
   public abstract Dialect dialect();

@@ -1,0 +1,17 @@
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPostgres
+      config:
+        jdbc_url: "{{ JDBC_URL }}"
+        username: "{{ JDBC_USERNAME }}"
+        password: "{{ JDBC_PASSWORD }}"
+        read_query: "{{ JDBC_QUERY }}"
+        driver_jars: "{{ JDBC_DRIVER_JARS }}"
+        driver_class_name: "{{ JDBC_DRIVER_CLASS_NAME }}"
+    - type: WriteToBigQuery
+      config:
+        table: "{{ BQ_TABLE_SPEC }}"
+        # Example optional parameters (defaults are usually fine for simple cases):
+        # write_disposition: "WRITE_APPEND"
+        # create_disposition: "CREATE_IF_NEEDED"

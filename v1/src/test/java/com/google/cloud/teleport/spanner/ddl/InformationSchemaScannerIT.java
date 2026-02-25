@@ -85,6 +85,12 @@ public class InformationSchemaScannerIT {
 
   @BeforeClass
   public static void setupInstancePartition() throws Exception {
+    // To avoid failure due to already existing instance partition
+    try {
+      SPANNER_SERVER.deleteInstancePartition(INSTANCE_PARTITION_ID);
+    } catch (Exception e) {
+      // Ignore exception if instance partition does not exist.
+    }
     SPANNER_SERVER.createInstancePartition(INSTANCE_PARTITION_ID, "nam3");
   }
 
@@ -488,7 +494,87 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
-  public void complexPropertyGraph() throws Exception {}
+  public void dynamicPropertyGraph() throws Exception {
+    String nodeTableDef =
+        "CREATE TABLE NodeTest (\n"
+            + "  Id INT64 NOT NULL,\n"
+            + "  DynamicLabelCol STRING(MAX)\n"
+            + ") PRIMARY KEY(Id)";
+    String edgeTableDef =
+        "CREATE TABLE EdgeTest (\n"
+            + "  FromId INT64 NOT NULL,\n"
+            + "  ToId INT64 NOT NULL,\n"
+            + "  DynamicPropsCol JSON\n"
+            + ") PRIMARY KEY(FromId, ToId)";
+    String propertyGraphDef =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "  NODE TABLES(\n"
+            + "    NodeTest\n"
+            + "      KEY(Id)\n"
+            + "      LABEL Test PROPERTIES(\n"
+            + "        Id)\n"
+            // Add the DYNAMIC LABEL clause
+            + "      DYNAMIC LABEL(DynamicLabelCol))\n"
+            + "  EDGE TABLES(\n"
+            + "    EdgeTest\n"
+            + "      KEY(FromId, ToId)\n"
+            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      DEFAULT LABEL PROPERTIES ALL COLUMNS\n"
+            // Add the DYNAMIC PROPERTIES clause
+            + "      DYNAMIC PROPERTIES(DynamicPropsCol))";
+
+    SPANNER_SERVER.createDatabase(
+        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(ddl.table("NodeTest"), notNullValue());
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+
+    assertEquals(testGraph.name(), "testGraph");
+    assertThat(testGraph.propertyDeclarations(), hasSize(4));
+
+    // --- Assertions for Node Table ---
+    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
+    assertThat(nodeTestTable, notNullValue());
+    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
+    // Assert that the dynamic label expression is correctly captured
+    assertThat(
+        nodeTestTable.dynamicLabelExpression().dynamicLabelExpression, equalTo("DynamicLabelCol"));
+
+    // --- Assertions for Edge Table ---
+    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
+    assertThat(edgeTestTable, notNullValue());
+    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
+    // Assert that the dynamic properties expression is correctly captured
+    assertThat(
+        edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
+        equalTo("DynamicPropsCol"));
+
+    // Assertions for the edge's default label properties
+    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
+    assertThat(edgeTestLabel, notNullValue());
+    // The number of properties for the default label now includes the new column
+    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(3)); // FromId, ToId, DynamicPropsCol
+
+    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+        edgeTestLabel.getPropertyDefinition("FromId");
+    assertThat(edgeTestFromIdProperty, notNullValue());
+
+    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+        edgeTestLabel.getPropertyDefinition("ToId");
+    assertThat(edgeTestToIdProperty, notNullValue());
+
+    GraphElementTable.PropertyDefinition edgeTestDynamicPropsProperty =
+        edgeTestLabel.getPropertyDefinition("DynamicPropsCol");
+    assertThat(edgeTestDynamicPropsProperty, notNullValue());
+    assertThat(edgeTestDynamicPropsProperty.name, equalTo("DynamicPropsCol"));
+    assertThat(edgeTestDynamicPropsProperty.valueExpressionString, equalTo("DynamicPropsCol"));
+  }
 
   @Test
   public void simpleView() throws Exception {
@@ -536,6 +622,71 @@ public class InformationSchemaScannerIT {
     assertThat(ddl.view("nAmes"), sameInstance(view));
 
     assertThat(view.query(), equalTo("SELECT name FROM \"Users\""));
+  }
+
+  @Test
+  public void simpleUdf() throws Exception {
+    String namedSchemaDef = "CREATE SCHEMA s1";
+    String udfDef1 = "CREATE FUNCTION s1.foo() AS (1)";
+    String udfDef2 =
+        "CREATE FUNCTION s1.default_values("
+            + "A STRING, "
+            + "B STRING DEFAULT NULL, "
+            + "C STRING DEFAULT 'NULL', "
+            + "D STRING DEFAULT '') "
+            + "RETURNS STRING AS (CONCAT(A, '::', B, '::', C, '::', D))";
+
+    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.schema("s1"), notNullValue());
+
+    assertThat(ddl.udfs(), hasSize(2));
+    Udf udf1 = ddl.udf("s1.foo");
+    assertThat(udf1, notNullValue());
+    assertThat(ddl.udf("S1.FOO"), sameInstance(udf1));
+
+    Udf udf2 = ddl.udf("s1.default_values");
+    assertThat(udf2, notNullValue());
+    assertThat(ddl.udf("S1.DEFault_values"), sameInstance(udf2));
+
+    assertThat(udf1.name(), equalTo("s1.foo"));
+    assertThat(udf1.type(), equalTo("INT64"));
+    assertThat(udf1.definition(), equalTo("1"));
+    assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+
+    assertThat(udf2.name(), equalTo("s1.default_values"));
+    assertThat(udf2.type(), equalTo("STRING"));
+    assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+    assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+    assertThat(
+        udf2.parameters(),
+        hasItems(
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("A")
+                .type("STRING")
+                .defaultExpression(null)
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("B")
+                .type("STRING")
+                .defaultExpression("NULL")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("C")
+                .type("STRING")
+                .defaultExpression("'NULL'")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("D")
+                .type("STRING")
+                .defaultExpression("''")
+                .autoBuild()));
   }
 
   @Test
@@ -736,6 +887,39 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void pgSearchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Users\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  PRIMARY KEY (\"userid\")"
+                + " )",
+            " CREATE TABLE \"Messages\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  \"messageid\"                           bigint NOT NULL,"
+                + "  \"orderid\"                             bigint NOT NULL,"
+                + "  \"orderid_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_number(orderid)) VIRTUAL HIDDEN,"
+                + "  \"subject\"                             character varying,"
+                + "  \"subject_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(subject)) STORED HIDDEN,"
+                + "  \"body\"                                character varying,"
+                + "  \"body_tokens\"                         spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(body)) STORED HIDDEN,"
+                + "  \"data\"                                character varying,"
+                + "   PRIMARY KEY (\"userid\", \"messageid\")"
+                + " ) INTERLEAVE IN PARENT \"Users\"",
+            " CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\")"
+                + " PARTITION BY \"userid\""
+                + " ORDER BY \"orderid\""
+                + " INTERLEAVE IN \"Users\""
+                + " WITH (sort_order_sharding=TRUE)");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void vectorIndexes() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -749,6 +933,27 @@ public class InformationSchemaScannerIT {
 
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // CREATE INDEX vector_index ON Base USING ScaNN (embedding_column)
+  // INCLUDE (v1, v2) WITH (distance_type = 'COSINE', tree_depth = 3)
+  // WHERE (embedding_column IS NOT NULL);
+  @Test
+  public void pgVectorIndexes() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Base\" ("
+                + " \"K\"                                     bigint NOT NULL,"
+                + " \"V\"                                     bigint,"
+                + " \"Embeddings\"                            double precision[] vector length 128,"
+                + " PRIMARY KEY (\"K\")"
+                + " )",
+            " CREATE INDEX \"VI\" ON \"Base\" USING ScaNN (\"Embeddings\" )"
+                + " WITH (distance_type='COSINE') WHERE \"Embeddings\" IS NOT NULL");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
@@ -947,7 +1152,8 @@ public class InformationSchemaScannerIT {
   public void pgGeneratedColumns() throws Exception {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
-            + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_stored\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_virtual\" bigint GENERATED ALWAYS AS ((id / '1'::bigint)) VIRTUAL, "
             + " PRIMARY KEY (\"id\") )";
 
     SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
@@ -973,6 +1179,35 @@ public class InformationSchemaScannerIT {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
             + " \"generated\"                              bigint NOT NULL DEFAULT '10'::bigint,"
+            + " PRIMARY KEY (\"id\") )";
+
+    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void onUpdateColumns() throws Exception {
+    String statement =
+        "CREATE TABLE `T` ("
+            + " `id` INT64 NOT NULL,"
+            + " `on_update` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP()) "
+            + "    ON UPDATE (PENDING_COMMIT_TIMESTAMP()) "
+            + "    OPTIONS (allow_commit_timestamp=TRUE),"
+            + " ) PRIMARY KEY (`id` ASC)";
+
+    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void pgOnUpdateColumns() throws Exception {
+    String statement =
+        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+            + " \"on_update\" SPANNER.COMMIT_TIMESTAMP "
+            + "    DEFAULT (SPANNER.PENDING_COMMIT_TIMESTAMP()) "
+            + "    ON UPDATE (SPANNER.PENDING_COMMIT_TIMESTAMP()),"
             + " PRIMARY KEY (\"id\") )";
 
     SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
@@ -1324,5 +1559,301 @@ public class InformationSchemaScannerIT {
     Ddl ddl = getPgDatabaseDdl();
     statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void defaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( default_time_zone = \"UTC\" )\n\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void pgDefaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList("ALTER DATABASE \"" + dbId + "\" SET spanner.default_time_zone = 'UTC'\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void propertyGraphOnViewGroupBy() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE GraphTablePerson(loc_id INT64, pid INT64) PRIMARY KEY(loc_id, pid)",
+            "CREATE TABLE GraphTableAccount(loc_id INT64, aid INT64, owner_id INT64, name"
+                + " STRING(MAX), account_kind INT64, ProtoColumn BYTES(MAX), generated_enum_field"
+                + " INT64, another_enum_field INT64) PRIMARY KEY(loc_id, aid)",
+            "CREATE VIEW V_GroupByPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid, COUNT(*)"
+                + " AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER BY cnt DESC",
+            "CREATE VIEW V_FilteredPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
+                + " GraphTablePerson AS t WHERE t.loc_id = 1",
+            "CREATE PROPERTY GRAPH aml_view_complex\n"
+                + "  NODE TABLES (\n"
+                + "    V_GroupByPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid, cnt),\n"
+                + "    V_FilteredPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid),\n"
+                + "    GraphTableAccount KEY(loc_id, aid) PROPERTIES(loc_id, aid, owner_id, name,"
+                + " account_kind, ProtoColumn, generated_enum_field, another_enum_field)\n"
+                + "  )\n"
+                + "  EDGE TABLES (\n"
+                + "    GraphTableAccount AS Owns KEY(loc_id, aid)\n"
+                + "      SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id, pid)\n"
+                + "      DESTINATION KEY(loc_id, aid) REFERENCES GraphTableAccount(loc_id, aid)"
+                + " PROPERTIES(loc_id, aid, owner_id)\n"
+                + "  )");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "CREATE TABLE `GraphTableAccount` (\n"
+            + "\t`loc_id`                                INT64,\n"
+            + "\t`aid`                                   INT64,\n"
+            + "\t`owner_id`                              INT64,\n"
+            + "\t`name`                                  STRING(MAX),\n"
+            + "\t`account_kind`                          INT64,\n"
+            + "\t`ProtoColumn`                           BYTES(MAX),\n"
+            + "\t`generated_enum_field`                  INT64,\n"
+            + "\t`another_enum_field`                    INT64,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `aid` ASC)\n\n\n"
+            + "CREATE TABLE `GraphTablePerson` (\n"
+            + "\t`loc_id`                                INT64,\n"
+            + "\t`pid`                                   INT64,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `pid` ASC)\n\n\n"
+            + "CREATE VIEW `V_FilteredPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
+            + " GraphTablePerson AS t WHERE t.loc_id = 1\n"
+            + "CREATE VIEW `V_GroupByPerson` SQL SECURITY INVOKER AS SELECT t.loc_id,"
+            + " t.pid, COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER"
+            + " BY cnt DESC\n"
+            + "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "GraphTableAccount AS GraphTableAccount\n"
+            + " KEY (loc_id, aid)\n"
+            + "LABEL GraphTableAccount PROPERTIES(account_kind, aid, another_enum_field,"
+            + " generated_enum_field, loc_id, name, owner_id, ProtoColumn), V_FilteredPerson AS"
+            + " V_FilteredPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_FilteredPerson PROPERTIES(loc_id, pid), V_GroupByPerson AS V_GroupByPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_GroupByPerson PROPERTIES(cnt, loc_id, pid))\n"
+            + "EDGE TABLES(\n"
+            + "GraphTableAccount AS Owns\n"
+            + " KEY (loc_id, aid)\n"
+            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
+            + " KEY(aid, loc_id) REFERENCES GraphTableAccount(aid,loc_id)\n"
+            + "LABEL Owns PROPERTIES(aid, loc_id, owner_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void propertyGraphOnViewSimple() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE TableA(id INT64) PRIMARY KEY(id)",
+            "CREATE VIEW ViewA SQL SECURITY INVOKER AS SELECT TableA.id FROM TableA",
+            "CREATE TABLE TableB(id INT64) PRIMARY KEY(id)",
+            "CREATE VIEW ViewB SQL SECURITY INVOKER AS SELECT TableB.id FROM TableB",
+            "CREATE PROPERTY GRAPH aml_view_complex\n"
+                + "  NODE TABLES (\n"
+                + "    ViewA KEY (id),\n"
+                + "    ViewB KEY (id)\n"
+                + "  )\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "CREATE TABLE `TableA` (\n"
+            + "\t`id`                                    INT64,\n"
+            + ") PRIMARY KEY (`id` ASC)\n\n\n"
+            + "CREATE TABLE `TableB` (\n"
+            + "\t`id`                                    INT64,\n"
+            + ") PRIMARY KEY (`id` ASC)\n\n\n"
+            + "CREATE VIEW `ViewA` SQL SECURITY INVOKER AS SELECT TableA.id FROM TableA\n"
+            + "CREATE VIEW `ViewB` SQL SECURITY INVOKER AS SELECT TableB.id FROM TableB\n"
+            + "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "ViewA AS ViewA\n"
+            + " KEY (id)\n"
+            + "LABEL ViewA PROPERTIES(id), ViewB AS ViewB\n"
+            + " KEY (id)\n"
+            + "LABEL ViewB PROPERTIES(id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void propertyGraphOnViewMixedOrder() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE Parts(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
+            "CREATE VIEW PartView SQL SECURITY INVOKER AS SELECT Parts.part_id, Parts.part_name FROM Parts",
+            "CREATE TABLE Suppliers(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
+                + " KEY(supplier_id)",
+            "CREATE VIEW SupplierView SQL SECURITY INVOKER AS SELECT Suppliers.supplier_id, Suppliers.supplier_name"
+                + " FROM Suppliers",
+            "CREATE TABLE PartSuppliers(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
+                + " supplier_id)",
+            "CREATE VIEW PartSuppliersView SQL SECURITY INVOKER AS SELECT PartSuppliers.part_id, PartSuppliers.supplier_id"
+                + " FROM PartSuppliers",
+            "CREATE PROPERTY GRAPH SupplyChainGraph\n"
+                + "  NODE TABLES (\n"
+                + "    PartView KEY (part_id),\n"
+                + "    SupplierView KEY (supplier_id)\n"
+                + "  )\n"
+                + "  EDGE TABLES (\n"
+                + "    PartSuppliersView KEY (part_id, supplier_id)\n"
+                + "      SOURCE KEY (part_id) REFERENCES PartView(part_id)\n"
+                + "      DESTINATION KEY (supplier_id) REFERENCES SupplierView(supplier_id)\n"
+                + "  )");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "CREATE TABLE `Parts` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`part_name`                             STRING(MAX),\n"
+            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
+            + "CREATE TABLE `PartSuppliers` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
+            + "CREATE TABLE `Suppliers` (\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + "\t`supplier_name`                         STRING(MAX),\n"
+            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
+            + "CREATE VIEW `PartSuppliersView` SQL SECURITY INVOKER AS SELECT PartSuppliers.part_id,"
+            + " PartSuppliers.supplier_id FROM PartSuppliers\n"
+            + "CREATE VIEW `PartView` SQL SECURITY INVOKER AS SELECT Parts.part_id, Parts.part_name"
+            + " FROM Parts\n"
+            + "CREATE VIEW `SupplierView` SQL SECURITY INVOKER AS SELECT Suppliers.supplier_id,"
+            + " Suppliers.supplier_name FROM Suppliers\n"
+            + "CREATE PROPERTY GRAPH SupplyChainGraph\n"
+            + "NODE TABLES(\n"
+            + "PartView AS PartView\n"
+            + " KEY (part_id)\n"
+            + "LABEL PartView PROPERTIES(part_id, part_name), SupplierView AS SupplierView\n"
+            + " KEY (supplier_id)\n"
+            + "LABEL SupplierView PROPERTIES(supplier_id, supplier_name))\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView AS PartSuppliersView\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView(part_id)\n"
+            + "DESTINATION KEY(supplier_id) REFERENCES SupplierView(supplier_id)\n"
+            + "LABEL PartSuppliersView PROPERTIES(part_id, supplier_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void propertyGraphOnViewTablesFirst() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE Parts2(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
+            "CREATE TABLE Suppliers2(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
+                + " KEY(supplier_id)",
+            "CREATE TABLE PartSuppliers2(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
+                + " supplier_id)",
+            "CREATE VIEW PartView2 SQL SECURITY INVOKER AS SELECT Parts2.part_id, Parts2.part_name FROM"
+                + " Parts2",
+            "CREATE VIEW SupplierView2 SQL SECURITY INVOKER AS SELECT Suppliers2.supplier_id, Suppliers2.supplier_name"
+                + " FROM Suppliers2",
+            "CREATE VIEW PartSuppliersView2 SQL SECURITY INVOKER AS SELECT PartSuppliers2.part_id, PartSuppliers2.supplier_id"
+                + " FROM PartSuppliers2",
+            "CREATE PROPERTY GRAPH SupplyChainGraph2\n"
+                + "  NODE TABLES (\n"
+                + "    PartView2 KEY (part_id),\n"
+                + "    SupplierView2 KEY (supplier_id)\n"
+                + "  )\n"
+                + "  EDGE TABLES (\n"
+                + "    PartSuppliersView2 KEY (part_id, supplier_id)\n"
+                + "      SOURCE KEY (part_id) REFERENCES PartView2(part_id)\n"
+                + "      DESTINATION KEY (supplier_id) REFERENCES SupplierView2(supplier_id)\n"
+                + "  )");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "CREATE TABLE `Parts2` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`part_name`                             STRING(MAX),\n"
+            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
+            + "CREATE TABLE `PartSuppliers2` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
+            + "CREATE TABLE `Suppliers2` (\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + "\t`supplier_name`                         STRING(MAX),\n"
+            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
+            + "CREATE VIEW `PartSuppliersView2` SQL SECURITY INVOKER AS SELECT"
+            + " PartSuppliers2.part_id, PartSuppliers2.supplier_id FROM PartSuppliers2\n"
+            + "CREATE VIEW `PartView2` SQL SECURITY INVOKER AS SELECT Parts2.part_id,"
+            + " Parts2.part_name FROM Parts2\n"
+            + "CREATE VIEW `SupplierView2` SQL SECURITY INVOKER AS SELECT"
+            + " Suppliers2.supplier_id, Suppliers2.supplier_name FROM Suppliers2\n"
+            + "CREATE PROPERTY GRAPH SupplyChainGraph2\n"
+            + "NODE TABLES(\n"
+            + "PartView2 AS PartView2\n"
+            + " KEY (part_id)\n"
+            + "LABEL PartView2 PROPERTIES(part_id, part_name), SupplierView2 AS SupplierView2\n"
+            + " KEY (supplier_id)\n"
+            + "LABEL SupplierView2 PROPERTIES(supplier_id, supplier_name))\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView2 AS PartSuppliersView2\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView2(part_id)\n"
+            + "DESTINATION KEY(supplier_id) REFERENCES SupplierView2(supplier_id)\n"
+            + "LABEL PartSuppliersView2 PROPERTIES(part_id, supplier_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SCHEMA Sch1",
+            "CREATE SCHEMA Sch2",
+            "CREATE TABLE Sch1.Account("
+                + "    AccountID INT64 NOT NULL,"
+                + "    Money FLOAT64,"
+                + "    AnotherMoney FLOAT64"
+                + "  ) PRIMARY KEY(AccountID)",
+            "CREATE VIEW V0 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE VIEW Sch1.V1 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE VIEW Sch2.V2 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE PROPERTY GRAPH aml "
+                + "    NODE TABLES ("
+                + "      V0 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      Sch1.V1 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      Sch2.V2 KEY(AccountID) PROPERTIES(AccountID, Money)"
+                + "    )");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SCHEMA `Sch1`\n"
+            + "CREATE SCHEMA `Sch2`CREATE TABLE `Sch1`.`Account` (\n"
+            + "\t`AccountID`                             INT64 NOT NULL,\n"
+            + "\t`Money`                                 FLOAT64,\n"
+            + "\t`AnotherMoney`                          FLOAT64,\n"
+            + ") PRIMARY KEY (`AccountID` ASC)\n\n\n"
+            + "CREATE VIEW `Sch1`.`V1` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `Sch2`.`V2` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `V0` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), Sch1.V1 AS V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V1 PROPERTIES(AccountID, Money), Sch2.V2 AS V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
 }

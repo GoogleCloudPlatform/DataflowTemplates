@@ -12,7 +12,7 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Bigtable_to_GCS_SequenceFile).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -32,6 +32,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableStopRow**: The row where to stop the export, defaults to the last row.
 * **bigtableMaxVersions**: Maximum number of cell versions. Defaults to: 2147483647.
 * **bigtableFilter**: Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
+* **bigtableReadRpcTimeoutMs**: Bigtable read RPC timeout in milliseconds.
+* **bigtableReadRpcAttemptTimeoutMs**: Bigtable read RPC attempt timeout in milliseconds.
 
 
 
@@ -39,7 +41,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -53,7 +55,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v1
+```
 
 ### Building Template
 
@@ -124,6 +136,8 @@ export BIGTABLE_START_ROW=""
 export BIGTABLE_STOP_ROW=""
 export BIGTABLE_MAX_VERSIONS=2147483647
 export BIGTABLE_FILTER=""
+export BIGTABLE_READ_RPC_TIMEOUT_MS=<bigtableReadRpcTimeoutMs>
+export BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS=<bigtableReadRpcAttemptTimeoutMs>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-sequencefile-job" \
   --project "$PROJECT" \
@@ -138,7 +152,9 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-sequencefile-job" \
   --parameters "bigtableMaxVersions=$BIGTABLE_MAX_VERSIONS" \
   --parameters "bigtableFilter=$BIGTABLE_FILTER" \
   --parameters "destinationPath=$DESTINATION_PATH" \
-  --parameters "filenamePrefix=$FILENAME_PREFIX"
+  --parameters "filenamePrefix=$FILENAME_PREFIX" \
+  --parameters "bigtableReadRpcTimeoutMs=$BIGTABLE_READ_RPC_TIMEOUT_MS" \
+  --parameters "bigtableReadRpcAttemptTimeoutMs=$BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS"
 ```
 
 For more information about the command, please check:
@@ -169,6 +185,8 @@ export BIGTABLE_START_ROW=""
 export BIGTABLE_STOP_ROW=""
 export BIGTABLE_MAX_VERSIONS=2147483647
 export BIGTABLE_FILTER=""
+export BIGTABLE_READ_RPC_TIMEOUT_MS=<bigtableReadRpcTimeoutMs>
+export BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS=<bigtableReadRpcAttemptTimeoutMs>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -177,7 +195,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-sequencefile-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_SequenceFile" \
--Dparameters="bigtableProject=$BIGTABLE_PROJECT,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,bigtableStartRow=$BIGTABLE_START_ROW,bigtableStopRow=$BIGTABLE_STOP_ROW,bigtableMaxVersions=$BIGTABLE_MAX_VERSIONS,bigtableFilter=$BIGTABLE_FILTER,destinationPath=$DESTINATION_PATH,filenamePrefix=$FILENAME_PREFIX" \
+-Dparameters="bigtableProject=$BIGTABLE_PROJECT,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,bigtableStartRow=$BIGTABLE_START_ROW,bigtableStopRow=$BIGTABLE_STOP_ROW,bigtableMaxVersions=$BIGTABLE_MAX_VERSIONS,bigtableFilter=$BIGTABLE_FILTER,destinationPath=$DESTINATION_PATH,filenamePrefix=$FILENAME_PREFIX,bigtableReadRpcTimeoutMs=$BIGTABLE_READ_RPC_TIMEOUT_MS,bigtableReadRpcAttemptTimeoutMs=$BIGTABLE_READ_RPC_ATTEMPT_TIMEOUT_MS" \
 -f v1
 ```
 
@@ -233,6 +251,8 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_sequencefile" {
     # bigtableStopRow = ""
     # bigtableMaxVersions = "2147483647"
     # bigtableFilter = ""
+    # bigtableReadRpcTimeoutMs = "<bigtableReadRpcTimeoutMs>"
+    # bigtableReadRpcAttemptTimeoutMs = "<bigtableReadRpcAttemptTimeoutMs>"
   }
 }
 ```

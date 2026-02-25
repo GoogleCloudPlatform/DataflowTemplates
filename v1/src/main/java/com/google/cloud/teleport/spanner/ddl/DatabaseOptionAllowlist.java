@@ -28,5 +28,8 @@ public class DatabaseOptionAllowlist {
   // export/import pipelines.
   public static final ImmutableList<String> DATABASE_OPTION_ALLOWLIST =
       ImmutableList.of(
-          "version_retention_period", "opt_in_dataplacement_preview", "default_sequence_kind");
+          "version_retention_period",
+          "opt_in_dataplacement_preview",
+          "default_sequence_kind",
+          "default_time_zone");
 }

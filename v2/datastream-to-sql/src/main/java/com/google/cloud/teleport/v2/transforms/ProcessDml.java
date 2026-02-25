@@ -43,12 +43,17 @@ public class ProcessDml {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcessDml.class);
   private static final String WINDOW_DURATION = "1s";
-  private static final int NUM_THREADS = 8;
+  private static final int NUM_THREADS = 15;
 
   public ProcessDml() {}
 
   public static StatefulProcessDml statefulOrderByPK() {
     return new StatefulProcessDml();
+  }
+
+  private static boolean isDLQEvent(DmlInfo dmlInfo) {
+    return dmlInfo.getOriginalPayload() != null
+        && dmlInfo.getOriginalPayload().contains("\"_metadata_retry_count\":");
   }
 
   /** This class is used as the default return value of {@link ProcessDml#statefulOrderByPK()}. */
@@ -99,11 +104,13 @@ public class ProcessDml {
       String currentSortKey = dmlInfo.getOrderByValueString();
 
       // If there is no PK then state can be skipped
+      String numThreads = Integer.toString(Math.abs(stateKey.hashCode()) % NUM_THREADS);
       if (dmlInfo.getAllPkFields().size() == 0) {
-        String numThreads = Integer.toString(stateKey.hashCode() % NUM_THREADS);
         context.output(KV.of(numThreads, dmlInfo));
-      } else if (lastSortKey == null || currentSortKey.compareTo(lastSortKey) > 0) {
-        String numThreads = Integer.toString(stateKey.hashCode() % NUM_THREADS);
+        // FIX: Changed '> 0' to '>= 0' to allow DLQ retries to pass through
+      } else if (lastSortKey == null
+          || currentSortKey.compareTo(lastSortKey) > 0
+          || (currentSortKey.compareTo(lastSortKey) >= 0 && isDLQEvent(dmlInfo))) {
         myState.write(currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
 

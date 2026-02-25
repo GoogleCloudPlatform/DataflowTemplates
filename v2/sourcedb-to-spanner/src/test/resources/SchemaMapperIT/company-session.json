@@ -27,8 +27,8 @@
           "Comment": "From: company_id int(10)",
           "Id": "c4",
           "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
+            "Name": "Identity",
+            "GenerationType": "Identity"
           }
         },
         "c5": {
@@ -294,7 +294,11 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c4"
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "Serial",
+            "GenerationType": "Serial"
+          }
         },
         "c5": {
           "Name": "company_name",

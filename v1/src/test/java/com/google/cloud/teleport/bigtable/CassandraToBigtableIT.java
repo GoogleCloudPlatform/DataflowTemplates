@@ -44,6 +44,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,6 +56,7 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(CassandraToBigtable.class)
 @RunWith(JUnit4.class)
+@Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/2288 test permared")
 public class CassandraToBigtableIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraToBigtableIT.class);

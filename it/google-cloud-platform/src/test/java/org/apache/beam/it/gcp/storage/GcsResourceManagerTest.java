@@ -434,13 +434,15 @@ public final class GcsResourceManagerTest {
     GcsResourceManager client2 = new GcsResourceManager(client, BUCKET, TEST_CLASS, true);
 
     when(client.delete(BUCKET)).thenReturn(true);
+    TestBlobPage allPages = createPages(ImmutableList.of());
+    when(client.list(BUCKET)).thenReturn(allPages);
 
     // Act
     client2.cleanupAll();
 
     // Assert
     verify(client).delete(BUCKET);
-    verify(client, never()).list(anyString(), any(BlobListOption.class));
+    verify(client).list(BUCKET);
     verify(client, never()).delete(anyIterable());
   }
 
@@ -450,13 +452,15 @@ public final class GcsResourceManagerTest {
     GcsResourceManager client2 = new GcsResourceManager(client, BUCKET, TEST_CLASS, true);
 
     when(client.delete(BUCKET)).thenReturn(false);
+    TestBlobPage allPages = createPages(ImmutableList.of());
+    when(client.list(BUCKET)).thenReturn(allPages);
 
     // Act
     client2.cleanupAll();
 
     // Assert
     verify(client).delete(BUCKET);
-    verify(client, never()).list(anyString(), any(BlobListOption.class));
+    verify(client).list(BUCKET);
     verify(client, never()).delete(anyIterable());
   }
 

@@ -52,6 +52,7 @@ public class DockerfileGenerator {
       "/opt/google/dataflow/python_template_launcher";
   public static final String JAVA_LAUNCHER_ENTRYPOINT =
       "/opt/google/dataflow/java_template_launcher";
+  public static final String PYTHON_LAUNCHER_YAML_INDEX = "yaml-templates-index";
 
   // Keep pythonVersion below in sync with version in base image
   public static final String PYTHON_VERSION = "3.11";
@@ -192,7 +193,10 @@ public class DockerfileGenerator {
       this.parameters = new HashMap<>();
       this.parameters.put("workingDirectory", DEFAULT_WORKING_DIRECTORY);
       this.parameters.put("beamVersion", beamVersion);
-
+      // maven version does not have suffix
+      String beamMavenVersion = beamVersion.split("rc")[0];
+      this.parameters.put("beamMavenVersion", beamMavenVersion);
+      this.parameters.put("mavenRepo", "https://repo1.maven.org/maven2");
       this.parameters.put("basePythonContainerImage", BASE_PYTHON_CONTAINER_IMAGE);
       this.parameters.put("baseJavaContainerImage", BASE_CONTAINER_IMAGE);
       this.parameters.put("pythonVersion", PYTHON_VERSION);
@@ -385,6 +389,10 @@ public class DockerfileGenerator {
     public Builder setServiceAccountSecretName(String secretName) {
       this.parameters.put(SA_SECRET_NAME_KEY, secretName);
       return this;
+    }
+
+    public Builder setMavenRepo(String mavenRepo) {
+      return addStringParameter("mavenRepo", mavenRepo);
     }
 
     /**

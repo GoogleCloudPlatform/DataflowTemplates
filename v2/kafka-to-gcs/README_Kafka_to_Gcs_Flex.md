@@ -7,7 +7,7 @@ Cloud Storage bucket with a variety of file types.
 
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -16,7 +16,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **readBootstrapServerAndTopic**: Kafka Topic to read the input from.
 * **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. For example, `gs://your-bucket/your-path/`.
-* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.
+* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, `SASL_SCRAM_512` for SASL_SCRAM_512 authentication and `TLS` for certificate-based authentication. `APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Managed Service for Apache Kafka cluster, it allows to authenticate using application default credentials.
 * **messageFormat**: The format of the Kafka messages to read. The supported values are `AVRO_CONFLUENT_WIRE_FORMAT` (Confluent Schema Registry encoded Avro), `AVRO_BINARY_ENCODING` (Plain binary Avro), and `JSON`. Defaults to: AVRO_CONFLUENT_WIRE_FORMAT.
 * **useBigQueryDLQ**: If true, failed messages will be written to BigQuery with extra error information. Defaults to: false.
 
@@ -35,11 +35,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **kafkaReadTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **kafkaReadKeystorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **kafkaReadKeyPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramUsernameSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka username to use with `SASL_SCRAM` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_SCRAM` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramTruststoreLocation**: The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
+* **kafkaReadSaslScramTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka SASL_SCRAM authentication For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **schemaFormat**: The Kafka schema format. Can be provided as `SINGLE_SCHEMA_FILE` or `SCHEMA_REGISTRY`. If `SINGLE_SCHEMA_FILE` is specified, use the schema mentioned in the avro schema file for all messages. If `SCHEMA_REGISTRY` is specified, the messages can have either a single schema or multiple schemas. Defaults to: SINGLE_SCHEMA_FILE.
 * **confluentAvroSchemaPath**: The Google Cloud Storage path to the single Avro schema file used to decode all of the messages in a topic. Defaults to empty.
 * **schemaRegistryConnectionUrl**: The URL for the Confluent Schema Registry instance used to manage Avro schemas for message decoding. Defaults to empty.
 * **binaryAvroSchemaPath**: The Google Cloud Storage path to the Avro schema file used to decode binary-encoded Avro messages. Defaults to empty.
-* **schemaRegistryAuthenticationMode**: Schema Registry authentication mode. Can be NONE, TLS or OAUTH. Defaults to: NONE.
+* **schemaRegistryAuthenticationMode**: The mode of authentication to use with the Schema Registry. Use `NONE` for no authentication, `TLS` for certificate-based authentication and `OAUTH` for OAuth2 authentication. `APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Managed Service for Apache Kafka Schema Registry, it allows to authenticate using application default credentials.
 * **schemaRegistryTruststoreLocation**: Location of the SSL certificate where the trust store for authentication to Schema Registry are stored. For example, `/your-bucket/truststore.jks`.
 * **schemaRegistryTruststorePasswordSecretId**: SecretId in secret manager where the password to access secret in truststore is stored. For example, `projects/your-project-number/secrets/your-secret-name/versions/your-secret-version`.
 * **schemaRegistryKeystoreLocation**: Keystore location that contains the SSL certificate and private key. For example, `/your-bucket/keystore.jks`.
@@ -57,7 +61,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -71,7 +75,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/kafka-to-gcs
+```
 
 ### Building Template
 
@@ -90,16 +104,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_Gcs_Flex" \
--f v2/kafka-to-gcs
+-pl v2/kafka-to-gcs -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -148,6 +166,10 @@ export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
 export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
 export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
 export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID=<kafkaReadSaslScramUsernameSecretId>
+export KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID=<kafkaReadSaslScramPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION=<kafkaReadSaslScramTruststoreLocation>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadSaslScramTruststorePasswordSecretId>
 export SCHEMA_FORMAT=SINGLE_SCHEMA_FILE
 export CONFLUENT_AVRO_SCHEMA_PATH=""
 export SCHEMA_REGISTRY_CONNECTION_URL=""
@@ -184,6 +206,10 @@ gcloud dataflow flex-template run "kafka-to-gcs-flex-job" \
   --parameters "kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID" \
   --parameters "kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID" \
   --parameters "kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadSaslScramUsernameSecretId=$KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID" \
+  --parameters "kafkaReadSaslScramPasswordSecretId=$KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadSaslScramTruststoreLocation=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION" \
+  --parameters "kafkaReadSaslScramTruststorePasswordSecretId=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID" \
   --parameters "messageFormat=$MESSAGE_FORMAT" \
   --parameters "schemaFormat=$SCHEMA_FORMAT" \
   --parameters "confluentAvroSchemaPath=$CONFLUENT_AVRO_SCHEMA_PATH" \
@@ -239,6 +265,10 @@ export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
 export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
 export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
 export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID=<kafkaReadSaslScramUsernameSecretId>
+export KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID=<kafkaReadSaslScramPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION=<kafkaReadSaslScramTruststoreLocation>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadSaslScramTruststorePasswordSecretId>
 export SCHEMA_FORMAT=SINGLE_SCHEMA_FILE
 export CONFLUENT_AVRO_SCHEMA_PATH=""
 export SCHEMA_REGISTRY_CONNECTION_URL=""
@@ -262,7 +292,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-gcs-flex-job" \
 -DtemplateName="Kafka_to_Gcs_Flex" \
--Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,messageFormat=$MESSAGE_FORMAT,schemaFormat=$SCHEMA_FORMAT,confluentAvroSchemaPath=$CONFLUENT_AVRO_SCHEMA_PATH,schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL,binaryAvroSchemaPath=$BINARY_AVRO_SCHEMA_PATH,schemaRegistryAuthenticationMode=$SCHEMA_REGISTRY_AUTHENTICATION_MODE,schemaRegistryTruststoreLocation=$SCHEMA_REGISTRY_TRUSTSTORE_LOCATION,schemaRegistryTruststorePasswordSecretId=$SCHEMA_REGISTRY_TRUSTSTORE_PASSWORD_SECRET_ID,schemaRegistryKeystoreLocation=$SCHEMA_REGISTRY_KEYSTORE_LOCATION,schemaRegistryKeystorePasswordSecretId=$SCHEMA_REGISTRY_KEYSTORE_PASSWORD_SECRET_ID,schemaRegistryKeyPasswordSecretId=$SCHEMA_REGISTRY_KEY_PASSWORD_SECRET_ID,schemaRegistryOauthClientId=$SCHEMA_REGISTRY_OAUTH_CLIENT_ID,schemaRegistryOauthClientSecretId=$SCHEMA_REGISTRY_OAUTH_CLIENT_SECRET_ID,schemaRegistryOauthScope=$SCHEMA_REGISTRY_OAUTH_SCOPE,schemaRegistryOauthTokenEndpointUrl=$SCHEMA_REGISTRY_OAUTH_TOKEN_ENDPOINT_URL,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,useBigQueryDLQ=$USE_BIG_QUERY_DLQ" \
+-Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,windowDuration=$WINDOW_DURATION,outputDirectory=$OUTPUT_DIRECTORY,outputFilenamePrefix=$OUTPUT_FILENAME_PREFIX,numShards=$NUM_SHARDS,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,kafkaReadSaslScramUsernameSecretId=$KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID,kafkaReadSaslScramPasswordSecretId=$KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID,kafkaReadSaslScramTruststoreLocation=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION,kafkaReadSaslScramTruststorePasswordSecretId=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID,messageFormat=$MESSAGE_FORMAT,schemaFormat=$SCHEMA_FORMAT,confluentAvroSchemaPath=$CONFLUENT_AVRO_SCHEMA_PATH,schemaRegistryConnectionUrl=$SCHEMA_REGISTRY_CONNECTION_URL,binaryAvroSchemaPath=$BINARY_AVRO_SCHEMA_PATH,schemaRegistryAuthenticationMode=$SCHEMA_REGISTRY_AUTHENTICATION_MODE,schemaRegistryTruststoreLocation=$SCHEMA_REGISTRY_TRUSTSTORE_LOCATION,schemaRegistryTruststorePasswordSecretId=$SCHEMA_REGISTRY_TRUSTSTORE_PASSWORD_SECRET_ID,schemaRegistryKeystoreLocation=$SCHEMA_REGISTRY_KEYSTORE_LOCATION,schemaRegistryKeystorePasswordSecretId=$SCHEMA_REGISTRY_KEYSTORE_PASSWORD_SECRET_ID,schemaRegistryKeyPasswordSecretId=$SCHEMA_REGISTRY_KEY_PASSWORD_SECRET_ID,schemaRegistryOauthClientId=$SCHEMA_REGISTRY_OAUTH_CLIENT_ID,schemaRegistryOauthClientSecretId=$SCHEMA_REGISTRY_OAUTH_CLIENT_SECRET_ID,schemaRegistryOauthScope=$SCHEMA_REGISTRY_OAUTH_SCOPE,schemaRegistryOauthTokenEndpointUrl=$SCHEMA_REGISTRY_OAUTH_TOKEN_ENDPOINT_URL,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,useBigQueryDLQ=$USE_BIG_QUERY_DLQ" \
 -f v2/kafka-to-gcs
 ```
 
@@ -325,6 +355,10 @@ resource "google_dataflow_flex_template_job" "kafka_to_gcs_flex" {
     # kafkaReadTruststorePasswordSecretId = "<kafkaReadTruststorePasswordSecretId>"
     # kafkaReadKeystorePasswordSecretId = "<kafkaReadKeystorePasswordSecretId>"
     # kafkaReadKeyPasswordSecretId = "<kafkaReadKeyPasswordSecretId>"
+    # kafkaReadSaslScramUsernameSecretId = "<kafkaReadSaslScramUsernameSecretId>"
+    # kafkaReadSaslScramPasswordSecretId = "<kafkaReadSaslScramPasswordSecretId>"
+    # kafkaReadSaslScramTruststoreLocation = "<kafkaReadSaslScramTruststoreLocation>"
+    # kafkaReadSaslScramTruststorePasswordSecretId = "<kafkaReadSaslScramTruststorePasswordSecretId>"
     # schemaFormat = "SINGLE_SCHEMA_FILE"
     # confluentAvroSchemaPath = ""
     # schemaRegistryConnectionUrl = ""

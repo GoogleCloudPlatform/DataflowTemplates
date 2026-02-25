@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.preload;
 
+import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.neo4j.importer.v1.actions.Action;
-import org.neo4j.importer.v1.actions.HttpAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,13 +40,9 @@ public class PreloadHttpAction implements PreloadAction {
   @Override
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
-    String uri = action.getUrl();
-    if (StringUtils.isEmpty(uri)) {
-      throw new RuntimeException("Options 'uri' not provided for preload http_post action.");
-    }
+    String uri = action.url();
     try (CloseableHttpResponse response =
-        HttpUtils.getHttpResponse(
-            HttpUtils.isPostRequest(action.getMethod()), uri, action.getHeaders())) {
+        HttpUtils.getHttpResponse(action.method(), uri, action.headers())) {
       LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {

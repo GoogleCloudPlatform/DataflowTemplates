@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,6 +70,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -84,8 +86,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        createAndUploadJarToGcs("DatatypeIT");
+        createAndUploadJarToGcs("DatatypeIT", gcsResourceManager);
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
@@ -104,7 +107,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                   }
                 },
                 customTransformation,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -119,7 +123,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerDDLIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -134,7 +139,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -158,12 +164,14 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "cdc1.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc1-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc1-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
                         "cdc2.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc2-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc2-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -198,7 +206,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE2,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns2.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns2.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -222,7 +231,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE2,
                         "cdc1.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeColumns2.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeColumns2.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -256,7 +266,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TRANSFORMATION_TABLE,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeTransformation.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeTransformation.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -280,7 +291,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TRANSFORMATION_TABLE,
                         "cdc.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeTransformation.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeTransformation.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -314,7 +326,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE3,
                         "datatypesizes-backfill.avro",
-                        "DataStreamToSpannerDDLIT/DatatypeColumnsWithSizes-backfill.avro"),
+                        "DataStreamToSpannerDDLIT/DatatypeColumnsWithSizes-backfill.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -343,7 +356,8 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE4,
                         "datatypesizes-reduced-backfill.avro",
-                        "DataStreamToSpannerDDLIT/DatatypeColumnsReducedSizes-backfill.avro"),
+                        "DataStreamToSpannerDDLIT/DatatypeColumnsReducedSizes-backfill.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE4)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -369,7 +383,11 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE5, "gencols.avro", "DataStreamToSpannerDDLIT/Users.avro"),
+                        jobInfo,
+                        TABLE5,
+                        "gencols.avro",
+                        "DataStreamToSpannerDDLIT/Users.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE5)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -395,7 +413,11 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE7, "charsets.avro", "DataStreamToSpannerDDLIT/Authors.avro"),
+                        jobInfo,
+                        TABLE7,
+                        "charsets.avro",
+                        "DataStreamToSpannerDDLIT/Authors.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE7)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -421,7 +443,11 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE8, "sequence.avro", "DataStreamToSpannerDDLIT/Singers.avro"),
+                        jobInfo,
+                        TABLE8,
+                        "sequence.avro",
+                        "DataStreamToSpannerDDLIT/Singers.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE8)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -435,6 +461,36 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void migrationTestWithIdentityColumns() {
+    // Construct a ChainedConditionCheck with 2 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE6,
+                        "identity.avro",
+                        "DataStreamToSpannerDDLIT/Books.avro",
+                        gcsResourceManager),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE6)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+    assertBooksBackfillContents();
   }
 
   private void assertAllDatatypeColumnsTableBackfillContents() {
@@ -604,7 +660,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     row = new HashMap<>();
@@ -635,7 +691,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -670,7 +726,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     row = new HashMap<>();
@@ -691,7 +747,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     row = new HashMap<>();
@@ -712,7 +768,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "1");
     row.put("bool_column", true);
     row.put("binary_column", "AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
-    row.put("bit_column", "Ew==");
+    row.put("bit_column", "DQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -741,7 +797,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("enum_column", "3");
     row.put("bool_column", true);
     row.put("binary_column", "EjRWeJCrze8SNFZ4kKvN7xI0Vng=");
-    row.put("bit_column", "ASc=");
+    row.put("bit_column", "fw==");
     events.add(row);
 
     row = new HashMap<>();
@@ -802,7 +858,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -827,7 +883,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", false);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMQAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMQ==");
-    row.put("bit_column", "AQI=");
+    row.put("bit_column", "Zg==");
     events.add(row);
 
     row = new HashMap<>();
@@ -838,7 +894,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
@@ -860,13 +916,13 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     row.put("bool_column", true);
     row.put("binary_column", "YmluYXJ5X2RhdGFfMgAAAAAAAAA=");
     row.put("varbinary_column", "dmFyYmluYXJ5X2RhdGFfMg==");
-    row.put("bit_column", "JQ==");
+    row.put("bit_column", "GQ==");
     events.add(row);
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
                 "select varchar_column, float_column, decimal_column, char_column, bool_column"
-                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsWithSizes"))
+                    + ", binary_column, varbinary_column, bit_column, from DatatypeColumnsReducedSizes"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
@@ -923,6 +979,28 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("select id, name from Authors"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBooksBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("title", "The Lord of the Rings");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("title", "Pride and Prejudice");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("title", "The Hitchhiker's Guide to the Galaxy");
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select id, title from Books"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }

@@ -26,6 +26,7 @@
     <artifactId>datastream-common</artifactId>
 
     <properties>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>
@@ -41,7 +42,7 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-datastream</artifactId>
-            <version>v1-rev20230902-2.0.0</version>
+            <version>v1-rev20251029-2.0.0</version>
         </dependency>
 
         <dependency>
@@ -68,3 +69,4 @@
         </plugins>
     </build>
 </project>
+

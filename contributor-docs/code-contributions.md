@@ -11,7 +11,7 @@ how to review/merge code, or other info, see the
 ## Prerequisites
 
 If you are not already familiar with Dataflow, Dataflow Templates (especially
-flex templates), and Apache Beam it is recommended that you familarize yourself
+flex templates), and Apache Beam it is recommended that you familiarize yourself
 with each of these at a high level before contributing. Information on each of
 these can be found in the following locations:
 
@@ -136,6 +136,21 @@ After authenticated, install the plugin into your local repository:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
+WARNING: After any changes to the plugin itself, those changes may be cached 
+and prevent any future changes from being observed.  Please reissue:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
+### Validating Templates
+
+Validating a template's code quality is as simple as this:
+
+```shell
+mvn clean install -PtemplatesValidate -DskipTests -pl <module> -am
 ```
 
 ### Staging (Deploying) Templates
@@ -268,6 +283,11 @@ The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=Pubsu
 
 The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
 
+Notes: Template integration tests using test container based resource manager
+(e.g. kafka) only works on GitHub Actions. The test machine spins up a Kafka
+test container and then Dataflow worker accesses it. This only works when the
+test machine lives in the same network as the Dataflow worker.
+
 ### Running Load Tests
 
 For information on adding and running load tests, see [Adding a Load Test](./add-integration-or-load-test.md).
@@ -369,7 +389,7 @@ Boolean getUseColumnAlias();
 BulkInsertMethodOptions getBulkInsertMethod();
 ```
 
-Note: `order` is relevant for templates that can be used from the UI, and
+Notes: `order` is relevant for templates that can be used from the UI, and
 specify the relative order of parameters.
 
 #### Template Parameter Compatibility/Deprecation
@@ -432,6 +452,28 @@ mvn clean prepare-package \
   -PtemplatesSpec
 ```
 
+To generate the documentation for a module of templates, the following command can be used:
+
+```shell
+mvn clean prepare-package \
+  -DskipTests \
+  -PtemplatesSpec \
+  -pl python \
+  -am
+```
+
+`pl` argument can be any plugin module such as:
+```shell
+v1
+v2/bigquery-to-bigtable
+python
+yaml
+```
+
+## Python Dependency Management
+
+See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.
+
 ## Release Process
 
 Templates are released in a weekly basis (best-effort) as part of the efforts to
@@ -444,4 +486,13 @@ To learn more about this process, or how you can stage your own changes, see [Re
 
 Release notes are [automatically generated](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes)
 based on the PR labels defined in [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml).
-Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass: `ignore-for-release`, `new-template`, `improvement`, or `bug-fix`.
+Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass:
+
+- `addition`: Addition of new functionality
+- `bug-fix`: Fixes for bugs or issues in existing code
+- `ignore-for-release`: Changes that should not appear in release notes (e.g., documentation updates, internal refactoring)
+- `improvement`: Enhancements to existing functionality or performance improvements
+- `new-template`: Addition of new Dataflow templates
+- `package-upgrade`: Updates to dependencies, libraries, or package versions
+
+Note: If updating these labels, also update [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml) and [release-notes-labels.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/release-notes-labels.yml).

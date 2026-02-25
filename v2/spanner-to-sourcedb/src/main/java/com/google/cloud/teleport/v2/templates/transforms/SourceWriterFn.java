@@ -19,35 +19,40 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
+import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
+import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -55,7 +60,9 @@ import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,49 +82,64 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final Counter skippedRecordCountMetric =
       Metrics.counter(SourceWriterFn.class, "skipped_record_count");
+  private static final Distribution SUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "successful_write_to_source_latency_ms");
+  private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
 
-  private final Distribution lagMetric =
-      Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
-
-  private final Counter invalidTransformationException =
-      Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
-
-  private final Schema schema;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
   private transient SpannerDao spannerDao;
-  private final Ddl ddl;
+  private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
   private final String source;
-  private SourceProcessor sourceProcessor;
+  private transient SourceProcessor sourceProcessor;
   private final CustomTransformation customTransformation;
-  private ISpannerMigrationTransformer spannerToSourceTransformer;
+  private transient ISpannerMigrationTransformer spannerToSourceTransformer;
+
+  private final PCollectionView<Ddl> ddlView;
+  private final PCollectionView<Ddl> shadowTableDdlView;
+
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
 
   public SourceWriterFn(
       List<Shard> shards,
-      Schema schema,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
-      Ddl ddl,
+      SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
       int maxThreadPerDataflowWorker,
       String source,
-      CustomTransformation customTransformation) {
+      CustomTransformation customTransformation,
+      PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
 
-    this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
-    this.ddl = ddl;
+    this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
     this.source = source;
     this.customTransformation = customTransformation;
+    this.ddlView = ddlView;
+    this.shadowTableDdlView = shadowTableDdlView;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   // for unit testing purposes
@@ -156,24 +178,41 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() throws Exception {
-    spannerDao.close();
-    sourceProcessor.close();
+    if (spannerDao != null) {
+      spannerDao.close();
+    }
+    if (sourceProcessor != null) {
+      sourceProcessor.close();
+    }
   }
 
   @ProcessElement
   public void processElement(ProcessContext c) {
+    Ddl ddl = c.sideInput(ddlView);
+    Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
+
+    // SchemaMapper depends on Ddl side input, which is only available in processElement.
+    ISchemaMapper schemaMapper =
+        SchemaMapperUtils.getSchemaMapper(
+            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
     String shardId = spannerRec.getShard();
-    if (shardId == null) {
-      // no shard found, move to permanent error
+    if (shardId == null || shardId.equals(Constants.SEVERE_ERROR_SHARD_ID)) {
+      // if no shard or permanent error shard id found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
+    } else if (shardId.equals(Constants.RETRYABLE_ERROR_SHARD_ID)) {
+      // if retryable error shard id found, move to retryable error
+      outputWithTag(
+          c, Constants.RETRYABLE_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
     } else if (shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
     } else {
+      Stopwatch timer = Stopwatch.createStarted();
       // Get the latest commit timestamp processed at source
       try {
         JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
@@ -182,77 +221,101 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
-        boolean isSourceAhead = false;
-        ShadowTableRecord shadowTableRecord =
-            spannerDao.getShadowTableRecord(shadowTableName, primaryKey);
-        isSourceAhead =
-            shadowTableRecord != null
-                && ((shadowTableRecord
-                            .getProcessedCommitTimestamp()
-                            .compareTo(spannerRec.getCommitTimestamp())
-                        > 0) // either the source already has record with greater commit
-                    // timestamp
-                    || (shadowTableRecord // or the source has the same commit timestamp but
-                                // greater record sequence
-                                .getProcessedCommitTimestamp()
-                                .compareTo(spannerRec.getCommitTimestamp())
-                            == 0
-                        && shadowTableRecord.getRecordSequence()
-                            > Long.parseLong(spannerRec.getRecordSequence())));
+        spannerDao
+            .getDatabaseClient()
+            .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
+            .run(
+                (TransactionRunner.TransactionCallable<Void>)
+                    shadowTransaction -> {
+                      boolean isSourceAhead = false;
+                      ShadowTableRecord shadowTableRecord =
+                          spannerDao.readShadowTableRecordWithExclusiveLock(
+                              shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
+                      isSourceAhead =
+                          shadowTableRecord != null
+                              && ((shadowTableRecord
+                                          .getProcessedCommitTimestamp()
+                                          .compareTo(spannerRec.getCommitTimestamp())
+                                      > 0) // either the source already has record with greater
+                                  // commit
+                                  // timestamp
+                                  || (shadowTableRecord // or the source has the same commit
+                                              // timestamp but
+                                              // greater record sequence
+                                              .getProcessedCommitTimestamp()
+                                              .compareTo(spannerRec.getCommitTimestamp())
+                                          == 0
+                                      && shadowTableRecord.getRecordSequence()
+                                          > Long.parseLong(spannerRec.getRecordSequence())));
 
-        if (!isSourceAhead) {
-          IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-          boolean isEventFiltered =
-              InputRecordProcessor.processRecord(
-                  spannerRec,
-                  schema,
-                  sourceDao,
-                  shardId,
-                  sourceDbTimezoneOffset,
-                  sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer,
-                  this.source);
-          if (isEventFiltered) {
-            outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
-          }
+                      if (!isSourceAhead) {
+                        IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+                        TransactionalCheck check =
+                            () -> {
+                              ShadowTableRecord newShadowTableRecord =
+                                  spannerDao.readShadowTableRecordWithExclusiveLock(
+                                      shadowTableName,
+                                      primaryKey,
+                                      shadowTableDdl,
+                                      shadowTransaction);
+                              if (!ShadowTableRecord.isEquals(
+                                  shadowTableRecord, newShadowTableRecord)) {
+                                throw new TransactionalCheckException(
+                                    "Shadow table sequence changed during transaction");
+                              }
+                            };
+                        boolean isEventFiltered =
+                            InputRecordProcessor.processRecord(
+                                spannerRec,
+                                schemaMapper,
+                                ddl,
+                                sourceSchema,
+                                sourceDao,
+                                shardId,
+                                sourceDbTimezoneOffset,
+                                sourceProcessor.getDmlGenerator(),
+                                spannerToSourceTransformer,
+                                this.source,
+                                check);
+                        if (isEventFiltered) {
+                          outputWithTag(
+                              c,
+                              Constants.FILTERED_TAG,
+                              Constants.FILTERED_TAG_MESSAGE,
+                              spannerRec);
+                        }
 
-          spannerDao.updateShadowTable(
-              getShadowTableMutation(
-                  tableName,
-                  shadowTableName,
-                  keysJson,
-                  spannerRec.getCommitTimestamp(),
-                  spannerRec.getRecordSequence()));
-        }
+                        spannerDao.updateShadowTable(
+                            getShadowTableMutation(
+                                tableName,
+                                shadowTableName,
+                                keysJson,
+                                spannerRec.getCommitTimestamp(),
+                                spannerRec.getRecordSequence(),
+                                ddl),
+                            shadowTransaction);
+                      }
+                      return null;
+                    });
         successRecordCountMetric.inc();
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
         }
         com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
-      } catch (InvalidTransformationException ex) {
-        invalidTransformationException.inc();
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException ex) {
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (SpannerException
-          | IllegalStateException
-          | com.mysql.cj.jdbc.exceptions.CommunicationsException
-          | java.sql.SQLIntegrityConstraintViolationException
-          | java.sql.SQLTransientConnectionException
-          | ConnectionException ex) {
-        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (java.sql.SQLNonTransientConnectionException ex) {
-        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-        // error codes 1053,1161 and 1159 can be retried
-        if (ex.getErrorCode() == 1053 || ex.getErrorCode() == 1159 || ex.getErrorCode() == 1161) {
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-        } else {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-        }
+        // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
+        // wrapped inside a SpannerException.
+        // We need to get and inspect the cause while handling the exception.
+        SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
-        LOG.error("Failed to write to source", ex);
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+        Throwable cause = ex.getCause();
+        String message = ex.getMessage();
+        if (cause != null) {
+          message += ", Caused by: " + cause.getMessage();
+        }
+        TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(ex);
+        outputWithTag(c, errorTag, message, spannerRec);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }
     }
   }
@@ -262,7 +325,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String shadowTableName,
       JsonNode keysJson,
       com.google.cloud.Timestamp commitTimestamp,
-      String recordSequence)
+      String recordSequence,
+      Ddl ddl)
       throws ChangeEventConvertorException {
     Mutation.WriteBuilder mutationBuilder = null;
 

@@ -37,7 +37,13 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
   }
 
   @Override
-  public void write(DMLGeneratorResponse dmlGeneratorResponse) throws Exception {
+  public void write(
+      DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
+      throws Exception {
+    if (transactionalCheck != null) {
+      throw new UnsupportedOperationException(
+          "transactionalCheck is not supported for Cassandra database");
+    }
     CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl);
     if (session == null) {
       throw new ConnectionException("Connection is null");

@@ -71,6 +71,26 @@ public final class MySqlChangeEventSequenceTest {
   }
 
   @Test
+  public void canOrderDumpEventAndCDCEventWithNullBinlogName() {
+    MySqlChangeEventSequence dumpEvent = new MySqlChangeEventSequence(eventTimestamp, null, -1L);
+    MySqlChangeEventSequence cdcEvent =
+        new MySqlChangeEventSequence(eventTimestamp, "file1.log", 3L);
+
+    assertTrue(dumpEvent.compareTo(cdcEvent) < 0);
+    assertTrue(cdcEvent.compareTo(dumpEvent) > 0);
+  }
+
+  @Test
+  public void canOrderTwoDumpEvents() {
+    MySqlChangeEventSequence dumpEvent1 = new MySqlChangeEventSequence(eventTimestamp, null, -1L);
+    MySqlChangeEventSequence dumpEvent2 =
+        new MySqlChangeEventSequence(eventTimestamp + 1, null, -1L);
+
+    assertTrue(dumpEvent1.compareTo(dumpEvent2) < 0);
+    assertTrue(dumpEvent2.compareTo(dumpEvent1) > 0);
+  }
+
+  @Test
   public void canOrderDumpEventAndCDCEventAtSameTimestamp() {
     MySqlChangeEventSequence dumpEvent = new MySqlChangeEventSequence(eventTimestamp, "", -1L);
     MySqlChangeEventSequence cdcEvent =
@@ -84,14 +104,13 @@ public final class MySqlChangeEventSequenceTest {
   public void testCreateFromShadowTableWithUseSqlStatements() throws Exception {
     // Arrange
     TransactionContext transactionContext = mock(TransactionContext.class);
-    String shadowTable = "shadow_table1";
     Ddl shadowTableDdl =
         Ddl.builder()
             .createTable("shadow_table1")
             .column("id")
             .int64()
             .endColumn()
-            .column("timestamp")
+            .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("log_file")
@@ -105,13 +124,24 @@ public final class MySqlChangeEventSequenceTest {
             .end()
             .endTable()
             .build();
-    Key primaryKey = Key.of(1L);
     boolean useSqlStatements = true;
+
+    // Mock the ChangeEventContext
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getShadowTable()).thenReturn("shadow_table1");
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
+        .thenReturn("shadow_timestamp");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
+        .thenReturn("log_file");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
+        .thenReturn("log_position");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
     when(mockRow.getLong("id")).thenReturn(1L);
-    when(mockRow.getLong("timestamp")).thenReturn(1615159728L); // Updated to match new column
+    when(mockRow.getLong("shadow_timestamp"))
+        .thenReturn(1615159728L); // Updated to match new column
     when(mockRow.getString("log_file")).thenReturn("file1.log");
     when(mockRow.getLong("log_position")).thenReturn(2L); // Updated to match new column
 
@@ -123,7 +153,7 @@ public final class MySqlChangeEventSequenceTest {
     // Act
     MySqlChangeEventSequence result =
         MySqlChangeEventSequence.createFromShadowTable(
-            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+            transactionContext, mockContext, shadowTableDdl, useSqlStatements);
 
     // Assert
     assertNotNull(result);

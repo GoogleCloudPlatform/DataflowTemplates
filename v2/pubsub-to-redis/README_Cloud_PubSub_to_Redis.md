@@ -6,10 +6,6 @@ Pub/Sub subscription and writes the message payload to Redis. The most common us
 case of this template is to export logs to Redis Enterprise for advanced
 search-based log analysis in real time.
 
-Before writing to Redis, you can apply a JavaScript user-defined function to the
-message payload. Any messages that experience processing failures are forwarded
-to a Pub/Sub unprocessed topic for further troubleshooting and reprocessing.
-
 For added security, enable an SSL connection when setting up your database
 endpoint connection.
 
@@ -19,7 +15,7 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_PubSub_to_Redis).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -37,27 +33,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **redisSinkType**: The Redis sink. Supported values are `STRING_SINK, HASH_SINK, STREAMS_SINK, and LOGGING_SINK`. For example, `STRING_SINK`. Defaults to: STRING_SINK.
 * **connectionTimeout**: The Redis connection timeout in milliseconds.  For example, `2000`. Defaults to: 2000.
 * **ttl**: The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires.
-* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
-* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
-
-## User-Defined functions (UDFs)
-
-The Pub/Sub to Redis Template supports User-Defined functions (UDFs).
-UDFs allow you to customize functionality by providing a JavaScript function
-without having to maintain or build the entire template code.
-
-Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
-and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
-for more information about how to create and test those functions.
 
 
 ## Getting Started
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -71,7 +54,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/pubsub-to-redis
+```
 
 ### Building Template
 
@@ -90,16 +83,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_PubSub_to_Redis" \
--f v2/pubsub-to-redis
+-pl v2/pubsub-to-redis -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -138,9 +135,6 @@ export SSL_ENABLED=false
 export REDIS_SINK_TYPE=STRING_SINK
 export CONNECTION_TIMEOUT=2000
 export TTL=-1
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 gcloud dataflow flex-template run "cloud-pubsub-to-redis-job" \
   --project "$PROJECT" \
@@ -153,10 +147,7 @@ gcloud dataflow flex-template run "cloud-pubsub-to-redis-job" \
   --parameters "sslEnabled=$SSL_ENABLED" \
   --parameters "redisSinkType=$REDIS_SINK_TYPE" \
   --parameters "connectionTimeout=$CONNECTION_TIMEOUT" \
-  --parameters "ttl=$TTL" \
-  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
-  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
-  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
+  --parameters "ttl=$TTL"
 ```
 
 For more information about the command, please check:
@@ -185,9 +176,6 @@ export SSL_ENABLED=false
 export REDIS_SINK_TYPE=STRING_SINK
 export CONNECTION_TIMEOUT=2000
 export TTL=-1
-export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
-export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
-export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -196,7 +184,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-pubsub-to-redis-job" \
 -DtemplateName="Cloud_PubSub_to_Redis" \
--Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,redisHost=$REDIS_HOST,redisPort=$REDIS_PORT,redisPassword=$REDIS_PASSWORD,sslEnabled=$SSL_ENABLED,redisSinkType=$REDIS_SINK_TYPE,connectionTimeout=$CONNECTION_TIMEOUT,ttl=$TTL,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="inputSubscription=$INPUT_SUBSCRIPTION,redisHost=$REDIS_HOST,redisPort=$REDIS_PORT,redisPassword=$REDIS_PASSWORD,sslEnabled=$SSL_ENABLED,redisSinkType=$REDIS_SINK_TYPE,connectionTimeout=$CONNECTION_TIMEOUT,ttl=$TTL" \
 -f v2/pubsub-to-redis
 ```
 
@@ -249,9 +237,6 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_redis" {
     # redisSinkType = "STRING_SINK"
     # connectionTimeout = "2000"
     # ttl = "-1"
-    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
-    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
-    # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }
 ```

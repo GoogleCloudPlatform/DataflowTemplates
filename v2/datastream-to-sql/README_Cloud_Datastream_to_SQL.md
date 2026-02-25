@@ -30,7 +30,7 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_SQL).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -52,8 +52,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **databaseType**: The database type to write to (for example, Postgres). Defaults to: postgres.
 * **databasePort**: The SQL database port to connect to. The default value is `5432`.
 * **databaseName**: The name of the SQL database to connect to. The default value is `postgres`.
-* **schemaMap**: A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error). Defaults to empty.
+* **defaultCasing**: A Toggle for table casing behavior. For example,(ie.LOWERCASE = mytable -> mytable, UPPERCASE = mytable -> MYTABLECAMEL = my_table -> myTable, SNAKE = myTable -> my_table. Defaults to: LOWERCASE.
+* **columnCasing**: A toggle for target column name casing. LOWERCASE (default): my_column -> my_column. UPPERCASE: my_column -> MY_COLUMN. CAMEL: my_column -> myColumn. SNAKE: myColumn -> my_column.
+* **schemaMap**: A map of key/values used to dictate schema and table name changes. Examples: Schema to schema (SCHEMA1:SCHEMA2), Table to table (SCHEMA1.table1:SCHEMA2.TABLE1), or multiple mappings using the pipe '|' delimiter (e.g. schema1.source:schema2.target|schema3.source:schema4.target). Defaults to empty.
 * **customConnectionString**: Optional connection string which will be used instead of the default database string.
+* **numThreads**: Determines key parallelism of Format to DML step, specifically, the value is passed into Reshuffle.withNumBuckets. Defaults to: 100.
+* **databaseLoginTimeout**: The timeout in seconds for database login attempts. This helps prevent connection hangs when multiple workers try to connect simultaneously.
+* **orderByIncludesIsDeleted**: Order by configurations for data should include prioritizing data which is not deleted. Defaults to: false.
+* **datastreamSourceType**: Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.
+* **deadLetterQueueDirectory**: The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.
+* **dlqRetryMinutes**: The number of minutes between DLQ Retries. Defaults to `10`.
+* **dlqMaxRetries**: The maximum number of times to retry a failed record from the DLQ before marking it as a permanent failure. Defaults to 5.
+* **schemaCacheRefreshMinutes**: The number of minutes to cache table schemas. Defaults to 1440 (24 hours).
+* **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 
 
 
@@ -61,7 +72,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -75,7 +86,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/datastream-to-sql
+```
 
 ### Building Template
 
@@ -94,16 +115,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_SQL" \
--f v2/datastream-to-sql
+-pl v2/datastream-to-sql -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -146,8 +171,19 @@ export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export DATABASE_TYPE=postgres
 export DATABASE_PORT=5432
 export DATABASE_NAME=postgres
+export DEFAULT_CASING=LOWERCASE
+export COLUMN_CASING=LOWERCASE
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
+export NUM_THREADS=100
+export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
+export ORDER_BY_INCLUDES_IS_DELETED=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export SCHEMA_CACHE_REFRESH_MINUTES=1440
+export RUN_MODE=regular
 
 gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --project "$PROJECT" \
@@ -165,8 +201,19 @@ gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --parameters "databaseUser=$DATABASE_USER" \
   --parameters "databasePassword=$DATABASE_PASSWORD" \
   --parameters "databaseName=$DATABASE_NAME" \
+  --parameters "defaultCasing=$DEFAULT_CASING" \
+  --parameters "columnCasing=$COLUMN_CASING" \
   --parameters "schemaMap=$SCHEMA_MAP" \
-  --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING"
+  --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING" \
+  --parameters "numThreads=$NUM_THREADS" \
+  --parameters "databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT" \
+  --parameters "orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED" \
+  --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
+  --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
+  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+  --parameters "dlqMaxRetries=$DLQ_MAX_RETRIES" \
+  --parameters "schemaCacheRefreshMinutes=$SCHEMA_CACHE_REFRESH_MINUTES" \
+  --parameters "runMode=$RUN_MODE"
 ```
 
 For more information about the command, please check:
@@ -199,8 +246,19 @@ export DATA_STREAM_ROOT_URL=https://datastream.googleapis.com/
 export DATABASE_TYPE=postgres
 export DATABASE_PORT=5432
 export DATABASE_NAME=postgres
+export DEFAULT_CASING=LOWERCASE
+export COLUMN_CASING=LOWERCASE
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
+export NUM_THREADS=100
+export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
+export ORDER_BY_INCLUDES_IS_DELETED=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
+export DEAD_LETTER_QUEUE_DIRECTORY=""
+export DLQ_RETRY_MINUTES=10
+export DLQ_MAX_RETRIES=5
+export SCHEMA_CACHE_REFRESH_MINUTES=1440
+export RUN_MODE=regular
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -209,7 +267,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-sql-job" \
 -DtemplateName="Cloud_Datastream_to_SQL" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,defaultCasing=$DEFAULT_CASING,columnCasing=$COLUMN_CASING,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS,databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT,orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetries=$DLQ_MAX_RETRIES,schemaCacheRefreshMinutes=$SCHEMA_CACHE_REFRESH_MINUTES,runMode=$RUN_MODE" \
 -f v2/datastream-to-sql
 ```
 
@@ -266,8 +324,19 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_sql" {
     # databaseType = "postgres"
     # databasePort = "5432"
     # databaseName = "postgres"
+    # defaultCasing = "LOWERCASE"
+    # columnCasing = "LOWERCASE"
     # schemaMap = ""
     # customConnectionString = ""
+    # numThreads = "100"
+    # databaseLoginTimeout = "<databaseLoginTimeout>"
+    # orderByIncludesIsDeleted = "false"
+    # datastreamSourceType = "<datastreamSourceType>"
+    # deadLetterQueueDirectory = ""
+    # dlqRetryMinutes = "10"
+    # dlqMaxRetries = "5"
+    # schemaCacheRefreshMinutes = "1440"
+    # runMode = "regular"
   }
 }
 ```

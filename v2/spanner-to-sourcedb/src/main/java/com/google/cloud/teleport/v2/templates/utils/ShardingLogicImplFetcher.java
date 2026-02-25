@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +47,7 @@ public class ShardingLogicImplFetcher {
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       String skipDirName) {
 
     if (shardIdFetcher == null) {
@@ -56,17 +56,21 @@ public class ShardingLogicImplFetcher {
               customJarPath,
               shardingCustomClassName,
               shardingCustomParameters,
-              schema,
+              schemaMapper,
               skipDirName);
     }
     return shardIdFetcher;
+  }
+
+  public static void reset() {
+    shardIdFetcher = null;
   }
 
   private static IShardIdFetcher getShardIdFetcherImpl(
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       String skipDirName) {
     if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
       LOG.info(
@@ -106,7 +110,7 @@ public class ShardingLogicImplFetcher {
       }
     }
     // else return the core implementation
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema, skipDirName);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, skipDirName);
     return shardIdFetcher;
   }
 
@@ -125,10 +129,10 @@ public class ShardingLogicImplFetcher {
                 ResourceId destResourceId =
                     FileSystems.matchNewResource(destFile.getAbsolutePath(), false);
                 copy(sourceResourceId, destResourceId);
-                LOG.info("Localized jar: " + sourceResourceId + " to: " + destResourceId);
+                LOG.info("Localized jar: {} to: {}", sourceResourceId, destResourceId);
                 driverJarUrls.add(destFile.toURI().toURL());
               } catch (IOException e) {
-                LOG.warn("Unable to copy " + jarPath, e);
+                LOG.warn("Unable to copy {} . Exception: {}", jarPath, e);
               }
             });
     return driverJarUrls.stream().toArray(URL[]::new);

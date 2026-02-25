@@ -23,10 +23,10 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ImportPipeline.Options;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -204,6 +204,17 @@ public class ImportPipeline {
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
+
+    @TemplateParameter.Integer(
+        order = 12,
+        optional = true,
+        description = "Early Index Create Threshold",
+        helpText =
+            "The threshold for the number of indexes and foreign keys that determines whether to create indexes before data loading. If the total number of indexes and foreign keys is larger than this threshold, they will be created before data import for better performance. The default value is 40.")
+    @Default.Integer(40)
+    ValueProvider<Integer> getEarlyIndexCreateThreshold();
+
+    void setEarlyIndexCreateThreshold(ValueProvider<Integer> value);
   }
 
   public static void main(String[] args) {
@@ -239,7 +250,8 @@ public class ImportPipeline {
             options.getWaitForChangeStreams(),
             options.getWaitForSequences(),
             options.getEarlyIndexCreateFlag(),
-            options.getDdlCreationTimeoutInMinutes()));
+            options.getDdlCreationTimeoutInMinutes(),
+            options.getEarlyIndexCreateThreshold()));
 
     PipelineResult result = p.run();
 

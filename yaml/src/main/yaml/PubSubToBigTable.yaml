@@ -1,0 +1,93 @@
+template:
+
+  name: "PubSub_To_BigTable_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "PubSub to BigTable (YAML)"
+  description: >
+    The PubSub to BigTable template is a streaming pipeline which ingests
+    data from a PubSub topic, executes a user-defined mapping, and
+    writes the resulting records to BigTable. Any errors which occur in the
+    transformation of the data are written to a separate Pub/Sub topic.
+  flex_container_name: "pubsub-to-bigtable-yaml"
+  yamlTemplateFile: "PubSubToBigTable.yaml"
+  filesToCopy: >
+    {"PubSubToBigTable.yaml", "main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Pub/Sub topic must exist.",
+    "The mapToField Pub/Sub error topic must exist.",
+    "The output BigTable table must exist."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "pubsub_options"
+    - "maptofields_options"
+    - "windowinto_options"
+    - "bigtable_options"
+
+  parameters:
+    - pubsub_common_options
+    - pubsub_read_options
+    - maptofields_common_options
+    - bigtable_common_options
+    - windowinto_common_options
+
+    - name: "outputDeadLetterPubSubTopic"
+      description: "Pub/Sub transformation error topic"
+      help: "Pub/Sub error topic for failed transformation messages."
+      example: "projects/your-project-id/topics/your-error-topic-name"
+      required: true
+      type: text
+      order: 1
+
+
+pipeline:
+  type: composite
+  transforms:
+    - type: ReadFromPubSub
+      name: ReadMessages
+      config:
+        topic: {{ topic }}
+        subscription: {{ subscription }}
+        format: {{ format }}
+        schema: {{ schema }}
+        attributes: {{ attributes }}
+        attribute_map: {{ attributeMap }}
+        id_attribute: {{ idAttribute }}
+        timestamp_attribute: {{ timestampAttribute }}
+    - type: MapToFields
+      name: ConvertStringsToBytes
+      input: ReadMessages
+      config:
+        language: {{ language }}
+        fields: {{ fields }}
+        error_handling:
+          output: errors
+    - type: WindowInto
+      name: WindowInto
+      input: ConvertStringsToBytes
+      config:
+        windowing: {{ windowing }}
+    - type: WriteToBigTable
+      name: WriteGoodMessagesToBigTable
+      input: WindowInto
+      config:
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        table: {{ tableId }}
+    - type: WriteToPubSub
+      name: WriteTransformationErrorsToDeadLetterQueue
+      input: ConvertStringsToBytes.errors
+      config:
+        topic: {{ outputDeadLetterPubSubTopic }}
+        format: {{ format }}
+        schema: |
+          {{ schema }}
+
+options:
+  streaming: true

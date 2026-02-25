@@ -26,7 +26,7 @@
     <artifactId>it-google-cloud-platform</artifactId>
 
     <properties>
-        <parquet-avro.version>1.13.1</parquet-avro.version>
+        <parquet-avro.version>1.15.2</parquet-avro.version>
     </properties>
     <dependencies>
         <dependency>
@@ -107,14 +107,11 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner</artifactId>
+            <version>6.104.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-pubsub</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-pubsublite</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
@@ -135,6 +132,10 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-secretmanager</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-logging</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
@@ -177,6 +178,17 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
             <version>3.1.12</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-nio</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

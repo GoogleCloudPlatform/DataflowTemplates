@@ -31,6 +31,8 @@ variable "common_params" {
       template_params = object({
         shadow_table_prefix                 = optional(string)
         create_shadow_tables                = optional(bool)
+        shadow_table_spanner_instance_id    = optional(string)
+        shadow_table_spanner_database_id    = optional(string)
         rfc_start_date_time                 = optional(string)
         file_read_concurrency               = optional(number)
         spanner_project_id                  = optional(string)
@@ -39,6 +41,7 @@ variable "common_params" {
         spanner_host                        = optional(string)
         dlq_retry_minutes                   = optional(number)
         dlq_max_retry_count                 = optional(number)
+        dead_letter_queue_directory         = optional(string)
         datastream_root_url                 = optional(string)
         datastream_source_type              = optional(string)
         round_json_decimals                 = optional(bool)

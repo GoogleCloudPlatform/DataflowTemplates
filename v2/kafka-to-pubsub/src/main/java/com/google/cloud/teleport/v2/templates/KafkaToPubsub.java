@@ -81,7 +81,7 @@ import org.slf4j.LoggerFactory;
  * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
  *
  * # Create bucket in the cloud storage
- * gsutil mb gs://${BUCKET_NAME}
+ * gcloud storage buckets create gs://${BUCKET_NAME}
  *
  * # Go to the beam folder
  * cd /path/to/DataflowTemplates/v2

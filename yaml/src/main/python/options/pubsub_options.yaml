@@ -1,0 +1,94 @@
+options:
+  - name: "pubsub_common_options"
+    parameters:
+      - order: 1
+        name: "topic"
+        description: "Pub/Sub input topic"
+        help: "Pub/Sub topic to read the input from."
+        example: "projects/your-project-id/topics/your-topic-name"
+        required: true
+        type: text
+      - order: 2
+        name: "format"
+        description: "The message format."
+        help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+        required: true
+        type: text
+      - order: 3
+        name: "schema"
+        description: "Data schema."
+        help: >
+          A schema is required if data format is JSON, AVRO or PROTO. For JSON, 
+          this is a JSON schema. For AVRO and PROTO, this is the full schema 
+          definition.
+        required: true
+        type: text
+      - order: 4
+        name: "attributes"
+        description: "List of attribute keys."
+        help: >
+          List of attribute keys whose values will be flattened into the
+          output message as additional fields.  For example, if the format is `raw`
+          and attributes is `[a, b]` then this read will produce elements of
+          the form `Row(payload=..., a=..., b=...)`.
+        required: false
+        type: text
+      - order: 5
+        name: "attributesMap"
+        description: "Name of a field in which to store the full set of attributes."
+        help: >
+          Name of a field in which to store the full set of attributes
+          associated with this message.  For example, if the format is `raw` and
+          `attribute_map` is set to `attrs` then this read will produce elements
+          of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type
+          of string to string.
+          If both `attributes` and `attribute_map` are set, the overlapping
+          attribute values will be present in both the flattened structure and the
+          attribute map.
+        required: false
+        type: text
+      - order: 6
+        name: "idAttribute"
+        description: "The attribute on incoming Pub/Sub messages to use as a unique record identifier."
+        help: >
+          The attribute on incoming Pub/Sub messages to use as a unique
+          record identifier. When specified, the value of this attribute (which
+          can be any string that uniquely identifies the record) will be used for
+          deduplication of messages. If not provided, we cannot guarantee
+          that no duplicate data will be delivered on the Pub/Sub stream. In this
+          case, deduplication of the stream will be strictly best effort.
+        required: false
+        type: text
+      - order: 7
+        name: "timestampAttribute"
+        description: "Message value to use as element timestamp."
+        help: >
+          Message value to use as element timestamp. If None, uses message 
+          publishing time as the timestamp. Timestamp values should be in one of two formats:
+          1). A numerical value representing the number of milliseconds since the
+          Unix epoch.
+          2). A string in RFC 3339 format, UTC timezone. Example:
+          ``2015-10-29T23:41:41.123Z``. The sub-second component of the
+          timestamp is optional, and digits beyond the first three (i.e., time
+          units smaller than milliseconds) may be ignored.
+      - order: 8
+        name: "errorHandling"
+        description: "Error handling configuration"
+        help: "This option specifies whether and where to output error rows."
+        required: false
+        type: text
+
+
+  - name: "pubsub_read_options"
+    parameters:
+      - order: 1
+        name: "subscription"
+        description: "Pub/Sub subscription"
+        help: "Pub/Sub subscription to read the input from."
+        example: "projects/your-project-id/subscriptions/your-subscription-name"
+        required: false
+        type: text
+
+  - name: "pubsub_write_options"
+    parameters:
+

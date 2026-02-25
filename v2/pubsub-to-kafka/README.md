@@ -58,7 +58,7 @@ The Dataflow Flex template has to store its metadata in a bucket in
 Create the bucket in Google Cloud Storage if it doesn't exist yet:
 
 ```
-gsutil mb gs://${BUCKET_NAME}
+gcloud storage buckets create gs://${BUCKET_NAME}
 ```
 
 #### Containerization variables:

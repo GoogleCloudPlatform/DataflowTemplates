@@ -1,0 +1,25 @@
+options:
+  - name: "maptofields_common_options"
+    parameters:
+      - order: 1
+        name: "language"
+        description: "Language used to define the expressions."
+        help: >
+          The language used to define (and execute) the expressions and/or 
+          callables in fields. Defaults to generic.
+        required: true
+        type: text
+      - order: 2
+        name: "fields"
+        description: "Field mapping configuration"
+        help: >
+          The output fields to compute, each mapping to the expression or callable
+          that creates them.
+        required: true
+        type: text
+
+  - name: "maptofields_read_options"
+    parameters:
+
+  - name: "maptofields_write_options"
+    parameters:

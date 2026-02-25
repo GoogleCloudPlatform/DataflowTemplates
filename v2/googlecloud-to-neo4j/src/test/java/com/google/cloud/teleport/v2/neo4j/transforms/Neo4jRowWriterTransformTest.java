@@ -67,7 +67,7 @@ public class Neo4jRowWriterTransformTest {
             "a-source",
             null,
             WriteMode.CREATE,
-            null,
+            List.of(),
             List.of("Placeholder"),
             properties,
             schema);

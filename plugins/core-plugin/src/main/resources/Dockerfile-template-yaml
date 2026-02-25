@@ -25,9 +25,21 @@ RUN python -m venv /venv \
     && /venv/bin/pip install --require-hashes --no-deps --no-cache-dir -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
-    && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+    && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/ \
+    # Update ensurepip to use most recent versions of setuptools and pip. This avoids some vulnerabilities which won't be fixed on older versions of python.
+    && pip install upgrade_ensurepip; \
+    python3 -m upgrade_ensurepip; \
+    find /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-* -type f ! -name $(basename $(ls -v /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-*-py3-none-any.whl | tail -n 1)) -delete; \
+    find /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/pip-* -type f ! -name $(basename $(ls -v /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/pip-*-py3-none-any.whl | tail -n 1)) -delete; \
+    pip uninstall upgrade_ensurepip -y; \
+    python3 -m ensurepip;
 
 # Cache provider environments for faster startup and expansion time
+RUN mkdir -p ~/.apache_beam/cache/jars
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-io-expansion-service/${beamMavenVersion}/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-schemaio-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-extensions-schemaio-expansion-service/${beamMavenVersion}/beam-sdks-java-extensions-schemaio-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-io-google-cloud-platform-expansion-service/${beamMavenVersion}/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-sql-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-extensions-sql-expansion-service/${beamMavenVersion}/beam-sdks-java-extensions-sql-expansion-service-${beamMavenVersion}.jar
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
 #============================================================#
@@ -54,7 +66,6 @@ COPY --from=python-base /usr/local/lib/python$PY_VERSION /usr/local/lib/python$P
 # Copy required shared libraries from python-base
 COPY --from=python-base /lib/$CHIPSET_ARCH/ld-*so* /lib64/
 COPY --from=python-base /lib/$CHIPSET_ARCH/lib*so* /lib/$CHIPSET_ARCH/
-COPY --from=python-base /usr/lib/$CHIPSET_ARCH/libffi* /usr/lib/$CHIPSET_ARCH/
 COPY --from=python-base /usr/local/lib/libpython$PY_VERSION* /usr/local/lib/
 
 # Copy minimal commands from python-base needed to execute template
@@ -68,6 +79,9 @@ COPY --from=python-base /root/.apache_beam/cache /root/.apache_beam/cache
 
 # Copy licenses
 COPY --from=python-base /usr/licenses/ /usr/licenses/
+
+# Test jsonschema
+RUN python -c "import jsonschema"
 
 WORKDIR /template
 

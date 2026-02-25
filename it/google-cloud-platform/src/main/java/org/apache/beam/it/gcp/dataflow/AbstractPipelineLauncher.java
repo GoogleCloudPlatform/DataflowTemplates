@@ -147,6 +147,20 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   }
 
   @Override
+  public Job forceCancelJob(String project, String region, String jobId) throws IOException {
+    LOG.info("Force-cancelling {} under {}", jobId, project);
+    Job job =
+        new Job()
+            .setRequestedState(JobState.CANCELLED.toString())
+            .setLabels(ImmutableMap.of("force_cancel_job", "true"));
+    LOG.info("Sending job to update {}:\n{}", jobId, formatForLogging(job));
+    return Failsafe.with(clientRetryPolicy())
+        .get(
+            () ->
+                client.projects().locations().jobs().update(project, region, jobId, job).execute());
+  }
+
+  @Override
   public @Nullable Double getMetric(String project, String region, String jobId, String metricName)
       throws IOException {
     LOG.info("Getting '{}' metric for {} under {}", metricName, jobId, project);
@@ -301,8 +315,12 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
   /** Waits until the specified job is not in a pending state. */
   public JobState waitUntilActive(String project, String region, String jobId) throws IOException {
     JobState state = getJobStatus(project, region, jobId);
+    boolean logOnce = false;
     while (PENDING_STATES.contains(state)) {
-      LOG.info("Job still pending. Will check again in 15 seconds");
+      if (!logOnce) {
+        LOG.info("Job still pending. Will check again in 15 seconds");
+        logOnce = true;
+      }
       try {
         TimeUnit.SECONDS.sleep(15);
       } catch (InterruptedException e) {

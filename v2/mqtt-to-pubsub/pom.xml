@@ -25,7 +25,6 @@
 
     <artifactId>mqtt-to-pubsub</artifactId>
     <properties>
-        <testcontainers.version>1.17.5</testcontainers.version>
     </properties>
     <dependencies>
         <dependency>
@@ -46,7 +45,7 @@
         <dependency>
             <groupId>com.hivemq</groupId>
             <artifactId>hivemq-mqtt-client</artifactId>
-            <version>1.3.0</version>
+            <version>1.3.7</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

@@ -82,7 +82,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
   }
 
   public void createSpannerMetadataDatabase(SpannerResourceManager spannerMetadataResourceManager) {
-    String dummy = "create table t1(id INT64 ) primary key(id)";
+    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     // needed to create separate metadata database
     spannerMetadataDatabaseName = spannerMetadataResourceManager.getDatabaseId();
@@ -176,7 +176,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }

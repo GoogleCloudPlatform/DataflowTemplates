@@ -9,7 +9,26 @@
     "name": "Float32Table",
     "manifestFile": "Float32Table-manifest.json"
   }, {
+    "name": "Identity",
+    "manifestFile": "Identity-manifest.json"
+  }, {
     "name": "ModelStruct",
     "manifestFile": "ModelStruct-manifest.json"
+  }],
+  "databaseOptions": [{
+    "optionName": "default_time_zone",
+    "optionType": "STRING",
+    "optionValue": "UTC"
+  }, {
+    "optionName": "default_sequence_kind",
+    "optionType": "STRING",
+    "optionValue": "bit_reversed_positive"
+  }],
+  "sequences": [{
+    "name": "Sequence1",
+    "manifestFile": "Sequence1-manifest.json"
+  }, {
+    "name": "Sequence2",
+    "manifestFile": "Sequence2-manifest.json"
   }]
 }

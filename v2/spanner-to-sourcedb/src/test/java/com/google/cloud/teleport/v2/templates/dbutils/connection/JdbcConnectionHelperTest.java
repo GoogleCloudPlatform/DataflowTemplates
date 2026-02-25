@@ -15,22 +15,32 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockitoAnnotations;
 
 @RunWith(JUnit4.class)
@@ -41,10 +51,14 @@ public class JdbcConnectionHelperTest {
 
   @Mock private Connection mockConnection;
 
+  @Mock private HikariConfig mockHikariConfig;
+
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     connectionHelper = new JdbcConnectionHelper();
+    connectionHelper.setConnectionPoolMap(null); // Reset singleton state
+    mockDataSource = mock(HikariDataSource.class);
   }
 
   @Test
@@ -75,5 +89,50 @@ public class JdbcConnectionHelperTest {
   public void testGetConnectionPoolNotFound() throws ConnectionException {
     connectionHelper.setConnectionPoolMap(Map.of());
     assertNull(connectionHelper.getConnection("invalid-key"));
+  }
+
+  @Test
+  public void testInitConnectionPool() {
+    ConnectionHelperRequest mockRequest = mock(ConnectionHelperRequest.class);
+    Shard mockShard = mock(Shard.class);
+    when(mockShard.getHost()).thenReturn("localhost");
+    when(mockShard.getPort()).thenReturn("3306");
+    when(mockShard.getDbName()).thenReturn("testdb");
+    when(mockShard.getUserName()).thenReturn("testuser");
+    when(mockShard.getPassword()).thenReturn("testpassword");
+    when(mockShard.getConnectionProperties()).thenReturn("useSSL=false");
+
+    List<Shard> mockShards = Collections.singletonList(mockShard);
+    when(mockRequest.getShards()).thenReturn(mockShards);
+    when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
+    when(mockRequest.getMaxConnections()).thenReturn(10);
+    when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
+
+    try (MockedConstruction<HikariDataSource> mockedDsConstruction =
+        mockConstruction(
+            HikariDataSource.class,
+            (mock, context) -> when(mock.getConnection()).thenReturn(mock(Connection.class)))) {
+      try (MockedConstruction<HikariConfig> mockedConfigConstruction =
+          mockConstruction(HikariConfig.class)) {
+        connectionHelper.init(mockRequest);
+
+        assertTrue(connectionHelper.isConnectionPoolInitialized());
+        // Verify HikariConfig properties
+        HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
+        verify(capturedConfig).setJdbcUrl("jdbc:mysql://localhost:3306/testdb");
+        verify(capturedConfig).setUsername("testuser");
+        verify(capturedConfig).setPassword("testpassword");
+        verify(capturedConfig).setDriverClassName("com.mysql.cj.jdbc.Driver");
+        verify(capturedConfig).setMaximumPoolSize(10);
+        verify(capturedConfig).setConnectionInitSql("SELECT 1");
+        verify(capturedConfig).addDataSourceProperty("useSSL", "false");
+
+        // Verify HikariDataSource was created with the config
+        assertThat(mockedDsConstruction.constructed()).hasSize(1);
+        ArgumentCaptor<HikariConfig> configCaptor = ArgumentCaptor.forClass(HikariConfig.class);
+        HikariDataSource createdDataSource = mockedDsConstruction.constructed().get(0);
+        assertThat(createdDataSource).isNotNull();
+      }
+    }
   }
 }

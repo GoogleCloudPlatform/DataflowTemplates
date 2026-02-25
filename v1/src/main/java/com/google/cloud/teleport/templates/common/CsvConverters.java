@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import static org.apache.beam.sdk.io.FileSystem.LineageLevel;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
@@ -23,9 +25,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.charset.Charset;
+import java.util.HashSet;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -40,6 +45,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,9 +142,9 @@ public class CsvConverters {
 
     public abstract ValueProvider<String> inputFileSpec();
 
-    public abstract TupleTag<String> headerTag();
+    public abstract TupleTag<Iterable<String>> headerTag();
 
-    public abstract TupleTag<String> lineTag();
+    public abstract TupleTag<Iterable<String>> lineTag();
 
     public abstract ValueProvider<String> fileEncoding();
 
@@ -172,9 +178,9 @@ public class CsvConverters {
 
       public abstract Builder setInputFileSpec(ValueProvider<String> inputFileSpec);
 
-      public abstract Builder setHeaderTag(TupleTag<String> headerTag);
+      public abstract Builder setHeaderTag(TupleTag<Iterable<String>> headerTag);
 
-      public abstract Builder setLineTag(TupleTag<String> lineTag);
+      public abstract Builder setLineTag(TupleTag<Iterable<String>> lineTag);
 
       public abstract Builder setFileEncoding(ValueProvider<String> fileEncoding);
 
@@ -188,18 +194,20 @@ public class CsvConverters {
   }
 
   /** The {@link GetCsvRowsFn} class gets each row of a Csv file and outputs it as a string. */
-  static class GetCsvRowsFn extends DoFn<ReadableFile, String> {
+  static class GetCsvRowsFn extends DoFn<ReadableFile, Iterable<String>> {
 
-    private final TupleTag<String> headerTag;
-    private final TupleTag<String> linesTag;
+    private final TupleTag<Iterable<String>> headerTag;
+    private final TupleTag<Iterable<String>> linesTag;
     private ValueProvider<CSVFormat> csvFormat;
     private final ValueProvider<String> fileEncoding;
     private final ValueProvider<String> delimiter;
     private final ValueProvider<Boolean> hasHeaders;
+    // track unique resourceId met. Access it only inside reportSourceLineage
+    private transient @Nullable HashSet<ResourceId> uniqueIds;
 
     GetCsvRowsFn(
-        TupleTag<String> headerTag,
-        TupleTag<String> linesTag,
+        TupleTag<Iterable<String>> headerTag,
+        TupleTag<Iterable<String>> linesTag,
         ValueProvider<String> csvFormat,
         ValueProvider<String> delimiter,
         ValueProvider<String> fileEncoding,
@@ -224,29 +232,45 @@ public class CsvConverters {
         if (hasHeaders.get()) {
           CSVParser parser =
               CSVParser.parse(bufferedReader, this.csvFormat.get().withFirstRecordAsHeader());
-          outputReceiver
-              .get(this.headerTag)
-              .output(String.join(this.delimiter.get(), parser.getHeaderNames()));
+          outputReceiver.get(this.headerTag).output(parser.getHeaderNames());
           parser
               .iterator()
-              .forEachRemaining(
-                  record ->
-                      outputReceiver
-                          .get(this.linesTag)
-                          .output(String.join(this.delimiter.get(), record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         } else {
           CSVParser parser = CSVParser.parse(bufferedReader, this.csvFormat.get());
           parser
               .iterator()
-              .forEachRemaining(
-                  record ->
-                      outputReceiver
-                          .get(this.linesTag)
-                          .output(String.join(this.delimiter.get(), record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         }
       } catch (IOException ioe) {
         LOG.error("Headers do not match, consistency cannot be guaranteed");
         throw new RuntimeException("Could not read Csv headers: " + ioe.getMessage());
+      }
+      // Report source Lineage
+      reportSourceLineage(filePath.getMetadata().resourceId());
+    }
+
+    /**
+     * Report source Lineage. Due to the size limit of Beam metrics, report full file name or only
+     * top level depend on the number of files.
+     *
+     * <p>- Number of files<=100, report full file paths;
+     *
+     * <p>- Otherwise, report top level only.
+     */
+    private void reportSourceLineage(ResourceId resourceId) {
+      if (uniqueIds == null) {
+        uniqueIds = new HashSet<>();
+      } else if (uniqueIds.isEmpty()) {
+        // already at capacity
+        FileSystems.reportSourceLineage(resourceId, LineageLevel.TOP_LEVEL);
+        return;
+      }
+      uniqueIds.add(resourceId);
+      FileSystems.reportSourceLineage(resourceId, LineageLevel.FILE);
+      if (uniqueIds.size() >= 100) {
+        // avoid reference leak
+        uniqueIds.clear();
       }
     }
   }

@@ -1,9 +1,12 @@
+DROP TABLE IF EXISTS Users1;
+DROP TABLE IF EXISTS AllDatatypeTransformation;
+
 CREATE TABLE IF NOT EXISTS Users1 (
     id INT64 NOT NULL,
     name STRING(25),
 ) PRIMARY KEY(id);
 
-CREATE TABLE AllDatatypeTransformation (
+CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
 	varchar_column STRING(20) NOT NULL,
 	tinyint_column INT64,
 	text_column STRING(MAX),
@@ -27,5 +30,6 @@ CREATE TABLE AllDatatypeTransformation (
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   value_capture_type = 'NEW_ROW',
-  retention_period = '7d'
+  retention_period = '7d',
+  allow_txn_exclusion = true
 );

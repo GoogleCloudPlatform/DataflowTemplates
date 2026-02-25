@@ -34,41 +34,26 @@
   </description>
 
   <properties>
-    <mock-server-netty.version>5.14.0</mock-server-netty.version>
-    <open-census.version>0.24.0</open-census.version>
+    <open-census.version>0.31.1</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
-    <bigtable-beam-import.version>2.14.2</bigtable-beam-import.version>
-    <protobuf.version>3.21.7</protobuf.version>
-    <nashorn.version>15.4</nashorn.version>
-    <junit.jupiter.version>5.5.2</junit.jupiter.version>
+    <bigtable-beam-import.version>2.16.1</bigtable-beam-import.version>
+    <protobuf.version>4.29.4</protobuf.version>
+    <junit.jupiter.version>6.0.1</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
-    <commons-text.version>1.10.0</commons-text.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
-    <threetenbp.version>1.4.4</threetenbp.version>
+    <threetenbp.version>1.7.2</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
-    <tensorflow.version>1.15.0</tensorflow.version>
-    <dlp.version>2.1.0</dlp.version>
+    <tensorflow.version>1.0.0</tensorflow.version>
     <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
-    <datastax.query.builder.version>4.16.0</datastax.query.builder.version>
-    <kms.version>1.40.0</kms.version>
-    <proto-kms.version>0.87.0</proto-kms.version>
-    <jacoco.version>0.8.8</jacoco.version>
+    <datastax.query.builder.version>4.17.0</datastax.query.builder.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>
 
   <dependencyManagement>
       <dependencies>
-        <dependency>
-            <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam is updated to 2.56. -->
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-spanner-bom</artifactId>
-            <version>6.71.0</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
         <dependency>
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-bom</artifactId>
@@ -105,6 +90,12 @@
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -119,6 +110,7 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-spanner</artifactId>
+      <version>6.104.0</version>
     </dependency>
     <dependency>
       <groupId>org.threeten</groupId>
@@ -179,6 +171,14 @@
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -197,6 +197,10 @@
         <exclusion>
           <groupId>asm</groupId>
           <artifactId>asm</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -246,7 +250,7 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.1.8</version>
+      <version>3.2.2</version>
     </dependency>
 
     <!-- Remove once https://github.com/apache/beam/pull/30200 is merged in Beam 2.55 -->
@@ -525,16 +529,14 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-kms</artifactId>
-      <version>${kms.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-kms-v1</artifactId>
-      <version>${proto-kms.version}</version>
     </dependency>
     <dependency>
       <groupId>org.tensorflow</groupId>
-      <artifactId>proto</artifactId>
+      <artifactId>tensorflow-core-native</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
     <dependency>
@@ -546,6 +548,11 @@
       <artifactId>java-driver-query-builder</artifactId>
       <version>${datastax.query.builder.version}</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.33.2</version>
     </dependency>
   </dependencies>
 
@@ -563,7 +570,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
-          <version>1.6.0</version>
+          <version>3.6.2</version>
           <configuration>
             <cleanupDaemonThreads>false</cleanupDaemonThreads>
           </configuration>
@@ -637,9 +644,6 @@
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-bigtable-v2
-                </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
-                  com.google.protobuf:protobuf-java
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-spanner-admin-database-v1
@@ -897,6 +901,8 @@
             <exclude>**/*InformationSchemaScanner.*</exclude>
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
+            <!-- Excluding LocalSpannerIO changestream tests -->
+            <exclude>**/*com/google/cloud/teleport/spanner/spannerio/changestreams/**/*</exclude>
           </excludes>
           <rules>
             <rule>
@@ -1006,6 +1012,11 @@
                     </filter>
                   </filters>
                   <transformers>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                      <manifestEntries>
+                        <Multi-Release>true</Multi-Release>
+                      </manifestEntries>
+                    </transformer>
                     <transformer
                         implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                   </transformers>

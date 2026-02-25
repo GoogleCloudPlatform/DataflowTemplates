@@ -31,7 +31,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <ptr.jedis-mock.version>1.0.9</ptr.jedis-mock.version>
+        <ptr.jedis-mock.version>1.1.12</ptr.jedis-mock.version>
     </properties>
 
     <name>PubSub To Redis</name>

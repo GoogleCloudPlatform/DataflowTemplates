@@ -54,11 +54,11 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   private static final String MSSQL_JAR_PREFIX = "mssql-jdbc";
 
   // The versions of each of the JDBC drivers to use.
-  // NOTE: These versions must correspond to the versions declared in the `it/pom.xml` file.
+  // NOTE: These versions must correspond to the versions declared in the `pom.xml` file.
   private static final String MYSQL_VERSION = "8.0.30";
   private static final String POSTGRES_VERSION = "42.6.1";
-  private static final String ORACLE_VERSION = "23.2.0.0";
-  private static final String MSSQL_VERSION = "12.2.0.jre11";
+  private static final String ORACLE_VERSION = "23.9.0.25.07";
+  private static final String MSSQL_VERSION = "13.2.1.jre11";
 
   @Before
   public void setUpJDBC() throws IOException {
@@ -149,6 +149,20 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
       // Remove color reset chars "\033[0m" sent to terminal output
       basePath =
           basePath.replace(new String(new byte[] {27, 91, 48, 109}, StandardCharsets.UTF_8), "");
+
+      // We are getting the path to the local maven repository from the mvn command output.
+      // The mvn command output can sometimes include unrelated JVM warnings mixed with the actual
+      // output. The actual path is expected to be always the last line in the output.
+
+      // For example, the output can look like this:
+      // [0.005s][warning][perf,memops] Cannot use file /tmp/hsperfdata_runner/109499 ...
+      // /home/runner/.m2/repository
+
+      // In the above example, we want to extract the last line "/home/runner/.m2/repository".
+
+      // Split by newline and take the last line.
+      String[] lines = basePath.trim().split("\\r?\\n");
+      basePath = lines[lines.length - 1].trim();
 
       inStream.close();
 

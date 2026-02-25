@@ -65,6 +65,9 @@ public final class DataChangeRecordTypeConvertorTest {
     assertNull(
         DataChangeRecordTypeConvertor.toBoolean(ce, "bool_field3", /* requiredField= */ false));
     assertNull(
+        DataChangeRecordTypeConvertor.toBoolean(
+            ce, "bool_field3", /* requiredField= */ true)); // Spanner supports NULL primary key
+    assertNull(
         DataChangeRecordTypeConvertor.toBoolean(ce, "non_existent", /* requiredField= */ false));
   }
 
@@ -89,6 +92,7 @@ public final class DataChangeRecordTypeConvertorTest {
         DataChangeRecordTypeConvertor.toLong(ce, "field2", /* requiredField= */ true),
         new Long(-123456789));
     assertNull(DataChangeRecordTypeConvertor.toLong(ce, "field3", /* requiredField= */ false));
+    assertNull(DataChangeRecordTypeConvertor.toLong(ce, "field3", /* requiredField= */ true));
   }
 
   /*
@@ -123,6 +127,7 @@ public final class DataChangeRecordTypeConvertorTest {
         DataChangeRecordTypeConvertor.toDouble(ce, "field5", /* requiredField= */ true),
         new Double(123456789.012345678912));
     assertNull(DataChangeRecordTypeConvertor.toDouble(ce, "field6", /* requiredField= */ false));
+    assertNull(DataChangeRecordTypeConvertor.toDouble(ce, "field6", /* requiredField= */ true));
   }
 
   /*
@@ -247,6 +252,7 @@ public final class DataChangeRecordTypeConvertorTest {
     changeEvent.put("field1", "YWJjCg==");
     changeEvent.put("field2", "aGVsbG8gd29ybGQ=");
     changeEvent.put("field3", "MGI0N2I2Znk3ODN0dQ==");
+    changeEvent.put("field4", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
     assertEquals(
@@ -258,6 +264,8 @@ public final class DataChangeRecordTypeConvertorTest {
     assertEquals(
         DataChangeRecordTypeConvertor.toByteArray(ce, "field3", /* requiredField= */ true),
         ByteArray.fromBase64("MGI0N2I2Znk3ODN0dQ=="));
+    assertNull(DataChangeRecordTypeConvertor.toByteArray(ce, "field4", /* requiredField= */ false));
+    assertNull(DataChangeRecordTypeConvertor.toByteArray(ce, "field4", /* requiredField= */ true));
   }
 
   /*
@@ -295,6 +303,7 @@ public final class DataChangeRecordTypeConvertorTest {
         DataChangeRecordTypeConvertor.toTimestamp(ce, "field6", /* requiredField= */ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
     assertNull(DataChangeRecordTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ false));
+    assertNull(DataChangeRecordTypeConvertor.toTimestamp(ce, "field7", /* requiredField= */ true));
   }
 
   @Test(expected = DataChangeRecordConvertorException.class)
@@ -335,6 +344,7 @@ public final class DataChangeRecordTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "2020-12-30");
     changeEvent.put("field2", "2020-02-30");
+    changeEvent.put("field3", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
     assertEquals(
@@ -343,6 +353,8 @@ public final class DataChangeRecordTypeConvertorTest {
     assertEquals(
         DataChangeRecordTypeConvertor.toDate(ce, "field2", /* requiredField= */ true),
         Date.parseDate("2020-02-30"));
+    assertNull(DataChangeRecordTypeConvertor.toDate(ce, "field3", /* requiredField= */ false));
+    assertNull(DataChangeRecordTypeConvertor.toDate(ce, "field3", /* requiredField= */ true));
   }
 
   @Test

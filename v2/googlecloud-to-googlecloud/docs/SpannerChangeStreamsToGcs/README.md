@@ -165,7 +165,7 @@ echo '{
             "language": "JAVA"
     }
 }'> image-spec.json
-gsutil cp image-spec.json ${TEMPLATE_IMAGE_SPEC}
+gcloud storage cp image-spec.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 

@@ -24,14 +24,18 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.util.List;
-import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of ChangeEventSequence for MySql database which stores change event sequence
  * information and implements the comparison method.
  */
 class MySqlChangeEventSequence extends ChangeEventSequence {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MySqlChangeEventSequence.class);
 
   // Timestamp for change event
   private final Long timestamp;
@@ -94,30 +98,31 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   /*
    * Creates a MySqlChangeEventSequence by reading from a shadow table.
    * @param transactionContext The transaction context to use for reading from the shadow table
-   * @param shadowTable The name of the shadow table to read from
-   * @param primaryKey The primary key to look up in the shadow table
+   * @param context The change event context with resolved safe shadow column names
    * @param useSqlStatements If true, performs shadow table read using SQL statement with exclusive lock on row
    */
   public static MySqlChangeEventSequence createFromShadowTable(
       final TransactionContext transactionContext,
-      String shadowTable,
+      ChangeEventContext context,
       Ddl shadowTableDdl,
-      Key primaryKey,
       boolean useSqlStatements)
       throws ChangeEventSequenceCreationException {
 
     try {
+      String shadowTable = context.getShadowTable();
+      Key primaryKey = context.getPrimaryKey();
       // Read columns from shadow table
       List<String> readColumnList =
-          DatastreamConstants.MYSQL_SORT_ORDER.values().stream()
-              .map(p -> p.getLeft())
-              .collect(Collectors.toList());
+          java.util.Arrays.asList(
+              context.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.
       if (useSqlStatements) {
         Statement sql =
-            ShadowTableReadUtils.generateShadowTableReadSQL(
+            SpannerReadUtils.generateReadSQLWithExclusiveLock(
                 shadowTable, readColumnList, primaryKey, shadowTableDdl);
         ResultSet resultSet = transactionContext.executeQuery(sql);
         if (!resultSet.next()) {
@@ -161,16 +166,41 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     }
     MySqlChangeEventSequence other = (MySqlChangeEventSequence) o;
 
-    int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
-
-    if (timestampComparisonResult != 0) {
-      return timestampComparisonResult;
+    // For backfill events logfile will be null/empty.
+    // These should always be treated as before the CDC events
+    if (this.logFile == null && other.getLogFile() == null) {
+      // if two backfill events happen to come, order by time of reading
+      return this.timestamp.compareTo(other.getTimestamp());
+    }
+    if (this.logFile == null) {
+      return -1; // current entry backfill - move current before other
+    }
+    if (other.getLogFile() == null) {
+      return 1; // other entry is backfill - move current after other
     }
 
     int logFileComparisonResult = this.logFile.compareTo(other.getLogFile());
+    if (logFileComparisonResult != 0) {
+      return logFileComparisonResult;
+    }
 
-    return (logFileComparisonResult != 0)
-        ? logFileComparisonResult
-        : this.logPosition.compareTo(other.getLogPosition());
+    int logPositionComparisonResult = this.logPosition.compareTo(other.getLogPosition());
+    if (logPositionComparisonResult != 0) {
+      return logPositionComparisonResult;
+    }
+
+    return this.timestamp.compareTo(other.getTimestamp());
+  }
+
+  @Override
+  public String toString() {
+    return "MySqlChangeEventSequence{"
+        + "timestamp="
+        + timestamp
+        + ", logFile="
+        + logFile
+        + ", logPosition="
+        + logPosition
+        + '}';
   }
 }

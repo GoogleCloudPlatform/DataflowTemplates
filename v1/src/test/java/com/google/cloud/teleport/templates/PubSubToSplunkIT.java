@@ -162,7 +162,7 @@ public class PubSubToSplunkIT extends TemplateTestBase {
         "search source=\"" + source + "\" sourcetype=\"" + sourceType + "\" host=\"" + host + "\"";
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 CustomSplunkEventsCheck.builder(splunkResourceManager)
                     .setQuery(query)

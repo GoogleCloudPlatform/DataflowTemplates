@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS Users1;
+DROP TABLE IF EXISTS AllDatatypeTransformation;
+
 CREATE TABLE Users1 (
     id INT NOT NULL,
     first_name VARCHAR(25),
@@ -6,6 +9,7 @@ CREATE TABLE Users1 (
 
 CREATE TABLE AllDatatypeTransformation (
     varchar_column VARCHAR(20) NOT NULL,
+    source_only_pk INT NOT NULL,
     tinyint_column TINYINT,
     text_column TEXT,
     date_column DATE,
@@ -23,5 +27,5 @@ CREATE TABLE AllDatatypeTransformation (
     bool_column TINYINT(1),
     binary_column VARBINARY(150),
     bit_column BIT(8),
-    PRIMARY KEY (varchar_column)
+    PRIMARY KEY (source_only_pk, varchar_column)
 );

@@ -1,4 +1,4 @@
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     company
 (
     company_id      INT64 NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE
     created_on      STRING(100),
 ) PRIMARY KEY
   (company_id);
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     employee_sp
 (
     employee_id         INT64 NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE
 ) PRIMARY KEY
   (employee_id);
 
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     employee_attribute
 (
     employee_id    INT64 NOT NULL,

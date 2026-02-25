@@ -19,6 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import java.math.BigDecimal;
+import java.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -93,6 +95,38 @@ public class PartitionColumnTest {
                         .setPadSpace(true)
                         .build())
                 // No Max Length.
+                .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
+                .setColumnClass(BigDecimal.class)
+                // No numeric scale
+                .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
+                .setColumnClass(Float.class)
+                // No decimal step size
+                .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
+                .setColumnClass(Double.class)
+                // No decimal step size
+                .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
+                .setColumnClass(Duration.class)
+                // No datetime precision.
                 .build());
   }
 }

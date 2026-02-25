@@ -24,6 +24,7 @@ public class AvroUtil {
 
   // The property names in Avro schema.
   public static final String DEFAULT_EXPRESSION = "defaultExpression";
+  public static final String ON_UPDATE_EXPRESSION = "onUpdateExpression";
   public static final String GENERATION_EXPRESSION = "generationExpression";
   public static final String GOOGLE_FORMAT_VERSION = "googleFormatVersion";
   public static final String GOOGLE_STORAGE = "googleStorage";
@@ -43,6 +44,7 @@ public class AvroUtil {
   public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";
   public static final String SPANNER_OPTION = "spannerOption_";
   public static final String SPANNER_PARENT = "spannerParent";
+  public static final String SPANNER_INTERLEAVE_TYPE = "spannerInterleaveType";
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
   public static final String SPANNER_REMOTE = "spannerRemote";
   public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";
@@ -50,6 +52,12 @@ public class AvroUtil {
   public static final String SPANNER_SEQUENCE_SKIP_RANGE_MIN = "skipRangeMin";
   public static final String SPANNER_SEQUENCE_SKIP_RANGE_MAX = "skipRangeMax";
   public static final String SPANNER_SEQUENCE_COUNTER_START = "counterStartValue";
+  public static final String SPANNER_UDF = "spannerUdf";
+  public static final String SPANNER_UDF_NAME = "spannerUdfName";
+  public static final String SPANNER_UDF_TYPE = "spannerUdfType";
+  public static final String SPANNER_UDF_DEFINITION = "spannerUdfDefinition";
+  public static final String SPANNER_UDF_SECURITY = "spannerUdfSecurity";
+  public static final String SPANNER_UDF_PARAMETER = "spannerUdfParameter_";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";
@@ -58,6 +66,8 @@ public class AvroUtil {
   public static final String SPANNER_EDGE_TABLE = "spannerGraphEdgeTable";
   public static final String SPANNER_PROPERTY_DECLARATION = "spannerGraphPropertyDeclaration";
   public static final String SPANNER_LABEL = "spannerGraphLabel";
+  public static final String SPANNER_DYNAMIC_LABEL = "spannerGraphDynamicLabel";
+  public static final String SPANNER_DYNAMIC_PROPERTIES = "spannerGraphDynamicProperties";
 
   public static final String SPANNER_NAME = "spannerName";
   public static final String STORED = "stored";

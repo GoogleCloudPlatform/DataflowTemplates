@@ -10,7 +10,7 @@ INSERT INTO `company` VALUES
                           (3,'ama','1994-07-05');
 
 CREATE TABLE `employee` (
-                            `employee_id` int(11) PRIMARY KEY NOT NULL,
+                            `employee_id` int(11) AUTO_INCREMENT PRIMARY KEY NOT NULL,
                             `company_id` int(11) DEFAULT NULL,
                             `employee_name` varchar(100) DEFAULT NULL,
                             `employee_address` varchar(100) DEFAULT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE `vendor` (
                       `last_name` VARCHAR(255) NOT NULL,
                       `email` VARCHAR(255) UNIQUE NOT NULL,
                       `full_name` VARCHAR(512) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)),
-                      INDEX full_name_idx (full_name)
+                      INDEX full_name_idx (vendor_id)
 );
 
 INSERT INTO vendor (vendor_id, first_name, last_name, email) VALUES

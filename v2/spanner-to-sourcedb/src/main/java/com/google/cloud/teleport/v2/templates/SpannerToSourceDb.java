@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -29,18 +32,18 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.metadata.CassandraSourceMetadata;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchemaScanner;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -50,15 +53,18 @@ import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimm
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
+import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
-import com.google.cloud.teleport.v2.templates.utils.CassandraSourceSchemaReader;
-import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -66,14 +72,14 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOption
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -83,9 +89,11 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -177,6 +185,19 @@ public class SpannerToSourceDb {
     @TemplateParameter.Text(
         order = 7,
         optional = true,
+        description = "Cloud Spanner metadata table name",
+        helpText =
+            "The Spanner change streams connector metadata table name to use. If not provided,"
+                + " Spanner automatically creates the streams connector metadata table during the pipeline flow"
+                + " change. You must provide this parameter when updating an existing pipeline to ensure"
+                + " that the metadata table from the original job is carried over.")
+    String getSpannerMetadataTableName();
+
+    void setSpannerMetadataTableName(String value);
+
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
         description = "Changes are read from the given timestamp",
         helpText = "Read changes from the given timestamp.")
     @Default.String("")
@@ -185,7 +206,7 @@ public class SpannerToSourceDb {
     void setStartTimestamp(String value);
 
     @TemplateParameter.Text(
-        order = 8,
+        order = 9,
         optional = true,
         description = "Changes are read until the given timestamp",
         helpText =
@@ -196,17 +217,17 @@ public class SpannerToSourceDb {
     void setEndTimestamp(String value);
 
     @TemplateParameter.Text(
-        order = 9,
+        order = 10,
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
         helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
-    @Default.String("shadow_")
+    @Default.String("rev_shadow_")
     String getShadowTablePrefix();
 
     void setShadowTablePrefix(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 10,
+        order = 11,
         optional = false,
         description = "Path to GCS file containing the the Source shard details",
         helpText = "Path to GCS file containing connection profile info for source shards.")
@@ -215,7 +236,7 @@ public class SpannerToSourceDb {
     void setSourceShardsFilePath(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 11,
+        order = 12,
         optional = true,
         description = "Session File Path in Cloud Storage",
         helpText =
@@ -226,7 +247,7 @@ public class SpannerToSourceDb {
     void setSessionFilePath(String value);
 
     @TemplateParameter.Enum(
-        order = 12,
+        order = 13,
         optional = true,
         enumOptions = {@TemplateEnumOption("none"), @TemplateEnumOption("forward_migration")},
         description = "Filtration mode",
@@ -240,7 +261,7 @@ public class SpannerToSourceDb {
     void setFiltrationMode(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 13,
+        order = 14,
         optional = true,
         description = "Custom jar location in Cloud Storage",
         helpText =
@@ -252,7 +273,7 @@ public class SpannerToSourceDb {
     void setShardingCustomJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 14,
+        order = 15,
         optional = true,
         description = "Custom class name",
         helpText =
@@ -264,7 +285,7 @@ public class SpannerToSourceDb {
     void setShardingCustomClassName(String value);
 
     @TemplateParameter.Text(
-        order = 15,
+        order = 16,
         optional = true,
         description = "Custom sharding logic parameters",
         helpText =
@@ -275,7 +296,7 @@ public class SpannerToSourceDb {
     void setShardingCustomParameters(String value);
 
     @TemplateParameter.Text(
-        order = 16,
+        order = 17,
         optional = true,
         description = "SourceDB timezone offset",
         helpText =
@@ -286,7 +307,7 @@ public class SpannerToSourceDb {
     void setSourceDbTimezoneOffset(String value);
 
     @TemplateParameter.PubsubSubscription(
-        order = 17,
+        order = 18,
         optional = true,
         description =
             "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
@@ -301,7 +322,7 @@ public class SpannerToSourceDb {
     void setDlqGcsPubSubSubscription(String value);
 
     @TemplateParameter.Text(
-        order = 18,
+        order = 19,
         optional = true,
         description = "Directory name for holding skipped records",
         helpText =
@@ -313,7 +334,7 @@ public class SpannerToSourceDb {
     void setSkipDirectoryName(String value);
 
     @TemplateParameter.Long(
-        order = 19,
+        order = 20,
         optional = true,
         description = "Maximum connections per shard.",
         helpText = "This will come from shard file eventually.")
@@ -323,7 +344,7 @@ public class SpannerToSourceDb {
     void setMaxShardConnections(Long value);
 
     @TemplateParameter.Text(
-        order = 20,
+        order = 21,
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
@@ -335,7 +356,7 @@ public class SpannerToSourceDb {
     void setDeadLetterQueueDirectory(String value);
 
     @TemplateParameter.Integer(
-        order = 21,
+        order = 22,
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
@@ -346,7 +367,7 @@ public class SpannerToSourceDb {
     void setDlqMaxRetryCount(Integer value);
 
     @TemplateParameter.Enum(
-        order = 22,
+        order = 23,
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
@@ -359,7 +380,7 @@ public class SpannerToSourceDb {
     void setRunMode(String value);
 
     @TemplateParameter.Integer(
-        order = 23,
+        order = 24,
         optional = true,
         description = "Dead letter queue retry minutes",
         helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
@@ -369,7 +390,7 @@ public class SpannerToSourceDb {
     void setDlqRetryMinutes(Integer value);
 
     @TemplateParameter.Enum(
-        order = 24,
+        order = 25,
         optional = true,
         description = "Source database type, ex: mysql",
         enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("cassandra")},
@@ -380,7 +401,7 @@ public class SpannerToSourceDb {
     void setSourceType(String value);
 
     @TemplateParameter.GcsReadFile(
-        order = 25,
+        order = 26,
         optional = true,
         description = "Custom transformation jar location in Cloud Storage",
         helpText =
@@ -392,7 +413,7 @@ public class SpannerToSourceDb {
     void setTransformationJarPath(String value);
 
     @TemplateParameter.Text(
-        order = 26,
+        order = 27,
         optional = true,
         description = "Custom class name for transformation",
         helpText =
@@ -404,7 +425,7 @@ public class SpannerToSourceDb {
     void setTransformationClassName(String value);
 
     @TemplateParameter.Text(
-        order = 27,
+        order = 28,
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
@@ -415,7 +436,52 @@ public class SpannerToSourceDb {
     void setTransformationCustomParameters(String value);
 
     @TemplateParameter.Text(
-        order = 28,
+        order = 29,
+        optional = true,
+        description = "Table name overrides from spanner to source",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from spanner to source. They are written in the"
+                + "following format: [{SpannerTableName1, SourceTableName1}, {SpannerTableName2, SourceTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 30,
+        optional = true,
+        description = "Column name overrides from spanner to source",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example =
+            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from spanner to source. They are written in the"
+                + "following format: [{SpannerTableName1.SpannerColumnName1, SpannerTableName1.SourceColumnName1}, {SpannerTableName2.SpannerColumnName1, SpannerTableName2.SourceColumnName1}]"
+                + "Note that the SpannerTableName should remain the same in both the spanner and source pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 31,
+        optional = true,
+        description = "File based overrides from spanner to source",
+        helpText =
+            "A file which specifies the table and the column name overrides from spanner to source.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 32,
         optional = true,
         description = "Directory name for holding filtered records",
         helpText =
@@ -425,6 +491,45 @@ public class SpannerToSourceDb {
     String getFilterEventsDirectoryName();
 
     void setFilterEventsDirectoryName(String value);
+
+    @TemplateParameter.Boolean(
+        order = 33,
+        optional = true,
+        description = "Boolean setting if reverse migration is sharded",
+        helpText =
+            "Sets the template to a sharded migration. If source shard template contains more"
+                + " than one shard, the value will be set to true. This value defaults to false.")
+    @Default.Boolean(false)
+    Boolean getIsShardedMigration();
+
+    void setIsShardedMigration(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
+
+    @TemplateParameter.Enum(
+        order = 35,
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
+    @Default.Enum("HIGH")
+    RpcPriority getSpannerPriority();
+
+    void setSpannerPriority(RpcPriority value);
   }
 
   /**
@@ -482,19 +587,17 @@ public class SpannerToSourceDb {
               + " incease the max shard connections");
     }
 
-    // Read the session file for Mysql Only
-    Schema schema =
-        MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-            ? SessionFileReader.read(
-                options.getSessionFilePath()) // Read from session file for MYSQL source type
-            : new Schema();
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     // Create shadow tables
     // Note that there is a limit on the number of tables that can be created per DB: 5000.
@@ -507,24 +610,28 @@ public class SpannerToSourceDb {
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            spannerConfig,
-            spannerMetadataConfig,
-            SpannerAccessor.getOrCreate(spannerMetadataConfig)
-                .getDatabaseAdminClient()
-                .getDatabase(
-                    spannerMetadataConfig.getInstanceId().get(),
-                    spannerMetadataConfig.getDatabaseId().get())
-                .getDialect(),
-            options.getShadowTablePrefix());
+    // Fetch DDLs and create shadow tables in a DoFn to avoid launcher-side timeout.
+    PCollectionTuple ddlTuple =
+        pipeline.apply(
+            "Process Information Schema",
+            new SpannerInformationSchemaProcessorTransform(
+                spannerConfig, spannerMetadataConfig, options.getShadowTablePrefix()));
+
+    final PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(SpannerInformationSchemaProcessorTransform.MAIN_DDL_TAG)
+            .apply("View Main DDL", View.asSingleton());
 
     DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
 
-    shadowTableCreator.createShadowTablesInSpanner();
-    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
+    final PCollectionView<Ddl> shadowTableDdlView =
+        ddlTuple
+            .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
+            .apply("View Shadow DDL", View.asSingleton());
+
     List<Shard> shards;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -538,37 +645,16 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    if (shards.size() == 1) {
+    SourceSchema sourceSchema = fetchSourceSchema(options, shards);
+    LOG.info("Source schema: {}", sourceSchema);
+
+    if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
       if (shard.getLogicalShardId() == null) {
         shard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
         LOG.info(
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
-      }
-    }
-
-    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
-      Map<String, SpannerTable> spannerTableMap =
-          SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables());
-      Map<String, NameAndCols> spannerTableNameColsMap =
-          SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables());
-      try {
-        CassandraSourceMetadata cassandraSourceMetadata =
-            new CassandraSourceMetadata.Builder()
-                .setResultSet(
-                    CassandraSourceSchemaReader.getInformationSchemaAsResultSet(
-                        (CassandraShard) shards.get(0)))
-                .build();
-        schema =
-            new Schema(
-                spannerTableMap,
-                null,
-                cassandraSourceMetadata.getSourceTableMap(),
-                spannerTableNameColsMap,
-                cassandraSourceMetadata.getNameAndColsMap());
-      } catch (Exception e) {
-        throw new IllegalArgumentException(e);
       }
     }
 
@@ -582,7 +668,7 @@ public class SpannerToSourceDb {
                 ? debugOptions.getNumberOfWorkerHarnessThreads()
                 : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
-    if (isRegularMode) {
+    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
               pipeline.apply(
@@ -610,12 +696,18 @@ public class SpannerToSourceDb {
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     PCollection<TrimmedShardedDataChangeRecord> dlqRecords =
-        dlqJsonStrRecords
-            .apply(
-                "Convert DLQ records to TrimmedShardedDataChangeRecord",
-                ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+        dlqJsonStrRecords.apply(
+            "Convert DLQ records to TrimmedShardedDataChangeRecord",
+            ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerConfig, options.getFailureInjectionParameter());
+    }
+
     if (isRegularMode) {
       PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
           pipeline
@@ -627,13 +719,11 @@ public class SpannerToSourceDb {
               // stream data
               .apply("Reshuffle", Reshuffle.viaRandomKey())
               .apply("Filteration", ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
-              .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()))
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()));
       mergedRecords =
           PCollectionList.of(changeRecordsFromDB)
               .and(dlqRecords)
-              .apply("Flatten", Flatten.pCollections())
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .apply("Flatten", Flatten.pCollections());
     } else {
       mergedRecords = dlqRecords;
     }
@@ -642,6 +732,14 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerMetadataConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerMetadataConfig, options.getFailureInjectionParameter());
+    }
+
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -651,35 +749,47 @@ public class SpannerToSourceDb {
                 // mod
                 // number of parallelism
                 ParDo.of(
-                    new AssignShardIdFn(
-                        spannerConfig,
-                        schema,
-                        ddl,
-                        shardingMode,
-                        shards.get(0).getLogicalShardId(),
-                        options.getSkipDirectoryName(),
-                        options.getShardingCustomJarPath(),
-                        options.getShardingCustomClassName(),
-                        options.getShardingCustomParameters(),
-                        options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all shards accept the same
+                        new AssignShardIdFn(
+                            spannerConfig,
+                            ddlView,
+                            sourceSchema,
+                            shardingMode,
+                            shards.get(0).getLogicalShardId(),
+                            options.getSkipDirectoryName(),
+                            options.getShardingCustomJarPath(),
+                            options.getShardingCustomClassName(),
+                            options.getShardingCustomParameters(),
+                            options.getMaxShardConnections() * shards.size(),
+                            options.getSourceType(),
+                            options.getSessionFilePath(),
+                            options.getSchemaOverridesFilePath(),
+                            options.getTableOverrides(),
+                            options
+                                .getColumnOverrides())) // currently assume that all shards accept
+                    // the
+                    // same source type
+                    .withSideInputs(ddlView))
             .setCoder(
-                KvCoder.of(
-                    VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
+                KvCoder.of(VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
             .apply("Reshuffle2", Reshuffle.of())
             .apply(
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    schema,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
-                    ddl,
+                    ddlView,
+                    shadowTableDdlView,
+                    sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
                     options.getSourceType(),
-                    customTransformation));
+                    customTransformation,
+                    options.getSessionFilePath(),
+                    options.getSchemaOverridesFilePath(),
+                    options.getTableOverrides(),
+                    options.getColumnOverrides()));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -781,7 +891,14 @@ public class SpannerToSourceDb {
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
             .withMetadataDatabase(options.getMetadataDatabase())
-            .withInclusiveStartAt(startTime);
+            .withInclusiveStartAt(startTime)
+            .withRpcPriority(options.getSpannerPriority());
+
+    if (options.getSpannerMetadataTableName() != null
+        && !options.getSpannerMetadataTableName().isEmpty()) {
+      readChangeStreamDoFn =
+          readChangeStreamDoFn.withMetadataTable(options.getSpannerMetadataTableName());
+    }
     if (!options.getEndTimestamp().equals("")) {
       return readChangeStreamDoFn.withInclusiveEndAt(
           Timestamp.parseTimestamp(options.getEndTimestamp()));
@@ -801,14 +918,68 @@ public class SpannerToSourceDb {
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
     if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
     } else {
       String retryDlqUri =
           FileSystems.matchNewResource(dlqDirectory, true)
               .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
               .toString();
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
     }
+  }
+
+  private static Connection createJdbcConnection(Shard shard) {
+    try {
+      String sourceConnectionUrl =
+          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+      HikariConfig config = new HikariConfig();
+      config.setJdbcUrl(sourceConnectionUrl);
+      config.setUsername(shard.getUserName());
+      config.setPassword(shard.getPassword());
+      config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+      HikariDataSource ds = new HikariDataSource(config);
+      return ds.getConnection();
+    } catch (java.sql.SQLException e) {
+      LOG.error("Sql error while discovering mysql schema: {}", e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
+   *
+   * @param cassandraShard The shard containing connection details.
+   * @return A {@link CqlSession} instance.
+   */
+  private static CqlSession createCqlSession(CassandraShard cassandraShard) {
+    CqlSessionBuilder builder = CqlSession.builder();
+    DriverConfigLoader configLoader =
+        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
+    builder.withConfigLoader(configLoader);
+    return builder.build();
+  }
+
+  private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
+    SourceSchemaScanner scanner = null;
+    SourceSchema sourceSchema = null;
+    try {
+      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+        Connection connection = createJdbcConnection(shards.get(0));
+        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
+        sourceSchema = scanner.scan();
+        connection.close();
+      } else {
+        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
+          scanner =
+              new CassandraInformationSchemaScanner(
+                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
+          sourceSchema = scanner.scan();
+        }
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Unable to discover jdbc schema", e);
+    }
+    return sourceSchema;
   }
 }

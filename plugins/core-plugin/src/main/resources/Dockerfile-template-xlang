@@ -26,8 +26,10 @@ RUN python -m venv /venv \
     && /venv/bin/pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
-    && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+    && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/ \
+    && rm -rf /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-*.whl
     # change to mv once Beam 2.57.0 is released
+    # remove rm whl once Beam 2.68.0 is released
 
 
 #============================================================#
@@ -57,7 +59,6 @@ COPY --from=python-base /venv /root/.apache_beam/cache/venvs/py-$PY_VERSION-beam
 # Copy required shared libraries from python-base
 COPY --from=python-base /lib/$CHIPSET_ARCH/ld-*so* /lib64/
 COPY --from=python-base /lib/$CHIPSET_ARCH/lib*so* /lib/$CHIPSET_ARCH/
-COPY --from=python-base /usr/lib/$CHIPSET_ARCH/libffi* /usr/lib/$CHIPSET_ARCH/
 COPY --from=python-base /usr/local/lib/libpython$PY_VERSION* /usr/local/lib/
 
 # Copy minimal commands from python-base needed to execute template

@@ -27,7 +27,7 @@ public class BigQuerySourceProvider implements SourceProvider<BigQuerySource> {
   }
 
   @Override
-  public BigQuerySource provide(ObjectNode node) {
+  public BigQuerySource apply(ObjectNode node) {
     return new BigQuerySource(
         node.get("name").textValue(),
         node.get("query").textValue(),

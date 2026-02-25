@@ -5,6 +5,7 @@
 
 # Python requirements build files
 **/__build__/**/*
+**/__pycache__/**/*
 
 # IntelliJ files
 **/.idea/**/*

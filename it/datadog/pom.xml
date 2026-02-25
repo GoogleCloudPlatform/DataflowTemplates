@@ -47,7 +47,7 @@
         <dependency>
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-client-java</artifactId>
-            <version>5.14.0</version>
+            <version>${mock-server-netty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>

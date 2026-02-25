@@ -29,39 +29,41 @@ public class DuplicateAggregateFieldNameValidatorTest {
   public void
       fails_if_node_target_source_transformation_aggregations_field_name_clashes_with_text_source_fields() {
     var spec =
-        "{\n"
-            + "    \"version\": \"1\",\n"
-            + "    \"sources\": [{\n"
-            + "        \"name\": \"a-source\",\n"
-            + "        \"type\": \"text\",\n"
-            + "        \"header\": [\"field_1\"],\n"
-            + "        \"data\": [\n"
-            + "            [\"foo\"], [\"bar\"]\n"
-            + "        ]\n"
-            + "    }],\n"
-            + "    \"targets\": {\n"
-            + "        \"nodes\": [{\n"
-            + "            \"name\": \"a-target\",\n"
-            + "            \"source\": \"a-source\",\n"
-            + "            \"write_mode\": \"merge\",\n"
-            + "            \"labels\": [\"Placeholder\"],\n"
-            + "            \"properties\": [\n"
-            + "                {\"source_field\": \"field_1\", \"target_property\": \"property\"}\n"
-            + "            ],\n"
-            + "            \"source_transformations\": {\n"
-            + "                \"aggregations\": [{\n"
-            + "                    \"expression\": \"42\",\n"
-            + "                    \"field_name\": \"field_1\"\n"
-            + "                }]\n"
-            + "            },\n"
-            + "            \"schema\": {\n"
-            + "              \"key_constraints\": [\n"
-            + "                {\"name\": \"key property\", \"label\": \"Placeholder\", \"properties\": [\"property\"]}\n"
-            + "              ]\n"
-            + "            }\n"
-            + "        }]\n"
-            + "    }\n"
-            + "}";
+        """
+            {
+                "version": "1",
+                "sources": [{
+                    "name": "a-source",
+                    "type": "text",
+                    "header": ["field_1"],
+                    "data": [
+                        ["foo"], ["bar"]
+                    ]
+                }],
+                "targets": {
+                    "nodes": [{
+                        "name": "a-target",
+                        "source": "a-source",
+                        "write_mode": "merge",
+                        "labels": ["Placeholder"],
+                        "properties": [
+                            {"source_field": "field_1", "target_property": "property"}
+                        ],
+                        "source_transformations": {
+                            "aggregations": [{
+                                "expression": "42",
+                                "field_name": "field_1"
+                            }]
+                        },
+                        "schema": {
+                          "key_constraints": [
+                            {"name": "key property", "label": "Placeholder", "properties": ["property"]}
+                          ]
+                        }
+                    }]
+                }
+            }"""
+            .stripIndent();
 
     var exception =
         Assert.assertThrows(

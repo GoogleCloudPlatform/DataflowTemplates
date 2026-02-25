@@ -69,6 +69,11 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   private final SecretManagerResourceManager secretClient;
   private final String testRootDir;
 
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
+
   public SourceDbToSpannerLTBase() {
     try {
       artifactBucket = TestProperties.artifactBucket();
@@ -147,8 +152,10 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("password", sourceDatabaseResource.password());
             put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
+            put("workerMachineType", "n2-standard-4");
           }
         };
+    params.putAll(ADDITIONAL_JOB_PARAMS);
     params.putAll(templateParameters);
 
     // Configure job

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -27,11 +27,10 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Kafka to BigQuery (YAML)",
     description =
-        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests text data from Apache Kafka, executes a user-defined function (UDF), and outputs the resulting records to BigQuery. "
-            + "Any errors which occur in the transformation of the data, execution of the UDF, or inserting into the output table are inserted into a separate errors table in BigQuery. "
-            + "If the errors table does not exist prior to execution, then it is created.",
-    flexContainerName = "kafka-to-bigquery-yaml",
+        "The Apache Kafka to BigQuery template is a streaming pipeline which ingests  text data from Apache Kafka, executes a user-defined function (UDF), and  outputs the resulting records to BigQuery. Any errors which occur in the  transformation of the data, execution of the UDF, or inserting into the  output table are inserted into a separate errors table in BigQuery.  If the errors table does not exist prior to execution, then it is created.",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "KafkaToBigQuery.yaml",
+    filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
@@ -41,103 +40,201 @@ import org.apache.beam.sdk.options.Validation;
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
     streaming = true,
-    hidden = true)
+    hidden = false)
 public interface KafkaToBigQueryYaml {
+
   @TemplateParameter.Text(
       order = 1,
-      name = "readBootstrapServers",
-      optional = true,
-      description = "Kafka Bootstrap Server list",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
-      example = "localhost:9092,127.0.0.1:9093")
-  String getReadBootstrapServers();
-
-  void setReadBootstrapServers(String bootstrapServers);
+      name = "bootstrapServers",
+      optional = false,
+      description =
+          "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.",
+      helpText =
+          "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2",
+      example = "host1:port1,host2:port2,localhost:9092,127.0.0.1:9093")
+  @Validation.Required
+  String getBootstrapServers();
 
   @TemplateParameter.Text(
       order = 2,
-      name = "kafkaReadTopics",
-      optional = true,
-      description = "Kafka topic(s) to read input from.",
-      helpText = "Kafka topic(s) to read input from.",
-      example = "topic1,topic2")
-  String getKafkaReadTopics();
-
-  void setKafkaReadTopics(String inputTopics);
-
-  @TemplateParameter.Text(
-      order = 3,
-      name = "outputTableSpec",
-      description = "BigQuery output table",
-      helpText =
-          "BigQuery table location to write the output to. The name should be in the format "
-              + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+      name = "topic",
+      optional = false,
+      description = "Kafka topic to read from.",
+      helpText = "Kafka topic to read from. For example: my_topic",
+      example = "my_topic")
   @Validation.Required
-  String getOutputTableSpec();
+  String getTopic();
 
-  void setOutputTableSpec(String value);
+  @TemplateParameter.Boolean(
+      order = 3,
+      name = "allowDuplicates",
+      optional = true,
+      description = "If the Kafka read allows duplicates.",
+      helpText = "If the Kafka read allows duplicates. For example: true",
+      example = "true")
+  Boolean getAllowDuplicates();
 
   @TemplateParameter.Text(
       order = 4,
-      name = "outputDeadletterTable",
+      name = "confluentSchemaRegistrySubject",
       optional = true,
-      description = "The dead-letter table name to output failed messages to BigQuery",
-      helpText =
-          "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
-              + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
-      example = "your-project-id:your-dataset.your-table-name")
-  String getOutputDeadletterTable();
-
-  void setOutputDeadletterTable(String outputDeadletterTable);
+      description = "The subject name for the Confluent Schema Registry.",
+      helpText = "The subject name for the Confluent Schema Registry. For example: my_subject",
+      example = "my_subject")
+  String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
       order = 5,
-      name = "messageFormat",
+      name = "confluentSchemaRegistryUrl",
       optional = true,
-      description = "The message format",
-      helpText = "The message format. Can be AVRO or JSON.")
-  @Default.String("JSON")
-  String getMessageFormat();
-
-  void setMessageFormat(String value);
+      description = "The URL for the Confluent Schema Registry.",
+      helpText =
+          "The URL for the Confluent Schema Registry. For example: http://schema-registry:8081",
+      example = "http://schema-registry:8081")
+  String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
       order = 6,
-      name = "schema",
+      name = "consumerConfigUpdates",
       optional = true,
-      description = "Kafka schema.",
-      helpText = "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO.")
-  String getSchema();
+      description =
+          "A list of key-value pairs that act as configuration parameters for Kafka consumers.",
+      helpText =
+          "A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'}",
+      example = "{\"group.id\": \"my_group\"}")
+  String getConsumerConfigUpdates();
 
-  void setSchema(String schema);
+  @TemplateParameter.Text(
+      order = 7,
+      name = "fileDescriptorPath",
+      optional = true,
+      description = "The path to the Protocol Buffer File Descriptor Set file.",
+      helpText =
+          "The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb",
+      example = "gs://bucket/path/to/descriptor.pb")
+  String getFileDescriptorPath();
+
+  @TemplateParameter.Text(
+      order = 8,
+      name = "format",
+      optional = true,
+      description = "The encoding format for the data stored in Kafka.",
+      helpText =
+          "The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON",
+      example = "JSON")
+  @Default.String("JSON")
+  String getFormat();
+
+  @TemplateParameter.Text(
+      order = 9,
+      name = "messageName",
+      optional = true,
+      description =
+          "The name of the Protocol Buffer message to be used for schema extraction and data conversion.",
+      helpText =
+          "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage",
+      example = "MyMessage")
+  String getMessageName();
+
+  @TemplateParameter.Boolean(
+      order = 10,
+      name = "offsetDeduplication",
+      optional = true,
+      description = "If the redistribute is using offset deduplication mode.",
+      helpText = "If the redistribute is using offset deduplication mode. For example: true",
+      example = "true")
+  Boolean getOffsetDeduplication();
+
+  @TemplateParameter.Boolean(
+      order = 11,
+      name = "redistributeByRecordKey",
+      optional = true,
+      description = "If the redistribute keys by the Kafka record key.",
+      helpText = "If the redistribute keys by the Kafka record key. For example: true",
+      example = "true")
+  Boolean getRedistributeByRecordKey();
 
   @TemplateParameter.Integer(
-      order = 7,
+      order = 12,
+      name = "redistributeNumKeys",
+      optional = true,
+      description = "The number of keys for redistributing Kafka inputs.",
+      helpText = "The number of keys for redistributing Kafka inputs. For example: 10",
+      example = "10")
+  Integer getRedistributeNumKeys();
+
+  @TemplateParameter.Boolean(
+      order = 13,
+      name = "redistributed",
+      optional = true,
+      description = "If the Kafka read should be redistributed.",
+      helpText = "If the Kafka read should be redistributed. For example: true",
+      example = "true")
+  Boolean getRedistributed();
+
+  @TemplateParameter.Text(
+      order = 14,
+      name = "schema",
+      optional = true,
+      description = "The schema in which the data is encoded in the Kafka topic.",
+      helpText =
+          "The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO.",
+      example =
+          "{\"type\": \"record\", \"name\": \"User\", \"fields\": [{\"name\": \"name\", \"type\": \"string\"}]}")
+  String getSchema();
+
+  @TemplateParameter.Text(
+      order = 15,
+      name = "table",
+      optional = false,
+      description = "BigQuery table",
+      helpText =
+          "BigQuery table location to write the output to or read from. The name  should be in the format <project>:<dataset>.<table_name>`. For write,  the table's schema must match input objects.",
+      example = "")
+  @Validation.Required
+  String getTable();
+
+  @TemplateParameter.Text(
+      order = 16,
+      name = "createDisposition",
+      optional = true,
+      description = "How to create",
+      helpText =
+          "Specifies whether a table should be created if it does not exist.  Valid inputs are 'Never' and 'IfNeeded'.",
+      example = "")
+  @Default.String("CREATE_IF_NEEDED")
+  String getCreateDisposition();
+
+  @TemplateParameter.Text(
+      order = 17,
+      name = "writeDisposition",
+      optional = true,
+      description = "How to write",
+      helpText =
+          "How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the my_dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.",
+      example = "")
+  @Default.String("WRITE_APPEND")
+  String getWriteDisposition();
+
+  @TemplateParameter.Integer(
+      order = 18,
+      name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write transform and"
-              + " roughly corresponds to the number of Storage Write API’s streams which will be"
-              + " used by the pipeline. See"
-              + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
+          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
+      example = "")
   @Default.Integer(1)
-  Integer getNumStorageWriteApiStreams();
+  Integer getNumStreams();
 
-  void setNumStorageWriteApiStreams(Integer value);
-
-  @TemplateParameter.Integer(
-      order = 8,
-      optional = true,
-      description = "Triggering frequency in seconds for BigQuery Storage Write API",
+  @TemplateParameter.Text(
+      order = 19,
+      name = "outputDeadletterTable",
+      optional = false,
+      description = "The dead-letter table name to output failed messages to BigQuery",
       helpText =
-          "Triggering frequency will determine how soon the data will be visible for querying in"
-              + " BigQuery. See"
-              + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
-  @Default.Integer(1)
-  Integer getStorageWriteApiTriggeringFrequencySec();
-
-  void setStorageWriteApiTriggeringFrequencySec(Integer value);
+          "BigQuery table for failed messages. Messages failed to reach the output  table for different reasons (e.g., mismatched schema, malformed json)  are written to this table. If it doesn't exist, it will be created  during pipeline execution. If not specified,  'outputTableSpec_error_records' is used instead. The dead-letter table name to output failed messages to BigQuery.",
+      example = "your-project-id:your-dataset.your-table-name")
+  @Validation.Required
+  String getOutputDeadletterTable();
 }

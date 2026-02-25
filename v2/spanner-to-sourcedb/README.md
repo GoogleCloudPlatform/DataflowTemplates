@@ -1,13 +1,3 @@
-<div style="border:1px solid #ebccd1; padding:10px; border-radius:5px;">
-  ⚠️ <b>Important:</b>
-
-If you're using the same metadata database for multiple migration runs, **you must manually delete the change stream metadata table before each re-run**. This is due to a known issue in Apache Beam ([details](https://github.com/apache/beam/issues/32509)).
-
-The table name follows this pattern: `Metadata_<metadata database name>_<uuid>`.
-
-A fix is in progress ([see here](https://github.com/apache/beam/pull/32689)).
-</div>
-
 # Cloud Spanner Reverse Replication User Guide
 
 ## Overview
@@ -60,16 +50,26 @@ The following error scenarios are possible currently:
 
 Points 1 to 4 above are retryable errors - the Dataflow job automatically retries default of 500 times. In most cases,  should be good enough for the retryable records to succeed, however, even if after exhausting all the retries, these are not successful - then these records are marked as ‘severe' error category. Such ‘severe' errors can be retried later with a ‘retryDLQ' mode of the Dataflow job.
 
+Alternatively, if running in `regular` mode, you can manually move severe errors from the `severe` directory back to the `retry` directory and the pipeline will automatically pick them up and retry them.
+
 
 ## Before you begin
 
 A few prerequisites must be considered before starting with reverse replication.
 
-1. Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
-  - Allowlist Dataflow worker IPs on the MySQL instance so that they can access the MySQL IPs.
-  - Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file).
-  - Check that the MySQL server is up.
-  - The MySQL user configured in the [source shards file](#sample-source-shards-file) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database.
+1. Source Setup
+    - **For MySQL:**
+        - Ensure network connectivity between the MySQL database and your GCP project, where your Dataflow jobs will run.
+        - Allowlist Dataflow worker IPs on the MySQL instance so that they can access the MySQL IPs.
+        - Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file-for-MySQL).
+        - Check that the MySQL server is up.
+        - The MySQL user configured in the [source shards file](#sample-source-shards-file-for-MySQL) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database.
+    - **For Cassandra:**
+        - Ensure network connectivity between the Cassandra database and your GCP project, where your Dataflow jobs will run.
+        - Allowlist Dataflow worker IPs on the Cassandra instance so that they can access the Cassandra nodes.
+        - Check that the Cassandra credentials are correctly specified in the [source file](#Sample-source-File-for-Cassandra).
+        - Check that the Cassandra server is up.
+        - The Cassandra user configured in the [source file](#Sample-source-File-for-Cassandra) should be granted the necessary permissions to perform insert,update and delete operations, as a part of [Cassandra Role Management](https://cassandra.apache.org/doc/stable/cassandra/cql/security.html#create-role-statement).
 2. Ensure that Dataflow permissions are present.[Basic permissions](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#before_you_begin:~:text=Grant%20roles%20to%20your%20Compute%20Engine%20default%20service%20account.%20Run%20the%20following%20command%20once%20for%20each%20of%20the%20following%20IAM%20roles%3A%20roles/dataflow.admin%2C%20roles/dataflow.worker%2C%20roles/bigquery.dataEditor%2C%20roles/pubsub.editor%2C%20roles/storage.objectAdmin%2C%20and%20roles/artifactregistry.reader) and [Flex template permissions](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates#permissions).
 3. Ensure that the port 12345 is open for communication among the Dataflow worker VMs.Please refer the Dataflow firewall [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#firewall_rules) for more.
 4. Ensure the compute engine service account has the following permission:
@@ -82,13 +82,17 @@ A few prerequisites must be considered before starting with reverse replication.
 6. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
 7. Ensure that the target Spanner instance is ready.
 8. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
-9. [Source shards file](./RunnigReverseReplication.md#sample-sourceshards-file) already uploaded to GCS.
+9. Configuration Files Upload
+    - **For MySQL:**
+      [Source shards file](./RunnigReverseReplication.md#sample-source-shards-file-for-MySQL) already uploaded to GCS.
+    - **For Cassandra:**
+      [Source file](./RunnigReverseReplication.md#Sample-source-File-for-Cassandra) already uploaded to GCS.
 10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier.
+11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-MySQL).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped.
 12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
 13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
-  For example:
+For example:
 
   ```
   If the GCS DLQ bucket is : gs://rr-dlq
@@ -107,26 +111,28 @@ A few prerequisites must be considered before starting with reverse replication.
   CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   retention_period = '7d',
-  value_capture_type = 'NEW_ROW'
+  value_capture_type = 'NEW_ROW',
+  allow_txn_exclusion = true
   );
   ```
 15. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.
 
 16. Please refer dataflow [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#internet_access_for) on network options.
 
-  When disabling the public IP for Dataflow, the option below should be added to the command line:
+When disabling the public IP for Dataflow, the option below should be added to the command line:
 
   ```
   --disable-public-ips
   ```
 
-  When providing subnetwork, give the option like so:
+When providing subnetwork, give the option like so:
 
   ```
   --subnetwork=https://www.googleapis.com/compute/v1/projects/<project name>/regions/<region name>/subnetworks/<subnetwork name>
   ```
 
-### Sample source shards File
+
+### Sample source shards file for MySQL
 
 This file contains meta data regarding the source MYSQL shards, which is used to connect to them. This should be present even if there is a single source database shard.
 The database user password should be kept in [Secret Manager](#https://cloud.google.com/security/products/secret-manager) and it's URI needs to be specified in the file.
@@ -153,6 +159,29 @@ The file should be a list of JSONs as:
 ]
 ```
 
+
+### Sample source file for Cassandra
+
+This file includes metadata about the source Cassandra cluster, which is essential for establishing a connection. It must be present.
+The file format should be as below:
+
+```hocon
+  # Configuration for the DataStax Java driver for Apache Cassandra®.
+  # This file is in HOCON format, see https://github.com/typesafehub/config/blob/master/HOCON.md.
+  datastax-java-driver {
+        basic.contact-points = ["10.244.21.233:9042"]
+        basic.session-keyspace = "keyspace_name"
+      basic.load-balancing-policy {
+        local-datacenter = "datacenter1"
+      }
+      advanced.auth-provider {
+      class = PlainTextAuthProvider
+        username = "root"
+        password = "admin"
+      }
+    }
+```
+
 ## Launching reverse replication
 
 Currently, the reverse replication flow is launched manually. Please refer the Dataflow template [readme](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-to-sourcedb/README_Spanner_to_SourceDb.md).
@@ -177,21 +206,23 @@ The progress of the Dataflow jobs can be tracked via the Dataflow UI. Refer the 
 In addition, there are following application metrics exposed by the job:
 
 
-| Metric Name                           | Description                                                                                                                      |
-|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| custom_shard_id_impl_latency_ms | Time taken for the execution of custom shard identifier logic. |
-| data_record_count | The number of change stream records read. |
-| element_requeued_for_retry_count | Relevant for retryDLQ run mode, when the record gets enqueded back to severe folder for retry. |
-| elementsReconsumedFromDeadLetterQueue | The number of records read from the retry folder of DLQ directory. |
-| records_written_to_source_\<logical shard name\> | Number of records successfully written for the shard. |
-| replication_lag_in_seconds_\<logical shard name\>| Replication lag min,max and count value for the shard.|
-| retryable_record_count | The number of records that are up for retry. |
-| severe_error_count | The number of permanent errors. |
-| skipped_record_count | The count of records that were skipped from reverse replication. |
-| success_record_count	| The number of successfully processed records. This also accounts for the records that were not written to source if the source already had updated data. |
-| custom_transformation_exception | Number of exception encountered in the custom transformation jar |
-| filtered_events_\<logical shard name\> | Number of events filtered via custom transformation per shard |
-| apply_custom_transformation_impl_latency_ms | Time taken for the execution of custom transformation logic. |
+| Metric Name                                       | Description                                                                                                                                              |
+|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| custom_shard_id_impl_latency_ms                   | Time taken for the execution of custom shard identifier logic.                                                                                           |
+| data_record_count                                 | The number of change stream transactions read.                                                                                                           |
+| total_spanner_writes                              | The number of change stream records read.                                                                                                                |
+| element_requeued_for_retry_count                  | Relevant for retryDLQ run mode, when the record gets enqueded back to severe folder for retry.                                                           |
+| elementsReconsumedFromDeadLetterQueue             | The number of records read from the retry folder of DLQ directory.                                                                                       |
+| records_written_to_source_\<logical shard name\>  | Number of records successfully written for the shard.                                                                                                    |
+| replication_lag_in_seconds_\<logical shard name\> | Replication lag min,max and count value for the shard.                                                                                                   |
+| fwd_migration_filtered_record_count               | The number of records filtered during reverse replication due to forward transaction tag.                                                                |
+| retryable_record_count                            | The number of records that are up for retry.                                                                                                             |
+| severe_error_count                                | The number of permanent errors.                                                                                                                          |
+| skipped_record_count                              | The count of records that were skipped from reverse replication.                                                                                         |
+| success_record_count	                             | The number of successfully processed records. This also accounts for the records that were not written to source if the source already had updated data. |
+| custom_transformation_exception                   | Number of exception encountered in the custom transformation jar                                                                                         |
+| filtered_events_\<logical shard name\>            | Number of events filtered via custom transformation per shard                                                                                            |
+| apply_custom_transformation_impl_latency_ms       | Time taken for the execution of custom transformation logic.                                                                                             |
 
 
 These can be used to track the pipeline progress.
@@ -233,7 +264,7 @@ Following are some scenarios and how to handle them.
 
 1. Check that permission as listed in [prerequisites](#before-you-begin) section are present.
 2. Check the DataFlow logs, since they are an excellent way to understand if something is not working as expected.
-If you observe that the pipeline is not making expected progress, check the Dataflow logs for any errors.For Dataflow related errors, please refer [here](https://cloud.google.com/dataflow/docs/guides/troubleshooting-your-pipeline) for troubleshooting. Note that sometimes logs are not visible in Dataflow, in such cases, follow these suggestions.
+   If you observe that the pipeline is not making expected progress, check the Dataflow logs for any errors.For Dataflow related errors, please refer [here](https://cloud.google.com/dataflow/docs/guides/troubleshooting-your-pipeline) for troubleshooting. Note that sometimes logs are not visible in Dataflow, in such cases, follow these suggestions.
 
 ![DataflowLog](https://services.google.com/fh/files/misc/dataflowlog.png)
 
@@ -304,13 +335,13 @@ When running to reprocess the 'severe' DLQ directory, run the Dataflow job with 
 
 ## Reverse Replication Limitations
 
-  The following sections list the known limitations that exist currently with the Reverse Replication flows:
+The following sections list the known limitations that exist currently with the Reverse Replication flows:
 
-  1. Currently only MySQL source database is supported.
-  2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
-  3. Schema changes are not supported.
-  4. Session file modifications to add backticks in table or column names is not supported.
-  5. Certain transformations are not supported, below section lists those:
+1. Currently MySQL and Cassandra source database is supported.
+2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
+3. Schema changes are not supported.
+4. Session file modifications to add backticks in table or column names is not supported.
+5. Certain transformations are not supported, below section lists those:
 
 ### Reverse transformations
 Reverse transformation can not be supported for following scenarios out of the box:
@@ -335,16 +366,22 @@ In the event that cut-back is needed to start serving from the original database
 1. Ensure that there is a validation solution to place to validate the Spanner and source database records.
 2. There should bo no severe errors.
 3. There should be no retryable errors.
-4. The success_record_count which reflects the total successful records should match the data_record_count metric which reflects the count of data records read by SpannerIO. If these match - it is an indication that all records have been successfully reverse replicated.
-Note that for these metrics to be reliable - there should be no Dataflow worker restarts. If there are worker restarts, there is a possibility that the same record was re-processed by a certain stage.
-To check if there are worker restarts - in the Dataflow UI, navigate to the Job metrics -> CPU utilization.
+4. The success_record_count should ideally match the value of total_spanner_writes minus fwd_migration_filtered_record_count. This indicates that the total number of successful records aligns with the data records read by SpannerIO, less any records filtered due to a forward migration transaction tag.
+
+It's important to note that these metrics are approximate and should be treated as indicators, not absolute guarantees of 100% accuracy.
+
+**Important Considerations for Metric Reliability**
+
+For these metrics to be reliable, ensure there are no Dataflow worker restarts. If workers restart, there's a chance the same record might be re-processed by a specific stage, skewing your counts. You can check for worker restarts in the Dataflow UI by navigating to Job metrics -> CPU utilization.
+
+Additionally, to determine an approximate downtime during cutover, rely on the replication_lag_in_seconds metric.
 
 ### What to do when there are worker restarts or the metrics do not match
 
 1. Count the number of rows in Spanner and source databae - this may take long, but is it the only definitive way. If the reverse replication is still going on - the counts would not match due to replication lag - and an acceptable RPO should be considered to cut-back.
 
 2. If the count of records is not possible - check the DataWatermark of the Write to SourceDb stage. This gives a rough estimate of the lag between Spanner and Source. Consider taking some buffer - say 5 minutes and add this to the lag. If this lag is acceptable - perform the cutback else wait for the pipeline to catchup. In addition to the DataWatermark, also check the DataFreshness and the mean replication lag for the shards, and once it is under acceptable RPO, cut-back can be done. Querying these metrics is listed in the [metrics](#metrics-for-dataflow-job) section.
-Also, [alerts](https://cloud.google.com/monitoring/alerts) can be set up when the replciation lag, DataFreshness or DataWatermarks cross a threshold to take debugging actions.
+   Also, [alerts](https://cloud.google.com/monitoring/alerts) can be set up when the replciation lag, DataFreshness or DataWatermarks cross a threshold to take debugging actions.
 
 ### What to do in case of pause and resume scenarios
 

@@ -184,11 +184,19 @@ public class DatastreamRow {
     }
   }
 
+  public List<String> getSortFields(Boolean addIsDeleted) {
+    List<String> sortFields = getSortFields();
+    if (addIsDeleted) {
+      sortFields.add("_metadata_deleted");
+    }
+    return sortFields;
+  }
+
   public List<String> getSortFields() {
     if (this.getSourceType().equals("mysql")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
     } else if (this.getSourceType().equals("postgresql")) {
-      return Arrays.asList("_metadata_timestamp", "_metadata_lsn", "_metadata_uuid");
+      return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
     } else {
       // Current default is oracle.
       return Arrays.asList(

@@ -64,6 +64,9 @@ public abstract class TemplatesBaseMojo extends AbstractMojo {
     List<String> classpathElements = project.getCompileClasspathElements();
 
     List<URL> projectClasspathList = new ArrayList<>();
+    // put thin jar (if exists) in front of classPath for class loader to override fat jar.
+    // This is later used for filtering out templates from dependency modules when staging
+    // templates of a module
     projectClasspathList.add(
         new File(
                 outputDirectory,
@@ -71,6 +74,7 @@ public abstract class TemplatesBaseMojo extends AbstractMojo {
             .toURI()
             .toURL());
 
+    // add remaining classes in compileClasspath
     for (String element : classpathElements) {
       try {
         projectClasspathList.add(new File(element).toURI().toURL());

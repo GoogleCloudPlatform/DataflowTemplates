@@ -9,7 +9,7 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=BigQuery_to_Bigtable).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -23,6 +23,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **timestampColumn**: The name of the BigQuery column to be used as the timestamp for the column's cell in Bigtable. The value must be millisecond precision, e.g. INT64 / Long. If a row does not contain the field, the default write timestamp will be used. The column specified will not be included as part of the row in Bigtable as a separate column.
+* **skipNullValues**: Flag to indicate whether nulls may propagate as an empty value or column skipped completely to adhere to  Bigtable sparse table format. In cases where this leads to an empty row, e.g. a valid rowkey, but no  columns, the row cannot be written to bigtable and the row will be skipped. Defaults to: false.
 * **inputTableSpec**: The BigQuery table to read from. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `<BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>`.
 * **outputDeadletterTable**: The BigQuery table for messages that failed to reach the output table. If a table doesn't exist, it is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. For example, `<PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>`.
 * **query**: The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `select * from sampledb.sample_table`.
@@ -38,6 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableBulkWriteLatencyTargetMs**: The latency target of Bigtable in milliseconds for latency-based throttling.
 * **bigtableBulkWriteMaxRowKeyCount**: The maximum number of row keys in a Bigtable batch write operation.
 * **bigtableBulkWriteMaxRequestSizeBytes**: The maximum bytes to include per Bigtable batch write operation.
+* **bigtableBulkWriteFlowControl**: When set to true, enables bulk write flow control which will useserver's signal to throttle the writes. Defaults to: false.
 
 
 
@@ -45,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -59,7 +62,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/bigquery-to-bigtable
+```
 
 ### Building Template
 
@@ -78,16 +91,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="BigQuery_to_Bigtable" \
--f v2/bigquery-to-bigtable
+-pl v2/bigquery-to-bigtable -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -122,6 +139,8 @@ export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
 export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
 
 ### Optional
+export TIMESTAMP_COLUMN=""
+export SKIP_NULL_VALUES=false
 export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
@@ -137,12 +156,15 @@ export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
 export BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS=<bigtableBulkWriteLatencyTargetMs>
 export BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT=<bigtableBulkWriteMaxRowKeyCount>
 export BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES=<bigtableBulkWriteMaxRequestSizeBytes>
+export BIGTABLE_BULK_WRITE_FLOW_CONTROL=false
 
 gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "readIdColumn=$READ_ID_COLUMN" \
+  --parameters "timestampColumn=$TIMESTAMP_COLUMN" \
+  --parameters "skipNullValues=$SKIP_NULL_VALUES" \
   --parameters "inputTableSpec=$INPUT_TABLE_SPEC" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "query=$QUERY" \
@@ -160,7 +182,8 @@ gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --parameters "bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID" \
   --parameters "bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS" \
   --parameters "bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT" \
-  --parameters "bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES"
+  --parameters "bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+  --parameters "bigtableBulkWriteFlowControl=$BIGTABLE_BULK_WRITE_FLOW_CONTROL"
 ```
 
 For more information about the command, please check:
@@ -185,6 +208,8 @@ export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
 export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
 
 ### Optional
+export TIMESTAMP_COLUMN=""
+export SKIP_NULL_VALUES=false
 export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
@@ -200,6 +225,7 @@ export BIGTABLE_WRITE_PROJECT_ID=<bigtableWriteProjectId>
 export BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS=<bigtableBulkWriteLatencyTargetMs>
 export BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT=<bigtableBulkWriteMaxRowKeyCount>
 export BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES=<bigtableBulkWriteMaxRequestSizeBytes>
+export BIGTABLE_BULK_WRITE_FLOW_CONTROL=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -208,7 +234,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-bigtable-job" \
 -DtemplateName="BigQuery_to_Bigtable" \
--Dparameters="readIdColumn=$READ_ID_COLUMN,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+-Dparameters="readIdColumn=$READ_ID_COLUMN,timestampColumn=$TIMESTAMP_COLUMN,skipNullValues=$SKIP_NULL_VALUES,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES,bigtableBulkWriteFlowControl=$BIGTABLE_BULK_WRITE_FLOW_CONTROL" \
 -f v2/bigquery-to-bigtable
 ```
 
@@ -257,6 +283,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     bigtableWriteInstanceId = "<bigtableWriteInstanceId>"
     bigtableWriteTableId = "<bigtableWriteTableId>"
     bigtableWriteColumnFamily = "<bigtableWriteColumnFamily>"
+    # timestampColumn = ""
+    # skipNullValues = "false"
     # inputTableSpec = "<inputTableSpec>"
     # outputDeadletterTable = "<outputDeadletterTable>"
     # query = "<query>"
@@ -272,6 +300,7 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     # bigtableBulkWriteLatencyTargetMs = "<bigtableBulkWriteLatencyTargetMs>"
     # bigtableBulkWriteMaxRowKeyCount = "<bigtableBulkWriteMaxRowKeyCount>"
     # bigtableBulkWriteMaxRequestSizeBytes = "<bigtableBulkWriteMaxRequestSizeBytes>"
+    # bigtableBulkWriteFlowControl = "false"
   }
 }
 ```

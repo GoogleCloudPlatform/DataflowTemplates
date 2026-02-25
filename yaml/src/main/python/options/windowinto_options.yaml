@@ -1,0 +1,10 @@
+options:
+  - name: "windowinto_common_options"
+    parameters:
+      - order: 1
+        name: "windowing"
+        description: "Windowing options"
+        help: "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing"
+        is_optional: false
+        type: text
+

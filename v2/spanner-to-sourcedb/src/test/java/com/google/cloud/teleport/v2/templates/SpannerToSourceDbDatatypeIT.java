@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -22,10 +23,12 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
@@ -33,6 +36,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +57,10 @@ import org.junit.runners.model.MultipleFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
+/**
+ * Integration test for {@link SpannerToSourceDb} Flex template for all data types. Along with a
+ * generated non-stored column in Spanner
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -64,6 +71,8 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
       "SpannerToSourceDbDatatypeIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbDatatypeIT/session.json";
   private static final String TABLE1 = "AllDatatypeColumns";
+  private static final String TABLE2 = "AllDatatypePkColumns1";
+  private static final String TABLE3 = "AllDatatypePkColumns2";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbDatatypeIT/mysql-schema.sql";
 
@@ -96,9 +105,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDbDatatypeIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
@@ -107,7 +114,15 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -118,7 +133,9 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                null);
+                null,
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }
@@ -152,11 +169,33 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE1) == 1); // only one row is inserted
+                () ->
+                    (jdbcResourceManager.getRowCount(TABLE1) == 1)
+                        && (jdbcResourceManager.getRowCount(TABLE2) == 1)
+                        && (jdbcResourceManager.getRowCount(TABLE3)
+                            == 1)); // only one row is inserted
     assertThatResult(result).meetsConditions();
 
     // Assert events on Mysql
     assertRowInMySQL();
+
+    // Delete rows in spanner.
+    deleteRowsInSpanner();
+
+    PipelineOperator.Result resultDelete =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> allDeleted()); // all rows should be deleted
+    assertThatResult(resultDelete).meetsConditions();
+  }
+
+  private static boolean allDeleted() {
+    final long rowCountTable1 = jdbcResourceManager.getRowCount(TABLE1);
+    final long rowCountTable2 = jdbcResourceManager.getRowCount(TABLE2);
+    final long rowCountTable3 = jdbcResourceManager.getRowCount(TABLE3);
+    LOG.error("Row Counts are {}, {}, {}", rowCountTable1, rowCountTable2, rowCountTable3);
+    return (rowCountTable1 == 0) && (rowCountTable2 == 0) && (rowCountTable3 == 0);
   }
 
   private void writeRowsInSpanner() {
@@ -221,8 +260,112 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to(Value.bytes(ByteArray.copyFrom("varbinary")))
             .set("bit_column")
             .to(Value.bytes(ByteArray.copyFrom("a")))
+            .set("null_string_column")
+            .to((String) null)
+            .set("null_int_column")
+            .to((Long) null)
+            .set("null_date_column")
+            .to((Date) null)
+            .set("null_float_64_column")
+            .to((Double) null)
+            .set("null_float_32_column")
+            .to((Float) null)
+            .set("null_numeric_column")
+            .to((BigDecimal) null)
+            .set("null_timestamp_column")
+            .to((Timestamp) null)
+            .set("null_blob_column")
+            .to((ByteArray) null)
+            .set("null_bool_column")
+            .to((Boolean) null)
             .build();
     spannerResourceManager.write(m);
+
+    Mutation m2 =
+        Mutation.newInsertOrUpdateBuilder(TABLE2)
+            .set("uuid_column")
+            .to("1356dff4-4468-4fd4-8dcf-6e84dede55d0")
+            .set("varchar_column")
+            .to("value1")
+            .set("tinyint_column")
+            .to(10)
+            .set("text_column")
+            .to("text_column_value")
+            .set("date_column")
+            .to(Value.date(Date.fromYearMonthDay(2024, 05, 24)))
+            .set("smallint_column")
+            .to(50)
+            .set("mediumint_column")
+            .to(1000)
+            .set("int_column")
+            .to(50000)
+            .set("bigint_column")
+            .to(987654321)
+            .set("float_column")
+            .to(45.67)
+            .set("double_column")
+            .to(123.789)
+            .set("decimal_column")
+            .to(new BigDecimal("1234.56"))
+            .set("datetime_column")
+            .to(Value.timestamp(Timestamp.parseTimestamp("2024-02-08T08:15:30Z")))
+            .set("timestamp_column")
+            .to(Value.timestamp(Timestamp.parseTimestamp("2024-02-08T08:15:30Z")))
+            .set("time_column")
+            .to("14:30:00")
+            .set("year_column")
+            .to("2022")
+            .build();
+    spannerResourceManager.write(m2);
+
+    Mutation m3 =
+        Mutation.newInsertOrUpdateBuilder(TABLE3)
+            .set("uuid_column")
+            .to("a5f27b71-6ffa-444e-abdb-9ce4af318865")
+            .set("char_column")
+            .to("char_col")
+            .set("tinytext_column")
+            .to("tinytext_column_value")
+            .set("mediumtext_column")
+            .to("mediumtext_column_value")
+            .set("longtext_column")
+            .to("longtext_column_value")
+            .set("tinyblob_column")
+            .to(Value.bytes(ByteArray.copyFrom("tinyblob_column_value")))
+            .set("blob_column")
+            .to(Value.bytes(ByteArray.copyFrom("blob_column_value")))
+            .set("mediumblob_column")
+            .to(Value.bytes(ByteArray.copyFrom("mediumblob_column_value")))
+            .set("longblob_column")
+            .to(Value.bytes(ByteArray.copyFrom("longblob_column_value")))
+            .set("enum_column")
+            .to("2")
+            .set("bool_column")
+            .to(Value.bool(Boolean.FALSE))
+            .set("other_bool_column")
+            .to(Value.bool(Boolean.TRUE))
+            .set("binary_column")
+            .to(Value.bytes(ByteArray.copyFrom("binary_col")))
+            .set("varbinary_column")
+            .to(Value.bytes(ByteArray.copyFrom("varbinary")))
+            .set("bit_column")
+            .to(Value.bytes(ByteArray.copyFrom("a")))
+            .build();
+    spannerResourceManager.write(m3);
+  }
+
+  private void deleteRowsInSpanner() {
+    // Write a single record to Spanner
+    Mutation m = Mutation.delete(TABLE1, Key.newBuilder().append("value1").build());
+    spannerResourceManager.write(m);
+    Mutation m2 =
+        Mutation.delete(
+            TABLE2, Key.newBuilder().append("1356dff4-4468-4fd4-8dcf-6e84dede55d0").build());
+    spannerResourceManager.write(m2);
+    Mutation m3 =
+        Mutation.delete(
+            TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
+    spannerResourceManager.write(m3);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();
@@ -242,8 +385,17 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
 
   private void assertRowInMySQL() throws InterruptedException, MultipleFailureException {
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
+    List<Map<String, Object>> rows2 = jdbcResourceManager.readTable(TABLE2);
+    List<Map<String, Object>> rows3 = jdbcResourceManager.readTable(TABLE3);
     assertThat(rows).hasSize(1);
     Map<String, Object> row = rows.get(0);
+    assertReadRowInMySQL(row);
+    assertReadRowInMySQL(
+        ImmutableMap.<String, Object>builder().putAll(rows2.get(0)).putAll(rows3.get(0)).build());
+  }
+
+  private void assertReadRowInMySQL(Map<String, Object> row)
+      throws InterruptedException, MultipleFailureException {
     assertAll(
         () -> assertThat(row.get("varchar_column")).isEqualTo("value1"),
         () -> assertThat(row.get("tinyint_column")).isEqualTo(10),
@@ -289,6 +441,15 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         () ->
             assertThat(row.get("varbinary_column"))
                 .isEqualTo("varbinary".getBytes(StandardCharsets.UTF_8)),
-        () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)));
+        () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)),
+        () -> assertThat(row.get("null_string_column")).isNull(),
+        () -> assertThat(row.get("null_int_column")).isNull(),
+        () -> assertThat(row.get("null_date_column")).isNull(),
+        () -> assertThat(row.get("null_float_64_column")).isNull(),
+        () -> assertThat(row.get("null_float_32_column")).isNull(),
+        () -> assertThat(row.get("null_numeric_column")).isNull(),
+        () -> assertThat(row.get("null_timestamp_column")).isNull(),
+        () -> assertThat(row.get("null_blob_column")).isNull(),
+        () -> assertThat(row.get("null_bool_column")).isNull());
   }
 }

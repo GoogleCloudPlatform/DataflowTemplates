@@ -32,11 +32,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,67 +40,35 @@ import org.slf4j.LoggerFactory;
 /** {@link BigtableUtils} provides a set of helper functions and classes for Bigtable. */
 public class BigtableUtils implements Serializable {
 
-  public static final String ANY_COLUMN_FAMILY = "*";
   private static final Logger LOG = LoggerFactory.getLogger(BigtableUtils.class);
 
   public String bigtableRowColumnFamilyName = "changelog";
   public String bigtableRowKeyDelimiter = "#";
   private final BigtableSource source;
   private transient Charset charsetObj;
-  private final Map<String, Set<String>> ignoredColumnsMap;
   private static final Long DEFAULT_TIMESTAMP = 0L;
 
   public BigtableUtils(BigtableSource sourceInfo) {
     this.source = sourceInfo;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
-
-    ignoredColumnsMap = new HashMap<>();
-    for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
-      int indexOfColon = columnFamilyAndColumn.indexOf(':');
-      String columnFamily = ANY_COLUMN_FAMILY;
-      String columnName = columnFamilyAndColumn;
-      if (indexOfColon > 0) {
-        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
-        if (StringUtils.isBlank(columnFamily)) {
-          columnFamily = ANY_COLUMN_FAMILY;
-        }
-        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
-      }
-
-      Set<String> appliedToColumnFamilies =
-          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
-      appliedToColumnFamilies.add(columnFamily);
-    }
   }
 
   private boolean hasIgnoredColumnFamilies() {
     return this.source.getColumnFamiliesToIgnore().size() > 0;
   }
 
-  private boolean isIgnoredColumnFamily(String columnFamily) {
-    return this.source.getColumnFamiliesToIgnore().contains(columnFamily);
-  }
-
   private boolean hasIgnoredColumns() {
     return this.source.getColumnsToIgnore().size() > 0;
   }
 
-  private boolean isIgnoredColumn(String columnFamily, String column) {
-    Set<String> columnFamilies = ignoredColumnsMap.get(column);
-    if (columnFamilies == null) {
-      return false;
-    }
-    return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
-  }
-
   private Boolean isValidEntry(String familyName, String qualifierName) {
-    if (hasIgnoredColumnFamilies() && isIgnoredColumnFamily(familyName)) {
+    if (hasIgnoredColumnFamilies() && source.isIgnoredColumnFamily(familyName)) {
       return false;
     }
 
     if (hasIgnoredColumns()
         && !StringUtils.isBlank(qualifierName)
-        && isIgnoredColumn(familyName, qualifierName)) {
+        && source.isIgnoredColumn(familyName, qualifierName)) {
       return false;
     }
 

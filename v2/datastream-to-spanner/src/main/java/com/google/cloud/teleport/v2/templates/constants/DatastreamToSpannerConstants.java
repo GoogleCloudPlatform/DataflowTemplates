@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.constants;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 
 /** Class to maintain all the constants used in the pipeline. */
@@ -41,6 +42,10 @@ public class DatastreamToSpannerConstants {
 
   /* The Tag for Successful mutations. */
   public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
+
+  /* The tag for successfully keyed events. */
+  public static final TupleTag<KV<Long, FailsafeElement<String, String>>>
+      SUCCESSFUL_KEYED_EVENT_TAG = new TupleTag<KV<Long, FailsafeElement<String, String>>>() {};
 
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;

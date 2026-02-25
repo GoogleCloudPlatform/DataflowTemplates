@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2024 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,16 +28,17 @@ fi
 
 set -ex
 
-ENV_PATH="$PWD/__build__/python${PY_VERSION/./}_requirements_gen"
+ENV_PATH="$PWD/__build__/python_requirements_gen"
+
 rm -rf "$ENV_PATH" 2>/dev/null || true
 # These python versions need to be kept in sync with our dockerfile python versions (https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/0ac92513838ca525adb3f616c9e1f65237334d1e/plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java#L46)
 python3.11 -m venv "$ENV_PATH"
-source "$ENV_PATH"/bin/activate
+. "$ENV_PATH"/bin/activate
 
 # allow one-off executions of pip to generate requirements locally without alarming automation
 alias pip_automation="pip"
 
-pip_automation install --upgrade pip setuptools wheel
+pip_automation install --upgrade pip==25.0.1 setuptools wheel
 pip_automation install pip-tools
 
 # Install requirements from base file
@@ -51,9 +53,8 @@ pip freeze
 echo "Running pip-compile to generate hashes"
 pip-compile $BASE_REQUIREMENTS_PATH -o $TARGET_REQUIREMENTS_PATH --generate-hashes --allow-unsafe
 
-PY_IMAGE="py${PY_VERSION//.}"
 cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
-# Copyright 2024 Google Inc. All Rights Reserved.
+# Copyright 2025 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,6 +72,8 @@ cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
 # From the templates base directory to update,
 # run: sh python/generate_all_dependencies.sh
 # Do not edit manually, adjust the base requirements file, and regenerate the list.
+
+# See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.
 
 $(cat $TARGET_REQUIREMENTS_PATH)
 

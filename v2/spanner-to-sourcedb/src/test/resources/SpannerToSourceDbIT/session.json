@@ -2,21 +2,91 @@
   "SessionName": "NewSession",
   "EditorName": "",
   "DatabaseType": "mysql",
-  "DatabaseName": "session_it",
+  "DatabaseName": "test_limits",
   "Dialect": "google_standard_sql",
   "Notes": null,
   "Tags": null,
   "SpSchema": {
-    "t136": {
-      "Name": "Users",
+    "t1": {
+      "Name": "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
       "ColIds": [
-        "c142",
-        "c143",
-        "c200"
+        "c3",
+        "c4"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
-        "c142": {
+        "c3": {
+          "Name": "id",
+          "T": {
+            "Name": "STRING",
+            "Len": 20,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id varchar(20)",
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c4": {
+          "Name": "col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY",
+          "T": {
+            "Name": "STRING",
+            "Len": 20,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY varchar(20)",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Users",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c5": {
           "Name": "id",
           "T": {
             "Name": "INT64",
@@ -24,10 +94,21 @@
             "IsArray": false
           },
           "NotNull": true,
-          "Comment": "From: id int",
-          "Id": "c142"
+          "Comment": "From: id int(10)",
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         },
-        "c143": {
+        "c6": {
           "Name": "full_name",
           "T": {
             "Name": "STRING",
@@ -36,9 +117,20 @@
           },
           "NotNull": false,
           "Comment": "From: name varchar(25)",
-          "Id": "c143"
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         },
-        "c200": {
+        "c7": {
           "Name": "from",
           "T": {
             "Name": "STRING",
@@ -47,37 +139,322 @@
           },
           "NotNull": false,
           "Comment": "From: from varchar(25)",
-          "Id": "c200"
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c142",
+          "ColId": "c5",
           "Desc": false,
           "Order": 1
         }
       ],
       "ForeignKeys": null,
       "Indexes": null,
-      "ParentId": "",
-      "Comment": "Spanner schema for source table Category",
-      "Id": "t136"
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t2"
+    },
+    "t45": {
+      "Name": "TableWithStoredGeneratedColumn",
+      "ColIds": [
+        "c48",
+        "c49",
+        "c50"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c48": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c48",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c49": {
+          "Name": "column1",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: column1 int(10)",
+          "Id": "c49",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c50": {
+          "Name": "stored_generated_column",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: stored_generated_column int(10)",
+          "Id": "c50",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c48",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table TableWithStoredGeneratedColumn",
+      "Id": "t45"
+    },
+    "t47": {
+      "Name": "TableWithVirtualGeneratedColumn",
+      "ColIds": [
+        "c51",
+        "c52",
+        "c53"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c51": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c51",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c52": {
+          "Name": "column1",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: column1 int(10)",
+          "Id": "c52",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c53": {
+          "Name": "virtual_generated_column",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: virtual_generated_column int(10)",
+          "Id": "c53",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c51",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table TableWithVirtualGeneratedColumn",
+      "Id": "t47"
+    },
+    "t48": {
+      "Name": "TableWithIdentityColumn",
+      "ColIds": [
+        "c54",
+        "c55"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c54": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c54",
+          "AutoGen": {
+            "Name": "Identity",
+            "GenerationType": "Identity"
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c55": {
+          "Name": "column1",
+          "T": {
+            "Name": "STRING",
+            "Len": 25,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: column1 varchar(25)",
+          "Id": "c55",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c54",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table TableWithIdentityColumn",
+      "Id": "t48"
     }
   },
   "SyntheticPKeys": {},
   "SrcSchema": {
-    "t136": {
-      "Name": "Users",
-      "Schema": "eventsit",
+    "t1": {
+      "Name": "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
+      "Schema": "test_limits",
       "ColIds": [
-        "c142",
-        "c143"
+        "c3",
+        "c4"
       ],
       "ColDefs": {
-        "c142": {
+        "c3": {
           "Name": "id",
           "Type": {
-            "Name": "int",
+            "Name": "varchar",
+            "Mods": [
+              20
+            ],
             "ArrayBounds": null
           },
           "NotNull": true,
@@ -89,9 +466,104 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c142"
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         },
-        "c143": {
+        "c4": {
+          "Name": "col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Users",
+      "Schema": "test_limits",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ColDefs": {
+        "c5": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c6": {
           "Name": "name",
           "Type": {
             "Name": "varchar",
@@ -109,9 +581,20 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c143"
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         },
-        "c200": {
+        "c7": {
           "Name": "from",
           "Type": {
             "Name": "varchar",
@@ -129,33 +612,395 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c200"
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
         }
       },
       "PrimaryKeys": [
         {
-          "ColId": "c142",
+          "ColId": "c5",
           "Desc": false,
           "Order": 1
         }
       ],
       "ForeignKeys": null,
+      "CheckConstraints": null,
       "Indexes": null,
-      "Id": "t136"
+      "Id": "t2"
+    },
+    "t45": {
+      "Name": "TableWithStoredGeneratedColumn",
+      "Schema": "test_limits",
+      "ColIds": [
+        "c48",
+        "c49",
+        "c50"
+      ],
+      "ColDefs": {
+        "c48": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c48",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c49": {
+          "Name": "column1",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c49",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c50": {
+          "Name": "stored_generated_column",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c50",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c48",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t45"
+    },
+    "t47": {
+      "Name": "TableWithVirtualGeneratedColumn",
+      "Schema": "test_limits",
+      "ColIds": [
+        "c51",
+        "c52",
+        "c53"
+      ],
+      "ColDefs": {
+        "c51": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c51",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c52": {
+          "Name": "column1",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c52",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c53": {
+          "Name": "virtual_generated_column",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c53",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c51",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t47"
+    },
+    "t48": {
+      "Name": "TableWithIdentityColumn",
+      "Schema": "test_limits",
+      "ColIds": [
+        "c54",
+        "c55"
+      ],
+      "ColDefs": {
+        "c54": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c54",
+          "AutoGen": {
+            "Name": "Auto Increment",
+            "GenerationType": "Auto Increment"
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c55": {
+          "Name": "column1",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              25
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c55",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c54",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t48"
     }
   },
   "SchemaIssues": {
-    "t136": {
+    "t1": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
+    },
+    "t2": {
       "ColumnLevelIssues": {
-        "c142": [
+        "c5": [
           14
         ],
-        "c143": [],
-        "c200": []
+        "c6": [],
+        "c7": []
       },
+      "TableLevelIssues": null
+    },
+    "t45": {
+      "ColumnLevelIssues": {
+        "c48": [
+          14
+        ],
+        "c49": [
+          14
+        ],
+        "c50": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t47": {
+      "ColumnLevelIssues": {
+        "c51": [
+          14
+        ],
+        "c52": [
+          14
+        ],
+        "c53": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t48": {
+      "ColumnLevelIssues": {},
       "TableLevelIssues": null
     }
   },
+  "InvalidCheckExp": null,
   "Location": {},
   "TimezoneOffset": "+00:00",
   "SpDialect": "google_standard_sql",
@@ -164,5 +1009,8 @@
   "IsSharded": false,
   "SpRegion": "",
   "ResourceValidation": false,
-  "UI": false
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "Source": "mysql"
 }

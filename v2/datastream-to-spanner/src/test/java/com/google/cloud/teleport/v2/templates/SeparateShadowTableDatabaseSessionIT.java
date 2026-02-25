@@ -1,0 +1,291 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates;
+
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/**
+ * An integration test using separate shadow table database for {@link DataStreamToSpanner} Flex
+ * template which tests use-cases where a session file is required.
+ */
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(DataStreamToSpanner.class)
+@RunWith(JUnit4.class)
+public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITBase {
+
+  private static final String TABLE1 = "Category";
+  private static final String TABLE2 = "Books";
+  private static PipelineLauncher.LaunchInfo jobInfo;
+  private static HashSet<SeparateShadowTableDatabaseSessionIT> testInstances = new HashSet<>();
+  public static PubsubResourceManager pubsubResourceManager;
+  public static SpannerResourceManager spannerResourceManager;
+  public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
+
+  private static final String SPANNER_DDL_RESOURCE =
+      "DataStreamToSpannerSessionIT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "DataStreamToSpannerSessionIT/mysql-session.json";
+
+  /**
+   * Setup resource managers and Launch dataflow job once during the execution of this test class.
+   *
+   * @throws IOException
+   */
+  @Before
+  public void setUp() throws IOException {
+    // Prevent cleaning up of dataflow job after a test method is executed.
+    skipBaseCleanup = true;
+    synchronized (SeparateShadowTableDatabaseSessionIT.class) {
+      testInstances.add(this);
+      if (jobInfo == null) {
+        spannerResourceManager = setUpSpannerResourceManager();
+        shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
+        pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+        jobInfo =
+            launchDataflowJob(
+                getClass().getSimpleName(),
+                SESSION_FILE_RESOURCE,
+                null,
+                "SeparateShadowTableDatabaseSessionIT",
+                spannerResourceManager,
+                pubsubResourceManager,
+                new HashMap<>() {
+                  {
+                    put(
+                        "shadowTableSpannerInstanceId",
+                        shadowSpannerResourceManager.getInstanceId());
+                    put(
+                        "shadowTableSpannerDatabaseId",
+                        shadowSpannerResourceManager.getDatabaseId());
+                  }
+                },
+                null,
+                null,
+                gcsResourceManager);
+      }
+    }
+  }
+
+  /**
+   * Cleanup dataflow job and all the resources and resource managers.
+   *
+   * @throws IOException
+   */
+  @AfterClass
+  public static void cleanUp() throws IOException {
+    for (SeparateShadowTableDatabaseSessionIT instance : testInstances) {
+      instance.tearDownBase();
+    }
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
+  }
+
+  /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */
+  @Test
+  public void migrationTestWithRenameAndDrops() {
+    // Construct a ChainedConditionCheck with 4 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE1,
+                        "backfill_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro",
+                        gcsResourceManager),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    assertCategoryTableBackfillContents();
+
+    conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE1,
+                        "cdc_category.avro",
+                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro",
+                        gcsResourceManager),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+
+    // Sleep for cutover time to wait till all CDCs propagate.
+    // A real world customer also has a small cut over time to reach consistency.
+    try {
+      Thread.sleep(CUTOVER_MILLIS);
+    } catch (InterruptedException e) {
+    }
+    assertCategoryTableCdcContents();
+  }
+
+  @Test
+  public void migrationTestWithSyntheticPKAndExtraColumn() {
+    // Construct a ChainedConditionCheck with 2 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE2,
+                        "synth-id.avro",
+                        "DataStreamToSpannerSessionIT/Books.avro",
+                        gcsResourceManager),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+    assertBooksBackfillContents();
+  }
+
+  private void assertCategoryTableBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("category_id", 1);
+    row1.put("full_name", "xyz");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("category_id", 2);
+    row2.put("full_name", "abc");
+
+    events.add(row1);
+    events.add(row2);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertCategoryTableCdcContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("category_id", 2);
+    row1.put("full_name", "abc1");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("category_id", 3);
+    row2.put("full_name", "def");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("category_id", 4);
+    row3.put("full_name", "ghi");
+
+    events.add(row1);
+    events.add(row2);
+    events.add(row3);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select * from Category"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBooksBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("title", "The Lord of the Rings");
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("title", "Pride and Prejudice");
+    row.put("author_id", 2);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("title", "The Hitchhikers Guide to the Galaxy");
+    row.put("author_id", 3);
+    events.add(row);
+
+    ImmutableList<Struct> synthIds = spannerResourceManager.runQuery("select synth_id from Books");
+
+    Assert.assertEquals(3, synthIds.size());
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select id, title, author_id from Books"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+}

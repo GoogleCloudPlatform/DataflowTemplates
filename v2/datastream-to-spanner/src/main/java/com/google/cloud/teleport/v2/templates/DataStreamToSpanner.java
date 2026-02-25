@@ -38,6 +38,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverri
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
@@ -64,6 +65,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -157,7 +159,8 @@ public class DataStreamToSpanner {
             "File location for Datastream file output in Cloud Storage. Support for this feature has been disabled.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
-                + "this is the root path for a stream. Support for this feature has been disabled.")
+                + "this is the root path for a stream. Support for this feature has been disabled."
+                + " Please use this feature only for retrying entries that land in severe DLQ.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -485,7 +488,7 @@ public class DataStreamToSpanner {
         optional = true,
         helpText =
             "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
-                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+                + "It expects a JSON file with the format: {\\\"StreamToDbAndShardMap\\\": Map<stream_name, Map<db_name, shard_id>>}",
         description = "Sharding context file path in cloud storage")
     String getShardingContextFilePath();
 
@@ -542,7 +545,7 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Instance Id.",
         helpText =
-            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance.")
+            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerInstanceId();
 
@@ -554,11 +557,21 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Database Id.",
         helpText =
-            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database.")
+            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerDatabaseId();
 
     void setShadowTableSpannerDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -595,17 +608,15 @@ public class DataStreamToSpanner {
       LOG.error("IOException Occurred: DataStreamClient failed initialization.");
       throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
-    // TODO: use getPostgresSourceConfig() instead of an else once SourceConfig.java is updated.
     if (sourceConfig.getMysqlSourceConfig() != null) {
       return DatastreamConstants.MYSQL_SOURCE_TYPE;
     } else if (sourceConfig.getOracleSourceConfig() != null) {
       return DatastreamConstants.ORACLE_SOURCE_TYPE;
-    } else {
+    } else if (sourceConfig.getPostgresqlSourceConfig() != null) {
       return DatastreamConstants.POSTGRES_SOURCE_TYPE;
     }
-    // LOG.error("Source Connection Profile Type Not Supported");
-    // throw new IllegalArgumentException("Unsupported source connection profile type in
-    // Datastream");
+    LOG.error("Source Connection Profile Type Not Supported");
+    throw new IllegalArgumentException("Unsupported source connection profile type in Datastream");
   }
 
   /**
@@ -636,6 +647,9 @@ public class DataStreamToSpanner {
      *   3) Write Failures to GCS Dead Letter Queue
      */
     Pipeline pipeline = Pipeline.create(options);
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     // Ingest session file into schema object.
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
@@ -730,7 +744,8 @@ public class DataStreamToSpanner {
                   .withFileReadConcurrency(options.getFileReadConcurrency())
                   .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes()))
+                  .withDatastreamSourceType(options.getDatastreamSourceType()));
       int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
@@ -813,6 +828,13 @@ public class DataStreamToSpanner {
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
 
+    spannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            spannerConfig, options.getFailureInjectionParameter());
+    shadowTableSpannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            shadowTableSpannerConfig, options.getFailureInjectionParameter());
+
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */
@@ -894,8 +916,9 @@ public class DataStreamToSpanner {
       throw new IllegalArgumentException(
           "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
     }
-    // If not specified, use main instance and database values. The shadow table database stores the
-    // shadow tables and by default, is the same as he main database for backwards compatibility.
+    // If not specified, use main instance and main database values. The shadow table database
+    // stores the shadow tables and by default, is the same as the main database for backward
+    // compatibility.
     if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
         && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
       shadowTableSpannerInstanceId = options.getInstanceId();
@@ -936,14 +959,14 @@ public class DataStreamToSpanner {
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
     if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
     } else {
       String retryDlqUri =
           FileSystems.matchNewResource(dlqDirectory, true)
               .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
               .toString();
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
     }
   }
 

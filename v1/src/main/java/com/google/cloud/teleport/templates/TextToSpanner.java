@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
@@ -40,7 +41,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Schema file must have all column and type definition in one line. Schema file must use the
  * data type names of Cloud Spanner. We currently support the following Cloud Spanner data types: -
- * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP
+ * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP - UUID
  *
  * <p>Input format properties: - \\N in the source column will be considered as NULL value when
  * writing to Cloud Spanner. - If you need to escape characters, you can use the "fieldQualifier"
@@ -167,7 +167,7 @@ public class TextToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToSpanner.class);
   private static final ImmutableSet<String> SUPPORTED_DATA_TYPES =
-      ImmutableSet.of("INT64", "FLOAT32", "FLOAT64", "BOOL", "DATE", "TIMESTAMP", "STRING");
+      ImmutableSet.of("INT64", "FLOAT32", "FLOAT64", "BOOL", "DATE", "TIMESTAMP", "STRING", "UUID");
 
   public static Set<String> getSupportDataTypes() {
     return SUPPORTED_DATA_TYPES;
@@ -444,7 +444,8 @@ enum SpannerDataTypes {
   BOOL,
   DATE,
   TIMESTAMP,
-  STRING
+  STRING,
+  UUID
 };
 
 /*

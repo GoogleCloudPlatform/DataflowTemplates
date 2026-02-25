@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS Category (
   full_name STRING(25),
 ) PRIMARY KEY(category_id);
 
-CREATE TABLE Books (
+CREATE TABLE IF NOT EXISTS Books (
    id INT64 NOT NULL,
    title STRING(200),
    author_id INT64,

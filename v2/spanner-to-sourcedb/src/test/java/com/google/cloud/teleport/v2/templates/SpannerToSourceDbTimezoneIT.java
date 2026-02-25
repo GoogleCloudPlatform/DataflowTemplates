@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -27,6 +28,7 @@ import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,9 +92,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDbTimezoneIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
@@ -102,7 +102,15 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -113,7 +121,9 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 "+10:00",
-                null);
+                null,
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -36,6 +37,7 @@ import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 import javax.annotation.Nullable;
+import javax.net.ssl.SSLContext;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
@@ -209,7 +211,7 @@ public class EmbeddedCassandra implements AutoCloseable {
 
     // Create content signer
     ContentSigner contentSigner =
-        new JcaContentSignerBuilder("SHA256WithRSAEncryption").build(keyPair.getPrivate());
+        new JcaContentSignerBuilder("SHA512WITHRSAENCRYPTION").build(keyPair.getPrivate());
 
     // Build the certificate holder
     X509CertificateHolder certHolder = certBuilder.build(contentSigner);
@@ -244,6 +246,43 @@ public class EmbeddedCassandra implements AutoCloseable {
 
   public Path getTrustStorePath() {
     return this.trustStoreFile.toPath();
+  }
+
+  public boolean isHealthy() {
+    // Not using the SSLContextFactory from the iowrapper package to avoid circular dependency.
+    try (CqlSession session = getCqlSession()) {
+      session.execute("SELECT release_version FROM system.local");
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private CqlSession getCqlSession() throws GeneralSecurityException, IOException {
+    if (keyStoreFile != null) {
+      // SSL is enabled.
+      java.security.KeyStore trustStore = java.security.KeyStore.getInstance("JKS");
+      try (java.io.FileInputStream trustStoreFileStream =
+          new java.io.FileInputStream(trustStoreFile)) {
+        trustStore.load(trustStoreFileStream, "cassandra".toCharArray());
+      }
+      javax.net.ssl.TrustManagerFactory tmf =
+          javax.net.ssl.TrustManagerFactory.getInstance(
+              javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(trustStore);
+      SSLContext sslContext = SSLContext.getInstance("TLS");
+      sslContext.init(null, tmf.getTrustManagers(), null);
+      return CqlSession.builder()
+          .addContactPoint(new InetSocketAddress(settings.getAddress(), settings.getPort()))
+          .withLocalDatacenter(LOCAL_DATA_CENTER)
+          .withSslContext(sslContext)
+          .build();
+    } else {
+      return CqlSession.builder()
+          .addContactPoint(new InetSocketAddress(settings.getAddress(), settings.getPort()))
+          .withLocalDatacenter(LOCAL_DATA_CENTER)
+          .build();
+    }
   }
 
   @Override

@@ -162,7 +162,19 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
     for (ColumnMetadata columnMetadata : metadata.getTable(table).get().getColumns().values()) {
       String name = columnMetadata.getName().toString();
       SourceColumnType sourceColumnType =
-          new SourceColumnType(columnMetadata.getType().toString(), new Long[] {}, new Long[] {});
+          new SourceColumnType(
+              /*
+               * Get the name of the type as represented in CSql Language, using the driver's `asCql` wrapper.
+               * here we exclude the frozen keyword, as a type being frozen or not does not matter to the read pipeline.
+               */
+              columnMetadata
+                  .getType()
+                  .asCql(false /*includeFrozen*/, true /*prettyPrint*/)
+                  .toUpperCase()
+                  /* normalize by removing spaces, convert MAP<INT, INT> to MAP<INT,INT> for lookup*/
+                  .replaceAll("\\s+", ""),
+              new Long[] {},
+              new Long[] {});
       tableSchemaBuilder.put(name, sourceColumnType);
     }
     return tableSchemaBuilder.build();

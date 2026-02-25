@@ -1,4 +1,4 @@
-CREATE TABLE AllDatatypeTransformation (
+CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
 	varchar_column STRING(20) NOT NULL,
 	tinyint_column INT64,
 	text_column STRING(MAX),

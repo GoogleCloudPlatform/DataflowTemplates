@@ -28,6 +28,9 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,14 +39,25 @@ import org.slf4j.LoggerFactory;
  * objects.
  */
 public class CreateDml
-    extends PTransform<
-        PCollection<FailsafeElement<String, String>>, PCollection<KV<String, DmlInfo>>> {
+    extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreateDml.class);
   private static final String WINDOW_DURATION = "1s";
-  private static final Integer NUM_THREADS = new Integer(100);
+  private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
+  private static String defaultCasing = "LOWERCASE";
+  private static String columnCasing = "LOWERCASE";
   private static Map<String, String> schemaMap = new HashMap<String, String>();
+  private static Map<String, String> tableNameMap = new HashMap<String, String>();
+  private static Boolean orderByIncludesIsDeleted = false;
+  private static Integer schemaCacheRefreshMinutes = 1440;
+
+  // Define the main output tag here if not passed in from outside,
+  // but ideally DataStreamToSQL defines it. For now, we'll accept it in expand()
+  // or standard practice is to define it here as public static final if it's fixed.
+  // Since DataStreamToSQL was defining it, let's stick to that or define a default here.
+  public static final TupleTag<KV<String, DmlInfo>> DML_MAIN_TAG =
+      new TupleTag<KV<String, DmlInfo>>() {};
 
   private CreateDml(DataSourceConfiguration dataSourceConfiguration) {
     this.dataSourceConfiguration = dataSourceConfiguration;
@@ -53,8 +67,40 @@ public class CreateDml
     return new CreateDml(dataSourceConfiguration);
   }
 
+  public CreateDml withDefaultCasing(String casing) {
+    CreateDml.defaultCasing = casing;
+    return this;
+  }
+
+  public CreateDml withColumnCasing(String casing) {
+    CreateDml.columnCasing = casing;
+    return this;
+  }
+
   public CreateDml withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public CreateDml withTableNameMap(Map<String, String> tableNameMap) {
+    this.tableNameMap = tableNameMap;
+    return this;
+  }
+
+  public CreateDml withOrderByIncludesIsDeleted(Boolean orderByIncludesIsDeleted) {
+    this.orderByIncludesIsDeleted = orderByIncludesIsDeleted;
+    return this;
+  }
+
+  public CreateDml withNumThreads(Integer numThreads) {
+    CreateDml.numThreads = numThreads;
+    return this;
+  }
+
+  public CreateDml withSchemaCacheRefreshMinutes(Integer minutes) {
+    if (minutes != null) {
+      CreateDml.schemaCacheRefreshMinutes = minutes;
+    }
     return this;
   }
 
@@ -63,29 +109,35 @@ public class CreateDml
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
     switch (driverName) {
       case "org.postgresql.Driver":
-        datastreamToDML =
-            DatastreamToPostgresDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
+        datastreamToDML = DatastreamToPostgresDML.of(dataSourceConfiguration);
         break;
       case "com.mysql.cj.jdbc.Driver":
-        datastreamToDML =
-            DatastreamToMySQLDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
+        datastreamToDML = DatastreamToMySQLDML.of(dataSourceConfiguration);
         break;
       default:
         throw new IllegalArgumentException(
             String.format("Database Driver %s is not supported.", driverName));
     }
 
-    return datastreamToDML.withSchemaMap(schemaMap);
+    return datastreamToDML
+        .withDefaultCasing(defaultCasing)
+        .withColumnCasing(columnCasing)
+        .withSchemaMap(this.schemaMap)
+        .withTableNameMap(this.tableNameMap)
+        .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
+        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes);
   }
 
   @Override
-  public PCollection<KV<String, DmlInfo>> expand(
-      PCollection<FailsafeElement<String, String>> input) {
+  public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
     DatastreamToDML datastreamToDML = getDatastreamToDML();
     return input
         .apply(
             "Reshuffle Into Buckets",
-            Reshuffle.<FailsafeElement<String, String>>viaRandomKey().withNumBuckets(NUM_THREADS))
-        .apply("Format to Postgres DML", ParDo.of(datastreamToDML));
+            Reshuffle.<FailsafeElement<String, String>>viaRandomKey().withNumBuckets(numThreads))
+        .apply(
+            "Format to DML",
+            ParDo.of(datastreamToDML)
+                .withOutputTags(DML_MAIN_TAG, TupleTagList.of(DatastreamToDML.ERROR_TAG)));
   }
 }

@@ -144,7 +144,7 @@ public class InformationSchemaScannerTest {
   void mockGSQLListTables(ReadContext context) {
     Statement listTables =
         Statement.of(
-            "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
+            "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type"
                 + " FROM information_schema.tables AS t"
                 + " WHERE t.table_catalog = '' AND t.table_schema = ''"
                 + " AND t.table_type='BASE TABLE'");
@@ -154,6 +154,7 @@ public class InformationSchemaScannerTest {
     when(listTablesResultSet.getString(0)).thenReturn("singer", "album");
     when(listTablesResultSet.getString(1)).thenReturn(null, "singer");
     when(listTablesResultSet.getString(2)).thenReturn(null, "CASCADE");
+    when(listTablesResultSet.getString(3)).thenReturn(null, "IN PARENT");
   }
 
   void mockGSQLListColumns(ReadContext context) {
@@ -303,7 +304,7 @@ public class InformationSchemaScannerTest {
   void mockPgSQLListTables(ReadContext context) {
     Statement listTables =
         Statement.of(
-            "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+            "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type FROM"
                 + " information_schema.tables AS t"
                 + " WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog')"
@@ -314,6 +315,7 @@ public class InformationSchemaScannerTest {
     when(listTablesResultSet.getString(0)).thenReturn("singer", "album");
     when(listTablesResultSet.getString(1)).thenReturn(null, "singer");
     when(listTablesResultSet.getString(2)).thenReturn(null, "CASCADE");
+    when(listTablesResultSet.getString(3)).thenReturn(null, "IN PARENT");
   }
 
   void mockPgSQLListColumns(ReadContext context) {

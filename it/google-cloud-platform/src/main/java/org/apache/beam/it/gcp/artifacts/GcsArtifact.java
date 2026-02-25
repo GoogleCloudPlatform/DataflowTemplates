@@ -41,4 +41,8 @@ public final class GcsArtifact implements Artifact {
   public byte[] contents() {
     return blob.getContent();
   }
+
+  public Blob getBlob() {
+    return blob;
+  }
 }

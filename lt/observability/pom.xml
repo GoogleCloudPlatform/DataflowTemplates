@@ -119,6 +119,7 @@
         <configuration>
           <!-- Always run all the observers -->
           <testFailureIgnore>true</testFailureIgnore>
+          <reportFormat>html</reportFormat>
         </configuration>
       </plugin>
     </plugins>

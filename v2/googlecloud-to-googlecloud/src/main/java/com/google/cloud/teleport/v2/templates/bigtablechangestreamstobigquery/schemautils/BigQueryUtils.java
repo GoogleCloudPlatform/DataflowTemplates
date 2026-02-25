@@ -21,9 +21,9 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
@@ -31,12 +31,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
@@ -45,8 +41,6 @@ import org.json.JSONObject;
  * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
  */
 public class BigQueryUtils implements Serializable {
-
-  public static final String ANY_COLUMN_FAMILY = "*";
 
   private static final EnumMap<ChangelogColumn, BigQueryValueFormatter> FORMATTERS =
       new EnumMap<>(ChangelogColumn.class);
@@ -177,7 +171,6 @@ public class BigQueryUtils implements Serializable {
   private final BigtableSource source;
   private final BigQueryDestination destination;
   private final List<ChangelogColumn> configuredChangelogColumns;
-  private final Map<String, Set<String>> ignoredColumnsMap;
 
   private transient Charset charsetObj;
 
@@ -191,24 +184,6 @@ public class BigQueryUtils implements Serializable {
         this.configuredChangelogColumns.add(column);
       }
     }
-
-    ignoredColumnsMap = new HashMap<>();
-    for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
-      int indexOfColon = columnFamilyAndColumn.indexOf(':');
-      String columnFamily = ANY_COLUMN_FAMILY;
-      String columnName = columnFamilyAndColumn;
-      if (indexOfColon > 0) {
-        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
-        if (StringUtils.isBlank(columnFamily)) {
-          columnFamily = ANY_COLUMN_FAMILY;
-        }
-        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
-      }
-
-      Set<String> appliedToColumnFamilies =
-          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
-      appliedToColumnFamilies.add(columnFamily);
-    }
   }
 
   public boolean hasIgnoredColumnFamilies() {
@@ -216,7 +191,7 @@ public class BigQueryUtils implements Serializable {
   }
 
   public boolean isIgnoredColumnFamily(String columnFamily) {
-    return this.source.getColumnFamiliesToIgnore().contains(columnFamily);
+    return this.source.isIgnoredColumnFamily(columnFamily);
   }
 
   public boolean hasIgnoredColumns() {
@@ -224,11 +199,7 @@ public class BigQueryUtils implements Serializable {
   }
 
   public boolean isIgnoredColumn(String columnFamily, String column) {
-    Set<String> columnFamilies = ignoredColumnsMap.get(column);
-    if (columnFamilies == null) {
-      return false;
-    }
-    return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
+    return this.source.isIgnoredColumn(columnFamily, column);
   }
 
   /**

@@ -14,7 +14,7 @@ on how to use it without having to build from sources using [Create job from tem
 </#if>
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -47,7 +47,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -61,7 +61,25 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
+-pl python
+<#elseif language == 'YAML'>
+-pl yaml
+<#elseif flex>
+-pl v2/${spec.metadata.module!}
+<#else>
+-pl v1
+</#if>
+```
 
 ### Building Template
 
@@ -88,23 +106,33 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+<#if flex>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
+</#if>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+<#if flex>
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
+</#if>
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if language == 'PYTHON' || language == 'YAML'>
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
 -f python
+<#elseif language == 'YAML'>
+-f yaml
 <#elseif flex>
--f v2/${spec.metadata.module!}
+-pl v2/${spec.metadata.module!} -am
 <#else>
 -f v1
 </#if>
 ```
 
 <#if flex>
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 <#else>
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
 temp files to during serialization. The path used will be `gs://<temp-bucket-name>/temp/`.
@@ -196,8 +224,10 @@ mvn clean package -PtemplatesRun \
 -DjobName="${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
 -DtemplateName="${spec.metadata.internalName}" \
 -Dparameters="<#list spec.metadata.parameters as parameter>${parameter.name}=$${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}<#sep>,</#sep></#list>" \
-<#if language == 'PYTHON' || language == 'YAML'>
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
 -f python
+<#elseif language == 'YAML'>
+-f yaml
 <#elseif flex>
 -f v2/${spec.metadata.module!}
 <#else>

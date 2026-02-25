@@ -22,21 +22,24 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 /** Test Utility class for Generating test schema. */
 public class SchemaTestUtils {
 
-  static final String TEST_FIELD_NAME_1 = "firstName";
-  static final String TEST_FIELD_NAME_2 = "lastName";
+  public static final String TEST_FIELD_NAME_1 = "firstName";
+  public static final String TEST_FIELD_NAME_2 = "lastName";
 
   public static SourceSchemaReference generateSchemaReference(String namespace, String dbName) {
     return SourceSchemaReference.ofJdbc(
         JdbcSchemaReference.builder().setNamespace(namespace).setDbName(dbName).build());
   }
 
-  public static SourceTableSchema generateTestTableSchema(String tableName) {
+  public static SourceTableSchema.Builder generateTestTableSchemaBuilder(String tableName) {
     return SourceTableSchema.builder(SQLDialect.MYSQL)
         .setTableName(tableName)
         .addSourceColumnNameToSourceColumnType(
             TEST_FIELD_NAME_1, new SourceColumnType("varchar", new Long[] {20L}, null))
         .addSourceColumnNameToSourceColumnType(
-            TEST_FIELD_NAME_2, new SourceColumnType("varchar", new Long[] {20L}, null))
-        .build();
+            TEST_FIELD_NAME_2, new SourceColumnType("varchar", new Long[] {20L}, null));
+  }
+
+  public static SourceTableSchema generateTestTableSchema(String tableName) {
+    return generateTestTableSchemaBuilder(tableName).build();
   }
 }

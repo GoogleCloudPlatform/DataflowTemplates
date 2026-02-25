@@ -15,12 +15,19 @@
  */
 package com.google.cloud.teleport.v2.writer;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class SpannerWriterTest {
 
@@ -30,13 +37,29 @@ public class SpannerWriterTest {
   public void testCreateSpannerWriter() {
     SpannerConfig conf =
         SpannerConfig.create().withProjectId("p1").withInstanceId("instance").withDatabaseId("db1");
-    SpannerWriter writer = new SpannerWriter(conf);
+    SpannerWriter writer = new SpannerWriter(conf, null);
     assertNotNull(writer.getSpannerWrite());
   }
 
   @Test(expected = NullPointerException.class)
   public void testCreateSpannerWriter_NullPointerException() {
-    SpannerWriter writer = new SpannerWriter(null);
+    SpannerWriter writer = new SpannerWriter(null, null);
     assertNotNull(writer.getSpannerWrite());
+  }
+
+  @Test
+  public void testSetBatchSize() {
+    SpannerConfig mockSpannerConfig = Mockito.mock(SpannerConfig.class);
+    SpannerIO.Write mockWrite = Mockito.mock(SpannerIO.Write.class);
+    Long testBatchSize = 42L;
+    when(mockWrite.withBatchSizeBytes(testBatchSize)).thenReturn(mockWrite);
+
+    assertThat(new SpannerWriter(mockSpannerConfig, -1L).setBatchSize(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null).setBatchSize(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, testBatchSize).setBatchSize(mockWrite))
+        .isEqualTo(mockWrite);
+    verify(mockWrite, times(1)).withBatchSizeBytes(anyLong());
   }
 }

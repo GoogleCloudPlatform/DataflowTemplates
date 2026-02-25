@@ -1161,6 +1161,33 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void commitTimestampColumns() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("commitTimestampColumns");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        .optionalString("default_commit_ts");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                INT64 NOT NULL,"
+            + "`default_commit_ts` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP())"
+            + " OPTIONS (allow_commit_timestamp=true),"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("default_commit_ts", "2018-06-06T21:00:35.312000000Z")
+                .build()));
+  }
+
+  @Test
   public void models() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(
@@ -1329,7 +1356,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1417,7 +1445,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
 
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
@@ -1520,7 +1549,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1631,7 +1661,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1658,6 +1689,89 @@ public class ImportFromAvroTest {
                 + " FOR \"T\"()"
                 + " CREATE CHANGE STREAM \"ChangeStreamTable\""
                 + " FOR \"T\""));
+  }
+
+  @Test
+  public void udfs() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "Function1.avro",
+        SchemaBuilder.record("s1.Function1")
+            .prop("spannerEntity", "spannerUdf")
+            .prop("spannerUdfName", "s1.Function1")
+            .prop("spannerUdfDefinition", "(SELECT 'foo')")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "Function2.avro",
+        SchemaBuilder.record("s1.Function2")
+            .prop("spannerEntity", "spannerUdf")
+            .prop("spannerUdfName", "s1.Function2")
+            .prop("spannerUdfDefinition", "(SELECT 'foo')")
+            .prop("spannerUdfType", "STRING")
+            .prop("spannerUdfSecurity", "INVOKER")
+            .prop("spannerUdfParameter_0", "arg0 STRING")
+            .prop("spannerUdfParameter_1", "arg1 STRING DEFAULT 'bar'")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addUdfs(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    String schemaDef = "CREATE SCHEMA `s1`";
+    SPANNER_SERVER.createDatabase(dbName, Arrays.asList(schemaDef));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SCHEMA `s1`\n"
+                + "CREATE FUNCTION `s1`.`Function1`() RETURNS STRING SQL SECURITY INVOKER"
+                + " AS ((SELECT 'foo'))\n"
+                + "CREATE FUNCTION `s1`.`Function2`("
+                + "`arg0` STRING, `arg1` STRING DEFAULT 'bar') RETURNS STRING"
+                + " SQL SECURITY INVOKER AS ((SELECT 'foo'))"));
   }
 
   @Test
@@ -1731,7 +1845,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1831,7 +1946,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1907,7 +2023,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -1987,7 +2104,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
   }
@@ -2054,7 +2172,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -2141,7 +2260,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
@@ -2236,7 +2356,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 

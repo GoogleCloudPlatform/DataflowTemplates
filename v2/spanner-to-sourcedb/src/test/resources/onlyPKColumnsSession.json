@@ -1,0 +1,287 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "duplicate_test",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "resource_access",
+      "ColIds": [
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c2": {
+          "Name": "user_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: user_id int(10)",
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c3": {
+          "Name": "group_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: group_id int(10)",
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c4": {
+          "Name": "resource_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: resource_id int(10)",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c4",
+          "Desc": false,
+          "Order": 3
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table resource_access",
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "resource_access",
+      "Schema": "duplicate_test",
+      "ColIds": [
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "ColDefs": {
+        "c2": {
+          "Name": "user_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c3": {
+          "Name": "group_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c4": {
+          "Name": "resource_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c4",
+          "Desc": false,
+          "Order": 3
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c2": [
+          14
+        ],
+        "c3": [
+          14
+        ],
+        "c4": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "resource_access": {
+      "Name": "resource_access",
+      "Cols": {
+        "group_id": "group_id",
+        "resource_id": "resource_id",
+        "user_id": "user_id"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "",
+  "SpInstanceId": "",
+  "Source": "mysql"
+}

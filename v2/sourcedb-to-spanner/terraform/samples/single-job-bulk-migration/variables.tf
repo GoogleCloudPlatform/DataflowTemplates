@@ -181,3 +181,21 @@ variable "default_log_level" {
   description = "Default log level for Dataflow jobs (e.g., 'INFO', 'DEBUG')."
   default     = null
 }
+
+variable "fetch_size" {
+  type        = number
+  description = "Fetch size for the JDBC connection."
+  default     = null
+}
+
+variable "gcs_output_directory" {
+  type        = string
+  description = "GCS output directory for the job."
+  default     = null
+}
+
+variable "additional_pipeline_options" {
+  type        = list(string)
+  description = "Additional Dataflow pipeline options."
+  default     = []
+}

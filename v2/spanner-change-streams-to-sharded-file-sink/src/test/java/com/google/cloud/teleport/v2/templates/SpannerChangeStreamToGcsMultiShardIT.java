@@ -46,6 +46,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -57,6 +58,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
+@Ignore("The template is being deprecated.")
 public class SpannerChangeStreamToGcsMultiShardIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerChangeStreamToGcsMultiShardIT.class);

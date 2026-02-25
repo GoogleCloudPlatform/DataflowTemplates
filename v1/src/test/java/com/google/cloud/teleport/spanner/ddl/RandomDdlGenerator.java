@@ -19,6 +19,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -126,6 +128,10 @@ public abstract class RandomDdlGenerator {
 
   public abstract boolean getEnableCheckConstraints();
 
+  public abstract int getMaxUdfs();
+
+  public abstract int getMaxUdfParameters();
+
   public abstract int getMaxViews();
 
   public abstract int getMaxChangeStreams();
@@ -142,6 +148,8 @@ public abstract class RandomDdlGenerator {
         .setArrayChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
+        .setMaxUdfs(0)
+        .setMaxUdfParameters(2)
         .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
@@ -184,6 +192,10 @@ public abstract class RandomDdlGenerator {
 
     public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
 
+    public abstract Builder setMaxUdfs(int maxUdfs);
+
+    public abstract Builder setMaxUdfParameters(int maxUdfParameters);
+
     public abstract Builder setMaxViews(int maxViews);
 
     public abstract Builder setMaxChangeStreams(int maxChangeStreams);
@@ -199,6 +211,10 @@ public abstract class RandomDdlGenerator {
     for (int i = 0; i < numParentTables; i++) {
       generateTable(builder, null, 0);
     }
+    int numUdfs = getRandom().nextInt(getMaxUdfs() + 1);
+    for (int i = 0; i < numUdfs; i++) {
+      generateUdf(builder);
+    }
     int numViews = getRandom().nextInt(getMaxViews() + 1);
     for (int i = 0; i < numViews; i++) {
       generateView(builder);
@@ -209,6 +225,35 @@ public abstract class RandomDdlGenerator {
     }
 
     return builder.build();
+  }
+
+  private void generateUdf(Ddl.Builder builder) {
+    String name = generateIdentifier(getMaxIdLength());
+    Udf.Builder udfBuilder =
+        builder
+            .createUdf(name)
+            .definition("select 1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name(name);
+    if (getRandom().nextBoolean()) {
+      Type type = generateType(PK_TYPES, -1);
+      udfBuilder.type(type.getCode().getName());
+    }
+    if (getRandom().nextBoolean()) {
+      udfBuilder.security(SqlSecurity.INVOKER);
+    }
+    int numUdfParameters = getRandom().nextInt(getMaxUdfParameters() + 1);
+    for (int i = 0; i < numUdfParameters; i++) {
+      String paramName = generateIdentifier(getMaxIdLength());
+      Type type = generateType(PK_TYPES, -1);
+      UdfParameter.Builder udfParameterBuilder =
+          udfBuilder.parameter(paramName).type(type.getCode().getName());
+      if (getRandom().nextBoolean()) {
+        udfParameterBuilder.defaultExpression(addDefaultValueToColumn(type));
+      }
+      udfParameterBuilder.endUdfParameter();
+    }
+    udfBuilder.endUdf();
   }
 
   private void generateView(Ddl.Builder builder) {
@@ -319,9 +364,14 @@ public abstract class RandomDdlGenerator {
     String name = generateIdentifier(getMaxIdLength());
     Table.Builder tableBuilder = builder.createTable(name);
 
+    Random rnd = getRandom();
     int pkSize = 0;
     if (parent != null) {
       tableBuilder.interleaveInParent(parent.name());
+      tableBuilder.interleaveType(
+          getDialect() == Dialect.GOOGLE_STANDARD_SQL && rnd.nextBoolean()
+              ? InterleaveType.IN
+              : InterleaveType.IN_PARENT);
       for (IndexColumn pk : parent.primaryKeys()) {
         Column pkColumn = parent.column(pk.name());
         tableBuilder.addColumn(pkColumn);
@@ -330,7 +380,6 @@ public abstract class RandomDdlGenerator {
       }
     }
 
-    Random rnd = getRandom();
     int numPks = Math.min(1 + rnd.nextInt(getMaxPkComponents()), MAX_PKS - pkSize);
     for (int i = 0; i < numPks; i++) {
       Column pkColumn =

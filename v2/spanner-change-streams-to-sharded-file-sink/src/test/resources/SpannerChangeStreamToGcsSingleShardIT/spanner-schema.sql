@@ -1,4 +1,4 @@
-CREATE TABLE Singers (
+CREATE TABLE IF NOT EXISTS Singers (
   SingerId INT64 NOT NULL,
   FirstName STRING(MAX),
   LastName STRING(MAX),
@@ -8,7 +8,7 @@ CREATE TABLE Singers (
 ) PRIMARY KEY(SingerId, migration_shard_id);
 
 
-CREATE TABLE sample_table (
+CREATE TABLE IF NOT EXISTS sample_table (
   id INT64 NOT NULL,
   varchar_column STRING(20),
   tinyint_column INT64,

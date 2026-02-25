@@ -1,4 +1,4 @@
-CREATE TABLE Singers (
+CREATE TABLE IF NOT EXISTS Singers (
   SingerId INT64 NOT NULL,
   FirstName STRING(MAX),
   migration_shard_id STRING(50),

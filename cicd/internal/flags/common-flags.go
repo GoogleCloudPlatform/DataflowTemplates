@@ -22,15 +22,19 @@ import (
 )
 
 const (
-	ALL     = "ALL"     // All modules
-	DEFAULT = "DEFAULT" // Modules other than those excluded
-	KAFKA   = "KAFKA"
-	SPANNER = "SPANNER"
+	ALL        = "ALL"     // All modules
+	DEFAULT    = "DEFAULT" // Modules other than those excluded
+	KAFKA      = "KAFKA"
+	SPANNER    = "SPANNER"
+	BIGTABLE   = "BIGTABLE"
+	DATASTREAM = "DATASTREAM"
+	YAML       = "YAML"
 )
 
 // Avoid making these vars public.
 var (
 	modulesToBuild string
+	testToRun      string
 	moduleMap      = map[string][]string{
 		ALL:     {},
 		DEFAULT: {},
@@ -39,6 +43,7 @@ var (
 			"v2/kafka-to-gcs/",
 			"v2/kafka-to-kafka/",
 			"v2/kafka-to-pubsub/",
+			"v2/pubsub-to-kafka/",
 			"plugins/templates-maven-plugin",
 		},
 		SPANNER: {"v2/datastream-to-spanner/",
@@ -46,14 +51,33 @@ var (
 			"v2/gcs-to-sourcedb/",
 			"v2/sourcedb-to-spanner/",
 			"v2/spanner-to-sourcedb/",
-			"v2/spanner-custom-shard",
+			"v2/spanner-custom-shard/",
 			"plugins/templates-maven-plugin"},
+		BIGTABLE: {"v2/bigtable-common/",
+			"v2/bigquery-to-bigtable/",
+			"v2/bigtable-changestreams-to-hbase/",
+			"plugins/templates-maven-plugin",
+		},
+		DATASTREAM: {
+			"plugins/templates-maven-plugin",
+			"v2/datastream-common/",
+			"v2/datastream-mongodb-to-firestore/",
+			"v2/datastream-to-bigquery/",
+			"v2/datastream-to-mongodb/",
+			"v2/datastream-to-sql/",
+		},
+		YAML: {
+			"plugins/templates-maven-plugin",
+			"python/",
+			"yaml/",
+		},
 	}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
 	flag.StringVar(&modulesToBuild, "modules-to-build", ALL, "List of modules to build/run commands against")
+	flag.StringVar(&testToRun, "test", "", "Specific test to run")
 }
 
 // Returns all modules to build.
@@ -79,4 +103,9 @@ func ModulesToBuild() []string {
 		return make([]string, 0)
 	}
 	return strings.Split(m, ",")
+}
+
+// Returns the specific test to run.
+func TestToRun() string {
+	return testToRun
 }

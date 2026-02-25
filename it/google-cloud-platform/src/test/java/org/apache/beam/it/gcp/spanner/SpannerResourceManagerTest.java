@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,18 +35,26 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerExceptionFactory;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.junit.Before;
 import org.junit.Rule;
@@ -391,6 +400,192 @@ public final class SpannerResourceManagerTest {
 
     // act & assert
     assertThrows(SpannerResourceManagerException.class, () -> testManager.write(testMutations));
+  }
+
+  @Test
+  public void testWriteInTransactionShouldWorkWhenSpannerWriteSucceeds()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act
+    testManager.writeInTransaction(testMutations);
+
+    // assert
+    ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(1)).buffer(argument.capture());
+    Iterable<Mutation> capturedMutations = argument.getValue();
+
+    assertThat(capturedMutations).containsExactlyElementsIn(testMutations);
+  }
+
+  @Test
+  public void testWriteInTransactionShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
+    // arrange
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act & assert
+    assertThrows(IllegalStateException.class, () -> testManager.writeInTransaction(testMutations));
+  }
+
+  @Test
+  public void testWriteInTransactionShouldThrowExceptionWhenSpannerWriteFails()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(ErrorCode.NOT_FOUND, "Not found");
+            });
+    ImmutableList<Mutation> testMutations =
+        ImmutableList.of(
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(1)
+                .set("FirstName")
+                .to("Marc")
+                .set("LastName")
+                .to("Richards")
+                .build(),
+            Mutation.newInsertOrUpdateBuilder("SingerId")
+                .set("SingerId")
+                .to(2)
+                .set("FirstName")
+                .to("Catalina")
+                .set("LastName")
+                .to("Smith")
+                .build());
+
+    // act & assert
+    assertThrows(SpannerException.class, () -> testManager.writeInTransaction(testMutations));
+  }
+
+  @Test
+  public void testExecuteDMLShouldWorkWhenSpannerWriteSucceeds()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act
+    testManager.executeDMLStatements(testStatements);
+
+    // assert
+    ArgumentCaptor<Iterable<Statement>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(1)).batchUpdate(argument.capture());
+    Iterable<Statement> capturedStatements = argument.getValue();
+
+    List<Statement> statementList =
+        testStatements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
+    assertThat(capturedStatements).containsExactlyElementsIn(statementList);
+  }
+
+  @Test
+  public void testExecuteDMLShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
+    // arrange
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act & assert
+    assertThrows(
+        IllegalStateException.class, () -> testManager.executeDMLStatements(testStatements));
+  }
+
+  @Test
+  public void testExecuteDMLShouldThrowExceptionWhenSpannerWriteFails()
+      throws ExecutionException, InterruptedException {
+    // arrange
+    prepareTable();
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    when(spanner.getDatabaseClient(any())).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionCallableMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.DEADLINE_EXCEEDED, "Deadline exceeded while processing the request");
+            });
+
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
+
+    // act & assert
+    assertThrows(
+        SpannerResourceManagerException.class,
+        () -> testManager.executeDMLStatements(testStatements));
   }
 
   @Test

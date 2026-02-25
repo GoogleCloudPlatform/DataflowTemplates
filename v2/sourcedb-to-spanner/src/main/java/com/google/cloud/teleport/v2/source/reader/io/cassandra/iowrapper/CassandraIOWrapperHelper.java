@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDefaults.DEFAULT_CASSANDRA_SCHEMA_DISCOVERY_BACKOFF;
 
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
@@ -31,6 +32,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import java.io.FileNotFoundException;
 import java.util.List;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -44,12 +46,35 @@ class CassandraIOWrapperHelper {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraIOWrapperHelper.class);
 
-  static DataSource buildDataSource(String gcsPath) {
+  static DataSource buildDataSource(
+      String gcsPath,
+      Integer numPartitions,
+      CassandraDataSource.CassandraDialect cassandraDialect,
+      GuardedStringValueProvider astraDBToken,
+      String astraDBDatabaseId,
+      String astraDBKeyspace,
+      String astraDBRegion) {
     DataSource dataSource;
     try {
       dataSource =
-          DataSource.ofCassandra(
-              CassandraDataSource.builder().setOptionsMapFromGcsFile(gcsPath).build());
+          switch (cassandraDialect) {
+            case ASTRA -> DataSource.ofCassandra(
+                // TODO: Astra: Build from Pipeline Options.
+                CassandraDataSource.ofAstra(
+                    AstraDbDataSource.builder()
+                        .setAstraToken(astraDBToken)
+                        .setDatabaseId(astraDBDatabaseId)
+                        .setKeySpace(astraDBKeyspace)
+                        .setAstraDbRegion(astraDBRegion)
+                        .build()));
+
+            default -> DataSource.ofCassandra(
+                CassandraDataSource.ofOss(
+                    CassandraDataSourceOss.builder()
+                        .setOptionsMapFromGcsFile(gcsPath)
+                        .setNumPartitions(numPartitions)
+                        .build()));
+          };
     } catch (FileNotFoundException e) {
       LOG.error("Unable to find driver config file in {}. Cause ", gcsPath, e);
       throw (new SchemaDiscoveryException(e));
@@ -72,8 +97,18 @@ class CassandraIOWrapperHelper {
       tablesToRead = schemaDiscovery.discoverTables(dataSource, sourceSchemaReference);
       LOG.info("Auto Discovered SourceTables = {}, Tables = {}", sourceTables, tablesToRead);
     } else {
-      tablesToRead = ImmutableList.copyOf(sourceTables);
-      LOG.info("Using passed SourceTables = {}", sourceTables);
+      ImmutableSet<String> existingTables =
+          schemaDiscovery.discoverTables(dataSource, sourceSchemaReference).stream()
+              .collect(ImmutableSet.toImmutableSet());
+      tablesToRead =
+          sourceTables.stream()
+              .filter(t -> existingTables.contains(t))
+              .collect(ImmutableList.toImmutableList());
+      LOG.info(
+          "Using tables from passed SourceTables = {}, existing tables = {}, tables to read = {}. Tables not present on source shall be ignored",
+          sourceTables,
+          existingTables,
+          tablesToRead);
     }
     return tablesToRead;
   }

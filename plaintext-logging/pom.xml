@@ -28,7 +28,6 @@
 
   <properties>
     <java.version>17</java.version>
-    <surefire.version>2.21.0</surefire.version>
   </properties>
 
   <build>

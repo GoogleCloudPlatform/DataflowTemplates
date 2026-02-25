@@ -53,19 +53,19 @@ public final class JdbcDaoTest {
   }
 
   @Test(expected = ConnectionException.class)
-  public void testNullConnection() throws java.sql.SQLException, ConnectionException {
+  public void testNullConnection() throws Exception {
     JdbcDao sqlDao = new JdbcDao("url", "user", new JdbcConnectionHelper());
-    sqlDao.write("sql");
+    sqlDao.write("sql", null);
   }
 
   @Test
-  public void testSuccess() throws java.sql.SQLException, ConnectionException {
+  public void testSuccess() throws Exception {
     Map<String, HikariDataSource> connectionPoolMap = new HashMap<>();
     connectionPoolMap.put("url/user", mockHikariDataSource);
     JdbcConnectionHelper jdbcConnectionHelper = new JdbcConnectionHelper();
     jdbcConnectionHelper.setConnectionPoolMap(connectionPoolMap);
     JdbcDao sqlDao = new JdbcDao("url", "user", jdbcConnectionHelper);
-    sqlDao.write("sql");
+    sqlDao.write("sql", null);
     verify(mockStatement).executeUpdate(eq("sql"));
   }
 }

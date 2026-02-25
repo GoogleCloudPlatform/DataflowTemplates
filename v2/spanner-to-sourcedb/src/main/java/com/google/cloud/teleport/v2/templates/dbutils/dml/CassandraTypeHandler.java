@@ -15,15 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.common.net.InetAddresses;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
@@ -118,24 +119,29 @@ public class CassandraTypeHandler {
    * @throws IllegalArgumentException If the value is neither a valid number string, byte array, nor
    *     a valid {@link ByteBuffer} for varint representation.
    */
-  private static BigInteger handleCassandraVarintType(String value) {
-    return new BigInteger(value);
+  private static BigInteger handleCassandraVarintType(Object value) {
+    if (value instanceof byte[]) {
+      return new BigInteger((byte[]) value);
+    } else if (value instanceof ByteBuffer) {
+      return new BigInteger(((ByteBuffer) value).array());
+    }
+    return new BigInteger(value.toString());
   }
 
   /**
-   * Generates a {@link Duration} based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link CqlDuration} based on the provided {@link CassandraTypeHandler}.
    *
    * <p>This method fetches a string value from the provided {@code valuesJson} object using the
-   * column name {@code colName}, and converts it into a {@link Duration} object. The string value
-   * should be in the ISO-8601 duration format (e.g., "PT20.345S").
+   * column name {@code colName}, and converts it into a {@link CqlDuration} object. The string
+   * value should be in the ISO-8601 duration format (e.g., "PT20.345S").
    *
    * @param durationString - The column value used to fetched from {@code valuesJson}.
-   * @return A {@link Duration} object representing the duration value from the Cassandra data.
+   * @return A {@link CqlDuration} object representing the duration value from the Cassandra data.
    * @throws IllegalArgumentException if the value is not a valid duration string.
    */
-  private static Duration handleCassandraDurationType(String durationString) {
+  private static CqlDuration handleCassandraDurationType(String durationString) {
     try {
-      return Duration.parse(durationString);
+      return CqlDuration.from(durationString);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid duration format for: " + durationString, e);
     }
@@ -163,39 +169,13 @@ public class CassandraTypeHandler {
    * @return a {@link ByteBuffer} object containing the value represented in cassandra type.
    */
   private static ByteBuffer parseBlobType(Object colValue) {
-    byte[] byteArray;
-
     if (colValue instanceof byte[]) {
-      byteArray = (byte[]) colValue;
-    } else if (colValue instanceof String) {
-      byteArray = java.util.Base64.getDecoder().decode((String) colValue);
+      return ByteBuffer.wrap((byte[]) colValue);
+    } else if (colValue instanceof ByteBuffer) {
+      return (ByteBuffer) colValue;
     } else {
-      throw new IllegalArgumentException("Unsupported type for column");
+      return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
     }
-
-    return ByteBuffer.wrap(byteArray);
-  }
-
-  /**
-   * Converts a hexadecimal string into a byte array.
-   *
-   * @param binaryEncodedStr the hexadecimal string to be converted. It must have an even number of
-   *     characters, as each pair of characters represents one byte.
-   * @return a byte array representing the binary data equivalent of the hexadecimal string.
-   */
-  private static byte[] convertBinaryEncodedStringToByteArray(String binaryEncodedStr) {
-    int length = binaryEncodedStr.length();
-    int byteCount = (length + 7) / 8;
-    byte[] byteArray = new byte[byteCount];
-
-    for (int i = 0; i < byteCount; i++) {
-      int startIndex = i * 8;
-      int endIndex = Math.min(startIndex + 8, length);
-      String byteString = binaryEncodedStr.substring(startIndex, endIndex);
-      byteArray[i] = (byte) Integer.parseInt(byteString, 2);
-    }
-
-    return byteArray;
   }
 
   /**
@@ -322,13 +302,16 @@ public class CassandraTypeHandler {
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
       if (spannerType.contains("string")) {
-        return valuesJson.optString(columnName);
+        return valuesJson.optString(columnName, null);
       } else if (spannerType.contains("bytes")) {
         if (valuesJson.isNull(columnName)) {
           return null;
         }
         String hexEncodedString = valuesJson.optString(columnName);
-        return convertBinaryEncodedStringToByteArray(hexEncodedString);
+        if (hexEncodedString.isEmpty()) {
+          return null;
+        }
+        return safeHandle(() -> parseBlobType(hexEncodedString));
       } else {
         return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
       }
@@ -343,7 +326,8 @@ public class CassandraTypeHandler {
    * PreparedStatementValueObject}.
    *
    * <p>This method processes basic Cassandra types (e.g., text, bigint, boolean, timestamp) and
-   * special types such as {@link Instant}, {@link UUID}, {@link BigInteger}, and {@link Duration}.
+   * special types such as {@link Instant}, {@link UUID}, {@link BigInteger}, and {@link
+   * CqlDuration}.
    *
    * @param columnType The Cassandra column type (e.g., "text", "timestamp").
    * @param colValue The column value to parse and wrap.
@@ -352,6 +336,13 @@ public class CassandraTypeHandler {
    */
   private static PreparedStatementValueObject<?> parseAndCastToCassandraType(
       String columnType, Object colValue) {
+    if (colValue == null) {
+      return null;
+    }
+
+    if (columnType.startsWith("frozen<")) {
+      return parseAndCastToCassandraType(extractInnerType(columnType), colValue);
+    }
 
     // Handle collection types
     if (columnType.startsWith("list<")) {
@@ -443,7 +434,7 @@ public class CassandraTypeHandler {
 
       case "varint":
         return PreparedStatementValueObject.create(
-            columnType, safeHandle(() -> handleCassandraVarintType(colValue.toString())));
+            columnType, safeHandle(() -> handleCassandraVarintType(colValue)));
 
       case "duration":
         return PreparedStatementValueObject.create(
@@ -523,9 +514,10 @@ public class CassandraTypeHandler {
    * @throws IllegalArgumentException if the column type is invalid or the value cannot be parsed.
    */
   private static Object parseFloatingPoint(String columnType, Object colValue) {
-    return columnType.equals("double")
-        ? Double.parseDouble((String) colValue)
-        : Float.parseFloat((String) colValue);
+    if (columnType.equals("double")) {
+      return Double.parseDouble((String) colValue);
+    }
+    return Float.parseFloat((String) colValue);
   }
 
   private static LocalDate parseDate(Object colValue) {
@@ -542,7 +534,7 @@ public class CassandraTypeHandler {
    * @return a {@link List} containing parsed values, or an empty list if {@code colValue} is null
    */
   private static List<?> parseCassandraList(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue.isEmpty()) {
       return Collections.emptyList();
     }
     String innerType = extractInnerType(columnType);
@@ -597,7 +589,7 @@ public class CassandraTypeHandler {
    * @return a {@link Set} containing parsed values, or an empty set if {@code colValue} is null
    */
   private static Set<?> parseCassandraSet(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue.isEmpty()) {
       return Collections.emptySet();
     }
     String innerType = extractInnerType(columnType);
@@ -618,7 +610,7 @@ public class CassandraTypeHandler {
    *     null
    */
   private static Map<?, ?> parseCassandraMap(String columnType, JSONObject colValue) {
-    if (colValue == null) {
+    if (colValue.isEmpty()) {
       return Collections.emptyMap();
     }
     String[] keyValueTypes = extractKeyValueTypes(columnType);
@@ -640,33 +632,29 @@ public class CassandraTypeHandler {
    * <p>This method determines the column type, extracts the value using helper methods, and returns
    * a {@link PreparedStatementValueObject} containing the column value formatted for Cassandra.
    *
-   * @param spannerColDef The Spanner column definition containing column name and type.
-   * @param sourceColDef The source database column definition containing column type.
+   * @param spannerColumn The Spanner column.
+   * @param sourceColumn The source column.
    * @param valuesJson The JSON object containing column values.
    * @param sourceDbTimezoneOffset The timezone offset for date-time columns (if applicable).
    * @return A {@link PreparedStatementValueObject} containing the parsed column value.
    */
   public static PreparedStatementValueObject<?> getColumnValueByType(
-      SpannerColumnDefinition spannerColDef,
-      SourceColumnDefinition sourceColDef,
+      Column spannerColumn,
+      SourceColumn sourceColumn,
       JSONObject valuesJson,
       String sourceDbTimezoneOffset) {
+    String spannerType = spannerColumn != null ? spannerColumn.type().toString() : null;
+    String cassandraType = sourceColumn != null ? sourceColumn.type() : null;
+    String columnName = spannerColumn != null ? spannerColumn.name() : null;
 
-    if (spannerColDef == null || sourceColDef == null) {
-      throw new IllegalArgumentException("Column definitions cannot be null.");
+    if (spannerType == null || cassandraType == null) {
+      throw new IllegalArgumentException("Column types cannot be null.");
     }
 
-    String spannerType = spannerColDef.getType().getName().toLowerCase();
-    String cassandraType = sourceColDef.getType().getName().toLowerCase();
-    String columnName = spannerColDef.getName();
+    Object columnValue = handleSpannerColumnType(spannerType.toLowerCase(), columnName, valuesJson);
 
-    Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
-
-    if (columnValue == null) {
-      LOG.warn("Column value is null for column: {}, type: {}", columnName, spannerType);
-      return PreparedStatementValueObject.create(cassandraType, NullClass.INSTANCE);
-    }
-    return PreparedStatementValueObject.create(cassandraType, columnValue);
+    return PreparedStatementValueObject.create(
+        cassandraType.toLowerCase(), Objects.requireNonNullElse(columnValue, NullClass.INSTANCE));
   }
 
   /**
@@ -684,7 +672,9 @@ public class CassandraTypeHandler {
    */
   public static Object castToExpectedType(String cassandraType, Object columnValue) {
     try {
-      return parseAndCastToCassandraType(cassandraType, columnValue).value();
+      PreparedStatementValueObject<?> valueObject =
+          parseAndCastToCassandraType(cassandraType, columnValue);
+      return valueObject != null ? valueObject.value() : null;
     } catch (IllegalArgumentException e) {
       LOG.error("Error converting value for column: {}, type: {}", cassandraType, e.getMessage());
       throw new IllegalArgumentException(

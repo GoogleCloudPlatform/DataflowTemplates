@@ -112,7 +112,7 @@ echo '{
     ]},
     "sdk_info":{"language":"JAVA"}
 }' > image_spec.json
-gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
+gcloud storage cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
 rm image_spec.json
 ```
 

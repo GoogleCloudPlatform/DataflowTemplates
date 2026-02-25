@@ -223,6 +223,10 @@ public final class JdbcIoWrapper implements IoWrapper {
         tableConfigs.stream().map(TableConfig::tableName).collect(ImmutableList.toImmutableList());
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchemas =
         schemaDiscovery.discoverTableSchema(dataSource, config.sourceSchemaReference(), tables);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
+        schemaDiscovery.discoverTableIndexes(dataSource, config.sourceSchemaReference(), tables);
+
     LOG.info("Found table schemas: {}", tableSchemas);
     tableSchemas.entrySet().stream()
         .map(
@@ -237,6 +241,16 @@ public final class JdbcIoWrapper implements IoWrapper {
                       colEntry ->
                           sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                               colEntry.getKey(), colEntry.getValue()));
+
+              if (tableIndexes.containsKey(tableEntry.getKey())) {
+                sourceTableSchemaBuilder.setPrimaryKeyColumns(
+                    tableIndexes.get(tableEntry.getKey()).stream()
+                        .filter(SourceColumnIndexInfo::isPrimary)
+                        .sorted()
+                        .map(SourceColumnIndexInfo::columnName)
+                        .collect(ImmutableList.toImmutableList()));
+              }
+
               return sourceTableSchemaBuilder.build();
             })
         .forEach(sourceSchemaBuilder::addTableSchema);
@@ -307,14 +321,22 @@ public final class JdbcIoWrapper implements IoWrapper {
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
             ImmutableSet.of(
-                IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED, IndexType.BINARY);
+                IndexType.NUMERIC,
+                IndexType.STRING,
+                IndexType.BIG_INT_UNSIGNED,
+                IndexType.BINARY,
+                IndexType.TIME_STAMP,
+                IndexType.DATE,
+                IndexType.DECIMAL,
+                IndexType.FLOAT,
+                IndexType.DOUBLE,
+                IndexType.DURATION);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
         //        Note: most of the implementation is generic for any unique index.
         //        Need to benchmark and do the end to end implementation.
-        //    2. support for DateTime type
-        //    3. support for composite indexes
+        //    2. support for composite indexes
         //       Note: though we have most of the code for composite index, since we cap the
         // splitting stages to 1, additional indexes will not be considered for splitting as of now.
         tableIndexInfo.stream()
@@ -368,6 +390,9 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
+        .setNumericScale(idxInfo.numericScale())
+        .setDecimalStepSize(idxInfo.decimalStepSize())
+        .setDatetimePrecision(idxInfo.datetimePrecision())
         .build();
   }
 
@@ -405,7 +430,7 @@ public final class JdbcIoWrapper implements IoWrapper {
       SourceTableSchema sourceTableSchema) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
-            .withTable(tableConfig.tableName())
+            .withTable(delimitIdentifier(tableConfig.tableName()))
             .withPartitionColumn(tableConfig.partitionColumns().get(0).columnName())
             .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .withRowMapper(
@@ -442,7 +467,7 @@ public final class JdbcIoWrapper implements IoWrapper {
 
     ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
         ReadWithUniformPartitions.<SourceRow>builder()
-            .setTableName(tableConfig.tableName())
+            .setTableName(delimitIdentifier(tableConfig.tableName()))
             .setPartitionColumns(tableConfig.partitionColumns())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
@@ -455,14 +480,14 @@ public final class JdbcIoWrapper implements IoWrapper {
                     sourceTableSchema,
                     config.shardID()))
             .setWaitOn(config.waitOn())
-            /* The following setting limits number of stages provisioned for the split process.
-             * Currently we mostly deal with auto incrementing keys, so we don't need a split depth to make the partition uniform, unless there is a large dataset with a lot of holes.
-             * TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key, don't set this.
-             */
-            .setSplitStageCountHint(0L)
             .setDbParallelizationForSplitProcess(config.dbParallelizationForSplitProcess())
             .setDbParallelizationForReads(config.dbParallelizationForReads())
             .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges());
+
+    if (config.splitStageCountHint() >= 0) {
+      readWithUniformPartitionsBuilder =
+          readWithUniformPartitionsBuilder.setSplitStageCountHint(config.splitStageCountHint());
+    }
 
     if (tableConfig.maxPartitions() != null) {
       readWithUniformPartitionsBuilder =

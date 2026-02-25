@@ -34,6 +34,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
@@ -64,7 +69,7 @@
             <version>5.0.1</version>
         </dependency>
         <!-- Test dependencies -->
-       
+
          <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-google-cloud-platform</artifactId>
@@ -95,9 +100,15 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.datastax.oss</groupId>
+            <groupId>org.apache.cassandra</groupId>
             <artifactId>java-driver-core</artifactId>
-            <version>4.17.0</version> <!-- Use the latest version -->
+            <version>${cassandra-java-driver-core.version}</version> <!-- Use the latest version -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!--        TODO - Remove when https://github.com/apache/beam/pull/29732 is released. -->
         <dependency>
@@ -106,6 +117,64 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-cassandra</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-it-cassandra</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.datastax.cassandra</groupId>
+                    <artifactId>cassandra-driver-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.27.7</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>useRealSpanner</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>!activateFailureInjection</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.cloud.teleport.v2</groupId>
+                    <artifactId>real-spanner-service</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>failureInjectionTest</id>
+            <activation>
+                <property>
+                    <name>activateFailureInjection</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.cloud.teleport.v2</groupId>
+                    <artifactId>failure-injected-spanner-service</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
 </project>

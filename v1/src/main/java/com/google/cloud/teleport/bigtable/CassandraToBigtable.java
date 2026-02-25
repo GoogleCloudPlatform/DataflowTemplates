@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
       "The target Bigtable table must exist before running the pipeline.",
       "Network connection between Dataflow workers and Apache Cassandra nodes."
     })
-final class CassandraToBigtable {
+public final class CassandraToBigtable {
 
   /** TODO - refactor to extend BigtableCommonOptions.WriteOptions. */
   public interface Options extends PipelineOptions {

@@ -17,18 +17,26 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PInput;
@@ -93,29 +101,53 @@ public class SpannerTransactionWriter
   @Override
   public SpannerTransactionWriter.Result expand(
       PCollection<FailsafeElement<String, String>> input) {
-    PCollectionTuple spannerWriteResults =
+    PCollectionTuple keyedEvents =
         input.apply(
-            "Write Mutations",
-            ParDo.of(
-                    new SpannerTransactionWriterDoFn(
-                        spannerConfig,
-                        shadowTableSpannerConfig,
-                        ddlView,
-                        shadowTableDdlView,
-                        shadowTablePrefix,
-                        sourceType,
-                        isRegularRunMode))
-                .withSideInputs(ddlView, shadowTableDdlView)
+            "Key By PK Hash",
+            ParDo.of(new CreateKeyValuePairsWithPrimaryKeyHashDoFn(ddlView))
+                .withSideInputs(ddlView)
                 .withOutputTags(
-                    DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG,
-                    TupleTagList.of(
-                        Arrays.asList(
-                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
-                            DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+                    DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG,
+                    TupleTagList.of(List.of(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+    PCollectionTuple spannerWriteResults =
+        keyedEvents
+            .get(DatastreamToSpannerConstants.SUCCESSFUL_KEYED_EVENT_TAG)
+            .setCoder(
+                KvCoder.of(
+                    VarLongCoder.of(),
+                    FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("Reshuffle Keyed Events", Reshuffle.of())
+            .apply(
+                "Write Mutations",
+                ParDo.of(
+                        new SpannerTransactionWriterDoFn(
+                            spannerConfig,
+                            shadowTableSpannerConfig,
+                            ddlView,
+                            shadowTableDdlView,
+                            shadowTablePrefix,
+                            sourceType,
+                            isRegularRunMode))
+                    .withSideInputs(ddlView, shadowTableDdlView)
+                    .withOutputTags(
+                        DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG,
+                        TupleTagList.of(
+                            Arrays.asList(
+                                DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
+                                DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG))));
+
+    PCollection<FailsafeElement<String, String>> keyedEventsErrorRecords =
+        keyedEvents.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+
+    PCollection<FailsafeElement<String, String>> permanentErrorRecords =
+        PCollectionList.of(
+                spannerWriteResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))
+            .and(keyedEventsErrorRecords)
+            .apply(Flatten.pCollections());
 
     return Result.create(
         spannerWriteResults.get(DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG),
-        spannerWriteResults.get(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG),
+        permanentErrorRecords,
         spannerWriteResults.get(DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG));
   }
 

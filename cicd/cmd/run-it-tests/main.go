@@ -33,7 +33,6 @@ func main() {
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
@@ -49,15 +48,14 @@ func main() {
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
-		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
+		mvnFlags.DoNotIncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
 		mvnFlags.RunIntegrationTests(flags.UnifiedWorkerHarnessContainerImage() != ""),
-		mvnFlags.ThreadCount(4),
-		mvnFlags.IntegrationTestParallelism(3),
+		mvnFlags.ThreadCount(flags.ThreadCount()),
+		mvnFlags.IntegrationTestParallelism(flags.IntegrationTestParallelism()),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
@@ -77,7 +75,9 @@ func main() {
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
 		flags.UnifiedWorkerHarnessContainerImage(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		mvnFlags.SpecificTest(flags.TestToRun()),
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

@@ -17,15 +17,19 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.time.Instant;
@@ -34,7 +38,6 @@ import java.util.Map;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.joda.time.Duration;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -50,13 +53,16 @@ public class InputRecordProcessor {
 
   public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
-      Schema schema,
+      ISchemaMapper schemaMapper,
+      Ddl ddl,
+      SourceSchema sourceSchema,
       IDao dao,
       String shardId,
       String sourceDbTimezoneOffset,
       IDMLGenerator dmlGenerator,
       ISpannerMigrationTransformer spannerToSourceTransformer,
-      String source)
+      String source,
+      TransactionalCheck check)
       throws Exception {
 
     try {
@@ -96,15 +102,16 @@ public class InputRecordProcessor {
       DMLGeneratorRequest dmlGeneratorRequest =
           new DMLGeneratorRequest.Builder(
                   modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
-              .setSchema(schema)
+              .setSchemaMapper(schemaMapper)
               .setCustomTransformationResponse(customTransformationResponse)
               .setCommitTimestamp(spannerRecord.getCommitTimestamp())
+              .setDdl(ddl)
+              .setSourceSchema(sourceSchema)
               .build();
 
       DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
       if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
-        LOG.warn("DML statement is empty for table: " + tableName);
-        return false;
+        throw new InvalidDMLGenerationException("DML statement is empty for table: " + tableName);
       }
       // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
       // TODO Statement and Raw Statement Differently
@@ -118,10 +125,10 @@ public class InputRecordProcessor {
        */
       switch (source) {
         case SOURCE_CASSANDRA:
-          dao.write(dmlGeneratorResponse);
+          dao.write(dmlGeneratorResponse, null);
           break;
         default:
-          dao.write(dmlGeneratorResponse.getDmlStatement());
+          dao.write(dmlGeneratorResponse.getDmlStatement(), check);
           break;
       }
 
@@ -139,10 +146,8 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
       return false;
     } catch (Exception e) {
-      LOG.error(
-          "The exception while processing shardId: {} is {} ",
-          shardId,
-          ExceptionUtils.getStackTrace(e));
+      // Not logging the error here since the error can be retryable error and high number of them
+      // could have side effects on the pipeline execution.
       throw e; // throw the original exception since it needs to go to DLQ
     }
   }

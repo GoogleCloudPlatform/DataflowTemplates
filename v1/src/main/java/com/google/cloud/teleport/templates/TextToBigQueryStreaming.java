@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
 @Template(
     name = "Stream_GCS_Text_to_BigQuery",
     category = TemplateCategory.STREAMING,
-    displayName = "Cloud Storage Text to BigQuery (Stream)",
+    displayName = "Cloud Storage Text to BigQuery (Stream) Classic",
     description = {
       "The Text Files on Cloud Storage to BigQuery pipeline is a streaming pipeline that allows you to stream text "
           + "files stored in Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to BigQuery.\n",

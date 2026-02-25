@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
         "pythonExternalTextTransformGcsPath",
         "pythonExternalTextTransformFunctionName",
       }, // Template just ignores what is sent as "index"
-      flexContainerName = "pubsub-to-elasticsearch",
+      flexContainerName = "googlecloud-to-elasticsearch",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",
@@ -106,7 +106,7 @@ import org.slf4j.LoggerFactory;
         "javascriptTextTransformReloadIntervalMinutes"
       }, // Template just ignores what is sent as "index" and javascript udf as this is for python
       // udf only.
-      flexContainerName = "pubsub-to-elasticsearch-xlang",
+      flexContainerName = "googlecloud-to-elasticsearch-xlang",
       documentation =
           "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-elasticsearch",
       contactInformation = "https://cloud.google.com/support",

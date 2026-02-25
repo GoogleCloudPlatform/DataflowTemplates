@@ -16,51 +16,13 @@ mvn clean verify -PtemplatesRelease \
   -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
 ```
 
-## Maven artifacts
-
-As part of the Templates development process, we release the common artifact snapshots to Maven Central, not
-modules that contain finalized templates. This allows users to consume those resources and modules without forking the
-entire project, while keeping artifacts at a reasonable size.
-
-In order to release artifacts, `~/.m2/settings.xml` should be configured to contain Sonatype's username and password:
-
-```xml
-
-<servers>
-  <server>
-    <id>ossrh</id>
-    <username>(user)</username>
-    <password>(password)</password>
-  </server>
-</servers>
-```
-
-And the command to release (for example, the development plugin and Spanner together):
+To execute the release of a subset of flex templates, the following command can be used. For example,
 
 ```shell
-mvn clean deploy -am -Prelease \
-  -pl plugins/templates-maven-plugin \
-  -pl v2/spanner-common
-```
-
-If you intend to use those resources in an external project, your `pom.xml` should include:
-
-```xml
-
-<repositories>
-  <repository>
-    <id>ossrh</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-  </repository>
-</repositories>
-```
-
-```xml
-
-<pluginRepositories>
-  <pluginRepository>
-    <id>ossrh</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-  </pluginRepository>
-</pluginRepositories>
+mvn clean verify -PtemplatesRelease \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -DlibrariesBucketName="{bucketName}-libraries" \
+  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00" \
+  -pl v2/streaming-data-generator -am
 ```

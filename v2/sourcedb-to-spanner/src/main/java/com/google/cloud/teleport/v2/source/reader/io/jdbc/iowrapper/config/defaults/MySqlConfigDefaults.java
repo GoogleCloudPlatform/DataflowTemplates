@@ -42,16 +42,6 @@ public class MySqlConfigDefaults {
   public static final JdbcValueMappingsProvider DEFAULT_MYSQL_VALUE_MAPPING_PROVIDER =
       new MysqlJdbcValueMappings();
 
-  public static final String DEFAULT_MYSQL_CONNECTION_PROPERTIES =
-      "maxTotal=160;maxpoolsize=160;maxIdle=160;minIdle=160"
-          + ";wait_timeout=57600"
-          + ";interactive_timeout=57600"
-          + ";idletimeout=3600"
-          + ";maxwaittime=600_000"
-          + ";maxWaitMillis=600_000"
-          + ";maxConnLifetimeMillis=600_000"
-          + ";testOnCreate=true;testOnBorrow=true;testOnReturn=true;testWhileIdle=true";
-
   public static final Long DEFAULT_MYSQL_MAX_CONNECTIONS = 160L;
 
   /**

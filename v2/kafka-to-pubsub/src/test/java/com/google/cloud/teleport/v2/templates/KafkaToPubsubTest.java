@@ -22,13 +22,17 @@ import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.USERNA
 import com.google.cloud.teleport.v2.kafka.consumer.Utils;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.scram.internals.ScramMechanism;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 /** Test class for {@link KafkaToPubsub}. */
 public class KafkaToPubsubTest {
+  @Rule public Timeout testTimeout = new Timeout(30, TimeUnit.MINUTES);
 
   /** Tests configureKafka() with a null input properties. */
   @Test

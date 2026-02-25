@@ -180,8 +180,12 @@ public abstract class ChangeEventTransformerDoFn
       Map<String, Object> sourceRecord =
           ChangeEventToMapConvertor.convertChangeEventToMap(changeEvent);
 
+      boolean isSpannerMutation =
+          changeEvent.has("_metadata_spanner_mutation")
+              && changeEvent.get("_metadata_spanner_mutation").asBoolean();
+
       // TODO: Transformation via session file should be marked deprecated and removed.
-      if (!schema().isEmpty()) {
+      if (!schema().isEmpty() && !isSpannerMutation) {
         schema().verifyTableInSession(changeEvent.get(EVENT_TABLE_NAME_KEY).asText());
         changeEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(changeEvent);
       }
@@ -191,20 +195,22 @@ public abstract class ChangeEventTransformerDoFn
       }
 
       // Perform mapping as per overrides
-      if (schemaOverridesParser() != null) {
+      if (schemaOverridesParser() != null && !isSpannerMutation) {
         changeEvent = changeEventSessionConvertor.transformChangeEventViaOverrides(changeEvent);
       }
 
-      changeEvent =
-          changeEventSessionConvertor.transformChangeEventData(
-              changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+      if (!isSpannerMutation) {
+        changeEvent =
+            changeEventSessionConvertor.transformChangeEventData(
+                changeEvent, spannerAccessor.getDatabaseClient(), ddl);
+      }
 
       // If custom jar is specified apply custom transformation to the change event
       if (datastreamToSpannerTransformer != null) {
         MigrationTransformationResponse migrationTransformationResponse = null;
         try {
           migrationTransformationResponse =
-              getCustomTransformationResponse(changeEvent, sourceRecord);
+              getTransformationResponse(changeEvent, sourceRecord, isSpannerMutation);
           if (migrationTransformationResponse.isEventFiltered()) {
             filteredEvents.inc();
             c.output(DatastreamToSpannerConstants.FILTERED_EVENT_TAG, msg.getOriginalPayload());
@@ -215,12 +221,14 @@ public abstract class ChangeEventTransformerDoFn
             changeEvent =
                 ChangeEventToMapConvertor.transformChangeEventViaCustomTransformation(
                     changeEvent, migrationTransformationResponse.getResponseRow());
+
             if (changeEvent.get(SHARD_ID_COLUMN_NAME) != null) {
               migrationShardId =
                   changeEvent.get(changeEvent.get(SHARD_ID_COLUMN_NAME).asText()).asText();
             }
           }
         } catch (Exception e) {
+          LOG.error("Invalid Transformation Exception", e);
           throw new InvalidTransformationException(e);
         }
       }
@@ -235,10 +243,12 @@ public abstract class ChangeEventTransformerDoFn
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
-      LOG.warn(e.getMessage());
+      // Note that this message is not added to DLQ!!
+      LOG.error("Dropped Table for changeEventMessage {}", msg, e.getMessage());
       droppedTableExceptions.inc();
     } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
+      LOG.error("Error in Transformation.", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       customTransformationException.inc();
       if (migrationShardId != null) {
@@ -247,10 +257,12 @@ public abstract class ChangeEventTransformerDoFn
       }
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
+      LOG.error("Error in Change Event Conversion post transformation.", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
+      LOG.error("Unhandled Exception in ChangeEventTransformer", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
       if (migrationShardId != null) {
@@ -260,8 +272,8 @@ public abstract class ChangeEventTransformerDoFn
     }
   }
 
-  MigrationTransformationResponse getCustomTransformationResponse(
-      JsonNode changeEvent, Map<String, Object> sourceRecord)
+  MigrationTransformationResponse getTransformationResponse(
+      JsonNode changeEvent, Map<String, Object> sourceRecord, boolean isSpannerMutation)
       throws InvalidTransformationException {
     String shardId = changeEventSessionConvertor.getShardId(changeEvent);
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
@@ -269,8 +281,16 @@ public abstract class ChangeEventTransformerDoFn
     MigrationTransformationRequest migrationTransformationRequest =
         new MigrationTransformationRequest(
             tableName, sourceRecord, shardId, changeEvent.get(EVENT_CHANGE_TYPE_KEY).asText());
-    MigrationTransformationResponse migrationTransformationResponse =
-        datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
+    MigrationTransformationResponse migrationTransformationResponse;
+    if (isSpannerMutation) {
+      migrationTransformationResponse =
+          datastreamToSpannerTransformer.transformFailedSpannerMutation(
+              migrationTransformationRequest);
+    } else {
+      migrationTransformationResponse =
+          datastreamToSpannerTransformer.toSpannerRow(migrationTransformationRequest);
+    }
+
     Instant endTimestamp = Instant.now();
     applyCustomTransformationResponseTimeMetric.update(
         new Duration(startTimestamp, endTimestamp).getMillis());

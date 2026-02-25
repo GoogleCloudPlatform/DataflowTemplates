@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -30,6 +31,7 @@ import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +100,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
         createAndUploadShardConfigToGcs();
@@ -112,7 +112,15 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -123,7 +131,9 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
                 "input/customShard.jar",
                 "com.custom.CustomShardIdFetcherForIT",
                 null,
-                null);
+                null,
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }
@@ -198,8 +208,6 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             .to(singerId)
             .set("FirstName")
             .to(firstName)
-            .set("migration_shard_id")
-            .to(shardId)
             .build();
     spannerResourceManager.write(m);
   }

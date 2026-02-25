@@ -28,16 +28,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerExceptionParser;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier;
+import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
@@ -53,6 +58,7 @@ import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Duration;
@@ -73,8 +79,8 @@ import org.slf4j.LoggerFactory;
  * <p>Change events that failed to be written will be pushed onto the secondary output tagged with
  * PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that caused the failure.
  */
-class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
-    implements Serializable {
+class SpannerTransactionWriterDoFn
+    extends DoFn<KV<Long, FailsafeElement<String, String>>, Timestamp> implements Serializable {
 
   // TODO - Change Cloud Spanner nomenclature in code used to read DDL.
 
@@ -235,7 +241,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    FailsafeElement<String, String> msg = c.element();
+    FailsafeElement<String, String> msg = c.element().getValue();
     Ddl ddl = c.sideInput(ddlView);
     // TODO: pass shadow table ddl to shdaow tble mutaiton generator and sequence reader.
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
@@ -271,10 +277,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
       if (usesSeparateShadowTableDb) {
         processCrossDatabaseTransaction(
-            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       } else {
         processSingleDatabaseTransaction(
-            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
       }
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
@@ -295,9 +301,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
-      LOG.warn(e.getMessage());
+      // Note that this is not loogged to DLQ!!
+      LOG.error("Table dropped during migration for changeEventMessage {}", msg, e.getMessage());
       droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
+      LOG.error("Invalid Change Exception", e);
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
@@ -306,6 +314,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             .inc();
       }
     } catch (ChangeEventConvertorException e) {
+      LOG.error("Conversion Error", e);
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       if (migrationShardId != null) {
@@ -315,14 +324,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             .inc();
       }
       conversionErrors.inc();
-    } catch (SpannerException | IllegalStateException ex) {
-      /* Errors that happen when writing to Cloud Spanner are considered retryable.
-       * Since all event conversion errors are caught beforehand as permanent errors,
-       * any other errors encountered while writing to Cloud Spanner can be retried.
-       * Examples include:
-       * 1. Deadline exceeded errors from Cloud Spanner.
-       * 2. Failures due to foreign key/interleaved table constraints.
-       * 3. Any transient errors in Cloud Spanner.
+    } catch (IllegalStateException ex) {
+      /*
        * IllegalStateException can occur due to conditions like spanner pool being closed,
        * in which case if this event is requed to same or different node at a later point in time,
        * a retry might work.
@@ -332,7 +335,35 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       if (!isRetryRecord) {
         retryableErrors.inc();
       }
+    } catch (SpannerException ex) {
+      /*
+       * There are many SpannerExceptions which can occur. Some of them are retryable and some of them are non-retryable.
+       * Examples:
+       * 1. Deadline exceeded errors from Cloud Spanner - Retryable error
+       * 2. Failures due to foreign key/interleaved table constraints - Retryable error
+       * 3. Unique index violation - Permanent error
+       */
+      SpannerMigrationException spannerMigrationException = SpannerExceptionParser.parse(ex);
+      ErrorTag outputTag =
+          DatastreamToSpannerExceptionClassifier.classify(spannerMigrationException);
+      switch (outputTag) {
+        case PERMANENT_ERROR:
+          LOG.error(
+              "A severe error occurred while processing the event.", spannerMigrationException);
+          outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+          break;
+        case RETRYABLE_ERROR:
+          LOG.warn(
+              "A retryable error occurred while processing the event, the event will be retried again.",
+              spannerMigrationException);
+          outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG);
+      }
+      // do not increment the retry error count if this was retry attempt
+      if (ErrorTag.RETRYABLE_ERROR.equals(outputTag) && !isRetryRecord) {
+        retryableErrors.inc();
+      }
     } catch (Exception e) {
+      LOG.error("Unhandled Exception", e);
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
@@ -348,12 +379,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       ProcessContext c,
       ChangeEventContext changeEventContext,
       ChangeEventSequence currentChangeEventSequence,
-      Ddl shadowDdl) {
+      Ddl shadowDdl,
+      Ddl ddl) {
 
     spannerAccessor
         .getDatabaseClient()
         .readWriteTransaction(
             Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.excludeTxnFromChangeStreams(),
             Options.priority(spannerConfig.getRpcPriority().get()))
         .run(
             (TransactionRunner.TransactionCallable<Void>)
@@ -372,7 +405,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                     skippedEvents.inc();
                     return null;
                   }
-                  // Apply shadow and data table mutations.
+                  // Execute DML if applicable
+                  Statement dataDml = changeEventContext.getDataDmlStatement(ddl);
+
+                  if (dataDml != null) {
+                    transaction.executeUpdate(dataDml);
+                  }
+
+                  // Apply shadow and data table mutations (only if they exist)
                   transaction.buffer(changeEventContext.getMutations());
                   isInTransaction.set(false);
                   return null;
@@ -387,8 +427,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
    *   <li>Start shadow table transaction - tx1
    *   <li>Read the shadow table row with exclusive lock - tx1.read()
    *   <li>Start main table transaction - tx2
-   *   <li>Write to main table - tx2.write()
+   *   <li>Read the main table row with exclusive lock - tx2.read()
    *   <li>Before committing tx2, read the shadow table row again using tx1 inside tx2.
+   *   <li>Write to main table - tx2.write()
    *   <li>Commit main transaction - tx2.commit()
    *   <li>Update shadow table - tx1.write()
    *   <li>Commit shadow table transaction - tx1.commit()
@@ -404,12 +445,14 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       ProcessContext c,
       ChangeEventContext changeEventContext,
       ChangeEventSequence currentChangeEventSequence,
-      Ddl shadowDdl) {
+      Ddl shadowDdl,
+      Ddl dataTableDdl) {
 
     shadowTableSpannerAccessor
         .getDatabaseClient()
         .readWriteTransaction(
             Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.excludeTxnFromChangeStreams(),
             Options.priority(spannerConfig.getRpcPriority().get()))
         .allowNestedTransaction()
         .run(
@@ -434,12 +477,15 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                       .getDatabaseClient()
                       .readWriteTransaction(
                           Options.tag(getTxnTag(c.getPipelineOptions())),
+                          Options.excludeTxnFromChangeStreams(),
                           Options.priority(spannerConfig.getRpcPriority().get()))
                       .run(
                           (TransactionRunner.TransactionCallable<Void>)
                               mainTxn -> {
-                                // Write to main table
-                                mainTxn.buffer(changeEventContext.getDataMutation());
+                                // Read row from main table with lock scanned ranges to acquire
+                                // exclusive lock on the main table row.
+                                changeEventContext.readDataTableRowWithExclusiveLock(
+                                    mainTxn, dataTableDdl);
 
                                 // Validate the row still holds the exclusive lock. In case of
                                 // network
@@ -465,6 +511,18 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                                       previousChangeEventSequence);
                                   throw new Exception(
                                       "Shadow table sequence changed during transaction");
+                                }
+
+                                // Execute Data DML if applicable
+                                Statement dataDml =
+                                    changeEventContext.getDataDmlStatement(dataTableDdl);
+                                if (dataDml != null) {
+                                  mainTxn.executeUpdate(dataDml);
+                                }
+
+                                // Write to main table
+                                if (changeEventContext.getDataMutation() != null) {
+                                  mainTxn.buffer(changeEventContext.getDataMutation());
                                 }
                                 return null;
                               });

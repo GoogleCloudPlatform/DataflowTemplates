@@ -25,8 +25,6 @@ import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -39,17 +37,25 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 @AutoValue
 abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTuple> {
-  public abstract ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
-      tableTransforms();
+  // Avoid serializing tableTransform as it's needed only for expand.
+  private transient ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+      tableTransforms;
 
   public abstract TupleTag<SourceRow> sourceRowTag();
 
   public abstract TupleTag<SourceTableReference> sourceTableReferenceTag();
 
+  private AccumulatingTableReader setTableTransforms(
+      ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+          tableTransforms) {
+    this.tableTransforms = tableTransforms;
+    return this;
+  }
+
   @Override
   public PCollectionTuple expand(PBegin input) {
     ImmutableMap<SourceTableReference, PCollection<SourceRow>> tablePCollections =
-        this.tableTransforms().entrySet().stream()
+        this.tableTransforms.entrySet().stream()
             .collect(
                 ImmutableMap.toImmutableMap(
                     Entry::getKey,
@@ -93,7 +99,7 @@ abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTup
   @AutoValue.Builder
   abstract static class Builder {
 
-    abstract ImmutableMap.Builder tableTransformsBuilder();
+    private ImmutableMap.Builder tableTransformsBuilder = new ImmutableMap.Builder();
 
     abstract Builder setSourceRowTag(TupleTag<SourceRow> sourceRowTag);
 
@@ -102,24 +108,14 @@ abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTup
     Builder withTableReader(
         SourceTableReference sourceTableReference,
         PTransform<PBegin, PCollection<SourceRow>> tableReader) {
-      this.tableTransformsBuilder().put(sourceTableReference, tableReader);
+      this.tableTransformsBuilder.put(sourceTableReference, tableReader);
       return this;
     }
 
-    abstract AccumulatingTableReader build();
-  }
+    abstract AccumulatingTableReader autoBuild();
 
-  public class SourceTableReferenceWithCount extends SimpleFunction<Long, SourceTableReference>
-      implements SerializableFunction<Long, SourceTableReference> {
-    private SourceTableReference tableReference;
-
-    SourceTableReferenceWithCount(SourceTableReference tableReference) {
-      this.tableReference = tableReference;
-    }
-
-    @Override
-    public SourceTableReference apply(Long input) {
-      return this.tableReference.toBuilder().setRecordCount(input).build();
+    AccumulatingTableReader build() {
+      return autoBuild().setTableTransforms(this.tableTransformsBuilder.build());
     }
   }
 }

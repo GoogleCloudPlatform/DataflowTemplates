@@ -55,6 +55,8 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
 
   private static final String SCHEMA_PATH = "TextIOToBigQueryTest/schema.json";
   private static final String INPUT_PATH = "TextIOToBigQueryTest/input.txt";
+  private static final String SCHEMA_FNAME = "schema.json";
+  private static final String INPUT_FNAME = "İnput.json"; // non-ascii file name
   private static final String UDF_PATH = "TextIOToBigQueryTest/udf.js";
   private static final String PYUDF_PATH = "TextIOToBigQueryTest/pyudf.py";
   private BigQueryResourceManager bigQueryClient;
@@ -116,8 +118,9 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
   private void testTextIOToBigQuery(
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder) throws IOException {
     // Arrange
-    gcsClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
-    gcsClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
+    gcsClient.uploadArtifact(SCHEMA_FNAME, Resources.getResource(SCHEMA_PATH).getPath());
+    // non-ascii file name
+    gcsClient.uploadArtifact(INPUT_FNAME, Resources.getResource(INPUT_PATH).getPath());
 
     bigQueryClient.createDataset(REGION);
     TableId table =
@@ -139,8 +142,8 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
         launchTemplate(
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
-                    .addParameter("JSONPath", getGcsPath("schema.json"))
-                    .addParameter("inputFilePattern", getGcsPath("input.txt"))
+                    .addParameter("JSONPath", getGcsPath(SCHEMA_FNAME))
+                    .addParameter("inputFilePattern", getGcsPath(INPUT_FNAME))
                     .addParameter("outputTable", toTableSpecLegacy(table))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
     assertThatPipeline(info).isRunning();

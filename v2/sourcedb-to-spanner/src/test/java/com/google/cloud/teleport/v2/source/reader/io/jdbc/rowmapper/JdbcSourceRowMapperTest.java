@@ -291,9 +291,9 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("CHAR(8) FOR BIT DATA") // Derby mapping for Bit
+                .derbyColumnType("BIGINT") // Derby mapping for Bit
                 .sourceColumnType("BIT")
-                .inputValue(ByteBuffer.allocate(8).putLong(5L).array())
+                .inputValue(5L)
                 .mappedValue(5L)
                 .build())
         .add(

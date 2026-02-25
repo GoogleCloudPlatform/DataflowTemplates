@@ -128,5 +128,8 @@
   "IsSharded": false,
   "SpRegion": "",
   "ResourceValidation": false,
-  "UI": false
+  "UI": false,
+  "DatabaseOptions": {
+    "DefaultTimezone": "Australia/Brisbane"
+  }
 }

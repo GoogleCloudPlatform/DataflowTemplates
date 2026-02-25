@@ -1,4 +1,4 @@
-CREATE TABLE person (
+CREATE TABLE IF NOT EXISTS person (
      first_name STRING(500),
      ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);

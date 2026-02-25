@@ -1,4 +1,4 @@
-CREATE TABLE person1 (
+CREATE TABLE IF NOT EXISTS person1 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -8,7 +8,7 @@ CREATE TABLE person1 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person10 (
+CREATE TABLE IF NOT EXISTS person10 (
      first_name1 STRING(500),
      last_name1 STRING(500),
      first_name2 STRING(500),
@@ -18,7 +18,7 @@ CREATE TABLE person10 (
      ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person2 (
+CREATE TABLE IF NOT EXISTS person2 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -28,7 +28,7 @@ CREATE TABLE person2 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person3 (
+CREATE TABLE IF NOT EXISTS person3 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -38,7 +38,7 @@ CREATE TABLE person3 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person4 (
+CREATE TABLE IF NOT EXISTS person4 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -48,7 +48,7 @@ CREATE TABLE person4 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person5 (
+CREATE TABLE IF NOT EXISTS person5 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -58,7 +58,7 @@ CREATE TABLE person5 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person6 (
+CREATE TABLE IF NOT EXISTS person6 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -68,7 +68,7 @@ CREATE TABLE person6 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person7 (
+CREATE TABLE IF NOT EXISTS person7 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -78,7 +78,7 @@ CREATE TABLE person7 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person8 (
+CREATE TABLE IF NOT EXISTS person8 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),
@@ -88,7 +88,7 @@ CREATE TABLE person8 (
     ID INT64 NOT NULL,
 ) PRIMARY KEY(ID);
 
-CREATE TABLE person9 (
+CREATE TABLE IF NOT EXISTS person9 (
     first_name1 STRING(500),
     last_name1 STRING(500),
     first_name2 STRING(500),

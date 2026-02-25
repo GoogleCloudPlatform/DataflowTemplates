@@ -67,7 +67,7 @@ public class SpannerSchemaTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
             .onDeleteCascade()
             .endTable()
             .build();

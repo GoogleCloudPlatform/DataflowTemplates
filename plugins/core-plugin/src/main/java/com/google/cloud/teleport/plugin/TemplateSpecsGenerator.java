@@ -26,7 +26,6 @@ import com.google.gson.GsonBuilder;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.StringUtils;
@@ -43,10 +42,11 @@ public class TemplateSpecsGenerator {
    * Scan the classloader for all Template classes, and then builds spec + saves the metadata for
    * every Template.
    */
-  public void generateSpecs(ClassLoader classLoader, File baseDirectory, File targetDirectory) {
+  public void generateSpecs(
+      ClassLoader classLoader, File outputDirectory, File baseDirectory, File targetDirectory) {
 
     List<TemplateDefinitions> templateDefinitions =
-        TemplateDefinitionsParser.scanDefinitions(classLoader);
+        TemplateDefinitionsParser.scanDefinitions(classLoader, outputDirectory);
     for (TemplateDefinitions definition : templateDefinitions) {
       LOG.info("Generating template " + definition.getTemplateAnnotation().name() + "...");
       // Skip generating docs for template annotations that are stage-only
@@ -120,14 +120,6 @@ public class TemplateSpecsGenerator {
     }
 
     String imageName = templateDash.toLowerCase();
-    if (StringUtils.isNotEmpty(templateAnnotation.flexContainerName())) {
-      imageName = Path.of(templateAnnotation.flexContainerName()).getFileName().toString();
-    }
-
-    if (!targetDirectory.exists()) {
-      targetDirectory.mkdirs();
-    }
-
     File file = new File(targetDirectory, imageName + "-generated-metadata.json");
     LOG.info("Saving image spec metadata " + file.getAbsolutePath());
 

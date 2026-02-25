@@ -24,22 +24,22 @@ check [Provided templates documentation](https://cloud.google.com/dataflow/docs/
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Cloud_Datastream_to_BigQuery).
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
 
 ### Required parameters
 
-* **inputFilePattern**: The file location for Datastream file output in Cloud Storage, in the format `gs://<BUCKET_NAME>/<ROOT_PATH>/`.
 * **inputFileFormat**: The format of the output files produced by Datastream. Allowed values are `avro` and `json`. Defaults to `avro`.
-* **gcsPubSubSubscription**: The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
-* **outputStagingDatasetTemplate**: The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.
-* **outputDatasetTemplate**: The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.
+* **outputStagingDatasetTemplate**: The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.
+* **outputDatasetTemplate**: The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.
 * **deadLetterQueueDirectory**: The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.
 
 ### Optional parameters
 
+* **inputFilePattern**: The file location for Datastream file output in Cloud Storage, in the format `gs://<BUCKET_NAME>/<ROOT_PATH>/`.
+* **gcsPubSubSubscription**: The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
 * **streamName**: The name or the template for the stream to poll for schema information. Defaults to: {_metadata_stream}. The default value is usually enough.
 * **rfcStartDateTime**: The starting DateTime to use to fetch data from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: `1970-01-01T00:00:00.00Z`.
 * **fileReadConcurrency**: The number of concurrent DataStream files to read. Default is `10`.
@@ -54,6 +54,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **mergeConcurrency**: The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to `30`.
 * **partitionRetentionDays**: The number of days to use for partition retention when running BigQuery merges. Defaults to `1`.
 * **useStorageWriteApiAtLeastOnce**: This parameter takes effect only if `Use BigQuery Storage Write API` is enabled. If `true`, at-least-once semantics are used for the Storage Write API. Otherwise, exactly-once semantics are used. Defaults to `false`.
+* **datastreamSourceType**: Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.
 * **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
 * **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 * **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
@@ -81,7 +82,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -95,7 +96,17 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl v2/datastream-to-bigquery
+```
 
 ### Building Template
 
@@ -114,16 +125,20 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--f v2/datastream-to-bigquery
+-pl v2/datastream-to-bigquery -am
 ```
 
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 
 The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
@@ -152,14 +167,14 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_BigQuery"
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
@@ -174,6 +189,7 @@ export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -209,6 +225,7 @@ gcloud dataflow flex-template run "cloud-datastream-to-bigquery-job" \
   --parameters "mergeConcurrency=$MERGE_CONCURRENCY" \
   --parameters "partitionRetentionDays=$PARTITION_RETENTION_DAYS" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+  --parameters "datastreamSourceType=$DATASTREAM_SOURCE_TYPE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
@@ -237,14 +254,14 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
@@ -259,6 +276,7 @@ export APPLY_MERGE=true
 export MERGE_CONCURRENCY=30
 export PARTITION_RETENTION_DAYS=1
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -277,7 +295,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-bigquery-job" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,outputProjectId=$OUTPUT_PROJECT_ID,outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,outputStagingTableNameTemplate=$OUTPUT_STAGING_TABLE_NAME_TEMPLATE,outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,outputTableNameTemplate=$OUTPUT_TABLE_NAME_TEMPLATE,ignoreFields=$IGNORE_FIELDS,mergeFrequencyMinutes=$MERGE_FREQUENCY_MINUTES,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,applyMerge=$APPLY_MERGE,mergeConcurrency=$MERGE_CONCURRENCY,partitionRetentionDays=$PARTITION_RETENTION_DAYS,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES,pythonTextTransformGcsPath=$PYTHON_TEXT_TRANSFORM_GCS_PATH,pythonRuntimeVersion=$PYTHON_RUNTIME_VERSION,pythonTextTransformFunctionName=$PYTHON_TEXT_TRANSFORM_FUNCTION_NAME,runtimeRetries=$RUNTIME_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/datastream-to-bigquery
 ```
 
@@ -322,12 +340,12 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
   name              = "cloud-datastream-to-bigquery"
   region            = var.region
   parameters        = {
-    inputFilePattern = "<inputFilePattern>"
     inputFileFormat = "avro"
-    gcsPubSubSubscription = "<gcsPubSubSubscription>"
     outputStagingDatasetTemplate = "{_metadata_dataset}"
     outputDatasetTemplate = "{_metadata_dataset}"
     deadLetterQueueDirectory = ""
+    # inputFilePattern = "<inputFilePattern>"
+    # gcsPubSubSubscription = "<gcsPubSubSubscription>"
     # streamName = "<streamName>"
     # rfcStartDateTime = "1970-01-01T00:00:00.00Z"
     # fileReadConcurrency = "10"
@@ -342,6 +360,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
     # mergeConcurrency = "30"
     # partitionRetentionDays = "1"
     # useStorageWriteApiAtLeastOnce = "false"
+    # datastreamSourceType = "<datastreamSourceType>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"

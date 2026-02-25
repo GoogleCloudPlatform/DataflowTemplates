@@ -27,6 +27,8 @@ dataflow_params = {
     metadata_instance_id = "<YOUR_METADATA_INSTANCE_ID>" # Replace with your metadata instance ID (if applicable)
     # Optional ID of the metadata database
     metadata_database_id = "<YOUR_METADATA_DATABASE_ID>" # Replace with your metadata database ID (if applicable)
+    # Optional name of the metadata table
+    spanner_metadata_table_name = "<YOUR_METADATA_TABLE_NAME>" # Replace with your metadata table name (if applicable)
     # Optional start timestamp for replication
     start_timestamp = "2024-10-01T00:00:00Z"
     # Optional end timestamp for replication
@@ -43,6 +45,12 @@ dataflow_params = {
     sharding_custom_class_name = "com.example.ShardingClass"
     # Optional parameters for custom sharding
     sharding_custom_parameters = "param1=value1,param2=value2"
+    # Optional GCS path to the custom transformation JAR
+    transformation_jar_path = "/path/to/transformation/jar"
+    # Optional Custom parameters used by the transformation JAR
+    transformation_custom_parameters = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"
+    # Optional fully classified class name for custom transformation
+    transformation_class_name = "com.example.CustomTransformationClass"
     # Optional timezone offset for the source database
     source_db_timezone_offset = "+08:00"
     # Optional DLQ GCS Pub/Sub subscription
@@ -83,8 +91,6 @@ dataflow_params = {
     network = "default"
     # Number of workers for the Dataflow job
     num_workers = 10
-    # Optional SDK container image for the Dataflow job
-    sdk_container_image = "gcr.io/dataflow-templates/spanner-to-sourcedb:latest"
     # Optional service account email for the Dataflow job
     service_account_email = "dataflow-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" # Replace with your project ID
     # Optional flag to skip waiting on job termination (defaults to false)

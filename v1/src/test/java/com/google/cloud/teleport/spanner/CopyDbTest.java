@@ -28,7 +28,10 @@ import com.google.cloud.teleport.spanner.common.Type.StructField;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.sql.Timestamp;
@@ -36,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -1000,6 +1002,111 @@ public class CopyDbTest {
   }
 
   @Test
+  public void commitTimestampColumns() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+              .createTable("CommitTimestampTable")
+              .column("id")
+              .int64()
+              .endColumn()
+              .column("default_commit_ts")
+              .type(Type.timestamp())
+              .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+              .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+              .endColumn()
+              .column("on_update_ts")
+              .type(Type.timestamp())
+              .defaultExpression("PENDING_COMMIT_TIMESTAMP()")
+              .onUpdateExpression("PENDING_COMMIT_TIMESTAMP()")
+              .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
+              .endColumn()
+              .primaryKey().asc("id").end()
+              .endTable()
+              .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest();
+  }
+
+  @Test
+  public void pgCommitTimestampColumns() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+              .createTable("CommitTimestampTable")
+              .column("id")
+              .int64()
+              .endColumn()
+              .column("default_commit_ts")
+              .pgSpannerCommitTimestamp()
+              .defaultExpression("spanner.pending_commit_timestamp()")
+              .endColumn()
+              .column("on_update_ts")
+              .pgSpannerCommitTimestamp()
+              .defaultExpression("spanner.pending_commit_timestamp()")
+              .onUpdateExpression("spanner.pending_commit_timestamp()")
+              .endColumn()
+              .primaryKey().asc("id").end()
+              .endTable()
+              .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest();
+  }
+
+  @Test
+  public void udfs() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl =
+        ddlBuilder
+            .createSchema("s1")
+            .endNamedSchema()
+            .createUdf("s1.Foo1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("s1.Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("s1.Foo2")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("s1.Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("STRING")
+            .addParameter(UdfParameter.parse("arg0 STRING", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 STRING DEFAULT 'bar'", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
+            .endUdf()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void sequences() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder();
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
@@ -1162,7 +1269,8 @@ public class CopyDbTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 

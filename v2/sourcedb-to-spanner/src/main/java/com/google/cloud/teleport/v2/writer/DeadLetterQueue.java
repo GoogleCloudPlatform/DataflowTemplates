@@ -16,12 +16,15 @@
 package com.google.cloud.teleport.v2.writer;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -30,6 +33,8 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -43,6 +48,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.commons.codec.binary.Hex;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -59,11 +65,11 @@ public class DeadLetterQueue implements Serializable {
 
   private final Ddl ddl;
 
-  private final PTransform<PCollection<String>, PDone> dlqTransform;
-
   private Map<String, String> srcTableToShardIdColumnMap;
 
   private final SQLDialect sqlDialect;
+
+  private final ISchemaMapper schemaMapper;
 
   public static final Counter FAILED_MUTATION_COUNTER =
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
@@ -72,32 +78,31 @@ public class DeadLetterQueue implements Serializable {
       String dlqDirectory,
       Ddl ddl,
       Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect) {
-    return new DeadLetterQueue(dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect);
+      SQLDialect sqlDialect,
+      ISchemaMapper iSchemaMapper) {
+    return new DeadLetterQueue(
+        dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, iSchemaMapper);
   }
 
   public String getDlqDirectory() {
     return dlqDirectory;
   }
 
-  public PTransform<PCollection<String>, PDone> getDlqTransform() {
-    return dlqTransform;
-  }
-
   private DeadLetterQueue(
       String dlqDirectory,
       Ddl ddl,
       Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect) {
+      SQLDialect sqlDialect,
+      ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
-    this.dlqTransform = createDLQTransform(dlqDirectory);
     this.ddl = ddl;
     this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
+    this.schemaMapper = iSchemaMapper;
   }
 
   @VisibleForTesting
-  private PTransform<PCollection<String>, PDone> createDLQTransform(String dlqDirectory) {
+  PTransform<PCollection<String>, PDone> createDLQTransform(String dlqDirectory) {
     if (dlqDirectory == null) {
       throw new RuntimeException("Unable to start pipeline as DLQ is not configured");
     }
@@ -114,6 +119,7 @@ public class DeadLetterQueue implements Serializable {
           .withDlqDirectory(dlqUri)
           .withTmpDirectory(dlqUri + "/tmp")
           .setIncludePaneInfo(true)
+          .setFileNamePrefix(UUID.randomUUID().toString())
           .build();
     }
   }
@@ -153,7 +159,7 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("FilteredRowsDLQ", dlqTransform);
+        .apply("FilteredRowsDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added filtering dlq stage after transformer");
   }
 
@@ -176,7 +182,7 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("TransformerDLQ", dlqTransform);
+        .apply("TransformerDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after transformer");
   }
 
@@ -188,10 +194,30 @@ public class DeadLetterQueue implements Serializable {
 
     for (Field f : record.getSchema().getFields()) {
       Object value = record.get(f.name());
-      json.put(f.name(), value == null ? null : value.toString());
+      /*
+       * We take special care that if GenericRecordTypeConvertor throws an exception,
+       * we would still preserve the original record in DLQ.
+       * Also note that here we are calling a static utility from
+       * GenericRecordTypeConvertor
+       * Which just marshals types like logical, record etc. It does not pass the data
+       * via custom transform.
+       */
+      try {
+        value =
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                record, f, r.row().tableName(), schemaMapper);
+      } catch (Exception e) {
+        LOG.error(
+            "Error in mapping DLQ record field to Json Node, record, record = {}, field = {}. Unmapped record would be emitted to DLQ.",
+            record,
+            f,
+            e);
+      }
+      putValueToJson(json, f.name(), value);
     }
     if (r.row().shardId() != null) {
-      // Added default to not fail in the DLQ flow if the src table is not found in map
+      // Added default to not fail in the DLQ flow if the src table is not found in
+      // map
       json.put(
           srcTableToShardIdColumnMap.getOrDefault(r.row().tableName(), "migration_shard_id"),
           r.row().shardId());
@@ -209,7 +235,8 @@ public class DeadLetterQueue implements Serializable {
   public void failedMutationsToDLQ(
       PCollection<@UnknownKeyFor @NonNull @Initialized MutationGroup> failedMutations) {
     // TODO - add the exception message
-    // TODO - Explore windowing with CoGroupByKey to extract source row based on mutation
+    // TODO - Explore windowing with CoGroupByKey to extract source row based on
+    // mutation
     LOG.warn("added mutation output to pipeline");
     failedMutations
         .apply(
@@ -232,13 +259,14 @@ public class DeadLetterQueue implements Serializable {
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply("SanitizeSpannerWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
-        .apply("WriterDLQ", dlqTransform);
+        .apply("WriterDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after writer");
   }
 
   @VisibleForTesting
   protected FailsafeElement<String, String> mutationToDlqElement(Mutation m) {
     JSONObject json = new JSONObject();
+    json.put("_metadata_spanner_mutation", true);
 
     Instant instant = Instant.now();
     initializeJsonNode(
@@ -246,7 +274,39 @@ public class DeadLetterQueue implements Serializable {
     Map<String, Value> mutationMap = m.asMap();
     for (Map.Entry<String, Value> entry : mutationMap.entrySet()) {
       Value value = entry.getValue();
-      json.put(entry.getKey(), value == null ? null : String.valueOf(value));
+      Object val = null;
+      if (value != null && !value.isNull()) {
+        switch (value.getType().getCode()) {
+          case BYTES:
+            val = Hex.encodeHexString(value.getBytes().toByteArray());
+            break;
+          case INT64:
+            val = value.getInt64();
+            break;
+          case FLOAT64:
+            val = value.getFloat64();
+            break;
+          case NUMERIC:
+            val = value.getNumeric();
+            break;
+          case BOOL:
+            val = value.getBool();
+            break;
+          case ARRAY:
+            if (value.getType().getArrayElementType().getCode() == Type.Code.BYTES) {
+              val =
+                  value.getBytesArray().stream()
+                      .map(v -> v == null ? null : Hex.encodeHexString(v.toByteArray()))
+                      .collect(Collectors.toList());
+            } else {
+              val = value.toString();
+            }
+            break;
+          default:
+            val = value.toString();
+        }
+      }
+      putValueToJson(json, entry.getKey(), val);
     }
 
     return FailsafeElement.of(json.toString(), json.toString())
@@ -257,6 +317,8 @@ public class DeadLetterQueue implements Serializable {
     json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.UPDATE_INSERT_EVENT);
     json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
     json.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, timeStamp);
+    json.put("_metadata_read_timestamp", timeStamp);
+    json.put("_metadata_dataflow_timestamp", timeStamp);
     switch (this.sqlDialect) {
       case POSTGRESQL:
         json.put(
@@ -264,6 +326,22 @@ public class DeadLetterQueue implements Serializable {
         break;
       default:
         json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    }
+  }
+
+  /*
+   * Puts the value into the JSON object.
+   * If the value is an integral type (Long, Integer, Short, Byte, BigInteger), it is put as is.
+   * Otherwise, it is converted to string.
+   * This is to ensure that BIT datatypes (which are mapped to Long/BigInteger) are preserved as numbers in the JSON output.
+   */
+  private void putValueToJson(JSONObject json, String key, Object value) {
+    if (value == null) {
+      json.put(key, (Object) null);
+    } else if (value instanceof Number || value instanceof java.util.Collection) {
+      json.put(key, value);
+    } else {
+      json.put(key, value.toString());
     }
   }
 }

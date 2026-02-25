@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -33,6 +34,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +59,6 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbITBase {
-
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbInterleaveMultiShardIT.class);
 
@@ -101,9 +102,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs();
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
@@ -112,8 +111,15 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
-
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -124,7 +130,9 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
                 null,
                 null,
                 null,
-                null);
+                null,
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }
@@ -201,8 +209,18 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             .set("migration_shard_id")
             .to("shardB")
             .build();
+    Mutation c3 =
+        Mutation.newInsertOrUpdateBuilder("child31")
+            .set("child_id")
+            .to(33)
+            .set("id")
+            .to(2)
+            .set("migration_shard_id")
+            .to("shardB")
+            .build();
     mutations.add(c1);
     mutations.add(c2);
+    mutations.add(c3);
     spannerResourceManager.write(mutations);
   }
 
@@ -210,30 +228,37 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
     assertThatResult(parent1Result).meetsConditions();
 
     PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
     assertThatResult(child1Result).meetsConditions();
 
     PipelineOperator.Result parent2Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 1);
     assertThatResult(parent2Result).meetsConditions();
 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
+
+    PipelineOperator.Result result2 =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(30)),
+                () -> jdbcResourceManagerShardB.getRowCount("child31") == 1);
+    assertThatResult(result2).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("parent1");
     assertThat(rows).hasSize(1);
@@ -250,6 +275,10 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     List<Map<String, Object>> rows3 = jdbcResourceManagerShardB.readTable("child21");
     assertThat(rows3).hasSize(1);
     assertThat(rows3.get(0).get("child_id")).isEqualTo(22);
+
+    List<Map<String, Object>> rows4 = jdbcResourceManagerShardB.readTable("child31");
+    assertThat(rows4).hasSize(1);
+    assertThat(rows4.get(0).get("child_id")).isEqualTo(33);
   }
 
   private void doUpdatesInSpanner() {
@@ -294,7 +323,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 2);
     assertThatResult(result).meetsConditions();
 
@@ -331,14 +360,14 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 0);
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 0);
     assertThatResult(parent1Result).meetsConditions();
     PipelineOperator.Result child1Result =

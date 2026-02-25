@@ -107,7 +107,7 @@ public class PubSubToAvroIT extends TemplateTestBase {
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 () -> {
 

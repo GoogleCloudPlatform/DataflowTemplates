@@ -42,9 +42,9 @@ import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.tensorflow.example.Example;
-import org.tensorflow.example.Feature;
-import org.tensorflow.example.Features;
+import org.tensorflow.proto.Example;
+import org.tensorflow.proto.Feature;
+import org.tensorflow.proto.Features;
 
 /**
  * Dataflow template which reads BigQuery data and writes it to GCS as a set of TFRecords. The
