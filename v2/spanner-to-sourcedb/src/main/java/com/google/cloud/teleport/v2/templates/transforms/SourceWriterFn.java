@@ -283,7 +283,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                     spannerToSourceTransformer,
                                     this.source,
                                     check);
-                            isRecordWritten[0] = !isEventFiltered;
+                            isRecordWritten.set(!isEventFiltered);
                             if (isEventFiltered) {
                               outputWithTag(
                                   c,
