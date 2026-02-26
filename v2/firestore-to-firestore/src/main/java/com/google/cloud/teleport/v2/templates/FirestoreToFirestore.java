@@ -36,13 +36,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
+import org.apache.beam.sdk.io.gcp.firestore.FirestoreV1.WriteFailure;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,6 +145,17 @@ public class FirestoreToFirestore {
         example = "2021-10-12T07:20:50.52Z")
     @Default.String("")
     String getReadTime();
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 7,
+        optional = true,
+        description = "Error Write Path",
+        helpText = "The Cloud Storage path to write error logs to. Path should be in the format gs://<bucket>/<folder>/.",
+        example = "gs://your-bucket/errors/"
+    )
+    String getErrorWritePath();
+
+    void setErrorWritePath(String value);
 
     void setReadTime(String readTime);
   }
@@ -246,14 +262,36 @@ public class FirestoreToFirestore {
               ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
 
       // 6. Write documents to the destination Firestore database
-      writes.apply(
+      PCollection<WriteFailure> writeFailures = writes.apply(
+        "WriteToDestinationWithDeadLetterQueue",
           FirestoreIO.v1()
               .write()
               .withProjectId(destinationProjectId)
               .withDatabaseId(destinationDatabaseId)
               .batchWrite()
+              .withDeadLetterQueue()
               .withRpcQosOptions(rpcQosOptions)
               .build());
+      
+      // 7. Log errors to GCS if errorWritePath is provided
+      String errorWritePath = options.getErrorWritePath();
+      if (!Strings.isNullOrEmpty(errorWritePath)) {
+        LOG.info("Error logging to GCS is enabled: {}", errorWritePath);
+        writeFailures
+            .apply(
+                "FilterFailedWrites",
+                MapElements.into(TypeDescriptors.strings()).via(
+                    failure -> {
+                        return String.format(
+                                "Write failed for document: %s, error: %s",
+                                getDocumentName(failure.getWrite()), failure.getStatus());
+                    }
+                ))
+            .apply(
+                "WriteErrorLogsToGcs",
+                TextIO.write().to(options.getErrorWritePath()).withSuffix("firestore_to_firestore_error.txt").withWindowedWrites()
+            );
+      }
 
       p.run();
       LOG.info("Pipeline.run() called.");
@@ -261,6 +299,16 @@ public class FirestoreToFirestore {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
     }
+  }
+
+  private static String getDocumentName(Write write) {
+    if (write.hasUpdate()) {
+        return write.getUpdate().getName();
+    }
+    if (write.hasDelete()) {
+        return write.getDelete();
+    }
+    return "unknown doc name";
   }
 
   private static void validateOptions(Options options) {
