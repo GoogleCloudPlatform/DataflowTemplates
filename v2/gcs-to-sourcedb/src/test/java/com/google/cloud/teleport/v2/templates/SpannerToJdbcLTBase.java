@@ -59,7 +59,7 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/GCS_to_Sourcedb");
   public SpannerResourceManager spannerResourceManager;
   public SpannerResourceManager spannerMetadataResourceManager;
-  public List<JDBCResourceManager> jdbcResourceManagers;
+  public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
   public GcsResourceManager gcsResourceManager;
 
   public void setupResourceManagers(
@@ -76,7 +76,6 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   }
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
-    jdbcResourceManagers = new ArrayList<>();
     for (int i = 0; i < numShards; ++i) {
       jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
     }
@@ -87,8 +86,10 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   public void cleanupResourceManagers() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager, spannerMetadataResourceManager, gcsResourceManager);
-    for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
-      ResourceManagerUtils.cleanResources(jdbcResourceManager);
+    if (jdbcResourceManagers != null) {
+      for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
+        ResourceManagerUtils.cleanResources(jdbcResourceManager);
+      }
     }
   }
 
