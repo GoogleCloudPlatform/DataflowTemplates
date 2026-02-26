@@ -38,8 +38,8 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
-import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreV1.WriteFailure;
+import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
@@ -150,9 +150,9 @@ public class FirestoreToFirestore {
         order = 7,
         optional = true,
         description = "Error Write Path",
-        helpText = "The Cloud Storage path to write error logs to. Path should be in the format gs://<bucket>/<folder>/.",
-        example = "gs://your-bucket/errors/"
-    )
+        helpText =
+            "The Cloud Storage path to write error logs to. Path should be in the format gs://<bucket>/<folder>/.",
+        example = "gs://your-bucket/errors/")
     String getErrorWritePath();
 
     void setErrorWritePath(String value);
@@ -262,17 +262,18 @@ public class FirestoreToFirestore {
               ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
 
       // 6. Write documents to the destination Firestore database
-      PCollection<WriteFailure> writeFailures = writes.apply(
-        "WriteToDestinationWithDeadLetterQueue",
-          FirestoreIO.v1()
-              .write()
-              .withProjectId(destinationProjectId)
-              .withDatabaseId(destinationDatabaseId)
-              .batchWrite()
-              .withDeadLetterQueue()
-              .withRpcQosOptions(rpcQosOptions)
-              .build());
-      
+      PCollection<WriteFailure> writeFailures =
+          writes.apply(
+              "WriteToDestinationWithDeadLetterQueue",
+              FirestoreIO.v1()
+                  .write()
+                  .withProjectId(destinationProjectId)
+                  .withDatabaseId(destinationDatabaseId)
+                  .batchWrite()
+                  .withDeadLetterQueue()
+                  .withRpcQosOptions(rpcQosOptions)
+                  .build());
+
       // 7. Log errors to GCS if errorWritePath is provided
       String errorWritePath = options.getErrorWritePath();
       if (!Strings.isNullOrEmpty(errorWritePath)) {
@@ -280,17 +281,19 @@ public class FirestoreToFirestore {
         writeFailures
             .apply(
                 "FilterFailedWrites",
-                MapElements.into(TypeDescriptors.strings()).via(
-                    failure -> {
-                        return String.format(
-                                "Write failed for document: %s, error: %s",
-                                getDocumentName(failure.getWrite()), failure.getStatus());
-                    }
-                ))
+                MapElements.into(TypeDescriptors.strings())
+                    .via(
+                        failure -> {
+                          return String.format(
+                              "Write failed for document: %s, error: %s",
+                              getDocumentName(failure.getWrite()), failure.getStatus());
+                        }))
             .apply(
                 "WriteErrorLogsToGcs",
-                TextIO.write().to(options.getErrorWritePath()).withSuffix("firestore_to_firestore_error.txt").withWindowedWrites()
-            );
+                TextIO.write()
+                    .to(options.getErrorWritePath())
+                    .withSuffix("firestore_to_firestore_error.txt")
+                    .withWindowedWrites());
       }
 
       p.run();
@@ -303,10 +306,10 @@ public class FirestoreToFirestore {
 
   private static String getDocumentName(Write write) {
     if (write.hasUpdate()) {
-        return write.getUpdate().getName();
+      return write.getUpdate().getName();
     }
     if (write.hasDelete()) {
-        return write.getDelete();
+      return write.getDelete();
     }
     return "unknown doc name";
   }
