@@ -21,6 +21,10 @@ on:
     branches:
       - 'main'
     paths:
+      # Include pom.xml files except in v1 and v2
+      - '**/pom.xml'
+      - '!v1/**/pom.xml'
+      - '!v2/**/pom.xml'
       - 'yaml/**'
       - 'python/**'
       # Include python files and Dockerfiles used for YAML and xlang templates.
@@ -36,6 +40,9 @@ on:
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
       - '.github/workflows/yaml-pr.yml'
+  schedule:
+    - cron: "10 3/12 * * *"
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

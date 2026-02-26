@@ -36,7 +36,7 @@
   <properties>
     <open-census.version>0.31.1</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
-    <bigtable-beam-import.version>2.15.6</bigtable-beam-import.version>
+    <bigtable-beam-import.version>2.16.1</bigtable-beam-import.version>
     <protobuf.version>4.29.4</protobuf.version>
     <junit.jupiter.version>6.0.1</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>

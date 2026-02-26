@@ -21,16 +21,19 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import com.google.cloud.teleport.v2.templates.spanner.ShadowTableCreator;
 import com.google.common.collect.ImmutableMap;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -107,14 +110,78 @@ public abstract class ChangeEventContext {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
     ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
 
+    boolean hasGeneratedPK = false;
+    Table table = ddl.table(this.dataTable);
+    if (table != null) {
+      hasGeneratedPK = hasGeneratedPK(table);
+    }
+
     this.primaryKey =
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
             changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText(),
             ddl,
             changeEvent,
             /* convertNameToLowerCase= */ true);
-    this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+
+    String changeType = getChangeType(changeEvent);
+    boolean isDelete = DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+
+    if (hasGeneratedPK && isDelete) {
+      // For delete events on tables with generated primary keys, we need to use DML
+      // to delete the row.
+      this.dataMutation = null;
+    } else {
+      this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    }
+
     this.shadowTableMutation = generateShadowTableMutation(ddl, shadowTableDdl);
+  }
+
+  public Statement getDataDmlStatement(Ddl ddl) throws ChangeEventConvertorException {
+    String changeType = getChangeType(changeEvent);
+    boolean isDelete = DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+    if (!isDelete) {
+      return null;
+    }
+    Table table = ddl.table(this.dataTable);
+    if (table != null && hasGeneratedPK(table)) {
+      return generateDeleteDml(table, this.dataTable, changeEvent);
+    }
+    return null;
+  }
+
+  private boolean hasGeneratedPK(Table table) {
+    for (IndexColumn keyColumn : table.primaryKeys()) {
+      if (table.column(keyColumn.name()).isGenerated()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Statement generateDeleteDml(Table table, String tableName, JsonNode event)
+      throws ChangeEventConvertorException {
+    // TODO: Add support for PostgreSQL
+    StringBuilder sql = new StringBuilder("DELETE FROM ").append(tableName).append(" WHERE ");
+    Statement.Builder builder = Statement.newBuilder("");
+    boolean first = true;
+    for (com.google.cloud.teleport.v2.spanner.ddl.Column column : table.columns()) {
+      String colName = column.name();
+      if (column.isGenerated()) {
+        continue;
+      }
+      if (!first) {
+        sql.append(" AND ");
+      }
+      sql.append(colName).append(" = @").append(colName);
+      // Bind value
+      Value value =
+          ChangeEventTypeConvertor.toValue(event, column.type(), colName, /* requiredField */ true);
+      builder.bind(colName).to(value);
+      first = false;
+    }
+    builder.replace(sql.toString());
+    return builder.build();
   }
 
   public JsonNode getChangeEvent() {
@@ -123,7 +190,14 @@ public abstract class ChangeEventContext {
 
   // Returns an array of data and shadow table mutations.
   public Iterable<Mutation> getMutations() {
-    return Arrays.asList(dataMutation, shadowTableMutation);
+    List<Mutation> mutations = new ArrayList<>();
+    if (dataMutation != null) {
+      mutations.add(dataMutation);
+    }
+    if (shadowTableMutation != null) {
+      mutations.add(shadowTableMutation);
+    }
+    return mutations;
   }
 
   // Returns the data table mutation
@@ -175,5 +249,13 @@ public abstract class ChangeEventContext {
     }
     // Read the row in order to acquire the lock and discard it.
     resultSet.getCurrentRowAsStruct();
+  }
+
+  public static String getChangeType(JsonNode changeEvent) {
+    return changeEvent.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
+        ? changeEvent
+            .get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
+            .asText(DatastreamConstants.EMPTY_EVENT)
+        : DatastreamConstants.EMPTY_EVENT;
   }
 }

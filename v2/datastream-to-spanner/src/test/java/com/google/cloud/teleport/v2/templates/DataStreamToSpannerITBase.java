@@ -417,7 +417,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);
-    LaunchInfo jobInfo = launchTemplate(options, false);
+    LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
 
     return jobInfo;
@@ -572,7 +572,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     for (String d : ddls) {
       if (!d.isBlank()) {
         try {
-          resourceManager.runSQLUpdate(d);
+          if (d.toLowerCase().trim().startsWith("select")) {
+            resourceManager.runSQLQuery(d);
+          } else {
+            resourceManager.runSQLUpdate(d);
+          }
         } catch (Exception e) {
           LOG.error("Exception while executing DDL {}", d, e);
           throw e;

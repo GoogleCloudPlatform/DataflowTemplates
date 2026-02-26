@@ -19,8 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.db.AstraDbClient;
-import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.dtsx.astra.sdk.db.AstraDBOpsClient;
+import com.dtsx.astra.sdk.db.DbOpsClient;
 import com.dtsx.astra.sdk.db.domain.Database;
 import com.dtsx.astra.sdk.db.domain.DatabaseCreationRequest;
 import com.dtsx.astra.sdk.db.domain.DatabaseStatusType;
@@ -78,7 +78,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   private static final String ASTRA_TOKEN_COUNTS = "18";
 
-  private static DatabaseClient dbClient;
+  private static DbOpsClient dbClient;
 
   private BigQueryResourceManager bigQueryClient;
 
@@ -142,7 +142,7 @@ public class AstraDbToBigQueryIT extends TemplateTestBase implements Serializabl
 
   @SuppressWarnings("BusyWait")
   private void createOrResumeAstraDatabase() throws InterruptedException {
-    AstraDbClient databasesClient = new AstraDbClient(test());
+    AstraDBOpsClient databasesClient = new AstraDBOpsClient(test());
     if (databasesClient.findByName(ASTRA_DB).findAny().isEmpty()) {
       LOGGER.debug("Create a new Database {}", ASTRA_DB);
       databasesClient.create(

@@ -42,6 +42,8 @@
         <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
         <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
+        <astra-sdk.version>2.1.4</astra-sdk.version>
+        <astra-io.version>4.18.1</astra-io.version>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
