@@ -110,8 +110,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test
