@@ -80,6 +80,12 @@ public class ComputeTableStatsFnTest {
               if (stat.getMismatchRowCount() != 0L) {
                 throw new AssertionError("Mismatch count mismatch");
               }
+              if (stat.getSourceRowCount() != 10L) {
+                throw new AssertionError("Source row count mismatch (10+0)");
+              }
+              if (stat.getDestinationRowCount() != 10L) {
+                throw new AssertionError("Dest row count mismatch (10+0)");
+              }
               if (!stat.getStartTimestamp().equals(startTimestamp)) {
                 throw new AssertionError("StartTimestamp mismatch");
               }
