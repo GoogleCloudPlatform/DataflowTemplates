@@ -46,7 +46,6 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -66,7 +65,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Temporarily disabled for maintenance")
 public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLAllDataTypesBulkAndLiveIT.class);
@@ -112,8 +110,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test
