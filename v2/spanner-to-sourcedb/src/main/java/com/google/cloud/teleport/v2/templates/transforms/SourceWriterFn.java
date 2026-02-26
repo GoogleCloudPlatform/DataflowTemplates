@@ -233,7 +233,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                           boolean isSourceAhead = false;
                           // Boolean reference to capture if the record was written in the
                           // transaction
-                          final boolean[] isRecordWritten = {false};
+                          AtomicBoolean isRecordWritten = new AtomicBoolean(false);
                           ShadowTableRecord shadowTableRecord =
                               spannerDao.readShadowTableRecordWithExclusiveLock(
                                   shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
@@ -302,7 +302,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                     ddl),
                                 shadowTransaction);
                           }
-                          return isRecordWritten[0];
+                          return isRecordWritten.get();
                         });
         if (Boolean.TRUE.equals(transactionResult)) {
           successRecordCountMetric.inc();
