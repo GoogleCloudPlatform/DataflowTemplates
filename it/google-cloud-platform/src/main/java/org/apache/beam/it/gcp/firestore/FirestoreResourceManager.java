@@ -102,10 +102,12 @@ public class FirestoreResourceManager implements ResourceManager {
   public long readDocCount(String collectionName) {
     try {
       AggregateField countField = AggregateField.count();
-      ApiFuture<AggregateQuerySnapshot> query = firestore.collection(collectionName).aggregate(countField).get();
+      ApiFuture<AggregateQuerySnapshot> query =
+          firestore.collection(collectionName).aggregate(countField).get();
       return query.get().getLong(countField);
     } catch (InterruptedException | ExecutionException e) {
-      throw new FirestoreResourceManagerException("Error reading the document count from Firestore", e);
+      throw new FirestoreResourceManagerException(
+          "Error reading the document count from Firestore", e);
     }
   }
 

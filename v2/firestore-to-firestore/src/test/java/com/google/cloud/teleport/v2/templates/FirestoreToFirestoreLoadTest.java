@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.firestore.admin.v1.Database.DatabaseEdition;
@@ -27,7 +26,6 @@ import com.google.firestore.admin.v1.Database.DatabaseType;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.List;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -49,9 +47,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Performance test for {@link FirestoreToFirestore Firestore to Firestore} template.
- */
+/** Performance test for {@link FirestoreToFirestore Firestore to Firestore} template. */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -82,9 +78,7 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   // TODO: Do we really need this?
   private static GcsResourceManager gcsClient;
 
-  @Rule
-  public TestPipeline pipeline = TestPipeline.create();
-
+  @Rule public TestPipeline pipeline = TestPipeline.create();
 
   @Before
   public void setup() throws IOException {
@@ -120,12 +114,12 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   }
 
   @Test
-  public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
+  public void testBacklog10mb() throws IOException, ParseException, InterruptedException {
     testPipeline(this::disableRunnerV2);
   }
 
   @Test
-  public void testBacklog10gbUsingRunnerV2()
+  public void testBacklog10mbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
     testPipeline(this::enableRunnerV2);
   }
@@ -140,18 +134,19 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
     }
     generateLoad();
 
-    LaunchInfo info = pipelineLauncher.launch(
-        project,
-        region,
-        paramsAdder
-            .apply(
-                LaunchConfig.builder(testName, SPEC_PATH)
-                    .addParameter("sourceProjectId", PROJECT)
-                    .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
-                    .addParameter("destinationProjectId", PROJECT)
-                    .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
-                    .addParameter("maxNumWorkers", "500"))
-            .build());
+    LaunchInfo info =
+        pipelineLauncher.launch(
+            project,
+            region,
+            paramsAdder
+                .apply(
+                    LaunchConfig.builder(testName, SPEC_PATH)
+                        .addParameter("sourceProjectId", PROJECT)
+                        .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
+                        .addParameter("destinationProjectId", PROJECT)
+                        .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
+                        .addParameter("maxNumWorkers", "500"))
+                .build());
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
@@ -173,7 +168,10 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
     pipeline.apply(
         "GenerateFirestoreLoad",
         new FirestoreLoadGeneratorTransform(
-            PROJECT, SOURCE_DATABASE_ID, COLLECTION_ID, LOAD_DATA_TARGET_SIZE_GIB,
+            PROJECT,
+            SOURCE_DATABASE_ID,
+            COLLECTION_ID,
+            LOAD_DATA_TARGET_SIZE_GIB,
             RpcQosOptions.newBuilder().withHintMaxNumWorkers(LOAD_DATA_MAX_WORKERS).build()));
 
     pipeline.run();

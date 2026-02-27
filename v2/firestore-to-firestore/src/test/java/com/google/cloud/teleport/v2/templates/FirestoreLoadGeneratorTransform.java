@@ -86,8 +86,8 @@ public class FirestoreLoadGeneratorTransform extends PTransform<PBegin, PDone> {
         collectionId,
         targetSizeGib);
 
-    GenerateSequence sequence = GenerateSequence.from(0L).withRate(TARGET_QPS,
-        Duration.standardSeconds(1));
+    GenerateSequence sequence =
+        GenerateSequence.from(0L).withRate(TARGET_QPS, Duration.standardSeconds(1));
 
     if (targetSizeGib <= 0) {
       throw new IllegalArgumentException(
@@ -111,12 +111,15 @@ public class FirestoreLoadGeneratorTransform extends PTransform<PBegin, PDone> {
             "CreateFirestoreWrites",
             ParDo.of(new GenerateWriteRequestsFn(projectId, databaseId, collectionId)));
 
-    writes.apply("WriteToFirestore", FirestoreIO.v1()
-        .write()
-        .withProjectId(projectId)
-        .withDatabaseId(databaseId)
-        .batchWrite()
-        .withRpcQosOptions(rpcQosOptions).build());
+    writes.apply(
+        "WriteToFirestore",
+        FirestoreIO.v1()
+            .write()
+            .withProjectId(projectId)
+            .withDatabaseId(databaseId)
+            .batchWrite()
+            .withRpcQosOptions(rpcQosOptions)
+            .build());
 
     return PDone.in(input.getPipeline());
   }
@@ -148,17 +151,21 @@ public class FirestoreLoadGeneratorTransform extends PTransform<PBegin, PDone> {
               .putFields("uuid", Value.newBuilder().setStringValue(docId).build())
               .putFields("sequence", Value.newBuilder().setIntegerValue(c.element()).build())
               .putFields(
-                  "timestamp",
-                  Value.newBuilder().setTimestampValue(Timestamps.now()).build())
+                  "timestamp", Value.newBuilder().setTimestampValue(Timestamps.now()).build())
               .putFields(
                   "payload",
                   Value.newBuilder()
                       .setStringValue("Random payload " + Math.random() * 1000)
                       .build())
-              .putFields("nested", Value.newBuilder().setMapValue(MapValue.newBuilder()
-                      .putFields("field_a", Value.newBuilder().setStringValue("A").build())
-                      .putFields("field_b", Value.newBuilder().setBooleanValue(true).build()))
-                  .build())
+              .putFields(
+                  "nested",
+                  Value.newBuilder()
+                      .setMapValue(
+                          MapValue.newBuilder()
+                              .putFields("field_a", Value.newBuilder().setStringValue("A").build())
+                              .putFields(
+                                  "field_b", Value.newBuilder().setBooleanValue(true).build()))
+                      .build())
               .build();
       c.output(Write.newBuilder().setUpdate(doc).build());
     }
