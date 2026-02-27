@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -52,7 +51,6 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySql100TpsLT.class);
 
   private String generatorSchemaPath;
-  private final String artifactBucket = TestProperties.artifactBucket();
   private final String spannerDdlResource = "SpannerToMySql100TpsLT/spanner-schema.sql";
   private final String sessionFileResource = "SpannerToMySql100TpsLT/session.json";
   private final String dataGeneratorSchemaResource =
@@ -65,11 +63,11 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
 
   @Before
   public void setup() throws IOException {
-    setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
+    setupResourceManagers(spannerDdlResource, sessionFileResource);
     setupMySQLResourceManager(1);
     generatorSchemaPath =
         getFullGcsPath(
-            artifactBucket,
+            gcsResourceManager.getBucket(),
             gcsResourceManager
                 .uploadArtifact(
                     "input/schema.json",
@@ -82,16 +80,11 @@ public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
             gcsResourceManager,
             spannerResourceManager,
             spannerMetadataResourceManager,
-            artifactBucket,
             numWorkers,
             maxWorkers);
     writerJobInfo =
         launchWriterDataflowJob(
-            gcsResourceManager,
-            spannerMetadataResourceManager,
-            artifactBucket,
-            numWorkers,
-            maxWorkers);
+            gcsResourceManager, spannerMetadataResourceManager, numWorkers, maxWorkers);
   }
 
   @After

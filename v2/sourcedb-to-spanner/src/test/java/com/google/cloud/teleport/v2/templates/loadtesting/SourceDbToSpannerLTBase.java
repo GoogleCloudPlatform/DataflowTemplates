@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator.Result;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -64,8 +63,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   private StaticJDBCResource sourceDatabaseResource;
   private SpannerResourceManager spannerResourceManager;
 
-  private final String artifactBucket;
-  ;
   private final SecretManagerResourceManager secretClient;
   private final String testRootDir;
 
@@ -76,7 +73,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
   public SourceDbToSpannerLTBase() {
     try {
-      artifactBucket = TestProperties.artifactBucket();
       testRootDir = getClass().getSimpleName();
       secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
     } catch (IOException e) {
@@ -96,8 +92,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             .setMonitoringClient(monitoringClient)
             .build();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
 
     if (dialect == SQLDialect.POSTGRESQL) {
       sourceDatabaseResource =
@@ -150,7 +145,9 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("sourceConfigURL", sourceDatabaseResource.getconnectionURL());
             put("username", sourceDatabaseResource.username());
             put("password", sourceDatabaseResource.password());
-            put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
+            put(
+                "outputDirectory",
+                "gs://" + gcsResourceManager.getBucket() + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
             put("workerMachineType", "n2-standard-4");
           }

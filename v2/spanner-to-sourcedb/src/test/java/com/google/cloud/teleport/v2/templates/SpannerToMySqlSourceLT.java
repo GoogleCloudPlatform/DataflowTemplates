@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -51,7 +50,6 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlSourceLT.class);
 
   private String generatorSchemaPath;
-  private final String artifactBucket = TestProperties.artifactBucket();
   private final String spannerDdlResource = "SpannerToMySqlSourceLT/spanner-schema.sql";
   private final String sessionFileResource = "SpannerToMySqlSourceLT/session.json";
   private final String dataGeneratorSchemaResource =
@@ -65,11 +63,11 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
 
   @Before
   public void setup() throws IOException {
-    setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
+    setupResourceManagers(spannerDdlResource, sessionFileResource);
     setupMySQLResourceManager(numShards);
     generatorSchemaPath =
         getFullGcsPath(
-            artifactBucket,
+            gcsResourceManager.getBucket(),
             gcsResourceManager
                 .uploadArtifact(
                     SCHEMA_FILE_NAME, Resources.getResource(dataGeneratorSchemaResource).getPath())
@@ -78,7 +76,6 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     createMySQLSchema(jdbcResourceManagers);
     jobInfo =
         launchDataflowJob(
-            artifactBucket,
             numWorkers,
             maxWorkers,
             null,

@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -47,6 +48,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.monitoring.MonitoringClient;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
 import org.junit.After;
 import org.junit.Before;
@@ -468,6 +470,26 @@ public abstract class LoadTestBase {
           "MaxOutputThroughputElementsPerSec", Collections.max(outputThroughputElementsPerSec));
     }
     return throughputMetrics;
+  }
+
+  public GcsResourceManager createSpannerLTGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    List<String> bucketList =
+        TestConstants.SPANNER_TEST_BUCKETS.getOrDefault(TestProperties.project(), null);
+    if (bucketList != null) {
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), CREDENTIALS)
+              .build();
+    } else {
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(
+                  TestProperties.artifactBucket(), getClass().getSimpleName(), CREDENTIALS)
+              .build();
+    }
+    return spannerTestsGcsClient;
   }
 
   /**
