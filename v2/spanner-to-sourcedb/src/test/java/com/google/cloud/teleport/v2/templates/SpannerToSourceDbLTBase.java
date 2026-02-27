@@ -65,7 +65,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public SpannerResourceManager spannerMetadataResourceManager;
   public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
   public GcsResourceManager gcsResourceManager;
-  protected static PubsubResourceManager pubsubResourceManager;
+  protected PubsubResourceManager pubsubResourceManager;
   protected SubscriptionName subscriptionName;
 
   public void setupResourceManagers(
