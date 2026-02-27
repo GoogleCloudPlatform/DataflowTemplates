@@ -59,10 +59,10 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Firestore to Firestore template is a batch pipeline that reads documents from one"
           + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database. It is not supported for Enterprise edition databases"
-          + " to be the source.",
+          + " them to another Firestore database. ",
+      "It is not supported for Enterprise edition databases to be the source.",
       "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database.\n",
+          + " written to the destination database. Any errors that occur during operation are recorded in error queues. \n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -146,6 +146,8 @@ public class FirestoreToFirestore {
     @Default.String("")
     String getReadTime();
 
+    void setReadTime(String readTime);
+
     @TemplateParameter.GcsWriteFolder(
         order = 7,
         optional = true,
@@ -156,8 +158,6 @@ public class FirestoreToFirestore {
     String getErrorWritePath();
 
     void setErrorWritePath(String value);
-
-    void setReadTime(String readTime);
   }
 
   public static void main(String[] args) {
@@ -253,8 +253,17 @@ public class FirestoreToFirestore {
                   .build());
 
       // 4. Process the documents from the responses
+      PCollectionTuple extractResult =
+          responses.apply(
+              "ExtractDocumentsAndErrors",
+              ParDo.of(new RunQueryResponseToDocumentFn())
+                  .withOutputTags(
+                      RunQueryResponseToDocumentFn.DOCUMENT_TAG,
+                      TupleTagList.of(RunQueryResponseToDocumentFn.ERROR_TAG)));
       PCollection<Document> documents =
-          responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
+          extractResult.get(RunQueryResponseToDocumentFn.DOCUMENT_TAG);
+      PCollection<String> runQueryErrors =
+          extractResult.get(RunQueryResponseToDocumentFn.ERROR_TAG);
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
@@ -273,27 +282,31 @@ public class FirestoreToFirestore {
                   .withDeadLetterQueue()
                   .withRpcQosOptions(rpcQosOptions)
                   .build());
+      PCollection<String> writeErrors =
+          writeFailures.apply(
+              "MapFailedWritesToErrorMessages",
+              MapElements.into(TypeDescriptors.strings())
+                  .via(
+                      failure -> {
+                        return String.format(
+                            "Write failed for document: %s, error: %s",
+                            getDocumentName(failure.getWrite()), failure.getStatus());
+                      }));
 
       // 7. Log errors to GCS if errorWritePath is provided
       String errorWritePath = options.getErrorWritePath();
+      PCollection<String> allErrors =
+          PCollectionList.of(runQueryErrors)
+              .and(writeErrors)
+              .apply("MergeErrorCollections", Flatten.<String>pCollections());
       if (!Strings.isNullOrEmpty(errorWritePath)) {
         LOG.info("Error logging to GCS is enabled: {}", errorWritePath);
-        writeFailures
-            .apply(
-                "FilterFailedWrites",
-                MapElements.into(TypeDescriptors.strings())
-                    .via(
-                        failure -> {
-                          return String.format(
-                              "Write failed for document: %s, error: %s",
-                              getDocumentName(failure.getWrite()), failure.getStatus());
-                        }))
-            .apply(
-                "WriteErrorLogsToGcs",
-                TextIO.write()
-                    .to(options.getErrorWritePath())
-                    .withSuffix("firestore_to_firestore_error.txt")
-                    .withWindowedWrites());
+        allErrors.apply(
+            "WriteErrorLogsToGcs",
+            TextIO.write()
+                .to(options.getErrorWritePath())
+                .withSuffix("firestore_to_firestore_error.txt")
+                .withWindowedWrites());
       }
 
       p.run();
