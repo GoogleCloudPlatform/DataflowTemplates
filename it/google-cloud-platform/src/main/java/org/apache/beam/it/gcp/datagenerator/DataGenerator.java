@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class DataGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(DataGenerator.class);
   private static final String SPEC_PATH =
-      "gs://dataflow-templates/latest/flex/Streaming_Data_Generator";
+      "gs://cloud-teleport-testing/templates/flex/Streaming_Data_Generator";
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
   private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
