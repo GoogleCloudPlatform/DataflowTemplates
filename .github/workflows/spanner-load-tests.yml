@@ -58,7 +58,7 @@ jobs:
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
     - name: Upload Load Tests Report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
       with:
         name: surefire-load-test-results
@@ -110,7 +110,7 @@ jobs:
         --lt-export-table="template_performance_metrics" \
         --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Test Observer Report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
       with:
         name: surefire-observer-test-results
