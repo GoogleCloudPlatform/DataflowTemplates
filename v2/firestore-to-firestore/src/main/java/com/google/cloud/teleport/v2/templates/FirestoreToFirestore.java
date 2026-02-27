@@ -37,30 +37,13 @@ import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
-import org.apache.beam.sdk.io.gcp.firestore.FirestoreV1.WriteFailure;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.MetricNameFilter;
-import org.apache.beam.sdk.metrics.MetricQueryResults;
-import org.apache.beam.sdk.metrics.MetricResult;
-import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,17 +143,6 @@ public class FirestoreToFirestore {
     String getReadTime();
 
     void setReadTime(String readTime);
-
-    @TemplateParameter.GcsWriteFolder(
-        order = 7,
-        optional = true,
-        description = "Error Write Path",
-        helpText =
-            "The Cloud Storage path to write error logs to. Path should be in the format gs://<bucket>/<folder>/.",
-        example = "gs://your-bucket/errors/")
-    String getErrorWritePath();
-
-    void setErrorWritePath(String value);
   }
 
   private static final int DEFAULT_MAX_NUM_WORKERS = 500;
@@ -269,17 +241,8 @@ public class FirestoreToFirestore {
                   .build());
 
       // 4. Process the documents from the responses
-      PCollectionTuple extractResult =
-          responses.apply(
-              "ExtractDocumentsAndErrors",
-              ParDo.of(new RunQueryResponseToDocumentFn())
-                  .withOutputTags(
-                      RunQueryResponseToDocumentFn.DOCUMENT_TAG,
-                      TupleTagList.of(RunQueryResponseToDocumentFn.ERROR_TAG)));
       PCollection<Document> documents =
-          extractResult.get(RunQueryResponseToDocumentFn.DOCUMENT_TAG);
-      PCollection<String> runQueryErrors =
-          extractResult.get(RunQueryResponseToDocumentFn.ERROR_TAG);
+          responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
@@ -287,127 +250,23 @@ public class FirestoreToFirestore {
               ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
 
       // 6. Write documents to the destination Firestore database
-      PCollection<WriteFailure> writeFailures =
-          writes.apply(
-              "WriteToDestinationWithDeadLetterQueue",
-              FirestoreIO.v1()
-                  .write()
-                  .withProjectId(destinationProjectId)
-                  .withDatabaseId(destinationDatabaseId)
-                  .batchWrite()
-                  .withDeadLetterQueue()
-                  .withRpcQosOptions(rpcQosOptions)
-                  .build());
-      PCollection<String> writeErrors =
-          writeFailures.apply(
-              "MapFailedWritesToErrorMessages",
-              MapElements.into(TypeDescriptors.strings())
-                  .via(
-                      failure -> {
-                        return String.format(
-                            "Write failed for document: %s, error: %s",
-                            getDocumentNameFromWriteFailure(failure.getWrite()),
-                            failure.getStatus());
-                      }));
+      writes.apply(
+          "WriteDocumentsToDestination",
+          FirestoreIO.v1()
+              .write()
+              .withProjectId(destinationProjectId)
+              .withDatabaseId(destinationDatabaseId)
+              .batchWrite()
+              .withRpcQosOptions(rpcQosOptions)
+              .build());
 
-      // 7. Log errors to GCS if errorWritePath is provided
-      String errorWritePath = setupErrorWritePath(options);
-      PCollection<String> allErrors =
-          PCollectionList.of(runQueryErrors)
-              .and(writeErrors)
-              .apply("MergeErrorCollections", Flatten.<String>pCollections());
-      LOG.info("Error logging to GCS is enabled: {}", errorWritePath);
-      allErrors.apply(
-          "WriteErrorLogsToGcs",
-          TextIO.write()
-              .to(errorWritePath)
-              .withSuffix("firestore_to_firestore_error.txt")
-              .withWindowedWrites());
-
-      // 8. Count the total number of errors
-      allErrors.apply(
-          "CountTotalErrors",
-          ParDo.of(
-              new DoFn<String, Void>() {
-                private final Counter numErrors =
-                    Metrics.counter("FirestoreToFirestore", "numErrors");
-
-                @ProcessElement
-                public void processElement(ProcessContext c) {
-                  numErrors.inc();
-                }
-              }));
-
-      // 9. Run the pipeline and wait for it to finish
+      // 7. Run the pipeline
       PipelineResult result = p.run();
-      result.waitUntilFinish();
-      LOG.info("Pipeline finished.");
-
-      // 10. Check if there were any errors after the pipeline is done
-      long errorCount = 0;
-      try {
-        MetricQueryResults metricResults =
-            result
-                .metrics()
-                .queryMetrics(
-                    MetricsFilter.builder()
-                        .addNameFilter(MetricNameFilter.named("FirestoreToFirestore", "numErrors"))
-                        .build());
-
-        Iterable<MetricResult<Long>> counters = metricResults.getCounters();
-        if (counters.iterator().hasNext()) {
-          errorCount = counters.iterator().next().getCommitted();
-        }
-      } catch (Exception e) {
-        LOG.warn("Could not retrieve error count metric: " + e.getMessage(), e);
-        throw new RuntimeException(
-            "Pipeline completed, but failed to retrieve error count metric.", e);
-      }
-
-      if (errorCount > 0) {
-        LOG.error("Pipeline completed with {} errors. Check error logs for details.", errorCount);
-        throw new RuntimeException(
-            "Pipeline completed with "
-                + errorCount
-                + " errors during read/write operations. Check error logs for details.");
-      } else {
-        LOG.info("Pipeline completed successfully with no errors.");
-      }
+      LOG.info("Pipeline started.");
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
     }
-  }
-
-  /* Make sure the errorWritePath is not empty and the errors can be logged properly. */
-  private static String setupErrorWritePath(Options options) {
-    String errorWritePath = options.getErrorWritePath();
-    if (Strings.isNullOrEmpty(errorWritePath)) {
-      String tempLocation = null;
-      try {
-        tempLocation = options.getTempLocation();
-        if (Strings.isNullOrEmpty(tempLocation)) {
-          tempLocation = "/tmp/";
-          LOG.warn("No tempLocation specified, defaulting to {}", tempLocation);
-        }
-      } catch (Exception e) {
-        tempLocation = "/tmp/";
-        LOG.warn("Failed to retrieve tempLocation: {}", e.getMessage());
-      }
-      tempLocation = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
-      errorWritePath = tempLocation + "firestore_to_firestore_errors/";
-    }
-    return errorWritePath;
-  }
-
-  private static String getDocumentNameFromWriteFailure(Write write) {
-    if (write.hasUpdate()) {
-      return write.getUpdate().getName();
-    }
-    if (write.hasDelete()) {
-      return write.getDelete();
-    }
-    return "unknown doc name";
   }
 
   private static void validateOptions(Options options) {

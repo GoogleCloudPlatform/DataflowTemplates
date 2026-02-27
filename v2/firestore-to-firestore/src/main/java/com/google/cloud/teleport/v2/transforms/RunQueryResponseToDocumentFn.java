@@ -18,24 +18,14 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.firestore.v1.Document;
 import com.google.firestore.v1.RunQueryResponse;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.values.TupleTag;
 
 /** DoFn to extract Documents from a RunQueryResponse. */
 public class RunQueryResponseToDocumentFn extends DoFn<RunQueryResponse, Document> {
-  public static final TupleTag<Document> DOCUMENT_TAG = new TupleTag<Document>() {};
-  public static final TupleTag<String> ERROR_TAG = new TupleTag<String>() {};
-
   @ProcessElement
   public void processElement(ProcessContext c) {
     RunQueryResponse response = c.element();
-    try {
-      if (response != null && response.hasDocument()) {
-        c.output(DOCUMENT_TAG, response.getDocument());
-      } else {
-        c.output(ERROR_TAG, "Response is null or has no document: " + response);
-      }
-    } catch (Exception e) {
-      c.output(ERROR_TAG, "Exception while processing RunQueryResponse: " + e.getMessage());
+    if (response != null && response.hasDocument()) {
+      c.output(response.getDocument());
     }
   }
 }
