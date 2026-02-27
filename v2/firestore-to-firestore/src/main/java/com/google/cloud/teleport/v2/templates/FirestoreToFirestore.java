@@ -311,20 +311,18 @@ public class FirestoreToFirestore {
                       }));
 
       // 7. Log errors to GCS if errorWritePath is provided
-      String errorWritePath = options.getErrorWritePath();
+      String errorWritePath = setupErrorWritePath(options);
       PCollection<String> allErrors =
           PCollectionList.of(runQueryErrors)
               .and(writeErrors)
               .apply("MergeErrorCollections", Flatten.<String>pCollections());
-      if (!Strings.isNullOrEmpty(errorWritePath)) {
-        LOG.info("Error logging to GCS is enabled: {}", errorWritePath);
-        allErrors.apply(
-            "WriteErrorLogsToGcs",
-            TextIO.write()
-                .to(options.getErrorWritePath())
-                .withSuffix("firestore_to_firestore_error.txt")
-                .withWindowedWrites());
-      }
+      LOG.info("Error logging to GCS is enabled: {}", errorWritePath);
+      allErrors.apply(
+          "WriteErrorLogsToGcs",
+          TextIO.write()
+              .to(errorWritePath)
+              .withSuffix("firestore_to_firestore_error.txt")
+              .withWindowedWrites());
 
       // 8. Count the total number of errors
       allErrors.apply(
@@ -379,6 +377,27 @@ public class FirestoreToFirestore {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
     }
+  }
+
+  /* Make sure the errorWritePath is not empty and the errors can be logged properly. */
+  private static String setupErrorWritePath(Options options) {
+    String errorWritePath = options.getErrorWritePath();
+    if (Strings.isNullOrEmpty(errorWritePath)) {
+      String tempLocation = null;
+      try {
+        tempLocation = options.getTempLocation();
+        if (Strings.isNullOrEmpty(tempLocation)) {
+          tempLocation = "/tmp/";
+          LOG.warn("No tempLocation specified, defaulting to {}", tempLocation);
+        }
+      } catch (Exception e) {
+        tempLocation = "/tmp/";
+        LOG.warn("Failed to retrieve tempLocation: {}", e.getMessage());
+      }
+      tempLocation = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
+      errorWritePath = tempLocation + "firestore_to_firestore_errors/";
+    }
+    return errorWritePath;
   }
 
   private static String getDocumentNameFromWriteFailure(Write write) {
