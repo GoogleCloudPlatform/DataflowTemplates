@@ -26,7 +26,9 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDi
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.BoundaryDurationExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -761,5 +763,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     private InformationSchemaStatsCols() {}
+  }
+
+  @Override
+  public BoundaryDurationExtractor getBoundaryDurationExtractor() {
+    return (rs, index) -> MysqlTimeConverter.toDuration(rs.getBytes(index));
   }
 }

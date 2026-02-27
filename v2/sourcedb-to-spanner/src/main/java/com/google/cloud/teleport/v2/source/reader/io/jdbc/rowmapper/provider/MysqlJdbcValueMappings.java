@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
@@ -31,7 +32,6 @@ import com.google.re2j.Pattern;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.time.Instant;
@@ -169,70 +169,11 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    */
   private static final ResultSetValueMapper<byte[]> bytesToAvroTimeInterval =
       (value, schema) -> {
-        if (value == null || value.length == 0) {
+        java.time.Duration duration = MysqlTimeConverter.toDuration(value);
+        if (duration == null) {
           return 0L;
         }
-
-        // Binary Protocol decoding (uses 0x00 or 0x01 as the first byte for sign flag)
-        // In Text Protocol, first byte is '-' (0x2D) or an ASCII digit (>= 0x30).
-        if (value[0] == 0 || value[0] == 1) {
-          boolean isNegative = (value[0] == 1);
-          int days = 0;
-          int hours = 0;
-          int minutes = 0;
-          int seconds = 0;
-          long micros = 0;
-
-          if (value.length >= 8) {
-            days =
-                (value[1] & 0xFF)
-                    | ((value[2] & 0xFF) << 8)
-                    | ((value[3] & 0xFF) << 16)
-                    | ((value[4] & 0xFF) << 24);
-            hours = value[5] & 0xFF;
-            minutes = value[6] & 0xFF;
-            seconds = value[7] & 0xFF;
-          }
-          if (value.length >= 12) {
-            micros =
-                ((value[8] & 0xFF)
-                    | ((value[9] & 0xFF) << 8)
-                    | ((value[10] & 0xFF) << 16)
-                    | ((value[11] & 0xFF) << 24));
-          }
-
-          long totalMicros =
-              TimeUnit.HOURS.toMicros((days * 24L) + hours)
-                  + TimeUnit.MINUTES.toMicros(minutes)
-                  + TimeUnit.SECONDS.toMicros(seconds)
-                  + micros;
-
-          return isNegative ? -totalMicros : totalMicros;
-        } else {
-          // Text Protocol handling
-          String timeStr = new String(value, StandardCharsets.UTF_8);
-          /* MySQL output is always hours:minutes:seconds.fractionalSeconds */
-          Matcher matcher = TIME_STRING_PATTERN.matcher(timeStr);
-          Preconditions.checkArgument(
-              matcher.matches(),
-              "The time string " + timeStr + " does not match " + TIME_STRING_PATTERN);
-          boolean isNegative = matcher.group(1) != null;
-          int hours = Integer.parseInt(matcher.group(2));
-          int minutes = Integer.parseInt(matcher.group(3));
-          int seconds = Integer.parseInt(matcher.group(4));
-          long nanoSeconds =
-              matcher.group(5) == null
-                  ? 0
-                  : Long.parseLong(StringUtils.rightPad(matcher.group(6), 9, '0'));
-          Long micros =
-              TimeUnit.NANOSECONDS.toMicros(
-                  TimeUnit.HOURS.toNanos(hours)
-                      + TimeUnit.MINUTES.toNanos(minutes)
-                      + TimeUnit.SECONDS.toNanos(seconds)
-                      + nanoSeconds);
-          // Negate if negative.
-          return isNegative ? -1 * micros : micros;
-        }
+        return duration.toNanos() / 1000L;
       };
 
   private static final JdbcMappings JDBC_MAPPINGS =

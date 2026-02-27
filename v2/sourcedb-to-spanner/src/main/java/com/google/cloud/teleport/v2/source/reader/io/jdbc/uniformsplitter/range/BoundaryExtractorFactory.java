@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.BoundaryDurationExtractor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
@@ -63,7 +65,16 @@ public class BoundaryExtractorFactory {
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
           .put(
-              Duration.class, (BoundaryExtractor<Duration>) BoundaryExtractorFactory::fromDurations)
+              Duration.class,
+              (BoundaryExtractor<Duration>)
+                  (partitionColumn, resultSet, boundaryTypeMapper) -> {
+                    // Fallback when adapter is not provided: use the default string parsing logic
+                    return fromDurations(
+                        partitionColumn,
+                        resultSet,
+                        boundaryTypeMapper,
+                        (rs, index) -> parseTimeStringToDuration(rs.getString(index)));
+                  })
           .build();
 
   /**
@@ -79,6 +90,30 @@ public class BoundaryExtractorFactory {
       throw new UnsupportedOperationException("Range Extractor not implemented for class " + c);
     }
     return extractor;
+  }
+
+  /**
+   * Create a {@link BoundaryExtractor} for the required class, using dialect-specific extraction
+   * logic if available from the {@link UniformSplitterDBAdapter}.
+   *
+   * @param c class of the column.
+   * @param dbAdapter dialect adapter providing custom extraction logic.
+   * @return boundary extractor.
+   */
+  public static <T extends Serializable> BoundaryExtractor<T> create(
+      Class<T> c, UniformSplitterDBAdapter dbAdapter) {
+
+    if (c.equals(Duration.class) && dbAdapter != null) {
+      BoundaryExtractor<Duration> extractor =
+          (partitionColumn, resultSet, boundaryTypeMapper) ->
+              fromDurations(
+                  partitionColumn,
+                  resultSet,
+                  boundaryTypeMapper,
+                  dbAdapter.getBoundaryDurationExtractor());
+      return (BoundaryExtractor<T>) extractor;
+    }
+    return create(c);
   }
 
   private static Boundary<Integer> fromIntegers(
@@ -237,14 +272,15 @@ public class BoundaryExtractorFactory {
   private static Boundary<Duration> fromDurations(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      BoundaryDurationExtractor durationExtractor)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Duration.class));
     resultSet.next();
     return Boundary.<Duration>builder()
         .setPartitionColumn(partitionColumn)
-        .setStart(parseTimeStringToDuration(resultSet.getString(1)))
-        .setEnd(parseTimeStringToDuration(resultSet.getString(2)))
+        .setStart(durationExtractor.extract(resultSet, 1))
+        .setEnd(durationExtractor.extract(resultSet, 2))
         .setBoundarySplitter(BoundarySplitterFactory.create(Duration.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
@@ -255,7 +291,7 @@ public class BoundaryExtractorFactory {
    * format "PThhHmmMss.sssS".
    */
   @VisibleForTesting
-  protected static Duration parseTimeStringToDuration(String timeString) {
+  public static Duration parseTimeStringToDuration(String timeString) {
     if (timeString == null || timeString.isBlank()) {
       return null;
     }
