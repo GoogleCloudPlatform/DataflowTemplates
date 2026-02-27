@@ -1,6 +1,6 @@
 module github.com/GoogleCloudPlatform/DataflowTemplates/cicd
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/google/go-cmp v0.7.0
@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-exec v0.25.0
 	github.com/hashicorp/terraform-json v0.27.2
 	github.com/spf13/cobra v1.10.2
-	github.com/zclconf/go-cty v1.17.0
+	github.com/zclconf/go-cty v1.18.0
 )
 
 require (
