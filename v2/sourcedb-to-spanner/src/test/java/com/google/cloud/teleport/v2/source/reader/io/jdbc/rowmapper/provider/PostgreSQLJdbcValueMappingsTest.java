@@ -36,6 +36,17 @@ public class PostgreSQLJdbcValueMappingsTest {
   }
 
   @Test
+  public void testAllMappedTypesHaveRowSizeEstimateWithoutMods() {
+    PostgreSQLJdbcValueMappings mappings = new PostgreSQLJdbcValueMappings();
+    for (String typeName : mappings.getMappings().keySet()) {
+      SourceColumnType sourceColumnType = new SourceColumnType(typeName, null, null);
+      int size = mappings.estimateColumnSize(sourceColumnType);
+      assertTrue(
+          "Row size estimate for type " + typeName + " without mods should be > 0", size > 0);
+    }
+  }
+
+  @Test
   public void testUnknownTypeReturnsDefaultSize() {
     PostgreSQLJdbcValueMappings mappings = new PostgreSQLJdbcValueMappings();
     SourceColumnType sourceColumnType =

@@ -95,5 +95,13 @@ public class MysqlTimeConverterTest {
     byte[] binaryShort = new byte[] {0, 1, 0, 0, 0, 2, 3, 4};
     Duration expectedShort = Duration.ofDays(1).plusHours(2).plusMinutes(3).plusSeconds(4);
     assertEquals(expectedShort, MysqlTimeConverter.toDuration(binaryShort));
+
+    // Very short binary (length < 8)
+    byte[] binaryVeryShort = new byte[] {0, 1, 0, 0, 0};
+    assertEquals(Duration.ZERO, MysqlTimeConverter.toDuration(binaryVeryShort));
+
+    // Tiny binary (length 1)
+    byte[] binaryTiny = new byte[] {0};
+    assertEquals(Duration.ZERO, MysqlTimeConverter.toDuration(binaryTiny));
   }
 }

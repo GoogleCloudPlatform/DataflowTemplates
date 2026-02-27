@@ -41,6 +41,17 @@ public class MysqlJdbcValueMappingsTest {
   }
 
   @Test
+  public void testAllMappedTypesHaveRowSizeEstimateWithoutMods() {
+    MysqlJdbcValueMappings mappings = new MysqlJdbcValueMappings();
+    for (String typeName : mappings.getMappings().keySet()) {
+      SourceColumnType sourceColumnType = new SourceColumnType(typeName, null, null);
+      int size = mappings.estimateColumnSize(sourceColumnType);
+      assertTrue(
+          "Row size estimate for type " + typeName + " without mods should be > 0", size > 0);
+    }
+  }
+
+  @Test
   public void testUnknownTypeReturnsDefaultSize() {
     MysqlJdbcValueMappings mappings = new MysqlJdbcValueMappings();
     SourceColumnType sourceColumnType =
