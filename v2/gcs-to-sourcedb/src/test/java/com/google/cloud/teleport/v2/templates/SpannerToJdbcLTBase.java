@@ -62,14 +62,12 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
   public GcsResourceManager gcsResourceManager;
 
-  public void setupResourceManagers(
-      String spannerDdlResource, String sessionFileResource, String artifactBucket)
+  public void setupResourceManagers(String spannerDdlResource, String sessionFileResource)
       throws IOException {
     spannerResourceManager = createSpannerDatabase(spannerDdlResource);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
 
     gcsResourceManager.uploadArtifact(
         "input/session.json", Resources.getResource(sessionFileResource).getPath());
@@ -155,27 +153,22 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
-      String artifactBucket,
       int numWorkers,
       int maxWorkers)
       throws IOException {
     Map<String, String> params =
         new HashMap<>() {
           {
-            put(
-                "sessionFilePath",
-                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager));
+            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", project);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(artifactBucket, "input/shard.json", gcsResourceManager));
+            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
             put("changeStreamName", "allstream");
             put("runIdentifier", "run1");
-            put("gcsOutputDirectory", getGcsPath(artifactBucket, "output", gcsResourceManager));
+            put("gcsOutputDirectory", getGcsPath("output", gcsResourceManager));
           }
         };
 
@@ -195,24 +188,19 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
   public LaunchInfo launchWriterDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
-      String artifactBucket,
       int numWorkers,
       int maxWorkers)
       throws IOException {
     Map<String, String> params =
         new HashMap<>() {
           {
-            put(
-                "sessionFilePath",
-                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager));
+            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
             put("spannerProjectId", project);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(artifactBucket, "input/shard.json", gcsResourceManager));
+            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
             put("runIdentifier", "run1");
-            put("GCSInputDirectoryPath", getGcsPath(artifactBucket, "output", gcsResourceManager));
+            put("GCSInputDirectoryPath", getGcsPath("output", gcsResourceManager));
           }
         };
     String jobName = PipelineUtils.createJobName(testName);
@@ -224,9 +212,11 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
     return writerJobInfo;
   }
 
-  public String getGcsPath(
-      String bucket, String artifactId, GcsResourceManager gcsResourceManager) {
+  public String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
     return ArtifactUtils.getFullGcsPath(
-        bucket, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
   }
 }
