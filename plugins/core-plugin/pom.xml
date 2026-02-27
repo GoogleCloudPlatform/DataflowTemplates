@@ -32,9 +32,6 @@
   <url>https://github.com/GoogleCloudPlatform/DataflowTemplates</url>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
-
     <reflections.version>0.9.11</reflections.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <freemarker.version>2.3.32</freemarker.version>

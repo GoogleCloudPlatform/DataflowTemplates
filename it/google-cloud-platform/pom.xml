@@ -25,9 +25,6 @@
 
     <artifactId>it-google-cloud-platform</artifactId>
 
-    <properties>
-        <parquet-avro.version>1.15.2</parquet-avro.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>

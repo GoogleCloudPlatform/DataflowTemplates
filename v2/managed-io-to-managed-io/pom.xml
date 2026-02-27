@@ -28,9 +28,6 @@
   <artifactId>managed-io-to-managed-io</artifactId>
   <modelVersion>4.0.0</modelVersion>
 
-  <properties>
-    <activemq.version>5.17.7</activemq.version>
-  </properties>
 
   <dependencies>
     <!-- Beam Managed I/O -->
