@@ -672,7 +672,14 @@ public class StreamingDataGenerator {
 
     @Setup
     public void setup() {
-      dataGenerator = new JsonDataGeneratorImpl();
+      if (dataGenerator == null) {
+        synchronized (MessageGeneratorFn.class) {
+          if (dataGenerator == null) {
+            // The heavy JAR scanning happens here
+            dataGenerator = new JsonDataGeneratorImpl();
+          }
+        }
+      }
     }
 
     @ProcessElement
