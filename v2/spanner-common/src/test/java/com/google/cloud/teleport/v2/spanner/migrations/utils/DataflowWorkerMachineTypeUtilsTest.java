@@ -159,11 +159,29 @@ public class DataflowWorkerMachineTypeUtilsTest {
     // tryParseCustomMachineType
     assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "custom-2-invalid"));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, null);
-        });
+    IllegalArgumentException exception1 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, null);
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception1.getMessage());
+
+    IllegalArgumentException exception2 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "");
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception2.getMessage());
+
+    IllegalArgumentException exception3 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "  ");
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception3.getMessage());
   }
 
   @Test
@@ -186,11 +204,29 @@ public class DataflowWorkerMachineTypeUtilsTest {
         DataflowWorkerMachineTypeUtils.getWorkerCores(
             null, null, "invalid-custom-2-1024")); // Invalid family
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, null);
-        });
+    IllegalArgumentException exception1 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, null);
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception1.getMessage());
+
+    IllegalArgumentException exception2 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "");
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception2.getMessage());
+
+    IllegalArgumentException exception3 =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              DataflowWorkerMachineTypeUtils.getWorkerCores(null, null, "  ");
+            });
+    assertEquals("workerMachineType cannot be null or empty.", exception3.getMessage());
   }
 
   @Test

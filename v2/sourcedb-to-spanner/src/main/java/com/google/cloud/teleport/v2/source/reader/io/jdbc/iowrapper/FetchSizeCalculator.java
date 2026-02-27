@@ -63,11 +63,6 @@ public final class FetchSizeCalculator {
       }
 
       long workerMemoryBytes = (long) (workerMemoryGB * 1024 * 1024 * 1024);
-      if (workerMemoryBytes < 0) {
-        LOG.warn(
-            "Worker memory is less than overhead constant. FetchSize cannot be calculated. Cursor mode will not be enabled.");
-        return 0;
-      }
 
       // Formula: (Memory of Dataflow worker VM) / (SAFETY_FACTOR * (Number of cores
       // on the
