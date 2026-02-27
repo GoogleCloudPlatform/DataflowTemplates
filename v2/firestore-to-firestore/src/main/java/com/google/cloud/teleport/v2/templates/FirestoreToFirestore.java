@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.extensions.gcp.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreV1.WriteFailure;
@@ -75,7 +75,7 @@ public class FirestoreToFirestore {
    *
    * <p>Inherits standard Dataflow configuration options.
    */
-  public interface Options extends DataflowPipelineOptions {
+  public interface Options extends DataflowPipelineWorkerPoolOptions {
 
     @TemplateParameter.Text(
         groupName = "Source",
@@ -160,6 +160,8 @@ public class FirestoreToFirestore {
     void setErrorWritePath(String value);
   }
 
+  private static final int DEFAULT_MAX_NUM_WORKERS = 500;
+
   public static void main(String[] args) {
     try {
       UncaughtExceptionLogger.register();
@@ -200,7 +202,8 @@ public class FirestoreToFirestore {
             Arrays.stream(collectionIds.split(",")).map(String::trim).collect(Collectors.toList());
       }
 
-      int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
+      int maxNumWorkers =
+          options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
       RpcQosOptions rpcQosOptions =
           RpcQosOptions.newBuilder().withHintMaxNumWorkers(maxNumWorkers).build();
 
@@ -224,7 +227,7 @@ public class FirestoreToFirestore {
           p.apply(Create.of(collectionIdsList))
               .apply(
                   new CreatePartitionQueryRequestFn(
-                      sourceProjectId, sourceDatabaseId, maxNumWorkers > 1 ? maxNumWorkers : 20L));
+                      sourceProjectId, sourceDatabaseId, maxNumWorkers));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
