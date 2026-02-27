@@ -24,12 +24,17 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.column
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -45,8 +50,13 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
 
   private final UniformSplitterDBAdapter dbAdapter;
 
-  private String tableName;
-  private ImmutableList<String> partitionColumns;
+  private final ImmutableList<TableSplitSpecification> tableSplitSpecifications;
+  private final ColumnForBoundaryQueryPreparedStatementSetter
+      columnForBoundaryQueryPreparedStatementSetter;
+
+  @JsonIgnore
+  private transient @Nullable Map<TableIdentifier, TableSplitSpecification>
+      tableSplitSpecificationMap;
 
   @Nullable private BoundaryTypeMapper boundaryTypeMapper;
 
@@ -55,20 +65,24 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
   RangeBoundaryDoFn(
       SerializableFunction<Void, DataSource> dataSourceProviderFn,
       UniformSplitterDBAdapter dbAdapter,
-      String tableName,
-      ImmutableList<String> partitionColumns,
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications,
       BoundaryTypeMapper boundaryTypeMapper) {
     this.dataSourceProviderFn = dataSourceProviderFn;
     this.dbAdapter = dbAdapter;
-    this.tableName = tableName;
-    this.partitionColumns = partitionColumns;
+    this.tableSplitSpecifications = tableSplitSpecifications;
     this.dataSource = null;
     this.boundaryTypeMapper = boundaryTypeMapper;
+    this.columnForBoundaryQueryPreparedStatementSetter =
+        new ColumnForBoundaryQueryPreparedStatementSetter(tableSplitSpecifications);
   }
 
   @Setup
   public void setup() throws Exception {
     dataSource = dataSourceProviderFn.apply(null);
+    this.tableSplitSpecificationMap =
+        this.tableSplitSpecifications.stream()
+            .collect(
+                Collectors.toMap(TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
   private Connection acquireConnection() throws SQLException {
@@ -87,19 +101,25 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
   public void processElement(
       @Element ColumnForBoundaryQuery input, OutputReceiver<Range> out, ProcessContext c)
       throws SQLException {
+    TableSplitSpecification tableSplitSpecification =
+        this.tableSplitSpecificationMap.get(input.tableIdentifier());
     String boundaryQuery =
-        dbAdapter.getBoundaryQuery(tableName, partitionColumns, input.columnName());
+        dbAdapter.getBoundaryQuery(
+            checkStateNotNull(tableSplitSpecification).tableIdentifier().tableName(),
+            tableSplitSpecification.partitionColumns().stream()
+                .map(pc -> pc.columnName())
+                .collect(ImmutableList.toImmutableList()),
+            input.columnName());
 
     try (Connection conn = acquireConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
               boundaryQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-      new ColumnForBoundaryQueryPreparedStatementSetter(partitionColumns)
-          .setParameters(input, stmt);
+      columnForBoundaryQueryPreparedStatementSetter.setParameters(input, stmt);
       ResultSet rs = stmt.executeQuery();
       Range output =
           BoundaryExtractorFactory.create(input.columnClass())
-              .getBoundary(input.partitionColumn(), rs, boundaryTypeMapper)
+              .getBoundary(input.partitionColumn(), rs, boundaryTypeMapper, input.tableIdentifier())
               .toRange(input.parentRange(), c);
       logger.debug(
           "Got Boundary, Input = {}, Range = {}, Query = {}, DataSource = {}",

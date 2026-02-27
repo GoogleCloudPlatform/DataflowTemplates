@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
@@ -67,57 +69,123 @@ public class RangePreparedStatementSetterTest {
 
     // 2.2 Insert Data (Using PreparedStatement for Efficiency & Security)
     String insertSQL = "INSERT INTO test_table_range_setter (col1, col2, data) VALUES (?, ?, ?)";
-    PreparedStatement stmtInsert = connection.prepareStatement(insertSQL);
+    try (PreparedStatement stmtInsert = connection.prepareStatement(insertSQL)) {
+      stmtInsert.setInt(1, 10);
+      stmtInsert.setInt(2, 30);
+      stmtInsert.setString(3, "Data A");
+      stmtInsert.addBatch();
 
-    // Batch the insert operations
-    stmtInsert.setInt(1, 10);
-    stmtInsert.setInt(2, 30);
-    stmtInsert.setString(3, "Data A");
-    stmtInsert.addBatch();
+      stmtInsert.setInt(1, 15);
+      stmtInsert.setInt(2, 35);
+      stmtInsert.setString(3, "Data B");
+      stmtInsert.addBatch();
 
-    stmtInsert.setInt(1, 15);
-    stmtInsert.setInt(2, 35);
-    stmtInsert.setString(3, "Data B");
-    stmtInsert.addBatch();
+      stmtInsert.setInt(1, 25);
+      stmtInsert.setInt(2, 50);
+      stmtInsert.setString(3, "Data C");
+      stmtInsert.addBatch();
 
-    stmtInsert.setInt(1, 25);
-    stmtInsert.setInt(2, 50);
-    stmtInsert.setString(3, "Data C");
-    stmtInsert.addBatch();
+      stmtInsert.setInt(1, 30);
+      stmtInsert.setInt(2, 60);
+      stmtInsert.setString(3, "Data D");
+      stmtInsert.addBatch();
 
-    stmtInsert.setInt(1, 30);
-    stmtInsert.setInt(2, 60);
-    stmtInsert.setString(3, "Data D");
-    stmtInsert.addBatch();
+      stmtInsert.setInt(1, 40);
+      stmtInsert.setInt(2, 70);
+      stmtInsert.setString(3, "Data E");
+      stmtInsert.addBatch();
 
-    stmtInsert.setInt(1, 40);
-    stmtInsert.setInt(2, 70);
-    stmtInsert.setString(3, "Data E");
-    stmtInsert.addBatch();
+      stmtInsert.setInt(1, 40);
+      stmtInsert.setInt(2, 80);
+      stmtInsert.setString(3, "Data F");
+      stmtInsert.addBatch();
 
-    stmtInsert.setInt(1, 40);
-    stmtInsert.setInt(2, 80);
-    stmtInsert.setString(3, "Data F");
-    stmtInsert.addBatch();
-
-    stmtInsert.executeBatch();
+      stmtInsert.executeBatch();
+    }
   }
 
-  private void dropDerbyTable() throws SQLException {
-    Statement statement = connection.createStatement();
-    statement.executeUpdate("drop table test_table_range_setter");
+  @Test
+  public void testSetParameters_throwsExceptionOnNullElement() throws Exception {
+    TableSplitSpecification tableSplitSpecification =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .setApproxRowCount(1L)
+            .setSplitStagesCount(1L)
+            .setInitialSplitHeight(1L)
+            .build();
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    assertThrows(NullPointerException.class, () -> setter.setParameters(null, mockStatement));
+  }
+
+  @Test
+  public void testSetRangeParameters_throwsOnUnknownTable() throws Exception {
+    TableSplitSpecification tableSplitSpecification =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("knownTable").build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .setApproxRowCount(1L)
+            .setSplitStagesCount(1L)
+            .setInitialSplitHeight(1L)
+            .build();
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+
+    Range unknownTableRange =
+        Range.<Integer>builder()
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setTableIdentifier(TableIdentifier.builder().setTableName("unknownTable").build())
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setStart(10)
+            .setEnd(25)
+            .setIsLast(false)
+            .build();
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    assertThrows(
+        RuntimeException.class, () -> setter.setParameters(unknownTableRange, mockStatement));
   }
 
   @Test
   public void testSetParameters() throws Exception {
 
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
+    TableSplitSpecification tableSplitSpecification =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build(),
+                    PartitionColumn.builder()
+                        .setColumnName("col2")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .setApproxRowCount(2L)
+            .setSplitStagesCount(1L)
+            .setInitialSplitHeight(2L)
+            .build();
     RangePreparedStatementSetter rangePreparedStatementSetter =
-        new RangePreparedStatementSetter(partitionCols.size());
+        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
 
     Range singleColNonLastRange =
         Range.<Integer>builder()
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(10)
@@ -129,13 +197,14 @@ public class RangePreparedStatementSetterTest {
             .getReadQuery("test_table_range_setter", partitionCols);
     PreparedStatement readStmtSingleColNonLast = connection.prepareStatement(readQuery);
     rangePreparedStatementSetter.setParameters(singleColNonLastRange, readStmtSingleColNonLast);
-    ResultSet readStmtSingleColNonLastResultSet = readStmtSingleColNonLast.executeQuery();
     ImmutableList.Builder<String> readSingleColNonLastRangedataPointsBuilder =
         ImmutableList.builder();
+    ResultSet readStmtSingleColNonLastResultSet = readStmtSingleColNonLast.executeQuery();
     while (readStmtSingleColNonLastResultSet.next()) {
       readSingleColNonLastRangedataPointsBuilder.add(
           readStmtSingleColNonLastResultSet.getString("data").trim());
     }
+    readStmtSingleColNonLastResultSet.close();
 
     String countQuery =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
@@ -145,6 +214,7 @@ public class RangePreparedStatementSetterTest {
     ResultSet countStmtSingleColNonLastResultSet = countStmtSingleColNonLast.executeQuery();
     countStmtSingleColNonLastResultSet.next();
     Integer countSingleColNonLast = countStmtSingleColNonLastResultSet.getInt(1);
+    countStmtSingleColNonLastResultSet.close();
 
     Range singleColLastRange = singleColNonLastRange.toBuilder().setIsLast(true).build();
     rangePreparedStatementSetter.setParameters(singleColLastRange, readStmtSingleColNonLast);
@@ -154,9 +224,11 @@ public class RangePreparedStatementSetterTest {
       readSingleColLastRangedataPointsBuilder.add(
           readStmtSingleColLastResultSet.getString("data").trim());
     }
+    readStmtSingleColLastResultSet.close();
 
     Range bothColRange =
         Range.<Integer>builder()
+            .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -166,6 +238,7 @@ public class RangePreparedStatementSetterTest {
             .build()
             .withChildRange(
                 Range.<Integer>builder()
+                    .setTableIdentifier(tableSplitSpecification.tableIdentifier())
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                     .setColName("col2")
                     .setColClass(Integer.class)
@@ -178,6 +251,7 @@ public class RangePreparedStatementSetterTest {
     ResultSet countStmtBothColResultSet = countStmtBothCol.executeQuery();
     countStmtBothColResultSet.next();
     Integer countBothCol = countStmtBothColResultSet.getInt(1);
+    countStmtBothColResultSet.close();
 
     assertThat(readSingleColNonLastRangedataPointsBuilder.build())
         .isEqualTo(ImmutableList.of("Data A", "Data B"));
@@ -185,6 +259,11 @@ public class RangePreparedStatementSetterTest {
     assertThat(readSingleColLastRangedataPointsBuilder.build())
         .isEqualTo(ImmutableList.of("Data A", "Data B", "Data C"));
     assertThat(countBothCol).isEqualTo(1);
+  }
+
+  private void dropDerbyTable() throws SQLException {
+    Statement statement = connection.createStatement();
+    statement.executeUpdate("drop table test_table_range_setter");
   }
 
   @After

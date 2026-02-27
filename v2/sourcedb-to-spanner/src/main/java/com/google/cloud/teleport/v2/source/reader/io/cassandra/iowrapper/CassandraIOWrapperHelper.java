@@ -142,14 +142,16 @@ class CassandraIOWrapperHelper {
     return sourceSchemaBuilder.build();
   }
 
-  static ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       getTableReaders(DataSource dataSource, SourceSchema sourceSchema) {
     /*
      * TODO(vardhanvthigle): Plugin alternate implementation if needed.
      */
     CassandraTableReaderFactory cassandraTableReaderFactory =
         new CassandraTableReaderFactoryCassandraIoImpl();
-    ImmutableMap.Builder<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+    ImmutableMap.Builder<
+            ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
         tableReadersBuilder = ImmutableMap.builder();
     SourceSchemaReference sourceSchemaReference = sourceSchema.schemaReference();
     sourceSchema
@@ -165,7 +167,7 @@ class CassandraIOWrapperHelper {
               var tableReader =
                   cassandraTableReaderFactory.getTableReader(
                       dataSource.cassandra(), sourceSchemaReference, tableSchema);
-              tableReadersBuilder.put(sourceTableReference, tableReader);
+              tableReadersBuilder.put(ImmutableList.of(sourceTableReference), tableReader);
             });
     return tableReadersBuilder.build();
   }

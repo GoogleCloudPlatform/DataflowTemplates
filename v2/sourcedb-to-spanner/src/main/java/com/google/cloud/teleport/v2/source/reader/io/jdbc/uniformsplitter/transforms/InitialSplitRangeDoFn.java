@@ -17,38 +17,41 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Generates initial splits for the first partition column, upto max partitions, assuming uniform
+ * Generates initial splits for the first partition column for multiple tables, assuming uniform
  * density to begin with.
+ *
+ * <p>This {@link DoFn} handles the bootstrapping of the partitioning process for a collection of
+ * tables. It respects table-specific configuration, such as {@link
+ * TableSplitSpecification#initialSplitHeight()}, ensuring that each table starts with a granularity
+ * appropriate for its size and distribution.
  */
 @AutoValue
 public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Range>> {
 
-  /**
-   * How many iterations of splits to do. For example if you want 1024 ranges to get created
-   * initially, set this to 10.
-   *
-   * @return split height for initial split.
-   */
-  abstract long splitHeight();
-
-  abstract String tableName();
+  abstract ImmutableMap<TableIdentifier, Long> initialSplitsHeights();
 
   private static final Logger logger = LoggerFactory.getLogger(InitialSplitRangeDoFn.class);
 
   /**
-   * @param input Range indicating Min and Max of the first partition column.
-   * @param out output receiver for a list of initial split of ranges. The ranges are not counted as
-   *     yet.
-   * @param c process context
+   * Processes an initial {@link Range} (representing the min/max of the primary partition column)
+   * and produces a list of split ranges for the iterative splitting process.
+   *
+   * @param input the initial range for a table.
+   * @param out output receiver for the list of split ranges.
+   * @param c process context.
    */
   @ProcessElement
   public void processElement(
@@ -56,17 +59,27 @@ public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Ra
     // Note Searching for "RWUPT -" for ReadWithUniformPartition gives the most import logs for the
     // splitting process.
     logger.info(
-        "RWUPT - Began split process for table {} with initial range as {}", tableName(), input);
+        "RWUPT - Began split process for table {} with initial range as {}",
+        input.tableIdentifier(),
+        input);
 
     ArrayList<Range> ranges = new ArrayList<Range>();
     ranges.add(input.toBuilder().build());
     ArrayList<Range> splitRanges = new ArrayList<>();
-    for (long i = 0; i < splitHeight(); i++) {
+    if (!initialSplitsHeights().containsKey(input.tableIdentifier())) {
+      logger.error(
+          "Got Range {} for unknown tableIdentifier. Known Identifiers are {}",
+          input,
+          initialSplitsHeights());
+      throw new RuntimeException("Invalid Range");
+    }
+    Long initialSplitsHeight = initialSplitsHeights().get(input.tableIdentifier());
+    for (long i = 0; i < initialSplitsHeight; i++) {
       logger.info(
           "RWUPT - Creating initial split for table {}. Iteration {} of {}",
-          tableName(),
+          input.tableIdentifier(),
           i,
-          splitHeight());
+          initialSplitsHeight);
       for (Range range : ranges) {
         if (range.isSplittable(c)) {
           Pair<Range, Range> splitPair = range.split(c);
@@ -82,7 +95,7 @@ public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Ra
     Collections.sort(ranges);
     logger.info(
         "RWUPT - Completed initial split for table {} with initial range as {}, and {} split ranges",
-        tableName(),
+        input.tableIdentifier(),
         input,
         ranges.size());
     out.output(ImmutableList.copyOf(ranges));
@@ -95,9 +108,21 @@ public abstract class InitialSplitRangeDoFn extends DoFn<Range, ImmutableList<Ra
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setSplitHeight(long value);
+    abstract ImmutableMap.Builder initialSplitsHeightsBuilder();
 
-    public abstract Builder setTableName(String value);
+    public Builder setTableSplitSpecification(TableSplitSpecification tableSplitSpecification) {
+      this.initialSplitsHeightsBuilder()
+          .put(
+              tableSplitSpecification.tableIdentifier(),
+              tableSplitSpecification.initialSplitHeight());
+      return this;
+    }
+
+    public Builder setTableSplitSpecifications(
+        List<TableSplitSpecification> tableSplitSpecifications) {
+      tableSplitSpecifications.forEach(t -> setTableSplitSpecification(t));
+      return this;
+    }
 
     public abstract InitialSplitRangeDoFn build();
   }

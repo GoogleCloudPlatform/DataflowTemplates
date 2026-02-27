@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 /** Combine PCollection&lt;Range&gt; into PCollection&lt;Range&gt;. */
@@ -58,5 +60,26 @@ public class RangeCombiner extends Combine.CombineFn<Range, List<Range>, Immutab
    */
   public static PTransform<PCollection<Range>, PCollection<ImmutableList<Range>>> globally() {
     return Combine.globally(new RangeCombiner());
+  }
+
+  /**
+   * Returns a {@link PTransform} that combines Range elements into batches using a synthetic key.
+   * This is the memory-safe alternative to `globally()`.
+   */
+  public static PTransform<PCollection<Range>, PCollection<KV<Integer, ImmutableList<Range>>>>
+      perKeyBatched(int numBatches) {
+
+    return new PTransform<PCollection<Range>, PCollection<KV<Integer, ImmutableList<Range>>>>() {
+      @Override
+      public PCollection<KV<Integer, ImmutableList<Range>>> expand(PCollection<Range> input) {
+        return input
+            .apply(
+                "AssignSyntheticKey",
+                ParDo.of(AssignSyntheticKeyDoFn.builder().setNumBatches(numBatches).build()))
+            .apply(
+                "CombinePerSyntheticKey",
+                Combine.<Integer, Range, ImmutableList<Range>>perKey(new RangeCombiner()));
+      }
+    };
   }
 }

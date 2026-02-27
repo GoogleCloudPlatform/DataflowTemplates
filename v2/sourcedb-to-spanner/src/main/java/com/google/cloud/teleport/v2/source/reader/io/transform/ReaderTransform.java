@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.transform;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -93,9 +94,9 @@ public abstract class ReaderTransform implements Serializable {
     AccumulatingTableReader.Builder readTransformBuilder = null;
 
     public void withTableReader(
-        SourceTableReference sourceTableReference,
+        ImmutableList<SourceTableReference> sourceTableReferences,
         PTransform<PBegin, PCollection<SourceRow>> tableReader) {
-      this.readTransformBuilder.withTableReader(sourceTableReference, tableReader);
+      this.readTransformBuilder.withTableReader(sourceTableReferences, tableReader);
     }
 
     public ReaderTransform build() {

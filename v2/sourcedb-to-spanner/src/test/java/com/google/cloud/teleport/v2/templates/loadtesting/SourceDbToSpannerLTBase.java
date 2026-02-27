@@ -45,10 +45,24 @@ import org.apache.beam.it.jdbc.StaticPostgresqlResource;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Resources;
 import org.junit.After;
 
+/**
+ * Base class for Load Tests (LT) of the Source-to-Spanner template.
+ *
+ * <p>This class provides common infrastructure for large-scale migrations, including:
+ *
+ * <ul>
+ *   <li><b>Spanner Configuration</b>: Automatic setup of large Spanner instances (e.g., 10 nodes).
+ *   <li><b>JDBC Resource Management</b>: Handling static connections to source databases (MySQL,
+ *       PostgreSQL).
+ *   <li><b>VPC Networking</b>: Support for shared VPCs required for template-to-DB connectivity.
+ *   <li><b>Metrics Collection</b>: Integration with BigQuery for long-term performance tracking.
+ * </ul>
+ */
 public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
-  private static final String SPEC_PATH =
-      "gs://dataflow-templates/latest/flex/Sourcedb_to_Spanner_Flex";
+  protected static final String SPEC_PATH =
+      System.getProperty(
+          "specPath", "gs://dataflow-templates/latest/flex/Sourcedb_to_Spanner_Flex");
   private static final int SPANNER_NODE_COUNT = 10;
 
   private static final int MAX_WORKERS = 100;
@@ -59,17 +73,21 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   private static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
   private static final Duration DONE_TIMEOUT = Duration.ofMinutes(20);
 
-  private SQLDialect dialect;
-  private GcsResourceManager gcsResourceManager;
+  protected SQLDialect dialect;
+  protected GcsResourceManager gcsResourceManager;
   private StaticJDBCResource sourceDatabaseResource;
-  private SpannerResourceManager spannerResourceManager;
+  protected SpannerResourceManager spannerResourceManager;
 
   private final String artifactBucket;
-  ;
   private final SecretManagerResourceManager secretClient;
   private final String testRootDir;
 
+  /**
+   * VPC configuration required for large-scale tests where the Dataflow workers must connect to
+   * databases within a private network.
+   */
   protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+
   protected static final String VPC_REGION = "us-central1";
   protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
   protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
@@ -130,34 +148,78 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     runLoadTest(expectations, new HashMap<>(), new HashMap<>());
   }
 
+  protected PipelineLauncher.LaunchInfo launchJob(LaunchConfig.Builder options) throws IOException {
+    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
+
+  protected void collectAndExportMetrics(PipelineLauncher.LaunchInfo jobInfo)
+      throws ParseException, IOException, InterruptedException {
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    populateResourceManagerMetrics(metrics);
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  protected Map<String, String> getCommonParameters() {
+    Map<String, String> params = new HashMap<>();
+    params.put("projectId", project);
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("outputDirectory", getOutputDirectory());
+    return params;
+  }
+
+  protected String getOutputDirectory() {
+    return "gs://"
+        + artifactBucket
+        + "/"
+        + String.join(
+            "/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "output"});
+  }
+
+  protected Map<String, String> getJdbcParameters(StaticJDBCResource jdbcResource) {
+    return getJdbcParameters(
+        jdbcResource.getconnectionURL(),
+        jdbcResource.username(),
+        jdbcResource.password(),
+        driverClassName());
+  }
+
+  protected Map<String, String> getJdbcParameters(
+      String connectionUrl, String username, String password, String driverClassName) {
+    Map<String, String> params = new HashMap<>();
+    params.put("sourceDbDialect", dialect.name());
+    params.put("sourceConfigURL", connectionUrl);
+    params.put("username", username);
+    params.put("password", password);
+    params.put("jdbcDriverClassName", driverClassName);
+    return params;
+  }
+
+  /**
+   * Orchestrates the execution of a load test, including job launch, row count verification, and
+   * metrics export.
+   *
+   * @param expectations map of table names to expected row counts.
+   * @param templateParameters additional parameters for the Dataflow template.
+   * @param environmentOptions Dataflow environment options (e.g., workers, machine type).
+   * @throws IOException if job launch fails.
+   * @throws ParseException if metrics parsing fails.
+   * @throws InterruptedException if waiting for the job is interrupted.
+   */
   public void runLoadTest(
       Map<String, Integer> expectations,
       Map<String, String> templateParameters,
       Map<String, String> environmentOptions)
       throws IOException, ParseException, InterruptedException {
 
-    // Add all parameters for the template
-    String outputDirectory =
-        String.join(
-            "/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "output"});
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("projectId", project);
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("sourceDbDialect", dialect.name());
-            put("sourceConfigURL", sourceDatabaseResource.getconnectionURL());
-            put("username", sourceDatabaseResource.username());
-            put("password", sourceDatabaseResource.password());
-            put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
-            put("jdbcDriverClassName", driverClassName());
-            put("workerMachineType", "n2-standard-4");
-          }
-        };
+    Map<String, String> params = getCommonParameters();
+    params.putAll(getJdbcParameters(sourceDatabaseResource));
+    params.put("workerMachineType", "n2-standard-4");
+
     params.putAll(ADDITIONAL_JOB_PARAMS);
     params.putAll(templateParameters);
-
     // Configure job
     LaunchConfig.Builder options =
         LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
@@ -167,8 +229,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     environmentOptions.forEach(options::addEnvironment);
 
     // Act
-    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
-    assertThatPipeline(jobInfo).isRunning();
+    PipelineLauncher.LaunchInfo jobInfo = launchJob(options);
 
     ConditionCheck[] checks =
         expectations.entrySet().stream()
@@ -189,11 +250,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     result = pipelineOperator.waitUntilDone(createConfig(jobInfo, DONE_TIMEOUT));
     assertThatResult(result).isLaunchFinished();
 
-    Map<String, Double> metrics = getMetrics(jobInfo);
-    populateResourceManagerMetrics(metrics);
-
-    // Export results
-    exportMetricsToBigQuery(jobInfo, metrics);
+    collectAndExportMetrics(jobInfo);
   }
 
   public void populateResourceManagerMetrics(Map<String, Double> metrics) {

@@ -29,7 +29,10 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -50,6 +53,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 /** Test class for {@link RangeBoundaryDoFn}. */
 @RunWith(MockitoJUnitRunner.class)
 public class RangeBoundaryDoFnTest {
+
   SerializableFunction<Void, DataSource> mockDataSourceProviderFn =
       Mockito.mock(SerializableFunction.class, withSettings().serializable());
   DataSource mockDataSource = Mockito.mock(DataSource.class, withSettings().serializable());
@@ -65,7 +69,105 @@ public class RangeBoundaryDoFnTest {
   @Mock DoFn.ProcessContext mockProcessContext;
 
   @Test
-  public void testRangeCountDoFnBasic() throws Exception {
+  public void testRangeBoundaryDoFnBasic() throws Exception {
+
+    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString(), anyInt(), anyInt()))
+        .thenReturn(mockPreparedStatemet);
+    doNothing().when(mockPreparedStatemet).setObject(anyInt(), any());
+    when(mockPreparedStatemet.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getLong(1)).thenReturn(0L);
+    when(mockResultSet.getLong(2)).thenReturn(42L);
+    RangeBoundaryDoFn rangeBoundaryDoFn =
+        new RangeBoundaryDoFn(
+            mockDataSourceProviderFn,
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()),
+            null);
+    ColumnForBoundaryQuery input =
+        ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnClass(Long.class)
+            .setColumnName("col1")
+            .setParentRange(null)
+            .build();
+    rangeBoundaryDoFn.setup();
+    rangeBoundaryDoFn.processElement(input, mockOut, mockProcessContext);
+
+    verify(mockOut).output(rangeCaptor.capture());
+    Range newRange = rangeCaptor.getValue();
+    assertThat(newRange)
+        .isEqualTo(
+            Range.builder()
+                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setStart(0L)
+                .setEnd(42L)
+                .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+                .setColName("col1")
+                .setColClass(Long.class)
+                .build());
+  }
+
+  @Test
+  public void testRangeBoundaryDoFnSqlException() throws Exception {
+
+    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString(), anyInt(), anyInt()))
+        .thenReturn(mockPreparedStatemet);
+    doNothing().when(mockPreparedStatemet).setObject(anyInt(), any());
+    when(mockPreparedStatemet.executeQuery()).thenThrow(new SQLException("test"));
+
+    RangeBoundaryDoFn rangeBoundaryDoFn =
+        new RangeBoundaryDoFn(
+            mockDataSourceProviderFn,
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()),
+            null);
+    ColumnForBoundaryQuery input =
+        ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnClass(Long.class)
+            .setColumnName("col1")
+            .setParentRange(null)
+            .build();
+    rangeBoundaryDoFn.setup();
+
+    assertThrows(
+        SQLException.class,
+        () -> rangeBoundaryDoFn.processElement(input, mockOut, mockProcessContext));
+  }
+
+  @Test
+  public void testRangeBoundaryDoFnMultipleTables() throws Exception {
 
     when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
@@ -81,13 +183,40 @@ public class RangeBoundaryDoFnTest {
         new RangeBoundaryDoFn(
             mockDataSourceProviderFn,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"),
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build(),
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder().setTableName("testTable2").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col2")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()),
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
             .setColumnClass(Long.class)
-            .setColumnName("col1")
+            .setColumnName("col2")
             .setParentRange(null)
             .build();
     rangeBoundaryDoFn.setup();
@@ -98,41 +227,12 @@ public class RangeBoundaryDoFnTest {
     assertThat(newRange)
         .isEqualTo(
             Range.builder()
+                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
                 .setStart(0L)
                 .setEnd(42L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
-                .setColName("col1")
+                .setColName("col2")
                 .setColClass(Long.class)
                 .build());
-  }
-
-  @Test
-  public void testRangeCountDoFnSqlException() throws Exception {
-
-    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
-    when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.prepareStatement(anyString(), anyInt(), anyInt()))
-        .thenReturn(mockPreparedStatemet);
-    doNothing().when(mockPreparedStatemet).setObject(anyInt(), any());
-    when(mockPreparedStatemet.executeQuery()).thenThrow(new SQLException("test"));
-
-    RangeBoundaryDoFn rangeBoundaryDoFn =
-        new RangeBoundaryDoFn(
-            mockDataSourceProviderFn,
-            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"),
-            null);
-    ColumnForBoundaryQuery input =
-        ColumnForBoundaryQuery.builder()
-            .setColumnClass(Long.class)
-            .setColumnName("col1")
-            .setParentRange(null)
-            .build();
-    rangeBoundaryDoFn.setup();
-
-    assertThrows(
-        SQLException.class,
-        () -> rangeBoundaryDoFn.processElement(input, mockOut, mockProcessContext));
   }
 }

@@ -17,12 +17,14 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +41,7 @@ public class RangeCombinerTest {
 
     Range rangeBase =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -79,6 +82,59 @@ public class RangeCombinerTest {
     PAssert.that(output).containsInAnyOrder(ranges);
 
     // Run the pipeline
+    pipeline.run();
+  }
+
+  @Test
+  public void testPerKeyBatched() {
+    // Arrange
+    final int numBatches = 10;
+    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
+    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
+
+    Range range1 =
+        Range.builder()
+            .setTableIdentifier(table1)
+            .setColName("col1")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(20L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    Range range1a = range1.split(null).getLeft();
+    Range range1b = range1.split(null).getRight();
+
+    Range range2 =
+        Range.builder()
+            .setTableIdentifier(table2)
+            .setColName("col2")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(30L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    Range range2a = range2.split(null).getLeft();
+    Range range2b = range2.split(null).getRight();
+
+    PCollection<Range> input = pipeline.apply(Create.of(range1a, range1b, range2a, range2b));
+
+    // Act
+    PCollection<KV<Integer, ImmutableList<Range>>> output =
+        input.apply(RangeCombiner.perKeyBatched(numBatches));
+
+    // Assert
+    int key1 = Math.floorMod(table1.hashCode(), numBatches);
+    int key2 = Math.floorMod(table2.hashCode(), numBatches);
+
+    // Note: The order within the ImmutableList matters for the assertion.
+    // The RangeCombiner sorts the ranges, so we should expect them in sorted order.
+    PAssert.that(output)
+        .containsInAnyOrder(
+            KV.of(key1, ImmutableList.of(range1a, range1b)),
+            KV.of(key2, ImmutableList.of(range2a, range2b)));
+
     pipeline.run();
   }
 }

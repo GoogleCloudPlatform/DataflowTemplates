@@ -69,7 +69,7 @@ public class MysqlDialectAdapterTest {
     final String testTable = "testTable";
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();
-    final ResultSet mockResultSet = getMockInfoSchemaRs();
+    final ResultSet mockResultSet = getMockInfoSchemaRs(testTable);
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
@@ -84,6 +84,37 @@ public class MysqlDialectAdapterTest {
                     SourceSchemaReference.ofJdbc(sourceSchemaReference),
                     ImmutableList.of(testTable)))
         .isEqualTo(getExpectedColumnMapping(testTable));
+  }
+
+  @Test
+  public void testDiscoverTableSchemaBulk() throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String table2 = "table2";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(table1, table2);
+    when(mockResultSet.getString(InformationSchemaCols.NAME_COL)).thenReturn("col1", "col2");
+    when(mockResultSet.getString(InformationSchemaCols.TYPE_COL)).thenReturn("int", "int");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableSchema(
+                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                    mockDataSource),
+                SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                ImmutableList.of(table1, table2));
+
+    assertThat(result).hasSize(2);
+    assertThat(result).containsKey(table1);
+    assertThat(result).containsKey(table2);
   }
 
   @Test
@@ -192,9 +223,9 @@ public class MysqlDialectAdapterTest {
   public void testGetSchemaDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getSchemaDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build()))
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1))
         .isEqualTo(
-            "SELECT COLUMN_NAME,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME = ?");
+            "SELECT TABLE_NAME, COLUMN_NAME,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = 'testDB' AND TABLE_NAME IN (?)");
   }
 
   @Test
@@ -318,6 +349,7 @@ public class MysqlDialectAdapterTest {
 
     wireMockResultSet(
         colTypes, getExpectedSourceColumnIndexInfosForBasicIndexes(true), mockResultSet);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(testTables.get(0));
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
@@ -329,6 +361,46 @@ public class MysqlDialectAdapterTest {
 
     assertThat(discoveredIndexes)
         .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  @Test
+  public void testDiscoverTableIndexesBulk()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String table2 = "table2";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(table1, table2);
+    when(mockResultSet.getMetaData()).thenReturn(mock(ResultSetMetaData.class));
+    when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL))
+        .thenReturn("col1", "col2");
+    when(mockResultSet.getString(InformationSchemaStatsCols.INDEX_NAME_COL))
+        .thenReturn("pk1", "pk2");
+    when(mockResultSet.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL))
+        .thenReturn(false, false);
+    when(mockResultSet.getLong(InformationSchemaStatsCols.CARDINALITY_COL)).thenReturn(10L, 20L);
+    when(mockResultSet.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL)).thenReturn(1L, 1L);
+    when(mockResultSet.getString(InformationSchemaStatsCols.TYPE_COL)).thenReturn("int", "int");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(
+                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                    mockDataSource),
+                SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                ImmutableList.of(table1, table2));
+
+    assertThat(result).hasSize(2);
+    assertThat(result).containsKey(table1);
+    assertThat(result).containsKey(table2);
   }
 
   private ImmutableList<SourceColumnIndexInfo> getExpectedSourceColumnIndexInfosForBasicIndexes(
@@ -538,9 +610,14 @@ public class MysqlDialectAdapterTest {
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(testTables.get(0));
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
-            .discoverTableIndexes(mockDataSource, sourceSchemaReference, testTables);
+            .discoverTableIndexes(
+                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                    mockDataSource),
+                SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                testTables);
 
     assertThat(discoveredIndexes)
         .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
@@ -651,9 +728,9 @@ public class MysqlDialectAdapterTest {
   public void testGetIndexDiscoveryQuery() {
     assertThat(
             MysqlDialectAdapter.getIndexDiscoveryQuery(
-                JdbcSchemaReference.builder().setDbName("testDB").build()))
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1))
         .isEqualTo(
-            "SELECT * FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME = ?");
+            "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as 'stats.COLUMN_NAME', stats.INDEX_NAME as 'stats.INDEX_NAME', stats.SEQ_IN_INDEX as 'stats.SEQ_IN_INDEX', stats.NON_UNIQUE as 'stats.NON_UNIQUE', stats.CARDINALITY as 'stats.CARDINALITY', cols.COLUMN_TYPE as 'cols.COLUMN_TYPE', cols.CHARACTER_MAXIMUM_LENGTH as 'cols.CHARACTER_MAXIMUM_LENGTH', cols.CHARACTER_SET_NAME as 'cols.CHARACTER_SET_NAME', cols.COLLATION_NAME as 'cols.COLLATION_NAME', cols.DATETIME_PRECISION as 'cols.DATETIME_PRECISION', collations.PAD_ATTRIBUTE as 'collations.PAD_ATTRIBUTE', cols.NUMERIC_SCALE as 'cols.NUMERIC_SCALE'  FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME IN (?)");
   }
 
   @Test
@@ -772,28 +849,230 @@ public class MysqlDialectAdapterTest {
         .isFalse();
   }
 
-  private static ResultSet getMockInfoSchemaRs() throws SQLException {
+  @Test
+  public void testGetCollationsOrderQuery() {
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    String dbCharset = "utf8mb4";
+    String dbCollation = "utf8mb4_0900_ai_ci";
+    boolean padSpace = true; // padSpace doesn't affect the query string in MySQL implementation
+
+    String query = adapter.getCollationsOrderQuery(dbCharset, dbCollation, padSpace);
+
+    assertThat(query).contains("'" + dbCharset + "'");
+    assertThat(query).contains("'" + dbCollation + "'");
+  }
+
+  @Test
+  public void testEscapeMySql() {
+    assertThat(MysqlDialectAdapter.escapeMySql("binary")).isEqualTo("`binary`");
+    assertThat(MysqlDialectAdapter.escapeMySql("`binary`")).isEqualTo("`binary`");
+  }
+
+  @Test
+  public void testDiscoverTableSchema_emptyTableList()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        adapter.discoverTableSchema(
+            com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                mockDataSource),
+            SourceSchemaReference.ofJdbc(sourceSchemaReference),
+            ImmutableList.of());
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  public void testDiscoverTableIndexes_emptyTableList()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        adapter.discoverTableIndexes(
+            com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                mockDataSource),
+            SourceSchemaReference.ofJdbc(sourceSchemaReference),
+            ImmutableList.of());
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  public void testDiscoverTableSchema_skipsExtraTables()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String extraTable = "extraTable";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(table1, extraTable);
+    when(mockResultSet.getString(InformationSchemaCols.NAME_COL)).thenReturn("col1", "col2");
+    when(mockResultSet.getString(InformationSchemaCols.TYPE_COL)).thenReturn("int", "int");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableSchema(
+                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                    mockDataSource),
+                SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                ImmutableList.of(table1));
+
+    assertThat(result).hasSize(1);
+    assertThat(result).containsKey(table1);
+    assertThat(result).doesNotContainKey(extraTable);
+  }
+
+  @Test
+  public void testDiscoverTableIndexes_skipsExtraTables()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String extraTable = "extraTable";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    final ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("TABLE_NAME")).thenReturn(table1, extraTable);
+    when(mockResultSet.getMetaData()).thenReturn(mock(ResultSetMetaData.class));
+    when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL))
+        .thenReturn("col1", "col2");
+    when(mockResultSet.getString(InformationSchemaStatsCols.INDEX_NAME_COL))
+        .thenReturn("pk1", "pk2");
+    when(mockResultSet.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL))
+        .thenReturn(false, false);
+    when(mockResultSet.getLong(InformationSchemaStatsCols.CARDINALITY_COL)).thenReturn(10L, 20L);
+    when(mockResultSet.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL)).thenReturn(1L, 1L);
+    when(mockResultSet.getString(InformationSchemaStatsCols.TYPE_COL)).thenReturn("int", "int");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+            .discoverTableIndexes(
+                com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                    mockDataSource),
+                SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                ImmutableList.of(table1));
+
+    assertThat(result).hasSize(1);
+    assertThat(result).containsKey(table1);
+    assertThat(result).doesNotContainKey(extraTable);
+  }
+
+  @Test
+  public void testGetPadSpaceString() throws SQLException {
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    ResultSet mockRs = mock(ResultSet.class);
+    ResultSetMetaData mockMd = mock(ResultSetMetaData.class);
+    when(mockRs.getMetaData()).thenReturn(mockMd);
+
+    // Case 1: Column exists, returns value
+    when(mockMd.getColumnCount()).thenReturn(1);
+    when(mockMd.getColumnName(1)).thenReturn(InformationSchemaStatsCols.PAD_SPACE_COL);
+    when(mockRs.getString(InformationSchemaStatsCols.PAD_SPACE_COL)).thenReturn("NO PAD");
+    assertThat(adapter.getPadSpaceString(mockRs)).isEqualTo("NO PAD");
+
+    // Case 2: Column exists, returns null
+    when(mockRs.getString(InformationSchemaStatsCols.PAD_SPACE_COL)).thenReturn(null);
+    assertThat(adapter.getPadSpaceString(mockRs)).isNull();
+
+    // Case 3: Column does not exist, returns PAD SPACE
+    when(mockMd.getColumnCount()).thenReturn(0);
+    assertThat(adapter.getPadSpaceString(mockRs)).isEqualTo(MysqlDialectAdapter.PAD_SPACE);
+  }
+
+  @Test
+  public void testResultSetToSourceColumnIndexInfo_padSpace()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String testTable = "testTable";
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    doNothing().when(mockPreparedStatement).setString(1, testTable);
+
+    // We'll run this with different padSpace return values
+    String[] padSpaceValues = {null, "PAD SPACE", "NO PAD"};
+    Boolean[] expectedPadSpace = {false, true, false};
+
+    for (int i = 0; i < padSpaceValues.length; i++) {
+      final ResultSet mockResultSet = mock(ResultSet.class);
+      ResultSetMetaData mockMd = mock(ResultSetMetaData.class);
+      when(mockResultSet.getMetaData()).thenReturn(mockMd);
+      when(mockMd.getColumnCount()).thenReturn(1);
+      when(mockMd.getColumnName(1)).thenReturn(InformationSchemaStatsCols.PAD_SPACE_COL);
+      when(mockResultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL))
+          .thenReturn(padSpaceValues[i]);
+
+      when(mockResultSet.next()).thenReturn(true, false);
+      when(mockResultSet.getString("TABLE_NAME")).thenReturn(testTable);
+      when(mockResultSet.getString(InformationSchemaStatsCols.COL_NAME_COL)).thenReturn("col1");
+      when(mockResultSet.getString(InformationSchemaStatsCols.INDEX_NAME_COL)).thenReturn("pk");
+      when(mockResultSet.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL)).thenReturn(false);
+      when(mockResultSet.getLong(InformationSchemaStatsCols.CARDINALITY_COL)).thenReturn(10L);
+      when(mockResultSet.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL)).thenReturn(1L);
+      when(mockResultSet.getString(InformationSchemaStatsCols.TYPE_COL)).thenReturn("varchar(10)");
+      when(mockResultSet.getInt(InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL)).thenReturn(10);
+      when(mockResultSet.getString(InformationSchemaStatsCols.CHARACTER_SET_COL))
+          .thenReturn("utf8");
+      when(mockResultSet.getString(InformationSchemaStatsCols.COLLATION_COL))
+          .thenReturn("utf8_general_ci");
+      when(mockResultSet.wasNull())
+          .thenReturn(false, true, true); // for charMaxLength, scale, precision
+
+      when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+      ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+          new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+              .discoverTableIndexes(
+                  com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.ofJdbc(
+                      mockDataSource),
+                  SourceSchemaReference.ofJdbc(sourceSchemaReference),
+                  ImmutableList.of(testTable));
+
+      assertThat(result.get(testTable).get(0).collationReference().padSpace())
+          .isEqualTo(expectedPadSpace[i]);
+    }
+  }
+
+  private static ResultSet getMockInfoSchemaRs(String tableName) throws SQLException {
     return new MockRSBuilder(
             MockInformationSchema.builder()
                 /* Row of Information Schema Table */
+                .withTableName(tableName)
                 .withColName("int_col")
                 .withDataType("int")
                 .withCharMaxLength(null)
                 .withNumericPrecision(null)
                 .withNumericScale(null)
                 /* Row of Information Schema Table */
+                .withTableName(tableName)
                 .withColName("varbinary_col")
                 .withDataType("varbinary(10)")
                 .withCharMaxLength(10L)
                 .withNumericPrecision(null)
                 .withNumericScale(null)
                 /* Row of Information Schema Table */
+                .withTableName(tableName)
                 .withColName("dec_precision_col")
                 .withDataType("dec(10)")
                 .withCharMaxLength(null)
                 .withNumericPrecision(10L)
                 .withNumericScale(null)
                 /* Row of Information Schema Table. */
+                .withTableName(tableName)
                 .withColName("dec_precision_scale_col")
                 .withDataType("dec")
                 .withCharMaxLength(null)
@@ -801,6 +1080,7 @@ public class MysqlDialectAdapterTest {
                 .withNumericScale(5L)
                 /* Test DataType normalizations */
                 /* Row of Information Schema Table.*/
+                .withTableName(tableName)
                 .withColName("tinyint_col")
                 .withDataType("Tinyint(1)")
                 .withCharMaxLength(null)
@@ -808,6 +1088,7 @@ public class MysqlDialectAdapterTest {
                 .withNumericScale(null)
 
                 /* Row of Information Schema Table.*/
+                .withTableName(tableName)
                 .withColName("bigint_col")
                 .withDataType("BIGINT(20)")
                 .withCharMaxLength(null)
@@ -815,6 +1096,7 @@ public class MysqlDialectAdapterTest {
                 .withNumericScale(null)
 
                 /* Row of Information Schema Table.*/
+                .withTableName(tableName)
                 .withColName("bigint_unsigned_col")
                 .withDataType("BIGINT(20) UNSIGNED")
                 .withCharMaxLength(null)
@@ -822,11 +1104,13 @@ public class MysqlDialectAdapterTest {
                 .withNumericScale(null)
 
                 /* Row of Information Schema Table.*/
+                .withTableName(tableName)
                 .withColName("int_unsigned_col")
                 .withDataType("int(20) UNSIGNED")
                 .withCharMaxLength(null)
                 .withNumericPrecision(null)
                 .withNumericScale(null)
+                .withTableName(tableName)
                 .withColName("tiny_int_unsigned_col")
                 .withDataType("tinyint(20) UNSIGNED")
                 .withCharMaxLength(null)
@@ -857,12 +1141,6 @@ public class MysqlDialectAdapterTest {
             .put("tiny_int_unsigned_col", new SourceColumnType("TINYINT", new Long[] {}, null))
             .build());
   }
-
-  @Test
-  public void testEscapeMySql() {
-    assertThat(MysqlDialectAdapter.escapeMySql("binary")).isEqualTo("`binary`");
-    assertThat(MysqlDialectAdapter.escapeMySql("`binary`")).isEqualTo("`binary`");
-  }
 }
 
 class MockRSBuilder {
@@ -887,6 +1165,14 @@ class MockRSBuilder {
             })
         .when(rs)
         .next();
+
+    // mock rs.getString("TABLE_NAME");
+    doAnswer(
+            invocation -> {
+              return schema.tableNames().get(rowIndex);
+            })
+        .when(rs)
+        .getString("TABLE_NAME");
 
     // mock rs.getString("COLUMN_NAME");
     doAnswer(
@@ -938,6 +1224,8 @@ class MockRSBuilder {
 
 @AutoValue
 abstract class MockInformationSchema {
+  abstract ImmutableList<String> tableNames();
+
   abstract ImmutableList<String> colNames();
 
   abstract ImmutableList<String> dataTypes();
@@ -961,6 +1249,8 @@ abstract class MockInformationSchema {
   @AutoValue.Builder
   abstract static class Builder {
 
+    abstract ImmutableList.Builder<String> tableNamesBuilder();
+
     abstract ImmutableList.Builder<String> colNamesBuilder();
 
     abstract ImmutableList.Builder<String> dataTypesBuilder();
@@ -976,6 +1266,11 @@ abstract class MockInformationSchema {
     abstract ImmutableList.Builder<Long> numericScalesBuilder();
 
     abstract ImmutableList.Builder<Boolean> numericScaleWasNullsBuilder();
+
+    public Builder withTableName(String tableName) {
+      this.tableNamesBuilder().add(tableName);
+      return this;
+    }
 
     public Builder withColName(String colName) {
       this.colNamesBuilder().add(colName);
