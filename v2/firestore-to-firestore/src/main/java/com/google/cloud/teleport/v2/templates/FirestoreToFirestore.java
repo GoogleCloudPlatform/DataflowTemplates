@@ -36,13 +36,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreV1.WriteFailure;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.MetricNameFilter;
+import org.apache.beam.sdk.metrics.MetricQueryResults;
+import org.apache.beam.sdk.metrics.MetricResult;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -297,7 +306,8 @@ public class FirestoreToFirestore {
                       failure -> {
                         return String.format(
                             "Write failed for document: %s, error: %s",
-                            getDocumentName(failure.getWrite()), failure.getStatus());
+                            getDocumentNameFromWriteFailure(failure.getWrite()),
+                            failure.getStatus());
                       }));
 
       // 7. Log errors to GCS if errorWritePath is provided
@@ -316,15 +326,62 @@ public class FirestoreToFirestore {
                 .withWindowedWrites());
       }
 
-      p.run();
-      LOG.info("Pipeline.run() called.");
+      // 8. Count the total number of errors
+      allErrors.apply(
+          "CountTotalErrors",
+          ParDo.of(
+              new DoFn<String, Void>() {
+                private final Counter numErrors =
+                    Metrics.counter("FirestoreToFirestore", "numErrors");
+
+                @ProcessElement
+                public void processElement(ProcessContext c) {
+                  numErrors.inc();
+                }
+              }));
+
+      // 9. Run the pipeline and wait for it to finish
+      PipelineResult result = p.run();
+      result.waitUntilFinish();
+      LOG.info("Pipeline finished.");
+
+      // 10. Check if there were any errors after the pipeline is done
+      long errorCount = 0;
+      try {
+        MetricQueryResults metricResults =
+            result
+                .metrics()
+                .queryMetrics(
+                    MetricsFilter.builder()
+                        .addNameFilter(MetricNameFilter.named("FirestoreToFirestore", "numErrors"))
+                        .build());
+
+        Iterable<MetricResult<Long>> counters = metricResults.getCounters();
+        if (counters.iterator().hasNext()) {
+          errorCount = counters.iterator().next().getCommitted();
+        }
+      } catch (Exception e) {
+        LOG.warn("Could not retrieve error count metric: " + e.getMessage(), e);
+        throw new RuntimeException(
+            "Pipeline completed, but failed to retrieve error count metric.", e);
+      }
+
+      if (errorCount > 0) {
+        LOG.error("Pipeline completed with {} errors. Check error logs for details.", errorCount);
+        throw new RuntimeException(
+            "Pipeline completed with "
+                + errorCount
+                + " errors during read/write operations. Check error logs for details.");
+      } else {
+        LOG.info("Pipeline completed successfully with no errors.");
+      }
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
     }
   }
 
-  private static String getDocumentName(Write write) {
+  private static String getDocumentNameFromWriteFailure(Write write) {
     if (write.hasUpdate()) {
       return write.getUpdate().getName();
     }
