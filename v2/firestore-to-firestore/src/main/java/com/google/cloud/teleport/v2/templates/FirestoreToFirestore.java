@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
           + " them to another Firestore database. ",
       "It is not supported for Enterprise edition databases to be the source.",
       "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database. Any errors that occur during operation are recorded in error queues. \n",
+          + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
