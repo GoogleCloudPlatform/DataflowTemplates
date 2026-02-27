@@ -22,6 +22,8 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -38,9 +40,17 @@ public class RunQueryResponseToDocumentFnTest {
     RunQueryResponse response = RunQueryResponse.newBuilder().setDocument(testDoc).build();
 
     PCollection<RunQueryResponse> input = p.apply(Create.of(response));
-    PCollection<Document> output = input.apply(ParDo.of(new RunQueryResponseToDocumentFn()));
+    PCollectionTuple output =
+        input.apply(
+            ParDo.of(new RunQueryResponseToDocumentFn())
+                .withOutputTags(
+                    RunQueryResponseToDocumentFn.DOCUMENT_TAG,
+                    TupleTagList.of(RunQueryResponseToDocumentFn.ERROR_TAG)));
+    PCollection<Document> outputDocs = output.get(RunQueryResponseToDocumentFn.DOCUMENT_TAG);
+    PCollection<String> outputErrors = output.get(RunQueryResponseToDocumentFn.ERROR_TAG);
 
-    PAssert.that(output).containsInAnyOrder(testDoc);
+    PAssert.that(outputDocs).containsInAnyOrder(testDoc);
+    PAssert.that(outputErrors).empty();
     p.run();
   }
 
@@ -52,9 +62,18 @@ public class RunQueryResponseToDocumentFnTest {
             .build(); // No document
 
     PCollection<RunQueryResponse> input = p.apply(Create.of(response));
-    PCollection<Document> output = input.apply(ParDo.of(new RunQueryResponseToDocumentFn()));
+    PCollectionTuple output =
+        input.apply(
+            ParDo.of(new RunQueryResponseToDocumentFn())
+                .withOutputTags(
+                    RunQueryResponseToDocumentFn.DOCUMENT_TAG,
+                    TupleTagList.of(RunQueryResponseToDocumentFn.ERROR_TAG)));
+    PCollection<Document> outputDocs = output.get(RunQueryResponseToDocumentFn.DOCUMENT_TAG);
+    PCollection<String> outputErrors = output.get(RunQueryResponseToDocumentFn.ERROR_TAG);
 
-    PAssert.that(output).empty();
+    PAssert.that(outputDocs).empty();
+    PAssert.that(outputErrors)
+        .containsInAnyOrder("Response is null or has no document: " + response);
     p.run();
   }
 }

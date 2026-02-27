@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.firestore.v1.Document;
 import com.google.firestore.v1.RunQueryResponse;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.TupleTag;
 
 /** DoFn to extract Documents from a RunQueryResponse. */
 public class RunQueryResponseToDocumentFn extends DoFn<RunQueryResponse, Document> {
