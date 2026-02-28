@@ -157,6 +157,9 @@ public class ShadowTableCreator {
             .filter(col -> primaryKeyColNames.contains(col.name()))
             .collect(Collectors.toList());
     for (Column col : primaryKeyCols) {
+      // Generated expression should be removed from the shadow table columns.
+      // This is requried as shadow table only contains primary key columns.
+      col = col.toBuilder().isGenerated(false).generationExpression("").autoBuild();
       shadowTableBuilder.addColumn(col);
     }
 

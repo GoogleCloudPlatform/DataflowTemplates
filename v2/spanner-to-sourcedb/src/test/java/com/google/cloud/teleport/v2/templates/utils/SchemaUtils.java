@@ -56,6 +56,8 @@ public final class SchemaUtils {
   private static final String KEY_SCHEMA = "Schema";
   private static final String KEY_LEN = "Len";
   private static final String KEY_NOT_NULL = "NotNull";
+  private static final String KEY_GENERATED = "GeneratedColumn";
+  private static final String KEY_GENERATED_IS_PRESENT = "IsPresent";
 
   // Defines constants for Spanner data types found in the session file.
   private static final String SPANNER_TYPE_STRING = "STRING";
@@ -194,12 +196,19 @@ public final class SchemaUtils {
               if (len instanceof Number) {
                 size = ((Number) len).longValue();
               }
+              boolean isGenerated = false;
+              if (colMap.get(KEY_GENERATED) != null) {
+                Map<String, Object> generatedColDefinition =
+                    (Map<String, Object>) colMap.get(KEY_GENERATED);
+                isGenerated = generatedColDefinition.containsKey(KEY_GENERATED_IS_PRESENT);
+              }
               SourceColumn.Builder colBuilder =
                   SourceColumn.builder(dbType)
                       .name((String) colMap.get(KEY_NAME))
                       .type(typeName)
                       .isNullable(
                           !(colMap.get(KEY_NOT_NULL) != null && (Boolean) colMap.get(KEY_NOT_NULL)))
+                      .isGenerated(isGenerated)
                       .size(size);
               columnsBuilder.add(colBuilder.build());
             }

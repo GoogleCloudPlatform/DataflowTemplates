@@ -788,6 +788,282 @@ public class AssignShardIdFnTest {
   }
 
   @Test
+  public void testProcessElementWithGeneratedColumnsInsert() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
+    // Change table name to "generated_table"
+    record =
+        new TrimmedShardedDataChangeRecord(
+            record.getCommitTimestamp(),
+            record.getServerTransactionId(),
+            record.getRecordSequence(),
+            "generated_table",
+            record.getMod(),
+            record.getModType(),
+            record.getNumberOfRecordsInTransaction(),
+            "");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    // Add "generated_table" to DDL so `AssignShardIdFn` can find primary keys
+    ddl =
+        ddl.toBuilder()
+            .createTable("generated_table")
+            .column("accountId")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountName")
+            .string()
+            .max()
+            .endColumn()
+            .column("migration_shard_id")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountNumber")
+            .int64()
+            .endColumn()
+            .column("generated_col")
+            .string()
+            .max()
+            .generatedAs("ACCOUNT_NAME")
+            .endColumn()
+            .primaryKey()
+            .asc("accountId")
+            .end()
+            .endTable()
+            .build();
+
+    // Setup source schema
+    SourceTable sourceTable =
+        SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("generated_table")
+            .schema(null)
+            .primaryKeyColumns(ImmutableList.of("accountId"))
+            .columns(
+                ImmutableList.of(
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountId")
+                        .type("varchar")
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountName")
+                        .type("varchar")
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("varchar")
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountNumber")
+                        .type("bigint")
+                        .build(),
+                    // Source column is NOT generated!
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("generated_col")
+                        .type("varchar")
+                        .isGenerated(false)
+                        .build()))
+            .build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder(SourceDatabaseType.MYSQL)
+            .databaseName("testdb")
+            .tables(ImmutableMap.of("generated_table", sourceTable))
+            .build();
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    Struct mockFetchedRow = mock(Struct.class);
+    when(mockFetchedRow.getString("generated_col")).thenReturn("COMPUTED_VAL");
+    when(mockFetchedRow.getValue("generated_col")).thenReturn(Value.string("COMPUTED_VAL"));
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getCurrentRowAsStruct()).thenReturn(mockFetchedRow);
+    when(mockReadOnlyTransaction.read(
+            eq("generated_table"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenReturn(mockResultSet);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_SINGLE_SHARD,
+            "shard1",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            null,
+            "",
+            "",
+            "");
+
+    record.setShard("shard1");
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    // Verify the output has the generated column appended
+    ArgumentCaptor<KV<Long, TrimmedShardedDataChangeRecord>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext, atLeast(1)).output(captor.capture());
+
+    TrimmedShardedDataChangeRecord outputRecord = captor.getValue().getValue();
+    assertEquals("shard1", outputRecord.getShard());
+    org.junit.Assert.assertTrue(
+        outputRecord.getMod().getNewValuesJson().contains("\"generated_col\":\"COMPUTED_VAL\""));
+  }
+
+  @Test
+  public void testProcessElementWithGeneratedColumnsUpdate() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
+    record =
+        new TrimmedShardedDataChangeRecord(
+            record.getCommitTimestamp(),
+            record.getServerTransactionId(),
+            record.getRecordSequence(),
+            "generated_table",
+            record.getMod(),
+            ModType.valueOf("UPDATE"),
+            record.getNumberOfRecordsInTransaction(),
+            "");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    ddl =
+        ddl.toBuilder()
+            .createTable("generated_table")
+            .column("accountId")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountName")
+            .string()
+            .max()
+            .endColumn()
+            .column("migration_shard_id")
+            .string()
+            .max()
+            .endColumn()
+            .column("accountNumber")
+            .int64()
+            .endColumn()
+            .column("generated_col")
+            .string()
+            .max()
+            .generatedAs("ACCOUNT_NAME")
+            .endColumn()
+            .primaryKey()
+            .asc("accountId")
+            .end()
+            .endTable()
+            .build();
+
+    SourceTable sourceTable =
+        SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("generated_table")
+            .schema(null)
+            .primaryKeyColumns(ImmutableList.of("accountId"))
+            .columns(
+                ImmutableList.of(
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountId")
+                        .type("varchar")
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountName")
+                        .type("varchar")
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("varchar")
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountNumber")
+                        .type("bigint")
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("generated_col")
+                        .type("varchar")
+                        .isGenerated(false)
+                        .build()))
+            .build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder(SourceDatabaseType.MYSQL)
+            .databaseName("testdb")
+            .tables(ImmutableMap.of("generated_table", sourceTable))
+            .build();
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    Struct mockFetchedRow = mock(Struct.class);
+    when(mockFetchedRow.getString("generated_col")).thenReturn("COMPUTED_VAL_UPDATE");
+    when(mockFetchedRow.getValue("generated_col")).thenReturn(Value.string("COMPUTED_VAL_UPDATE"));
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getCurrentRowAsStruct()).thenReturn(mockFetchedRow);
+    when(mockReadOnlyTransaction.read(
+            eq("generated_table"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenReturn(mockResultSet);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_SINGLE_SHARD,
+            "shard1",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            null,
+            "",
+            "",
+            "");
+
+    record.setShard("shard1");
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    ArgumentCaptor<KV<Long, TrimmedShardedDataChangeRecord>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext, atLeast(1)).output(captor.capture());
+
+    TrimmedShardedDataChangeRecord outputRecord = captor.getValue().getValue();
+    assertEquals("shard1", outputRecord.getShard());
+    org.junit.Assert.assertTrue(
+        outputRecord
+            .getMod()
+            .getNewValuesJson()
+            .contains("\"generated_col\":\"COMPUTED_VAL_UPDATE\""));
+  }
+
+  @Test
   public void testProcessElementSpannerSevereException() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);

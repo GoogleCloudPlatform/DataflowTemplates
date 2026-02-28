@@ -233,6 +233,9 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
       }
+      if (sourceColDef.isGenerated()) {
+        continue;
+      }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
         response.put(colName, customTransformationResponse.get(colName).toString());
         continue;
@@ -302,6 +305,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       customTransformColumns = customTransformationResponse.keySet();
     }
 
+    boolean doesGeneratedColumnExist = false;
+
     for (int i = 0; i < sourcePKs.size(); i++) {
       String sourceColName = sourcePKs.get(i);
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
@@ -309,6 +314,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "The source column definition for {} was not found in source schema", sourceColName);
         return null;
+      }
+
+      if (sourceColDef.isGenerated()) {
+        doesGeneratedColumnExist = true;
+        continue;
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
@@ -359,6 +369,25 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       }
 
       response.put(sourceColName, columnValue);
+    }
+
+    if (doesGeneratedColumnExist) {
+      // Generated column expression between source DB and spanner can have
+      // differences. Hence, values of generated column cannot be used from the change
+      // stream. If Primary key is generated column, then the DML statement need to
+      // have the respective dependent column values. Since we cannot identify the
+      // dependent columns, we are adding all the non-generated columns to the
+      // response.
+      Map<String, String> generatedColumnValues =
+          getColumnValues(
+              schemaMapper,
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
+      response.putAll(generatedColumnValues);
     }
 
     return response;
