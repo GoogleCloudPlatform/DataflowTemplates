@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL;
+import static com.google.cloud.spanner.Dialect.POSTGRESQL;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
 import com.google.auto.value.AutoValue;
@@ -60,6 +62,9 @@ public abstract class Udf implements Serializable {
   @Nullable
   public abstract SqlSecurity security();
 
+  @Nullable
+  public abstract String spannerDeterminism();
+
   public abstract ImmutableList<UdfParameter> parameters();
 
   public void prettyPrint(Appendable appendable) throws IOException {
@@ -79,12 +84,33 @@ public abstract class Udf implements Serializable {
     }
     SqlSecurity rights = security();
     if (rights != null) {
-      appendable.append(" SQL SECURITY ").append(rights.toString());
+      if (dialect() == GOOGLE_STANDARD_SQL) {
+        appendable.append(" SQL");
+      }
+      appendable.append(" SECURITY ").append(rights.toString());
+    }
+    if (spannerDeterminism() != null && dialect() == POSTGRESQL) {
+      switch (spannerDeterminism()) {
+        case "DETERMINISTIC":
+          appendable.append(" IMMUTABLE");
+          break;
+        case "NOT_DETERMINISTIC_STABLE":
+          appendable.append(" STABLE");
+          break;
+        case "NOT_DETERMINISTIC_VOLATILE":
+          appendable.append(" VOLATILE");
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unrecognized UDF determinism: " + spannerDeterminism());
+      }
     }
     if (definition() != null) {
-      appendable.append(" AS (");
-      appendable.append(definition());
-      appendable.append(")");
+      if (dialect() == GOOGLE_STANDARD_SQL) {
+        appendable.append(" AS (").append(definition()).append(")");
+      } else {
+        appendable.append(" RETURN ").append(definition());
+      }
     }
   }
 
@@ -169,6 +195,10 @@ public abstract class Udf implements Serializable {
 
     public abstract SqlSecurity security();
 
+    public abstract Builder spannerDeterminism(String spannerDeterminism);
+
+    public abstract String spannerDeterminism();
+
     public abstract Builder parameters(ImmutableList<UdfParameter> parameters);
 
     public ImmutableList<UdfParameter> parameters() {
@@ -209,6 +239,7 @@ public abstract class Udf implements Serializable {
           .type(type())
           .definition(definition())
           .security(security())
+          .spannerDeterminism(spannerDeterminism())
           .parameters(ImmutableList.copyOf(parameters()))
           .autoBuild();
     }

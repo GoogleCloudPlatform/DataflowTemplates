@@ -169,8 +169,13 @@ public class InformationSchemaScannerTest {
                 + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position"));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
+    assertThat(
+        postgresSQLInfoScanner.listFunctionParametersSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position"));
   }
 }
