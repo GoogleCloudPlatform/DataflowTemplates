@@ -554,6 +554,11 @@
       <artifactId>protobuf-java</artifactId>
       <version>4.33.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-cloudresourcemanager</artifactId>
+      <version>v3-rev20251103-2.0.0</version>
+    </dependency>
   </dependencies>
 
   <build>

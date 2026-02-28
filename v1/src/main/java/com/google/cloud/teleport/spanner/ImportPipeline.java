@@ -23,10 +23,18 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ImportPipeline.Options;
+import com.google.cloud.teleport.spanner.iam.IAMCheckResult;
+import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
+import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
+import com.google.cloud.teleport.spanner.iam.IAMResourceRequirements;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -34,6 +42,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Avro to Cloud Spanner Import pipeline.
@@ -59,6 +69,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
       "The input Cloud Storage path must exist, and it must include a <a href=\"https://cloud.google.com/spanner/docs/import-non-spanner#create-export-json\">spanner-export.json</a> file that contains a JSON description of files to import."
     })
 public class ImportPipeline {
+  private static final Logger LOG = LoggerFactory.getLogger(ImportPipeline.class);
 
   /** Options for {@link ImportPipeline}. */
   public interface Options extends PipelineOptions {
@@ -240,7 +251,6 @@ public class ImportPipeline {
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority());
-
     p.apply(
         new ImportTransform(
             spannerConfig,
@@ -253,6 +263,7 @@ public class ImportPipeline {
             options.getDdlCreationTimeoutInMinutes(),
             options.getEarlyIndexCreateThreshold()));
 
+    validateRequiredPermissions(options);
     PipelineResult result = p.run();
 
     if (options.getWaitUntilFinish()
@@ -262,6 +273,32 @@ public class ImportPipeline {
          */
         options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
+    }
+  }
+
+  private static void validateRequiredPermissions(Options options) {
+    try {
+      IAMResourceRequirements spannerRequirements =
+          IAMRequirementsCreator.createSpannerResourceRequirement();
+      GcpOptions gcpOptions = options.as(GcpOptions.class);
+
+      IAMPermissionsChecker iamPermissionsChecker =
+          new IAMPermissionsChecker(gcpOptions.getProject(), gcpOptions);
+      IAMCheckResult missingPermission =
+          iamPermissionsChecker.check(Collections.singletonList(spannerRequirements));
+      if (missingPermission.isPermissionsAvailable()) {
+        return;
+      }
+      String errorString =
+          "For resource: "
+              + missingPermission.getResourceName()
+              + ", missing permissions: "
+              + missingPermission.getMissingPermissions()
+              + ";";
+      throw new RuntimeException(errorString);
+    } catch (GeneralSecurityException | IOException e) {
+      LOG.error("Error while validating permissions for spanner service", e);
+      throw new RuntimeException(e);
     }
   }
 }
