@@ -644,4 +644,73 @@ public class ChangeEventSessionConvertorTest {
     assertEquals("A", actualEvent1.get("TalentName").asText());
     assertEquals("B", actualEvent2.get("RecordName").asText());
   }
+
+  @Test
+  public void testPopulateShardIdPreservesExistingValueWhenMetadataMissing() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    // Missing metadata keys to simulate DLQ event
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    changeEvent.put("migration_shard_id", "existing-shard-id");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    // transformChangeEventViaSessionFile calls populateShardId
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    assertEquals("existing-shard-id", actualEvent.get("migration_shard_id").asText());
+    assertEquals("migration_shard_id", actualEvent.get(Constants.SHARD_ID_COLUMN_NAME).asText());
+  }
+
+  @Test
+  public void testPopulateShardIdPreservesValueAndFixesMetadata() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    // Missing metadata keys to simulate DLQ event
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    changeEvent.put("migration_shard_id", "existing-shard-id");
+    changeEvent.put(Constants.SHARD_ID_COLUMN_NAME, "incorrect-shard-id");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    // transformChangeEventViaSessionFile calls populateShardId
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    assertEquals("existing-shard-id", actualEvent.get("migration_shard_id").asText());
+    assertEquals("migration_shard_id", actualEvent.get(Constants.SHARD_ID_COLUMN_NAME).asText());
+  }
+
+  @Test
+  public void testPopulateShardIdReturnsEmptyWhenValueAndMetadataMissing() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    // Missing metadata keys to simulate DLQ event
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    // transformChangeEventViaSessionFile calls populateShardId
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    assertEquals("", actualEvent.get("migration_shard_id").asText());
+    assertEquals("migration_shard_id", actualEvent.get(Constants.SHARD_ID_COLUMN_NAME).asText());
+  }
 }
