@@ -53,6 +53,7 @@ public interface DbConfigContainer {
    *
    * @param sourceTables
    * @param waitOnSignal
+   * @param schemaMapper
    * @return
    */
   IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);

@@ -772,6 +772,32 @@ public class MysqlDialectAdapterTest {
         .isFalse();
   }
 
+  @Test
+  public void testGetBoundaryDurationExtractor() throws Exception {
+    MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
+    com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter
+            .BoundaryDurationExtractor
+        extractor = adapter.getBoundaryDurationExtractor();
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.getBytes(1))
+        .thenReturn("10:11:12.123456".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    java.time.Duration result = extractor.extract(mockResultSet, 1);
+    assertThat(result)
+        .isEqualTo(
+            java.time.Duration.ofHours(10).plusMinutes(11).plusSeconds(12).plusNanos(123456000));
+
+    // Test negative durations
+    ResultSet mockNegativeResultSet = mock(ResultSet.class);
+    when(mockNegativeResultSet.getBytes(1))
+        .thenReturn("-838:59:59.000000".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    java.time.Duration negativeResult = extractor.extract(mockNegativeResultSet, 1);
+    assertThat(negativeResult)
+        .isEqualTo(java.time.Duration.ofHours(-838).minusMinutes(59).minusSeconds(59));
+  }
+
   private static ResultSet getMockInfoSchemaRs() throws SQLException {
     return new MockRSBuilder(
             MockInformationSchema.builder()

@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.util.UUID;
+import javax.annotation.Nullable;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
@@ -47,6 +48,9 @@ public abstract class SourceTableSchema implements Serializable {
   public abstract String tableSchemaUUID();
 
   public abstract String tableName();
+
+  @Nullable
+  public abstract Long estimatedRowSize();
 
   // Source Schema from metadata tables. SourceColumnType is similar to
   // com.google.cloud.teleport.v2.spanner.migrations.schema
@@ -88,6 +92,8 @@ public abstract class SourceTableSchema implements Serializable {
     public abstract Builder setTableSchemaUUID(String value);
 
     public abstract Builder setTableName(String value);
+
+    public abstract Builder setEstimatedRowSize(@Nullable Long value);
 
     @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
 

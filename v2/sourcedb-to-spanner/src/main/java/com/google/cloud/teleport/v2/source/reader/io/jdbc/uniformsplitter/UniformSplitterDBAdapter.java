@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -76,4 +79,13 @@ public interface UniformSplitterDBAdapter extends Serializable {
    * @return Query to get the order of collation.
    */
   String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace);
+
+  @FunctionalInterface
+  interface BoundaryDurationExtractor extends Serializable {
+    Duration extract(ResultSet rs, int index) throws SQLException;
+  }
+
+  default BoundaryDurationExtractor getBoundaryDurationExtractor() {
+    return (rs, index) -> BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  }
 }
