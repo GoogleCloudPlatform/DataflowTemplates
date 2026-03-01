@@ -64,4 +64,38 @@ public class DatastreamRowTest {
     assertEquals(pks.get(0), "id");
     assertEquals(pks.get(1), "name");
   }
+
+  @Test
+  public void testGetSortFields_sqlServer() {
+    TableRow r1 = new TableRow();
+    r1.set("_metadata_source_type", "sqlserver");
+    DatastreamRow row = DatastreamRow.of(r1);
+    List<String> sortFields = row.getSortFields();
+
+    assertEquals(Arrays.asList("_metadata_timestamp", "_metadata_lsn"), sortFields);
+  }
+
+  @Test
+  public void testGetSortFields_oracle() {
+    TableRow r1 = new TableRow();
+    r1.set("_metadata_source_type", "oracle");
+    DatastreamRow row = DatastreamRow.of(r1);
+    List<String> sortFields = row.getSortFields();
+
+    assertEquals(
+        Arrays.asList("_metadata_timestamp", "_metadata_scn", "_metadata_rs_id", "_metadata_ssn"),
+        sortFields);
+  }
+
+  @Test
+  public void testGetSortFields_mysql() {
+    TableRow r1 = new TableRow();
+    r1.set("_metadata_source_type", "mysql");
+    DatastreamRow row = DatastreamRow.of(r1);
+    List<String> sortFields = row.getSortFields();
+
+    assertEquals(
+        Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position"),
+        sortFields);
+  }
 }
