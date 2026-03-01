@@ -550,7 +550,7 @@ public class ChangeEventConvertorTest {
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
+  @Test
   public void validateSpannerSchemaWithIncorrectColumnName() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = new JSONObject();
@@ -560,6 +560,11 @@ public class ChangeEventConvertorTest {
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
+
+    assertThat(ce.has("first_name"), is(true));
+    assertThat(ce.has("last_name"), is(true));
+    assertThat(ce.has(DatastreamConstants.EVENT_TABLE_NAME_KEY), is(true));
+    assertThat(ce.has("test_column"), is(false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
