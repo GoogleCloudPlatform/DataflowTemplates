@@ -64,7 +64,14 @@ echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+# Pin Docker version to 20.10.x which supports API version 1.32.
+# This is required because some integration tests transitively depend on older versions of
+# testcontainers (e.g., 1.19.7) which rely on this older Docker API version.
+# Newer Docker versions (e.g., 23.x, 24.x) have dropped support for API 1.32, causing
+# "BadRequestException: client version 1.32 is too old" errors during test execution.
+# We can unpin the docker version and install latest docker when testcontainer version is upgraded in Apache Beam.
+DOCKER_VERSION_STRING="5:20.10.24~3-0~ubuntu-$(lsb_release -cs)"
+sudo apt install docker-ce=$DOCKER_VERSION_STRING docker-ce-cli=$DOCKER_VERSION_STRING containerd.io docker-compose-plugin -y
 
 # add user to docker group
 sudo groupadd docker
