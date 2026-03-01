@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.ads.googleads.v19.services.GoogleAdsRow;
+import com.google.ads.googleads.v23.services.GoogleAdsRow;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
