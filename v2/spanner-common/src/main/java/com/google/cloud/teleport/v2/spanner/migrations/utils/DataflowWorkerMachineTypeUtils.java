@@ -30,9 +30,9 @@ public class DataflowWorkerMachineTypeUtils {
   private static final Map<String, MachineSpec> MACHINE_SPEC_CACHE = new ConcurrentHashMap<>();
   private static final String DEFAULT_ZONE = "us-central1-a";
 
-  public static Double getWorkerMemoryGB(String projectId, String zone, String workerMachineType) {
+  public static Long getWorkerMemoryBytes(String projectId, String zone, String workerMachineType) {
     MachineSpec spec = getMachineSpec(projectId, zone, workerMachineType);
-    return spec != null ? spec.memoryGB : null;
+    return spec != null ? spec.memoryBytes : null;
   }
 
   public static Integer getWorkerCores(String projectId, String zone, String workerMachineType) {
@@ -80,16 +80,16 @@ public class DataflowWorkerMachineTypeUtils {
 
       // machineType.getMemoryMb() is int, returns memory in MB
       // machineType.getGuestCpus() is int
-      double memoryGB = machineType.getMemoryMb() / 1024.0;
+      long memoryBytes = machineType.getMemoryMb() * 1024L * 1024L;
       int vCPUs = machineType.getGuestCpus();
 
       LOG.info(
-          "Fetched machine type {} from API: {} vCPUs, {} GB RAM",
+          "Fetched machine type {} from API: {} vCPUs, {} Bytes RAM",
           workerMachineType,
           vCPUs,
-          memoryGB);
+          memoryBytes);
 
-      return new MachineSpec(memoryGB, vCPUs);
+      return new MachineSpec(memoryBytes, vCPUs);
     } catch (Exception e) {
       LOG.warn(
           "Failed to fetch machine type '{}' from Compute Engine API (Project: {}, Zone: {}): {}",
@@ -102,11 +102,11 @@ public class DataflowWorkerMachineTypeUtils {
   }
 
   private static class MachineSpec {
-    final double memoryGB;
+    final long memoryBytes;
     final int vCPUs;
 
-    MachineSpec(double memoryGB, int vCPUs) {
-      this.memoryGB = memoryGB;
+    MachineSpec(long memoryBytes, int vCPUs) {
+      this.memoryBytes = memoryBytes;
       this.vCPUs = vCPUs;
     }
   }
@@ -167,8 +167,8 @@ public class DataflowWorkerMachineTypeUtils {
   }
 
   @com.google.common.annotations.VisibleForTesting
-  static void putMachineSpecForTesting(String machineType, double memoryGB, int vCPUs) {
-    MACHINE_SPEC_CACHE.put(machineType, new MachineSpec(memoryGB, vCPUs));
+  static void putMachineSpecForTesting(String machineType, long memoryBytes, int vCPUs) {
+    MACHINE_SPEC_CACHE.put(machineType, new MachineSpec(memoryBytes, vCPUs));
   }
 
   @com.google.common.annotations.VisibleForTesting

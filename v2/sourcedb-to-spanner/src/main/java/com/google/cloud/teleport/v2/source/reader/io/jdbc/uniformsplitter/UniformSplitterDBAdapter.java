@@ -80,12 +80,7 @@ public interface UniformSplitterDBAdapter extends Serializable {
    */
   String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace);
 
-  @FunctionalInterface
-  interface BoundaryDurationExtractor extends Serializable {
-    Duration extract(ResultSet rs, int index) throws SQLException;
-  }
-
-  default BoundaryDurationExtractor getBoundaryDurationExtractor() {
-    return (rs, index) -> BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
+    return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
   }
 }

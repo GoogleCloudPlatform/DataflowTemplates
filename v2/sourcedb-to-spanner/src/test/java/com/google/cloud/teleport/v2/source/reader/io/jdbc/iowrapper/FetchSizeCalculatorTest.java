@@ -51,7 +51,7 @@ public final class FetchSizeCalculatorTest {
   @Test
   public void testGetFetchSize_ZeroRowSize() {
     // Test when estimated row size is 0.
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 0L, 16.0, 4);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 0L, 17179869184L, 4);
     assertEquals(0, fetchSize);
   }
 
@@ -64,7 +64,7 @@ public final class FetchSizeCalculatorTest {
     // Denominator = 4 * 4 * 1000 = 16,000
     // Expected Fetch Size = 17,179,869,184 / 16,000 = 1,073,741
 
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1000L, 16.0, 4);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1000L, 17179869184L, 4);
     assertEquals(1073741, fetchSize);
   }
 
@@ -80,7 +80,7 @@ public final class FetchSizeCalculatorTest {
     // Expected Fetch Size = 17,179,869,184 / 160 = 107,374,182
     // Integer.MAX_VALUE = 2,147,483,647. Result is within integer range.
 
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10L, 16.0, 4);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10L, 17179869184L, 4);
     assertEquals(107374182, fetchSize);
   }
 
@@ -93,7 +93,7 @@ public final class FetchSizeCalculatorTest {
     // Denominator = 4 * 4 * 10,485,760 = 167,772,160
     // Expected Fetch Size = 17,179,869,184 / 167,772,160 = 102
 
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10485760L, 16.0, 4);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10485760L, 17179869184L, 4);
     assertEquals(102, fetchSize);
   }
 
@@ -102,7 +102,7 @@ public final class FetchSizeCalculatorTest {
     // Test when cores are 0 (should typically be handled by Utils returning null or
     // >=1, but testing calculator logic).
     // In this case, providing 0 cores.
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, 16.0, 0);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, 17179869184L, 0);
     assertEquals(0, fetchSize);
   }
 
@@ -111,7 +111,7 @@ public final class FetchSizeCalculatorTest {
     // Null memory
     assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, 4));
     // Null cores
-    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 16.0, null));
+    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 17179869184L, null));
   }
 
   @Test
@@ -121,7 +121,7 @@ public final class FetchSizeCalculatorTest {
     // Row Size: 10,000,000 bytes
     // Denominator = 4 * 100 * 10,000,000 = 4,000,000,000
     // Expected Fetch Size is 0, which gets capped up to 1 (MIN_FETCH_SIZE)
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10000000L, 1.0, 100);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 10000000L, 1073741824L, 100);
     assertEquals(1, fetchSize);
   }
 
@@ -131,7 +131,7 @@ public final class FetchSizeCalculatorTest {
     // Cores: 1
     // Row Size: 1 byte
     // Expected Fetch Size cap to Integer.MAX_VALUE
-    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1L, 100.0, 1);
+    int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 1L, 107374182400L, 1);
     assertEquals(Integer.MAX_VALUE, fetchSize);
   }
 
@@ -143,7 +143,7 @@ public final class FetchSizeCalculatorTest {
         .thenThrow(new RuntimeException("Mock Exception"))
         .thenReturn("mock_table");
 
-    int fetchSize = FetchSizeCalculator.getFetchSize(mockTableConfig, 100L, 16.0, 4);
+    int fetchSize = FetchSizeCalculator.getFetchSize(mockTableConfig, 100L, 17179869184L, 4);
     assertEquals(0, fetchSize);
   }
 }

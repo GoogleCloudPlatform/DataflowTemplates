@@ -124,11 +124,8 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
   default long estimateRowSize(
       Map<String, SourceColumnType> sourceColumnNameToSourceColumnType,
       JdbcValueMappingsProvider jdbcValueMappingsProvider) {
-    long estimatedRowSize = 0;
-    for (Map.Entry<String, SourceColumnType> entry :
-        sourceColumnNameToSourceColumnType.entrySet()) {
-      estimatedRowSize += jdbcValueMappingsProvider.estimateColumnSize(entry.getValue());
-    }
-    return estimatedRowSize;
+    return sourceColumnNameToSourceColumnType.values().stream()
+        .map(jdbcValueMappingsProvider::estimateColumnSize)
+        .reduce(0, Integer::sum);
   }
 }

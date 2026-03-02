@@ -773,17 +773,14 @@ public class MysqlDialectAdapterTest {
   }
 
   @Test
-  public void testGetBoundaryDurationExtractor() throws Exception {
+  public void testExtractBoundaryDuration() throws Exception {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
-    com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter
-            .BoundaryDurationExtractor
-        extractor = adapter.getBoundaryDurationExtractor();
 
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockResultSet.getBytes(1))
         .thenReturn("10:11:12.123456".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
-    java.time.Duration result = extractor.extract(mockResultSet, 1);
+    java.time.Duration result = adapter.extractBoundaryDuration(mockResultSet, 1);
     assertThat(result)
         .isEqualTo(
             java.time.Duration.ofHours(10).plusMinutes(11).plusSeconds(12).plusNanos(123456000));
@@ -793,7 +790,7 @@ public class MysqlDialectAdapterTest {
     when(mockNegativeResultSet.getBytes(1))
         .thenReturn("-838:59:59.000000".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
-    java.time.Duration negativeResult = extractor.extract(mockNegativeResultSet, 1);
+    java.time.Duration negativeResult = adapter.extractBoundaryDuration(mockNegativeResultSet, 1);
     assertThat(negativeResult)
         .isEqualTo(java.time.Duration.ofHours(-838).minusMinutes(59).minusSeconds(59));
   }

@@ -256,9 +256,9 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
-  /** Worker Memory in GB. */
+  /** Worker Memory in Bytes. */
   @Nullable
-  public abstract Double workerMemoryGB();
+  public abstract Long workerMemoryBytes();
 
   /** Worker Cores. */
   @Nullable
@@ -292,7 +292,7 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMemoryGB(null)
+        .setWorkerMemoryBytes(null)
         .setWorkerCores(null);
   }
 
@@ -325,7 +325,7 @@ public abstract class JdbcIOWrapperConfig {
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
         .setSplitStageCountHint(-1L)
-        .setWorkerMemoryGB(null)
+        .setWorkerMemoryBytes(null)
         .setWorkerCores(null);
   }
 
@@ -399,7 +399,7 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setSplitStageCountHint(Long value);
 
-    public abstract Builder setWorkerMemoryGB(Double value);
+    public abstract Builder setWorkerMemoryBytes(Long value);
 
     public abstract Builder setWorkerCores(Integer value);
 

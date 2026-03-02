@@ -39,7 +39,7 @@ public final class FetchSizeCalculator {
    * @return The calculated fetch size, or 0 if it cannot be calculated.
    */
   public static Integer getFetchSize(
-      TableConfig tableConfig, long estimatedRowSize, Double workerMemoryGB, Integer workerCores) {
+      TableConfig tableConfig, long estimatedRowSize, Long workerMemoryBytes, Integer workerCores) {
     if (tableConfig.fetchSize() != null) {
       LOG.info(
           "Explicitly configured fetch size for table {}: {}",
@@ -51,32 +51,30 @@ public final class FetchSizeCalculator {
     try {
       if (estimatedRowSize == 0) {
         LOG.warn(
-            "Estimated row size is 0 for table {}. FetchSize cannot be calculated. Cursor mode will not be enabled.",
+            "Estimated row size is 0 for table {}. FetchSize cannot be calculated.",
             tableConfig.tableName());
         return 0;
       }
 
-      if (workerMemoryGB == null || workerCores == null) {
-        LOG.warn(
-            "Worker memory or cores unavailable. FetchSize cannot be calculated. Cursor mode will not be enabled.");
+      if (workerMemoryBytes == null || workerCores == null) {
+        LOG.warn("Worker memory or cores unavailable. FetchSize cannot be calculated.");
         return 0;
       }
-
-      long workerMemoryBytes = (long) (workerMemoryGB * 1024 * 1024 * 1024);
 
       // Formula: (Memory of Dataflow worker VM) / (SAFETY_FACTOR * (Number of cores
       // on the
       // Dataflow worker VM) * (Maximum row size))
-      long denominator = SAFETY_FACTOR * workerCores * estimatedRowSize;
+      long resultSetReservedSizeAcrossCores = SAFETY_FACTOR * workerCores * estimatedRowSize;
 
-      if (denominator == 0) { // Should not happen given estimatedRowSize check and cores >= 1
+      if (resultSetReservedSizeAcrossCores
+          == 0) { // Should not happen given estimatedRowSize check and cores >= 1
         LOG.warn(
-            "Denominator for fetch size calculation is zero for table {}. FetchSize cannot be calculated. Cursor mode will not be enabled.",
+            "Denominator for fetch size calculation is zero for table {}. FetchSize cannot be calculated.",
             tableConfig.tableName());
         return 0;
       }
 
-      long calculatedFetchSize = workerMemoryBytes / denominator;
+      long calculatedFetchSize = workerMemoryBytes / resultSetReservedSizeAcrossCores;
 
       LOG.info(
           "Auto-inferred fetchSize for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
@@ -97,7 +95,7 @@ public final class FetchSizeCalculator {
 
     } catch (Exception e) {
       LOG.warn(
-          "Failed to auto-infer fetch size for table {}, error: {}. Cursor mode will not be enabled.",
+          "Failed to auto-infer fetch size for table {}, error: {}.",
           tableConfig.tableName(),
           e.getMessage());
       return 0;

@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.BoundaryDurationExtractor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
@@ -33,6 +32,11 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Factory to construct {@link BoundaryExtractor} for supported {@link class}. */
 public class BoundaryExtractorFactory {
+
+  @FunctionalInterface
+  public interface BoundaryDurationExtractor extends Serializable {
+    Duration extract(ResultSet rs, int index) throws SQLException;
+  }
 
   public static final Class BYTE_ARRAY_CLASS = (new byte[] {}).getClass();
   private static final ImmutableMap<Class, BoundaryExtractor<?>> extractorMap =
@@ -110,7 +114,7 @@ public class BoundaryExtractorFactory {
                   partitionColumn,
                   resultSet,
                   boundaryTypeMapper,
-                  dbAdapter.getBoundaryDurationExtractor());
+                  dbAdapter::extractBoundaryDuration);
       return (BoundaryExtractor<T>) extractor;
     }
     return create(c);

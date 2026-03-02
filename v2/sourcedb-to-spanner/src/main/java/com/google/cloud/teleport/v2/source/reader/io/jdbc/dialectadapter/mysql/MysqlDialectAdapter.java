@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.BoundaryDurationExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -47,6 +46,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -766,7 +766,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   @Override
-  public BoundaryDurationExtractor getBoundaryDurationExtractor() {
-    return (rs, index) -> MysqlTimeConverter.toDuration(rs.getBytes(index));
+  public Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
+    return MysqlTimeConverter.toDuration(rs.getBytes(index));
   }
 }

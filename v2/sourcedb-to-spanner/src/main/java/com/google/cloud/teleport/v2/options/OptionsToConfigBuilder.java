@@ -147,8 +147,8 @@ public final class OptionsToConfigBuilder {
             .setJdbcDriverJars(jdbcDriverJars);
 
     if (workerMachineType != null && !workerMachineType.isEmpty()) {
-      builder.setWorkerMemoryGB(
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(
+      builder.setWorkerMemoryBytes(
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(
               projectId, workerZone, workerMachineType));
       builder.setWorkerCores(
           DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, workerZone, workerMachineType));
