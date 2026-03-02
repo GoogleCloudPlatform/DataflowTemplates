@@ -198,7 +198,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   // These files provide more context for jinja variables used in the yaml
   // blueprints.
   @Parameter(
-      defaultValue = "yaml/src/main/python/options",
+      defaultValue = "src/main/python/options",
       property = "yamlOptionsPath",
       readonly = true,
       required = false)
@@ -306,7 +306,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
             List<ManifestEntry> options = new ArrayList<>();
 
             // Upload the main Yaml blueprints
-            uploadArtifacts(storage, yamlPath, "", blueprints);
+            uploadArtifacts(storage, yamlPath, "blueprints", blueprints);
 
             // Upload the jinja parameter option files
             uploadArtifacts(storage, yamlOptionsPath, "options", options);
@@ -370,7 +370,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           : String.join(
                               "/", stagePrefix, yamlBlueprintsGCSPath, subFolder, fileName);
                   uploadToGcs(storage, path, objectName);
-                  entries.add(new ManifestEntry(fileName, objectName));
+                  String baseName = fileName.substring(0, fileName.length() - ".yaml".length());
+                  String displayName =
+                      StringUtils.join(StringUtils.splitByCharacterTypeCamelCase(baseName), " ");
+                  entries.add(new ManifestEntry(displayName, objectName));
                 });
       }
     }
