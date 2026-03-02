@@ -20,7 +20,11 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
