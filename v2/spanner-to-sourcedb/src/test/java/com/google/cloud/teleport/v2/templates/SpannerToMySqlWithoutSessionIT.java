@@ -145,8 +145,8 @@ public class SpannerToMySqlWithoutSessionIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void spannerToMySqlDataTypes() {
-    LOG.info("Starting Spanner to MySQL Data Types IT");
+  public void spannerToMySqlGeneratedColumns() {
+    LOG.info("Starting Spanner to MySQL Generated Columns IT");
     assertThatPipeline(jobInfo).isRunning();
     Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
     SpannerGeneratedColumnUtils.addInitialMultiColSpannerData(spannerTableData);
