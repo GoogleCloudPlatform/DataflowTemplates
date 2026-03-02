@@ -84,6 +84,8 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
   public static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
 
+  private boolean testPassed = false;
+
   @Before
   public void setUp() throws Exception {
 
@@ -110,8 +112,10 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
+    if (testPassed) {
+      ResourceManagerUtils.cleanResources(gcsResourceManager);
+    }
   }
 
   @Test
@@ -235,6 +239,8 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
     // Verify SWF Data
     SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("SELECT * FROM " + TABLE_SWF))
         .hasRecordsUnorderedCaseInsensitiveColumns(expectedDataNonNull);
+
+    testPassed = true;
   }
 
   private void verifyNullRow(List<com.google.cloud.spanner.Struct> structs) {
