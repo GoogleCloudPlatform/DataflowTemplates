@@ -129,13 +129,14 @@ public class RangePreparedStatementSetterTest {
             .getReadQuery("test_table_range_setter", partitionCols);
     PreparedStatement readStmtSingleColNonLast = connection.prepareStatement(readQuery);
     rangePreparedStatementSetter.setParameters(singleColNonLastRange, readStmtSingleColNonLast);
-    ResultSet readStmtSingleColNonLastResultSet = readStmtSingleColNonLast.executeQuery();
     ImmutableList.Builder<String> readSingleColNonLastRangedataPointsBuilder =
         ImmutableList.builder();
+    ResultSet readStmtSingleColNonLastResultSet = readStmtSingleColNonLast.executeQuery();
     while (readStmtSingleColNonLastResultSet.next()) {
       readSingleColNonLastRangedataPointsBuilder.add(
           readStmtSingleColNonLastResultSet.getString("data").trim());
     }
+    readStmtSingleColNonLastResultSet.close();
 
     String countQuery =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
@@ -145,6 +146,7 @@ public class RangePreparedStatementSetterTest {
     ResultSet countStmtSingleColNonLastResultSet = countStmtSingleColNonLast.executeQuery();
     countStmtSingleColNonLastResultSet.next();
     Integer countSingleColNonLast = countStmtSingleColNonLastResultSet.getInt(1);
+    countStmtSingleColNonLastResultSet.close();
 
     Range singleColLastRange = singleColNonLastRange.toBuilder().setIsLast(true).build();
     rangePreparedStatementSetter.setParameters(singleColLastRange, readStmtSingleColNonLast);
@@ -154,6 +156,7 @@ public class RangePreparedStatementSetterTest {
       readSingleColLastRangedataPointsBuilder.add(
           readStmtSingleColLastResultSet.getString("data").trim());
     }
+    readStmtSingleColLastResultSet.close();
 
     Range bothColRange =
         Range.<Integer>builder()
@@ -178,6 +181,7 @@ public class RangePreparedStatementSetterTest {
     ResultSet countStmtBothColResultSet = countStmtBothCol.executeQuery();
     countStmtBothColResultSet.next();
     Integer countBothCol = countStmtBothColResultSet.getInt(1);
+    countStmtBothColResultSet.close();
 
     assertThat(readSingleColNonLastRangedataPointsBuilder.build())
         .isEqualTo(ImmutableList.of("Data A", "Data B"));
