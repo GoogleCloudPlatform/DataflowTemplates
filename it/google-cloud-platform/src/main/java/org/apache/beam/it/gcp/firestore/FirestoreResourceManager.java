@@ -97,6 +97,10 @@ public class FirestoreResourceManager implements ResourceManager {
     }
   }
 
+  public Firestore getFirestore() {
+    return firestore;
+  }
+
   @Override
   public void cleanupAll() {
     try {
