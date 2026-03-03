@@ -62,8 +62,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
-  private static final String SOURCE_DATABASE_ID = "source-database";
-  private static final String DESTINATION_DATABASE_ID = "destination-database";
+  private static final String SOURCE_DATABASE_ID_PREFIX = "source-";
+  private static final String DESTINATION_DATABASE_ID_PREFIX = "destination-";
 
   @Before
   public void setUp() {
@@ -73,19 +73,19 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setRegion(REGION)
             .build();
     firestoreAdminResourceManager.createDatabase(
-        SOURCE_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+        sourceDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
-        DESTINATION_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
+        destinationDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
-            .setDatabase(SOURCE_DATABASE_ID)
+            .setDatabase(sourceDatabaseId())
             .setCredentials(TestProperties.googleCredentials())
             .build();
     destinationFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
-            .setDatabase(DESTINATION_DATABASE_ID)
+            .setDatabase(destinationDatabaseId())
             .setCredentials(TestProperties.googleCredentials())
             .build();
   }
@@ -110,9 +110,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     LaunchConfig options =
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
-            .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
+            .addParameter("sourceDatabaseId", sourceDatabaseId())
             .addParameter("destinationProjectId", PROJECT)
-            .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
+            .addParameter("destinationDatabaseId", destinationDatabaseId())
             .addParameter("collectionIds", collectionId)
             .addParameter("maxNumWorkers", "10")
             .build();
@@ -147,9 +147,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     LaunchConfig options =
         LaunchConfig.builder(testName + "-all", SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
-            .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
+            .addParameter("sourceDatabaseId", sourceDatabaseId())
             .addParameter("destinationProjectId", PROJECT)
-            .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
+            .addParameter("destinationDatabaseId", destinationDatabaseId())
             .addParameter("maxNumWorkers", "10")
             .build();
 
@@ -172,6 +172,14 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     for (QueryDocumentSnapshot document : documents2) {
       assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
     }
+  }
+
+  private String sourceDatabaseId() {
+    return SOURCE_DATABASE_ID_PREFIX + testName;
+  }
+
+  private String destinationDatabaseId() {
+    return DESTINATION_DATABASE_ID_PREFIX + testName;
   }
 
   private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
