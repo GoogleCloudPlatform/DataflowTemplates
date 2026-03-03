@@ -21,11 +21,17 @@ import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.Cassand
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -62,5 +68,39 @@ public class DialectAdapterTest {
                         mockCassandraDataSource),
                     SourceSchemaReference.ofCassandra(mockCassandraSchemaReference),
                     ImmutableList.of()));
+  }
+
+  @Test
+  public void testEstimateRowSize() {
+    // Create a mock for the interface and call real methods for default
+    // implementations
+    DialectAdapter dialectAdapter = Mockito.mock(DialectAdapter.class);
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.any(SourceTableSchema.class),
+            ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.anyMap(), ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+
+    // Mock SourceTableSchema
+    SourceTableSchema mockSourceTableSchema = Mockito.mock(SourceTableSchema.class);
+    SourceColumnType col1 = new SourceColumnType("col1", new Long[] {10L}, null);
+    SourceColumnType col2 = new SourceColumnType("col2", new Long[] {20L}, null);
+
+    Mockito.when(mockSourceTableSchema.sourceColumnNameToSourceColumnType())
+        .thenReturn(ImmutableMap.of("col1", col1, "col2", col2));
+
+    // Mock JdbcValueMappingsProvider
+    JdbcValueMappingsProvider mockProvider = Mockito.mock(JdbcValueMappingsProvider.class);
+    Mockito.when(mockProvider.estimateColumnSize(col1)).thenReturn(100);
+    Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(200);
+
+    // Verify
+    long expectedSize = 300L;
+    org.junit.Assert.assertEquals(
+        expectedSize, dialectAdapter.estimateRowSize(mockSourceTableSchema, mockProvider));
   }
 }
