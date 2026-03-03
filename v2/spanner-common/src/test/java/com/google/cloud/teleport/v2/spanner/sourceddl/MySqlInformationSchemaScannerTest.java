@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.spanner.sourceddl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,7 +53,7 @@ public class MySqlInformationSchemaScannerTest {
     // Mock column query
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
                 + "ORDER BY ordinal_position"))
@@ -64,6 +66,7 @@ public class MySqlInformationSchemaScannerTest {
     when(columnRs.getString("character_maximum_length")).thenReturn("10");
     when(columnRs.getString("numeric_precision")).thenReturn(null);
     when(columnRs.getString("numeric_scale")).thenReturn(null);
+    when(columnRs.getString("generation_expression")).thenReturn("");
 
     // Mock primary key query
     when(stmt.executeQuery(
@@ -91,6 +94,7 @@ public class MySqlInformationSchemaScannerTest {
     assertEquals("INT", column.type());
     assertEquals(false, column.isNullable());
     assertEquals(true, column.isPrimaryKey());
+    assertEquals(false, column.isGenerated());
     assertEquals(Long.valueOf(10L), column.size());
     assertEquals(1, table.primaryKeyColumns().size());
     assertEquals("id", table.primaryKeyColumns().get(0));
@@ -117,7 +121,7 @@ public class MySqlInformationSchemaScannerTest {
 
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
                 + "ORDER BY ordinal_position"))
@@ -161,7 +165,7 @@ public class MySqlInformationSchemaScannerTest {
 
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
                 + "ORDER BY ordinal_position"))
@@ -174,6 +178,7 @@ public class MySqlInformationSchemaScannerTest {
     when(columnRs.getString("character_maximum_length")).thenReturn("255");
     when(columnRs.getString("numeric_precision")).thenReturn(null);
     when(columnRs.getString("numeric_scale")).thenReturn(null);
+    when(columnRs.getString("generation_expression")).thenReturn("concat(`first_name`,' ')");
 
     when(stmt.executeQuery(
             "SELECT column_name "
@@ -235,7 +240,7 @@ public class MySqlInformationSchemaScannerTest {
     // Simulate SQLException when scanning columns
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
                 + "ORDER BY ordinal_position"))
@@ -269,7 +274,7 @@ public class MySqlInformationSchemaScannerTest {
     // users table
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
                 + "ORDER BY ordinal_position"))
@@ -282,6 +287,8 @@ public class MySqlInformationSchemaScannerTest {
     when(columnRs1.getString("character_maximum_length")).thenReturn("10");
     when(columnRs1.getString("numeric_precision")).thenReturn(null);
     when(columnRs1.getString("numeric_scale")).thenReturn(null);
+    when(columnRs1.getString("generation_expression")).thenReturn(null);
+
     when(stmt.executeQuery(
             "SELECT column_name "
                 + "FROM information_schema.key_column_usage "
@@ -295,7 +302,7 @@ public class MySqlInformationSchemaScannerTest {
     // orders table
     when(stmt.executeQuery(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
                 + "ORDER BY ordinal_position"))
@@ -308,6 +315,8 @@ public class MySqlInformationSchemaScannerTest {
     when(columnRs2.getString("character_maximum_length")).thenReturn(null);
     when(columnRs2.getString("numeric_precision")).thenReturn("20");
     when(columnRs2.getString("numeric_scale")).thenReturn(null);
+    when(columnRs2.getString("generation_expression")).thenReturn(null);
+
     when(stmt.executeQuery(
             "SELECT column_name "
                 + "FROM information_schema.key_column_usage "
@@ -323,5 +332,74 @@ public class MySqlInformationSchemaScannerTest {
     assertEquals(2, schema.tables().size());
     assertEquals("users", schema.tables().get("users").name());
     assertEquals("orders", schema.tables().get("orders").name());
+  }
+
+  @Test
+  public void testScanGeneratedColumn() throws SQLException {
+    // Mock JDBC objects
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+
+    // Mock table query
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("generated_table");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Mock column query
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, true, false);
+
+    // Normal column
+    when(columnRs.getString("column_name")).thenReturn("id", "full_name");
+    when(columnRs.getString("data_type")).thenReturn("INT", "VARCHAR");
+    when(columnRs.getString("is_nullable")).thenReturn("NO", "YES");
+    when(columnRs.getString("column_key")).thenReturn("PRI", "");
+    when(columnRs.getString("character_maximum_length")).thenReturn("10", "255");
+    when(columnRs.getString("numeric_precision")).thenReturn(null, null);
+    when(columnRs.getString("numeric_scale")).thenReturn(null, null);
+    // Extra column for generated column
+    when(columnRs.getString("generation_expression")).thenReturn("", "(id * 2)");
+
+    // Mock primary key query
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(true, false);
+    when(pkRs.getString("column_name")).thenReturn("id");
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+
+    assertEquals(1, schema.tables().size());
+    SourceTable table = schema.tables().get("generated_table");
+    assertEquals(2, table.columns().size());
+
+    SourceColumn idCol = table.columns().get(0);
+    assertEquals("id", idCol.name());
+    assertFalse(idCol.isGenerated());
+
+    SourceColumn fullNameCol = table.columns().get(1);
+    assertEquals("full_name", fullNameCol.name());
+    assertTrue("Column should be generated", fullNameCol.isGenerated());
   }
 }
