@@ -24,8 +24,10 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.utils.SpannerGeneratedColumnUtils;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
@@ -289,6 +291,45 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 () -> jdbcResourceManager.getRowCount(TABLE_WITH_IDENTITY_COL) == 2);
     assertThatResult(result).meetsConditions();
     assertIdentityColRowsInMySQLAfterInsert();
+  }
+
+  @Test
+  public void spannerToMySqlGeneratedColumns() {
+    LOG.info("Starting Spanner to MySQL Generated Columns IT");
+    assertThatPipeline(jobInfo).isRunning();
+    Map<String, List<Map<String, Value>>> spannerTableData = new HashMap<>();
+    SpannerGeneratedColumnUtils.addInitialMultiColSpannerData(spannerTableData);
+
+    SpannerGeneratedColumnUtils.writeRowsInSpanner(spannerTableData, spannerResourceManager);
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                SpannerGeneratedColumnUtils.buildConditionCheck(
+                    spannerTableData, jdbcResourceManager));
+    assertThatResult(result).meetsConditions();
+
+    Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
+    SpannerGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
+    // Assert events on Mysql
+    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
+
+    // Validating update and delete events.
+    Map<String, List<Map<String, Value>>> updateSpannerTableData =
+        SpannerGeneratedColumnUtils.updateGeneratedColRowsInSpanner(spannerResourceManager);
+    spannerTableData.putAll(updateSpannerTableData);
+    result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                SpannerGeneratedColumnUtils.buildConditionCheck(
+                    spannerTableData, jdbcResourceManager));
+    assertThatResult(result).meetsConditions();
+
+    expectedData = new HashMap<>();
+    SpannerGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
+    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
   }
 
   private void writeMaxColRowsInSpanner() {
