@@ -50,7 +50,7 @@ public final class FetchSizeCalculator {
 
     try {
       if (estimatedRowSize == 0) {
-        LOG.warn(
+        LOG.info(
             "Estimated row size is 0 for table {}. FetchSize cannot be calculated.",
             tableConfig.tableName());
         return 0;

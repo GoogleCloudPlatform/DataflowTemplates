@@ -159,6 +159,19 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
     return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
   }
 
+  private static long getLengthOrPrecision(SourceColumnType sourceColumnType, long defaultValue) {
+    long n = getLengthOrPrecision(sourceColumnType);
+    if (n > 0) {
+      return n;
+    }
+    LOG.warn(
+        "Column {} has no length/precision (n={}). Using default: {}",
+        sourceColumnType,
+        n,
+        defaultValue);
+    return defaultValue;
+  }
+
   /** Map {@link java.sql.Timestamp} to timestampMicros LogicalType. */
   private static final ResultSetValueMapper<java.sql.Timestamp> sqlTimestampToAvroTimestampMicros =
       (value, schema) -> instantToMicro(value.toInstant());
@@ -185,19 +198,19 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getBytes,
               bytesToHexString,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 255);
                 // in BINARY length is measured in bytes. ref:
                 // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
-                return (int) (n > 0 ? n : 255);
+                return (int) n;
               })
           .put(
               "BIT",
               ResultSet::getLong,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 1);
                 // BIT(N) -> (N+7)/8 since it is stored in bytes
-                return (int) ((n > 0 ? n : 1) + 7) / 8;
+                return (int) (n + 7) / 8;
               })
           .put("BLOB", ResultSet::getBlob, blobToHexString, 65_535) // BLOB -> 65,535 bytes
           .put("BOOL", ResultSet::getInt, valuePassThrough, 1)
@@ -206,10 +219,10 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 255);
                 // CHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max length
                 // is 255.
-                return (int) ((n > 0 ? n : 255) * 4);
+                return (int) (n * 4);
               })
           /*
            * Time related type sizes are inferred from the way the JDBC driver decodes the
@@ -223,12 +236,12 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getBigDecimal,
               bigDecimalToByteArray,
               sourceColumnType -> {
-                long m = getLengthOrPrecision(sourceColumnType);
+                long m = getLengthOrPrecision(sourceColumnType, 65);
                 // DECIMAL(M,D) -> M + 2 bytes since it is internally stored as a byte encoded
                 // string (+2 for sign and decimal point)
                 // Max number of digits in decimal is 65. Ref:
                 // https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
-                return (int) ((m > 0 ? m : 65) + 2);
+                return (int) (m + 2);
               })
           .put("DOUBLE", ResultSet::getDouble, valuePassThrough, 8)
           .put(
@@ -282,20 +295,20 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getBytes,
               bytesToHexString,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 65535);
                 // in VARBINARY length is measured in bytes. ref:
                 // https://dev.mysql.com/doc/refman/8.4/en/binary-varbinary.html
-                return (int) (n > 0 ? n : 65535);
+                return (int) n;
               })
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 16383);
                 // VARCHAR -> N * 4 since it takes 4 bytes per char in utf8mb4 format. Max bytes
                 // allowed is 65535. ref: https://dev.mysql.com/doc/refman/8.4/en/char.html
-                return (int) (n > 0 ? n * 4 : 65535);
+                return (int) Math.min(n * 4, 65535);
               })
           .put("YEAR", ResultSet::getInt, valuePassThrough, 2)
           .build();

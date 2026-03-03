@@ -116,22 +116,18 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int) ((n > 0 ? n : 1)); // bit uses text protocol.
+                long n = getLengthOrPrecision(sourceColumnType, 1);
+                return (int) n; // bit uses text protocol.
               })
           .put(
               "BIT VARYING",
               bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int)
-                    ((n > 0
-                        ? n
-                        : 10 * 1024
-                            * 1024)); // bit varying without a length specification means unlimited
-                // length. ref:
+                // bit varying without a length specification means unlimited length. ref:
                 // https://www.postgresql.org/docs/current/datatype-bit.html
+                long n = getLengthOrPrecision(sourceColumnType, 10485760);
+                return (int) n;
               })
           .put("BOOL", ResultSet::getBoolean, valuePassThrough, 1)
           .put("BOOLEAN", ResultSet::getBoolean, valuePassThrough, 1)
@@ -140,8 +136,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
+                long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min(length, Integer.MAX_VALUE);
               })
           .put(
@@ -149,33 +144,32 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 255);
                 // CHAR(N) -> N * 4 bytes (UTF-8 max) + overhead.
-                return (int) Math.min(((n > 0 ? n : 255) * 4), Integer.MAX_VALUE);
+                return (int) Math.min((n * 4), Integer.MAX_VALUE);
               })
           .put(
               "CHARACTER",
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+                long n = getLengthOrPrecision(sourceColumnType, 255);
+                return (int) Math.min((n * 4) + 24, Integer.MAX_VALUE);
               })
           .put(
               "CHARACTER VARYING",
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int) Math.min(((n > 0 ? n : 255) * 4) + 24, Integer.MAX_VALUE);
+                long n = getLengthOrPrecision(sourceColumnType, 255);
+                return (int) Math.min((n * 4) + 24, Integer.MAX_VALUE);
               })
           .put(
               "CITEXT",
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
+                long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
           .put("DATE", dateExtractor, dateToAvro, 4)
@@ -184,7 +178,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getObject,
               numericToAvro,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 0L);
                 return (int) (n / 2 + 8);
               })
           .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 8)
@@ -200,8 +194,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
+                long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
           .put(
@@ -209,8 +202,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
+                long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
           .put("MONEY", ResultSet::getDouble, valuePassThrough, 8)
@@ -219,7 +211,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getObject,
               numericToAvro,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
+                long n = getLengthOrPrecision(sourceColumnType, 0L);
                 return (int) (n / 2 + 8);
               })
           .put(
@@ -239,8 +231,7 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                long length = n > 0 ? n : 10 * 1024 * 1024;
+                long length = getLengthOrPrecision(sourceColumnType, 10485760);
                 return (int) Math.min((length * 4) + 24, Integer.MAX_VALUE);
               })
           .put("TIMESTAMP", timestampExtractor, timestampToAvro, 8)
@@ -253,16 +244,16 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
               bytesExtractor,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int) ((n > 0 ? n : 10 * 1024 * 1024) + 24);
+                long n = getLengthOrPrecision(sourceColumnType, 10485760);
+                return (int) (n + 24);
               })
           .put(
               "VARCHAR",
               ResultSet::getString,
               valuePassThrough,
               sourceColumnType -> {
-                long n = getLengthOrPrecision(sourceColumnType);
-                return (int) Math.min(((n > 0 ? n : 10 * 1024 * 1024) * 4) + 24, Integer.MAX_VALUE);
+                long n = getLengthOrPrecision(sourceColumnType, 10485760);
+                return (int) Math.min((n * 4) + 24, Integer.MAX_VALUE);
               })
           .build();
 
@@ -273,7 +264,9 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
     if (JDBC_MAPPINGS.sizeEstimators().containsKey(typeName)) {
       return JDBC_MAPPINGS.sizeEstimators().get(typeName).apply(sourceColumnType);
     }
-    LOG.warn("Unknown column type: {}. Defaulting to size: 65,535.", sourceColumnType);
+    LOG.info(
+        "Unknown column type: {}. Defaulting to size: 65,535. If easily possible let's add logs to indicate that we have used a max value for fetch-size estimation.",
+        sourceColumnType);
     return 65_535;
   }
 
@@ -281,6 +274,21 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
       com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType) {
     Long[] mods = sourceColumnType.getMods();
     return (mods != null && mods.length > 0 && mods[0] != null) ? mods[0] : 0;
+  }
+
+  private static long getLengthOrPrecision(
+      com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType sourceColumnType,
+      long defaultValue) {
+    long n = getLengthOrPrecision(sourceColumnType);
+    if (n > 0) {
+      return n;
+    }
+    LOG.warn(
+        "Column {} has no length/precision (n={}). Using default: {}",
+        sourceColumnType,
+        n,
+        defaultValue);
+    return defaultValue;
   }
 
   @Override
