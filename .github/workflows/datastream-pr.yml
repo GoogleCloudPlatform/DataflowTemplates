@@ -110,7 +110,7 @@ jobs:
           ./cicd/run-unit-tests \
           --modules-to-build="DATASTREAM"
       - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-unit-test-results
@@ -148,7 +148,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-smoke-test-results
@@ -180,7 +180,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-integration-test-results
