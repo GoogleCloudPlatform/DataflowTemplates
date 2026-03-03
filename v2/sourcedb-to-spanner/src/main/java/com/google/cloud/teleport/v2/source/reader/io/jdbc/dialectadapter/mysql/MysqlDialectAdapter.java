@@ -45,6 +45,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -761,5 +762,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
 
     private InformationSchemaStatsCols() {}
+  }
+
+  @Override
+  public Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
+    return MysqlTimeConverter.toDuration(rs.getBytes(index));
   }
 }
