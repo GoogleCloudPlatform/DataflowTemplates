@@ -117,7 +117,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     sourceFirestoreResourceManager.write(collectionId, inputData);
 
-    LaunchInfo info = launchPipeline(/*testNameSuffix=*/"", collectionId);
+    LaunchInfo info = launchPipeline(/*testName=*/ "copySingleCollection", collectionId);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
@@ -144,7 +144,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
     sourceFirestoreResourceManager.write(collectionId2, inputData2);
 
-    LaunchInfo info = launchPipeline(/*testNameSuffix=*/"-all", /*collectionIds=*/ "");
+    LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIds=*/ "");
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
@@ -188,8 +188,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     sourceFirestoreResourceManager.write(collectionId, inputData);
 
-
-    LaunchInfo info = launchPipeline(/*testNameSuffix=*/"-fuzz", collectionId);
+    LaunchInfo info = launchPipeline(/*testName=*/ "copyFuzz", collectionId);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
@@ -220,10 +219,10 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
 
-  private LaunchInfo launchPipeline(String testNameSuffix, String collectionIds)
+  private LaunchInfo launchPipeline(String testName, String collectionIds)
       throws IOException {
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName + testNameSuffix, SPEC_PATH)
+        LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
             .addParameter("sourceDatabaseId", sourceDatabaseId())
             .addParameter("destinationProjectId", PROJECT)
@@ -238,11 +237,13 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   private String sourceDatabaseId() {
-    return ("src-" + testName).toLowerCase().replace("_", "-");
+    return ("src-" + testName).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-")
+        .substring(0, 10);
   }
 
   private String destinationDatabaseId() {
-    return ("dest-" + testName).toLowerCase().replace("_", "-");
+    return ("dest-" + testName).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-")
+        .substring(0, 10);
   }
 
   public Map<String, Object> generateRandomDocument() {
@@ -302,7 +303,12 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         List<Object> list = new ArrayList<>();
         int size = random.nextInt(5);
         for (int i = 0; i < size; i++) {
-          list.add(getRandomFirestoreType(depth + 1));
+          Object element = getRandomFirestoreType(depth + 1);
+          while (element instanceof List) {
+            // Firestore does not allow nested arrays
+            element = getRandomFirestoreType(depth + 1);
+          }
+          list.add(element);
         }
         return list;
       }
