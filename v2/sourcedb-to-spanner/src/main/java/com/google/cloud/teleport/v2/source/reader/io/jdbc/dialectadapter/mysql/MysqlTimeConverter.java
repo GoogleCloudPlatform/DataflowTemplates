@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.mysql;
+package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql;
 
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;

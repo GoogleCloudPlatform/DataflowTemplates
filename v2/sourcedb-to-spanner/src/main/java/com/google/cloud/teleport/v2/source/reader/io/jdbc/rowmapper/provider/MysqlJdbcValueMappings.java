@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.provider;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.mysql.MysqlTimeConverter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlTimeConverter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcMappings;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
