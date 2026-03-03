@@ -40,18 +40,28 @@ public class DataflowWorkerMachineTypeUtilsTest {
     // Pre-populate cache to avoid API calls during tests
 
     // Standard types
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-4", 15.00, 4);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-8", 30.00, 8);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-standard-96", 360.00, 96);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n1-highmem-8", 52.00, 8);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n1-standard-4", 15L * 1024 * 1024 * 1024, 4);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n1-standard-8", 30L * 1024 * 1024 * 1024, 8);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n1-standard-96", 360L * 1024 * 1024 * 1024, 96);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n1-highmem-8", 52L * 1024 * 1024 * 1024, 8);
 
     // Custom types used in tests
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("custom-2-4096", 4.0, 2);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2-custom-4-8192", 8.0, 4);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2d-custom-2-2048", 2.0, 2);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("e2-custom-2-4096", 4.0, 2);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n4-custom-32-131072", 128.0, 32);
-    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting("n2-custom-4-8192-ext", 8.0, 4);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "custom-2-4096", 4L * 1024 * 1024 * 1024, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n2-custom-4-8192", 8L * 1024 * 1024 * 1024, 4);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n2d-custom-2-2048", 2L * 1024 * 1024 * 1024, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "e2-custom-2-4096", 4L * 1024 * 1024 * 1024, 2);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n4-custom-32-131072", 128L * 1024 * 1024 * 1024, 32);
+    DataflowWorkerMachineTypeUtils.putMachineSpecForTesting(
+        "n2-custom-4-8192-ext", 8L * 1024 * 1024 * 1024, 4);
   }
 
   @Test
@@ -138,32 +148,32 @@ public class DataflowWorkerMachineTypeUtilsTest {
   }
 
   @Test
-  public void testGetWorkerMemoryGBStandard() {
+  public void testGetWorkerMemoryBytesStandard() {
     assertEquals(
-        15.00,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n1-standard-4"),
-        0.001);
+        Long.valueOf(15L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n1-standard-4"));
     assertEquals(
-        52.00, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n1-highmem-8"), 0.001);
+        Long.valueOf(52L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n1-highmem-8"));
   }
 
   @Test
-  public void testGetWorkerMemoryGBInvalid() {
+  public void testGetWorkerMemoryBytesInvalid() {
     // This will try to fetch from API and fail (return null) because it's not in
     // cache and invalid/unknown project
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "unknown-machine"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "unknown-machine"));
 
     // Custom types with invalid structure or not matching regex should return null
     // or throw depending on usage
-    // logic in getWorkerMemoryGB checks getMachineSpec which checks
+    // logic in getWorkerMemoryBytes checks getMachineSpec which checks
     // tryParseCustomMachineType
-    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "custom-2-invalid"));
+    assertNull(DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "custom-2-invalid"));
 
     IllegalArgumentException exception1 =
         assertThrows(
             IllegalArgumentException.class,
             () -> {
-              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, null);
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, null);
             });
     assertEquals("workerMachineType cannot be null or empty.", exception1.getMessage());
 
@@ -171,7 +181,7 @@ public class DataflowWorkerMachineTypeUtilsTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> {
-              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "");
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "");
             });
     assertEquals("workerMachineType cannot be null or empty.", exception2.getMessage());
 
@@ -179,7 +189,7 @@ public class DataflowWorkerMachineTypeUtilsTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> {
-              DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "  ");
+              DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "  ");
             });
     assertEquals("workerMachineType cannot be null or empty.", exception3.getMessage());
   }
@@ -230,35 +240,31 @@ public class DataflowWorkerMachineTypeUtilsTest {
   }
 
   @Test
-  public void testGetWorkerMemoryGBCustom() {
+  public void testGetWorkerMemoryBytesCustom() {
     // custom-2-4096 => 4096MB = 4GB
     assertEquals(
-        4.0, DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "custom-2-4096"), 0.001);
+        Long.valueOf(4L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "custom-2-4096"));
     // n2-custom-4-8192 => 8192MB = 8GB
     assertEquals(
-        8.0,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2-custom-4-8192"),
-        0.001);
+        Long.valueOf(8L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n2-custom-4-8192"));
     // n2d-custom-2-2048 => 2048MB = 2GB
     assertEquals(
-        2.0,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2d-custom-2-2048"),
-        0.001);
+        Long.valueOf(2L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n2d-custom-2-2048"));
     // e2-custom-2-4096 => 4096MB = 4GB
     assertEquals(
-        4.0,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "e2-custom-2-4096"),
-        0.001);
+        Long.valueOf(4L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "e2-custom-2-4096"));
     // n4-custom-32-131072 => 128GB
     assertEquals(
-        128.0,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n4-custom-32-131072"),
-        0.001);
+        Long.valueOf(128L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n4-custom-32-131072"));
     // extended memory
     assertEquals(
-        8.0,
-        DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(null, null, "n2-custom-4-8192-ext"),
-        0.001);
+        Long.valueOf(8L * 1024 * 1024 * 1024),
+        DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(null, null, "n2-custom-4-8192-ext"));
   }
 
   @Test
@@ -290,11 +296,11 @@ public class DataflowWorkerMachineTypeUtilsTest {
 
       when(mockClient.get(anyString(), anyString(), anyString())).thenReturn(mockMachineType);
 
-      Double memoryGB =
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(projectId, zone, machineType);
+      Long memoryBytes =
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(projectId, zone, machineType);
       Integer vCpus = DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, zone, machineType);
 
-      assertEquals(15.0, memoryGB, 0.001);
+      assertEquals(Long.valueOf(15L * 1024 * 1024 * 1024), memoryBytes);
       assertEquals(4, (int) vCpus);
     }
   }
@@ -313,11 +319,11 @@ public class DataflowWorkerMachineTypeUtilsTest {
       when(mockClient.get(anyString(), anyString(), anyString()))
           .thenThrow(new RuntimeException("API Error"));
 
-      Double memoryGB =
-          DataflowWorkerMachineTypeUtils.getWorkerMemoryGB(projectId, zone, machineType);
+      Long memoryBytes =
+          DataflowWorkerMachineTypeUtils.getWorkerMemoryBytes(projectId, zone, machineType);
       Integer vCpus = DataflowWorkerMachineTypeUtils.getWorkerCores(projectId, zone, machineType);
 
-      assertNull(memoryGB);
+      assertNull(memoryBytes);
       assertNull(vCpus);
     }
   }
