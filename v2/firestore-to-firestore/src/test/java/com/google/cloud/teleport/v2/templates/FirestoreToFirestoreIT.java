@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.Blob;
+import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -53,7 +54,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link FirestoreToFirestore}. */
+/**
+ * Integration test for {@link FirestoreToFirestore}.
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -88,9 +91,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .build();
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+    // TODO: back to ENTERPRISE once available.
     firestoreAdminResourceManager.createDatabase(
-        // TODO: pacoavila - We need to use an ENTERPRISE db once the data access mode can be set
-        // from the Java SDK.
         destinationDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
@@ -113,77 +115,78 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     ResourceManagerUtils.cleanResources(firestoreAdminResourceManager);
   }
 
+  // TODO: Reenable
   // @Test
-  // public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
-  //     throws IOException {
-  //   String collectionId = "input-" + testName;
-  //   int numDocuments = 10;
-  //
-  //   Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
-  //
-  //   sourceFirestoreResourceManager.write(collectionId, inputData);
-  //
-  //   LaunchInfo info = launchPipeline(/*testName=*/ "copySingleCollection", collectionId);
-  //   assertThatPipeline(info).isRunning();
-  //
-  //   Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
-  //   assertThatResult(result).isLaunchFinished();
-  //
-  //   List<QueryDocumentSnapshot> documents =
-  // destinationFirestoreResourceManager.read(collectionId);
-  //   assertThat(documents).hasSize(numDocuments);
-  //
-  //   for (QueryDocumentSnapshot document : documents) {
-  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-  //   }
-  // }
-  //
+  public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
+      throws IOException {
+    String collectionId = "input-" + randomString(6).toLowerCase();
+    int numDocuments = 10;
+
+    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+
+    sourceFirestoreResourceManager.write(collectionId, inputData);
+
+    LaunchInfo info = launchPipeline(/*testName=*/ "copySingle", collectionId);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
+    assertThatResult(result).isLaunchFinished();
+
+    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+    assertThat(documents).hasSize(numDocuments);
+
+    for (QueryDocumentSnapshot document : documents) {
+      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+    }
+  }
+
+  // TODO: Reenable
   // @Test
-  // public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
-  //     throws IOException {
-  //   String collectionId1 = "inputA-" + testName;
-  //   int numDocs1 = 5;
-  //   Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
-  //   sourceFirestoreResourceManager.write(collectionId1, inputData1);
-  //
-  //   String collectionId2 = "inputB-" + testName;
-  //   int numDocs2 = 5;
-  //   Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
-  //   sourceFirestoreResourceManager.write(collectionId2, inputData2);
-  //
-  //   LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIds=*/ "");
-  //   assertThatPipeline(info).isRunning();
-  //
-  //   Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
-  //   assertThatResult(result).isLaunchFinished();
-  //
-  //   List<QueryDocumentSnapshot> documents1 =
-  //       destinationFirestoreResourceManager.read(collectionId1);
-  //   assertThat(documents1).hasSize(numDocs1);
-  //   for (QueryDocumentSnapshot document : documents1) {
-  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-  //   }
-  //
-  //   List<QueryDocumentSnapshot> documents2 =
-  //       destinationFirestoreResourceManager.read(collectionId2);
-  //   assertThat(documents2).hasSize(numDocs2);
-  //   for (QueryDocumentSnapshot document : documents2) {
-  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-  //   }
-  // }
-  //
-  // private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
-  //   Map<String, Map<String, Object>> testDocuments = new HashMap<>();
-  //   for (int i = 1; i <= numDocuments; i++) {
-  //     Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
-  //     testDocuments.put("doc-" + i, data);
-  //   }
-  //   return testDocuments;
-  // }
+  public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
+      throws IOException {
+    String collectionId1 = "inputA-" + randomString(6).toLowerCase();
+    int numDocs1 = 5;
+    Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
+    sourceFirestoreResourceManager.write(collectionId1, inputData1);
+
+    String collectionId2 = "inputB-" + randomString(6).toLowerCase();
+    int numDocs2 = 5;
+    Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
+    sourceFirestoreResourceManager.write(collectionId2, inputData2);
+
+    LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIdFilter=*/ "");
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
+    assertThatResult(result).isLaunchFinished();
+
+    List<QueryDocumentSnapshot> documents1 =
+        destinationFirestoreResourceManager.read(collectionId1);
+    assertThat(documents1).hasSize(numDocs1);
+    for (QueryDocumentSnapshot document : documents1) {
+      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+    }
+
+    List<QueryDocumentSnapshot> documents2 =
+        destinationFirestoreResourceManager.read(collectionId2);
+    assertThat(documents2).hasSize(numDocs2);
+    for (QueryDocumentSnapshot document : documents2) {
+      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+    }
+  }
+
+  private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
+    Map<String, Map<String, Object>> testDocuments = new HashMap<>();
+    for (int i = 1; i <= numDocuments; i++) {
+      Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
+      testDocuments.put("doc-" + i, data);
+    }
+    return testDocuments;
+  }
 
   @Test
-  public void testFirestoreToFirestore_fuzzDataTypes() throws IOException {
-    String rootCollectionId = "fuzz-" + testName;
+  public void testFirestoreToFirestore_fuzzDataTypes() throws Exception {
+    String rootCollectionId = "fuzz-" + randomString(6).toLowerCase();
     int numRootDocuments = 10;
 
     Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
@@ -195,7 +198,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
       // 30% chance to create a subcollection
       if (random.nextInt(10) < 3) {
-        String subCollectionId = rootCollectionId + "/" + documentId + "/sub-" + UUID.randomUUID();
+        // Use the same ID as the root collection so the "allDescendants" query for that ID
+        // picks it up, even though the template only explicitly lists root collections.
+        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + rootCollectionId;
         Map<String, Map<String, Object>> subData = new HashMap<>();
         int numSubDocs = random.nextInt(3) + 1;
         for (int k = 0; k < numSubDocs; k++) {
@@ -204,17 +209,17 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
           // 20% chance to create a nested subcollection (sub-subcollection)
           if (random.nextInt(10) < 2) {
-            String subSubCollectionId =
-                subCollectionId + "/" + subDocId + "/subsub-" + UUID.randomUUID();
+            String subSubCollectionPath =
+                subCollectionPath + "/" + subDocId + "/" + rootCollectionId;
             Map<String, Map<String, Object>> subSubData = new HashMap<>();
             int numSubSubDocs = random.nextInt(2) + 1;
             for (int l = 0; l < numSubSubDocs; l++) {
               subSubData.put("subSubDoc-" + l + "-" + UUID.randomUUID(), generateRandomDocument());
             }
-            inputData.put(subSubCollectionId, subSubData);
+            inputData.put(subSubCollectionPath, subSubData);
           }
         }
-        inputData.put(subCollectionId, subData);
+        inputData.put(subCollectionPath, subData);
       }
     }
     inputData.put(rootCollectionId, rootData);
@@ -224,6 +229,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
+    // Run without filter to verify "list all collections" logic
     LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", /* collectionIdFilter= */ "");
     assertThatPipeline(info).isRunning();
 
@@ -256,7 +262,14 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             assertThat(actualValue).isNull();
           } else {
             assertThat(actualValue).isInstanceOf(expectedValue.getClass());
-            assertThat(actualValue).isEqualTo(expectedValue);
+            if (actualValue instanceof DocumentReference) {
+              // Only compare the path of DocumentReference since the plain equality check will
+              // fail since they're in different databases.
+              assertThat(((DocumentReference) actualValue).getPath()).isEqualTo(
+                  ((DocumentReference) expectedValue).getPath());
+            } else {
+              assertThat(actualValue).isEqualTo(expectedValue);
+            }
           }
         }
       }
@@ -267,9 +280,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
-            .addParameter("sourceDatabaseId", sourceDatabaseId())
+            .addParameter("sourceDatabaseId", sourceDatabaseId)
             .addParameter("destinationProjectId", PROJECT)
-            .addParameter("destinationDatabaseId", destinationDatabaseId())
+            .addParameter("destinationDatabaseId", destinationDatabaseId)
             .addParameter("maxNumWorkers", "10");
 
     if (!collectionIdFilter.isEmpty()) {
@@ -277,14 +290,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
 
     return pipelineLauncher.launch(PROJECT, REGION, options.build());
-  }
-
-  private String sourceDatabaseId() {
-    return sourceDatabaseId;
-  }
-
-  private String destinationDatabaseId() {
-    return destinationDatabaseId;
   }
 
   public Map<String, Object> generateRandomDocument() {
@@ -298,7 +303,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     // Occasionally add fields with challenging names
     if (random.nextBoolean()) {
-      documentData.put("field with spaces", random.nextInt());
+      documentData.put("field with spaces", random.nextLong());
     }
     if (random.nextBoolean()) {
       documentData.put("field.with.dots", randomString(10));
