@@ -64,6 +64,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Firestore_to_Firestore");
 
+  private static final String PROJECT = TestProperties.project();
+  private static final String REGION = TestProperties.region();
+  private static final String SUB_COLLECTION_ID = "subCol";
+  private static final String SUB_SUB_COLLECTION_ID = "subSubCol";
+
   private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
   private FirestoreResourceManager sourceFirestoreResourceManager;
@@ -72,9 +77,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private Random random;
   private String sourceDatabaseId;
   private String destinationDatabaseId;
-
-  private static final String PROJECT = TestProperties.project();
-  private static final String REGION = TestProperties.region();
 
   @Before
   public void setUp() {
@@ -179,16 +181,22 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
 
     // Populate data for two different top-level collections
-    populateFuzzData(inputData, "fuzz1-" + randomString(6).toLowerCase());
-    populateFuzzData(inputData, "fuzz2-" + randomString(6).toLowerCase());
+    String rootCollectionId1 = "fuzz1-" + randomString(6).toLowerCase();
+    String rootCollectionId2 = "fuzz2-" + randomString(6).toLowerCase();
+    populateFuzzData(inputData, rootCollectionId1);
+    populateFuzzData(inputData, rootCollectionId2);
 
     // Write all data to source
     for (Map.Entry<String, Map<String, Map<String, Object>>> entry : inputData.entrySet()) {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
-    // Run without filter to verify "list all collections" logic
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz");
+    String filter =
+        String.join(
+            ",", rootCollectionId1, rootCollectionId2, SUB_COLLECTION_ID, SUB_SUB_COLLECTION_ID);
+
+    // Run with filter to verify both root and subcollections are picked up
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", filter);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -230,21 +238,21 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
       rootData.put(documentId, generateRandomDocument());
 
-      // 30% chance to create a subcollection
-      if (random.nextInt(10) < 3) {
+      // Ensure at least one subcollection exists and then 30% chance for others
+      if (i == 0 || random.nextInt(10) < 3) {
         // Use the same ID as the root collection so the "allDescendants" query for that ID
         // picks it up, even though the template only explicitly lists root collections.
-        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + rootCollectionId;
+        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + SUB_COLLECTION_ID;
         Map<String, Map<String, Object>> subData = new HashMap<>();
         int numSubDocs = random.nextInt(3) + 1;
         for (int k = 0; k < numSubDocs; k++) {
           String subDocId = "subDoc-" + k + "-" + UUID.randomUUID();
           subData.put(subDocId, generateRandomDocument());
 
-          // 20% chance to create a nested subcollection (sub-subcollection)
-          if (random.nextInt(10) < 2) {
+          // Ensure at least one nested subcollection exists and then 20% chance for others
+          if (k == 0 || random.nextInt(10) < 2) {
             String subSubCollectionPath =
-                subCollectionPath + "/" + subDocId + "/" + rootCollectionId;
+                subCollectionPath + "/" + subDocId + "/" + SUB_SUB_COLLECTION_ID;
             Map<String, Map<String, Object>> subSubData = new HashMap<>();
             int numSubSubDocs = random.nextInt(2) + 1;
             for (int l = 0; l < numSubSubDocs; l++) {
