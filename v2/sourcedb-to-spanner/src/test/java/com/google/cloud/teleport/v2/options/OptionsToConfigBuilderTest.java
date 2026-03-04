@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -31,6 +32,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link OptionsToConfigBuilder}. */
@@ -61,7 +63,9 @@ public class OptionsToConfigBuilderTest {
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
-        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+        .isEqualTo(
+            testUrl
+                + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
@@ -101,7 +105,10 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null,
+            null,
+            null);
 
     JdbcIOWrapperConfig configWithoutConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
@@ -122,14 +129,17 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null,
+            null,
+            null);
 
     assertThat(configWithConnectionProperties.sourceDbURL())
         .isEqualTo(
-            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(configWithoutConnectionProperties.sourceDbURL())
         .isEqualTo(
-            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
+            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
   }
 
   @Test
@@ -188,7 +198,10 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null,
+            null,
+            null);
     JdbcIOWrapperConfig configWithoutConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
@@ -208,7 +221,10 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            -1L);
+            -1L,
+            null,
+            null,
+            null);
     assertThat(configWithoutConnectionParameters.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public");
     assertThat(configWithConnectionParameters.sourceDbURL())
@@ -240,7 +256,10 @@ public class OptionsToConfigBuilderTest {
             0,
             Wait.on(dummyPCollection),
             null,
-            0L);
+            0L,
+            null,
+            null,
+            null);
     assertThat(configWithNamespace.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
   }
@@ -304,10 +323,85 @@ public class OptionsToConfigBuilderTest {
     assertThat(
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", null))
-        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
     assertThat(
             OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
                 SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
         .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+  }
+
+  @Test
+  public void testExtractWorkerZone() {
+    DataflowPipelineWorkerPoolOptions mockOptions =
+        Mockito.mock(DataflowPipelineWorkerPoolOptions.class);
+    Mockito.when(mockOptions.getWorkerZone()).thenReturn("us-central1-a");
+    Mockito.when(mockOptions.as(DataflowPipelineWorkerPoolOptions.class)).thenReturn(mockOptions);
+
+    String workerZone = OptionsToConfigBuilder.extractWorkerZone(mockOptions);
+    assertThat(workerZone).isEqualTo("us-central1-a");
+  }
+
+  @Test
+  public void testExtractWorkerZoneException() {
+    DataflowPipelineWorkerPoolOptions mockOptions =
+        Mockito.mock(DataflowPipelineWorkerPoolOptions.class);
+    Mockito.when(mockOptions.as(DataflowPipelineWorkerPoolOptions.class))
+        .thenThrow(new RuntimeException("Test Exception"));
+
+    String workerZone = OptionsToConfigBuilder.extractWorkerZone(mockOptions);
+    assertThat(workerZone).isNull();
+  }
+
+  @Test
+  public void testFetchSizeMinusOneBehavesLikeNull() {
+    SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    options.setSourceDbDialect(SQLDialect.MYSQL.name());
+    options.setSourceConfigURL("jdbc:mysql://localhost:3306/testDB");
+    options.setJdbcDriverClassName("com.mysql.jdbc.Driver");
+    options.setFetchSize(-1); // Should be normalized to null
+
+    JdbcIOWrapperConfig config =
+        OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+            options, List.of("table1"), null, null);
+
+    assertThat(config.maxFetchSize()).isNull();
+  }
+
+  @Test
+  public void testMySqlCursorModeEnabledForNullFetchSize() {
+    String url = "jdbc:mysql://localhost:3306/testDB";
+    String updatedUrl =
+        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, null);
+    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
+  }
+
+  @Test
+  public void testMySqlCursorModeEnabledForMinusOneFetchSize() {
+    // Note: In the builder, -1 is normalized to null BEFORE calling
+    // mysqlSetCursorModeIfNeeded,
+    // but here we test the method directly. If we pass -1 directly (if it were
+    // possible),
+    // it would be treated as != 0, so it would enable cursor mode.
+    // However, the main propagation test testFetchSizeMinusOneBehavesLikeNull
+    // covers the normalization.
+    String url = "jdbc:mysql://localhost:3306/testDB";
+    String updatedUrl =
+        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, -1);
+    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
+  }
+
+  @Test
+  public void testMySqlCursorModeDisabledForZeroFetchSize() {
+    String url = "jdbc:mysql://localhost:3306/testDB";
+    String updatedUrl = OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, 0);
+    assertThat(updatedUrl).isEqualTo(url); // No change
+  }
+
+  @Test
+  public void testMySqlCursorModeEnabledForPositiveFetchSize() {
+    String url = "jdbc:mysql://localhost:3306/testDB";
+    String updatedUrl =
+        OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(SQLDialect.MYSQL, url, 100);
+    assertThat(updatedUrl).isEqualTo(url + "?useCursorFetch=true");
   }
 }

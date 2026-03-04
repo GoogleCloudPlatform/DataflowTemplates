@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
+import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
+import com.google.cloud.teleport.v2.neo4j.actions.HttpMethod;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import java.util.List;
 import java.util.Map;
@@ -24,11 +27,8 @@ import org.json.JSONArray;
 import org.junit.Test;
 import org.neo4j.importer.v1.actions.Action;
 import org.neo4j.importer.v1.actions.ActionStage;
-import org.neo4j.importer.v1.actions.BigQueryAction;
-import org.neo4j.importer.v1.actions.CypherAction;
-import org.neo4j.importer.v1.actions.CypherExecutionMode;
-import org.neo4j.importer.v1.actions.HttpAction;
-import org.neo4j.importer.v1.actions.HttpMethod;
+import org.neo4j.importer.v1.actions.plugin.CypherAction;
+import org.neo4j.importer.v1.actions.plugin.CypherExecutionMode;
 
 @SuppressWarnings("deprecation")
 public class ActionMapperTest {

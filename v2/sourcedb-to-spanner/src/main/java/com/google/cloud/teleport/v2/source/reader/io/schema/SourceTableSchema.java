@@ -21,9 +21,11 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.util.UUID;
+import javax.annotation.Nullable;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
@@ -47,6 +49,9 @@ public abstract class SourceTableSchema implements Serializable {
 
   public abstract String tableName();
 
+  @Nullable
+  public abstract Long estimatedRowSize();
+
   // Source Schema from metadata tables. SourceColumnType is similar to
   // com.google.cloud.teleport.v2.spanner.migrations.schema
   /* TODO(vardhanvthigle):
@@ -58,6 +63,8 @@ public abstract class SourceTableSchema implements Serializable {
 
   // Mapped Avro Schema (to unified types) that each row will carry.
   public abstract Schema avroSchema();
+
+  public abstract ImmutableList<String> primaryKeyColumns();
 
   public Schema getAvroPayload() {
     return avroSchema().getField(PAYLOAD_FIELD_NAME).schema();
@@ -86,10 +93,14 @@ public abstract class SourceTableSchema implements Serializable {
 
     public abstract Builder setTableName(String value);
 
+    public abstract Builder setEstimatedRowSize(@Nullable Long value);
+
     @VisibleForTesting protected UnifiedTypeMapper.MapperType mapperType;
 
     abstract ImmutableMap.Builder<String, SourceColumnType>
         sourceColumnNameToSourceColumnTypeBuilder();
+
+    public abstract Builder setPrimaryKeyColumns(ImmutableList<String> value);
 
     private FieldAssembler<RecordDefault<Schema>> payloadFieldAssembler;
 
@@ -132,6 +143,7 @@ public abstract class SourceTableSchema implements Serializable {
 
     public Builder initialize(UnifiedTypeMapper.MapperType mapperType) {
       this.mapperType = mapperType;
+      this.setPrimaryKeyColumns(ImmutableList.of());
       return this;
     }
 

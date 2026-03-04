@@ -56,39 +56,38 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLTBase.class);
   public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
+  public static final String SESSION_FILE_NAME = "input/session.json";
+  public static final String SCHEMA_FILE_NAME = "input/schema.json";
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
   public SpannerResourceManager spannerResourceManager;
   public SpannerResourceManager spannerMetadataResourceManager;
-  public List<JDBCResourceManager> jdbcResourceManagers;
+  public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
   public GcsResourceManager gcsResourceManager;
-  protected static PubsubResourceManager pubsubResourceManager;
+  protected PubsubResourceManager pubsubResourceManager;
   protected SubscriptionName subscriptionName;
 
-  public void setupResourceManagers(
-      String spannerDdlResource, String sessionFileResource, String artifactBucket)
+  public void setupResourceManagers(String spannerDdlResource, String sessionFileResource)
       throws IOException {
     spannerResourceManager = createSpannerDatabase(spannerDdlResource);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
 
     gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(sessionFileResource).getPath());
+        SESSION_FILE_NAME, Resources.getResource(sessionFileResource).getPath());
 
     pubsubResourceManager = setUpPubSubResourceManager();
     subscriptionName =
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath(artifactBucket, "dlq", gcsResourceManager)
-                .replace("gs://" + artifactBucket, ""));
+            getGcsPath("dlq", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket(), ""));
   }
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
-    jdbcResourceManagers = new ArrayList<>();
     for (int i = 0; i < numShards; ++i) {
       jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
     }
@@ -102,8 +101,10 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
-    for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
-      ResourceManagerUtils.cleanResources(jdbcResourceManager);
+    if (jdbcResourceManagers != null) {
+      for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
+        ResourceManagerUtils.cleanResources(jdbcResourceManager);
+      }
     }
   }
 
@@ -188,32 +189,30 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchDataflowJob(
-      String artifactBucket,
       int numWorkers,
       int maxWorkers,
       CustomTransformation customTransformation,
       String sourceType,
-      String shardFileName)
+      String shardFileName,
+      String sessionFileName)
       throws IOException {
     // default parameters
 
     Map<String, String> params =
         new HashMap<>() {
           {
-            put(
-                "sessionFilePath",
-                getGcsPath(artifactBucket, "input/session.json", gcsResourceManager));
+            if (sessionFileName != null) {
+              put("sessionFilePath", getGcsPath(sessionFileName, gcsResourceManager));
+            }
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", project);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(artifactBucket, shardFileName, gcsResourceManager));
+            put("sourceShardsFilePath", getGcsPath(shardFileName, gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
-            put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
+            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "100");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
@@ -222,8 +221,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
     if (customTransformation != null) {
       params.put(
-          "transformationJarPath",
-          getGcsPath(artifactBucket, customTransformation.jarPath(), gcsResourceManager));
+          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
     }
 
@@ -239,10 +237,12 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     return jobInfo;
   }
 
-  public String getGcsPath(
-      String bucket, String artifactId, GcsResourceManager gcsResourceManager) {
+  public String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
     return ArtifactUtils.getFullGcsPath(
-        bucket, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
   }
 
   public Map<String, Double> getCustomCounters(

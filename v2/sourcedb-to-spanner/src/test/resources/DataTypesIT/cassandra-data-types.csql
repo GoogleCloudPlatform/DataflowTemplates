@@ -1,5 +1,4 @@
-DROP TABLE IF EXISTS all_data_types;
-CREATE TABLE all_data_types (
+CREATE TABLE IF NOT EXISTS all_data_types (
     primary_key UUID PRIMARY KEY,
     ascii_col ASCII,
     bigint_col BIGINT,
@@ -767,7 +766,7 @@ VALUES (
     {184467440000000000000:BigIntAsBlob(9223372036854775807), -184467440000000000000:BigintAsBlob(-9223372036854775808)} -- varint_blob_map_col
 );
 
-CREATE TABLE "true" (
+CREATE TABLE IF NOT EXISTS "true" (
   "KEY" bigint PRIMARY KEY,
   "CLUSTERING" text
 );

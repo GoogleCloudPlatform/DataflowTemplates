@@ -19,22 +19,24 @@ import static com.google.common.truth.Truth.assertThat;
 import static java.util.Map.entry;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.transforms.Order;
+import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
+import com.google.cloud.teleport.v2.neo4j.transforms.SourceTransformations;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.NodeExistenceConstraint;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeMatchMode;
 import org.neo4j.importer.v1.targets.NodeRangeIndex;
+import org.neo4j.importer.v1.targets.NodeReference;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.NodeUniqueConstraint;
-import org.neo4j.importer.v1.targets.Order;
-import org.neo4j.importer.v1.targets.OrderBy;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.PropertyType;
 import org.neo4j.importer.v1.targets.RelationshipExistenceConstraint;
@@ -43,7 +45,6 @@ import org.neo4j.importer.v1.targets.RelationshipRangeIndex;
 import org.neo4j.importer.v1.targets.RelationshipSchema;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
 import org.neo4j.importer.v1.targets.RelationshipUniqueConstraint;
-import org.neo4j.importer.v1.targets.SourceTransformations;
 import org.neo4j.importer.v1.targets.WriteMode;
 
 @SuppressWarnings("deprecation")
@@ -68,7 +69,15 @@ public class TargetMapperTest {
         .isEqualTo(
             List.of(
                 new NodeTarget(
-                    true, "node/0", "", null, WriteMode.CREATE, null, List.of(), List.of(), null)));
+                    true,
+                    "node/0",
+                    "",
+                    null,
+                    WriteMode.CREATE,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    null)));
     assertThat(targets.getRelationships()).isEmpty();
     assertThat(targets.getCustomQueries()).isEmpty();
   }
@@ -135,12 +144,13 @@ public class TargetMapperTest {
             "a-source",
             null,
             WriteMode.MERGE,
-            new SourceTransformations(
-                true,
-                List.of(new Aggregation("42", "field01"), new Aggregation("24", "field02")),
-                "1+2=3",
-                List.of(new OrderBy("field01", Order.ASC), new OrderBy("field02", Order.DESC)),
-                100),
+            List.of(
+                new SourceTransformations(
+                    true,
+                    List.of(new Aggregation("42", "field01"), new Aggregation("24", "field02")),
+                    "1+2=3",
+                    List.of(new OrderBy("field01", Order.ASC), new OrderBy("field02", Order.DESC)),
+                    100)),
             List.of("Placeholder1", "Placeholder2"),
             List.of(
                 new PropertyMapping("field01", "prop01", null),
@@ -312,41 +322,6 @@ public class TargetMapperTest {
   }
 
   @Test
-  public void parses_minimal_edge_target() {
-    var edgeTarget =
-        new JSONObject(
-            Map.of(
-                "edge",
-                Map.of(
-                    "name", "",
-                    "mode", "append",
-                    "mappings", Map.of())));
-
-    var targets =
-        TargetMapper.parse(
-            new JSONArray(List.of(edgeTarget)), new OptionsParams(), new JobSpecIndex(), false);
-
-    assertThat(targets.getNodes()).isEmpty();
-    assertThat(targets.getRelationships())
-        .isEqualTo(
-            List.of(
-                new RelationshipTarget(
-                    true,
-                    "edge/0",
-                    "",
-                    null,
-                    null,
-                    WriteMode.CREATE,
-                    NodeMatchMode.MATCH,
-                    null,
-                    null,
-                    null,
-                    List.of(),
-                    null)));
-    assertThat(targets.getCustomQueries()).isEmpty();
-  }
-
-  @Test
   public void parses_edge_target_with_matching_node_targets() {
     var sourceNodeTarget =
         new JSONObject(
@@ -443,7 +418,7 @@ public class TargetMapperTest {
                     "a-source",
                     null,
                     WriteMode.CREATE,
-                    null,
+                    List.of(),
                     List.of("Placeholder1"),
                     List.of(new PropertyMapping("prop1", "prop1", null)),
                     new NodeSchema(
@@ -467,7 +442,7 @@ public class TargetMapperTest {
                     "a-source",
                     null,
                     WriteMode.CREATE,
-                    null,
+                    List.of(),
                     List.of("Placeholder2"),
                     List.of(new PropertyMapping("prop2", "prop2", null)),
                     new NodeSchema(
@@ -496,15 +471,18 @@ public class TargetMapperTest {
                     "PLACEHOLDER",
                     WriteMode.MERGE,
                     NodeMatchMode.MATCH,
-                    new SourceTransformations(
-                        true,
-                        List.of(new Aggregation("42", "field01"), new Aggregation("24", "field02")),
-                        "1+2=3",
-                        List.of(
-                            new OrderBy("field01", Order.ASC), new OrderBy("field02", Order.DESC)),
-                        100),
-                    "a-source-node-target",
-                    "a-target-node-target",
+                    List.of(
+                        new SourceTransformations(
+                            true,
+                            List.of(
+                                new Aggregation("42", "field01"), new Aggregation("24", "field02")),
+                            "1+2=3",
+                            List.of(
+                                new OrderBy("field01", Order.ASC),
+                                new OrderBy("field02", Order.DESC)),
+                            100)),
+                    new NodeReference("a-source-node-target"),
+                    new NodeReference("a-target-node-target"),
                     List.of(
                         new PropertyMapping("field01", "prop01", null),
                         new PropertyMapping("field02", "prop02", null),
@@ -607,7 +585,7 @@ public class TargetMapperTest {
                     "a-source",
                     null,
                     WriteMode.MERGE,
-                    null,
+                    List.of(),
                     List.of("Placeholder1"),
                     List.of(new PropertyMapping("prop1", "prop1", null)),
                     new NodeSchema(
@@ -631,7 +609,7 @@ public class TargetMapperTest {
                     "a-source",
                     null,
                     WriteMode.MERGE,
-                    null,
+                    List.of(),
                     List.of("Placeholder2"),
                     List.of(new PropertyMapping("prop2", "prop2", null)),
                     new NodeSchema(
@@ -660,9 +638,9 @@ public class TargetMapperTest {
                     "PLACEHOLDER",
                     WriteMode.MERGE,
                     NodeMatchMode.MATCH,
-                    null,
-                    "a-target-source",
-                    "a-target-target",
+                    List.of(),
+                    new NodeReference("a-target-source"),
+                    new NodeReference("a-target-target"),
                     List.of(
                         new PropertyMapping("field01", "prop01", null),
                         new PropertyMapping("field02", "prop02", null),

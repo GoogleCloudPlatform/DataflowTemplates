@@ -70,6 +70,10 @@ public class ShadowTableCreator {
             .filter(col -> primaryKeyColNames.contains(col.name()))
             .collect(Collectors.toList());
     for (Column col : primaryKeyCols) {
+      // In Shadow table we only have primary keys. If primary key is dependent on
+      // non-primary key column, then shadow table creation will fail.
+      // Hence, generated expression should be removed from the shadow table columns.
+      col = col.toBuilder().isGenerated(false).generationExpression("").autoBuild();
       shadowTableBuilder.addColumn(col);
     }
 

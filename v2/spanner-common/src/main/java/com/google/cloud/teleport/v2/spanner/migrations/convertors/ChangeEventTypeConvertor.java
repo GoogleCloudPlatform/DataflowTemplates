@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -48,6 +50,53 @@ public class ChangeEventTypeConvertor {
   private static final DateTimeFormatter DATASTREAM_DATE_FORMATTER =
       DateTimeFormatter.ISO_LOCAL_DATE;
   private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
+
+  public static Value toValue(
+      JsonNode changeEvent, Type columnType, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    switch (columnType.getCode()) {
+      case BOOL:
+      case PG_BOOL:
+        return Value.bool(toBoolean(changeEvent, key, requiredField));
+      case INT64:
+      case PG_INT8:
+        return Value.int64(toLong(changeEvent, key, requiredField));
+      case FLOAT64:
+      case PG_FLOAT8:
+        return Value.float64(toDouble(changeEvent, key, requiredField));
+      case FLOAT32:
+      case PG_FLOAT4:
+        return Value.float32(toFloat(changeEvent, key, requiredField));
+      case STRING:
+      case PG_VARCHAR:
+      case PG_TEXT:
+        return Value.string(toString(changeEvent, key, requiredField));
+      case NUMERIC:
+      case PG_NUMERIC:
+        return Value.numeric(toNumericBigDecimal(changeEvent, key, requiredField));
+      case JSON:
+      case PG_JSONB:
+        return Value.string(toString(changeEvent, key, requiredField));
+      case BYTES:
+      case PG_BYTEA:
+        return Value.bytes(toByteArray(changeEvent, key, requiredField));
+      case TIMESTAMP:
+      case PG_COMMIT_TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+        return Value.timestamp(toTimestamp(changeEvent, key, requiredField));
+      case DATE:
+      case PG_DATE:
+        return Value.date(toDate(changeEvent, key, requiredField));
+      case ARRAY:
+        // TODO(b/422928714): Add support for Array types.
+        return null;
+        // TODO(b/179070999) - Add support for other data types.
+      default:
+        throw new IllegalArgumentException(
+            "Column name(" + key + ") has unsupported column type(" + columnType.getCode() + ")");
+    }
+  }
 
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {

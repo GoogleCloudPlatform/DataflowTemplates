@@ -38,6 +38,9 @@ v2/datastream-mongodb-to-firestore/ @GoogleCloudPlatform/FirestoreMigrationTool
 # Spanner Bulk migration template
 v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
 
+# GCS Spanner Validation template
+v2/gcs-spanner-dv/ @GoogleCloudPlatform/spanner-migrations-team
+
 # Bigtable Import Export templates
 v1/src/main/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team
 v1/src/test/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team

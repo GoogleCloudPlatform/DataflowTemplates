@@ -133,7 +133,11 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private ReportedSourceType determineReportedSourceType() {
-    Source source = importSpecification.findSourceByName(target.getSource());
+    Source source =
+        importSpecification.getSources().stream()
+            .filter(src -> src.getName().equals(target.getSource()))
+            .findFirst()
+            .get();
     return ReportedSourceType.reportedSourceTypeOf(source);
   }
 

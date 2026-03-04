@@ -495,4 +495,4 @@ Before submitting your PR, a repo maintainer must add one of the following label
 - `new-template`: Addition of new Dataflow templates
 - `package-upgrade`: Updates to dependencies, libraries, or package versions
 
-Note: If updating these labels, also update .github/release.yml and .github/workflows/release-notes-labels.yml.
+Note: If updating these labels, also update [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml) and [release-notes-labels.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/release-notes-labels.yml).

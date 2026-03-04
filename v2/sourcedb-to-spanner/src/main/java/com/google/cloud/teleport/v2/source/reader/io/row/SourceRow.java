@@ -18,8 +18,11 @@ package com.google.cloud.teleport.v2.source.reader.io.row;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import javax.annotation.Nullable;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
@@ -59,6 +62,8 @@ public abstract class SourceRow implements Serializable {
   @Nullable
   public abstract String shardId();
 
+  public abstract ImmutableList<String> primaryKeyColumns();
+
   /**
    * Get the readTime epoch in microseconds.
    *
@@ -78,6 +83,45 @@ public abstract class SourceRow implements Serializable {
   }
 
   abstract SerializableGenericRecord record();
+
+  /**
+   * Generates a schema that wraps the payload with metadata fields. We prioritize using the
+   * payload's existing schema definition.
+   */
+  public Schema gcsSchema() {
+    return SchemaBuilder.record("SourceRowWithMetadata")
+        .fields()
+        .name("tableName")
+        .type()
+        .stringType()
+        .noDefault()
+        .name("shardId")
+        .type()
+        .nullable()
+        .stringType()
+        .noDefault()
+        .name("primaryKeys")
+        .type()
+        .array()
+        .items()
+        .stringType()
+        .noDefault()
+        // We reuse the exact schema from the payload to ensure compatibility
+        .name("payload")
+        .type(this.getPayload().getSchema())
+        .noDefault()
+        .endRecord();
+  }
+
+  /** Converts the current SourceRow into a GenericRecord suitable for GCS writing. */
+  public GenericRecord toGcsRecord() {
+    return new GenericRecordBuilder(this.gcsSchema())
+        .set("tableName", this.tableName())
+        .set("shardId", this.shardId())
+        .set("primaryKeys", this.primaryKeyColumns())
+        .set("payload", this.getPayload())
+        .build();
+  }
 
   /**
    * returns an initialized builder for SourceRow.
@@ -125,6 +169,8 @@ public abstract class SourceRow implements Serializable {
     @SuppressWarnings("CheckReturnValue")
     public abstract Builder setShardId(String value);
 
+    public abstract Builder setPrimaryKeyColumns(ImmutableList<String> value);
+
     @SuppressWarnings("CheckReturnValue")
     abstract Builder setRecord(SerializableGenericRecord value);
 
@@ -150,6 +196,7 @@ public abstract class SourceRow implements Serializable {
       this.setTableSchemaUUID(sourceTableSchema.tableSchemaUUID());
       this.setTableName(sourceTableSchema.tableName());
       this.setShardId(shardId);
+      this.setPrimaryKeyColumns(sourceTableSchema.primaryKeyColumns());
       this.recordBuilder = new GenericRecordBuilder(sourceTableSchema.avroSchema());
       this.recordBuilder.set(SourceTableSchema.READ_TIME_STAMP_FIELD_NAME, readTimeMicros);
       this.payloadBuilder =

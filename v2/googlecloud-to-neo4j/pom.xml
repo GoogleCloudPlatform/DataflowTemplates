@@ -28,6 +28,7 @@
 
   <properties>
     <neo4j-java-driver.version>5.27.0</neo4j-java-driver.version>
+    <jackson.version>2.21.0</jackson.version>
   </properties>
 
   <dependencyManagement>
@@ -49,7 +50,7 @@
     <dependency>
       <groupId>org.neo4j.importer</groupId>
       <artifactId>import-spec</artifactId>
-      <version>1.0.0-rc03</version>
+      <version>1.0.0-rc11</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>

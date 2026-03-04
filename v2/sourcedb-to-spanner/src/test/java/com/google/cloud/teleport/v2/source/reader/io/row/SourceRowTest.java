@@ -18,7 +18,10 @@ package com.google.cloud.teleport.v2.source.reader.io.row;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
+import com.google.common.collect.ImmutableList;
 import junit.framework.TestCase;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,6 +50,56 @@ public class SourceRowTest extends TestCase {
     assertThat(sourceRow.getReadTimeMicros()).isEqualTo(testReadTime);
     assertThat(sourceRow.getPayload().get("firstName")).isEqualTo("abc");
     assertThat(sourceRow.getPayload().get("lastName")).isEqualTo("def");
+    assertThat(sourceRow.primaryKeyColumns()).isEqualTo(ImmutableList.of());
+  }
+
+  @Test
+  public void testGcsSchema() {
+    final String testTable = "testTable";
+    final String shardId = "id1";
+    final long testReadTime = 1712751118L;
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    SourceRow sourceRow =
+        SourceRow.builder(schemaRef, schema, shardId, testReadTime)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
+            .build();
+
+    Schema gcsSchema = sourceRow.gcsSchema();
+    assertThat(gcsSchema.getName()).isEqualTo("SourceRowWithMetadata");
+    assertThat(gcsSchema.getField("tableName")).isNotNull();
+    assertThat(gcsSchema.getField("shardId")).isNotNull();
+    assertThat(gcsSchema.getField("primaryKeys")).isNotNull();
+    assertThat(gcsSchema.getField("primaryKeys").schema().getType()).isEqualTo(Schema.Type.ARRAY);
+    assertThat(gcsSchema.getField("payload")).isNotNull();
+    assertThat(gcsSchema.getField("payload").schema())
+        .isEqualTo(sourceRow.getPayload().getSchema());
+  }
+
+  @Test
+  public void testToGcsRecord() {
+    final String testTable = "testTable";
+    final String shardId = "id1";
+    final long testReadTime = 1712751118L;
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    var schema =
+        SchemaTestUtils.generateTestTableSchemaBuilder(testTable)
+            .setPrimaryKeyColumns(ImmutableList.of(SchemaTestUtils.TEST_FIELD_NAME_1))
+            .build();
+    SourceRow sourceRow =
+        SourceRow.builder(schemaRef, schema, shardId, testReadTime)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
+            .build();
+
+    GenericRecord gcsRecord = sourceRow.toGcsRecord();
+    assertThat(gcsRecord.getSchema().getName()).isEqualTo("SourceRowWithMetadata");
+    assertThat(gcsRecord.get("tableName")).isEqualTo(testTable);
+    assertThat(gcsRecord.get("shardId")).isEqualTo(shardId);
+    assertThat((java.util.List<?>) gcsRecord.get("primaryKeys"))
+        .containsExactly(SchemaTestUtils.TEST_FIELD_NAME_1);
+    assertThat(gcsRecord.get("payload")).isEqualTo(sourceRow.getPayload());
   }
 
   @Test

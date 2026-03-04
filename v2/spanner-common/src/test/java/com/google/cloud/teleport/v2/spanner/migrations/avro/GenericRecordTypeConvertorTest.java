@@ -1440,6 +1440,12 @@ public class GenericRecordTypeConvertorTest {
               MigrationTransformationRequest request) {
             return null;
           }
+
+          @Override
+          public MigrationTransformationResponse transformFailedSpannerMutation(
+              MigrationTransformationRequest request) throws InvalidTransformationException {
+            return new MigrationTransformationResponse(request.getRequestRow(), false);
+          }
         };
 
     GenericRecordTypeConvertor genericRecordTypeConvertor =
@@ -1496,6 +1502,12 @@ public class GenericRecordTypeConvertorTest {
     public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
         throws InvalidTransformationException {
       return null;
+    }
+
+    @Override
+    public MigrationTransformationResponse transformFailedSpannerMutation(
+        MigrationTransformationRequest request) throws InvalidTransformationException {
+      return new MigrationTransformationResponse(request.getRequestRow(), false);
     }
   }
 

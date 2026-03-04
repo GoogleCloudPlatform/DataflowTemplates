@@ -36,8 +36,6 @@
   </prerequisites>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
     <maven.version>3.9.9</maven.version>
     <dataflow.api.version>0.7.6</dataflow.api.version>
     <mojo.executor.version>2.4.1</mojo.executor.version>
@@ -48,6 +46,11 @@
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>core-plugin</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport.metadata</groupId>
+      <artifactId>metadata</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

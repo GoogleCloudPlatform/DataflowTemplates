@@ -28,11 +28,9 @@ import java.time.Duration;
 import org.apache.beam.it.cassandra.conditions.CassandraRowsCheck;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,12 +41,10 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("Disabling incorrect LT. b/446480838")
 public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceLT.class);
   private String generatorSchemaPath;
-  private final String artifactBucket = TestProperties.artifactBucket();
   private final String spannerDdlResource = "SpannerToCassandraSourceLT/spanner-schema.sql";
   private static final String cassandraDdlResource =
       "SpannerToCassandraSourceLT/cassandra-schema.sql";
@@ -62,23 +58,17 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
   @Before
   public void setup() throws IOException {
-    setupResourceManagers(spannerDdlResource, cassandraDdlResource, artifactBucket);
+    setupResourceManagers(spannerDdlResource, cassandraDdlResource);
     generatorSchemaPath =
         getFullGcsPath(
-            artifactBucket,
+            gcsResourceManager.getBucket(),
             gcsResourceManager
                 .uploadArtifact(
-                    "input/schema.json",
-                    Resources.getResource(dataGeneratorSchemaResource).getPath())
+                    SCHEMA_FILE_NAME, Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
     jobInfo =
         launchDataflowJob(
-            artifactBucket,
-            numWorkers,
-            maxWorkers,
-            null,
-            CASSANDRA_SOURCE_TYPE,
-            SOURCE_SHARDS_FILE_NAME);
+            numWorkers, maxWorkers, null, CASSANDRA_SOURCE_TYPE, SOURCE_SHARDS_FILE_NAME, null);
   }
 
   @After
