@@ -5,6 +5,8 @@ The Firestore to Firestore template is a batch pipeline that reads documents fro
 one <a href="https://cloud.google.com/firestore/docs">Firestore</a> database and
 writes them to another Firestore database.
 
+It does not support using an Enterprise edition database as the source.
+
 Data consistency is guaranteed only at the end of the pipeline when all data has
 been written to the destination database.
 
@@ -20,11 +22,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
 * **sourceDatabaseId**: The source database to read from. Use '(default)' for the default database. For example, `my-database`.
+* **collectionGroupIds**: Specifies collection groups to copy. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, providing `users,messages` will copy all data under `users` and `messages` collections. For example, `users,messages`.
 * **destinationDatabaseId**: The destination database to write to. Use '(default)' for the default database. For example, `my-database`.
 
 ### Optional parameters
 
-* **collectionIds**: If specified, only replicate these collections. If not specified, copy all collections. For example, `my-collection1,my-collection2`. Defaults to empty.
 * **destinationProjectId**: The destination project to write to. Defaults to the source project if not set. For example, `my-project`.
 * **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
@@ -86,7 +88,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Firestore_to_Firestore" \
--f v2/firestore-to-firestore
+-pl v2/firestore-to-firestore -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
@@ -121,10 +123,10 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Firestore_t
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=<sourceDatabaseId>
+export COLLECTION_GROUP_IDS=<collectionGroupIds>
 export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
-export COLLECTION_IDS=""
 export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
@@ -134,7 +136,7 @@ gcloud dataflow flex-template run "cloud-firestore-to-firestore-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "sourceProjectId=$SOURCE_PROJECT_ID" \
   --parameters "sourceDatabaseId=$SOURCE_DATABASE_ID" \
-  --parameters "collectionIds=$COLLECTION_IDS" \
+  --parameters "collectionGroupIds=$COLLECTION_GROUP_IDS" \
   --parameters "destinationProjectId=$DESTINATION_PROJECT_ID" \
   --parameters "destinationDatabaseId=$DESTINATION_DATABASE_ID" \
   --parameters "readTime=$READ_TIME"
@@ -158,10 +160,10 @@ export REGION=us-central1
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=<sourceDatabaseId>
+export COLLECTION_GROUP_IDS=<collectionGroupIds>
 export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
-export COLLECTION_IDS=""
 export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
@@ -172,7 +174,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-firestore-to-firestore-job" \
 -DtemplateName="Cloud_Firestore_to_Firestore" \
--Dparameters="sourceProjectId=$SOURCE_PROJECT_ID,sourceDatabaseId=$SOURCE_DATABASE_ID,collectionIds=$COLLECTION_IDS,destinationProjectId=$DESTINATION_PROJECT_ID,destinationDatabaseId=$DESTINATION_DATABASE_ID,readTime=$READ_TIME" \
+-Dparameters="sourceProjectId=$SOURCE_PROJECT_ID,sourceDatabaseId=$SOURCE_DATABASE_ID,collectionGroupIds=$COLLECTION_GROUP_IDS,destinationProjectId=$DESTINATION_PROJECT_ID,destinationDatabaseId=$DESTINATION_DATABASE_ID,readTime=$READ_TIME" \
 -f v2/firestore-to-firestore
 ```
 
@@ -209,7 +211,9 @@ variable "project" {
 variable "region" {
   default = "us-central1"
 }
+
 resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
+
   provider          = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Cloud_Firestore_to_Firestore"
   name              = "cloud-firestore-to-firestore"
@@ -217,8 +221,8 @@ resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
   parameters        = {
     sourceProjectId = "<sourceProjectId>"
     sourceDatabaseId = "<sourceDatabaseId>"
+    collectionGroupIds = "<collectionGroupIds>"
     destinationDatabaseId = "<destinationDatabaseId>"
-    # collectionIds = ""
     # destinationProjectId = ""
     # readTime = ""
   }

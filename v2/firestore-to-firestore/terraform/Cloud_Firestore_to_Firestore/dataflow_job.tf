@@ -36,19 +36,19 @@ variable "region" {
 variable "sourceProjectId" {
   type = string
   description = "The source project to read from. For example, `my-project`"
-
+  
 }
 
 variable "sourceDatabaseId" {
   type = string
   description = "The source database to read from. Use '(default)' for the default database. For example, `my-database`"
-
+  
 }
 
-variable "collectionIds" {
+variable "collectionGroupIds" {
   type = string
-  description = "If specified, only replicate these collections. If not specified, copy all collections. For example, `my-collection1,my-collection2`. Defaults to empty."
-  default = null
+  description = "Specifies collection groups to copy. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, providing `users,messages` will copy all data under `users` and `messages` collections. For example, `users,messages`"
+  
 }
 
 variable "destinationProjectId" {
@@ -60,7 +60,7 @@ variable "destinationProjectId" {
 variable "destinationDatabaseId" {
   type = string
   description = "The destination database to write to. Use '(default)' for the default database. For example, `my-database`"
-
+  
 }
 
 variable "readTime" {
@@ -196,12 +196,12 @@ resource "google_dataflow_flex_template_job" "generated" {
     parameters = {
         sourceProjectId = var.sourceProjectId
         sourceDatabaseId = var.sourceDatabaseId
-        collectionIds = var.collectionIds
+        collectionGroupIds = var.collectionGroupIds
         destinationProjectId = var.destinationProjectId
         destinationDatabaseId = var.destinationDatabaseId
         readTime = var.readTime
     }
-
+    
 	additional_experiments = var.additional_experiments
 	autoscaling_algorithm = var.autoscaling_algorithm
 	enable_streaming_engine = var.enable_streaming_engine
