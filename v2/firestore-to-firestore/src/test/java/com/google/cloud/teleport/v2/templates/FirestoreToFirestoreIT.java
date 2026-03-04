@@ -176,43 +176,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   @Test
   public void testFirestoreToFirestore_fuzzDataTypes() throws Exception {
-    String rootCollectionId = "fuzz-" + randomString(6).toLowerCase();
-    int numRootDocuments = 10;
-
     Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
 
-    Map<String, Map<String, Object>> rootData = new HashMap<>();
-    for (int i = 0; i < numRootDocuments; i++) {
-      String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
-      rootData.put(documentId, generateRandomDocument());
-
-      // 30% chance to create a subcollection
-      if (random.nextInt(10) < 3) {
-        // Use the same ID as the root collection so the "allDescendants" query for that ID
-        // picks it up, even though the template only explicitly lists root collections.
-        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + rootCollectionId;
-        Map<String, Map<String, Object>> subData = new HashMap<>();
-        int numSubDocs = random.nextInt(3) + 1;
-        for (int k = 0; k < numSubDocs; k++) {
-          String subDocId = "subDoc-" + k + "-" + UUID.randomUUID();
-          subData.put(subDocId, generateRandomDocument());
-
-          // 20% chance to create a nested subcollection (sub-subcollection)
-          if (random.nextInt(10) < 2) {
-            String subSubCollectionPath =
-                subCollectionPath + "/" + subDocId + "/" + rootCollectionId;
-            Map<String, Map<String, Object>> subSubData = new HashMap<>();
-            int numSubSubDocs = random.nextInt(2) + 1;
-            for (int l = 0; l < numSubSubDocs; l++) {
-              subSubData.put("subSubDoc-" + l + "-" + UUID.randomUUID(), generateRandomDocument());
-            }
-            inputData.put(subSubCollectionPath, subSubData);
-          }
-        }
-        inputData.put(subCollectionPath, subData);
-      }
-    }
-    inputData.put(rootCollectionId, rootData);
+    // Populate data for two different top-level collections
+    populateFuzzData(inputData, "fuzz1-" + randomString(6).toLowerCase());
+    populateFuzzData(inputData, "fuzz2-" + randomString(6).toLowerCase());
 
     // Write all data to source
     for (Map.Entry<String, Map<String, Map<String, Object>>> entry : inputData.entrySet()) {
@@ -252,6 +220,43 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         }
       }
     }
+  }
+
+  private void populateFuzzData(
+      Map<String, Map<String, Map<String, Object>>> inputData, String rootCollectionId) {
+    int numRootDocuments = 10;
+    Map<String, Map<String, Object>> rootData = new HashMap<>();
+    for (int i = 0; i < numRootDocuments; i++) {
+      String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
+      rootData.put(documentId, generateRandomDocument());
+
+      // 30% chance to create a subcollection
+      if (random.nextInt(10) < 3) {
+        // Use the same ID as the root collection so the "allDescendants" query for that ID
+        // picks it up, even though the template only explicitly lists root collections.
+        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + rootCollectionId;
+        Map<String, Map<String, Object>> subData = new HashMap<>();
+        int numSubDocs = random.nextInt(3) + 1;
+        for (int k = 0; k < numSubDocs; k++) {
+          String subDocId = "subDoc-" + k + "-" + UUID.randomUUID();
+          subData.put(subDocId, generateRandomDocument());
+
+          // 20% chance to create a nested subcollection (sub-subcollection)
+          if (random.nextInt(10) < 2) {
+            String subSubCollectionPath =
+                subCollectionPath + "/" + subDocId + "/" + rootCollectionId;
+            Map<String, Map<String, Object>> subSubData = new HashMap<>();
+            int numSubSubDocs = random.nextInt(2) + 1;
+            for (int l = 0; l < numSubSubDocs; l++) {
+              subSubData.put("subSubDoc-" + l + "-" + UUID.randomUUID(), generateRandomDocument());
+            }
+            inputData.put(subSubCollectionPath, subSubData);
+          }
+        }
+        inputData.put(subCollectionPath, subData);
+      }
+    }
+    inputData.put(rootCollectionId, rootData);
   }
 
   private void assertValuesEqual(Object expectedValue, Object actualValue) {
