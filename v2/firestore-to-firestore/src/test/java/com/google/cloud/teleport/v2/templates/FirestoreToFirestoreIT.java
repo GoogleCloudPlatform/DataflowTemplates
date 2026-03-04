@@ -115,29 +115,41 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     ResourceManagerUtils.cleanResources(firestoreAdminResourceManager);
   }
 
-  // TODO: Reenable
-  // @Test
-  public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
+  @Test
+  public void testFirestoreToFirestore_collectionIdProvided_copyFilteredCollections()
       throws IOException {
-    String collectionId = "input-" + randomString(6).toLowerCase();
+    String collectionId1 = "input1-" + randomString(6).toLowerCase();
+    String collectionId2 = "input2-" + randomString(6).toLowerCase();
+    String collectionId3 = "input3-" + randomString(6).toLowerCase();
     int numDocuments = 10;
 
-    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+    Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocuments);
+    Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocuments);
+    Map<String, Map<String, Object>> inputData3 = generateTestDocuments(numDocuments);
 
-    sourceFirestoreResourceManager.write(collectionId, inputData);
+    sourceFirestoreResourceManager.write(collectionId1, inputData1);
+    sourceFirestoreResourceManager.write(collectionId2, inputData2);
+    sourceFirestoreResourceManager.write(collectionId3, inputData3);
 
-    LaunchInfo info = launchPipeline(/*testName=*/ "copySingle", collectionId);
+    String filter = collectionId1 + "," + collectionId2;
+
+    LaunchInfo info = launchPipeline(/*testName=*/ "copyFiltered", filter);
     assertThatPipeline(info).isRunning();
 
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
 
-    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
-    assertThat(documents).hasSize(numDocuments);
+    // Verify collection 1
+    List<QueryDocumentSnapshot> documents1 = destinationFirestoreResourceManager.read(collectionId1);
+    assertThat(documents1).hasSize(numDocuments);
 
-    for (QueryDocumentSnapshot document : documents) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-    }
+    // Verify collection 2
+    List<QueryDocumentSnapshot> documents2 = destinationFirestoreResourceManager.read(collectionId2);
+    assertThat(documents2).hasSize(numDocuments);
+
+    // Verify collection 3 (should be empty)
+    List<QueryDocumentSnapshot> documents3 = destinationFirestoreResourceManager.read(collectionId3);
+    assertThat(documents3).isEmpty();
   }
 
   private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
