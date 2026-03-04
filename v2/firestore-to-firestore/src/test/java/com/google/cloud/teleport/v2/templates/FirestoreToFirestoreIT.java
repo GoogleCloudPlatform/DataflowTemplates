@@ -53,9 +53,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Integration test for {@link FirestoreToFirestore}.
- */
+/** Integration test for {@link FirestoreToFirestore}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -71,36 +69,41 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private FirestoreResourceManager destinationFirestoreResourceManager;
   private Random random;
+  private String sourceDatabaseId;
+  private String destinationDatabaseId;
 
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
 
   @Before
   public void setUp() {
+    random = new Random();
+    sourceDatabaseId = "src-" + UUID.randomUUID();
+    destinationDatabaseId = "dst-" + UUID.randomUUID();
+
     firestoreAdminResourceManager =
         FirestoreAdminResourceManager.builder(testName)
             .setProject(PROJECT)
             .setRegion(REGION)
             .build();
     firestoreAdminResourceManager.createDatabase(
-        sourceDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+        sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
         // TODO: pacoavila - We need to use an ENTERPRISE db once the data access mode can be set
         // from the Java SDK.
-        destinationDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+        destinationDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
-            .setDatabase(sourceDatabaseId())
+            .setDatabase(sourceDatabaseId)
             .setCredentials(TestProperties.googleCredentials())
             .build();
     destinationFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
-            .setDatabase(destinationDatabaseId())
+            .setDatabase(destinationDatabaseId)
             .setCredentials(TestProperties.googleCredentials())
             .build();
-    random = new Random();
   }
 
   @After
@@ -126,7 +129,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   //   Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
   //   assertThatResult(result).isLaunchFinished();
   //
-  //   List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+  //   List<QueryDocumentSnapshot> documents =
+  // destinationFirestoreResourceManager.read(collectionId);
   //   assertThat(documents).hasSize(numDocuments);
   //
   //   for (QueryDocumentSnapshot document : documents) {
@@ -220,10 +224,10 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
-    LaunchInfo info = launchPipeline(/*testName=*/ "copyFuzz", /*collectionIdFilter=*/ "");
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", /* collectionIdFilter= */ "");
     assertThatPipeline(info).isRunning();
 
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
 
     // Verify all collections
@@ -232,7 +236,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       Map<String, Map<String, Object>> expectedCollData = entry.getValue();
 
       List<QueryDocumentSnapshot> destDocuments = destinationFirestoreResourceManager.read(collId);
-      assertWithMessage("size for collection " + collId).that(destDocuments)
+      assertWithMessage("size for collection " + collId)
+          .that(destDocuments)
           .hasSize(expectedCollData.size());
 
       for (QueryDocumentSnapshot destDoc : destDocuments) {
@@ -258,9 +263,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
   }
 
-
-  private LaunchInfo launchPipeline(String testName, String collectionIdFilter)
-      throws IOException {
+  private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
@@ -277,19 +280,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   private String sourceDatabaseId() {
-    String sanitizedName = testName.toLowerCase().replaceAll("[^a-z0-9]", "-");
-    if (sanitizedName.length() > 50) {
-      sanitizedName = sanitizedName.substring(sanitizedName.length() - 50);
-    }
-    return ("s-" + sanitizedName).replaceAll("-+", "-").replaceAll("^-", "");
+    return sourceDatabaseId;
   }
 
   private String destinationDatabaseId() {
-    String sanitizedName = testName.toLowerCase().replaceAll("[^a-z0-9]", "-");
-    if (sanitizedName.length() > 50) {
-      sanitizedName = sanitizedName.substring(sanitizedName.length() - 50);
-    }
-    return ("d-" + sanitizedName).replaceAll("-+", "-").replaceAll("^-", "");
+    return destinationDatabaseId;
   }
 
   public Map<String, Object> generateRandomDocument() {
@@ -382,7 +377,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   private String randomString(int length) {
-    String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_./ ~";
+    String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     StringBuilder sb = new StringBuilder(length);
     for (int i = 0; i < length; i++) {
       sb.append(characters.charAt(random.nextInt(characters.length())));

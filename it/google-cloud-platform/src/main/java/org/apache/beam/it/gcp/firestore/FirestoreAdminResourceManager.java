@@ -66,6 +66,7 @@ public class FirestoreAdminResourceManager implements ResourceManager {
                           .setLocationId(region))
                   .build())
           .get();
+      databaseIds.add(databaseId);
     } catch (InterruptedException | ExecutionException e) {
       throw new FirestoreAdminResourceManagerException("Error creating Firestore database", e);
     }
@@ -73,7 +74,9 @@ public class FirestoreAdminResourceManager implements ResourceManager {
 
   public void deleteDatabase(String databaseId) {
     try {
-      firestoreAdminClient.deleteDatabaseAsync(databaseId).get();
+      firestoreAdminClient
+          .deleteDatabaseAsync("projects/" + projectId + "/databases/" + databaseId)
+          .get();
     } catch (InterruptedException | ExecutionException e) {
       throw new FirestoreAdminResourceManagerException("Error deleting Firestore database", e);
     }
