@@ -38,7 +38,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverri
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
@@ -649,7 +649,7 @@ public class DataStreamToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     // Ingest session file into schema object.
     Schema schema = SessionFileReader.read(options.getSessionFilePath());

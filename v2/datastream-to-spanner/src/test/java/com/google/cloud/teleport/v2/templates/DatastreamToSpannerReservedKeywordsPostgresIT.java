@@ -110,34 +110,6 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
     // It is important to clean up Datastream before trying to drop the replication slot.
     ResourceManagerUtils.cleanResources(datastreamResourceManager);
 
-    if (postgresResourceManager != null) {
-      if (replicationSlotName != null) {
-        try {
-          // Check if the slot exists before trying to drop it.
-          // This query will return a row if the slot exists.
-          List<Map<String, Object>> rows =
-              postgresResourceManager.runSQLQuery(
-                  "SELECT slot_name FROM pg_replication_slots WHERE slot_name = '"
-                      + replicationSlotName
-                      + "'");
-          if (!rows.isEmpty()) {
-            LOG.info("Dropping replication slot {}", replicationSlotName);
-            postgresResourceManager.runSQLQuery(
-                "SELECT pg_drop_replication_slot('" + replicationSlotName + "')");
-          }
-        } catch (Exception e) {
-          LOG.warn("Failed to drop replication slot {}: {}", replicationSlotName, e.getMessage());
-        }
-      }
-      if (publicationName != null) {
-        try {
-          postgresResourceManager.runSQLUpdate("DROP PUBLICATION IF EXISTS " + publicationName);
-        } catch (Exception e) {
-          LOG.warn("Failed to drop publication {}: {}", publicationName, e.getMessage());
-        }
-      }
-    }
-
     ResourceManagerUtils.cleanResources(
         postgresResourceManager, spannerResourceManager, gcsResourceManager, pubsubResourceManager);
   }
@@ -145,34 +117,12 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
   @Test
   public void testPostgresReservedKeywords() throws Exception {
     LOG.info("Executing Postgres DDL script...");
-    // Generate a short, random suffix to ensure uniqueness
-    String randomSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    executeSqlScript(postgresResourceManager, POSTGRESQL_DDL_RESOURCE);
 
-    // Sanitize testName for use in postgres identifiers
-    String sanitizedTestName = testName.replaceAll("-", "_");
-
-    // Define prefixes and max length for Postgres identifiers.
-    // The slot prefix is longer, so we use it to calculate the max possible length for the test
-    // name part.
-    String pubPrefix = "publication_";
-    String slotPrefix = "replication_slot_";
-    int maxIdentifierLength = 63;
-    int maxTestNameLength =
-        maxIdentifierLength - slotPrefix.length() - randomSuffix.length() - 1; // -1 for underscore
-    String truncatedTestName = sanitizedTestName;
-    if (truncatedTestName.length() > maxTestNameLength) {
-      truncatedTestName = truncatedTestName.substring(0, maxTestNameLength);
-    }
-
-    // Construct the final unique names
-    this.publicationName = (pubPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
-    this.replicationSlotName = (slotPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
-
-    executeSqlScript(
-        postgresResourceManager,
-        POSTGRESQL_DDL_RESOURCE,
-        this.publicationName,
-        this.replicationSlotName);
+    CloudPostgresResourceManager.ReplicationInfo replicationInfo =
+        postgresResourceManager.createLogicalReplication();
+    this.publicationName = replicationInfo.getPublicationName();
+    this.replicationSlotName = replicationInfo.getReplicationSlotName();
 
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
@@ -237,20 +187,12 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
                     entry("id", 1), entry("ALL", "all"), entry("AND", "and"), entry("AS", "as"))));
   }
 
-  private void executeSqlScript(
-      CloudPostgresResourceManager resourceManager,
-      String resourceName,
-      String publicationName,
-      String replicationSlotName)
+  private void executeSqlScript(CloudPostgresResourceManager resourceManager, String resourceName)
       throws IOException {
     // Read DDL and replace placeholders
-    String ddlTemplate =
+    String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    String ddl =
-        ddlTemplate
-            .replaceAll("PUBLICATION_NAME", publicationName)
-            .replaceAll("REPLICATION_SLOT_NAME", replicationSlotName);
 
     // Execute script
     ddl = ddl.trim();
@@ -258,8 +200,6 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
     for (String d : ddls) {
       if (!d.isBlank()) {
         try {
-          // There's unfortunately no easy way provided by PG resource manager to create
-          // a replication slot.
           if (d.toLowerCase().trim().startsWith("select")) {
             resourceManager.runSQLQuery(d);
           } else {

@@ -25,12 +25,16 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.InputStream;
@@ -1312,5 +1316,179 @@ public final class MySQLDMLGeneratorTest {
     return Arrays.stream(sql.split("\\W+"))
         .filter(word -> word.equalsIgnoreCase(targetWord))
         .count();
+  }
+
+  @Test
+  public void generatedColumnDML() {
+    String sessionFile = "src/test/resources/generatedColumnSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    // FullName is generated, so it should be ignored even if present in newValues
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"FullName\":\"kk ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "INSERT";
+
+    /*
+     * The expected sql is:
+     * "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
+     * + " UPDATE  FirstName = 'kk', LastName = 'll'";
+     */
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
+    // Verify FullName is NOT in the SQL
+    // It should not be in the column list, values, or update clause.
+    assertEquals(0, countInSQL(sql, "FullName"));
+  }
+
+  @Test
+  public void testGeneratedPrimaryKeyDML() {
+    String sessionFile = "src/test/resources/generatedColumnSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    // Modify the DDL to make FirstName the primary key, and it's a generated
+    // column.
+    Ddl modifiedDdl =
+        ddl.toBuilder()
+            .createTable("GeneratedPKTable")
+            .column("SingerId")
+            .int64()
+            .endColumn()
+            .column("FirstName")
+            .string()
+            .max()
+            .generatedAs("SingerId")
+            .endColumn()
+            .column("LastName")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("FirstName")
+            .end()
+            .endTable()
+            .build();
+
+    SourceTable sourceTable =
+        SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("GeneratedPKTable")
+            .schema(null)
+            .primaryKeyColumns(ImmutableList.of("SingerId"))
+            .columns(
+                ImmutableList.of(
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("SingerId")
+                        .type("bigint")
+                        .isGenerated(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("FirstName")
+                        .type("varchar")
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("LastName")
+                        .type("varchar")
+                        .build()))
+            .build();
+    SourceSchema modifiedSourceSchema =
+        SourceSchema.builder(SourceDatabaseType.MYSQL)
+            .databaseName("testdb")
+            .tables(ImmutableMap.of("GeneratedPKTable", sourceTable))
+            .build();
+
+    ISchemaMapper mockSchemaMapper = org.mockito.Mockito.mock(ISchemaMapper.class);
+    org.mockito.Mockito.when(
+            mockSchemaMapper.getSpannerColumns(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+        .thenReturn(ImmutableList.of("SingerId", "FirstName", "LastName"));
+    org.mockito.Mockito.when(
+            mockSchemaMapper.getSpannerColumnName(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                org.mockito.ArgumentMatchers.eq("LastName")))
+        .thenReturn("LastName");
+    org.mockito.Mockito.when(
+            mockSchemaMapper.getSourceTableName(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+        .thenReturn("GeneratedPKTable");
+    org.mockito.Mockito.when(
+            mockSchemaMapper.isGeneratedColumn(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                org.mockito.ArgumentMatchers.eq("FirstName")))
+        .thenReturn(true);
+    org.mockito.Mockito.when(
+            mockSchemaMapper.isGeneratedColumn(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                org.mockito.ArgumentMatchers.eq("SingerId")))
+        .thenReturn(false);
+    org.mockito.Mockito.when(
+            mockSchemaMapper.isGeneratedColumn(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                org.mockito.ArgumentMatchers.eq("LastName")))
+        .thenReturn(false);
+
+    for (String col : new String[] {"SingerId", "FirstName", "LastName"}) {
+      org.mockito.Mockito.when(
+              mockSchemaMapper.colExistsAtSource(
+                  org.mockito.ArgumentMatchers.any(),
+                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                  org.mockito.ArgumentMatchers.eq(col)))
+          .thenReturn(true);
+      org.mockito.Mockito.when(
+              mockSchemaMapper.getSourceColumnName(
+                  org.mockito.ArgumentMatchers.any(),
+                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
+                  org.mockito.ArgumentMatchers.eq(col)))
+          .thenReturn(col);
+    }
+
+    String tableName = "GeneratedPKTable";
+    // newValues has dependent column `SingerId`, generated PK `FirstName` is
+    // omitted
+    String newValuesString = "{\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    // Event though it's the PK, the system might pass it in keyValues if available,
+    // but if it's omitted in source changes:
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\",}");
+    String modType = "INSERT";
+
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(mockSchemaMapper)
+                .setDdl(modifiedDdl)
+                .setSourceSchema(modifiedSourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`LastName` = 'll'"));
+    // Verify FirstName is NOT in the generated column updates,
+    // because it's a generated PK and skipped during DML creation.
+    assertEquals(0, countInSQL(sql, "FirstName"));
+    assertEquals(0, countInSQL(sql, "SingerId"));
   }
 }

@@ -43,7 +43,7 @@ CREATE TABLE `vendor` (
                       `last_name` VARCHAR(255) NOT NULL,
                       `email` VARCHAR(255) UNIQUE NOT NULL,
                       `full_name` VARCHAR(512) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)),
-                      INDEX full_name_idx (full_name)
+                      INDEX full_name_idx (vendor_id)
 );
 
 INSERT INTO vendor (vendor_id, first_name, last_name, email) VALUES

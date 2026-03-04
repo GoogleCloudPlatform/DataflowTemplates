@@ -24,34 +24,37 @@ import org.junit.Test;
 import org.neo4j.importer.v1.validation.InvalidSpecificationException;
 
 public class BigQuerySourceProjectDatasetValidatorTest {
+
   @Test
   public void fails_if_bigquery_source_only_has_temp_project_id_but_not_temp_dataset_id() {
     var spec =
-        "{\n"
-            + "    \"version\": \"1\",\n"
-            + "    \"sources\": [{\n"
-            + "        \"type\": \"bigquery\",\n"
-            + "        \"name\": \"a-source\",\n"
-            + "        \"query\": \"SELECT field_1 FROM project.dataset.table\",\n"
-            + "        \"query_temp_project\": \"project\"\n"
-            + "    }],\n"
-            + "    \"targets\": {\n"
-            + "        \"nodes\": [{\n"
-            + "            \"name\": \"a-target\",\n"
-            + "            \"source\": \"a-source\",\n"
-            + "            \"write_mode\": \"merge\",\n"
-            + "            \"labels\": [\"Placeholder\"],\n"
-            + "            \"properties\": [\n"
-            + "                {\"source_field\": \"field_1\", \"target_property\": \"property\"}\n"
-            + "            ],\n"
-            + "            \"schema\": {\n"
-            + "              \"key_constraints\": [\n"
-            + "                {\"name\": \"key property\", \"label\": \"Placeholder\", \"properties\": [\"property\"]}\n"
-            + "              ]\n"
-            + "            }\n"
-            + "        }]\n"
-            + "    }\n"
-            + "}";
+        """
+            {
+                "version": "1",
+                "sources": [{
+                    "type": "bigquery",
+                    "name": "a-source",
+                    "query": "SELECT field_1 FROM project.dataset.table",
+                    "query_temp_project": "project"
+                }],
+                "targets": {
+                    "nodes": [{
+                        "name": "a-target",
+                        "source": "a-source",
+                        "write_mode": "merge",
+                        "labels": ["Placeholder"],
+                        "properties": [
+                            {"source_field": "field_1", "target_property": "property"}
+                        ],
+                        "schema": {
+                          "key_constraints": [
+                            {"name": "key property", "label": "Placeholder", "properties": ["property"]}
+                          ]
+                        }
+                    }]
+                }
+            }"""
+            .stripIndent();
 
     var exception =
         Assert.assertThrows(

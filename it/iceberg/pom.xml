@@ -27,7 +27,6 @@
 
     <properties>
         <iceberg.version>1.10.1</iceberg.version>
-        <avro.version>1.12.0</avro.version>
     </properties>
 
     <dependencies>
@@ -68,7 +67,7 @@
         <dependency>
             <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-hadoop</artifactId>
-            <version>1.16.0</version>
+            <version>1.17.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.avro</groupId>

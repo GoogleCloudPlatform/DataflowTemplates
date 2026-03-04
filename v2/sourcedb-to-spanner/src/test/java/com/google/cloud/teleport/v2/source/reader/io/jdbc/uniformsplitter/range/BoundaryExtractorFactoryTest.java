@@ -21,8 +21,11 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
@@ -324,6 +327,32 @@ public class BoundaryExtractorFactoryTest {
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
     assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testFromDurationWithAdapter() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+    UniformSplitterDBAdapter mockDbAdapter = mock(UniformSplitterDBAdapter.class);
+    Duration start = Duration.ofSeconds(100);
+    Duration end = Duration.ofSeconds(200);
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockDbAdapter.extractBoundaryDuration(mockResultSet, 1)).thenReturn(start);
+    when(mockDbAdapter.extractBoundaryDuration(mockResultSet, 2)).thenReturn(end);
+
+    BoundaryExtractor<Duration> extractor =
+        BoundaryExtractorFactory.create(Duration.class, mockDbAdapter);
+    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    verify(mockDbAdapter).extractBoundaryDuration(mockResultSet, 1);
+    verify(mockDbAdapter).extractBoundaryDuration(mockResultSet, 2);
   }
 
   @Test

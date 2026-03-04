@@ -389,4 +389,47 @@ public class ChangeEventSpannerConvertorTest {
     Truth.assertThat(actual.get("first_name").getAsString()).isEqualTo("A");
     Truth.assertThat(actual.get("array_col")).isNull();
   }
+
+  @Test
+  public void mutationFromEventWithGeneratedColumn() throws ChangeEventConvertorException {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("full_name")
+            .string()
+            .max()
+            .generatedAs("first_name || ' ' || last_name")
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .end()
+            .endTable()
+            .build();
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "B");
+    changeEvent.put("full_name", "A B");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    Mutation mutation =
+        ChangeEventSpannerConvertor.mutationFromEvent(
+            ddl.table("Users"),
+            ce,
+            List.of("first_name", "last_name", "full_name"),
+            Set.of("first_name"));
+    Map<String, Value> actual = mutation.asMap();
+    Truth.assertThat(actual.get("first_name").getAsString()).isEqualTo("A");
+    Truth.assertThat(actual.get("last_name").getAsString()).isEqualTo("B");
+    Truth.assertThat(actual.containsKey("full_name")).isFalse();
+  }
 }

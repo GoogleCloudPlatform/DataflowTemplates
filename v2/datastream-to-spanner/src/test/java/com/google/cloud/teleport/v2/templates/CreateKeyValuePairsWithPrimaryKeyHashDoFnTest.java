@@ -342,6 +342,12 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
 
     doFn.processElement(processContext);
 
-    verify(processContext).output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
+    ArgumentCaptor<KV<Long, FailsafeElement<String, String>>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext).output(captor.capture());
+
+    KV<Long, FailsafeElement<String, String>> result = captor.getValue();
+    assertEquals(failsafeElement, result.getValue());
+    assertNotEquals(null, result.getKey());
   }
 }

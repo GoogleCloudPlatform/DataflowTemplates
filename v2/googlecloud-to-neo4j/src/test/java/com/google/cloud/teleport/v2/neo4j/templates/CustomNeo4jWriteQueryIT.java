@@ -308,7 +308,7 @@ public class CustomNeo4jWriteQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void importsInlineDataToNeo4J() throws IOException {
+  public void importsInlineDataToNeo4j() throws IOException {
     String spec = contentOf("/testing-specs/inline-data/northwind-jobspec.json");
     gcsClient.createArtifact("inline-data-to-neo4j.json", spec);
     gcsClient.createArtifact("neo4j-connection.json", jsonBasicPayload(neo4jClient, databaseName));

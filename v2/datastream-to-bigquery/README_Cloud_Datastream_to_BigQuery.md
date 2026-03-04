@@ -31,15 +31,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern**: The file location for Datastream file output in Cloud Storage, in the format `gs://<BUCKET_NAME>/<ROOT_PATH>/`.
 * **inputFileFormat**: The format of the output files produced by Datastream. Allowed values are `avro` and `json`. Defaults to `avro`.
-* **gcsPubSubSubscription**: The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
 * **outputStagingDatasetTemplate**: The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.
 * **outputDatasetTemplate**: The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.
 * **deadLetterQueueDirectory**: The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.
 
 ### Optional parameters
 
+* **inputFilePattern**: The file location for Datastream file output in Cloud Storage, in the format `gs://<BUCKET_NAME>/<ROOT_PATH>/`.
+* **gcsPubSubSubscription**: The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
 * **streamName**: The name or the template for the stream to poll for schema information. Defaults to: {_metadata_stream}. The default value is usually enough.
 * **rfcStartDateTime**: The starting DateTime to use to fetch data from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: `1970-01-01T00:00:00.00Z`.
 * **fileReadConcurrency**: The number of concurrent DataStream files to read. Default is `10`.
@@ -167,14 +167,14 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_BigQuery"
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
@@ -254,14 +254,14 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export OUTPUT_STAGING_DATASET_TEMPLATE={_metadata_dataset}
 export OUTPUT_DATASET_TEMPLATE={_metadata_dataset}
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
 export FILE_READ_CONCURRENCY=10
@@ -340,12 +340,12 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_bigquery" {
   name              = "cloud-datastream-to-bigquery"
   region            = var.region
   parameters        = {
-    inputFilePattern = "<inputFilePattern>"
     inputFileFormat = "avro"
-    gcsPubSubSubscription = "<gcsPubSubSubscription>"
     outputStagingDatasetTemplate = "{_metadata_dataset}"
     outputDatasetTemplate = "{_metadata_dataset}"
     deadLetterQueueDirectory = ""
+    # inputFilePattern = "<inputFilePattern>"
+    # gcsPubSubSubscription = "<gcsPubSubSubscription>"
     # streamName = "<streamName>"
     # rfcStartDateTime = "1970-01-01T00:00:00.00Z"
     # fileReadConcurrency = "10"

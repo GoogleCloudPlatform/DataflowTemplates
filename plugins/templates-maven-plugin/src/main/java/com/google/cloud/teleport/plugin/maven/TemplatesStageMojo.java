@@ -595,7 +595,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + " [{}]",
           templatePath,
           imageSpecFile.getName());
-      return templatePath;
     }
 
     if (generateSBOM) {

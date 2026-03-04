@@ -39,7 +39,7 @@ public class TextSourceProvider implements SourceProvider<TextSource> {
   }
 
   @Override
-  public TextSource provide(ObjectNode node) {
+  public TextSource apply(ObjectNode node) {
     List<String> header = mapper.convertValue(node.get("header"), new TypeReference<>() {});
     if (node.has("urls")) {
       List<String> urls = mapper.convertValue(node.get("urls"), new TypeReference<>() {});

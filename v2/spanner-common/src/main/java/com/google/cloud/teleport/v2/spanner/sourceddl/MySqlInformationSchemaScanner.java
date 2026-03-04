@@ -101,7 +101,7 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
     String query =
         String.format(
             "SELECT column_name, data_type, character_maximum_length, "
-                + "numeric_precision, numeric_scale, is_nullable, column_key "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = '%s' AND table_name = '%s' "
                 + "ORDER BY ordinal_position",
@@ -116,6 +116,8 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
                 .type(rs.getString("data_type"))
                 .isNullable("YES".equals(rs.getString("is_nullable")))
                 .isPrimaryKey("PRI".equals(rs.getString("column_key")));
+        String generationExpression = rs.getString("generation_expression");
+        columnBuilder.isGenerated(generationExpression != null && !generationExpression.isEmpty());
 
         // Handle size/precision/scale
         String maxLength = rs.getString("character_maximum_length");

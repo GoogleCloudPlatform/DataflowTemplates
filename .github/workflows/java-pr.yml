@@ -38,6 +38,7 @@ on:
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
+      - '!v2/gcs-spanner-dv/**'
       # Exclude kafka paths from global run (covered in kafka-pr.yml)
       - '!v2/kafka-to-bigquery/**'
       - '!v2/kafka-to-gcs/**'
@@ -113,7 +114,7 @@ jobs:
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests
       - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-unit-test-results
@@ -152,7 +153,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-smoke-test-results
@@ -187,7 +188,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always() # always run even if the previous step fails
         with:
           name: surefire-integration-test-results

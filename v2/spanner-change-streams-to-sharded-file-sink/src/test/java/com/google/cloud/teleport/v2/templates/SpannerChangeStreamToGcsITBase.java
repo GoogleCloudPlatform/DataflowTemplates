@@ -176,7 +176,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }

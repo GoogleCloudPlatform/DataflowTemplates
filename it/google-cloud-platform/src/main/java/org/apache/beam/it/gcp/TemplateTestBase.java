@@ -365,10 +365,10 @@ public abstract class TemplateTestBase {
 
             try {
               Process exec = Runtime.getRuntime().exec(mavenCmd);
-              IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-              IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
 
               if (exec.waitFor() != 0) {
+                IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+                IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
                 throw new RuntimeException("Error staging template, check Maven logs.");
               }
 
@@ -543,26 +543,10 @@ public abstract class TemplateTestBase {
    * jobs getting leaked.
    */
   protected LaunchInfo launchTemplate(LaunchConfig.Builder options) throws IOException {
-    return this.launchTemplate(options, true, this.template);
+    return this.launchTemplate(options, this.template);
   }
 
-  /**
-   * Launch the template with the given options and configuration for hook.
-   *
-   * @param options Options to use for launch.
-   * @param setupShutdownHook Whether should setup a hook to cancel the job upon VM termination.
-   *     This is useful to teardown resources if the VM/test terminates unexpectedly.
-   * @return Job details.
-   * @throws IOException Thrown when {@link PipelineLauncher#launch(String, String, LaunchConfig)}
-   *     fails.
-   */
-  protected LaunchInfo launchTemplate(LaunchConfig.Builder options, boolean setupShutdownHook)
-      throws IOException {
-    return this.launchTemplate(options, setupShutdownHook, this.template);
-  }
-
-  protected LaunchInfo launchTemplate(
-      LaunchConfig.Builder options, boolean setupShutdownHook, Template templateMetadata)
+  protected LaunchInfo launchTemplate(LaunchConfig.Builder options, Template templateMetadata)
       throws IOException {
 
     boolean flex =
@@ -638,8 +622,8 @@ public abstract class TemplateTestBase {
 
     LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, options.build());
 
-    // if the launch succeeded and setupShutdownHook is enabled, setup a thread to cancel job
-    if (setupShutdownHook && launchInfo.jobId() != null && !launchInfo.jobId().isEmpty()) {
+    // if the launch succeeded, setup a thread to cancel job
+    if (launchInfo.jobId() != null && !launchInfo.jobId().isEmpty()) {
       Runtime.getRuntime()
           .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
     }
