@@ -259,6 +259,26 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     inputData.put(rootCollectionId, rootData);
   }
 
+  private LaunchInfo launchPipeline(String testName) throws IOException {
+    return launchPipeline(testName, /* collectionIdFilter= */ "");
+  }
+
+  private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, SPEC_PATH)
+            .addParameter("sourceProjectId", PROJECT)
+            .addParameter("sourceDatabaseId", sourceDatabaseId)
+            .addParameter("destinationProjectId", PROJECT)
+            .addParameter("destinationDatabaseId", destinationDatabaseId)
+            .addParameter("maxNumWorkers", "10");
+
+    if (!collectionIdFilter.isEmpty()) {
+      options.addParameter("collectionIds", collectionIdFilter);
+    }
+
+    return pipelineLauncher.launch(PROJECT, REGION, options.build());
+  }
+
   private void assertValuesEqual(Object expectedValue, Object actualValue) {
     if (expectedValue == null) {
       assertThat(actualValue).isNull();
@@ -288,26 +308,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     } else {
       assertThat(actualValue).isEqualTo(expectedValue);
     }
-  }
-
-  private LaunchInfo launchPipeline(String testName) throws IOException {
-    return launchPipeline(testName, /* collectionIdFilter= */ "");
-  }
-
-  private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, SPEC_PATH)
-            .addParameter("sourceProjectId", PROJECT)
-            .addParameter("sourceDatabaseId", sourceDatabaseId)
-            .addParameter("destinationProjectId", PROJECT)
-            .addParameter("destinationDatabaseId", destinationDatabaseId)
-            .addParameter("maxNumWorkers", "10");
-
-    if (!collectionIdFilter.isEmpty()) {
-      options.addParameter("collectionIds", collectionIdFilter);
-    }
-
-    return pipelineLauncher.launch(PROJECT, REGION, options.build());
   }
 
   public Map<String, Object> generateRandomDocument() {
