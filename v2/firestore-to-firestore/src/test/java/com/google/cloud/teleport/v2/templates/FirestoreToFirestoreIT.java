@@ -140,41 +140,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
   }
 
-  // TODO: Reenable
-  // @Test
-  public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
-      throws IOException {
-    String collectionId1 = "inputA-" + randomString(6).toLowerCase();
-    int numDocs1 = 5;
-    Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
-    sourceFirestoreResourceManager.write(collectionId1, inputData1);
-
-    String collectionId2 = "inputB-" + randomString(6).toLowerCase();
-    int numDocs2 = 5;
-    Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
-    sourceFirestoreResourceManager.write(collectionId2, inputData2);
-
-    LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIdFilter=*/ "");
-    assertThatPipeline(info).isRunning();
-
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
-    assertThatResult(result).isLaunchFinished();
-
-    List<QueryDocumentSnapshot> documents1 =
-        destinationFirestoreResourceManager.read(collectionId1);
-    assertThat(documents1).hasSize(numDocs1);
-    for (QueryDocumentSnapshot document : documents1) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-    }
-
-    List<QueryDocumentSnapshot> documents2 =
-        destinationFirestoreResourceManager.read(collectionId2);
-    assertThat(documents2).hasSize(numDocs2);
-    for (QueryDocumentSnapshot document : documents2) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-    }
-  }
-
   private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
     Map<String, Map<String, Object>> testDocuments = new HashMap<>();
     for (int i = 1; i <= numDocuments; i++) {
@@ -230,7 +195,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
 
     // Run without filter to verify "list all collections" logic
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", /* collectionIdFilter= */ "");
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz");
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -258,22 +223,36 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
           Object expectedValue = docEntry.getValue();
           Object actualValue = destDocData.get(key);
 
-          if (expectedValue == null) {
-            assertThat(actualValue).isNull();
-          } else {
-            assertThat(actualValue).isInstanceOf(expectedValue.getClass());
-            if (actualValue instanceof DocumentReference) {
-              // Only compare the path of DocumentReference since the plain equality check will
-              // fail since they're in different databases.
-              assertThat(((DocumentReference) actualValue).getPath()).isEqualTo(
-                  ((DocumentReference) expectedValue).getPath());
-            } else {
-              assertThat(actualValue).isEqualTo(expectedValue);
-            }
-          }
+          assertValuesEqual(expectedValue, actualValue);
         }
       }
     }
+  }
+
+  private void assertValuesEqual(Object expectedValue, Object actualValue) {
+    if (expectedValue == null) {
+      assertThat(actualValue).isNull();
+    } else if (expectedValue instanceof DocumentReference) {
+      // Only compare the path of DocumentReference since the plain equality check will
+      // fail since they're in different databases.
+      assertThat(((DocumentReference) actualValue).getPath()).isEqualTo(
+          ((DocumentReference) expectedValue).getPath());
+    } else if (expectedValue instanceof List) {
+      assertThat(actualValue).isInstanceOf(List.class);
+      List<?> expectedList = (List<?>) expectedValue;
+      List<?> actualList = (List<?>) actualValue;
+      assertThat(actualList).hasSize(expectedList.size());
+
+      for (int i = 0; i < expectedList.size(); i++) {
+        assertValuesEqual(expectedList.get(i), actualList.get(i));
+      }
+    } else {
+      assertThat(actualValue).isEqualTo(expectedValue);
+    }
+  }
+
+  private LaunchInfo launchPipeline(String testName) throws IOException {
+    return launchPipeline(testName, /*collectionIdFilter=*/ "");
   }
 
   private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
