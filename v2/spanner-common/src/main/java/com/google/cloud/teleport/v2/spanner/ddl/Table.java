@@ -75,12 +75,15 @@ public abstract class Table implements Serializable {
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
         .checkConstraints(ImmutableList.of())
-        .onDeleteCascade(false);
+        .onDeleteCascade(false)
+        .indexObjects(ImmutableList.of());
   }
 
   public static Builder builder() {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
+
+  public abstract ImmutableList<Index> indexObjects();
 
   public void prettyPrint(Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
@@ -234,13 +237,15 @@ public abstract class Table implements Serializable {
 
     public abstract Builder interleaveType(String interleave);
 
-    abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
+    public abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 
-    abstract Builder onDeleteCascade(boolean onDeleteCascade);
+    public abstract Builder onDeleteCascade(boolean onDeleteCascade);
 
-    abstract Builder columns(ImmutableList<Column> columns);
+    public abstract Builder columns(ImmutableList<Column> columns);
 
     public abstract Builder indexes(ImmutableList<String> indexes);
+
+    public abstract Builder indexObjects(ImmutableList<Index> indexes);
 
     public abstract Builder foreignKeys(ImmutableList<ForeignKey> foreignKeys);
 
@@ -248,7 +253,7 @@ public abstract class Table implements Serializable {
 
     abstract ImmutableList<Column> columns();
 
-    abstract Builder dialect(Dialect dialect);
+    public abstract Builder dialect(Dialect dialect);
 
     public abstract Dialect dialect();
 

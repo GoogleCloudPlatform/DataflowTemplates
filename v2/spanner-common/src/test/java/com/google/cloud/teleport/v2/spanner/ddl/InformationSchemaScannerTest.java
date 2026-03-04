@@ -387,6 +387,10 @@ public class InformationSchemaScannerTest {
             + "CREATE INDEX `PRIMARY_KEY` ON `album`()\n"
             + "ALTER TABLE `album` ADD CONSTRAINT `fk1` FOREIGN KEY (`singerId`) REFERENCES `singer` (`singerId`)";
     assertEquals(expectedDdl, ddl.prettyPrint());
+    assertEquals(2, ddl.table("singer").indexObjects().size());
+    assertEquals("PRIMARY_KEY", ddl.table("singer").indexObjects().get(0).name());
+    assertEquals("index1", ddl.table("singer").indexObjects().get(1).name());
+    assertEquals(1, ddl.table("album").indexObjects().size());
   }
 
   @Test
@@ -424,6 +428,8 @@ public class InformationSchemaScannerTest {
             + "\n"
             + "ALTER TABLE \"album\" ADD CONSTRAINT \"fk1\" FOREIGN KEY (\"singerId\") REFERENCES \"singer\" (\"singerId\")";
     assertEquals(expectedDdl, ddl.prettyPrint());
+    assertEquals(1, ddl.table("singer").indexObjects().size());
+    assertEquals("index1", ddl.table("singer").indexObjects().get(0).name());
   }
 
   @Test(expected = IllegalArgumentException.class)
