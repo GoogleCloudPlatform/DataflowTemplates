@@ -119,17 +119,24 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     String collectionId1 = "input1-" + randomString(6).toLowerCase();
     String collectionId2 = "input2-" + randomString(6).toLowerCase();
     String collectionId3 = "input3-" + randomString(6).toLowerCase();
+    String subCollectionId = "sub-" + randomString(6).toLowerCase();
     int numDocuments = 10;
 
     Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocuments);
     Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocuments);
     Map<String, Map<String, Object>> inputData3 = generateTestDocuments(numDocuments);
+    Map<String, Map<String, Object>> subData = generateTestDocuments(numDocuments);
 
     sourceFirestoreResourceManager.write(collectionId1, inputData1);
     sourceFirestoreResourceManager.write(collectionId2, inputData2);
     sourceFirestoreResourceManager.write(collectionId3, inputData3);
 
-    String filter = collectionId1 + "," + collectionId2;
+    // Add a subcollection to one of the documents in collection 2
+    String docId = inputData2.keySet().iterator().next();
+    String subCollectionPath = collectionId2 + "/" + docId + "/" + subCollectionId;
+    sourceFirestoreResourceManager.write(subCollectionPath, subData);
+
+    String filter = collectionId1 + "," + subCollectionId;
 
     LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", filter);
     assertThatPipeline(info).isRunning();
@@ -142,10 +149,15 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         destinationFirestoreResourceManager.read(collectionId1);
     assertThat(documents1).hasSize(numDocuments);
 
-    // Verify collection 2
+    // Verify subcollection
+    List<QueryDocumentSnapshot> subDocuments =
+        destinationFirestoreResourceManager.read(subCollectionPath);
+    assertThat(subDocuments).hasSize(numDocuments);
+
+    // Verify collection 2 (should be empty because not in filter)
     List<QueryDocumentSnapshot> documents2 =
         destinationFirestoreResourceManager.read(collectionId2);
-    assertThat(documents2).hasSize(numDocuments);
+    assertThat(documents2).isEmpty();
 
     // Verify collection 3 (should be empty)
     List<QueryDocumentSnapshot> documents3 =
