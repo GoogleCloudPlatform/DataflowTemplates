@@ -116,12 +116,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   @Test
-  public void testFirestoreToFirestore_collectionIdProvided_copyFilteredCollections()
+  public void testFirestoreToFirestore_collectionIdProvided_copyOnlySelectedCollections()
       throws IOException {
     String collectionId1 = "input1-" + randomString(6).toLowerCase();
     String collectionId2 = "input2-" + randomString(6).toLowerCase();
     String collectionId3 = "input3-" + randomString(6).toLowerCase();
-    String subCollectionId = "sub-" + randomString(6).toLowerCase();
     int numDocuments = 10;
 
     Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocuments);
@@ -134,13 +133,18 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     sourceFirestoreResourceManager.write(collectionId3, inputData3);
 
     // Add a subcollection to one of the documents in collection 2
-    String docId = inputData2.keySet().iterator().next();
-    String subCollectionPath = collectionId2 + "/" + docId + "/" + subCollectionId;
-    sourceFirestoreResourceManager.write(subCollectionPath, subData);
+    String docId2 = inputData2.keySet().iterator().next();
+    String subCollectionPath2 = collectionId2 + "/" + docId2 + "/" + SUB_COLLECTION_ID;
+    sourceFirestoreResourceManager.write(subCollectionPath2, subData);
 
-    String filter = collectionId1 + "," + subCollectionId;
+    // Add a subcollection to one of the documents in collection 3
+    String docId3 = inputData3.keySet().iterator().next();
+    String subCollectionPath3 = collectionId3 + "/" + docId3 + "/" + SUB_COLLECTION_ID;
+    sourceFirestoreResourceManager.write(subCollectionPath3, subData);
 
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", filter);
+    String collectionIds = collectionId1 + "," + SUB_COLLECTION_ID;
+
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", collectionIds);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -151,17 +155,22 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         destinationFirestoreResourceManager.read(collectionId1);
     assertThat(documents1).hasSize(numDocuments);
 
-    // Verify subcollection
-    List<QueryDocumentSnapshot> subDocuments =
-        destinationFirestoreResourceManager.read(subCollectionPath);
-    assertThat(subDocuments).hasSize(numDocuments);
+    // Verify subcollection under collection 2
+    List<QueryDocumentSnapshot> subDocuments2 =
+        destinationFirestoreResourceManager.read(subCollectionPath2);
+    assertThat(subDocuments2).hasSize(numDocuments);
+
+    // Verify subcollection under collection 3
+    List<QueryDocumentSnapshot> subDocuments3 =
+        destinationFirestoreResourceManager.read(subCollectionPath3);
+    assertThat(subDocuments3).hasSize(numDocuments);
 
     // Verify collection 2 (should be empty because not in filter)
     List<QueryDocumentSnapshot> documents2 =
         destinationFirestoreResourceManager.read(collectionId2);
     assertThat(documents2).isEmpty();
 
-    // Verify collection 3 (should be empty)
+    // Verify collection 3 (should be empty because not in filter)
     List<QueryDocumentSnapshot> documents3 =
         destinationFirestoreResourceManager.read(collectionId3);
     assertThat(documents3).isEmpty();
@@ -178,9 +187,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   @Test
   public void testFirestoreToFirestore_fuzzDataTypes() throws Exception {
-    Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
-
     // Populate data for two different top-level collections
+    Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
     String rootCollectionId1 = "fuzz1-" + randomString(6).toLowerCase();
     String rootCollectionId2 = "fuzz2-" + randomString(6).toLowerCase();
     populateFuzzData(inputData, rootCollectionId1);
@@ -191,12 +199,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
-    String filter =
+    String collectionIds =
         String.join(
             ",", rootCollectionId1, rootCollectionId2, SUB_COLLECTION_ID, SUB_SUB_COLLECTION_ID);
 
-    // Run with filter to verify both root and subcollections are picked up
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", filter);
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", collectionIds);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -240,23 +247,21 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
       // Ensure at least one subcollection exists and then 30% chance for others
       if (i == 0 || random.nextInt(10) < 3) {
-        // Use the same ID as the root collection so the "allDescendants" query for that ID
-        // picks it up, even though the template only explicitly lists root collections.
         String subCollectionPath = rootCollectionId + "/" + documentId + "/" + SUB_COLLECTION_ID;
         Map<String, Map<String, Object>> subData = new HashMap<>();
         int numSubDocs = random.nextInt(3) + 1;
-        for (int k = 0; k < numSubDocs; k++) {
-          String subDocId = "subDoc-" + k + "-" + UUID.randomUUID();
+        for (int j = 0; j < numSubDocs; j++) {
+          String subDocId = "subDoc-" + j + "-" + UUID.randomUUID();
           subData.put(subDocId, generateRandomDocument());
 
           // Ensure at least one nested subcollection exists and then 20% chance for others
-          if (k == 0 || random.nextInt(10) < 2) {
+          if (j == 0 || random.nextInt(10) < 2) {
             String subSubCollectionPath =
                 subCollectionPath + "/" + subDocId + "/" + SUB_SUB_COLLECTION_ID;
             Map<String, Map<String, Object>> subSubData = new HashMap<>();
             int numSubSubDocs = random.nextInt(2) + 1;
-            for (int l = 0; l < numSubSubDocs; l++) {
-              subSubData.put("subSubDoc-" + l + "-" + UUID.randomUUID(), generateRandomDocument());
+            for (int k = 0; k < numSubSubDocs; k++) {
+              subSubData.put("subSubDoc-" + k + "-" + UUID.randomUUID(), generateRandomDocument());
             }
             inputData.put(subSubCollectionPath, subSubData);
           }
@@ -267,24 +272,18 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     inputData.put(rootCollectionId, rootData);
   }
 
-  private LaunchInfo launchPipeline(String testName) throws IOException {
-    return launchPipeline(testName, /* collectionIdFilter= */ "");
-  }
-
-  private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
-    LaunchConfig.Builder options =
+  private LaunchInfo launchPipeline(String testName, String collectionIds) throws IOException {
+    return pipelineLauncher.launch(
+        PROJECT,
+        REGION,
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
             .addParameter("sourceDatabaseId", sourceDatabaseId)
             .addParameter("destinationProjectId", PROJECT)
             .addParameter("destinationDatabaseId", destinationDatabaseId)
-            .addParameter("maxNumWorkers", "10");
-
-    if (!collectionIdFilter.isEmpty()) {
-      options.addParameter("collectionIds", collectionIdFilter);
-    }
-
-    return pipelineLauncher.launch(PROJECT, REGION, options.build());
+            .addParameter("maxNumWorkers", "10")
+            .addParameter("collectionIds", collectionIds)
+            .build());
   }
 
   private void assertValuesEqual(Object expectedValue, Object actualValue) {
