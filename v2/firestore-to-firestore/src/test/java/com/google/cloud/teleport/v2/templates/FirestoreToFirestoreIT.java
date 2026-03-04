@@ -54,9 +54,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Integration test for {@link FirestoreToFirestore}.
- */
+/** Integration test for {@link FirestoreToFirestore}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -133,22 +131,25 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     String filter = collectionId1 + "," + collectionId2;
 
-    LaunchInfo info = launchPipeline(/*testName=*/ "copyFiltered", filter);
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", filter);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
 
     // Verify collection 1
-    List<QueryDocumentSnapshot> documents1 = destinationFirestoreResourceManager.read(collectionId1);
+    List<QueryDocumentSnapshot> documents1 =
+        destinationFirestoreResourceManager.read(collectionId1);
     assertThat(documents1).hasSize(numDocuments);
 
     // Verify collection 2
-    List<QueryDocumentSnapshot> documents2 = destinationFirestoreResourceManager.read(collectionId2);
+    List<QueryDocumentSnapshot> documents2 =
+        destinationFirestoreResourceManager.read(collectionId2);
     assertThat(documents2).hasSize(numDocuments);
 
     // Verify collection 3 (should be empty)
-    List<QueryDocumentSnapshot> documents3 = destinationFirestoreResourceManager.read(collectionId3);
+    List<QueryDocumentSnapshot> documents3 =
+        destinationFirestoreResourceManager.read(collectionId3);
     assertThat(documents3).isEmpty();
   }
 
@@ -247,8 +248,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     } else if (expectedValue instanceof DocumentReference) {
       // Only compare the path of DocumentReference since the plain equality check will
       // fail since they're in different databases.
-      assertThat(((DocumentReference) actualValue).getPath()).isEqualTo(
-          ((DocumentReference) expectedValue).getPath());
+      assertThat(((DocumentReference) actualValue).getPath())
+          .isEqualTo(((DocumentReference) expectedValue).getPath());
     } else if (expectedValue instanceof List) {
       assertThat(actualValue).isInstanceOf(List.class);
       List<?> expectedList = (List<?>) expectedValue;
@@ -258,13 +259,22 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       for (int i = 0; i < expectedList.size(); i++) {
         assertValuesEqual(expectedList.get(i), actualList.get(i));
       }
+    } else if (expectedValue instanceof Map) {
+      assertThat(actualValue).isInstanceOf(Map.class);
+      Map<?, ?> expectedMap = (Map<?, ?>) expectedValue;
+      Map<?, ?> actualMap = (Map<?, ?>) actualValue;
+      assertThat(actualMap).hasSize(expectedMap.size());
+      for (Object key : expectedMap.keySet()) {
+        assertThat(actualMap).containsKey(key);
+        assertValuesEqual(expectedMap.get(key), actualMap.get(key));
+      }
     } else {
       assertThat(actualValue).isEqualTo(expectedValue);
     }
   }
 
   private LaunchInfo launchPipeline(String testName) throws IOException {
-    return launchPipeline(testName, /*collectionIdFilter=*/ "");
+    return launchPipeline(testName, /* collectionIdFilter= */ "");
   }
 
   private LaunchInfo launchPipeline(String testName, String collectionIdFilter) throws IOException {
