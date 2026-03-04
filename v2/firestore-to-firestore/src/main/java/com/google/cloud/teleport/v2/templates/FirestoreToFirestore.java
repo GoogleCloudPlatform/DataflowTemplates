@@ -15,9 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.FirestoreOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -30,7 +27,6 @@ import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
 import com.google.firestore.v1.RunQueryResponse;
 import com.google.firestore.v1.Write;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,18 +49,19 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads documents from one"
-          + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database. ",
-      "It is not supported for Enterprise edition databases to be the source.",
-      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database.\n",
+        "The Firestore to Firestore template is a batch pipeline that reads documents from one"
+            + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+            + " them to another Firestore database. ",
+        "It does not support using an Enterprise edition database as the source.",
+        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+            + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
 public class FirestoreToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FirestoreToFirestore.class);
+  private static final int DEFAULT_MAX_NUM_WORKERS = 500;
 
   /**
    * Options supported by the pipeline.
@@ -96,16 +93,15 @@ public class FirestoreToFirestore {
     @TemplateParameter.Text(
         groupName = "Source",
         order = 3,
-        description = "Database collections to copy",
+        description = "Collection Groups to Copy from Source Database",
         helpText =
-            "If specified, only replicate these collections."
-                + " If not specified, copy all collections.",
-        example = "my-collection1,my-collection2",
-        optional = true)
-    @Default.String("")
-    String getCollectionIds();
+            "Specifies collection groups to copy. e.g. with data /users/bob/messages/msg1 and "
+                + "/users/alice/messages/msg2, providing `users,messages` will copy all data under "
+                + "`users` and `messages` collections.",
+        example = "users,messages")
+    String getCollectionGroupIds();
 
-    void setCollectionIds(String value);
+    void setCollectionGroupIds(String value);
 
     @TemplateParameter.Text(
         groupName = "Destination",
@@ -145,7 +141,6 @@ public class FirestoreToFirestore {
     void setReadTime(String readTime);
   }
 
-  private static final int DEFAULT_MAX_NUM_WORKERS = 500;
 
   public static void main(String[] args) {
     try {
@@ -169,23 +164,10 @@ public class FirestoreToFirestore {
               : options.getDestinationProjectId();
       String destinationDatabaseId = options.getDestinationDatabaseId();
 
-      List<String> collectionIdsList;
-      String collectionIds = options.getCollectionIds();
-      if (collectionIds.isEmpty()) {
-        try {
-          collectionIdsList = getAllCollectionIds(sourceProjectId, sourceDatabaseId);
-        } catch (Exception e) {
-          throw new RuntimeException(
-              "Failed to list collections for project: "
-                  + sourceProjectId
-                  + ", database: "
-                  + sourceDatabaseId,
-              e);
-        }
-      } else {
-        collectionIdsList =
-            Arrays.stream(collectionIds.split(",")).map(String::trim).collect(Collectors.toList());
-      }
+      List<String>
+          collectionGroupIdsList =
+          Arrays.stream(options.getCollectionGroupIds().split(",")).map(String::trim)
+              .collect(Collectors.toList());
 
       int maxNumWorkers =
           options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
@@ -197,19 +179,19 @@ public class FirestoreToFirestore {
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-              + "destinationProjectId={}, destinationDatabaseId={}, collectionIds={}, "
+              + "destinationProjectId={}, destinationDatabaseId={}, collectionGroupIds={}, "
               + "maxNumWorkers={}, readTime={}",
           sourceProjectId,
           sourceDatabaseId,
           destinationProjectId,
           destinationDatabaseId,
-          collectionIdsList,
+          collectionGroupIdsList,
           maxNumWorkers,
           readTime);
 
       // 1. Construct the PartitionQuery requests for the collections.
       PCollection<PartitionQueryRequest> partitionQueryRequests =
-          p.apply(Create.of(collectionIdsList))
+          p.apply(Create.of(collectionGroupIdsList))
               .apply(
                   new CreatePartitionQueryRequestFn(
                       sourceProjectId, sourceDatabaseId, maxNumWorkers));
@@ -282,19 +264,9 @@ public class FirestoreToFirestore {
     if (destinationDatabaseId == null || destinationDatabaseId.isEmpty()) {
       throw new IllegalArgumentException("destinationDatabaseId must be provided");
     }
-  }
-
-  private static List<String> getAllCollectionIds(String projectId, String databaseId)
-      throws Exception {
-    FirestoreOptions firestoreOptions =
-        FirestoreOptions.newBuilder().setProjectId(projectId).setDatabaseId(databaseId).build();
-    try (Firestore db = firestoreOptions.getService()) {
-      List<String> collectionIds = new ArrayList<>();
-      Iterable<CollectionReference> collections = db.listCollections();
-      for (CollectionReference collRef : collections) {
-        collectionIds.add(collRef.getId());
-      }
-      return collectionIds;
+    String collectionGroupIds = options.getCollectionGroupIds();
+    if (collectionGroupIds == null || collectionGroupIds.isEmpty()) {
+      throw new IllegalArgumentException("collectionGroupIds must be provided");
     }
   }
 }

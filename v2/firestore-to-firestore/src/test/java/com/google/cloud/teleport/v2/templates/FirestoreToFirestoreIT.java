@@ -54,7 +54,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link FirestoreToFirestore}. */
+/**
+ * Integration test for {@link FirestoreToFirestore}.
+ */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -66,8 +68,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
-  private static final String SUB_COLLECTION_ID = "subCol";
-  private static final String SUB_SUB_COLLECTION_ID = "subSubCol";
+  private static final String SUB_COLLECTION_GROUP_ID = "subCol";
+  private static final String SUB_SUB_COLLECTION_GROUP_ID = "subSubCol";
 
   private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
@@ -116,7 +118,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   @Test
-  public void testFirestoreToFirestore_collectionIdProvided_copyOnlySelectedCollections()
+  public void testFirestoreToFirestore_copiesOnlySelectedCollections()
       throws IOException {
     String collectionId1 = "input1-" + randomString(6).toLowerCase();
     String collectionId2 = "input2-" + randomString(6).toLowerCase();
@@ -134,17 +136,17 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     // Add a subcollection to one of the documents in collection 2
     String docId2 = inputData2.keySet().iterator().next();
-    String subCollectionPath2 = collectionId2 + "/" + docId2 + "/" + SUB_COLLECTION_ID;
+    String subCollectionPath2 = collectionId2 + "/" + docId2 + "/" + SUB_COLLECTION_GROUP_ID;
     sourceFirestoreResourceManager.write(subCollectionPath2, subData);
 
     // Add a subcollection to one of the documents in collection 3
     String docId3 = inputData3.keySet().iterator().next();
-    String subCollectionPath3 = collectionId3 + "/" + docId3 + "/" + SUB_COLLECTION_ID;
+    String subCollectionPath3 = collectionId3 + "/" + docId3 + "/" + SUB_COLLECTION_GROUP_ID;
     sourceFirestoreResourceManager.write(subCollectionPath3, subData);
 
-    String collectionIds = collectionId1 + "," + SUB_COLLECTION_ID;
+    String collectionGroupIds = collectionId1 + "," + SUB_COLLECTION_GROUP_ID;
 
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", collectionIds);
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFiltered", collectionGroupIds);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -199,11 +201,12 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
-    String collectionIds =
+    String collectionGroupIds =
         String.join(
-            ",", rootCollectionId1, rootCollectionId2, SUB_COLLECTION_ID, SUB_SUB_COLLECTION_ID);
+            ",", rootCollectionId1, rootCollectionId2, SUB_COLLECTION_GROUP_ID,
+            SUB_SUB_COLLECTION_GROUP_ID);
 
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", collectionIds);
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", collectionGroupIds);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -247,7 +250,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
       // Ensure at least one subcollection exists and then 30% chance for others
       if (i == 0 || random.nextInt(10) < 3) {
-        String subCollectionPath = rootCollectionId + "/" + documentId + "/" + SUB_COLLECTION_ID;
+        String subCollectionPath =
+            rootCollectionId + "/" + documentId + "/" + SUB_COLLECTION_GROUP_ID;
         Map<String, Map<String, Object>> subData = new HashMap<>();
         int numSubDocs = random.nextInt(3) + 1;
         for (int j = 0; j < numSubDocs; j++) {
@@ -257,7 +261,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
           // Ensure at least one nested subcollection exists and then 20% chance for others
           if (j == 0 || random.nextInt(10) < 2) {
             String subSubCollectionPath =
-                subCollectionPath + "/" + subDocId + "/" + SUB_SUB_COLLECTION_ID;
+                subCollectionPath + "/" + subDocId + "/" + SUB_SUB_COLLECTION_GROUP_ID;
             Map<String, Map<String, Object>> subSubData = new HashMap<>();
             int numSubSubDocs = random.nextInt(2) + 1;
             for (int k = 0; k < numSubSubDocs; k++) {
@@ -272,7 +276,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     inputData.put(rootCollectionId, rootData);
   }
 
-  private LaunchInfo launchPipeline(String testName, String collectionIds) throws IOException {
+  private LaunchInfo launchPipeline(String testName, String collectionGroupIds) throws IOException {
     return pipelineLauncher.launch(
         PROJECT,
         REGION,
@@ -282,7 +286,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .addParameter("destinationProjectId", PROJECT)
             .addParameter("destinationDatabaseId", destinationDatabaseId)
             .addParameter("maxNumWorkers", "10")
-            .addParameter("collectionIds", collectionIds)
+            .addParameter("collectionGroupIds", collectionGroupIds)
             .build());
   }
 
