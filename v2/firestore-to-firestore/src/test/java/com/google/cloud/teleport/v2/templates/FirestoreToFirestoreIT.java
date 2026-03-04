@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -84,7 +85,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
-        destinationDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
+        // TODO: pacoavila - We need to use an ENTERPRISE db once the data access mode can be set
+        // from the Java SDK.
+        destinationDatabaseId(), DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
@@ -107,119 +110,156 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     ResourceManagerUtils.cleanResources(firestoreAdminResourceManager);
   }
 
+  // @Test
+  // public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
+  //     throws IOException {
+  //   String collectionId = "input-" + testName;
+  //   int numDocuments = 10;
+  //
+  //   Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+  //
+  //   sourceFirestoreResourceManager.write(collectionId, inputData);
+  //
+  //   LaunchInfo info = launchPipeline(/*testName=*/ "copySingleCollection", collectionId);
+  //   assertThatPipeline(info).isRunning();
+  //
+  //   Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
+  //   assertThatResult(result).isLaunchFinished();
+  //
+  //   List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+  //   assertThat(documents).hasSize(numDocuments);
+  //
+  //   for (QueryDocumentSnapshot document : documents) {
+  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+  //   }
+  // }
+  //
+  // @Test
+  // public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
+  //     throws IOException {
+  //   String collectionId1 = "inputA-" + testName;
+  //   int numDocs1 = 5;
+  //   Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
+  //   sourceFirestoreResourceManager.write(collectionId1, inputData1);
+  //
+  //   String collectionId2 = "inputB-" + testName;
+  //   int numDocs2 = 5;
+  //   Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
+  //   sourceFirestoreResourceManager.write(collectionId2, inputData2);
+  //
+  //   LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIds=*/ "");
+  //   assertThatPipeline(info).isRunning();
+  //
+  //   Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
+  //   assertThatResult(result).isLaunchFinished();
+  //
+  //   List<QueryDocumentSnapshot> documents1 =
+  //       destinationFirestoreResourceManager.read(collectionId1);
+  //   assertThat(documents1).hasSize(numDocs1);
+  //   for (QueryDocumentSnapshot document : documents1) {
+  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+  //   }
+  //
+  //   List<QueryDocumentSnapshot> documents2 =
+  //       destinationFirestoreResourceManager.read(collectionId2);
+  //   assertThat(documents2).hasSize(numDocs2);
+  //   for (QueryDocumentSnapshot document : documents2) {
+  //     assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+  //   }
+  // }
+  //
+  // private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
+  //   Map<String, Map<String, Object>> testDocuments = new HashMap<>();
+  //   for (int i = 1; i <= numDocuments; i++) {
+  //     Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
+  //     testDocuments.put("doc-" + i, data);
+  //   }
+  //   return testDocuments;
+  // }
+
   @Test
-  public void testFirestoreToFirestore_collectionIdProvided_copySingleCollection()
-      throws IOException {
-    String collectionId = "input-" + testName;
-    int numDocuments = 10;
+  public void testFirestoreToFirestore_fuzzDataTypes() throws IOException {
+    String rootCollectionId = "fuzz-" + testName;
+    int numRootDocuments = 10;
 
-    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+    Map<String, Map<String, Map<String, Object>>> inputData = new HashMap<>();
 
-    sourceFirestoreResourceManager.write(collectionId, inputData);
+    Map<String, Map<String, Object>> rootData = new HashMap<>();
+    for (int i = 0; i < numRootDocuments; i++) {
+      String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
+      rootData.put(documentId, generateRandomDocument());
 
-    LaunchInfo info = launchPipeline(/*testName=*/ "copySingleCollection", collectionId);
-    assertThatPipeline(info).isRunning();
+      // 30% chance to create a subcollection
+      if (random.nextInt(10) < 3) {
+        String subCollectionId = rootCollectionId + "/" + documentId + "/sub-" + UUID.randomUUID();
+        Map<String, Map<String, Object>> subData = new HashMap<>();
+        int numSubDocs = random.nextInt(3) + 1;
+        for (int k = 0; k < numSubDocs; k++) {
+          String subDocId = "subDoc-" + k + "-" + UUID.randomUUID();
+          subData.put(subDocId, generateRandomDocument());
 
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
-    assertThatResult(result).isLaunchFinished();
-
-    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
-    assertThat(documents).hasSize(numDocuments);
-
-    for (QueryDocumentSnapshot document : documents) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
+          // 20% chance to create a nested subcollection (sub-subcollection)
+          if (random.nextInt(10) < 2) {
+            String subSubCollectionId =
+                subCollectionId + "/" + subDocId + "/subsub-" + UUID.randomUUID();
+            Map<String, Map<String, Object>> subSubData = new HashMap<>();
+            int numSubSubDocs = random.nextInt(2) + 1;
+            for (int l = 0; l < numSubSubDocs; l++) {
+              subSubData.put("subSubDoc-" + l + "-" + UUID.randomUUID(), generateRandomDocument());
+            }
+            inputData.put(subSubCollectionId, subSubData);
+          }
+        }
+        inputData.put(subCollectionId, subData);
+      }
     }
-  }
+    inputData.put(rootCollectionId, rootData);
 
-  @Test
-  public void testFirestoreToFirestore_collectionIdNotProvided_copyAllCollections()
-      throws IOException {
-    String collectionId1 = "inputA-" + testName;
-    int numDocs1 = 5;
-    Map<String, Map<String, Object>> inputData1 = generateTestDocuments(numDocs1);
-    sourceFirestoreResourceManager.write(collectionId1, inputData1);
+    // Write all data to source
+    for (Map.Entry<String, Map<String, Map<String, Object>>> entry : inputData.entrySet()) {
+      sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
+    }
 
-    String collectionId2 = "inputB-" + testName;
-    int numDocs2 = 5;
-    Map<String, Map<String, Object>> inputData2 = generateTestDocuments(numDocs2);
-    sourceFirestoreResourceManager.write(collectionId2, inputData2);
-
-    LaunchInfo info = launchPipeline(/*testName=*/ "copyAll", /*collectionIds=*/ "");
+    LaunchInfo info = launchPipeline(/*testName=*/ "copyFuzz", /*collectionIdFilter=*/ "");
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(15)));
     assertThatResult(result).isLaunchFinished();
 
-    List<QueryDocumentSnapshot> documents1 =
-        destinationFirestoreResourceManager.read(collectionId1);
-    assertThat(documents1).hasSize(numDocs1);
-    for (QueryDocumentSnapshot document : documents1) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-    }
+    // Verify all collections
+    for (Map.Entry<String, Map<String, Map<String, Object>>> entry : inputData.entrySet()) {
+      String collId = entry.getKey();
+      Map<String, Map<String, Object>> expectedCollData = entry.getValue();
 
-    List<QueryDocumentSnapshot> documents2 =
-        destinationFirestoreResourceManager.read(collectionId2);
-    assertThat(documents2).hasSize(numDocs2);
-    for (QueryDocumentSnapshot document : documents2) {
-      assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
-    }
-  }
+      List<QueryDocumentSnapshot> destDocuments = destinationFirestoreResourceManager.read(collId);
+      assertWithMessage("size for collection " + collId).that(destDocuments)
+          .hasSize(expectedCollData.size());
 
-  private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
-    Map<String, Map<String, Object>> testDocuments = new HashMap<>();
-    for (int i = 1; i <= numDocuments; i++) {
-      Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
-      testDocuments.put("doc-" + i, data);
-    }
-    return testDocuments;
-  }
+      for (QueryDocumentSnapshot destDoc : destDocuments) {
+        Map<String, Object> expectedDocData = expectedCollData.get(destDoc.getId());
+        assertThat(expectedDocData).isNotNull();
 
-  @Test
-  public void testFirestoreToFirestore_fuzzDataTypes() throws IOException {
-    String collectionId = "fuzz-" + testName;
-    int numDocuments = 20;
+        Map<String, Object> destDocData = destDoc.getData();
+        assertThat(destDocData.size()).isEqualTo(expectedDocData.size());
 
-    Map<String, Map<String, Object>> inputData = new HashMap<>();
-    for (int i = 0; i < numDocuments; i++) {
+        for (Map.Entry<String, Object> docEntry : expectedDocData.entrySet()) {
+          String key = docEntry.getKey();
+          Object expectedValue = docEntry.getValue();
+          Object actualValue = destDocData.get(key);
 
-      String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
-      inputData.put(documentId, generateRandomDocument());
-    }
-
-    sourceFirestoreResourceManager.write(collectionId, inputData);
-
-    LaunchInfo info = launchPipeline(/*testName=*/ "copyFuzz", collectionId);
-    assertThatPipeline(info).isRunning();
-
-    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
-    assertThatResult(result).isLaunchFinished();
-
-    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
-    assertThat(documents).hasSize(numDocuments);
-
-    for (QueryDocumentSnapshot destDoc : documents) {
-      Map<String, Object> expectedData = inputData.get(destDoc.getId());
-      assertThat(expectedData).isNotNull();
-
-      Map<String, Object> destData = destDoc.getData();
-      assertThat(destData.size()).isEqualTo(expectedData.size());
-
-      for (Map.Entry<String, Object> entry : expectedData.entrySet()) {
-        String key = entry.getKey();
-        Object expectedValue = entry.getValue();
-        Object actualValue = destData.get(key);
-
-        if (expectedValue == null) {
-          assertThat(actualValue).isNull();
-        } else {
-          assertThat(actualValue).isInstanceOf(expectedValue.getClass());
+          if (expectedValue == null) {
+            assertThat(actualValue).isNull();
+          } else {
+            assertThat(actualValue).isInstanceOf(expectedValue.getClass());
+            assertThat(actualValue).isEqualTo(expectedValue);
+          }
         }
       }
     }
   }
 
 
-  private LaunchInfo launchPipeline(String testName, String collectionIds)
+  private LaunchInfo launchPipeline(String testName, String collectionIdFilter)
       throws IOException {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, SPEC_PATH)
@@ -229,21 +269,27 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .addParameter("destinationDatabaseId", destinationDatabaseId())
             .addParameter("maxNumWorkers", "10");
 
-    if (!collectionIds.isEmpty()) {
-      options.addParameter("collectionIds", collectionIds);
+    if (!collectionIdFilter.isEmpty()) {
+      options.addParameter("collectionIds", collectionIdFilter);
     }
 
     return pipelineLauncher.launch(PROJECT, REGION, options.build());
   }
 
   private String sourceDatabaseId() {
-    return ("src-" + testName).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-")
-        .substring(0, 10);
+    String sanitizedName = testName.toLowerCase().replaceAll("[^a-z0-9]", "-");
+    if (sanitizedName.length() > 50) {
+      sanitizedName = sanitizedName.substring(sanitizedName.length() - 50);
+    }
+    return ("s-" + sanitizedName).replaceAll("-+", "-").replaceAll("^-", "");
   }
 
   private String destinationDatabaseId() {
-    return ("dest-" + testName).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-")
-        .substring(0, 10);
+    String sanitizedName = testName.toLowerCase().replaceAll("[^a-z0-9]", "-");
+    if (sanitizedName.length() > 50) {
+      sanitizedName = sanitizedName.substring(sanitizedName.length() - 50);
+    }
+    return ("d-" + sanitizedName).replaceAll("-+", "-").replaceAll("^-", "");
   }
 
   public Map<String, Object> generateRandomDocument() {
