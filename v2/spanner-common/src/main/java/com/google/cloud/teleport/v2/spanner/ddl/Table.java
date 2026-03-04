@@ -47,7 +47,7 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<Column> columns();
 
-  public abstract ImmutableList<String> indexes();
+  public abstract ImmutableList<Index> indexes();
 
   public abstract ImmutableList<ForeignKey> foreignKeys();
 
@@ -75,15 +75,12 @@ public abstract class Table implements Serializable {
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
         .checkConstraints(ImmutableList.of())
-        .onDeleteCascade(false)
-        .indexObjects(ImmutableList.of());
+        .onDeleteCascade(false);
   }
 
   public static Builder builder() {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
-
-  public abstract ImmutableList<Index> indexObjects();
 
   public void prettyPrint(Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
@@ -140,7 +137,10 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
@@ -191,7 +191,10 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
@@ -243,9 +246,7 @@ public abstract class Table implements Serializable {
 
     public abstract Builder columns(ImmutableList<Column> columns);
 
-    public abstract Builder indexes(ImmutableList<String> indexes);
-
-    public abstract Builder indexObjects(ImmutableList<Index> indexes);
+    public abstract Builder indexes(ImmutableList<Index> indexes);
 
     public abstract Builder foreignKeys(ImmutableList<ForeignKey> foreignKeys);
 

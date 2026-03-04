@@ -234,7 +234,8 @@ public class Ddl implements Serializable {
   public List<String> createIndexStatements() {
     List<String> result = new ArrayList<>();
     for (Table table : allTables()) {
-      result.addAll(table.indexes());
+      result.addAll(
+          table.indexes().stream().map(i -> i.prettyPrint()).collect(Collectors.toList()));
     }
     return result;
   }
