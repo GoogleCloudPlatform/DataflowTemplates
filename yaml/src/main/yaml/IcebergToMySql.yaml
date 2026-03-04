@@ -1,0 +1,59 @@
+template:
+
+  name: "Iceberg_To_MySql_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg to MySql (YAML)"
+  description: >
+    The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg
+    and outputs the records to MySQL table.
+  flex_container_name: "iceberg-to-mysql-yaml"
+  yamlTemplateFile: "IcebergToMySql.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt", "options/mysql_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Iceberg table must exist.",
+      "The Output MySQL table need not exist, but the storage must exist and passed through catalog_properties."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "mysql_options"
+    - "iceberg_options"
+
+  parameters:
+    - mysql_common_options
+    - mysql_write_options
+    - iceberg_common_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
+      config:
+        table: {{ table }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+        drop: {{ drop }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+
+    - type: WriteToMySql
+      name: WriteToMySql
+      config:
+        url: {{ jdbcUrl }}
+        auto_sharding: {{ autosharding }}
+        connection_init_sql: {{ connectionInitSql }}
+        connection_properties: {{ connectionProperties }}
+        username: {{ username }}
+        password: {{ password }}
+        query: {{ insertQuery }}
+        table: {{ sinkTable }}
+        batch_size: {{ batchSize }}
+
+options:
+  streaming: false
