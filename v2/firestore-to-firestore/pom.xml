@@ -46,11 +46,20 @@
     Copy Data from One Firestore Database to Another
   </description>
 
+<!--  // TODO: see if we can remove this-->
   <properties>
-    <beam.version>2.71.0</beam.version>
+    <beam.version>2.72.0-SNAPSHOT</beam.version>
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore-admin</artifactId>
+    </dependency>
     <!-- For local testing with direct runner -->
     <dependency>
       <groupId>org.apache.beam</groupId>

@@ -27,6 +27,8 @@ import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.MoreObjects;
+import com.google.firestore.admin.v1.Database;
+import com.google.firestore.admin.v1.Database.DataAccessMode;
 import com.google.firestore.admin.v1.Database.DatabaseEdition;
 import com.google.firestore.admin.v1.Database.DatabaseType;
 import com.google.protobuf.ByteString;
@@ -54,9 +56,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Integration test for {@link FirestoreToFirestore}.
- */
+/** Integration test for {@link FirestoreToFirestore}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -93,9 +93,15 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .build();
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
-    // TODO: back to ENTERPRISE once available.
     firestoreAdminResourceManager.createDatabase(
-        destinationDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+        destinationDatabaseId,
+        Database.newBuilder()
+            .setName(destinationDatabaseId)
+            .setType(DatabaseType.FIRESTORE_NATIVE)
+            .setDatabaseEdition(DatabaseEdition.ENTERPRISE)
+            .setFirestoreDataAccessMode(DataAccessMode.DATA_ACCESS_MODE_ENABLED)
+            .setLocationId(REGION)
+            .build());
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
@@ -118,8 +124,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   @Test
-  public void testFirestoreToFirestore_copiesOnlySelectedCollections()
-      throws IOException {
+  public void testFirestoreToFirestore_copiesOnlySelectedCollections() throws IOException {
     String collectionId1 = "input1-" + randomString(6).toLowerCase();
     String collectionId2 = "input2-" + randomString(6).toLowerCase();
     String collectionId3 = "input3-" + randomString(6).toLowerCase();
@@ -203,7 +208,10 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     String collectionGroupIds =
         String.join(
-            ",", rootCollectionId1, rootCollectionId2, SUB_COLLECTION_GROUP_ID,
+            ",",
+            rootCollectionId1,
+            rootCollectionId2,
+            SUB_COLLECTION_GROUP_ID,
             SUB_SUB_COLLECTION_GROUP_ID);
 
     LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", collectionGroupIds);

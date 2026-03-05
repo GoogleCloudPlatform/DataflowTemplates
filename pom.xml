@@ -93,6 +93,9 @@
     <testcontainers.version>1.21.3</testcontainers.version>
     <truth.version>1.4.5</truth.version>
     <netty.version>4.1.128.Final</netty.version>
+    <google-cloud-firestore.version>3.38.0</google-cloud-firestore.version>
+    <google-cloud-firestore-admin.version>3.38.0</google-cloud-firestore-admin.version>
+    <protobuf.version>4.33.2</protobuf.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -307,6 +310,31 @@
         <groupId>org.eclipse.jetty.websocket</groupId>
         <artifactId>jetty-websocket-jetty-common</artifactId>
         <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-firestore</artifactId>
+        <version>${google-cloud-firestore.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-firestore-admin</artifactId>
+        <version>${google-cloud-firestore-admin.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api.grpc</groupId>
+        <artifactId>proto-google-cloud-firestore-v1</artifactId>
+        <version>${google-cloud-firestore.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api.grpc</groupId>
+        <artifactId>proto-google-cloud-firestore-admin-v1</artifactId>
+        <version>${google-cloud-firestore-admin.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

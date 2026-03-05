@@ -52,18 +52,24 @@ public class FirestoreAdminResourceManager implements ResourceManager {
   }
 
   public void createDatabase(String databaseId, DatabaseType type, DatabaseEdition edition) {
+    createDatabase(
+        databaseId,
+        Database.newBuilder()
+            .setName(databaseId)
+            .setType(type)
+            .setDatabaseEdition(edition)
+            .setLocationId(region)
+            .build());
+  }
+
+  public void createDatabase(String databaseId, Database database) {
     try {
       firestoreAdminClient
           .createDatabaseAsync(
               CreateDatabaseRequest.newBuilder()
                   .setParent("projects/" + projectId)
                   .setDatabaseId(databaseId)
-                  .setDatabase(
-                      Database.newBuilder()
-                          .setName(databaseId)
-                          .setType(type)
-                          .setDatabaseEdition(edition)
-                          .setLocationId(region))
+                  .setDatabase(database)
                   .build())
           .get();
       databaseIds.add(databaseId);

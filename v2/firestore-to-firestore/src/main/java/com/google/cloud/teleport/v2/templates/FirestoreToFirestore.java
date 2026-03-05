@@ -49,12 +49,12 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-        "The Firestore to Firestore template is a batch pipeline that reads documents from one"
-            + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-            + " them to another Firestore database. ",
-        "It does not support using an Enterprise edition database as the source.",
-        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-            + " written to the destination database.\n",
+      "The Firestore to Firestore template is a batch pipeline that reads documents from one"
+          + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+          + " them to another Firestore database. ",
+      "It does not support using an Enterprise edition database as the source.",
+      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+          + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -141,7 +141,6 @@ public class FirestoreToFirestore {
     void setReadTime(String readTime);
   }
 
-
   public static void main(String[] args) {
     try {
       UncaughtExceptionLogger.register();
@@ -164,9 +163,9 @@ public class FirestoreToFirestore {
               : options.getDestinationProjectId();
       String destinationDatabaseId = options.getDestinationDatabaseId();
 
-      List<String>
-          collectionGroupIdsList =
-          Arrays.stream(options.getCollectionGroupIds().split(",")).map(String::trim)
+      List<String> collectionGroupIdsList =
+          Arrays.stream(options.getCollectionGroupIds().split(","))
+              .map(String::trim)
               .collect(Collectors.toList());
 
       int maxNumWorkers =
