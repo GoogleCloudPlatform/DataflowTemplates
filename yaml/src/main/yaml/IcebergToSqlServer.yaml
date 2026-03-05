@@ -50,7 +50,7 @@ pipeline:
         username: "{{ username }}"
         password: "{{ password }}"
         connection_properties: {{ connectionProperties }}
-        write_statement: {{ writeStatement }}
+        query: {{ query }}
         table: {{ location }}
         batch_size: {{ batchSize }}
         autosharding: {{ autosharding }}
