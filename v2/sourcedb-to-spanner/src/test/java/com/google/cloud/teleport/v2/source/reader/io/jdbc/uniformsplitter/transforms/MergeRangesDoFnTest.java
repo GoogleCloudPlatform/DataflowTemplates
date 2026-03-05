@@ -16,14 +16,20 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
+import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,25 +42,36 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class MergeRangesDoFnTest {
 
-  @Mock OutputReceiver mockOut;
-  @Captor ArgumentCaptor<ImmutableList<Range>> rangesCaptor;
-  @Mock DoFn.ProcessContext mockProcessContext;
+  @Mock OutputReceiver<KV<Integer, ImmutableList<Range>>> mockOut;
+  @Captor ArgumentCaptor<KV<Integer, ImmutableList<Range>>> rangesCaptor;
+  @Mock ProcessContext mockProcessContext;
 
   @Test
   public void testMergeRangesDoFnWithAutoAdjustment() {
     ImmutableList<Range> testRanges = getDummyRanges(mockProcessContext);
     MergeRangesDoFn mergeRangesDoFn =
         MergeRangesDoFn.builder()
-            .setMaxPartitionHint(2L)
-            .setApproxTotalRowCount(3200L)
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(3200L)
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
             .setAutoAdjustMaxPartitions(true)
-            .setTableName("testTable")
             .build();
-    mergeRangesDoFn.processElement(testRanges, mockOut, mockProcessContext);
+    mergeRangesDoFn.processElement(KV.of(0, testRanges), mockOut, mockProcessContext);
 
     verify(mockOut).output(rangesCaptor.capture());
-    ImmutableList<Range> dummy = rangesCaptor.getValue();
-    assertThat(rangesCaptor.getValue())
+    assertThat(rangesCaptor.getValue().getKey()).isEqualTo(0);
+    assertThat(rangesCaptor.getValue().getValue())
         .isEqualTo(
             ImmutableList.of(
                 testRanges.get(0),
@@ -76,15 +93,27 @@ public class MergeRangesDoFnTest {
     ImmutableList<Range> testRanges = getDummyRanges(mockProcessContext);
     MergeRangesDoFn mergeRangesDoFn =
         MergeRangesDoFn.builder()
-            .setMaxPartitionHint(2L)
-            .setApproxTotalRowCount(3200L)
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(3200L)
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
             .setAutoAdjustMaxPartitions(false)
-            .setTableName("testTable")
             .build();
-    mergeRangesDoFn.processElement(testRanges, mockOut, mockProcessContext);
+    mergeRangesDoFn.processElement(KV.of(0, testRanges), mockOut, mockProcessContext);
 
     verify(mockOut).output(rangesCaptor.capture());
-    assertThat(rangesCaptor.getValue())
+    assertThat(rangesCaptor.getValue().getKey()).isEqualTo(0);
+    assertThat(rangesCaptor.getValue().getValue())
         .isEqualTo(
             ImmutableList.of(
                 testRanges.get(0),
@@ -102,11 +131,182 @@ public class MergeRangesDoFnTest {
                     .mergeRange(testRanges.get(8), mockProcessContext)));
   }
 
+  @Test
+  public void testMergeRangesDoFnWithMultipleTableSpecs() {
+    ImmutableList<Range> testRanges = getDummyRanges(mockProcessContext);
+    MergeRangesDoFn mergeRangesDoFn =
+        MergeRangesDoFn.builder()
+            .setTableSplitSpecifications(
+                ImmutableList.of(
+                    TableSplitSpecification.builder()
+                        .setMaxPartitionsHint(2L)
+                        .setApproxRowCount(3200L)
+                        .setTableIdentifier(
+                            TableIdentifier.builder().setTableName("testTable").build())
+                        .setPartitionColumns(
+                            ImmutableList.of(
+                                PartitionColumn.builder()
+                                    .setColumnName("col1")
+                                    .setColumnClass(Long.class)
+                                    .build()))
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build(),
+                    TableSplitSpecification.builder()
+                        .setMaxPartitionsHint(2L)
+                        .setApproxRowCount(3200L)
+                        .setTableIdentifier(
+                            TableIdentifier.builder().setTableName("testTable2").build())
+                        .setPartitionColumns(
+                            ImmutableList.of(
+                                PartitionColumn.builder()
+                                    .setColumnName("col1")
+                                    .setColumnClass(Long.class)
+                                    .build()))
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build()))
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+    mergeRangesDoFn.processElement(KV.of(0, testRanges), mockOut, mockProcessContext);
+
+    verify(mockOut).output(rangesCaptor.capture());
+    assertThat(rangesCaptor.getValue().getKey()).isEqualTo(0);
+    assertThat(rangesCaptor.getValue().getValue()).hasSize(4);
+  }
+
+  @Test
+  public void testMergeRangesDoFnWithUnknownTableIdentifier() {
+    MergeRangesDoFn mergeRangesDoFn =
+        MergeRangesDoFn.builder()
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(3200L)
+                    .setTableIdentifier(
+                        TableIdentifier.builder().setTableName("someOtherTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            mergeRangesDoFn.processElement(
+                KV.of(0, getDummyRanges(mockProcessContext)), mockOut, mockProcessContext));
+  }
+
+  @Test
+  public void testMergeRangesDoFnWithMismatchedTableIdentifier() {
+    MergeRangesDoFn mergeRangesDoFn =
+        MergeRangesDoFn.builder()
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(3200L)
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+    ImmutableList<Range> mismatchedRanges =
+        ImmutableList.of(
+            getDummyRanges(mockProcessContext).get(0),
+            getDummyRanges(mockProcessContext).get(0).toBuilder()
+                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+                .build());
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            mergeRangesDoFn.processElement(
+                KV.of(0, mismatchedRanges), mockOut, mockProcessContext));
+  }
+
+  @Test
+  public void testMergeRangesDoFn_withEmptyInput_doesNothing() {
+    MergeRangesDoFn mergeRangesDoFn =
+        MergeRangesDoFn.builder()
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(3200L)
+                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
+            .setAutoAdjustMaxPartitions(true)
+            .build();
+    mergeRangesDoFn.processElement(KV.of(0, ImmutableList.of()), mockOut, mockProcessContext);
+    verify(mockOut, never()).output(any());
+  }
+
+  @Test
+  public void testMergeRangesForTable_withMismatchedRange_throwsException() {
+    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
+    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
+    MergeRangesDoFn mergeRangesDoFn =
+        MergeRangesDoFn.builder()
+            .setTableSplitSpecification(
+                TableSplitSpecification.builder()
+                    .setMaxPartitionsHint(2L)
+                    .setApproxRowCount(100L)
+                    .setTableIdentifier(table1)
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build())
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+
+    Range range1 =
+        Range.builder()
+            .setTableIdentifier(table1)
+            .setStart(0L)
+            .setEnd(10L)
+            .setColName("col1")
+            .setColClass(Long.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+    Range range2 = range1.toBuilder().setTableIdentifier(table2).build();
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            mergeRangesDoFn.mergeRangesForTable(
+                ImmutableList.of(range1, range2), mockProcessContext));
+  }
+
   private static ImmutableList<Range> getDummyRanges(ProcessContext mockProcessContext) {
 
     Range testRange =
         dummyCounter(
             Range.builder()
+                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
                 .setStart(0L)
                 .setEnd(64L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))

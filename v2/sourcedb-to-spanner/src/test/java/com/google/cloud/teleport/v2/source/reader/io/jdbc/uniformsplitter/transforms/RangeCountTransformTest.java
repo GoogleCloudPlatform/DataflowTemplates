@@ -18,8 +18,10 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
 import java.sql.SQLException;
 import javax.sql.DataSource;
@@ -54,14 +56,17 @@ public class RangeCountTransformTest {
     TransformTestUtils.createDerbyTable(tableName);
   }
 
+  @AfterClass
+  public static void exitDerby() throws SQLException {
+    TransformTestUtils.dropDerbyTable(tableName);
+  }
+
   @Test
   public void testRangeCountTransform() throws Exception {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
-    RangePreparedStatementSetter rangePreparedStatementSetter =
-        new RangePreparedStatementSetter(partitionCols.size());
-
     Range singleColNonLastRange =
         Range.<Integer>builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -71,6 +76,7 @@ public class RangeCountTransformTest {
             .build();
     Range bothColRange =
         Range.<Integer>builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -80,6 +86,7 @@ public class RangeCountTransformTest {
             .build()
             .withChildRange(
                 Range.<Integer>builder()
+                    .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                     .setColName("col2")
                     .setColClass(Integer.class)
@@ -92,10 +99,27 @@ public class RangeCountTransformTest {
     RangeCountTransform rangeCountTransform =
         RangeCountTransform.builder()
             .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-            .setPartitionColumns(partitionCols)
+            .setTableSplitSpecifications(
+                ImmutableList.of(
+                    TableSplitSpecification.builder()
+                        .setTableIdentifier(
+                            TableIdentifier.builder().setTableName(tableName).build())
+                        .setPartitionColumns(
+                            partitionCols.stream()
+                                .map(
+                                    c ->
+                                        PartitionColumn.builder()
+                                            .setColumnName(c)
+                                            .setColumnClass(Long.class)
+                                            .build())
+                                .collect(ImmutableList.toImmutableList()))
+                        .setApproxRowCount(100L)
+                        .setMaxPartitionsHint(10L)
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build()))
             .setDataSourceProviderFn(dataSourceProviderFn)
             .setTimeoutMillis(42L)
-            .setTableName(tableName)
             .build();
     PCollection<Range> output = input.apply(rangeCountTransform);
 
@@ -104,10 +128,5 @@ public class RangeCountTransformTest {
             singleColNonLastRange.withCount(2L, null), bothColRange.withCount(1L, null));
 
     testPipeline.run().waitUntilFinish();
-  }
-
-  @AfterClass
-  public static void exitDerby() throws SQLException {
-    TransformTestUtils.dropDerbyTable(tableName);
   }
 }
