@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
 * **sourceDatabaseId**: The source database to read from. Use '(default)' for the default database. For example, `my-database`.
-* **collectionGroupIds**: Specifies collection groups to copy. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, providing `users,messages` will copy all data under `users` and `messages` collections. For example, `users,messages`.
+* **collectionGroupIds**: Specifies collection groups to copy. Does NOT include all subcollections recursively. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, both `users` and `messages` must be provided to copy will copy all data in `users` and `messages` collections. For example, `users,messages`.
 * **destinationDatabaseId**: The destination database to write to. Use '(default)' for the default database. For example, `my-database`.
 
 ### Optional parameters
