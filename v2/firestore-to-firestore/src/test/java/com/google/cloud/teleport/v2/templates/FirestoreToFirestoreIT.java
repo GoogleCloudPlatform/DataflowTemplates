@@ -307,6 +307,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       assertThat(((DocumentReference) actualValue).getPath())
           .isEqualTo(((DocumentReference) expectedValue).getPath());
     } else if (expectedValue instanceof List) {
+      // Lists and Maps must have each element compared since plain equals check will fail.
       assertThat(actualValue).isInstanceOf(List.class);
       List<?> expectedList = (List<?>) expectedValue;
       List<?> actualList = (List<?>) actualValue;
@@ -325,6 +326,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         assertValuesEqual(expectedMap.get(key), actualMap.get(key));
       }
     } else {
+      // Not a special type. Plain equals will suffice.
       assertThat(actualValue).isEqualTo(expectedValue);
     }
   }
@@ -407,6 +409,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         return new GeoPoint(random.nextDouble() * 180 - 90, random.nextDouble() * 360 - 180);
       }
       case 10 -> {
+        // DocumentReference type.
         return sourceFirestoreResourceManager
             .getFirestore()
             .collection("refCol" + random.nextInt(5))
