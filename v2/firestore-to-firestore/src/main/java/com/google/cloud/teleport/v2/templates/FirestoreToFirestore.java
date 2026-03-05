@@ -244,13 +244,6 @@ public class FirestoreToFirestore {
       // 7. Run the pipeline
       PipelineResult result = p.run();
       LOG.info("Pipeline started.");
-
-      PipelineResult.State state = result.waitUntilFinish();
-      if (state == PipelineResult.State.DONE) {
-        LOG.info("Pipeline completed successfully!");
-      } else {
-        throw new RuntimeException("Pipeline execution did not succeed: " + state);
-      }
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
