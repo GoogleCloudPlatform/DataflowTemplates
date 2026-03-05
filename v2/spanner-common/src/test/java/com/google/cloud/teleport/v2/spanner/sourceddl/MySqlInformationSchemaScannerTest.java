@@ -29,675 +29,677 @@ import org.junit.Test;
 
 public class MySqlInformationSchemaScannerTest {
 
-    @Test
-    public void testScanSingleTable() throws SQLException {
-        // Mock JDBC objects
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-        ResultSet idxRs = mock(ResultSet.class);
-        ResultSet fkRs = mock(ResultSet.class);
-
-        // Mock table query
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("users");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        // Mock column query
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(true, false);
-        when(columnRs.getString("column_name")).thenReturn("id");
-        when(columnRs.getString("data_type")).thenReturn("INT");
-        when(columnRs.getString("is_nullable")).thenReturn("NO");
-        when(columnRs.getString("column_key")).thenReturn("PRI");
-        when(columnRs.getString("character_maximum_length")).thenReturn("10");
-        when(columnRs.getString("numeric_precision")).thenReturn(null);
-        when(columnRs.getString("numeric_scale")).thenReturn(null);
-        when(columnRs.getString("generation_expression")).thenReturn("");
-
-        // Mock primary key query
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(true, false);
-        when(pkRs.getString("column_name")).thenReturn("id");
-
-        // Mock index query
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(false);
-
-        // Mock fk query
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-
-        assertEquals("testdb", schema.databaseName());
-        assertEquals(SourceDatabaseType.MYSQL, schema.sourceType());
-        assertEquals(1, schema.tables().size());
-        SourceTable table = schema.tables().get("users");
-        assertEquals("users", table.name());
-        assertEquals("testdb", table.schema());
-        assertEquals(1, table.columns().size());
-        SourceColumn column = table.columns().get(0);
-        assertEquals("id", column.name());
-        assertEquals("INT", column.type());
-        assertEquals(false, column.isNullable());
-        assertEquals(true, column.isPrimaryKey());
-        assertEquals(false, column.isGenerated());
-        assertEquals(Long.valueOf(10L), column.size());
-        assertEquals(1, table.primaryKeyColumns().size());
-        assertEquals("id", table.primaryKeyColumns().get(0));
-    }
-
-    @Test
-    public void testScanTableWithNoColumns() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-        ResultSet idxRs = mock(ResultSet.class);
-        ResultSet fkRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("empty_table");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-        SourceTable table = schema.tables().get("empty_table");
-        assertEquals(0, table.columns().size());
-        assertEquals(0, table.primaryKeyColumns().size());
-    }
-
-    @Test
-    public void testScanTableWithSpecialCharacterNames() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-        ResultSet idxRs = mock(ResultSet.class);
-        ResultSet fkRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("user$#@!");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(true, false);
-        when(columnRs.getString("column_name")).thenReturn("col@!$");
-        when(columnRs.getString("data_type")).thenReturn("VARCHAR");
-        when(columnRs.getString("is_nullable")).thenReturn("YES");
-        when(columnRs.getString("column_key")).thenReturn("");
-        when(columnRs.getString("character_maximum_length")).thenReturn("255");
-        when(columnRs.getString("numeric_precision")).thenReturn(null);
-        when(columnRs.getString("numeric_scale")).thenReturn(null);
-        when(columnRs.getString("generation_expression")).thenReturn("concat(`first_name`,' ')");
-
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-        SourceTable table = schema.tables().get("user$#@!");
-        assertEquals("user$#@!", table.name());
-        assertEquals(1, table.columns().size());
-        assertEquals("col@!$", table.columns().get(0).name());
-    }
-
-    @Test
-    public void testScanWithNullTableName() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn(null);
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        // Should not throw, but table with null name should not be added
-        SourceSchema schema = scanner.scan();
-        assertEquals(0, schema.tables().size());
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testScanThrowsSQLExceptionOnColumns() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("users");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        // Simulate SQLException when scanning columns
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "ORDER BY ordinal_position"))
-                .thenThrow(new SQLException("Column scan error"));
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        scanner.scan();
-    }
-
-    @Test
-    public void testScanMultipleTables() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs1 = mock(ResultSet.class);
-        ResultSet columnRs2 = mock(ResultSet.class);
-        ResultSet pkRs1 = mock(ResultSet.class);
-        ResultSet pkRs2 = mock(ResultSet.class);
-        ResultSet idxRs1 = mock(ResultSet.class);
-        ResultSet idxRs2 = mock(ResultSet.class);
-        ResultSet fkRs1 = mock(ResultSet.class);
-        ResultSet fkRs2 = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, true, false);
-        when(tableRs.getString(1)).thenReturn("users", "orders");
-        when(tableRs.getString(2)).thenReturn("testdb", "testdb");
-
-        // users table
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs1);
-        when(columnRs1.next()).thenReturn(true, false);
-        when(columnRs1.getString("column_name")).thenReturn("id");
-        when(columnRs1.getString("data_type")).thenReturn("INT");
-        when(columnRs1.getString("is_nullable")).thenReturn("NO");
-        when(columnRs1.getString("column_key")).thenReturn("PRI");
-        when(columnRs1.getString("character_maximum_length")).thenReturn("10");
-        when(columnRs1.getString("numeric_precision")).thenReturn(null);
-        when(columnRs1.getString("numeric_scale")).thenReturn(null);
-        when(columnRs1.getString("generation_expression")).thenReturn(null);
-
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs1);
-        when(pkRs1.next()).thenReturn(true, false);
-        when(pkRs1.getString("column_name")).thenReturn("id");
-
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs1);
-        when(idxRs1.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs1);
-        when(fkRs1.next()).thenReturn(false);
-
-        // orders table
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs2);
-        when(columnRs2.next()).thenReturn(true, false);
-        when(columnRs2.getString("column_name")).thenReturn("order_id");
-        when(columnRs2.getString("data_type")).thenReturn("BIGINT");
-        when(columnRs2.getString("is_nullable")).thenReturn("NO");
-        when(columnRs2.getString("column_key")).thenReturn("PRI");
-        when(columnRs2.getString("character_maximum_length")).thenReturn(null);
-        when(columnRs2.getString("numeric_precision")).thenReturn("20");
-        when(columnRs2.getString("numeric_scale")).thenReturn(null);
-        when(columnRs2.getString("generation_expression")).thenReturn(null);
-
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs2);
-        when(pkRs2.next()).thenReturn(true, false);
-        when(pkRs2.getString("column_name")).thenReturn("order_id");
-
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs2);
-        when(idxRs2.next()).thenReturn(false);
-
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs2);
-        when(fkRs2.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-        assertEquals(2, schema.tables().size());
-        assertEquals("users", schema.tables().get("users").name());
-        assertEquals("orders", schema.tables().get("orders").name());
-    }
-
-    @Test
-    public void testScanGeneratedColumn() throws SQLException {
-        // Mock JDBC objects
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-
-        // Mock table query
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("generated_table");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        // Mock column query
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(true, true, false);
-
-        // Normal column
-        when(columnRs.getString("column_name")).thenReturn("id", "full_name");
-        when(columnRs.getString("data_type")).thenReturn("INT", "VARCHAR");
-        when(columnRs.getString("is_nullable")).thenReturn("NO", "YES");
-        when(columnRs.getString("column_key")).thenReturn("PRI", "");
-        when(columnRs.getString("character_maximum_length")).thenReturn("10", "255");
-        when(columnRs.getString("numeric_precision")).thenReturn(null, null);
-        when(columnRs.getString("numeric_scale")).thenReturn(null, null);
-        // Extra column for generated column
-        when(columnRs.getString("generation_expression")).thenReturn("", "(id * 2)");
-
-        // Mock primary key query
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(true, false);
-        when(pkRs.getString("column_name")).thenReturn("id");
-
-        // Mock index query (empty)
-        ResultSet idxRs = mock(ResultSet.class);
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(false);
-
-        // Mock foreign key query (empty)
-        ResultSet fkRs = mock(ResultSet.class);
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-
-        assertEquals(1, schema.tables().size());
-        SourceTable table = schema.tables().get("generated_table");
-        assertEquals(2, table.columns().size());
-
-        SourceColumn idCol = table.columns().get(0);
-        assertEquals("id", idCol.name());
-        assertFalse(idCol.isGenerated());
-
-        SourceColumn fullNameCol = table.columns().get(1);
-        assertEquals("full_name", fullNameCol.name());
-        assertTrue("Column should be generated", fullNameCol.isGenerated());
-    }
-
-    @Test
-    public void testScanTableWithForeignKeys() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-        ResultSet idxRs = mock(ResultSet.class);
-        ResultSet fkRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("child_table");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        // Columns
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(true, false);
-        when(columnRs.getString("column_name")).thenReturn("parent_id");
-        when(columnRs.getString("data_type")).thenReturn("INT");
-        when(columnRs.getString("is_nullable")).thenReturn("NO");
-        when(columnRs.getString("column_key")).thenReturn("MUL");
-        when(columnRs.getString("generation_expression")).thenReturn(null);
-
-        // PK
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(false);
-
-        // Index
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(false);
-
-        // Foreign Keys
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(true, false);
-        when(fkRs.getString("constraint_name")).thenReturn("fk_parent");
-        when(fkRs.getString("column_name")).thenReturn("parent_id");
-        when(fkRs.getString("referenced_table_name")).thenReturn("parent_table");
-        when(fkRs.getString("referenced_column_name")).thenReturn("id");
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-        SourceTable table = schema.tables().get("child_table");
-
-        assertEquals(1, table.foreignKeys().size());
-        assertEquals("fk_parent", table.foreignKeys().get(0).name());
-        assertEquals("child_table", table.foreignKeys().get(0).tableName());
-        assertEquals("parent_table", table.foreignKeys().get(0).referencedTable());
-        assertEquals(1, table.foreignKeys().get(0).keyColumns().size());
-        assertEquals("parent_id", table.foreignKeys().get(0).keyColumns().get(0));
-        assertEquals("id", table.foreignKeys().get(0).referencedColumns().get(0));
-    }
-
-    @Test
-    public void testScanTableWithIndexes() throws SQLException {
-        Connection connection = mock(Connection.class);
-        Statement stmt = mock(Statement.class);
-        ResultSet tableRs = mock(ResultSet.class);
-        ResultSet columnRs = mock(ResultSet.class);
-        ResultSet pkRs = mock(ResultSet.class);
-        ResultSet idxRs = mock(ResultSet.class);
-        ResultSet fkRs = mock(ResultSet.class);
-
-        when(connection.createStatement()).thenReturn(stmt);
-        when(stmt.executeQuery(
-                "SELECT table_name, table_schema "
-                        + "FROM information_schema.tables "
-                        + "WHERE table_schema = 'testdb' "
-                        + "AND table_type = 'BASE TABLE'"))
-                .thenReturn(tableRs);
-        when(tableRs.next()).thenReturn(true, false);
-        when(tableRs.getString(1)).thenReturn("users");
-        when(tableRs.getString(2)).thenReturn("testdb");
-
-        // Columns
-        when(stmt.executeQuery(
-                "SELECT column_name, data_type, character_maximum_length, "
-                        + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
-                        + "FROM information_schema.columns "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(columnRs);
-        when(columnRs.next()).thenReturn(true, false);
-        when(columnRs.getString("column_name")).thenReturn("email");
-        when(columnRs.getString("data_type")).thenReturn("VARCHAR");
-        when(columnRs.getString("is_nullable")).thenReturn("NO");
-        when(columnRs.getString("column_key")).thenReturn("UNI");
-        when(columnRs.getString("generation_expression")).thenReturn(null);
-
-        // PK
-        when(stmt.executeQuery(
-                "SELECT column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND constraint_name = 'PRIMARY' "
-                        + "ORDER BY ordinal_position"))
-                .thenReturn(pkRs);
-        when(pkRs.next()).thenReturn(false);
-
-        // Indexes
-        when(stmt.executeQuery(
-                "SELECT index_name, column_name, non_unique "
-                        + "FROM information_schema.statistics "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND index_name != 'PRIMARY' "
-                        + "ORDER BY index_name, seq_in_index"))
-                .thenReturn(idxRs);
-        when(idxRs.next()).thenReturn(true, true, false);
-        // 1. Unique Index
-        when(idxRs.getString("index_name")).thenReturn("uk_email", "idx_age");
-        when(idxRs.getString("column_name")).thenReturn("email", "age");
-        when(idxRs.getInt("non_unique")).thenReturn(0, 1);
-
-        // Foreign Keys
-        when(stmt.executeQuery(
-                "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
-                        + "FROM information_schema.key_column_usage "
-                        + "WHERE table_schema = 'testdb' AND table_name = 'users' "
-                        + "AND referenced_table_name IS NOT NULL "
-                        + "ORDER BY constraint_name, ordinal_position"))
-                .thenReturn(fkRs);
-        when(fkRs.next()).thenReturn(false);
-
-        MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
-        SourceSchema schema = scanner.scan();
-        SourceTable table = schema.tables().get("users");
-
-        assertEquals(2, table.indexes().size());
-
-        // Check unique index
-        SourceIndex uniqueIndex = table.indexes().stream().filter(i -> i.name().equals("uk_email")).findFirst().get();
-        assertEquals("uk_email", uniqueIndex.name());
-        assertEquals("users", uniqueIndex.tableName());
-        assertEquals("email", uniqueIndex.columns().get(0));
-        assertEquals(true, uniqueIndex.isUnique());
-
-        // Check non-unique index
-        SourceIndex nonUniqueIndex = table.indexes().stream().filter(i -> i.name().equals("idx_age")).findFirst().get();
-        assertEquals("idx_age", nonUniqueIndex.name());
-        assertEquals("users", nonUniqueIndex.tableName());
-        assertEquals("age", nonUniqueIndex.columns().get(0));
-        assertEquals(false, nonUniqueIndex.isUnique());
-    }
+  @Test
+  public void testScanSingleTable() throws SQLException {
+    // Mock JDBC objects
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    // Mock table query
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("users");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Mock column query
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, false);
+    when(columnRs.getString("column_name")).thenReturn("id");
+    when(columnRs.getString("data_type")).thenReturn("INT");
+    when(columnRs.getString("is_nullable")).thenReturn("NO");
+    when(columnRs.getString("column_key")).thenReturn("PRI");
+    when(columnRs.getString("character_maximum_length")).thenReturn("10");
+    when(columnRs.getString("numeric_precision")).thenReturn(null);
+    when(columnRs.getString("numeric_scale")).thenReturn(null);
+    when(columnRs.getString("generation_expression")).thenReturn("");
+
+    // Mock primary key query
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(true, false);
+    when(pkRs.getString("column_name")).thenReturn("id");
+
+    // Mock index query
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    // Mock fk query
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+
+    assertEquals("testdb", schema.databaseName());
+    assertEquals(SourceDatabaseType.MYSQL, schema.sourceType());
+    assertEquals(1, schema.tables().size());
+    SourceTable table = schema.tables().get("users");
+    assertEquals("users", table.name());
+    assertEquals("testdb", table.schema());
+    assertEquals(1, table.columns().size());
+    SourceColumn column = table.columns().get(0);
+    assertEquals("id", column.name());
+    assertEquals("INT", column.type());
+    assertEquals(false, column.isNullable());
+    assertEquals(true, column.isPrimaryKey());
+    assertEquals(false, column.isGenerated());
+    assertEquals(Long.valueOf(10L), column.size());
+    assertEquals(1, table.primaryKeyColumns().size());
+    assertEquals("id", table.primaryKeyColumns().get(0));
+  }
+
+  @Test
+  public void testScanTableWithNoColumns() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("empty_table");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+    SourceTable table = schema.tables().get("empty_table");
+    assertEquals(0, table.columns().size());
+    assertEquals(0, table.primaryKeyColumns().size());
+  }
+
+  @Test
+  public void testScanTableWithSpecialCharacterNames() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("user$#@!");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, false);
+    when(columnRs.getString("column_name")).thenReturn("col@!$");
+    when(columnRs.getString("data_type")).thenReturn("VARCHAR");
+    when(columnRs.getString("is_nullable")).thenReturn("YES");
+    when(columnRs.getString("column_key")).thenReturn("");
+    when(columnRs.getString("character_maximum_length")).thenReturn("255");
+    when(columnRs.getString("numeric_precision")).thenReturn(null);
+    when(columnRs.getString("numeric_scale")).thenReturn(null);
+    when(columnRs.getString("generation_expression")).thenReturn("concat(`first_name`,' ')");
+
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+    SourceTable table = schema.tables().get("user$#@!");
+    assertEquals("user$#@!", table.name());
+    assertEquals(1, table.columns().size());
+    assertEquals("col@!$", table.columns().get(0).name());
+  }
+
+  @Test
+  public void testScanWithNullTableName() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn(null);
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    // Should not throw, but table with null name should not be added
+    SourceSchema schema = scanner.scan();
+    assertEquals(0, schema.tables().size());
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testScanThrowsSQLExceptionOnColumns() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("users");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Simulate SQLException when scanning columns
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "ORDER BY ordinal_position"))
+        .thenThrow(new SQLException("Column scan error"));
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    scanner.scan();
+  }
+
+  @Test
+  public void testScanMultipleTables() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs1 = mock(ResultSet.class);
+    ResultSet columnRs2 = mock(ResultSet.class);
+    ResultSet pkRs1 = mock(ResultSet.class);
+    ResultSet pkRs2 = mock(ResultSet.class);
+    ResultSet idxRs1 = mock(ResultSet.class);
+    ResultSet idxRs2 = mock(ResultSet.class);
+    ResultSet fkRs1 = mock(ResultSet.class);
+    ResultSet fkRs2 = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, true, false);
+    when(tableRs.getString(1)).thenReturn("users", "orders");
+    when(tableRs.getString(2)).thenReturn("testdb", "testdb");
+
+    // users table
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs1);
+    when(columnRs1.next()).thenReturn(true, false);
+    when(columnRs1.getString("column_name")).thenReturn("id");
+    when(columnRs1.getString("data_type")).thenReturn("INT");
+    when(columnRs1.getString("is_nullable")).thenReturn("NO");
+    when(columnRs1.getString("column_key")).thenReturn("PRI");
+    when(columnRs1.getString("character_maximum_length")).thenReturn("10");
+    when(columnRs1.getString("numeric_precision")).thenReturn(null);
+    when(columnRs1.getString("numeric_scale")).thenReturn(null);
+    when(columnRs1.getString("generation_expression")).thenReturn(null);
+
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs1);
+    when(pkRs1.next()).thenReturn(true, false);
+    when(pkRs1.getString("column_name")).thenReturn("id");
+
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs1);
+    when(idxRs1.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs1);
+    when(fkRs1.next()).thenReturn(false);
+
+    // orders table
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs2);
+    when(columnRs2.next()).thenReturn(true, false);
+    when(columnRs2.getString("column_name")).thenReturn("order_id");
+    when(columnRs2.getString("data_type")).thenReturn("BIGINT");
+    when(columnRs2.getString("is_nullable")).thenReturn("NO");
+    when(columnRs2.getString("column_key")).thenReturn("PRI");
+    when(columnRs2.getString("character_maximum_length")).thenReturn(null);
+    when(columnRs2.getString("numeric_precision")).thenReturn("20");
+    when(columnRs2.getString("numeric_scale")).thenReturn(null);
+    when(columnRs2.getString("generation_expression")).thenReturn(null);
+
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs2);
+    when(pkRs2.next()).thenReturn(true, false);
+    when(pkRs2.getString("column_name")).thenReturn("order_id");
+
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs2);
+    when(idxRs2.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs2);
+    when(fkRs2.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+    assertEquals(2, schema.tables().size());
+    assertEquals("users", schema.tables().get("users").name());
+    assertEquals("orders", schema.tables().get("orders").name());
+  }
+
+  @Test
+  public void testScanGeneratedColumn() throws SQLException {
+    // Mock JDBC objects
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+
+    // Mock table query
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("generated_table");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Mock column query
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, true, false);
+
+    // Normal column
+    when(columnRs.getString("column_name")).thenReturn("id", "full_name");
+    when(columnRs.getString("data_type")).thenReturn("INT", "VARCHAR");
+    when(columnRs.getString("is_nullable")).thenReturn("NO", "YES");
+    when(columnRs.getString("column_key")).thenReturn("PRI", "");
+    when(columnRs.getString("character_maximum_length")).thenReturn("10", "255");
+    when(columnRs.getString("numeric_precision")).thenReturn(null, null);
+    when(columnRs.getString("numeric_scale")).thenReturn(null, null);
+    // Extra column for generated column
+    when(columnRs.getString("generation_expression")).thenReturn("", "(id * 2)");
+
+    // Mock primary key query
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(true, false);
+    when(pkRs.getString("column_name")).thenReturn("id");
+
+    // Mock index query (empty)
+    ResultSet idxRs = mock(ResultSet.class);
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    // Mock foreign key query (empty)
+    ResultSet fkRs = mock(ResultSet.class);
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+
+    assertEquals(1, schema.tables().size());
+    SourceTable table = schema.tables().get("generated_table");
+    assertEquals(2, table.columns().size());
+
+    SourceColumn idCol = table.columns().get(0);
+    assertEquals("id", idCol.name());
+    assertFalse(idCol.isGenerated());
+
+    SourceColumn fullNameCol = table.columns().get(1);
+    assertEquals("full_name", fullNameCol.name());
+    assertTrue("Column should be generated", fullNameCol.isGenerated());
+  }
+
+  @Test
+  public void testScanTableWithForeignKeys() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("child_table");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Columns
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, false);
+    when(columnRs.getString("column_name")).thenReturn("parent_id");
+    when(columnRs.getString("data_type")).thenReturn("INT");
+    when(columnRs.getString("is_nullable")).thenReturn("NO");
+    when(columnRs.getString("column_key")).thenReturn("MUL");
+    when(columnRs.getString("generation_expression")).thenReturn(null);
+
+    // PK
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(false);
+
+    // Index
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    // Foreign Keys
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(true, false);
+    when(fkRs.getString("constraint_name")).thenReturn("fk_parent");
+    when(fkRs.getString("column_name")).thenReturn("parent_id");
+    when(fkRs.getString("referenced_table_name")).thenReturn("parent_table");
+    when(fkRs.getString("referenced_column_name")).thenReturn("id");
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+    SourceTable table = schema.tables().get("child_table");
+
+    assertEquals(1, table.foreignKeys().size());
+    assertEquals("fk_parent", table.foreignKeys().get(0).name());
+    assertEquals("child_table", table.foreignKeys().get(0).tableName());
+    assertEquals("parent_table", table.foreignKeys().get(0).referencedTable());
+    assertEquals(1, table.foreignKeys().get(0).keyColumns().size());
+    assertEquals("parent_id", table.foreignKeys().get(0).keyColumns().get(0));
+    assertEquals("id", table.foreignKeys().get(0).referencedColumns().get(0));
+  }
+
+  @Test
+  public void testScanTableWithIndexes() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("users");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    // Columns
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, false);
+    when(columnRs.getString("column_name")).thenReturn("email");
+    when(columnRs.getString("data_type")).thenReturn("VARCHAR");
+    when(columnRs.getString("is_nullable")).thenReturn("NO");
+    when(columnRs.getString("column_key")).thenReturn("UNI");
+    when(columnRs.getString("generation_expression")).thenReturn(null);
+
+    // PK
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(false);
+
+    // Indexes
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(true, true, false);
+    // 1. Unique Index
+    when(idxRs.getString("index_name")).thenReturn("uk_email", "idx_age");
+    when(idxRs.getString("column_name")).thenReturn("email", "age");
+    when(idxRs.getInt("non_unique")).thenReturn(0, 1);
+
+    // Foreign Keys
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'users' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+    SourceTable table = schema.tables().get("users");
+
+    assertEquals(2, table.indexes().size());
+
+    // Check unique index
+    SourceIndex uniqueIndex =
+        table.indexes().stream().filter(i -> i.name().equals("uk_email")).findFirst().get();
+    assertEquals("uk_email", uniqueIndex.name());
+    assertEquals("users", uniqueIndex.tableName());
+    assertEquals("email", uniqueIndex.columns().get(0));
+    assertEquals(true, uniqueIndex.isUnique());
+
+    // Check non-unique index
+    SourceIndex nonUniqueIndex =
+        table.indexes().stream().filter(i -> i.name().equals("idx_age")).findFirst().get();
+    assertEquals("idx_age", nonUniqueIndex.name());
+    assertEquals("users", nonUniqueIndex.tableName());
+    assertEquals("age", nonUniqueIndex.columns().get(0));
+    assertEquals(false, nonUniqueIndex.isUnique());
+  }
 }
