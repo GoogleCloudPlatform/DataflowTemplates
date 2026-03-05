@@ -46,20 +46,14 @@
     Copy Data from One Firestore Database to Another
   </description>
 
-<!--  // TODO: see if we can remove this-->
+  <!--    Override Firestore and proto version to enable setting the Firestore
+  data access mode in tests.-->
   <properties>
-    <beam.version>2.72.0-SNAPSHOT</beam.version>
+    <firestore.version>3.38.0</firestore.version>
+    <protobuf.version>4.33.2</protobuf.version>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-firestore</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-firestore-admin</artifactId>
-    </dependency>
     <!-- For local testing with direct runner -->
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -89,6 +83,31 @@
       <scope>compile</scope>
     </dependency>
     <!-- Test dependencies -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore-admin</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-firestore-v1</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-firestore-admin-v1</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
