@@ -71,12 +71,13 @@ public class InformationSchemaScanner {
         continue; // Skipping as table does not exist
       }
 
-      ImmutableList.Builder<String> tableIndexes = ImmutableList.builder();
+      ImmutableList.Builder<Index> tableIndexObjects = ImmutableList.builder();
       for (Map.Entry<String, Index.Builder> entry : tableEntry.getValue().entrySet()) {
         Index.Builder indexBuilder = entry.getValue();
-        tableIndexes.add(indexBuilder.build().prettyPrint());
+        Index index = indexBuilder.build();
+        tableIndexObjects.add(index);
       }
-      builder.createTable(tableName).indexes(tableIndexes.build()).endTable();
+      builder.createTable(tableName).indexes(tableIndexObjects.build()).endTable();
     }
 
     Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys = Maps.newHashMap();

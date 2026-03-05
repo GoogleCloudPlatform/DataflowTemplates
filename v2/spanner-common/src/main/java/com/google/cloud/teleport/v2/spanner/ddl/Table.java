@@ -47,7 +47,7 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<Column> columns();
 
-  public abstract ImmutableList<String> indexes();
+  public abstract ImmutableList<Index> indexes();
 
   public abstract ImmutableList<ForeignKey> foreignKeys();
 
@@ -137,7 +137,10 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
@@ -188,7 +191,10 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(String.join("\n", indexes()));
+      for (Index index : indexes()) {
+        index.prettyPrint(appendable);
+        appendable.append("\n");
+      }
     }
     if (includeForeignKeys) {
       appendable.append("\n");
@@ -234,13 +240,13 @@ public abstract class Table implements Serializable {
 
     public abstract Builder interleaveType(String interleave);
 
-    abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
+    public abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 
-    abstract Builder onDeleteCascade(boolean onDeleteCascade);
+    public abstract Builder onDeleteCascade(boolean onDeleteCascade);
 
-    abstract Builder columns(ImmutableList<Column> columns);
+    public abstract Builder columns(ImmutableList<Column> columns);
 
-    public abstract Builder indexes(ImmutableList<String> indexes);
+    public abstract Builder indexes(ImmutableList<Index> indexes);
 
     public abstract Builder foreignKeys(ImmutableList<ForeignKey> foreignKeys);
 
@@ -248,7 +254,7 @@ public abstract class Table implements Serializable {
 
     abstract ImmutableList<Column> columns();
 
-    abstract Builder dialect(Dialect dialect);
+    public abstract Builder dialect(Dialect dialect);
 
     public abstract Dialect dialect();
 
