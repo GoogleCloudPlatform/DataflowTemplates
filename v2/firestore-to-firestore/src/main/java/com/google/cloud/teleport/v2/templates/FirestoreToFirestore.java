@@ -49,12 +49,12 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads documents from one"
-          + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database. ",
-      "It does not support using an Enterprise edition database as the source.",
-      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database.\n",
+        "The Firestore to Firestore template is a batch pipeline that reads documents from one"
+            + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+            + " them to another Firestore database. ",
+        "It does not support using an Enterprise edition database as the source.",
+        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+            + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -95,9 +95,10 @@ public class FirestoreToFirestore {
         order = 3,
         description = "Collection Groups to Copy from Source Database",
         helpText =
-            "Specifies collection groups to copy. e.g. with data /users/bob/messages/msg1 and "
-                + "/users/alice/messages/msg2, providing `users,messages` will copy all data under "
-                + "`users` and `messages` collections.",
+            "Specifies collection groups to copy. Does NOT include all subcollections recursively. "
+                + "e.g. with data /users/bob/messages/msg1 and "
+                + "/users/alice/messages/msg2, both `users` and `messages` must be provided to "
+                + "copy will copy all data in `users` and `messages` collections.",
         example = "users,messages")
     String getCollectionGroupIds();
 
