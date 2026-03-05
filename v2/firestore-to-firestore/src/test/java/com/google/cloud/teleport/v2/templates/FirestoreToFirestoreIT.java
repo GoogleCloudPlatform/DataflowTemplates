@@ -250,7 +250,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private void populateFuzzData(
       Map<String, Map<String, Map<String, Object>>> inputData, String rootCollectionId) {
-    int numRootDocuments = 10;
+    int numRootDocuments = 100;
     Map<String, Map<String, Object>> rootData = new HashMap<>();
     for (int i = 0; i < numRootDocuments; i++) {
       String documentId = "fuzzDocument-" + i + "-" + UUID.randomUUID();
