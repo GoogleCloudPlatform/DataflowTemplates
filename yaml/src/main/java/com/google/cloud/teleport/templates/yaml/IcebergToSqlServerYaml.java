@@ -201,12 +201,12 @@ public interface IcebergToSqlServerYaml {
 
   @TemplateParameter.Text(
       order = 17,
-      name = "writeStatement",
+      name = "query",
       optional = true,
       description = "The SQL statement to use for inserting records.",
       helpText = "The SQL query for inserting records, with placeholders for values.",
       example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
-  String getWriteStatement();
+  String getQuery();
 
   @TemplateParameter.Integer(
       order = 18,
