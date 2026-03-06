@@ -19,6 +19,8 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.api.services.datastream.v1.model.OracleTable;
 import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.SqlServerColumn;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -86,5 +88,126 @@ public class DataStreamClientTest {
 
     assertEquals(columnName, "JOB_TITLE");
     assertEquals(isPrimaryKey, null);
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_stringTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    String[] stringTypes = {"CHAR", "NCHAR", "VARCHAR", "NVARCHAR", "TEXT", "NTEXT", "XML", "UNIQUEIDENTIFIER", "SYSNAME"};
+    for (String type : stringTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected STRING for type " + type,
+          StandardSQLTypeName.STRING,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_integerTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    String[] intTypes = {"TINYINT", "SMALLINT", "INT", "BIGINT"};
+    for (String type : intTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected INT64 for type " + type,
+          StandardSQLTypeName.INT64,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_floatTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    String[] floatTypes = {"FLOAT", "REAL"};
+    for (String type : floatTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected FLOAT64 for type " + type,
+          StandardSQLTypeName.FLOAT64,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_numericTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    String[] numericTypes = {"DECIMAL", "NUMERIC", "MONEY", "SMALLMONEY"};
+    for (String type : numericTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected BIGNUMERIC for type " + type,
+          StandardSQLTypeName.BIGNUMERIC,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_bitType()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    SqlServerColumn column = new SqlServerColumn().setDataType("BIT");
+    assertEquals(StandardSQLTypeName.BOOL, datastream.convertSqlServerToBigQueryColumnType(column));
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_binaryTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    String[] binaryTypes = {"BINARY", "VARBINARY", "IMAGE"};
+    for (String type : binaryTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected BYTES for type " + type,
+          StandardSQLTypeName.BYTES,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_dateTimeTypes()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    SqlServerColumn dateCol = new SqlServerColumn().setDataType("DATE");
+    assertEquals(StandardSQLTypeName.DATE, datastream.convertSqlServerToBigQueryColumnType(dateCol));
+
+    SqlServerColumn timeCol = new SqlServerColumn().setDataType("TIME");
+    assertEquals(StandardSQLTypeName.TIME, datastream.convertSqlServerToBigQueryColumnType(timeCol));
+
+    String[] datetimeTypes = {"DATETIME", "DATETIME2", "SMALLDATETIME"};
+    for (String type : datetimeTypes) {
+      SqlServerColumn column = new SqlServerColumn().setDataType(type);
+      assertEquals(
+          "Expected DATETIME for type " + type,
+          StandardSQLTypeName.DATETIME,
+          datastream.convertSqlServerToBigQueryColumnType(column));
+    }
+
+    SqlServerColumn dtoCol = new SqlServerColumn().setDataType("DATETIMEOFFSET");
+    assertEquals(
+        StandardSQLTypeName.TIMESTAMP,
+        datastream.convertSqlServerToBigQueryColumnType(dtoCol));
+  }
+
+  @Test
+  public void testConvertSqlServerToBigQueryColumnType_unknownType()
+      throws IOException, GeneralSecurityException {
+    DataStreamClient datastream = new DataStreamClient(null);
+
+    SqlServerColumn column = new SqlServerColumn().setDataType("UNKNOWN_TYPE");
+    assertEquals(
+        StandardSQLTypeName.STRING,
+        datastream.convertSqlServerToBigQueryColumnType(column));
   }
 }
