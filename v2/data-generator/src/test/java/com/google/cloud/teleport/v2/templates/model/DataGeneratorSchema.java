@@ -27,9 +27,6 @@ public abstract class DataGeneratorSchema implements Serializable {
   /** Map of table name to table definition. */
   public abstract ImmutableMap<String, DataGeneratorTable> tables();
 
-  /** The dialect of the sink database. */
-  public abstract SinkDialect dialect();
-
   public static Builder builder() {
     return new AutoValue_DataGeneratorSchema.Builder();
   }
@@ -39,8 +36,6 @@ public abstract class DataGeneratorSchema implements Serializable {
     public abstract Builder tables(Map<String, DataGeneratorTable> tables);
 
     public abstract Builder tables(ImmutableMap<String, DataGeneratorTable> tables);
-
-    public abstract Builder dialect(SinkDialect dialect);
 
     public abstract DataGeneratorSchema build();
   }
