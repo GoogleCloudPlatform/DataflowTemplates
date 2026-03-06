@@ -90,6 +90,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         FirestoreAdminResourceManager.builder(testName)
             .setProject(PROJECT)
             .setRegion(REGION)
+            .setCredentials(TestProperties.googleCredentials())
             .build();
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);

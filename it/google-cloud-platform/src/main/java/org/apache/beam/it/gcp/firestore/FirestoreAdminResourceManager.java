@@ -20,7 +20,9 @@ package org.apache.beam.it.gcp.firestore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.google.auth.Credentials;
 import com.google.cloud.firestore.v1.FirestoreAdminClient;
+import com.google.cloud.firestore.v1.FirestoreAdminSettings;
 import com.google.common.base.Strings;
 import com.google.firestore.admin.v1.CreateDatabaseRequest;
 import com.google.firestore.admin.v1.Database;
@@ -30,9 +32,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.ResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FirestoreAdminResourceManager implements ResourceManager {
 
+  private static final Logger LOG = LoggerFactory.getLogger(FirestoreAdminResourceManager.class);
   private final FirestoreAdminClient firestoreAdminClient;
 
   private final String projectId;
@@ -42,7 +47,11 @@ public class FirestoreAdminResourceManager implements ResourceManager {
 
   private FirestoreAdminResourceManager(Builder builder) {
     try {
-      this.firestoreAdminClient = FirestoreAdminClient.create();
+      FirestoreAdminSettings.Builder settingsBuilder = FirestoreAdminSettings.newBuilder();
+      if (builder.credentials != null) {
+        settingsBuilder.setCredentialsProvider(() -> builder.credentials);
+      }
+      this.firestoreAdminClient = FirestoreAdminClient.create(settingsBuilder.build());
     } catch (Exception e) {
       throw new RuntimeException("Failed to create FirestoreAdminClient", e);
     }
@@ -53,19 +62,27 @@ public class FirestoreAdminResourceManager implements ResourceManager {
 
   @Override
   public void cleanupAll() {
-    try {
-      for (String databaseId : databaseIds) {
-        deleteDatabase(databaseId);
-      }
-    } catch (Exception e) {
-      throw new FirestoreAdminResourceManagerException("Error cleaning up Firestore resources", e);
-    } finally {
-      databaseIds.clear();
+    LOG.info("Cleaning up {} Firestore databases...", databaseIds.size());
+    boolean hasError = false;
+    for (String databaseId : databaseIds) {
       try {
-        firestoreAdminClient.close();
+        LOG.info("Deleting Firestore database: {}", databaseId);
+        deleteDatabase(databaseId);
       } catch (Exception e) {
-        throw new FirestoreAdminResourceManagerException("Error closing Firestore client", e);
+        LOG.error("Failed to delete Firestore database {}: {}", databaseId, e.getMessage(), e);
+        hasError = true;
       }
+    }
+    databaseIds.clear();
+    try {
+      firestoreAdminClient.close();
+    } catch (Exception e) {
+      LOG.error("Error closing Firestore client", e);
+      hasError = true;
+    }
+    if (hasError) {
+      throw new FirestoreAdminResourceManagerException(
+          "Error cleaning up Firestore resources. Check logs for details.");
     }
   }
 
@@ -82,6 +99,7 @@ public class FirestoreAdminResourceManager implements ResourceManager {
 
   public void createDatabase(String databaseId, Database database) {
     try {
+      LOG.info("Creating Firestore database: {}", databaseId);
       firestoreAdminClient
           .createDatabaseAsync(
               CreateDatabaseRequest.newBuilder()
@@ -117,6 +135,7 @@ public class FirestoreAdminResourceManager implements ResourceManager {
     private final String testId;
     private String projectId;
     private String region;
+    private Credentials credentials;
 
     private Builder(String testId) {
       this.testId = testId;
@@ -129,6 +148,11 @@ public class FirestoreAdminResourceManager implements ResourceManager {
 
     public FirestoreAdminResourceManager.Builder setRegion(String region) {
       this.region = region;
+      return this;
+    }
+
+    public FirestoreAdminResourceManager.Builder setCredentials(Credentials credentials) {
+      this.credentials = credentials;
       return this;
     }
 
