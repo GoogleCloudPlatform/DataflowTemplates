@@ -26,7 +26,6 @@ import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.base.MoreObjects;
 import com.google.firestore.admin.v1.Database;
 import com.google.firestore.admin.v1.Database.DataAccessMode;
 import com.google.firestore.admin.v1.Database.DatabaseEdition;
