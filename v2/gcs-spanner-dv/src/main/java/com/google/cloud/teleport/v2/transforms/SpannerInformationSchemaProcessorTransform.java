@@ -47,7 +47,8 @@ public class SpannerInformationSchemaProcessorTransform
         .apply("FetchDdlAsView", View.asSingleton());
   }
 
-  protected PTransform<@NotNull PCollection<? extends Void>, @NotNull PCollection<Ddl>> readInformationSchema() {
+  protected PTransform<@NotNull PCollection<? extends Void>, @NotNull PCollection<Ddl>>
+      readInformationSchema() {
     return ParDo.of(new ProcessInformationSchemaFn(spannerConfig));
   }
 }
