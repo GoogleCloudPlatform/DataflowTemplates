@@ -203,7 +203,7 @@ public class FirestoreToFirestore {
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
           partitionQueryRequests.apply(
-              "GetPartitions",
+              "Get Partitions",
               FirestoreIO.v1()
                   .read()
                   .partitionQuery()
@@ -216,7 +216,7 @@ public class FirestoreToFirestore {
       // 3. Execute each partitioned query
       PCollection<RunQueryResponse> responses =
           partitionedQueries.apply(
-              "QueryDocumentsInPartitions",
+              "Query Documents in Partitions",
               FirestoreIO.v1()
                   .read()
                   .runQuery()
@@ -228,7 +228,7 @@ public class FirestoreToFirestore {
 
       // 4. Process the documents from the responses
       PCollection<Document> documents =
-          responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
+          responses.apply("Extract Documents", ParDo.of(new RunQueryResponseToDocumentFn()));
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
@@ -237,7 +237,7 @@ public class FirestoreToFirestore {
 
       // 6. Write documents to the destination Firestore database
       writes.apply(
-          "WriteDocumentsToDestination",
+          "Write Documents to Destination",
           FirestoreIO.v1()
               .write()
               .withProjectId(destinationProjectId)
@@ -276,14 +276,14 @@ public class FirestoreToFirestore {
       Query query =
           Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
       return p.apply(
-              "FindAllCollectionGroups",
+              "Find All Collection Groups",
               DatastoreIO.v1()
                   .read()
                   .withProjectId(options.getSourceProjectId())
                   .withDatabaseId(options.getSourceDatabaseId())
                   .withQuery(query))
           .apply(
-              "ExtractCollectionGroupNames",
+              "Extract Collection Group Names",
               ParDo.of(
                   new DoFn<Entity, String>() {
                     @ProcessElement
@@ -302,6 +302,6 @@ public class FirestoreToFirestore {
         Arrays.stream(options.getCollectionGroupIds().split(","))
             .map(String::trim)
             .collect(Collectors.toList());
-    return p.apply("CreateCollectionGroups", Create.of(collectionGroupIdsList));
+    return p.apply("Create Collection Groups", Create.of(collectionGroupIdsList));
   }
 }
