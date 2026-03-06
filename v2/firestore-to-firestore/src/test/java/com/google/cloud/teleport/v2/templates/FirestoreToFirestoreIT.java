@@ -62,10 +62,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
-  private static final String SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Firestore_to_Firestore");
-
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
   private static final String SUB_COLLECTION_GROUP_ID = "subCol";
@@ -294,7 +290,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private LaunchInfo launchPipeline(String testName, String collectionGroupIds, String readTime)
       throws IOException {
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, SPEC_PATH)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("sourceProjectId", PROJECT)
             .addParameter("sourceDatabaseId", sourceDatabaseId)
             .addParameter("destinationProjectId", PROJECT)
