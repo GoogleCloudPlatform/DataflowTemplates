@@ -187,7 +187,11 @@ public final class StreamingDataGeneratorWriteToKafka {
           KafkaIO.<Void, String>write()
               .withBootstrapServers(getPipelineOptions().getBootstrapServer())
               .withTopic(getPipelineOptions().getKafkaTopic())
-              .withValueSerializer(StringSerializer.class);
+              .withValueSerializer(StringSerializer.class)
+              .withProducerConfigUpdates(
+                  java.util.Map.of(
+                      "linger.ms", 10,
+                      "batch.size", 262144));
       if (ManagedKafkaRegex.matcher(getPipelineOptions().getBootstrapServer()).matches()) {
         writeTransform = writeTransform.withGCPApplicationDefaultCredentials();
       }
