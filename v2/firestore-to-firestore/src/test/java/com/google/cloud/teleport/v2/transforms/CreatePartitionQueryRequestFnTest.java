@@ -23,10 +23,12 @@ import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import com.google.firestore.v1.StructuredQuery.Direction;
 import com.google.firestore.v1.StructuredQuery.FieldReference;
 import com.google.firestore.v1.StructuredQuery.Order;
+import com.google.protobuf.util.Timestamps;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,7 +51,7 @@ public class CreatePartitionQueryRequestFnTest {
     PCollection<String> input = p.apply(Create.of(collectionId));
 
     CreatePartitionQueryRequestFn fn =
-        new CreatePartitionQueryRequestFn(PROJECT_ID, DATABASE_ID, PARTITION_COUNT);
+        new CreatePartitionQueryRequestFn(PROJECT_ID, DATABASE_ID, PARTITION_COUNT, null);
     PCollection<PartitionQueryRequest> output = input.apply(fn);
 
     PartitionQueryRequest expected =
@@ -79,7 +81,7 @@ public class CreatePartitionQueryRequestFnTest {
     PCollection<String> input = p.apply(Create.of(collectionIds));
 
     CreatePartitionQueryRequestFn fn =
-        new CreatePartitionQueryRequestFn(PROJECT_ID, DATABASE_ID, PARTITION_COUNT);
+        new CreatePartitionQueryRequestFn(PROJECT_ID, DATABASE_ID, PARTITION_COUNT, null);
     PCollection<PartitionQueryRequest> output = input.apply(fn);
 
     ImmutableList.Builder<PartitionQueryRequest> expectedList = ImmutableList.builder();
@@ -114,7 +116,7 @@ public class CreatePartitionQueryRequestFnTest {
     PCollection<String> input = p.apply(Create.of(collectionId));
 
     CreatePartitionQueryRequestFn fn =
-        new CreatePartitionQueryRequestFn(PROJECT_ID, defaultDbId, PARTITION_COUNT);
+        new CreatePartitionQueryRequestFn(PROJECT_ID, defaultDbId, PARTITION_COUNT, null);
     PCollection<PartitionQueryRequest> output = input.apply(fn);
 
     PartitionQueryRequest expected =
@@ -131,6 +133,38 @@ public class CreatePartitionQueryRequestFnTest {
                             .setField(FieldReference.newBuilder().setFieldPath("__name__"))
                             .setDirection(Direction.ASCENDING)))
             .setPartitionCount(PARTITION_COUNT)
+            .build();
+
+    PAssert.that(output).containsInAnyOrder(expected);
+    p.run();
+  }
+
+  @Test
+  public void testTransformWithReadTime() {
+    String collectionId = "users";
+    Instant readTime = Instant.parse("2021-10-12T07:20:50.52Z");
+
+    PCollection<String> input = p.apply(Create.of(collectionId));
+
+    CreatePartitionQueryRequestFn fn =
+        new CreatePartitionQueryRequestFn(PROJECT_ID, DATABASE_ID, PARTITION_COUNT, readTime);
+    PCollection<PartitionQueryRequest> output = input.apply(fn);
+
+    PartitionQueryRequest expected =
+        PartitionQueryRequest.newBuilder()
+            .setParent(PARENT_PATH)
+            .setStructuredQuery(
+                StructuredQuery.newBuilder()
+                    .addFrom(
+                        CollectionSelector.newBuilder()
+                            .setCollectionId(collectionId)
+                            .setAllDescendants(true))
+                    .addOrderBy(
+                        Order.newBuilder()
+                            .setField(FieldReference.newBuilder().setFieldPath("__name__"))
+                            .setDirection(Direction.ASCENDING)))
+            .setPartitionCount(PARTITION_COUNT)
+            .setReadTime(Timestamps.fromMillis(readTime.getMillis()))
             .build();
 
     PAssert.that(output).containsInAnyOrder(expected);

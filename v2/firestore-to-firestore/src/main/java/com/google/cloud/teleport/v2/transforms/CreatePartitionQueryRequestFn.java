@@ -22,10 +22,12 @@ import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import com.google.firestore.v1.StructuredQuery.Direction;
 import com.google.firestore.v1.StructuredQuery.FieldReference;
 import com.google.firestore.v1.StructuredQuery.Order;
+import com.google.protobuf.util.Timestamps;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Instant;
 
 public class CreatePartitionQueryRequestFn
     extends PTransform<PCollection<String>, PCollection<PartitionQueryRequest>> {
@@ -33,11 +35,14 @@ public class CreatePartitionQueryRequestFn
   private final String projectId;
   private final String databaseId;
   private final long partitionCount;
+  private final Instant readTime;
 
-  public CreatePartitionQueryRequestFn(String projectId, String databaseId, long partitionCount) {
+  public CreatePartitionQueryRequestFn(
+      String projectId, String databaseId, long partitionCount, Instant readTime) {
     this.projectId = projectId;
     this.databaseId = databaseId;
     this.partitionCount = partitionCount;
+    this.readTime = readTime;
   }
 
   @Override
@@ -61,13 +66,15 @@ public class CreatePartitionQueryRequestFn
                                     FieldReference.newBuilder().setFieldPath("__name__").build())
                                 .setDirection(Direction.ASCENDING)
                                 .build());
-                PartitionQueryRequest request =
+                PartitionQueryRequest.Builder request =
                     PartitionQueryRequest.newBuilder()
                         .setParent(DocumentRootName.of(projectId, databaseId).toString())
                         .setPartitionCount(partitionCount)
-                        .setStructuredQuery(query)
-                        .build();
-                ctx.output(request);
+                        .setStructuredQuery(query);
+                if (readTime != null) {
+                  request.setReadTime(Timestamps.fromMillis(readTime.getMillis()));
+                }
+                ctx.output(request.build());
               }
             }));
   }

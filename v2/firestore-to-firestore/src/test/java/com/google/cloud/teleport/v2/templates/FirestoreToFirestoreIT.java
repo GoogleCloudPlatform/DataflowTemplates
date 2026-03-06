@@ -183,6 +183,47 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     assertThat(documents3).isEmpty();
   }
 
+  @Test
+  public void testFirestoreToFirestore_withReadTime() throws IOException, InterruptedException {
+    String collectionId = "readTime-" + randomString(6).toLowerCase();
+    int numInitialDocuments = 5;
+    int numLaterDocuments = 5;
+
+    // 1. Write initial documents
+    Map<String, Map<String, Object>> initialData = generateTestDocuments(numInitialDocuments);
+    sourceFirestoreResourceManager.write(collectionId, initialData);
+
+    // 2. Capture readTime
+    // We wait a bit to ensure clear separation in Firestore's commit timestamps
+    Thread.sleep(2000);
+    String readTime = java.time.Instant.now().toString();
+    Thread.sleep(2000);
+
+    // 3. Write more documents after readTime
+    Map<String, Map<String, Object>> laterData = new HashMap<>();
+    for (int i = 1; i <= numLaterDocuments; i++) {
+      Map<String, Object> data = Map.of("id", i + numInitialDocuments, "name", "later-doc-" + i);
+      laterData.put("later-doc-" + i, data);
+    }
+    sourceFirestoreResourceManager.write(collectionId, laterData);
+
+    // 4. Launch pipeline with readTime
+    LaunchInfo info = launchPipeline(/* testName= */ "copyWithReadTime", collectionId, readTime);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
+    assertThatResult(result).isLaunchFinished();
+
+    // 5. Verify only initial documents were copied
+    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+    assertThat(documents).hasSize(numInitialDocuments);
+
+    for (QueryDocumentSnapshot document : documents) {
+      assertThat(document.getId()).startsWith("doc-");
+      assertThat(document.get("name").toString()).startsWith("test-doc-");
+    }
+  }
+
   private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
     Map<String, Map<String, Object>> testDocuments = new HashMap<>();
     for (int i = 1; i <= numDocuments; i++) {
@@ -282,6 +323,11 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   }
 
   private LaunchInfo launchPipeline(String testName, String collectionGroupIds) throws IOException {
+    return launchPipeline(testName, collectionGroupIds, /* readTime= */ "");
+  }
+
+  private LaunchInfo launchPipeline(String testName, String collectionGroupIds, String readTime)
+      throws IOException {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
@@ -292,6 +338,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     if (collectionGroupIds != null && !collectionGroupIds.isEmpty()) {
       options.addParameter("collectionGroupIds", collectionGroupIds);
+    }
+    if (readTime != null && !readTime.isEmpty()) {
+      options.addParameter("readTime", readTime);
     }
 
     return pipelineLauncher.launch(PROJECT, REGION, options.build());
