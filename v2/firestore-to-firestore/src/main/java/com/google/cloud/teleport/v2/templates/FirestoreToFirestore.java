@@ -54,12 +54,12 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads documents from one"
-          + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database. ",
-      "It does not support using an Enterprise edition database as the source.",
-      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database.\n",
+        "The Firestore to Firestore template is a batch pipeline that reads documents from one"
+            + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+            + " them to another Firestore database. ",
+        "It does not support using an Enterprise edition database as the source.",
+        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+            + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -101,11 +101,11 @@ public class FirestoreToFirestore {
         optional = true,
         description = "Collection Groups to Copy from Source Database",
         helpText =
-            "Specifies collection groups to copy. Does NOT include all subcollections recursively. "
-                + "e.g. with data /users/bob/messages/msg1 and "
+            "Specifies collection groups to copy. If not provided, all collection groups will be "
+                + "copied. Note: does NOT include all subcollections of provided Collection Groups "
+                + "recursively. e.g. with data /users/bob/messages/msg1 and "
                 + "/users/alice/messages/msg2, both `users` and `messages` must be provided to "
-                + "copy will copy all data in `users` and `messages` collections. "
-                + "If not provided, all collection groups will be copied.",
+                + "copy all data in `users` and `messages` collections.",
         example = "users,messages")
     @Default.String("")
     String getCollectionGroupIds();
@@ -184,12 +184,13 @@ public class FirestoreToFirestore {
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-              + "destinationProjectId={}, destinationDatabaseId={}, "
+              + "destinationProjectId={}, destinationDatabaseId={}, collectionGroupIds={}, "
               + "maxNumWorkers={}, readTime={}",
           sourceProjectId,
           sourceDatabaseId,
           destinationProjectId,
           destinationDatabaseId,
+          options.getCollectionGroupIds().isEmpty() ? "ALL" : options.getCollectionGroupIds(),
           maxNumWorkers,
           readTime);
 
@@ -270,24 +271,25 @@ public class FirestoreToFirestore {
 
   private static PCollection<String> getCollectionGroupIds(Pipeline p, Options options) {
     if (options.getCollectionGroupIds() == null || options.getCollectionGroupIds().isEmpty()) {
-      LOG.info("No collectionGroupIds provided. Discovering all kinds from Datastore...");
+      LOG.info("No collectionGroupIds provided. Discovering all...");
       Query query =
           Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
       return p.apply(
-              "ReadKindsFromDatastore",
+              "FindAllCollectionGroups",
               DatastoreIO.v1()
                   .read()
                   .withProjectId(options.getSourceProjectId())
                   .withDatabaseId(options.getSourceDatabaseId())
                   .withQuery(query))
           .apply(
-              "ExtractKindNames",
+              "ExtractCollectionGroupNames",
               ParDo.of(
                   new DoFn<Entity, String>() {
                     @ProcessElement
                     public void processElement(ProcessContext c) {
                       Entity entity = c.element();
                       String kind = entity.getKey().getPath(0).getName();
+                      // Filter internal Kinds.
                       if (!kind.startsWith("__")) {
                         c.output(kind);
                       }

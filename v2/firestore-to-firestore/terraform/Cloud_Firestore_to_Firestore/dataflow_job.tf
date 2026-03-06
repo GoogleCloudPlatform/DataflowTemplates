@@ -47,8 +47,8 @@ variable "sourceDatabaseId" {
 
 variable "collectionGroupIds" {
   type = string
-  description = "Specifies collection groups to copy. Does NOT include all subcollections recursively. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, both `users` and `messages` must be provided to copy will copy all data in `users` and `messages` collections. For example, `users,messages`"
-  
+  description = "Specifies collection groups to copy. If not provided, all collection groups will be copied. Note: does NOT include all subcollections of provided Collection Groups recursively. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, both `users` and `messages` must be provided to copy all data in `users` and `messages` collections. For example, `users,messages`. Defaults to empty."
+  default = null
 }
 
 variable "destinationProjectId" {

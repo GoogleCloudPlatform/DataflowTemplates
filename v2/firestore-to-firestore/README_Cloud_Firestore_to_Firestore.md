@@ -22,11 +22,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
 * **sourceDatabaseId**: The source database to read from. Use '(default)' for the default database. For example, `my-database`.
-* **collectionGroupIds**: Specifies collection groups to copy. Does NOT include all subcollections recursively. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, both `users` and `messages` must be provided to copy will copy all data in `users` and `messages` collections. For example, `users,messages`.
 * **destinationDatabaseId**: The destination database to write to. Use '(default)' for the default database. For example, `my-database`.
 
 ### Optional parameters
 
+* **collectionGroupIds**: Specifies collection groups to copy. If not provided, all collection groups will be copied. Note: does NOT include all subcollections of provided Collection Groups recursively. e.g. with data /users/bob/messages/msg1 and /users/alice/messages/msg2, both `users` and `messages` must be provided to copy all data in `users` and `messages` collections. For example, `users,messages`. Defaults to empty.
 * **destinationProjectId**: The destination project to write to. Defaults to the source project if not set. For example, `my-project`.
 * **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
@@ -123,10 +123,10 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Firestore_t
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=<sourceDatabaseId>
-export COLLECTION_GROUP_IDS=<collectionGroupIds>
 export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
+export COLLECTION_GROUP_IDS=""
 export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
@@ -160,10 +160,10 @@ export REGION=us-central1
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=<sourceDatabaseId>
-export COLLECTION_GROUP_IDS=<collectionGroupIds>
 export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
+export COLLECTION_GROUP_IDS=""
 export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
@@ -221,8 +221,8 @@ resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
   parameters        = {
     sourceProjectId = "<sourceProjectId>"
     sourceDatabaseId = "<sourceDatabaseId>"
-    collectionGroupIds = "<collectionGroupIds>"
     destinationDatabaseId = "<destinationDatabaseId>"
+    # collectionGroupIds = ""
     # destinationProjectId = ""
     # readTime = ""
   }
