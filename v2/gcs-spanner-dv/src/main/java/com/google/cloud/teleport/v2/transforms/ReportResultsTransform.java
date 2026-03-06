@@ -67,6 +67,8 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
   private static final String VALIDATION_SUMMARY_TABLE = "ValidationSummary";
   public static final String GCS_SOURCE = "GCS";
   public static final String SPANNER_DESTINATION = "Spanner";
+  public static final String MISSING_IN_DESTINATION = "MISSING_IN_DESTINATION";
+  public static final String MISSING_IN_SOURCE = "MISSING_IN_SOURCE";
 
   private final String bigQueryDataset;
   private final String runId;
@@ -218,7 +220,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
                             .setTableName(r.getTableName())
-                            .setMismatchType("MISSING_IN_DESTINATION")
+                            .setMismatchType(MISSING_IN_DESTINATION)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
                             .setSource(GCS_SOURCE)
                             .setHash(r.getHash())
@@ -233,7 +235,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
                             .setTableName(r.getTableName())
-                            .setMismatchType("MISSING_IN_SOURCE")
+                            .setMismatchType(MISSING_IN_SOURCE)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
                             .setSource(SPANNER_DESTINATION)
                             .setHash(r.getHash())
