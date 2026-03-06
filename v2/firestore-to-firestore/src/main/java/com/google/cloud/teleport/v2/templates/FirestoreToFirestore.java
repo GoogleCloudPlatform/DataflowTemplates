@@ -180,39 +180,7 @@ public class FirestoreToFirestore {
       Instant readTime =
           options.getReadTime().isEmpty() ? Instant.now() : Instant.parse(options.getReadTime());
 
-      PCollection<String> collectionGroupIds;
-      if (options.getCollectionGroupIds() == null || options.getCollectionGroupIds().isEmpty()) {
-        LOG.info("No collectionGroupIds provided. Discovering all kinds from Datastore...");
-        Query query =
-            Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
-        collectionGroupIds =
-            p.apply(
-                    "ReadKindsFromDatastore",
-                    DatastoreIO.v1()
-                        .read()
-                        .withProjectId(sourceProjectId)
-                        .withDatabaseId(sourceDatabaseId)
-                        .withQuery(query))
-                .apply(
-                    "ExtractKindNames",
-                    ParDo.of(
-                        new DoFn<Entity, String>() {
-                          @ProcessElement
-                          public void processElement(ProcessContext c) {
-                            Entity entity = c.element();
-                            String kind = entity.getKey().getPath(0).getName();
-                            if (!kind.startsWith("__")) {
-                              c.output(kind);
-                            }
-                          }
-                        }));
-      } else {
-        List<String> collectionGroupIdsList =
-            Arrays.stream(options.getCollectionGroupIds().split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
-        collectionGroupIds = p.apply("CreateCollectionGroups", Create.of(collectionGroupIdsList));
-      }
+      PCollection<String> collectionGroupIds = getCollectionGroupIds(p, options);
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
@@ -298,5 +266,39 @@ public class FirestoreToFirestore {
     if (destinationDatabaseId == null || destinationDatabaseId.isEmpty()) {
       throw new IllegalArgumentException("destinationDatabaseId must be provided");
     }
+  }
+
+  private static PCollection<String> getCollectionGroupIds(Pipeline p, Options options) {
+    if (options.getCollectionGroupIds() == null || options.getCollectionGroupIds().isEmpty()) {
+      LOG.info("No collectionGroupIds provided. Discovering all kinds from Datastore...");
+      Query query =
+          Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
+      return p.apply(
+              "ReadKindsFromDatastore",
+              DatastoreIO.v1()
+                  .read()
+                  .withProjectId(options.getSourceProjectId())
+                  .withDatabaseId(options.getSourceDatabaseId())
+                  .withQuery(query))
+          .apply(
+              "ExtractKindNames",
+              ParDo.of(
+                  new DoFn<Entity, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      Entity entity = c.element();
+                      String kind = entity.getKey().getPath(0).getName();
+                      if (!kind.startsWith("__")) {
+                        c.output(kind);
+                      }
+                    }
+                  }));
+    }
+
+    List<String> collectionGroupIdsList =
+        Arrays.stream(options.getCollectionGroupIds().split(","))
+            .map(String::trim)
+            .collect(Collectors.toList());
+    return p.apply("CreateCollectionGroups", Create.of(collectionGroupIdsList));
   }
 }
