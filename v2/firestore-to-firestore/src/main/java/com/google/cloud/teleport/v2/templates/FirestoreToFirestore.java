@@ -22,6 +22,9 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.CreatePartitionQueryRequestFn;
 import com.google.cloud.teleport.v2.transforms.PrepareWritesFn;
 import com.google.cloud.teleport.v2.transforms.RunQueryResponseToDocumentFn;
+import com.google.datastore.v1.Entity;
+import com.google.datastore.v1.KindExpression;
+import com.google.datastore.v1.Query;
 import com.google.firestore.v1.Document;
 import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
@@ -33,11 +36,13 @@ import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Instant;
@@ -93,13 +98,16 @@ public class FirestoreToFirestore {
     @TemplateParameter.Text(
         groupName = "Source",
         order = 3,
+        optional = true,
         description = "Collection Groups to Copy from Source Database",
         helpText =
             "Specifies collection groups to copy. Does NOT include all subcollections recursively. "
                 + "e.g. with data /users/bob/messages/msg1 and "
                 + "/users/alice/messages/msg2, both `users` and `messages` must be provided to "
-                + "copy will copy all data in `users` and `messages` collections.",
+                + "copy will copy all data in `users` and `messages` collections. "
+                + "If not provided, all collection groups will be copied.",
         example = "users,messages")
+    @Default.String("")
     String getCollectionGroupIds();
 
     void setCollectionGroupIds(String value);
@@ -164,11 +172,6 @@ public class FirestoreToFirestore {
               : options.getDestinationProjectId();
       String destinationDatabaseId = options.getDestinationDatabaseId();
 
-      List<String> collectionGroupIdsList =
-          Arrays.stream(options.getCollectionGroupIds().split(","))
-              .map(String::trim)
-              .collect(Collectors.toList());
-
       int maxNumWorkers =
           options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
       RpcQosOptions rpcQosOptions =
@@ -177,24 +180,55 @@ public class FirestoreToFirestore {
       Instant readTime =
           options.getReadTime().isEmpty() ? Instant.now() : Instant.parse(options.getReadTime());
 
+      PCollection<String> collectionGroupIds;
+      if (options.getCollectionGroupIds() == null || options.getCollectionGroupIds().isEmpty()) {
+        LOG.info("No collectionGroupIds provided. Discovering all kinds from Datastore...");
+        Query query =
+            Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
+        collectionGroupIds =
+            p.apply(
+                    "ReadKindsFromDatastore",
+                    DatastoreIO.v1()
+                        .read()
+                        .withProjectId(sourceProjectId)
+                        .withDatabaseId(sourceDatabaseId)
+                        .withQuery(query))
+                .apply(
+                    "ExtractKindNames",
+                    ParDo.of(
+                        new DoFn<Entity, String>() {
+                          @ProcessElement
+                          public void processElement(ProcessContext c) {
+                            Entity entity = c.element();
+                            String kind = entity.getKey().getPath(0).getName();
+                            if (!kind.startsWith("__")) {
+                              c.output(kind);
+                            }
+                          }
+                        }));
+      } else {
+        List<String> collectionGroupIdsList =
+            Arrays.stream(options.getCollectionGroupIds().split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+        collectionGroupIds = p.apply("CreateCollectionGroups", Create.of(collectionGroupIdsList));
+      }
+
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-              + "destinationProjectId={}, destinationDatabaseId={}, collectionGroupIds={}, "
+              + "destinationProjectId={}, destinationDatabaseId={}, "
               + "maxNumWorkers={}, readTime={}",
           sourceProjectId,
           sourceDatabaseId,
           destinationProjectId,
           destinationDatabaseId,
-          collectionGroupIdsList,
           maxNumWorkers,
           readTime);
 
       // 1. Construct the PartitionQuery requests for the collections.
       PCollection<PartitionQueryRequest> partitionQueryRequests =
-          p.apply(Create.of(collectionGroupIdsList))
-              .apply(
-                  new CreatePartitionQueryRequestFn(
-                      sourceProjectId, sourceDatabaseId, maxNumWorkers));
+          collectionGroupIds.apply(
+              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
@@ -263,10 +297,6 @@ public class FirestoreToFirestore {
     String destinationDatabaseId = options.getDestinationDatabaseId();
     if (destinationDatabaseId == null || destinationDatabaseId.isEmpty()) {
       throw new IllegalArgumentException("destinationDatabaseId must be provided");
-    }
-    String collectionGroupIds = options.getCollectionGroupIds();
-    if (collectionGroupIds == null || collectionGroupIds.isEmpty()) {
-      throw new IllegalArgumentException("collectionGroupIds must be provided");
     }
   }
 }

@@ -206,15 +206,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       sourceFirestoreResourceManager.write(entry.getKey(), entry.getValue());
     }
 
-    String collectionGroupIds =
-        String.join(
-            ",",
-            rootCollectionId1,
-            rootCollectionId2,
-            SUB_COLLECTION_GROUP_ID,
-            SUB_SUB_COLLECTION_GROUP_ID);
-
-    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz", collectionGroupIds);
+    // Launch without collection ids to test discovery
+    LaunchInfo info = launchPipeline(/* testName= */ "copyFuzz");
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -284,18 +277,24 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     inputData.put(rootCollectionId, rootData);
   }
 
+  private LaunchInfo launchPipeline(String testName) throws IOException {
+    return launchPipeline(testName, /* collectionGroupIds= */ "");
+  }
+
   private LaunchInfo launchPipeline(String testName, String collectionGroupIds) throws IOException {
-    return pipelineLauncher.launch(
-        PROJECT,
-        REGION,
+    LaunchConfig.Builder options =
         LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
             .addParameter("sourceDatabaseId", sourceDatabaseId)
             .addParameter("destinationProjectId", PROJECT)
             .addParameter("destinationDatabaseId", destinationDatabaseId)
-            .addParameter("maxNumWorkers", "10")
-            .addParameter("collectionGroupIds", collectionGroupIds)
-            .build());
+            .addParameter("maxNumWorkers", "10");
+
+    if (collectionGroupIds != null && !collectionGroupIds.isEmpty()) {
+      options.addParameter("collectionGroupIds", collectionGroupIds);
+    }
+
+    return pipelineLauncher.launch(PROJECT, REGION, options.build());
   }
 
   private void assertValuesEqual(Object expectedValue, Object actualValue) {
