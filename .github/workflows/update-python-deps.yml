@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   update-python-deps:
@@ -49,7 +50,20 @@ jobs:
 
       - name: Add ignore-for-release label to PR
         uses: actions-ecosystem/action-add-labels@v1.1.3
+        if: steps.cpr.outputs.pull-request-number
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: ignore-for-release
           number: ${{ steps.cpr.outputs.pull-request-number }}
+
+      - name: Trigger Integration Tests
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run bigtable-pr.yml --ref chore/update-python-deps
+          gh workflow run datastream-pr.yml --ref chore/update-python-deps
+          gh workflow run java-pr.yml --ref chore/update-python-deps
+          gh workflow run kafka-pr.yml --ref chore/update-python-deps
+          gh workflow run spanner-pr.yml --ref chore/update-python-deps
+          gh workflow run yaml-pr.yml --ref chore/update-python-deps
