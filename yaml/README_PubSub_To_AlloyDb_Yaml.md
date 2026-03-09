@@ -3,8 +3,8 @@ PubSub to AlloyDb (YAML) template
 ---
 The PubSub to AlloyDb template is a streaming pipeline which ingests data from a
 PubSub topic, executes a user-defined mapping, and writes the resulting records
-to AlloyDb. Any errors which occur in the transformation of the data or writing
-to AlloyDb are written to a separate Pub/Sub topic.
+to AlloyDb. Any errors which occur in the transformation of the data are written
+to a separate Pub/Sub topic.
 
 
 
@@ -18,9 +18,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`.
-* **schema**: A schema is required if data format is JSON, AVRO or PROTO. The schema should be in Beam schema format (with 'fields' list), provided as a YAML string. For example, `fields:
-  - name: "message_body"
-    type: "STRING"`.
 * **language**: The language used to define (and execute) the expressions and callables in fields. For example, `python`.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
 * **jdbcUrl**: The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
@@ -28,16 +25,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **password**: Password for AlloyDb authentication.
 * **location**: The name of the table where records will be written For example, `my_table`.
 * **writeStatement**: The SQL INSERT or UPSERT statement template for writing records to AlloyDb For example, `INSERT INTO table_name (col1, col2) VALUES (?, ?)`.
-* **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation and write messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
+* **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
 
 ### Optional parameters
 
+* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition. For example, `fields:
+  - name: "message_body"
+    type: "STRING"`.
 * **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.
 * **attributeMap**: Name of a field in which to store the full set of attributes associated with this message.
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute will be used for deduplication of messages.
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message publishing time as the timestamp.
-* **windowingType**: The type of windowing to use. Supported types: fixed, sliding, sessions, global. Defaults to 'fixed'. For example, `fixed`.
-* **windowingSize**: The size of the window. For fixed windows, this is the duration of each window. For sliding windows, this is the window duration. Format: duration string (e.g., '60s', '5m', '1h'). Defaults to '60s'. For example, `60s`.
+* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing For example, `type: fixed
+size: 60s`.
 * **driverClassName**: The JDBC driver class name for connecting to AlloyDb For example, `org.postgresql.Driver`.
 * **connectionProperties**: Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10 For example, `sslmode=require;connectTimeout=10`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
@@ -139,7 +139,6 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_AlloyDb
 ### Required
 export SUBSCRIPTION=<subscription>
 export FORMAT=<format>
-export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
 export JDBC_URL=<jdbcUrl>
@@ -150,12 +149,12 @@ export WRITE_STATEMENT=<writeStatement>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
+export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTE_MAP=<attributeMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export WINDOWING_TYPE=<windowingType>
-export WINDOWING_SIZE=<windowingSize>
+export WINDOWING=<windowing>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
@@ -177,8 +176,7 @@ gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
   --parameters "language=$LANGUAGE" \
   --parameters "fields=$FIELDS" \
-  --parameters "windowingType=$WINDOWING_TYPE" \
-  --parameters "windowingSize=$WINDOWING_SIZE" \
+  --parameters "windowing=$WINDOWING" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
@@ -212,7 +210,6 @@ export REGION=us-central1
 ### Required
 export SUBSCRIPTION=<subscription>
 export FORMAT=<format>
-export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
 export JDBC_URL=<jdbcUrl>
@@ -223,12 +220,12 @@ export WRITE_STATEMENT=<writeStatement>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
+export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTE_MAP=<attributeMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
-export WINDOWING_TYPE=<windowingType>
-export WINDOWING_SIZE=<windowingSize>
+export WINDOWING=<windowing>
 export DRIVER_CLASS_NAME=<driverClassName>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
@@ -244,7 +241,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-alloydb-yaml-job" \
 -DtemplateName="PubSub_To_AlloyDb_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributeMap=$ATTRIBUTE_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,language=$LANGUAGE,fields=$FIELDS,windowingType=$WINDOWING_TYPE,windowingSize=$WINDOWING_SIZE,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING,network=$NETWORK,subnetwork=$SUBNETWORK,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributeMap=$ATTRIBUTE_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING,network=$NETWORK,subnetwork=$SUBNETWORK,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
 -f yaml
 ```
 
@@ -291,7 +288,6 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
   parameters        = {
     subscription = "<subscription>"
     format = "<format>"
-    schema = "<schema>"
     language = "<language>"
     fields = "<fields>"
     jdbcUrl = "<jdbcUrl>"
@@ -300,12 +296,12 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
     location = "<location>"
     writeStatement = "<writeStatement>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
+    # schema = "<schema>"
     # attributes = "<attributes>"
     # attributeMap = "<attributeMap>"
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
-    # windowingType = "<windowingType>"
-    # windowingSize = "<windowingSize>"
+    # windowing = "<windowing>"
     # driverClassName = "<driverClassName>"
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
