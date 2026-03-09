@@ -2068,9 +2068,7 @@ requests==2.32.4 \
 rsa==4.9 \
     --hash=sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7 \
     --hash=sha256:e38464a49c6c85d7f1351b0126661487a7e0a14a50f1675ec50eb34d4f20ef21
-    # via
-    #   google-auth
-    #   oauth2client
+    # via oauth2client
 safetensors==0.4.5 \
     --hash=sha256:01c8f00da537af711979e1b42a69a8ec9e1d7112f208e0e9b8a35d2c381085ef \
     --hash=sha256:023b6e5facda76989f4cba95a861b7e656b87e225f61811065d5c501f78cdb3f \
