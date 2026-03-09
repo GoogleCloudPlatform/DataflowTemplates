@@ -185,7 +185,8 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             "longblob_to_string",
             "mediumblob_to_string",
             "tinyblob_to_string",
-            "varbinary_to_string");
+            "varbinary_to_string",
+            "double");
 
     ConditionCheck combinedCondition = null;
     for (Map.Entry<String, List<Value>> entry : spannerTableData.entrySet()) {
@@ -400,7 +401,10 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
             Value.float64(52.67),
             Value.float64(1.7976931348623157E308),
             Value.float64(-1.7976931348623157E308),
-            Value.float64(null)));
+            Value.float64(null),
+            Value.float64(Double.NEGATIVE_INFINITY),
+            Value.float64(Double.POSITIVE_INFINITY),
+            Value.float64(Double.NaN)));
     spannerRowData.put(
         "double_to_string",
         List.of(
