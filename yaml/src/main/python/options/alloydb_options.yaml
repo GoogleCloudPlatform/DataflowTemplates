@@ -2,7 +2,7 @@ options:
   - name: "alloydb_common_options"
     parameters:
       - order: 1
-        name: "url"
+        name: "jdbcUrl"
         description: "JDBC connection URL for AlloyDb"
         help: "The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE"
         example: "jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE"

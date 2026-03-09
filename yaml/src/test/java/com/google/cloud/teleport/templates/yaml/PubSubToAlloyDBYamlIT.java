@@ -92,6 +92,8 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
 
     LOG.info("Creating main and dead letter queue topics...");
     TopicName topic = pubsubResourceManager.createTopic("input");
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "input-subscription");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
 
     LOG.info("Creating AlloyDb (Postgres) table...");
@@ -104,13 +106,12 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
-                .addParameter("topic", topic.toString())
+                .addParameter("subscription", subscription.toString())
                 .addParameter("format", "JSON")
                 .addParameter(
                     "schema",
                     "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("windowingType", "fixed")
-                .addParameter("windowingSize", "10s")
+                .addParameter("windowing", "type: fixed\nsize: 10s")
                 .addParameter("language", "python")
                 .addParameter(
                     "fields",
