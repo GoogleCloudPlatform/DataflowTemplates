@@ -46,7 +46,7 @@ pipeline:
     - type: WriteToSqlServer
       name: WriteToSqlServer
       config:
-        jdbc_url: "{{ jdbcUrl }}"
+        url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
         connection_properties: {{ connectionProperties }}
