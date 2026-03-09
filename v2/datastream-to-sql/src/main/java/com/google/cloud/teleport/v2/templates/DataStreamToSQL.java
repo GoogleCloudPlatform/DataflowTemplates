@@ -814,8 +814,7 @@ public class DataStreamToSQL {
                 .withTmpDirectory(dlqManager.getRetryDlqDirectory() + "tmp/")
                 .setIncludePaneInfo(true)
                 .build());
-// Execute the pipeline and return the result.
-return pipeline.run();
+    // Execute the pipeline and return the result.
+    return pipeline.run();
+  }
 }
-}
-

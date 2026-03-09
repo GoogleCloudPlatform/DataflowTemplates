@@ -175,7 +175,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 cloudSqlSourceResourceManager.getDatabaseName(),
                 this.replicationSlot,
                 publication)
-            .setAllowedTables(Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
+            .setAllowedTables(
+                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
             .build();
 
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
@@ -193,7 +194,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         datastreamResourceManager.createStream("stream-pg-ddl", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
 
-    com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications-ddl");
+    com.google.pubsub.v1.TopicName topic =
+        pubsubResourceManager.createTopic("gcs-notifications-ddl");
     com.google.pubsub.v1.SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription-ddl");
     gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
@@ -258,7 +260,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
       public @NonNull CheckResult check() {
         String schema = cloudSqlSourceResourceManager.getDatabaseName();
         cloudSqlSourceResourceManager.runSQLUpdate(
-            String.format("ALTER TABLE %s.%s ADD COLUMN %s VARCHAR(255);", schema, tableName, columnName));
+            String.format(
+                "ALTER TABLE %s.%s ADD COLUMN %s VARCHAR(255);", schema, tableName, columnName));
         return new CheckResult(true, "Added column to source.");
       }
     };

@@ -38,7 +38,7 @@ public class DatastreamToDDLTest {
     sourceSchema.put("name", "TEXT");
 
     String actual = dml.getCreateTableSql(null, schemaName, tableName, primaryKeys, sourceSchema);
-    
+
     assertTrue(actual.contains("CREATE TABLE IF NOT EXISTS \"public\".\"users\""));
     assertTrue(actual.contains("\"id\" BIGINT"));
     assertTrue(actual.contains("\"name\" TEXT"));
@@ -64,7 +64,7 @@ public class DatastreamToDDLTest {
     sourceSchema.put("name", "TEXT");
 
     String actual = dml.getCreateTableSql(catalogName, null, tableName, primaryKeys, sourceSchema);
-    
+
     assertTrue(actual.contains("CREATE TABLE IF NOT EXISTS `mydb`.`users`"));
     assertTrue(actual.contains("`id` BIGINT"));
     assertTrue(actual.contains("`name` TEXT"));

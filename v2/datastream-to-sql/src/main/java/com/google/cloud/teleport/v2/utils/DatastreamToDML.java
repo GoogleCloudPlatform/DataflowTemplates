@@ -102,7 +102,11 @@ public abstract class DatastreamToDML
       Map<String, String> sourceSchema);
 
   public abstract String getAddColumnSql(
-      String catalogName, String schemaName, String tableName, String columnName, String columnType);
+      String catalogName,
+      String schemaName,
+      String tableName,
+      String columnName,
+      String columnType);
 
   public abstract String getDestinationType(String sourceType, Long precision, Long scale);
 
@@ -361,16 +365,15 @@ public abstract class DatastreamToDML
 
           LOG.info("Creating Table: {}.{}", schemaName, tableName);
           Map<String, StandardSQLTypeName> sourceSchema =
-              this.datastreamClient.getObjectSchema(
-                  streamName, sourceSchemaName, sourceTableName);
+              this.datastreamClient.getObjectSchema(streamName, sourceSchemaName, sourceTableName);
           List<String> primaryKeys =
               this.datastreamClient.getPrimaryKeys(streamName, sourceSchemaName, sourceTableName);
 
           // Convert BigQuery Types to Destination SQL Types
           Map<String, String> destinationSchema = new HashMap<>();
-          for (Map.Entry<String, StandardSQLTypeName> entry :
-              sourceSchema.entrySet()) {
-            destinationSchema.put(entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
+          for (Map.Entry<String, StandardSQLTypeName> entry : sourceSchema.entrySet()) {
+            destinationSchema.put(
+                entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
           }
 
           // Add metadata columns if they are in the rowObj but not in sourceSchema
@@ -384,12 +387,12 @@ public abstract class DatastreamToDML
           String createTableSql =
               getCreateTableSql(catalogName, schemaName, tableName, primaryKeys, destinationSchema);
           executeSql(createTableSql);
-          
+
           if (this.tableCache == null) {
             setUpTableCache();
           }
           tableCache.reset(searchKey);
-          
+
           if (this.primaryKeyCache == null) {
             setUpPrimaryKeyCache();
           }

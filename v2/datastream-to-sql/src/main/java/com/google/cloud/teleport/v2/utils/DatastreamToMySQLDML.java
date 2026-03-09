@@ -89,7 +89,8 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
 
     List<String> columns = new ArrayList<>();
     for (Map.Entry<String, String> entry : sourceSchema.entrySet()) {
-      columns.add(quote(applyCasingLogic(entry.getKey(), this.columnCasing)) + " " + entry.getValue());
+      columns.add(
+          quote(applyCasingLogic(entry.getKey(), this.columnCasing)) + " " + entry.getValue());
     }
     sql.append(String.join(", ", columns));
 
@@ -109,7 +110,11 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
 
   @Override
   public String getAddColumnSql(
-      String catalogName, String schemaName, String tableName, String columnName, String columnType) {
+      String catalogName,
+      String schemaName,
+      String tableName,
+      String columnName,
+      String columnType) {
     return String.format(
         "ALTER TABLE %s.%s ADD COLUMN %s %s;",
         quote(catalogName), quote(tableName), quote(columnName), columnType);
