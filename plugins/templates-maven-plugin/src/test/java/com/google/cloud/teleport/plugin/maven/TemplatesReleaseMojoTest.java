@@ -91,7 +91,7 @@ public class TemplatesReleaseMojoTest {
     // Create fake yaml files for blueprints
     File yamlDir = new File(baseDir, mojo.yamlBlueprintsPath);
     yamlDir.mkdirs();
-    File yamlFile1 = new File(yamlDir, "MyBlueprint.yaml");
+    File yamlFile1 = new File(yamlDir, "MyBlueprintToGcs.yaml");
     Files.write(yamlFile1.toPath(), getYamlContent().getBytes(StandardCharsets.UTF_8));
 
     // Create fake yaml files for options
@@ -151,9 +151,9 @@ public class TemplatesReleaseMojoTest {
       List<Map<String, String>> actualOptions = actualManifest.get("options");
 
       List<Map<String, String>> expectedBlueprints =
-          List.of(Map.of("name", "My Blueprint", "path", blueprintObjectName));
+          List.of(Map.of("name", "MyBlueprint to Gcs", "path", blueprintObjectName));
       List<Map<String, String>> expectedOptions =
-          List.of(Map.of("name", "My Options", "path", optionsObjectName));
+          List.of(Map.of("name", "MyOptions", "path", optionsObjectName));
 
       assertEquals(expectedBlueprints, actualBlueprints);
       assertEquals(expectedOptions, actualOptions);
@@ -268,7 +268,7 @@ public class TemplatesReleaseMojoTest {
       Map<String, List<Map<String, String>>> actualManifest = gson.fromJson(manifestContent, type);
       assertTrue(actualManifest.get("blueprints").isEmpty());
       assertEquals(1, actualManifest.get("options").size());
-      assertEquals("My Options", actualManifest.get("options").get(0).get("name"));
+      assertEquals("MyOptions", actualManifest.get("options").get(0).get("name"));
     }
   }
 
