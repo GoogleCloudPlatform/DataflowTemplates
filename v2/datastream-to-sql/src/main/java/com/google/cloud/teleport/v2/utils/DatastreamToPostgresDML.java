@@ -78,6 +78,84 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   @Override
+  public String getCreateTableSql(
+      String catalogName,
+      String schemaName,
+      String tableName,
+      List<String> primaryKeys,
+      Map<String, String> sourceSchema) {
+    StringBuilder sql = new StringBuilder();
+    sql.append("CREATE TABLE IF NOT EXISTS ")
+        .append(quote(schemaName))
+        .append(".")
+        .append(quote(tableName))
+        .append(" (");
+
+    List<String> columns = new ArrayList<>();
+    for (Map.Entry<String, String> entry : sourceSchema.entrySet()) {
+      columns.add(quote(applyCasingLogic(entry.getKey(), this.columnCasing)) + " " + entry.getValue());
+    }
+    sql.append(String.join(", ", columns));
+
+    if (!primaryKeys.isEmpty()) {
+      sql.append(", PRIMARY KEY (");
+      List<String> casedPks = new ArrayList<>();
+      for (String pk : primaryKeys) {
+        casedPks.add(quote(applyCasingLogic(pk, this.columnCasing)));
+      }
+      sql.append(String.join(", ", casedPks));
+      sql.append(")");
+    }
+
+    sql.append(");");
+    return sql.toString();
+  }
+
+  @Override
+  public String getAddColumnSql(
+      String catalogName, String schemaName, String tableName, String columnName, String columnType) {
+    return String.format(
+        "ALTER TABLE %s.%s ADD COLUMN %s %s;",
+        quote(schemaName), quote(tableName), quote(columnName), columnType);
+  }
+
+  @Override
+  public String getDestinationType(String sourceType, Long precision, Long scale) {
+    switch (sourceType.toUpperCase()) {
+      case "BOOL":
+      case "BOOLEAN":
+        return "BOOLEAN";
+      case "INT64":
+      case "INTEGER":
+      case "BIGINT":
+        return "BIGINT";
+      case "FLOAT64":
+      case "DOUBLE":
+      case "DOUBLE PRECISION":
+        return "DOUBLE PRECISION";
+      case "NUMERIC":
+      case "BIGNUMERIC":
+      case "DECIMAL":
+        return "NUMERIC";
+      case "BYTES":
+      case "BYTEA":
+        return "BYTEA";
+      case "DATETIME":
+      case "TIMESTAMP":
+        return "TIMESTAMP WITH TIME ZONE";
+      case "DATE":
+        return "DATE";
+      case "TIME":
+        return "TIME";
+      case "STRING":
+      case "TEXT":
+      case "VARCHAR":
+      default:
+        return "TEXT";
+    }
+  }
+
+  @Override
   public String cleanDataTypeValueSql(
       String columnValue, String columnName, Map<String, String> tableSchema) {
     String dataType = tableSchema.get(columnName);

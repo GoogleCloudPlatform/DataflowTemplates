@@ -51,6 +51,7 @@ public class CreateDml
   private static Map<String, String> tableNameMap = new HashMap<String, String>();
   private static Boolean orderByIncludesIsDeleted = false;
   private static Integer schemaCacheRefreshMinutes = 1440;
+  private static String datastreamRootUrl = "https://datastream.googleapis.com/";
 
   // Define the main output tag here if not passed in from outside,
   // but ideally DataStreamToSQL defines it. For now, we'll accept it in expand()
@@ -104,6 +105,13 @@ public class CreateDml
     return this;
   }
 
+  public CreateDml withDataStreamRootUrl(String url) {
+    if (url != null) {
+      CreateDml.datastreamRootUrl = url;
+    }
+    return this;
+  }
+
   public DatastreamToDML getDatastreamToDML() {
     DatastreamToDML datastreamToDML;
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
@@ -125,7 +133,8 @@ public class CreateDml
         .withSchemaMap(this.schemaMap)
         .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
-        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes);
+        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes)
+        .withDataStreamRootUrl(datastreamRootUrl);
   }
 
   @Override

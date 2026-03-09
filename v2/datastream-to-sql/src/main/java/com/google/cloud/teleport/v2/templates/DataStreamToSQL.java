@@ -82,7 +82,7 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Datastream to SQL template is a streaming pipeline that reads <a href=\"https://cloud.google.com/datastream/docs\">Datastream</a> data and replicates it into any MySQL or PostgreSQL database. "
           + "The template reads data from Cloud Storage using Pub/Sub notifications and replicates this data into SQL replica tables.\n",
-      "The template does not support data definition language (DDL) and expects that all tables already exist in the database. "
+      "The template supports dynamic data definition language (DDL), allowing it to create missing tables and add new columns to existing tables as they appear in the stream. "
           + "Replication uses Dataflow stateful transforms to filter stale data and ensure consistency in out of order data. "
           + "For example, if a more recent version of a row has already passed through, a late arriving version of that row is ignored. "
           + "The data manipulation language (DML) that executes is a best attempt to perfectly replicate source to target data. The DML statements executed follow the following rules:\n",
@@ -760,7 +760,8 @@ public class DataStreamToSQL {
                 .withColumnCasing(options.getColumnCasing())
                 .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                 .withNumThreads(options.getNumThreads())
-                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes()));
+                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes())
+                .withDataStreamRootUrl(options.getDataStreamRootUrl()));
 
     PCollection<KV<String, DmlInfo>> dmlStatements =
         dmlResults
@@ -813,8 +814,8 @@ public class DataStreamToSQL {
                 .withTmpDirectory(dlqManager.getRetryDlqDirectory() + "tmp/")
                 .setIncludePaneInfo(true)
                 .build());
-
-    // Execute the pipeline and return the result.
-    return pipeline.run();
-  }
+// Execute the pipeline and return the result.
+return pipeline.run();
 }
+}
+

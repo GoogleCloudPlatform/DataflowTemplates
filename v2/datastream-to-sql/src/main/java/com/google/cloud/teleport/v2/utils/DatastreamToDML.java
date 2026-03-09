@@ -17,17 +17,22 @@ package com.google.cloud.teleport.v2.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.CaseFormat;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -35,7 +40,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
@@ -58,8 +66,14 @@ public abstract class DatastreamToDML
   private static List<String> defaultPrimaryKeys;
   private static MappedObjectCache<List<String>, Map<String, String>> tableCache;
   private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
+  private static final Cache<List<String>, List<String>> tableLockMap =
+      CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
+
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
+  private DataStreamClient datastreamClient;
+  private String datastreamRootUrl = "https://datastream.googleapis.com/";
+
   public String quoteCharacter;
   protected String defaultCasing = "LOWERCASE";
   protected String columnCasing = "LOWERCASE";
@@ -79,6 +93,18 @@ public abstract class DatastreamToDML
   public abstract String getTargetCatalogName(DatastreamRow row);
 
   public abstract String getTargetSchemaName(DatastreamRow row);
+
+  public abstract String getCreateTableSql(
+      String catalogName,
+      String schemaName,
+      String tableName,
+      List<String> primaryKeys,
+      Map<String, String> sourceSchema);
+
+  public abstract String getAddColumnSql(
+      String catalogName, String schemaName, String tableName, String columnName, String columnType);
+
+  public abstract String getDestinationType(String sourceType, Long precision, Long scale);
 
   /* An exception for delete DML without a primary key */
   private class DeletedWithoutPrimaryKey extends RuntimeException {
@@ -122,7 +148,7 @@ public abstract class DatastreamToDML
     return applyCasingLogic(name, this.defaultCasing);
   }
 
-  private String applyCasingLogic(String name, String casingOption) {
+  protected String applyCasingLogic(String name, String casingOption) {
     if (name == null || name.isEmpty()) {
       return name;
     }
@@ -162,6 +188,19 @@ public abstract class DatastreamToDML
   public DatastreamToDML withOrderByIncludesIsDeleted(Boolean orderByIncludesIsDeleted) {
     this.orderByIncludesIsDeleted = orderByIncludesIsDeleted;
     return this;
+  }
+
+  public DatastreamToDML withDataStreamRootUrl(String url) {
+    this.datastreamRootUrl = url;
+    return this;
+  }
+
+  @Setup
+  public void setup(PipelineOptions options) throws IOException {
+    if (this.datastreamClient == null) {
+      this.datastreamClient = new DataStreamClient(options.as(GcpOptions.class).getGcpCredential());
+      this.datastreamClient.setRootUrl(this.datastreamRootUrl);
+    }
   }
 
   @ProcessElement
@@ -280,6 +319,129 @@ public abstract class DatastreamToDML
     return quoteCharacter + name + quoteCharacter;
   }
 
+  private List<String> getTableLock(List<String> searchKey) {
+    List<String> tableLock = tableLockMap.getIfPresent(searchKey);
+    if (tableLock != null) {
+      return tableLock;
+    }
+
+    synchronized (tableLockMap) {
+      tableLock = tableLockMap.getIfPresent(searchKey);
+      if (tableLock != null) {
+        return tableLock;
+      }
+
+      tableLockMap.put(searchKey, searchKey);
+      return searchKey;
+    }
+  }
+
+  private void executeSql(String sql) throws SQLException {
+    try (Connection connection = getDataSource().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    }
+  }
+
+  private void updateTableIfRequired(
+      String catalogName, String schemaName, String tableName, JsonNode rowObj)
+      throws IOException, SQLException {
+    List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
+    Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+
+    if (tableSchema.isEmpty()) {
+      List<String> tableLock = getTableLock(searchKey);
+      synchronized (tableLock) {
+        tableSchema = tableCache.reset(searchKey);
+        if (tableSchema.isEmpty()) {
+          DatastreamRow row = DatastreamRow.of(rowObj);
+          String streamName = row.getStreamName();
+          String sourceSchemaName = row.getSchemaName();
+          String sourceTableName = row.getTableName();
+
+          LOG.info("Creating Table: {}.{}", schemaName, tableName);
+          Map<String, StandardSQLTypeName> sourceSchema =
+              this.datastreamClient.getObjectSchema(
+                  streamName, sourceSchemaName, sourceTableName);
+          List<String> primaryKeys =
+              this.datastreamClient.getPrimaryKeys(streamName, sourceSchemaName, sourceTableName);
+
+          // Convert BigQuery Types to Destination SQL Types
+          Map<String, String> destinationSchema = new HashMap<>();
+          for (Map.Entry<String, StandardSQLTypeName> entry :
+              sourceSchema.entrySet()) {
+            destinationSchema.put(entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
+          }
+
+          // Add metadata columns if they are in the rowObj but not in sourceSchema
+          for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
+            String columnName = fieldNames.next();
+            if (!destinationSchema.containsKey(columnName)) {
+              destinationSchema.put(columnName, getDestinationType("STRING", null, null));
+            }
+          }
+
+          String createTableSql =
+              getCreateTableSql(catalogName, schemaName, tableName, primaryKeys, destinationSchema);
+          executeSql(createTableSql);
+          
+          if (this.tableCache == null) {
+            setUpTableCache();
+          }
+          tableCache.reset(searchKey);
+          
+          if (this.primaryKeyCache == null) {
+            setUpPrimaryKeyCache();
+          }
+          primaryKeyCache.reset(searchKey);
+        }
+      }
+    }
+
+    // Check for missing columns
+    List<String> missingColumns = new ArrayList<>();
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
+      String columnName = fieldNames.next();
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+      if (!tableSchema.containsKey(casedColumnName)) {
+        missingColumns.add(columnName);
+      }
+    }
+
+    if (!missingColumns.isEmpty()) {
+      List<String> tableLock = getTableLock(searchKey);
+      synchronized (tableLock) {
+        tableSchema = tableCache.reset(searchKey);
+        for (String columnName : missingColumns) {
+          String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+          if (!tableSchema.containsKey(casedColumnName)) {
+            DatastreamRow row = DatastreamRow.of(rowObj);
+            String streamName = row.getStreamName();
+            String sourceSchemaName = row.getSchemaName();
+            String sourceTableName = row.getTableName();
+
+            LOG.info("Adding Column {} to Table: {}.{}", casedColumnName, schemaName, tableName);
+            Map<String, StandardSQLTypeName> sourceSchema =
+                this.datastreamClient.getObjectSchema(
+                    streamName, sourceSchemaName, sourceTableName);
+
+            String sourceType = "STRING";
+            if (sourceSchema.containsKey(columnName)) {
+              sourceType = sourceSchema.get(columnName).name();
+            }
+            String destinationType = getDestinationType(sourceType, null, null);
+            String addColumnSql =
+                getAddColumnSql(
+                    catalogName, schemaName, tableName, casedColumnName, destinationType);
+            executeSql(addColumnSql);
+            tableCache.reset(searchKey);
+            tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+          }
+        }
+      }
+    }
+  }
+
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
     // Oracle uses upper case while Postgres uses all lowercase.
@@ -288,6 +450,12 @@ public abstract class DatastreamToDML
     String catalogName = this.getTargetCatalogName(row);
     String schemaName = this.getTargetSchemaName(row);
     String tableName = this.getTargetTableName(row);
+
+    try {
+      updateTableIfRequired(catalogName, schemaName, tableName, rowObj);
+    } catch (Exception e) {
+      LOG.error("Failed to update table schema: {}.{}", schemaName, tableName, e);
+    }
 
     Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
     if (tableSchema.isEmpty()) {
