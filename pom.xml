@@ -75,7 +75,7 @@
     <grpc.gen.version>1.70.0</grpc.gen.version>
     <gson.version>2.13.2</gson.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.2</hadoop.version>
+    <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
     <jackson.version>2.21.1</jackson.version>
