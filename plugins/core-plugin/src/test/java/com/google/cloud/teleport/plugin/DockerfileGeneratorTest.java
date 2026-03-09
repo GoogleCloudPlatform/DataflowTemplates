@@ -58,8 +58,7 @@ public class DockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.asCharSource(outputFile, StandardCharsets.UTF_8).read();
     assertThat(fileContents).contains("FROM " + BASE_PYTHON_CONTAINER_IMAGE);
-    assertThat(fileContents)
-        .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
+    assertThat(fileContents).contains("RUN pip install -U --require-hashes -r $REQUIREMENTS_FILE");
     assertThat(fileContents)
         .contains(String.format("ENTRYPOINT [\"%s\"]", PYTHON_LAUNCHER_ENTRYPOINT));
   }
@@ -80,8 +79,7 @@ public class DockerfileGeneratorTest {
     assertTrue(outputFile.exists());
     String fileContents = Files.asCharSource(outputFile, StandardCharsets.UTF_8).read();
     assertThat(fileContents).contains("FROM a python container image");
-    assertThat(fileContents)
-        .contains("RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE");
+    assertThat(fileContents).contains("RUN pip install -U --require-hashes -r $REQUIREMENTS_FILE");
     assertThat(fileContents).contains("COPY main.py requirements.txt $WORKDIR/");
     assertThat(fileContents).contains("ENTRYPOINT [\"python/entry/point\"]");
   }

@@ -3,17 +3,27 @@ FROM ${basePythonContainerImage}
 ARG WORKDIR=${workingDirectory}
 RUN mkdir -p $WORKDIR
 ${filesToCopy}
+${directoriesToCopy}
 WORKDIR $WORKDIR
 
-ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt
+# Do NOT use ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE here. All deps are preinstalled
+# at build time. That env var triggers the Beam stager to re-resolve requirements on the
+# launcher VM, where platform tag mismatches cause pip to compile C extensions (e.g. numpy)
+# from source, freezing or timing out the launcher.
+# FLEX_TEMPLATE_PYTHON_SETUP_FILE (via setupFileEnv) IS needed to stage custom code to workers.
+# TODO: For templates without setup.py that need non-beam deps on workers, split requirements
+# into a build-only lockfile and a stager-safe extra-requirements file.
+ARG REQUIREMENTS_FILE=requirements.txt
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
+${setupFileEnv}
 
 RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
 
 # Set up custom PyPi repository, if applicable
 ${airlockConfig}
 
-RUN pip install -U -r --require-hashes $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
-RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+RUN pip install -U --require-hashes -r $REQUIREMENTS_FILE
+${setupInstall}
+RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE
 
 ENTRYPOINT ${entryPoint}

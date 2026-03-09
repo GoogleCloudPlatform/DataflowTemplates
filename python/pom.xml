@@ -84,6 +84,74 @@
 
   <profiles>
     <profile>
+      <id>bqmonitorPythonTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>${exec-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>bqmonitor-pip-install</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>pip</executable>
+                  <arguments>
+                    <argument>install</argument>
+                    <argument>-r</argument>
+                    <argument>src/test/python/bigquery-anomaly-detection/requirements-test.txt</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>bqmonitor-pip-install-pkg</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>pip</executable>
+                  <arguments>
+                    <argument>install</argument>
+                    <argument>-e</argument>
+                    <argument>src/main/python/bigquery-anomaly-detection</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>bqmonitor-python-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>python</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>-m</argument>
+                    <argument>unittest</argument>
+                    <argument>discover</argument>
+                    <argument>-s</argument>
+                    <argument>src/test/python/bigquery-anomaly-detection</argument>
+                    <argument>-p</argument>
+                    <argument>*_test.py</argument>
+                    <argument>-v</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>templatesValidate</id>
       <activation>
         <activeByDefault>false</activeByDefault>

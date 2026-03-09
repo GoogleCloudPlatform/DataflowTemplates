@@ -210,6 +210,8 @@ public class DockerfileGenerator {
 
       this.parameters.put("filesToCopy", "");
       this.parameters.put("directoriesToCopy", "");
+      this.parameters.put("setupFileEnv", "");
+      this.parameters.put("setupInstall", "");
       this.parameters.put("commandSpec", "");
     }
 
@@ -335,6 +337,25 @@ public class DockerfileGenerator {
       }
 
       return addStringParameter("directoriesToCopy", directories.toString());
+    }
+
+    /**
+     * Configures the Dockerfile to install a Python package via {@code pip install .} at build time
+     * and sets {@code FLEX_TEMPLATE_PYTHON_SETUP_FILE} so the Beam stager packages the source code
+     * for distribution to workers. The absolute path avoids issues with {@code os.chdir()}.
+     *
+     * @param setupFile the setup file name (e.g. "setup.py").
+     * @return this {@link Builder}.
+     */
+    public Builder setSetupFile(String setupFile) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(setupFile));
+      String workDir =
+          (String) this.parameters.getOrDefault("workingDirectory", DEFAULT_WORKING_DIRECTORY);
+      addParameter(
+          "setupFileEnv",
+          "ENV FLEX_TEMPLATE_PYTHON_SETUP_FILE=\"" + workDir + "/" + setupFile + "\"");
+      addParameter("setupInstall", "RUN pip install --no-cache-dir .");
+      return this;
     }
 
     /**
