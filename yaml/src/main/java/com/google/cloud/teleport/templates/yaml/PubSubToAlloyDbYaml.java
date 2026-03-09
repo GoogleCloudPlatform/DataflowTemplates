@@ -26,8 +26,8 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "PubSub to AlloyDb (YAML)",
     description =
-        "The PubSub to AlloyDb template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to AlloyDb. Any errors which occur in the transformation of the data or writing to AlloyDb are written to a separate Pub/Sub topic.",
-    flexContainerName = "pubsub-to-alloydb-yaml",
+        "The PubSub to AlloyDb template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to AlloyDb. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+    flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToAlloyDb.yaml",
     filesToCopy = {
       "PubSubToAlloyDb.yaml",
@@ -72,10 +72,10 @@ public interface PubSubToAlloyDbYaml {
   @TemplateParameter.Text(
       order = 3,
       name = "schema",
-      optional = false,
+      optional = true,
       description = "Data schema.",
       helpText =
-          "A schema is required if data format is JSON, AVRO or PROTO. The schema should be in Beam schema format (with 'fields' list), provided as a YAML string.",
+          "A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.",
       example = "fields:\n  - name: \"message_body\"\n    type: \"STRING\"")
   String getSchema();
 
@@ -144,26 +144,16 @@ public interface PubSubToAlloyDbYaml {
 
   @TemplateParameter.Text(
       order = 10,
-      name = "windowingType",
+      name = "windowing",
       optional = true,
-      description = "Windowing type",
+      description = "Windowing options",
       helpText =
-          "The type of windowing to use. Supported types: fixed, sliding, sessions, global. Defaults to 'fixed'.",
-      example = "fixed")
-  String getWindowingType();
+          "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
+      example = "type: fixed\nsize: 60s")
+  String getWindowing();
 
   @TemplateParameter.Text(
       order = 11,
-      name = "windowingSize",
-      optional = true,
-      description = "Window size",
-      helpText =
-          "The size of the window. For fixed windows, this is the duration of each window. For sliding windows, this is the window duration. Format: duration string (e.g., '60s', '5m', '1h'). Defaults to '60s'.",
-      example = "60s")
-  String getWindowingSize();
-
-  @TemplateParameter.Text(
-      order = 12,
       name = "jdbcUrl",
       optional = false,
       description = "JDBC connection URL for AlloyDb",
@@ -175,7 +165,7 @@ public interface PubSubToAlloyDbYaml {
   String getJdbcUrl();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 12,
       name = "username",
       optional = false,
       description = "AlloyDb database username",
@@ -185,7 +175,7 @@ public interface PubSubToAlloyDbYaml {
   String getUsername();
 
   @TemplateParameter.Password(
-      order = 14,
+      order = 13,
       name = "password",
       optional = false,
       description = "AlloyDb database password",
@@ -194,7 +184,7 @@ public interface PubSubToAlloyDbYaml {
   String getPassword();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 14,
       name = "driverClassName",
       optional = true,
       description = "JDBC driver class name",
@@ -203,7 +193,7 @@ public interface PubSubToAlloyDbYaml {
   String getDriverClassName();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 15,
       name = "connectionProperties",
       optional = true,
       description = "Connection properties for AlloyDb",
@@ -213,7 +203,7 @@ public interface PubSubToAlloyDbYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 16,
       name = "connectionInitSql",
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization",
@@ -222,7 +212,7 @@ public interface PubSubToAlloyDbYaml {
   String getConnectionInitSql();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 17,
       name = "location",
       optional = false,
       description = "Target table name in AlloyDb",
@@ -232,7 +222,7 @@ public interface PubSubToAlloyDbYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 18,
       name = "writeStatement",
       optional = false,
       description = "SQL statement for writing records",
@@ -242,7 +232,7 @@ public interface PubSubToAlloyDbYaml {
   String getWriteStatement();
 
   @TemplateParameter.Integer(
-      order = 20,
+      order = 19,
       name = "batchSize",
       optional = true,
       description = "Batch size for write operations",
@@ -251,7 +241,7 @@ public interface PubSubToAlloyDbYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 21,
+      order = 20,
       name = "autosharding",
       optional = true,
       description = "Enable autosharding for parallel writes",
@@ -259,7 +249,7 @@ public interface PubSubToAlloyDbYaml {
   Boolean getAutosharding();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 21,
       name = "network",
       optional = true,
       description = "VPC Network name",
@@ -268,7 +258,7 @@ public interface PubSubToAlloyDbYaml {
   String getNetwork();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 22,
       name = "subnetwork",
       optional = true,
       description = "Subnetwork name",
@@ -277,11 +267,11 @@ public interface PubSubToAlloyDbYaml {
   String getSubnetwork();
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 23,
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",
-      helpText = "Pub/Sub error topic for failed transformation and write messages.",
+      helpText = "Pub/Sub error topic for failed transformation messages.",
       example = "projects/your-project-id/topics/your-error-topic-name")
   @Validation.Required
   String getOutputDeadLetterPubSubTopic();

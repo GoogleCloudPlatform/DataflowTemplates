@@ -8,8 +8,8 @@ template:
     The PubSub to AlloyDb template is a streaming pipeline which ingests
     data from a PubSub topic, executes a user-defined mapping, and
     writes the resulting records to AlloyDb. Any errors which occur in the
-    transformation of the data or writing to AlloyDb are written to a separate Pub/Sub topic.
-  flex_container_name: "pubsub-to-alloydb-yaml"
+    transformation of the data are written to a separate Pub/Sub topic.
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "PubSubToAlloyDb.yaml"
   filesToCopy: >
     {"PubSubToAlloyDb.yaml", "main.py", "requirements.txt", "options/pubsub_options.yaml", "options/alloydb_options.yaml", "options/maptofields_options.yaml", "options/windowinto_options.yaml"}
@@ -33,13 +33,13 @@ template:
     - pubsub_common_options
     - pubsub_read_options
     - maptofields_common_options
+    - windowinto_common_options
     - alloydb_common_options
     - alloydb_write_options
-    - windowinto_common_options
 
     - name: "outputDeadLetterPubSubTopic"
       description: "Pub/Sub transformation error topic"
-      help: "Pub/Sub error topic for failed transformation and write messages."
+      help: "Pub/Sub error topic for failed transformation messages."
       example: "projects/your-project-id/topics/your-error-topic-name"
       required: true
       type: text
@@ -54,35 +54,29 @@ pipeline:
       config:
         subscription: {{ subscription }}
         format: {{ format }}
-        {% if schema %}
         schema: {{ schema }}
-        {% endif %}
         attributes: {{ attributes }}
         attribute_map: {{ attributeMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
-        error_handling:
-          output: errors
-    - type: WindowInto
-      name: WindowInto
-      input: ReadMessages
-      config:
-        windowing:
-          type: {{ windowingType | default("fixed") }}
-          size: {{ windowingSize | default("60s") }}
     - type: MapToFields
       name: ConvertStringsToBytes
-      input: WindowInto
+      input: ReadMessages
       config:
         language: {{ language }}
         fields: {{ fields }}
         error_handling:
           output: errors
-    - type: WriteToPostgres
-      name: WriteGoodMessagesToAlloyDb
+    - type: WindowInto
+      name: WindowInto
       input: ConvertStringsToBytes
       config:
-        driver_class_name: {{ driverClassName | default("org.postgresql.Driver")}}
+        windowing: {{ windowing }}
+    - type: WriteToPostgres
+      name: WriteGoodMessagesToAlloyDb
+      input: WindowInto
+      config:
+        driver_class_name: {{ driverClassName | default("org.postgresql.Driver") }}
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
@@ -90,20 +84,17 @@ pipeline:
         write_statement: "{{ writeStatement }}"
         batch_size: {{ batchSize }}
         autosharding: {{ autosharding }}
-        type: {{ jdbcType | default("postgres") }}
+        type: "postgres"
         connection_properties: {{ connectionProperties }}
         connection_init_sql: {{ connectionInitSql }}
-        error_handling:
-          output: errors
     - type: WriteToPubSub
       name: WriteTransformationErrorsToDeadLetterQueue
-      input: [ReadMessages.errors, ConvertStringsToBytes.errors, WriteGoodMessagesToAlloyDb.errors]
+      input: ConvertStringsToBytes.errors
       config:
         topic: {{ outputDeadLetterPubSubTopic }}
         format: {{ format }}
-        {% if schema %}
-        schema: {{ schema }}
-        {% endif %}
+        schema: |
+          {{ schema }}
 
 options:
   streaming: true
