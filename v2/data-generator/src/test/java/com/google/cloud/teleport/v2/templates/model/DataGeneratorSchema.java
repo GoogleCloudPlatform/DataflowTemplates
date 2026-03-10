@@ -35,8 +35,6 @@ public abstract class DataGeneratorSchema implements Serializable {
   public abstract static class Builder {
     public abstract Builder tables(Map<String, DataGeneratorTable> tables);
 
-    public abstract Builder tables(ImmutableMap<String, DataGeneratorTable> tables);
-
     public abstract DataGeneratorSchema build();
   }
 }

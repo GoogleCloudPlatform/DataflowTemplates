@@ -67,12 +67,7 @@ public abstract class DataGeneratorTable implements Serializable {
   public abstract ImmutableList<String> childTables();
 
   public static Builder builder() {
-    return new AutoValue_DataGeneratorTable.Builder()
-        .isRoot(true)
-        .insertQps(0)
-        .updateQps(0)
-        .deleteQps(0)
-        .recordsPerTick(1.0);
+    return new AutoValue_DataGeneratorTable.Builder();
   }
 
   @AutoValue.Builder
