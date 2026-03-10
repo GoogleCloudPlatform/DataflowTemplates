@@ -104,7 +104,11 @@ public abstract class DatastreamToDML
       Map<String, String> sourceSchema);
 
   public abstract String getAddColumnSql(
-      String catalogName, String schemaName, String tableName, String columnName, String columnType);
+      String catalogName,
+      String schemaName,
+      String tableName,
+      String columnName,
+      String columnType);
 
   public abstract String getDestinationType(String sourceType, Long precision, Long scale);
 
@@ -368,16 +372,15 @@ public abstract class DatastreamToDML
             throw new RuntimeException("DataStreamClient is null in updateTableIfRequired!");
           }
           Map<String, StandardSQLTypeName> sourceSchema =
-              this.datastreamClient.getObjectSchema(
-                  streamName, sourceSchemaName, sourceTableName);
+              this.datastreamClient.getObjectSchema(streamName, sourceSchemaName, sourceTableName);
           List<String> primaryKeys =
               this.datastreamClient.getPrimaryKeys(streamName, sourceSchemaName, sourceTableName);
 
           // Convert BigQuery Types to Destination SQL Types
           Map<String, String> destinationSchema = new HashMap<>();
-          for (Map.Entry<String, StandardSQLTypeName> entry :
-              sourceSchema.entrySet()) {
-            destinationSchema.put(entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
+          for (Map.Entry<String, StandardSQLTypeName> entry : sourceSchema.entrySet()) {
+            destinationSchema.put(
+                entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
           }
 
           // Add metadata columns if they are in the rowObj but not in sourceSchema
@@ -424,7 +427,11 @@ public abstract class DatastreamToDML
             String sourceSchemaName = row.getSchemaName();
             String sourceTableName = row.getTableName();
 
-            LOG.info("Column {} missing. Attempting to add to Table: {}.{}", casedColumnName, schemaName, tableName);
+            LOG.info(
+                "Column {} missing. Attempting to add to Table: {}.{}",
+                casedColumnName,
+                schemaName,
+                tableName);
             if (this.datastreamClient == null) {
               throw new RuntimeException("DataStreamClient is null when adding column!");
             }
@@ -467,7 +474,8 @@ public abstract class DatastreamToDML
     Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
     if (tableSchema.isEmpty()) {
       throw new RuntimeException(
-          String.format("Target table not found: %s.%s (catalog: %s)", schemaName, tableName, catalogName));
+          String.format(
+              "Target table not found: %s.%s (catalog: %s)", schemaName, tableName, catalogName));
     }
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
@@ -741,8 +749,13 @@ public abstract class DatastreamToDML
           return tableSchema;
         }
         DatabaseMetaData metaData = connection.getMetaData();
-        LOG.info("Querying metadata for Catalog: {}, Schema: {}, Table: {}", effectiveCatalog, schemaName, tableName);
-        try (ResultSet columns = metaData.getColumns(effectiveCatalog, schemaName, tableName, null)) {
+        LOG.info(
+            "Querying metadata for Catalog: {}, Schema: {}, Table: {}",
+            effectiveCatalog,
+            schemaName,
+            tableName);
+        try (ResultSet columns =
+            metaData.getColumns(effectiveCatalog, schemaName, tableName, null)) {
           while (columns.next()) {
             String colName = columns.getString("COLUMN_NAME");
             String typeName = columns.getString("TYPE_NAME");
@@ -874,5 +887,3 @@ public abstract class DatastreamToDML
     }
   }
 }
-
-
