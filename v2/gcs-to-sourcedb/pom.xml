@@ -32,8 +32,6 @@
     </description>
 
  <properties>
-
-    <junit.version>4.13.2</junit.version>
   </properties>
 
     <dependencies>
