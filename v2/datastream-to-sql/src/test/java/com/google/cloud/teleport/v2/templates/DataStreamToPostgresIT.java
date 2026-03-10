@@ -227,11 +227,32 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
     String newColumnName = "new_col_" + RandomStringUtils.randomAlphanumeric(3).toLowerCase();
 
+    ConditionCheck waitForTableCreation =
+        new ConditionCheck() {
+          @Override
+          public @NonNull String getDescription() {
+            return "Wait for dynamic table creation in destination.";
+          }
+
+          @Override
+          public @NonNull CheckResult check() {
+            try {
+              // Just attempting to read 1 row to see if the table exists without crashing
+              cloudSqlDestinationResourceManager.runSQLQuery(
+                  "SELECT 1 FROM " + tableName + " LIMIT 1");
+              return new CheckResult(true, "Table exists in destination.");
+            } catch (Exception e) {
+              return new CheckResult(false, "Table not created yet: " + e.getMessage());
+            }
+          }
+        };
+
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     // 1. Initial write - should trigger table creation
                     writePostgresData(tableName, cdcEvents),
+                    waitForTableCreation,
                     JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
                         .setMinRows(NUM_EVENTS)
                         .build(),
