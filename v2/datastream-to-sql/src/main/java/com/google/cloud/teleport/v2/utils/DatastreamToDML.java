@@ -64,14 +64,16 @@ public abstract class DatastreamToDML
 
   private static String rowIdColumnName = "rowid";
   private static List<String> defaultPrimaryKeys;
-  private static MappedObjectCache<List<String>, Map<String, String>> tableCache;
-  private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
+
+  // These must be transient or Serializable. MappedObjectCache is usually Serializable.
+  private transient MappedObjectCache<List<String>, Map<String, String>> tableCache;
+  private transient MappedObjectCache<List<String>, List<String>> primaryKeyCache;
   private static final Cache<List<String>, List<String>> tableLockMap =
       CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
 
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
-  private DataSource dataSource;
-  private DataStreamClient datastreamClient;
+  private transient DataSource dataSource;
+  private transient DataStreamClient datastreamClient;
   private String datastreamRootUrl = "https://datastream.googleapis.com/";
 
   public String quoteCharacter;
@@ -102,11 +104,7 @@ public abstract class DatastreamToDML
       Map<String, String> sourceSchema);
 
   public abstract String getAddColumnSql(
-      String catalogName,
-      String schemaName,
-      String tableName,
-      String columnName,
-      String columnType);
+      String catalogName, String schemaName, String tableName, String columnName, String columnType);
 
   public abstract String getDestinationType(String sourceType, Long precision, Long scale);
 
@@ -201,6 +199,9 @@ public abstract class DatastreamToDML
 
   @Setup
   public void setup(PipelineOptions options) throws IOException {
+    LOG.info("Initializing DatastreamToDML worker. Root URL: {}", this.datastreamRootUrl);
+    LOG.info("Schema Mappings: {}", this.schemaMappings);
+    LOG.info("Table Mappings: {}", this.tableMappings);
     if (this.datastreamClient == null) {
       this.datastreamClient = new DataStreamClient(options.as(GcpOptions.class).getGcpCredential());
       this.datastreamClient.setRootUrl(this.datastreamRootUrl);
@@ -225,13 +226,8 @@ public abstract class DatastreamToDML
       } else {
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
-    } catch (IOException e) {
-      context.output(
-          ERROR_TAG,
-          FailsafeElement.of(element.getOriginalPayload(), jsonString)
-              .setErrorMessage(e.getMessage())
-              .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     } catch (Exception e) {
+      LOG.error("Failed to process element: {}", jsonString, e);
       context.output(
           ERROR_TAG,
           FailsafeElement.of(element.getOriginalPayload(), jsonString)
@@ -242,10 +238,10 @@ public abstract class DatastreamToDML
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
   public List<String> getDefaultPrimaryKeys() {
-    if (this.defaultPrimaryKeys == null) {
-      this.defaultPrimaryKeys = Arrays.asList(this.rowIdColumnName);
+    if (defaultPrimaryKeys == null) {
+      defaultPrimaryKeys = Arrays.asList(rowIdColumnName);
     }
-    return this.defaultPrimaryKeys;
+    return defaultPrimaryKeys;
   }
 
   public DataSource getDataSource() {
@@ -256,16 +252,16 @@ public abstract class DatastreamToDML
   }
 
   private synchronized void setUpTableCache() {
-    if (tableCache == null) {
-      tableCache =
+    if (this.tableCache == null) {
+      this.tableCache =
           new JdbcTableCache(this.getDataSource())
               .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
-    if (primaryKeyCache == null) {
-      primaryKeyCache =
+    if (this.primaryKeyCache == null) {
+      this.primaryKeyCache =
           new JdbcPrimaryKeyCache(this.getDataSource())
               .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
@@ -320,6 +316,9 @@ public abstract class DatastreamToDML
   }
 
   public String quote(String name) {
+    if (name == null || name.isEmpty()) {
+      return "";
+    }
     return quoteCharacter + name + quoteCharacter;
   }
 
@@ -341,6 +340,7 @@ public abstract class DatastreamToDML
   }
 
   private void executeSql(String sql) throws SQLException {
+    LOG.info("Executing DDL: {}", sql);
     try (Connection connection = getDataSource().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -363,17 +363,21 @@ public abstract class DatastreamToDML
           String sourceSchemaName = row.getSchemaName();
           String sourceTableName = row.getTableName();
 
-          LOG.info("Creating Table: {}.{}", schemaName, tableName);
+          LOG.info("Table Not Found. Attempting to create: {}.{}", schemaName, tableName);
+          if (this.datastreamClient == null) {
+            throw new RuntimeException("DataStreamClient is null in updateTableIfRequired!");
+          }
           Map<String, StandardSQLTypeName> sourceSchema =
-              this.datastreamClient.getObjectSchema(streamName, sourceSchemaName, sourceTableName);
+              this.datastreamClient.getObjectSchema(
+                  streamName, sourceSchemaName, sourceTableName);
           List<String> primaryKeys =
               this.datastreamClient.getPrimaryKeys(streamName, sourceSchemaName, sourceTableName);
 
           // Convert BigQuery Types to Destination SQL Types
           Map<String, String> destinationSchema = new HashMap<>();
-          for (Map.Entry<String, StandardSQLTypeName> entry : sourceSchema.entrySet()) {
-            destinationSchema.put(
-                entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
+          for (Map.Entry<String, StandardSQLTypeName> entry :
+              sourceSchema.entrySet()) {
+            destinationSchema.put(entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
           }
 
           // Add metadata columns if they are in the rowObj but not in sourceSchema
@@ -388,15 +392,12 @@ public abstract class DatastreamToDML
               getCreateTableSql(catalogName, schemaName, tableName, primaryKeys, destinationSchema);
           executeSql(createTableSql);
 
-          if (this.tableCache == null) {
-            setUpTableCache();
-          }
           tableCache.reset(searchKey);
-
           if (this.primaryKeyCache == null) {
             setUpPrimaryKeyCache();
           }
           primaryKeyCache.reset(searchKey);
+          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
         }
       }
     }
@@ -423,7 +424,10 @@ public abstract class DatastreamToDML
             String sourceSchemaName = row.getSchemaName();
             String sourceTableName = row.getTableName();
 
-            LOG.info("Adding Column {} to Table: {}.{}", casedColumnName, schemaName, tableName);
+            LOG.info("Column {} missing. Attempting to add to Table: {}.{}", casedColumnName, schemaName, tableName);
+            if (this.datastreamClient == null) {
+              throw new RuntimeException("DataStreamClient is null when adding column!");
+            }
             Map<String, StandardSQLTypeName> sourceSchema =
                 this.datastreamClient.getObjectSchema(
                     streamName, sourceSchemaName, sourceTableName);
@@ -463,7 +467,7 @@ public abstract class DatastreamToDML
     Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
     if (tableSchema.isEmpty()) {
       throw new RuntimeException(
-          String.format("Target table not found: %s.%s", schemaName, tableName));
+          String.format("Target table not found: %s.%s (catalog: %s)", schemaName, tableName, catalogName));
     }
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
@@ -728,11 +732,21 @@ public abstract class DatastreamToDML
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
       Map<String, String> tableSchema = new HashMap<String, String>();
 
+      // In some JDBC drivers, empty catalog should be null
+      String effectiveCatalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
+
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
+        if (connection == null) {
+          LOG.error("Failed to get connection for schema retrieval: {}.{}", schemaName, tableName);
+          return tableSchema;
+        }
         DatabaseMetaData metaData = connection.getMetaData();
-        try (ResultSet columns = metaData.getColumns(catalogName, schemaName, tableName, null)) {
+        LOG.info("Querying metadata for Catalog: {}, Schema: {}, Table: {}", effectiveCatalog, schemaName, tableName);
+        try (ResultSet columns = metaData.getColumns(effectiveCatalog, schemaName, tableName, null)) {
           while (columns.next()) {
-            tableSchema.put(columns.getString("COLUMN_NAME"), columns.getString("TYPE_NAME"));
+            String colName = columns.getString("COLUMN_NAME");
+            String typeName = columns.getString("TYPE_NAME");
+            tableSchema.put(colName, typeName);
           }
         }
       } catch (SQLException e) {
@@ -760,10 +774,12 @@ public abstract class DatastreamToDML
 
       if (tableSchema.isEmpty()) {
         LOG.info(
-            "Table Not Found: Catalog: {}, Schema: {}, Table: {}",
-            catalogName,
+            "Table Metadata NOT Found: Catalog: {}, Schema: {}, Table: {}",
+            effectiveCatalog,
             schemaName,
             tableName);
+      } else {
+        LOG.info("Found {} columns for table {}.{}", tableSchema.size(), schemaName, tableName);
       }
       return tableSchema;
     }
@@ -808,6 +824,9 @@ public abstract class DatastreamToDML
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
       List<String> primaryKeys = new ArrayList<String>();
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
+        if (connection == null) {
+          return primaryKeys;
+        }
         DatabaseMetaData metaData = connection.getMetaData();
         try (ResultSet jdbcPrimaryKeys =
             metaData.getPrimaryKeys(catalogName, schemaName, tableName)) {
@@ -855,3 +874,5 @@ public abstract class DatastreamToDML
     }
   }
 }
+
+
