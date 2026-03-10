@@ -18,13 +18,11 @@ package com.google.cloud.teleport.templates.yaml;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,38 +182,12 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
 
     // Read records using LOCAL connection "Proxy"
     List<Map<String, Object>> sqlRecords = readMySqlTable(TABLE_NAME);
-    LOG.info("SQL target table contains {} records", sqlRecords.size());
+    sqlRecords.sort(
+        (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
 
-    assertNotNull("SQL records should not be null", sqlRecords);
     assertEquals(
         "Expected 3 records in SQL table, got: " + sqlRecords.size(), 3, sqlRecords.size());
-
-    assertNotNull(sqlRecords);
-    assertEquals(3, sqlRecords.size());
-
-    sqlRecords.sort(Comparator.comparingInt(r -> (Integer) r.get("id")));
-    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.get("id")));
-    // Verify records
     assertEquals(sqlRecords, icebergRecords);
-
-    // sqlRecords.sort(
-    //     (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
-
-    // Map<String, Object> record1 = sqlRecords.get(0);
-    // assertEquals("Record 1 id should be 1", 1, ((Number) record1.get("id")).intValue());
-    // assertEquals("Record 1 name should be Alice", "Alice", record1.get("name"));
-    // assertEquals("Record 1 active should be 1", 1, ((Number) record1.get("active")).intValue());
-
-    // Map<String, Object> record2 = sqlRecords.get(1);
-    // assertEquals("Record 2 id should be 2", 2, ((Number) record2.get("id")).intValue());
-    // assertEquals("Record 2 name should be Bob", "Bob", record2.get("name"));
-    // assertEquals("Record 2 active should be 0", 0, ((Number) record2.get("active")).intValue());
-
-    // Map<String, Object> record3 = sqlRecords.get(2);
-    // assertEquals("Record 3 id should be 3", 3, ((Number) record3.get("id")).intValue());
-    // assertEquals("Record 3 name should be Charlie", "Charlie", record3.get("name"));
-    // assertEquals("Record 3 active should be 1", 1, ((Number) record3.get("active")).intValue());
-
     LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL.");
   }
 

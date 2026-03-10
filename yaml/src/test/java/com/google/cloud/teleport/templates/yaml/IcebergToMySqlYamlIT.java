@@ -145,14 +145,16 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
     List<Map<String, Object>> mySqlRecords = mySQLResourceManager.readTable(tableName);
-    LOG.info("MySql records: {}", mySqlRecords);
     assertNotNull(mySqlRecords);
     assertEquals(3, mySqlRecords.size());
 
-    mySqlRecords.sort(Comparator.comparingInt(r -> (Integer) r.get("id")));
-    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.get("id")));
-    // Verify records
+    mySqlRecords.sort(
+        (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
+
+    assertEquals(
+        "Expected 3 records in SQL table, got: " + mySqlRecords.size(), 3, mySqlRecords.size());
     assertEquals(mySqlRecords, icebergRecords);
+    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL.");
   }
 
   @Override
