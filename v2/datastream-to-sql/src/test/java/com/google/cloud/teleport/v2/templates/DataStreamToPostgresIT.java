@@ -301,7 +301,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         try {
           String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
           String qualifiedTableName = destSchema + "." + tableName;
-          List<Map<String, Object>> rows = cloudSqlDestinationResourceManager.readTable(qualifiedTableName);
+          List<Map<String, Object>> rows =
+              cloudSqlDestinationResourceManager.readTable(qualifiedTableName);
           if (rows.isEmpty()) {
             return new CheckResult(false, "Table is empty.");
           }
