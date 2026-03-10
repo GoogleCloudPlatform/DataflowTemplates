@@ -56,7 +56,7 @@ public class ReaderTransformTestUtils implements Serializable {
             table ->
                 SourceTableReference.builder()
                     .setSourceSchemaReference(this.sourceSchemaReference)
-                    .setSourceTableName(table.tableName())
+                    .setSourceTableName(delimitIdentifier(table.tableName()))
                     .setSourceTableSchemaUUID(table.tableSchemaUUID())
                     .setRecordCount(rowCountPerTable)
                     .build())
@@ -68,31 +68,41 @@ public class ReaderTransformTestUtils implements Serializable {
     AccumulatingTableReader.Builder builder =
         AccumulatingTableReader.builder(sourceRowTag, sourceTableReferenceTag);
     sourceTableSchemas.forEach(
-        table ->
-            builder.withTableReader(
-                SourceTableReference.builder()
-                    .setSourceSchemaReference(this.sourceSchemaReference)
-                    .setSourceTableName(table.tableName())
-                    .setSourceTableSchemaUUID(table.tableSchemaUUID())
-                    .build(),
-                new TestTableReaderTransform(
-                    this.sourceSchemaReference, table, this.rowCountPerTable)));
+        table -> {
+          SourceTableReference sourceTableReference =
+              SourceTableReference.builder()
+                  .setSourceSchemaReference(this.sourceSchemaReference)
+                  .setSourceTableName(delimitIdentifier(table.tableName()))
+                  .setSourceTableSchemaUUID(table.tableSchemaUUID())
+                  .build();
+          builder.withTableReader(
+              ImmutableList.of(sourceTableReference),
+              new TestTableReaderTransform(
+                  this.sourceSchemaReference, table, this.rowCountPerTable));
+        });
     return builder.build();
   }
 
   public ReaderTransform getTestReaderTransform() {
     var builder = ReaderTransform.builder();
     sourceTableSchemas.forEach(
-        tableSchema ->
-            builder.withTableReader(
-                SourceTableReference.builder()
-                    .setSourceSchemaReference(this.sourceSchemaReference)
-                    .setSourceTableName(tableSchema.tableName())
-                    .setSourceTableSchemaUUID(tableSchema.tableSchemaUUID())
-                    .build(),
-                new TestTableReaderTransform(
-                    this.sourceSchemaReference, tableSchema, this.rowCountPerTable)));
+        tableSchema -> {
+          SourceTableReference sourceTableReference =
+              SourceTableReference.builder()
+                  .setSourceSchemaReference(this.sourceSchemaReference)
+                  .setSourceTableName(delimitIdentifier(tableSchema.tableName()))
+                  .setSourceTableSchemaUUID(tableSchema.tableSchemaUUID())
+                  .build();
+          builder.withTableReader(
+              ImmutableList.of(sourceTableReference),
+              new TestTableReaderTransform(
+                  this.sourceSchemaReference, tableSchema, this.rowCountPerTable));
+        });
     return builder.build();
+  }
+
+  private String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
   }
 
   public ImmutableList<SourceTableSchema> getTestTableSchemas() {

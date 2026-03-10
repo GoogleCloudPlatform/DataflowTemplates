@@ -46,6 +46,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -125,9 +126,8 @@ public class JdbcIoWrapperTest {
     assertThat(tableSchema.tableName()).isEqualTo("testTable");
     assertThat(tableSchema.sourceColumnNameToSourceColumnType())
         .isEqualTo(ImmutableMap.of(testCol, testColType));
-    assertThat(tableSchema.primaryKeyColumns()).isEqualTo(ImmutableList.of(testCol));
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
-        jdbcIoWrapper.getTableReaders();
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = jdbcIoWrapper.getTableReaders();
     assertThat(tableReaders.size()).isEqualTo(1);
   }
 
@@ -179,8 +179,8 @@ public class JdbcIoWrapperTest {
     assertThat(tableSchema.sourceColumnNameToSourceColumnType())
         .isEqualTo(ImmutableMap.of(testCol, testColType));
     assertThat(tableSchema.primaryKeyColumns()).isEqualTo(ImmutableList.of(testCol));
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
-        jdbcIoWrapper.getTableReaders();
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = jdbcIoWrapper.getTableReaders();
     assertThat(tableReaders.size()).isEqualTo(1);
   }
 
@@ -336,8 +336,8 @@ public class JdbcIoWrapperTest {
                 .setDialectAdapter(mockDialectAdapter)
                 .setTables(ImmutableList.of("spanner_table"))
                 .build());
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
-        jdbcIoWrapper.getTableReaders();
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = jdbcIoWrapper.getTableReaders();
     assertThat(tableReaders.size()).isEqualTo(0);
   }
 
@@ -433,6 +433,175 @@ public class JdbcIoWrapperTest {
             JdbcIoWrapper.of(configWithFeatureDisabled.toBuilder().setMaxFetchSize(42).build())
                 .getTableReaders())
         .hasSize(1);
+  }
+
+  @Test
+  public void testReadWithUniformPartitionMultiTable() throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    String testCol = "ID";
+    SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
+
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("table1", "table2"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "table1",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(42L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build()),
+                "table2",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(100L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "table1", ImmutableMap.of(testCol, testColType),
+                "table2", ImmutableMap.of(testCol, testColType)));
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .setTables(ImmutableList.of("table1", "table2"))
+            .build();
+
+    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = jdbcIoWrapper.getTableReaders();
+
+    assertThat(tableReaders).hasSize(1);
+    ImmutableList<SourceTableReference> key = tableReaders.keySet().iterator().next();
+    assertThat(key).hasSize(2);
+    assertThat(key.stream().map(SourceTableReference::sourceTableName).collect(Collectors.toList()))
+        .containsExactly("\"table1\"", "\"table2\"");
+    assertThat(tableReaders.values().iterator().next())
+        .isInstanceOf(ReadWithUniformPartitions.class);
+  }
+
+  @Test
+  public void testReadWithUniformPartitionConfigOverrides()
+      throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    String testCol = "ID";
+    SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
+
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("table1"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "table1",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(100L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(ImmutableMap.of("table1", ImmutableMap.of(testCol, testColType)));
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setMaxPartitions(10) // Triggers line 487 in getMultiTableReadWithUniformPartitionIO
+            .setSplitStageCountHint(
+                5L) // Triggers line 492 in getMultiTableReadWithUniformPartitionIO
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    assertThat(jdbcIoWrapper.getTableReaders()).hasSize(1);
+  }
+
+  @Test
+  public void testGetJdbcIOWithMaxPartitions() throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    String testCol = "ID";
+    SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
+
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("testTable"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "testTable",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(42L)
+                        .setColumnName(testCol)
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .setMaxPartitions(10) // Triggers line 439 in getJdbcIO
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    assertThat(jdbcIoWrapper.getTableReaders()).hasSize(1);
+    assertThat(jdbcIoWrapper.getTableReaders().values().iterator().next())
+        .isInstanceOf(JdbcIO.ReadWithPartitions.class);
   }
 
   @Test

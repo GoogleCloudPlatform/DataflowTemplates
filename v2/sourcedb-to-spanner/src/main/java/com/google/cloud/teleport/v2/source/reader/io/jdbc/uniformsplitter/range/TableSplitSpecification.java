@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.util.Optional;
@@ -153,6 +154,29 @@ public abstract class TableSplitSpecification implements Serializable {
             logToBaseTwo(maxPartitionsHint)
                 + partitionColumns().size()
                 + 1 /* For initial counts */);
+      }
+
+      if (initialRange() != null) {
+        Range curRange = initialRange();
+        // It's impossible to build a range where child ranges have mismatched table wrt parent.
+        // Therefore, we only need to verify the table identifier of the root range.
+        Preconditions.checkState(
+            curRange.tableIdentifier().equals(tableIdentifier()),
+            "Initial range table identifier %s does not match table split specification identifier %s",
+            curRange.tableIdentifier(),
+            tableIdentifier());
+        for (PartitionColumn col : partitionColumns()) {
+          Preconditions.checkState(
+              curRange.colName().equals(col.columnName()),
+              "Initial range column path %s does not match partition columns %s",
+              initialRange(),
+              partitionColumns());
+          if (curRange.hasChildRange()) {
+            curRange = curRange.childRange();
+          } else {
+            break;
+          }
+        }
       }
 
       return autoBuild();
