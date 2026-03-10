@@ -46,7 +46,12 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToSqlYaml} template using existing Cloud SQL. */
+/**
+ * Integration test for {@link IcebergToSqlYaml} template using existing Cloud SQL. This test
+ * connects to a pre-configured Cloud SQL instance and dynamically creates the needed database and
+ * tables. To run the test: 1. Run Cloud SQL proxy locally
+ * https://docs.cloud.google.com/sql/docs/mysql/sql-proxy#install 2. Run the test using mvn
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(IcebergToMySqlYaml.class)
 @RunWith(JUnit4.class)
@@ -60,15 +65,18 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
   private static final String ICEBERG_TABLE_NAME = "source_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
-  // 1. IP for your local machine "via Proxy". This allows the test to setup test data and tables,
-  // and then cleanup.
+  // Cloud SQL proxy local IP. This allows the test running locally to connect to Cloud SQL to setup
+  // test data and tables, and then cleanup. Change accordingly.
   private static final String LOCAL_PROXY_IP = "127.0.0.1";
 
-  // 2. IP for Dataflow Workers to connect to Cloud SQL when the job runs
+  // Cloud SQL real IP for Dataflow Workers to connect to Cloud SQL when the job runs. Change
+  // accordingly.
   private static final String CLOUD_SQL_REAL_IP = "10.74.192.17";
 
+  // Cloud SQL credentials. Change accordingly.
   private static final String CLOUD_SQL_USERNAME = "root";
   private static final String CLOUD_SQL_PASSWORD = "test";
+
   private static final int CLOUD_SQL_PORT = 3306;
 
   private static final String TABLE_NAME = "target_table";
