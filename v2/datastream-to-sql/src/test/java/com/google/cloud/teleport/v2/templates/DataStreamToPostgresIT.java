@@ -237,9 +237,10 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           @Override
           public @NonNull CheckResult check() {
             try {
-              // Just attempting to read 1 row to see if the table exists without crashing
+              // Use qualified name since template creates it in mapped schema
+              String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
               cloudSqlDestinationResourceManager.runSQLQuery(
-                  "SELECT 1 FROM " + tableName + " LIMIT 1");
+                  String.format("SELECT 1 FROM %s.%s LIMIT 1", destSchema, tableName));
               return new CheckResult(true, "Table exists in destination.");
             } catch (Exception e) {
               return new CheckResult(false, "Table not created yet: " + e.getMessage());
@@ -298,7 +299,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
       @Override
       public @NonNull CheckResult check() {
         try {
-          List<Map<String, Object>> rows = cloudSqlDestinationResourceManager.readTable(tableName);
+          String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+          String qualifiedTableName = destSchema + "." + tableName;
+          List<Map<String, Object>> rows = cloudSqlDestinationResourceManager.readTable(qualifiedTableName);
           if (rows.isEmpty()) {
             return new CheckResult(false, "Table is empty.");
           }

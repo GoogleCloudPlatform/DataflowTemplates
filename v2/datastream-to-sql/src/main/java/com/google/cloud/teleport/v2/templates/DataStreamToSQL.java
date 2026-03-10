@@ -761,7 +761,8 @@ public class DataStreamToSQL {
                 .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                 .withNumThreads(options.getNumThreads())
                 .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+                .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                .withStreamName(options.getStreamName()));
 
     PCollection<KV<String, DmlInfo>> dmlStatements =
         dmlResults

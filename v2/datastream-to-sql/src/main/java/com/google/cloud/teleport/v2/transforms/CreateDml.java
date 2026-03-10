@@ -42,16 +42,16 @@ public class CreateDml
     extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreateDml.class);
-  private static final String WINDOW_DURATION = "1s";
-  private static Integer numThreads = Integer.valueOf(100);
-  private static DataSourceConfiguration dataSourceConfiguration;
-  private static String defaultCasing = "LOWERCASE";
-  private static String columnCasing = "LOWERCASE";
-  private static Map<String, String> schemaMap = new HashMap<String, String>();
-  private static Map<String, String> tableNameMap = new HashMap<String, String>();
-  private static Boolean orderByIncludesIsDeleted = false;
-  private static Integer schemaCacheRefreshMinutes = 1440;
-  private static String datastreamRootUrl = "https://datastream.googleapis.com/";
+  private final DataSourceConfiguration dataSourceConfiguration;
+  private String defaultCasing = "LOWERCASE";
+  private String columnCasing = "LOWERCASE";
+  private Map<String, String> schemaMap = new HashMap<String, String>();
+  private Map<String, String> tableNameMap = new HashMap<String, String>();
+  private Boolean orderByIncludesIsDeleted = false;
+  private Integer numThreads = Integer.valueOf(100);
+  private Integer schemaCacheRefreshMinutes = 1440;
+  private String datastreamRootUrl = "https://datastream.googleapis.com/";
+  private String streamName;
 
   // Define the main output tag here if not passed in from outside,
   // but ideally DataStreamToSQL defines it. For now, we'll accept it in expand()
@@ -69,12 +69,12 @@ public class CreateDml
   }
 
   public CreateDml withDefaultCasing(String casing) {
-    CreateDml.defaultCasing = casing;
+    this.defaultCasing = casing;
     return this;
   }
 
   public CreateDml withColumnCasing(String casing) {
-    CreateDml.columnCasing = casing;
+    this.columnCasing = casing;
     return this;
   }
 
@@ -94,21 +94,26 @@ public class CreateDml
   }
 
   public CreateDml withNumThreads(Integer numThreads) {
-    CreateDml.numThreads = numThreads;
+    this.numThreads = numThreads;
     return this;
   }
 
   public CreateDml withSchemaCacheRefreshMinutes(Integer minutes) {
     if (minutes != null) {
-      CreateDml.schemaCacheRefreshMinutes = minutes;
+      this.schemaCacheRefreshMinutes = minutes;
     }
     return this;
   }
 
   public CreateDml withDataStreamRootUrl(String url) {
     if (url != null) {
-      CreateDml.datastreamRootUrl = url;
+      this.datastreamRootUrl = url;
     }
+    return this;
+  }
+
+  public CreateDml withStreamName(String streamName) {
+    this.streamName = streamName;
     return this;
   }
 
@@ -134,7 +139,8 @@ public class CreateDml
         .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
         .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes)
-        .withDataStreamRootUrl(datastreamRootUrl);
+        .withDataStreamRootUrl(datastreamRootUrl)
+        .withStreamName(streamName);
   }
 
   @Override

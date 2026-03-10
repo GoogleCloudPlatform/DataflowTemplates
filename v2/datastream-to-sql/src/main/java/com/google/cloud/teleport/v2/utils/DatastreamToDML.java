@@ -75,6 +75,7 @@ public abstract class DatastreamToDML
   private transient DataSource dataSource;
   private transient DataStreamClient datastreamClient;
   private String datastreamRootUrl = "https://datastream.googleapis.com/";
+  private String streamName = "{_metadata_stream}";
 
   public String quoteCharacter;
   protected String defaultCasing = "LOWERCASE";
@@ -198,6 +199,13 @@ public abstract class DatastreamToDML
 
   public DatastreamToDML withDataStreamRootUrl(String url) {
     this.datastreamRootUrl = url;
+    return this;
+  }
+
+  public DatastreamToDML withStreamName(String streamName) {
+    if (streamName != null) {
+      this.streamName = streamName;
+    }
     return this;
   }
 
@@ -363,11 +371,15 @@ public abstract class DatastreamToDML
         tableSchema = tableCache.reset(searchKey);
         if (tableSchema.isEmpty()) {
           DatastreamRow row = DatastreamRow.of(rowObj);
-          String streamName = row.getStreamName();
+          String streamName = row.formatStringTemplate(this.streamName);
           String sourceSchemaName = row.getSchemaName();
           String sourceTableName = row.getTableName();
 
-          LOG.info("Table Not Found. Attempting to create: {}.{}", schemaName, tableName);
+          LOG.info(
+              "Table Not Found. Attempting to create: {}.{} (stream: {})",
+              schemaName,
+              tableName,
+              streamName);
           if (this.datastreamClient == null) {
             throw new RuntimeException("DataStreamClient is null in updateTableIfRequired!");
           }
@@ -423,15 +435,16 @@ public abstract class DatastreamToDML
           String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
           if (!tableSchema.containsKey(casedColumnName)) {
             DatastreamRow row = DatastreamRow.of(rowObj);
-            String streamName = row.getStreamName();
+            String streamName = row.formatStringTemplate(this.streamName);
             String sourceSchemaName = row.getSchemaName();
             String sourceTableName = row.getTableName();
 
             LOG.info(
-                "Column {} missing. Attempting to add to Table: {}.{}",
+                "Column {} missing. Attempting to add to Table: {}.{} (stream: {})",
                 casedColumnName,
                 schemaName,
-                tableName);
+                tableName,
+                streamName);
             if (this.datastreamClient == null) {
               throw new RuntimeException("DataStreamClient is null when adding column!");
             }
