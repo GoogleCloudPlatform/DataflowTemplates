@@ -45,5 +45,6 @@ Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplat
     You can optionally stage the template first and then run the test with the `-DspecPath=gs://template-location` pipeline option to save time during test development.
 
     If your test requires external resources such as a database (e.g., MySQLResourceManager), it may not run locally depending on the resource manager used. In such cases, modify the test to use a database accessible by Dataflow. Once testing is complete, revert your changes to align with the standard test structure. Since these tests are designed for GitHub Workflows, they should pass automatically once the PR is submitted.
+    An example of a local IT can be found in [yaml/src/test/java/com/google/cloud/teleport/templates/yaml/IcebergToMySqlYamlITLocal.java](https://github.com/GoogleCloudPlatform/DataflowTemplates/yaml/src/test/java/com/google/cloud/teleport/templates/yaml/IcebergToMySqlYamlITLocal.java).
 
 1.  **Generate Documentation:** Run the documentation generation script to create the official documentation for the template. You can find instructions on how to do this in the [contributor documentation](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#generated-documentation).
