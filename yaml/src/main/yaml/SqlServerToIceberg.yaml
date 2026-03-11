@@ -24,8 +24,8 @@ template:
     - "iceberg_options"
 
   parameters:
-    - sqlserver_options_common_options
-    - sqlserver_options_read_options
+    - sqlserver_common_options
+    - sqlserver_read_options
     - iceberg_common_options
     - iceberg_write_options
 
