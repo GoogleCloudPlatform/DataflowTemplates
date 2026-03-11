@@ -528,6 +528,17 @@ public abstract class DatastreamToDML
       }
     }
 
+    // If PK values are still effectively empty, use Scn/LSN/Timestamp to avoid global table state
+    // collision
+    if (primaryKeyValues.isEmpty() || primaryKeyValues.stream().allMatch(v -> v.equals("NULL"))) {
+      if (row.getSourceType() != null && row.getSourceType().equals("postgresql")) {
+        primaryKeyValues.add(getValueSql(rowObj, "_metadata_lsn", tableSchema));
+      } else {
+        primaryKeyValues.add(getValueSql(rowObj, "_metadata_scn", tableSchema));
+      }
+      primaryKeyValues.add(getValueSql(rowObj, "_metadata_timestamp", tableSchema));
+    }
+
     List<String> orderByValues =
         getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
