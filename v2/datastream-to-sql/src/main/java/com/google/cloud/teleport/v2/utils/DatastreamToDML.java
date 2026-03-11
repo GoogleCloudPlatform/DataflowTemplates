@@ -219,6 +219,8 @@ public abstract class DatastreamToDML
       this.datastreamClient = new DataStreamClient(options.as(GcpOptions.class).getGcpCredential());
       this.datastreamClient.setRootUrl(this.datastreamRootUrl);
     }
+    setUpTableCache();
+    setUpPrimaryKeyCache();
   }
 
   @ProcessElement
@@ -257,7 +259,7 @@ public abstract class DatastreamToDML
   }
 
   public DataSource getDataSource() {
-    if (this.dataSource == null) {
+    if (this.dataSource == null && this.dataSourceConfiguration != null) {
       this.dataSource = this.dataSourceConfiguration.buildDatasource();
     }
     return this.dataSource;
@@ -266,16 +268,14 @@ public abstract class DatastreamToDML
   private synchronized void setUpTableCache() {
     if (this.tableCache == null) {
       this.tableCache =
-          new JdbcTableCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+          new JdbcTableCache(this).withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
     if (this.primaryKeyCache == null) {
       this.primaryKeyCache =
-          new JdbcPrimaryKeyCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+          new JdbcPrimaryKeyCache(this).withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
@@ -368,6 +368,9 @@ public abstract class DatastreamToDML
     if (tableSchema.isEmpty()) {
       List<String> tableLock = getTableLock(searchKey);
       synchronized (tableLock) {
+        if (this.tableCache == null) {
+          setUpTableCache();
+        }
         tableSchema = tableCache.reset(searchKey);
         if (tableSchema.isEmpty()) {
           DatastreamRow row = DatastreamRow.of(rowObj);
@@ -434,6 +437,9 @@ public abstract class DatastreamToDML
     if (!missingColumns.isEmpty()) {
       List<String> tableLock = getTableLock(searchKey);
       synchronized (tableLock) {
+        if (this.tableCache == null) {
+          setUpTableCache();
+        }
         tableSchema = tableCache.reset(searchKey);
         for (String columnName : missingColumns) {
           String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
@@ -492,7 +498,8 @@ public abstract class DatastreamToDML
     if (tableSchema.isEmpty()) {
       throw new RuntimeException(
           String.format(
-              "Target table not found: %s.%s (catalog: %s)", schemaName, tableName, catalogName));
+              "Target table not found or schema retrieval failed: %s.%s (catalog: %s)",
+              schemaName, tableName, catalogName));
     }
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
@@ -762,61 +769,45 @@ public abstract class DatastreamToDML
   /**
    * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a local
    * cache for each worker thread.
-   *
-   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
-   * continuous.
    */
   public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
 
-    private DataSource dataSource;
+    private final DatastreamToDML dml;
     private static final int MAX_RETRIES = 5;
 
-    /**
-     * Create an instance of a {@link JdbcTableCache} to track table schemas.
-     *
-     * @param dataSource A DataSource instance used to extract Table objects.
-     */
-    public JdbcTableCache(DataSource dataSource) {
-      this.dataSource = dataSource;
+    public JdbcTableCache(DatastreamToDML dml) {
+      this.dml = dml;
     }
 
     private Map<String, String> getTableSchema(
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
       Map<String, String> tableSchema = new HashMap<String, String>();
+      DataSource ds = dml.getDataSource();
+      if (ds == null) {
+        LOG.error("DataSource is null in JdbcTableCache!");
+        return tableSchema;
+      }
 
-      // In some JDBC drivers, empty catalog should be null
       String effectiveCatalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
 
-      try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
+      try (Connection connection = getConnection(ds, MAX_RETRIES, MAX_RETRIES)) {
         if (connection == null) {
-          LOG.error("Failed to get connection for schema retrieval: {}.{}", schemaName, tableName);
           return tableSchema;
         }
         DatabaseMetaData metaData = connection.getMetaData();
-        LOG.info(
-            "Querying metadata for Catalog: {}, Schema: {}, Table: {}",
-            effectiveCatalog,
-            schemaName,
-            tableName);
+
         // Try exact match first
         try (ResultSet columns =
             metaData.getColumns(effectiveCatalog, schemaName, tableName, null)) {
           while (columns.next()) {
             String colName = columns.getString("COLUMN_NAME");
             String typeName = columns.getString("TYPE_NAME");
-            tableSchema.put(colName, typeName);
+            tableSchema.put(dml.applyCasingLogic(colName, dml.columnCasing), typeName);
           }
         }
 
         // If not found, and it's Postgres, try lowercasing everything
-        if (tableSchema.isEmpty()
-            && connection.getMetaData().getDatabaseProductName().equals("PostgreSQL")) {
-          LOG.info(
-              "Retrying metadata query with lowercased schema/table for PostgreSQL: {}.{}",
-              schemaName.toLowerCase(),
-              tableName.toLowerCase());
+        if (tableSchema.isEmpty() && metaData.getDatabaseProductName().equals("PostgreSQL")) {
           try (ResultSet columns =
               metaData.getColumns(
                   effectiveCatalog,
@@ -826,100 +817,66 @@ public abstract class DatastreamToDML
             while (columns.next()) {
               String colName = columns.getString("COLUMN_NAME");
               String typeName = columns.getString("TYPE_NAME");
-              tableSchema.put(colName, typeName);
+              tableSchema.put(dml.applyCasingLogic(colName, dml.columnCasing), typeName);
             }
           }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
-          LOG.info(
-              "SQLException, will retry after {} seconds: Failed to Retrieve Schema: {}.{} : {}",
-              sleepSecs,
-              schemaName,
-              tableName,
-              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
             return getTableSchema(catalogName, schemaName, tableName, retriesRemaining - 1);
           } catch (InterruptedException i) {
-            LOG.info("InterruptedException retrieving schema: {}.{}", schemaName, tableName);
           }
         }
-        LOG.error(
-            "SQLException: Failed to Retrieve Schema: {}.{} : {}",
-            schemaName,
-            tableName,
-            e.toString());
-      }
-
-      if (tableSchema.isEmpty()) {
-        LOG.info(
-            "Table Metadata NOT Found: Catalog: {}, Schema: {}, Table: {}",
-            effectiveCatalog,
-            schemaName,
-            tableName);
-      } else {
-        LOG.info("Found {} columns for table {}.{}", tableSchema.size(), schemaName, tableName);
       }
       return tableSchema;
     }
 
     @Override
     public Map<String, String> getObjectValue(List<String> key) {
-      String catalogName = key.get(0);
-      String schemaName = key.get(1);
-      String tableName = key.get(2);
-
-      Map<String, String> tableSchema =
-          getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
-
-      return tableSchema;
+      return getTableSchema(key.get(0), key.get(1), key.get(2), MAX_RETRIES);
     }
   }
 
   /**
    * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a local
    * cache for each worker thread.
-   *
-   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
-   * continuous.
    */
   public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {
 
-    private DataSource dataSource;
+    private final DatastreamToDML dml;
     private static final int MAX_RETRIES = 5;
 
-    /**
-     * Create an instance of a {@link JdbcPrimaryKeyCache} to track table primary keys.
-     *
-     * @param dataSource A DataSource instance used to extract Table objects.
-     */
-    public JdbcPrimaryKeyCache(DataSource dataSource) {
-      this.dataSource = dataSource;
+    public JdbcPrimaryKeyCache(DatastreamToDML dml) {
+      this.dml = dml;
     }
 
     private List<String> getTablePrimaryKeys(
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
       List<String> primaryKeys = new ArrayList<String>();
-      // In some JDBC drivers, empty catalog should be null
+      DataSource ds = dml.getDataSource();
+      if (ds == null) {
+        return primaryKeys;
+      }
+
       String effectiveCatalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
 
-      try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
+      try (Connection connection = getConnection(ds, MAX_RETRIES, MAX_RETRIES)) {
         if (connection == null) {
           return primaryKeys;
         }
         DatabaseMetaData metaData = connection.getMetaData();
+
         try (ResultSet jdbcPrimaryKeys =
             metaData.getPrimaryKeys(effectiveCatalog, schemaName, tableName)) {
           while (jdbcPrimaryKeys.next()) {
-            primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
+            primaryKeys.add(
+                dml.applyCasingLogic(jdbcPrimaryKeys.getString("COLUMN_NAME"), dml.columnCasing));
           }
         }
 
-        // If not found and PostgreSQL, try lowercasing
         if (primaryKeys.isEmpty() && metaData.getDatabaseProductName().equals("PostgreSQL")) {
           try (ResultSet jdbcPrimaryKeys =
               metaData.getPrimaryKeys(
@@ -927,47 +884,27 @@ public abstract class DatastreamToDML
                   schemaName != null ? schemaName.toLowerCase() : null,
                   tableName.toLowerCase())) {
             while (jdbcPrimaryKeys.next()) {
-              primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
+              primaryKeys.add(
+                  dml.applyCasingLogic(jdbcPrimaryKeys.getString("COLUMN_NAME"), dml.columnCasing));
             }
           }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
-          LOG.info(
-              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} :"
-                  + " {}",
-              sleepSecs,
-              schemaName,
-              tableName,
-              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
             return getTablePrimaryKeys(catalogName, schemaName, tableName, retriesRemaining - 1);
           } catch (InterruptedException i) {
-            LOG.info("InterruptedException retrieving pk: {}.{}", schemaName, tableName);
           }
         }
-        LOG.error(
-            "SQLException: Failed to Retrieve Primary Key: {}.{} : {}",
-            schemaName,
-            tableName,
-            e.toString());
       }
-
       return primaryKeys;
     }
 
     @Override
     public List<String> getObjectValue(List<String> key) {
-      String catalogName = key.get(0);
-      String schemaName = key.get(1);
-      String tableName = key.get(2);
-
-      List<String> primaryKeys =
-          getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
-
-      return primaryKeys;
+      return getTablePrimaryKeys(key.get(0), key.get(1), key.get(2), MAX_RETRIES);
     }
   }
 }

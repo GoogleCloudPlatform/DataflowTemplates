@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -1199,8 +1198,8 @@ public class DatastreamToDMLTest {
   @Test
   public void testJdbcTableCache_throwsOnMissingTable() {
     // Arrange
-    DataSource ds = mock(DataSource.class);
-    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(ds);
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(dml);
 
     // We can't easily mock the recursive internal calls of the cache without PowerMock,
     // but we can verify the 'clearCaches' method which was added.

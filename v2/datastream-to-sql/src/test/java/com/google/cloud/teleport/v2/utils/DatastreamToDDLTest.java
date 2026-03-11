@@ -195,7 +195,15 @@ public class DatastreamToDDLTest {
     when(mockRsFound.getString("COLUMN_NAME")).thenReturn("id");
     when(mockRsFound.getString("TYPE_NAME")).thenReturn("INTEGER");
 
-    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(mockDs);
+    // Override the dml behavior for the test to provide the mock DataSource
+    DatastreamToPostgresDML spyDml =
+        new DatastreamToPostgresDML(null) {
+          @Override
+          public DataSource getDataSource() {
+            return mockDs;
+          }
+        };
+    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(spyDml);
 
     // Act
     Map<String, String> schema = cache.getObjectValue(Arrays.asList("", "MY_SCHEMA", "MY_TABLE"));
