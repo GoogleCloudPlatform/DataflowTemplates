@@ -90,9 +90,11 @@ public class DatastreamRow {
 
   public String getStringValue(String field) {
     if (this.jsonRow != null) {
-      return jsonRow.get(field).textValue();
+      JsonNode node = jsonRow.get(field);
+      return (node == null || node.isNull()) ? null : node.asText();
     } else {
-      return (String) tableRow.get(field);
+      Object value = tableRow.get(field);
+      return value == null ? null : value.toString();
     }
   }
 
@@ -108,8 +110,11 @@ public class DatastreamRow {
   public List<String> getPrimaryKeys() {
     List<String> primaryKeys = new ArrayList<>();
     if (this.jsonRow != null) {
-      for (JsonNode node : jsonRow.get("_metadata_primary_keys")) {
-        primaryKeys.add(node.asText());
+      JsonNode pkNode = jsonRow.get("_metadata_primary_keys");
+      if (pkNode != null && pkNode.isArray()) {
+        for (JsonNode node : pkNode) {
+          primaryKeys.add(node.asText());
+        }
       }
     } else {
       if (tableRow.get("_metadata_primary_keys") != null) {
@@ -137,7 +142,7 @@ public class DatastreamRow {
       }
     }
 
-    if (this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
+    if (this.getSourceType() != null && this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
       primaryKeys.add(DEFAULT_ORACLE_PRIMARY_KEY);
     }
 
@@ -150,9 +155,9 @@ public class DatastreamRow {
     Map<String, String> values = new HashMap<>();
 
     for (String fieldName : getFieldNames()) {
-      Object value = getFieldValue(fieldName);
-      if (value instanceof String) {
-        values.put(fieldName, (String) value);
+      String value = getStringValue(fieldName);
+      if (value != null) {
+        values.put(fieldName, value);
       }
     }
 
@@ -193,9 +198,10 @@ public class DatastreamRow {
   }
 
   public List<String> getSortFields() {
-    if (this.getSourceType().equals("mysql")) {
+    String sourceType = this.getSourceType();
+    if ("mysql".equals(sourceType)) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
-    } else if (this.getSourceType().equals("postgresql")) {
+    } else if ("postgresql".equals(sourceType)) {
       return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
     } else {
       // Current default is oracle.

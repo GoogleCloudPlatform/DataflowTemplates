@@ -32,7 +32,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToPostgresDML.class);
 
-  private DatastreamToPostgresDML(DataSourceConfiguration config) {
+  protected DatastreamToPostgresDML(DataSourceConfiguration config) {
     super(config);
   }
 
@@ -163,10 +163,18 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   @Override
   public String cleanDataTypeValueSql(
       String columnValue, String columnName, Map<String, String> tableSchema) {
-    String dataType = tableSchema.get(columnName);
+    // Standardize column name casing for lookup in tableSchema
+    String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+    String dataType = tableSchema.get(casedColumnName);
+    if (dataType == null) {
+      // Try exact match if cased lookup fails
+      dataType = tableSchema.get(columnName);
+    }
+    
     if (dataType == null) {
       return columnValue;
     }
+    
     switch (dataType.toUpperCase()) {
       case "INT2":
       case "INT4":
@@ -184,7 +192,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       case "SERIAL":
       case "ENUM":
       case "BIGSERIAL":
-        if (columnValue.equals("") || columnValue.equals("''")) {
+        if (columnValue.equals("") || columnValue.equals("''") || columnValue.equalsIgnoreCase("'NULL'")) {
           return getNullValueSql();
         }
         break;
@@ -236,7 +244,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
 
   public String convertJsonToHstoreLiteral(String jsonValue) {
     // 1. Handle null, empty, or literal "null" strings
-    if (jsonValue == null || jsonValue.isEmpty() || jsonValue.equalsIgnoreCase("null")) {
+    if (jsonValue == null || jsonValue.isEmpty() || jsonValue.equalsIgnoreCase("null") || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 
@@ -297,7 +305,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   public String convertJsonToPostgresInterval(String jsonValue, String columnName) {
-    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
+    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("") || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 
@@ -330,7 +338,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   private String convertJsonToPostgresArray(String jsonValue, String dataType, String columnName) {
-    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
+    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("") || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 
@@ -359,7 +367,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           } else if (!element.isNull()) {
             elements.add(formatArrayElement(element));
           } else {
-            // FIX: Explicitly handle direct nulls in the array
+            // Explicitly handle direct nulls in the array
             elements.add(getNullValueSql());
           }
         }

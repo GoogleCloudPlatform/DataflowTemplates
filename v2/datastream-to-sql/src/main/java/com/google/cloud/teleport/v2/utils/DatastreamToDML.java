@@ -57,6 +57,7 @@ public abstract class DatastreamToDML
     extends DoFn<FailsafeElement<String, String>, KV<String, DmlInfo>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToDML.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /** Tag for records that failed DML conversion and should be sent to the DLQ. */
   public static final TupleTag<FailsafeElement<String, String>> ERROR_TAG =
@@ -224,11 +225,10 @@ public abstract class DatastreamToDML
   public void processElement(ProcessContext context) {
     FailsafeElement<String, String> element = context.element();
     String jsonString = element.getPayload();
-    ObjectMapper mapper = new ObjectMapper();
     JsonNode rowObj;
 
     try {
-      rowObj = mapper.readTree(jsonString);
+      rowObj = MAPPER.readTree(jsonString);
       DmlInfo dmlInfo = convertJsonToDmlInfo(rowObj, element.getOriginalPayload());
 
       // Null rows suggest no DML is required.
@@ -371,7 +371,7 @@ public abstract class DatastreamToDML
         tableSchema = tableCache.reset(searchKey);
         if (tableSchema.isEmpty()) {
           DatastreamRow row = DatastreamRow.of(rowObj);
-          String streamName = row.formatStringTemplate(this.streamName);
+          String streamNameValue = row.formatStringTemplate(this.streamName);
           String sourceSchemaName = row.getSchemaName();
           String sourceTableName = row.getTableName();
 
@@ -379,27 +379,31 @@ public abstract class DatastreamToDML
               "Table Not Found. Attempting to create: {}.{} (stream: {})",
               schemaName,
               tableName,
-              streamName);
+              streamNameValue);
           if (this.datastreamClient == null) {
             throw new RuntimeException("DataStreamClient is null in updateTableIfRequired!");
           }
           Map<String, StandardSQLTypeName> sourceSchema =
-              this.datastreamClient.getObjectSchema(streamName, sourceSchemaName, sourceTableName);
+              this.datastreamClient.getObjectSchema(
+                  streamNameValue, sourceSchemaName, sourceTableName);
           List<String> primaryKeys =
-              this.datastreamClient.getPrimaryKeys(streamName, sourceSchemaName, sourceTableName);
+              this.datastreamClient.getPrimaryKeys(
+                  streamNameValue, sourceSchemaName, sourceTableName);
 
           // Convert BigQuery Types to Destination SQL Types
           Map<String, String> destinationSchema = new HashMap<>();
           for (Map.Entry<String, StandardSQLTypeName> entry : sourceSchema.entrySet()) {
+            String casedSourceColName = applyCasingLogic(entry.getKey(), this.columnCasing);
             destinationSchema.put(
-                entry.getKey(), getDestinationType(entry.getValue().name(), null, null));
+                casedSourceColName, getDestinationType(entry.getValue().name(), null, null));
           }
 
           // Add metadata columns if they are in the rowObj but not in sourceSchema
           for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
             String columnName = fieldNames.next();
-            if (!destinationSchema.containsKey(columnName)) {
-              destinationSchema.put(columnName, getDestinationType("STRING", null, null));
+            String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+            if (!destinationSchema.containsKey(casedColumnName)) {
+              destinationSchema.put(casedColumnName, getDestinationType("STRING", null, null));
             }
           }
 
@@ -435,7 +439,7 @@ public abstract class DatastreamToDML
           String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
           if (!tableSchema.containsKey(casedColumnName)) {
             DatastreamRow row = DatastreamRow.of(rowObj);
-            String streamName = row.formatStringTemplate(this.streamName);
+            String streamNameValue = row.formatStringTemplate(this.streamName);
             String sourceSchemaName = row.getSchemaName();
             String sourceTableName = row.getTableName();
 
@@ -444,13 +448,13 @@ public abstract class DatastreamToDML
                 casedColumnName,
                 schemaName,
                 tableName,
-                streamName);
+                streamNameValue);
             if (this.datastreamClient == null) {
               throw new RuntimeException("DataStreamClient is null when adding column!");
             }
             Map<String, StandardSQLTypeName> sourceSchema =
                 this.datastreamClient.getObjectSchema(
-                    streamName, sourceSchemaName, sourceTableName);
+                    streamNameValue, sourceSchemaName, sourceTableName);
 
             String sourceType = "STRING";
             if (sourceSchema.containsKey(columnName)) {
@@ -493,8 +497,24 @@ public abstract class DatastreamToDML
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
-    List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
+
+    // Calculate primaryKeyValues using destination primaryKeys to ensure per-PK state consistency
+    List<String> primaryKeyValues = new ArrayList<>();
+    for (String pk : primaryKeys) {
+      boolean found = false;
+      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        if (applyCasingLogic(sourceFieldName, this.columnCasing).equals(pk)) {
+          primaryKeyValues.add(getValueSql(rowObj, sourceFieldName, tableSchema));
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        primaryKeyValues.add(getNullValueSql());
+      }
+    }
+
     List<String> orderByValues =
         getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
@@ -562,14 +582,16 @@ public abstract class DatastreamToDML
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
-      return "";
+      return getNullValueSql();
     }
     if (columnObj.isTextual()) {
       columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
     } else {
       columnValue = columnObj.toString();
     }
-    return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
+    // Apply casing logic to match the keys in tableSchema.
+    String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+    return cleanDataTypeValueSql(columnValue, casedColumnName, tableSchema);
   }
 
   public String cleanDataTypeValueSql(
@@ -602,9 +624,9 @@ public abstract class DatastreamToDML
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+      if (overrideIsDeleted && "_metadata_deleted".equals(fieldName)) {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val == "true" ? "1" : "0");
+        fieldValues.add(val.equals("true") ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
@@ -680,21 +702,32 @@ public abstract class DatastreamToDML
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
 
-    DatastreamRow row = DatastreamRow.of(rowObj);
-    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
     String pkToValueSql = "";
 
-    for (String sourcePkName : sourcePrimaryKeys) {
-      String destinationPkName = applyCasingLogic(sourcePkName, this.columnCasing);
+    for (String pkName : primaryKeys) {
+      // Find source field name for this PK
+      boolean found = false;
+      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        if (applyCasingLogic(sourceFieldName, this.columnCasing).equals(pkName)) {
+          String columnValue = getValueSql(rowObj, sourceFieldName, tableSchema);
+          String quotedPkName = quote(pkName);
 
-      if (primaryKeys.contains(destinationPkName)) {
-        String columnValue = getValueSql(rowObj, sourcePkName, tableSchema);
-        String quotedDestinationPkName = quote(destinationPkName);
-
+          if (pkToValueSql.isEmpty()) {
+            pkToValueSql = quotedPkName + "=" + columnValue;
+          } else {
+            pkToValueSql = pkToValueSql + " AND " + quotedPkName + "=" + columnValue;
+          }
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        String quotedPkName = quote(pkName);
         if (pkToValueSql.isEmpty()) {
-          pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+          pkToValueSql = quotedPkName + " IS NULL";
         } else {
-          pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+          pkToValueSql = pkToValueSql + " AND " + quotedPkName + " IS NULL";
         }
       }
     }
@@ -767,6 +800,7 @@ public abstract class DatastreamToDML
             effectiveCatalog,
             schemaName,
             tableName);
+        // Try exact match first
         try (ResultSet columns =
             metaData.getColumns(effectiveCatalog, schemaName, tableName, null)) {
           while (columns.next()) {
@@ -774,6 +808,22 @@ public abstract class DatastreamToDML
             String typeName = columns.getString("TYPE_NAME");
             tableSchema.put(colName, typeName);
           }
+        }
+
+        // If not found, and it's Postgres, try lowercasing everything
+        if (tableSchema.isEmpty() && connection.getMetaData().getDatabaseProductName().equals("PostgreSQL")) {
+            LOG.info("Retrying metadata query with lowercased schema/table for PostgreSQL: {}.{}", 
+                schemaName.toLowerCase(), tableName.toLowerCase());
+            try (ResultSet columns =
+                metaData.getColumns(effectiveCatalog, 
+                    schemaName != null ? schemaName.toLowerCase() : null, 
+                    tableName.toLowerCase(), null)) {
+              while (columns.next()) {
+                String colName = columns.getString("COLUMN_NAME");
+                String typeName = columns.getString("TYPE_NAME");
+                tableSchema.put(colName, typeName);
+              }
+            }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
@@ -849,16 +899,31 @@ public abstract class DatastreamToDML
     private List<String> getTablePrimaryKeys(
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
       List<String> primaryKeys = new ArrayList<String>();
+      // In some JDBC drivers, empty catalog should be null
+      String effectiveCatalog = (catalogName == null || catalogName.isEmpty()) ? null : catalogName;
+
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         if (connection == null) {
           return primaryKeys;
         }
         DatabaseMetaData metaData = connection.getMetaData();
         try (ResultSet jdbcPrimaryKeys =
-            metaData.getPrimaryKeys(catalogName, schemaName, tableName)) {
+            metaData.getPrimaryKeys(effectiveCatalog, schemaName, tableName)) {
           while (jdbcPrimaryKeys.next()) {
             primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
           }
+        }
+        
+        // If not found and PostgreSQL, try lowercasing
+        if (primaryKeys.isEmpty() && metaData.getDatabaseProductName().equals("PostgreSQL")) {
+            try (ResultSet jdbcPrimaryKeys =
+                metaData.getPrimaryKeys(effectiveCatalog, 
+                    schemaName != null ? schemaName.toLowerCase() : null, 
+                    tableName.toLowerCase())) {
+              while (jdbcPrimaryKeys.next()) {
+                primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
+              }
+            }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {

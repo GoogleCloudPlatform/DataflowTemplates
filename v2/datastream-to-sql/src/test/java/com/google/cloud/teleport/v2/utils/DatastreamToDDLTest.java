@@ -15,17 +15,32 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.Test;
 
 /** Test cases for DDL generation in {@link DatastreamToDML} subclasses. */
 public class DatastreamToDDLTest {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
   public void testPostgresCreateTableSql() {
@@ -95,5 +110,96 @@ public class DatastreamToDDLTest {
     assertEquals("BOOLEAN", dml.getDestinationType("BOOL", null, null));
     assertEquals("TIMESTAMP", dml.getDestinationType("TIMESTAMP", null, null));
     assertEquals("TEXT", dml.getDestinationType("STRING", null, null));
+  }
+
+  /**
+   * Tests that {@link DatastreamRow#formatStringTemplate} correctly handles JsonNode sources.
+   * This verifies that {_metadata_stream} is correctly replaced.
+   */
+  @Test
+  public void testFormatStringTemplate_withJsonNode() throws IOException {
+    String json = "{\"_metadata_stream\": \"projects/p1/locations/l1/streams/s1\", \"data\": \"val\"}";
+    JsonNode node = MAPPER.readTree(json);
+    DatastreamRow row = DatastreamRow.of(node);
+
+    String template = "{_metadata_stream}";
+    String formatted = row.formatStringTemplate(template);
+
+    assertThat(formatted).isEqualTo("projects/p1/locations/l1/streams/s1");
+  }
+
+  /**
+   * Tests that {@link DatastreamToDML#convertJsonToDmlInfo} uses destination primary keys
+   * for state key generation when source primary keys are missing (common in Postgres).
+   */
+  @Test
+  public void testConvertJsonToDmlInfo_usesDestinationPkForStateKey() throws IOException {
+    // Arrange
+    String json = "{"
+        + "\"id\": 123,"
+        + "\"_metadata_schema\": \"public\","
+        + "\"_metadata_table\": \"users\","
+        + "\"_metadata_deleted\": false"
+        + "}";
+    JsonNode node = MAPPER.readTree(json);
+    
+    // Create a concrete implementation for testing
+    DatastreamToPostgresDML spyDml = new DatastreamToPostgresDML(null) {
+        @Override
+        public Map<String, String> getTableSchema(String catalog, String schema, String table) {
+            Map<String, String> schemaMap = new HashMap<>();
+            schemaMap.put("id", "INTEGER");
+            return schemaMap;
+        }
+        
+        @Override
+        public java.util.List<String> getPrimaryKeys(String catalog, String schema, String table, JsonNode row) {
+            return Arrays.asList("id");
+        }
+    };
+
+    // Act
+    DmlInfo dmlInfo = spyDml.convertJsonToDmlInfo(node, json);
+
+    // Assert
+    // The state key should include the PK value '123'
+    // Format: schema.table:pk1-pk2...
+    assertThat(dmlInfo.getStateWindowKey()).isEqualTo("public.users:123");
+  }
+
+  /**
+   * Tests the lowercased retry fallback in {@link DatastreamToDML.JdbcTableCache}.
+   */
+  @Test
+  public void testJdbcTableCache_postgreSqlLowercaseFallback() throws SQLException {
+    // Arrange
+    DataSource mockDs = mock(DataSource.class);
+    Connection mockConn = mock(Connection.class);
+    DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    ResultSet mockRsEmpty = mock(ResultSet.class);
+    ResultSet mockRsFound = mock(ResultSet.class);
+
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.getMetaData()).thenReturn(mockMeta);
+    when(mockMeta.getDatabaseProductName()).thenReturn("PostgreSQL");
+
+    // First call (exact case) returns nothing
+    when(mockMeta.getColumns(null, "MY_SCHEMA", "MY_TABLE", null)).thenReturn(mockRsEmpty);
+    when(mockRsEmpty.next()).thenReturn(false);
+
+    // Second call (lowercased) returns columns
+    when(mockMeta.getColumns(null, "my_schema", "my_table", null)).thenReturn(mockRsFound);
+    when(mockRsFound.next()).thenReturn(true, false);
+    when(mockRsFound.getString("COLUMN_NAME")).thenReturn("id");
+    when(mockRsFound.getString("TYPE_NAME")).thenReturn("INTEGER");
+
+    DatastreamToDML.JdbcTableCache cache = new DatastreamToDML.JdbcTableCache(mockDs);
+
+    // Act
+    Map<String, String> schema = cache.getObjectValue(Arrays.asList("", "MY_SCHEMA", "MY_TABLE"));
+
+    // Assert
+    assertThat(schema).containsKey("id");
+    assertThat(schema.get("id")).isEqualTo("INTEGER");
   }
 }
