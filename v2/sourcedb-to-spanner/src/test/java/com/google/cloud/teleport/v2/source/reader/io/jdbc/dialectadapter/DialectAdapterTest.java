@@ -117,4 +117,24 @@ public class DialectAdapterTest {
     org.junit.Assert.assertEquals(
         expectedSize, dialectAdapter.estimateRowSize(mockSourceTableSchema, mockProvider));
   }
+
+  @Test
+  public void testEstimateRowSize_Overflow() {
+    DialectAdapter dialectAdapter = Mockito.mock(DialectAdapter.class);
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.anyMap(), ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+
+    SourceColumnType col1 = new SourceColumnType("col1", null, null);
+    SourceColumnType col2 = new SourceColumnType("col2", null, null);
+
+    JdbcValueMappingsProvider mockProvider = Mockito.mock(JdbcValueMappingsProvider.class);
+    Mockito.when(mockProvider.estimateColumnSize(col1)).thenReturn(Integer.MAX_VALUE);
+    Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(10);
+
+    long size =
+        dialectAdapter.estimateRowSize(ImmutableMap.of("col1", col1, "col2", col2), mockProvider);
+    org.junit.Assert.assertEquals((long) Integer.MAX_VALUE + 10, size);
+  }
 }
