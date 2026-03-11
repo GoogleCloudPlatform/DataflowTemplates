@@ -33,8 +33,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
 * **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mssql`.
-* **writeStatement**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
-* **batchSize**: The number of records to group together for each write. For example, `1000`.
+* **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
+* **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
 
 
@@ -146,8 +146,8 @@ export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
 export JDBC_TYPE=mssql
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
 gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
@@ -170,7 +170,7 @@ gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
   --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "location=$LOCATION" \
-  --parameters "writeStatement=$WRITE_STATEMENT" \
+  --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autosharding=$AUTOSHARDING"
 ```
@@ -209,8 +209,8 @@ export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
 export JDBC_TYPE=mssql
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
 mvn clean package -PtemplatesRun \
@@ -220,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-sqlserver-yaml-job" \
 -DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
 -f yaml
 ```
 
@@ -281,8 +281,8 @@ resource "google_dataflow_flex_template_job" "iceberg_to_sqlserver_yaml" {
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
     # jdbcType = "mssql"
-    # writeStatement = "<writeStatement>"
-    # batchSize = <batchSize>
+    # query = "<query>"
+    # batchSize = "1000"
     # autosharding = "<autosharding>"
   }
 }
