@@ -76,6 +76,12 @@ public final class FetchSizeCalculator {
 
       long calculatedFetchSize = workerMemoryBytes / resultSetReservedSizeAcrossCores;
 
+      if (calculatedFetchSize < MIN_FETCH_SIZE) {
+        calculatedFetchSize = MIN_FETCH_SIZE;
+      } else if (calculatedFetchSize > MAX_FETCH_SIZE) {
+        calculatedFetchSize = MAX_FETCH_SIZE;
+      }
+
       LOG.info(
           "Auto-inferred fetchSize for table {}: {} (Memory: {} bytes, Cores: {}, RowSize: {} bytes)",
           tableConfig.tableName(),
@@ -83,13 +89,6 @@ public final class FetchSizeCalculator {
           workerMemoryBytes,
           workerCores,
           estimatedRowSize);
-
-      if (calculatedFetchSize < MIN_FETCH_SIZE) {
-        return MIN_FETCH_SIZE;
-      }
-      if (calculatedFetchSize > MAX_FETCH_SIZE) {
-        return MAX_FETCH_SIZE;
-      }
 
       return (int) calculatedFetchSize;
 

@@ -125,8 +125,8 @@ public interface DialectAdapter extends RetriableSchemaDiscovery, UniformSplitte
       Map<String, SourceColumnType> sourceColumnNameToSourceColumnType,
       JdbcValueMappingsProvider jdbcValueMappingsProvider) {
     return sourceColumnNameToSourceColumnType.values().stream()
-        .map(jdbcValueMappingsProvider::estimateColumnSize)
-        .reduce(0, Integer::sum);
+        .mapToLong(jdbcValueMappingsProvider::estimateColumnSize)
+        .sum();
   }
 
   /**
