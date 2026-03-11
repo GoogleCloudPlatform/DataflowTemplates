@@ -113,12 +113,13 @@ public class DatastreamToDDLTest {
   }
 
   /**
-   * Tests that {@link DatastreamRow#formatStringTemplate} correctly handles JsonNode sources.
-   * This verifies that {_metadata_stream} is correctly replaced.
+   * Tests that {@link DatastreamRow#formatStringTemplate} correctly handles JsonNode sources. This
+   * verifies that {_metadata_stream} is correctly replaced.
    */
   @Test
   public void testFormatStringTemplate_withJsonNode() throws IOException {
-    String json = "{\"_metadata_stream\": \"projects/p1/locations/l1/streams/s1\", \"data\": \"val\"}";
+    String json =
+        "{\"_metadata_stream\": \"projects/p1/locations/l1/streams/s1\", \"data\": \"val\"}";
     JsonNode node = MAPPER.readTree(json);
     DatastreamRow row = DatastreamRow.of(node);
 
@@ -129,34 +130,37 @@ public class DatastreamToDDLTest {
   }
 
   /**
-   * Tests that {@link DatastreamToDML#convertJsonToDmlInfo} uses destination primary keys
-   * for state key generation when source primary keys are missing (common in Postgres).
+   * Tests that {@link DatastreamToDML#convertJsonToDmlInfo} uses destination primary keys for state
+   * key generation when source primary keys are missing (common in Postgres).
    */
   @Test
   public void testConvertJsonToDmlInfo_usesDestinationPkForStateKey() throws IOException {
     // Arrange
-    String json = "{"
-        + "\"id\": 123,"
-        + "\"_metadata_schema\": \"public\","
-        + "\"_metadata_table\": \"users\","
-        + "\"_metadata_deleted\": false"
-        + "}";
+    String json =
+        "{"
+            + "\"id\": 123,"
+            + "\"_metadata_schema\": \"public\","
+            + "\"_metadata_table\": \"users\","
+            + "\"_metadata_deleted\": false"
+            + "}";
     JsonNode node = MAPPER.readTree(json);
-    
+
     // Create a concrete implementation for testing
-    DatastreamToPostgresDML spyDml = new DatastreamToPostgresDML(null) {
-        @Override
-        public Map<String, String> getTableSchema(String catalog, String schema, String table) {
+    DatastreamToPostgresDML spyDml =
+        new DatastreamToPostgresDML(null) {
+          @Override
+          public Map<String, String> getTableSchema(String catalog, String schema, String table) {
             Map<String, String> schemaMap = new HashMap<>();
             schemaMap.put("id", "INTEGER");
             return schemaMap;
-        }
-        
-        @Override
-        public java.util.List<String> getPrimaryKeys(String catalog, String schema, String table, JsonNode row) {
+          }
+
+          @Override
+          public java.util.List<String> getPrimaryKeys(
+              String catalog, String schema, String table, JsonNode row) {
             return Arrays.asList("id");
-        }
-    };
+          }
+        };
 
     // Act
     DmlInfo dmlInfo = spyDml.convertJsonToDmlInfo(node, json);
@@ -167,9 +171,7 @@ public class DatastreamToDDLTest {
     assertThat(dmlInfo.getStateWindowKey()).isEqualTo("public.users:123");
   }
 
-  /**
-   * Tests the lowercased retry fallback in {@link DatastreamToDML.JdbcTableCache}.
-   */
+  /** Tests the lowercased retry fallback in {@link DatastreamToDML.JdbcTableCache}. */
   @Test
   public void testJdbcTableCache_postgreSqlLowercaseFallback() throws SQLException {
     // Arrange

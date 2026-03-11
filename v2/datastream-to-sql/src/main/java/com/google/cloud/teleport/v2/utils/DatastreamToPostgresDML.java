@@ -170,11 +170,11 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       // Try exact match if cased lookup fails
       dataType = tableSchema.get(columnName);
     }
-    
+
     if (dataType == null) {
       return columnValue;
     }
-    
+
     switch (dataType.toUpperCase()) {
       case "INT2":
       case "INT4":
@@ -192,7 +192,9 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       case "SERIAL":
       case "ENUM":
       case "BIGSERIAL":
-        if (columnValue.equals("") || columnValue.equals("''") || columnValue.equalsIgnoreCase("'NULL'")) {
+        if (columnValue.equals("")
+            || columnValue.equals("''")
+            || columnValue.equalsIgnoreCase("'NULL'")) {
           return getNullValueSql();
         }
         break;
@@ -244,7 +246,10 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
 
   public String convertJsonToHstoreLiteral(String jsonValue) {
     // 1. Handle null, empty, or literal "null" strings
-    if (jsonValue == null || jsonValue.isEmpty() || jsonValue.equalsIgnoreCase("null") || jsonValue.equalsIgnoreCase("NULL")) {
+    if (jsonValue == null
+        || jsonValue.isEmpty()
+        || jsonValue.equalsIgnoreCase("null")
+        || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 
@@ -305,7 +310,10 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   public String convertJsonToPostgresInterval(String jsonValue, String columnName) {
-    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("") || jsonValue.equalsIgnoreCase("NULL")) {
+    if (jsonValue == null
+        || jsonValue.equals("''")
+        || jsonValue.equals("")
+        || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 
@@ -338,7 +346,10 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   private String convertJsonToPostgresArray(String jsonValue, String dataType, String columnName) {
-    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("") || jsonValue.equalsIgnoreCase("NULL")) {
+    if (jsonValue == null
+        || jsonValue.equals("''")
+        || jsonValue.equals("")
+        || jsonValue.equalsIgnoreCase("NULL")) {
       return getNullValueSql();
     }
 

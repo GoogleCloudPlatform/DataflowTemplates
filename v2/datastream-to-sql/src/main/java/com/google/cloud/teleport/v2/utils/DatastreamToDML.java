@@ -811,19 +811,24 @@ public abstract class DatastreamToDML
         }
 
         // If not found, and it's Postgres, try lowercasing everything
-        if (tableSchema.isEmpty() && connection.getMetaData().getDatabaseProductName().equals("PostgreSQL")) {
-            LOG.info("Retrying metadata query with lowercased schema/table for PostgreSQL: {}.{}", 
-                schemaName.toLowerCase(), tableName.toLowerCase());
-            try (ResultSet columns =
-                metaData.getColumns(effectiveCatalog, 
-                    schemaName != null ? schemaName.toLowerCase() : null, 
-                    tableName.toLowerCase(), null)) {
-              while (columns.next()) {
-                String colName = columns.getString("COLUMN_NAME");
-                String typeName = columns.getString("TYPE_NAME");
-                tableSchema.put(colName, typeName);
-              }
+        if (tableSchema.isEmpty()
+            && connection.getMetaData().getDatabaseProductName().equals("PostgreSQL")) {
+          LOG.info(
+              "Retrying metadata query with lowercased schema/table for PostgreSQL: {}.{}",
+              schemaName.toLowerCase(),
+              tableName.toLowerCase());
+          try (ResultSet columns =
+              metaData.getColumns(
+                  effectiveCatalog,
+                  schemaName != null ? schemaName.toLowerCase() : null,
+                  tableName.toLowerCase(),
+                  null)) {
+            while (columns.next()) {
+              String colName = columns.getString("COLUMN_NAME");
+              String typeName = columns.getString("TYPE_NAME");
+              tableSchema.put(colName, typeName);
             }
+          }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
@@ -913,17 +918,18 @@ public abstract class DatastreamToDML
             primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
           }
         }
-        
+
         // If not found and PostgreSQL, try lowercasing
         if (primaryKeys.isEmpty() && metaData.getDatabaseProductName().equals("PostgreSQL")) {
-            try (ResultSet jdbcPrimaryKeys =
-                metaData.getPrimaryKeys(effectiveCatalog, 
-                    schemaName != null ? schemaName.toLowerCase() : null, 
-                    tableName.toLowerCase())) {
-              while (jdbcPrimaryKeys.next()) {
-                primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
-              }
+          try (ResultSet jdbcPrimaryKeys =
+              metaData.getPrimaryKeys(
+                  effectiveCatalog,
+                  schemaName != null ? schemaName.toLowerCase() : null,
+                  tableName.toLowerCase())) {
+            while (jdbcPrimaryKeys.next()) {
+              primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
             }
+          }
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {

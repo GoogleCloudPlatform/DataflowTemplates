@@ -142,7 +142,9 @@ public class DatastreamRow {
       }
     }
 
-    if (this.getSourceType() != null && this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
+    if (this.getSourceType() != null
+        && this.getSourceType().equals("oracle")
+        && primaryKeys.isEmpty()) {
       primaryKeys.add(DEFAULT_ORACLE_PRIMARY_KEY);
     }
 
