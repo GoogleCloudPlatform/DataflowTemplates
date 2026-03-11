@@ -91,7 +91,10 @@ public class DatastreamRow {
   public String getStringValue(String field) {
     if (this.jsonRow != null) {
       JsonNode node = jsonRow.get(field);
-      return (node == null || node.isNull()) ? null : node.asText();
+      if (node == null || node.isNull()) {
+        return null;
+      }
+      return node.isTextual() ? node.textValue() : node.toString();
     } else {
       Object value = tableRow.get(field);
       return value == null ? null : value.toString();

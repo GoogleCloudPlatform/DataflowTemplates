@@ -480,6 +480,12 @@ public abstract class DatastreamToDML
   }
 
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
+    // Standardize source type for Postgres if missing to ensure correct sort fields
+    if (!rowObj.has("_metadata_source_type") && this instanceof DatastreamToPostgresDML) {
+      ((com.fasterxml.jackson.databind.node.ObjectNode) rowObj)
+          .put("_metadata_source_type", "postgresql");
+    }
+
     DatastreamRow row = DatastreamRow.of(rowObj);
     // Oracle uses upper case while Postgres uses all lowercase.
     // We lowercase the values of these metadata fields to align with
