@@ -89,10 +89,8 @@ public interface IcebergToPostgresYaml {
       order = 5,
       name = "drop",
       optional = true,
-      description =
-          "A list of field names to drop from the Iceberg record before writing to Postgres.",
-      helpText =
-          "A list of field names to drop from the source record. Mutually exclusive with 'keep' and 'only'.",
+      description = "A list of field names to drop from the input record before writing.",
+      helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
       example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
   String getDrop();
 
@@ -100,8 +98,7 @@ public interface IcebergToPostgresYaml {
       order = 6,
       name = "filter",
       optional = true,
-      description =
-          "An optional filter expression to apply to the input records from the Iceberg table.",
+      description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
       example = "age > 18")
   String getFilter();
@@ -110,10 +107,8 @@ public interface IcebergToPostgresYaml {
       order = 7,
       name = "keep",
       optional = true,
-      description =
-          "A list of field names to keep from the Iceberg record when writing to Postgres.",
-      helpText =
-          "A list of field names to keep in the source record. Mutually exclusive with 'drop' and 'only'.",
+      description = "A list of field names to keep in the input record.",
+      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
       example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
 
@@ -200,7 +195,8 @@ public interface IcebergToPostgresYaml {
       optional = false,
       description = "The name of the table to write to.",
       helpText = "The name of the database table to write data to.",
-      example = "public.my_table")
+      example = "public.my_destination_table")
+  @Validation.Required
   String getLocation();
 
   @TemplateParameter.Text(
@@ -219,6 +215,7 @@ public interface IcebergToPostgresYaml {
       description = "The number of records to group for each write operation.",
       helpText = "The number of records to group together for each write.",
       example = "1000")
+  @Default.Integer(1000)
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
@@ -227,6 +224,6 @@ public interface IcebergToPostgresYaml {
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "false")
+      example = "False")
   Boolean getAutosharding();
 }

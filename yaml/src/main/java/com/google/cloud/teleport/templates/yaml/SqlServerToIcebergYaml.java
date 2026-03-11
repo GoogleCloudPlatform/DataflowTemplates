@@ -18,7 +18,6 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -48,147 +47,6 @@ public interface SqlServerToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,
-      name = "jdbcUrl",
-      optional = false,
-      description = "Connection URL for the JDBC source/sink.",
-      helpText = "The JDBC connection URL.",
-      example = "jdbc:sqlserver://localhost:12345;databaseName=your-db")
-  @Validation.Required
-  String getJdbcUrl();
-
-  @TemplateParameter.Text(
-      order = 2,
-      name = "username",
-      optional = true,
-      description = "Username for the JDBC connection.",
-      helpText = "The database username.",
-      example = "my_user")
-  String getUsername();
-
-  @TemplateParameter.Password(
-      order = 3,
-      name = "password",
-      optional = true,
-      description = "Password for the JDBC connection.",
-      helpText = "The database password.",
-      example = "my_secret_password")
-  String getPassword();
-
-  @TemplateParameter.Text(
-      order = 4,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriver",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 5,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 6,
-      name = "connectionProperties",
-      optional = true,
-      description = "JDBC connection properties.",
-      helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
-      example = "key1=value1;key2=value2")
-  String getConnectionProperties();
-
-  @TemplateParameter.Text(
-      order = 7,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 8,
-      name = "jdbcType",
-      optional = true,
-      description = "Type of JDBC source. Default: mssql.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mssql")
-  @Default.String("mssql")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 9,
-      name = "location",
-      optional = true,
-      description = "The name of the table to read from.",
-      helpText = "The name of the database table to read data from.",
-      example = "public.my_table")
-  String getLocation();
-
-  @TemplateParameter.Text(
-      order = 10,
-      name = "readQuery",
-      optional = true,
-      description = "The SQL query to execute for reading data.",
-      helpText = "The SQL query to execute on the source to extract data.",
-      example = "SELECT * FROM my_table WHERE status = 'active'")
-  String getReadQuery();
-
-  @TemplateParameter.Text(
-      order = 11,
-      name = "partitionColumn",
-      optional = true,
-      description = "The name of a numeric column to be used for partitioning.",
-      helpText = "The name of a numeric column that will be used for partitioning the data.",
-      example = "id")
-  String getPartitionColumn();
-
-  @TemplateParameter.Integer(
-      order = 12,
-      name = "numPartitions",
-      optional = true,
-      description = "The number of partitions to divide the data into.",
-      helpText = "The number of partitions to create for parallel reading.",
-      example = "10")
-  Integer getNumPartitions();
-
-  @TemplateParameter.Integer(
-      order = 13,
-      name = "fetchSize",
-      optional = true,
-      description = "The number of rows to fetch from the database at a time.",
-      helpText =
-          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
-      example = "50000")
-  Integer getFetchSize();
-
-  @TemplateParameter.Boolean(
-      order = 14,
-      name = "disableAutoCommit",
-      optional = true,
-      description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read.",
-      example = "True")
-  Boolean getDisableAutoCommit();
-
-  @TemplateParameter.Boolean(
-      order = 15,
-      name = "outputParallelization",
-      optional = true,
-      description = "Whether to reshuffle the PCollection to distribute results to all workers.",
-      helpText = "If true, the resulting PCollection will be reshuffled.",
-      example = "True")
-  Boolean getOutputParallelization();
-
-  @TemplateParameter.Text(
-      order = 16,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -198,7 +56,7 @@ public interface SqlServerToIcebergYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 2,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -208,7 +66,7 @@ public interface SqlServerToIcebergYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 3,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -218,7 +76,7 @@ public interface SqlServerToIcebergYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 4,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -227,7 +85,7 @@ public interface SqlServerToIcebergYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 5,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -236,7 +94,16 @@ public interface SqlServerToIcebergYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 6,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
+
+  @TemplateParameter.Text(
+      order = 7,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -245,7 +112,7 @@ public interface SqlServerToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 8,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -254,7 +121,7 @@ public interface SqlServerToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 9,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -263,7 +130,7 @@ public interface SqlServerToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 10,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",

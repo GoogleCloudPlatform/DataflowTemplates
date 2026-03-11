@@ -27,8 +27,7 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "MySql to Iceberg (YAML)",
     description =
-        "The MySql to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySql table\n"
-            + "    and outputs the records to Iceberg table.",
+        "The MySql to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySql table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "MySqlToIceberg.yaml",
     filesToCopy = {
@@ -238,6 +237,15 @@ public interface MySqlToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 21,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
+
+  @TemplateParameter.Text(
+      order = 22,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -246,7 +254,7 @@ public interface MySqlToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 23,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -255,7 +263,7 @@ public interface MySqlToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 24,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -264,7 +272,7 @@ public interface MySqlToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 25,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
