@@ -134,8 +134,7 @@ public class DialectAdapterTest {
     Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(10);
 
     long size =
-        dialectAdapter.estimateRowSize(
-            ImmutableMap.of("col1", col1, "col2", col2), mockProvider);
+        dialectAdapter.estimateRowSize(ImmutableMap.of("col1", col1, "col2", col2), mockProvider);
     org.junit.Assert.assertEquals((long) Integer.MAX_VALUE + 10, size);
   }
 }
