@@ -190,8 +190,8 @@ public final class StreamingDataGeneratorWriteToKafka {
               .withValueSerializer(StringSerializer.class)
               .withProducerConfigUpdates(
                   java.util.Map.of(
-                      "linger.ms", 10,
-                      "batch.size", 262144));
+                      "linger.ms", 100,
+                      "batch.size", 64000));
       if (ManagedKafkaRegex.matcher(getPipelineOptions().getBootstrapServer()).matches()) {
         writeTransform = writeTransform.withGCPApplicationDefaultCredentials();
       }
