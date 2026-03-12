@@ -253,7 +253,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                         return new CheckResult(true, "Added column new_col to source.");
                       }
                     },
-
                     new ConditionCheck() {
                       @Override
                       protected String getDescription() {
