@@ -47,7 +47,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.joda.time.Instant;
 
 @Template(
-    name = "GCS_Spanner_DV",
+    name = "GCS_Spanner_Data_Validator",
     category = TemplateCategory.BATCH,
     displayName = "GCS Spanner Data Validation",
     description =
@@ -61,7 +61,7 @@ import org.joda.time.Instant;
     requirements = {
       "The GCS directory for AVRO files must exist before pipeline execution.",
       "The Spanner tables must exist before pipeline execution.",
-      "The Spanner tables must have a compatible schema."
+      "The Spanner tables must have a compatible schema (either directly or schema mapping)."
     })
 public class GCSSpannerDV {
 
