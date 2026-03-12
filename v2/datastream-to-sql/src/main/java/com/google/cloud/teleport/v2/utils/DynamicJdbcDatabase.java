@@ -498,12 +498,20 @@ public class DynamicJdbcDatabase implements Serializable {
 
   private String oracleToPostgresType(OracleColumn column) {
     String type = column.getDataType().toUpperCase();
-    if (type.contains("TIMESTAMP")) return "TIMESTAMP";
+    if (type.contains("TIMESTAMP")) {
+      return "TIMESTAMP";
+    }
     switch (type) {
       case "NUMBER":
-        if (column.getScale() != null && column.getScale() > 0) return "NUMERIC";
-        if (column.getPrecision() != null && column.getPrecision() < 5) return "SMALLINT";
-        if (column.getPrecision() != null && column.getPrecision() < 10) return "INTEGER";
+        if (column.getScale() != null && column.getScale() > 0) {
+          return "NUMERIC";
+        }
+        if (column.getPrecision() != null && column.getPrecision() < 5) {
+          return "SMALLINT";
+        }
+        if (column.getPrecision() != null && column.getPrecision() < 10) {
+          return "INTEGER";
+        }
         return "BIGINT";
       case "FLOAT":
         return "DOUBLE PRECISION";
@@ -542,10 +550,14 @@ public class DynamicJdbcDatabase implements Serializable {
 
   private String oracleToMysqlType(OracleColumn column) {
     String type = column.getDataType().toUpperCase();
-    if (type.contains("TIMESTAMP")) return "TIMESTAMP";
+    if (type.contains("TIMESTAMP")) {
+      return "TIMESTAMP";
+    }
     switch (type) {
       case "NUMBER":
-        if (column.getScale() != null && column.getScale() > 0) return "DECIMAL";
+        if (column.getScale() != null && column.getScale() > 0) {
+          return "DECIMAL";
+        }
         return "BIGINT";
       case "FLOAT":
         return "DOUBLE";
@@ -571,7 +583,9 @@ public class DynamicJdbcDatabase implements Serializable {
 
   private String postgresToMysqlType(PostgresqlColumn column) {
     String type = column.getDataType().toUpperCase();
-    if (type.contains("TIMESTAMP")) return "TIMESTAMP";
+    if (type.contains("TIMESTAMP")) {
+      return "TIMESTAMP";
+    }
     switch (type) {
       case "SMALLINT":
         return "SMALLINT";
