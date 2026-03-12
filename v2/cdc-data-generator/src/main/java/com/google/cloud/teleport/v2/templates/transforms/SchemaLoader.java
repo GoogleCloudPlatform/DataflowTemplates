@@ -15,8 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import autovalue.shaded.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
-import com.google.cloud.teleport.v2.templates.fn.FetchSchemaFn;
+import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
@@ -39,6 +40,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
   protected final SinkType sinkType;
   protected final String sinkOptionsPath;
   protected final Integer insertQps;
+  private final FetchSchemaFn customFn;
 
   private static final Map<SinkType, Supplier<SinkSchemaFetcher>> fetcherRegistry =
       new EnumMap<>(SinkType.class);
@@ -49,17 +51,27 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
     // Register new sink fetcher implementations here
   }
 
-  public SchemaLoader(SinkType sinkType, String sinkOptionsPath, Integer insertQps) {
+  public SchemaLoader(SinkType sinkType, String path, Integer qps) {
+    this(sinkType, path, qps, null);
+  }
+
+  // Internal constructor for testing
+  @VisibleForTesting
+  SchemaLoader(SinkType sinkType, String path, Integer qps, FetchSchemaFn customFn) {
     this.sinkType = sinkType;
-    this.sinkOptionsPath = sinkOptionsPath;
-    this.insertQps = insertQps;
+    this.sinkOptionsPath = path;
+    this.insertQps = qps;
+    this.customFn = customFn;
   }
 
   @Override
   public PCollectionView<DataGeneratorSchema> expand(PBegin input) {
+
+    FetchSchemaFn fetchFn =
+        (customFn != null) ? customFn : new FetchSchemaFn(sinkType, sinkOptionsPath, insertQps);
     return input
         .apply("CreateSinkType", Create.of(sinkType))
-        .apply("FetchSchema", ParDo.of(new FetchSchemaFn(sinkType, sinkOptionsPath, insertQps)))
+        .apply("FetchSchema", ParDo.of(fetchFn))
         .apply("ViewAsSingleton", View.asSingleton());
   }
 }

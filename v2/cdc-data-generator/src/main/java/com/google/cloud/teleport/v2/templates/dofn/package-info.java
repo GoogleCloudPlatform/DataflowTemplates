@@ -15,4 +15,4 @@
  */
 
 /** Package for DoFn's used in the CDC Data Generator template. */
-package com.google.cloud.teleport.v2.templates.fn;
+package com.google.cloud.teleport.v2.templates.dofn;

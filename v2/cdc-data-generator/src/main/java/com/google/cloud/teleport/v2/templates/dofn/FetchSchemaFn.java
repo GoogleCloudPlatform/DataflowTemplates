@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.fn;
+package com.google.cloud.teleport.v2.templates.dofn;
 
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
@@ -62,7 +62,7 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
     }
   }
 
-  private SinkSchemaFetcher createFetcher(SinkType sinkType) {
+  protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
     Supplier<SinkSchemaFetcher> provider = fetcherProviders.get(sinkType);
     if (provider == null) {
       throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
