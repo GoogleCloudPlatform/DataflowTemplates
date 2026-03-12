@@ -226,19 +226,16 @@ public abstract class DatastreamToDML
     return this.dataSource;
   }
 
-  private synchronized void setUpTableCache() {
+  private static synchronized void setUpTableCache(DataSource dataSource, int refreshMinutes) {
     if (tableCache == null) {
-      tableCache =
-          new JdbcTableCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+      tableCache = new JdbcTableCache(dataSource).withCacheResetTimeUnitValue(refreshMinutes);
     }
   }
 
-  private synchronized void setUpPrimaryKeyCache() {
+  private static synchronized void setUpPrimaryKeyCache(DataSource dataSource, int refreshMinutes) {
     if (primaryKeyCache == null) {
       primaryKeyCache =
-          new JdbcPrimaryKeyCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+          new JdbcPrimaryKeyCache(dataSource).withCacheResetTimeUnitValue(refreshMinutes);
     }
   }
 
@@ -246,11 +243,11 @@ public abstract class DatastreamToDML
       String catalogName, String schemaName, String tableName) {
     List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
 
-    if (this.tableCache == null) {
-      setUpTableCache();
+    if (tableCache == null) {
+      setUpTableCache(this.getDataSource(), this.schemaCacheRefreshMinutes);
     }
 
-    return this.tableCache.get(searchKey);
+    return tableCache.get(searchKey);
   }
 
   protected String getFullSourceTableName(DatastreamRow row) {
@@ -269,11 +266,11 @@ public abstract class DatastreamToDML
       String catalogName, String schemaName, String tableName, JsonNode rowObj) {
     List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
 
-    if (this.primaryKeyCache == null) {
-      setUpPrimaryKeyCache();
+    if (primaryKeyCache == null) {
+      setUpPrimaryKeyCache(this.getDataSource(), this.schemaCacheRefreshMinutes);
     }
 
-    List<String> destinationPrimaryKeys = this.primaryKeyCache.get(searchKey);
+    List<String> destinationPrimaryKeys = primaryKeyCache.get(searchKey);
 
     java.util.Set<String> casedSourceFieldNames = new java.util.HashSet<>();
     for (java.util.Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
@@ -317,23 +314,36 @@ public abstract class DatastreamToDML
             String.format("Target table not found: %s.%s", schemaName, tableName));
       }
 
-      try {
-        LOG.info("Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
-        getDynamicJdbcDatabase()
-            .createTable(
-                row.getStreamName(),
-                row.getSchemaName(),
-                row.getTableName(),
-                schemaName,
-                tableName,
-                databaseType);
-        // Refresh cache
-        this.tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
-        this.primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+      synchronized (tableCache) {
+        // Re-check after acquiring lock
         tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to create table via Dynamic DDL", e);
+        if (tableSchema.isEmpty()) {
+          try {
+            LOG.info(
+                "Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
+            getDynamicJdbcDatabase()
+                .createTable(
+                    row.getStreamName(),
+                    row.getSchemaName(),
+                    row.getTableName(),
+                    schemaName,
+                    tableName,
+                    databaseType);
+            // Refresh cache
+            tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+            primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+            tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+          } catch (Exception e) {
+            throw new RuntimeException("Failed to create table via Dynamic DDL", e);
+          }
+        }
       }
+    }
+
+    if (tableSchema.isEmpty()) {
+      throw new RuntimeException(
+          String.format(
+              "Target table still empty after Dynamic DDL: %s.%s", schemaName, tableName));
     }
 
     // Check for missing columns
@@ -353,28 +363,42 @@ public abstract class DatastreamToDML
       if (this.datastreamClient == null) {
         LOG.warn("Missing columns found but datastreamClient is null: {}", missingColumns);
       } else {
-        try {
+        synchronized (tableCache) {
+          // Re-fetch schema after acquiring lock to see if other thread already added columns
+          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+          List<String> stillMissingColumns = new ArrayList<>();
           for (String missingColumn : missingColumns) {
-            LOG.info(
-                "Column not found, attempting Dynamic DDL to add: {}.{}.{}",
-                schemaName,
-                tableName,
-                missingColumn);
-            getDynamicJdbcDatabase()
-                .addColumn(
-                    row.getStreamName(),
-                    row.getSchemaName(),
-                    row.getTableName(),
+            String casedColumnName = applyCasingLogic(missingColumn, this.columnCasing);
+            if (!tableSchema.containsKey(casedColumnName)) {
+              stillMissingColumns.add(missingColumn);
+            }
+          }
+
+          if (!stillMissingColumns.isEmpty()) {
+            try {
+              for (String missingColumn : stillMissingColumns) {
+                LOG.info(
+                    "Column not found, attempting Dynamic DDL to add: {}.{}.{}",
                     schemaName,
                     tableName,
-                    missingColumn,
-                    databaseType);
+                    missingColumn);
+                getDynamicJdbcDatabase()
+                    .addColumn(
+                        row.getStreamName(),
+                        row.getSchemaName(),
+                        row.getTableName(),
+                        schemaName,
+                        tableName,
+                        missingColumn,
+                        databaseType);
+              }
+              // Refresh cache
+              tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+              tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+            } catch (Exception e) {
+              LOG.error("Failed to add columns via Dynamic DDL", e);
+            }
           }
-          // Refresh cache
-          this.tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
-          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-        } catch (Exception e) {
-          LOG.error("Failed to add columns via Dynamic DDL", e);
         }
       }
     }

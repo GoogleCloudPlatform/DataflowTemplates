@@ -61,6 +61,12 @@ public class DynamicJdbcDatabase implements Serializable {
       throws IOException, SQLException {
     SourceConfig sourceConfig = datastreamClient.getSourceConnectionProfile(streamName);
 
+    if (targetSchema != null
+        && !targetSchema.isEmpty()
+        && databaseType.equalsIgnoreCase("postgres")) {
+      executeDdl("CREATE SCHEMA IF NOT EXISTS \"" + targetSchema + "\";");
+    }
+
     String ddl = "";
     if (databaseType.equalsIgnoreCase("postgres")) {
       if (sourceConfig.getMysqlSourceConfig() != null) {
