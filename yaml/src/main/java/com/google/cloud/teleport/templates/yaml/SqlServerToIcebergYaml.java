@@ -79,7 +79,7 @@ public interface SqlServerToIcebergYaml {
       name = "driverClassName",
       optional = true,
       description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriver",
+          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
       example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
   @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
@@ -237,6 +237,15 @@ public interface SqlServerToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 21,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
+
+  @TemplateParameter.Text(
+      order = 22,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -245,7 +254,7 @@ public interface SqlServerToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 23,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -254,7 +263,7 @@ public interface SqlServerToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 24,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -263,7 +272,7 @@ public interface SqlServerToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 24,
+      order = 25,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",

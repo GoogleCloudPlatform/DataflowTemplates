@@ -7,7 +7,7 @@ template:
   description: >
     The Postgres to Iceberg template is a batch pipeline executes the user provided SQL query to read data from Postgres table
     and outputs the records to Iceberg table.
-  flex_container_name: "postgres-to-iceberg-yaml"
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "PostgresToIceberg.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt", "options/postgres_options.yaml", "options/iceberg_options.yaml"}

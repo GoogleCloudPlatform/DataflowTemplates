@@ -6,7 +6,7 @@ template:
   description: >
     The Kafka to Iceberg template is a streaming pipeline that reads data from Kafka
     and writes to an Iceberg table.
-  flex_container_name: "kafka-to-iceberg-yaml"
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "KafkaToIceberg.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt", "options/kafka_options.yaml", "options/iceberg_options.yaml"}
