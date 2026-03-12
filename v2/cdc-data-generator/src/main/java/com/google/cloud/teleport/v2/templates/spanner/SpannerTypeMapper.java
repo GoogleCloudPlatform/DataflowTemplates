@@ -34,7 +34,7 @@ public class SpannerTypeMapper implements TypeMapper {
     }
     Dialect dialect = (Dialect) dialectObj;
     if (typeName == null) {
-      return LogicalType.STRING;
+      throw new IllegalArgumentException("Type name cannot be null");
     }
 
     String upperType = typeName.toUpperCase(Locale.ROOT).trim();

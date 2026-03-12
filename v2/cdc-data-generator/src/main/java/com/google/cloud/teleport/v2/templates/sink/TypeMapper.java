@@ -26,7 +26,7 @@ public interface TypeMapper extends Serializable {
    * Maps a sink type string to a {@link LogicalType}.
    *
    * @param typeName The type name from the sink database (e.g., "VARCHAR", "INT64").
-   * @param dialect The dialect of the sink database (e.g., com.google.cloud.spanner.Dialect), or
+   * @param dialect The dialect of the sink database (e.g., GOOGLE_STANDARD_SQL, POSTGRESQL), or
    *     null.
    * @param size The size of the type, if applicable.
    * @return The corresponding {@link LogicalType}.

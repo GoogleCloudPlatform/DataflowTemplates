@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.mysql;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import org.junit.Test;
@@ -55,6 +56,6 @@ public class MySqlTypeMapperTest {
     assertThat(mapper.getLogicalType("DATETIME", null, null)).isEqualTo(LogicalType.TIMESTAMP);
     assertThat(mapper.getLogicalType("JSON", null, null)).isEqualTo(LogicalType.JSON);
     assertThat(mapper.getLogicalType("UNKNOWN_TYPE", null, null)).isEqualTo(LogicalType.STRING);
-    assertThat(mapper.getLogicalType(null, null, null)).isEqualTo(LogicalType.STRING);
+    assertThrows(IllegalArgumentException.class, () -> mapper.getLogicalType(null, null, null));
   }
 }

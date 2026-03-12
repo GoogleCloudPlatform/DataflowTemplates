@@ -39,7 +39,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class MySqlSchemaFetcher implements SinkSchemaFetcher {
@@ -58,35 +57,33 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
 
   private final ShardFileReader shardFileReader;
   private final ConnectionProvider connectionProvider;
-  private final BiFunction<Connection, String, MySqlInformationSchemaScanner> scannerFactory;
+  private MySqlInformationSchemaScanner testScanner;
 
   public MySqlSchemaFetcher() {
-    this(
-        new ShardFileReader(new SecretManagerAccessorImpl()),
-        null,
-        MySqlInformationSchemaScanner::new);
+    this(new ShardFileReader(new SecretManagerAccessorImpl()), null);
   }
 
   @VisibleForTesting
-  MySqlSchemaFetcher(
-      ShardFileReader shardFileReader,
-      ConnectionProvider connectionProvider,
-      BiFunction<Connection, String, MySqlInformationSchemaScanner> scannerFactory) {
+  MySqlSchemaFetcher(ShardFileReader shardFileReader, ConnectionProvider connectionProvider) {
     this.shardFileReader = shardFileReader;
     this.connectionProvider = connectionProvider;
-    this.scannerFactory = scannerFactory;
+  }
+
+  @VisibleForTesting
+  void setTestScanner(MySqlInformationSchemaScanner testScanner) {
+    this.testScanner = testScanner;
   }
 
   @Override
-  public void init(String optionsFilePath, String jsonData) {
-    if (optionsFilePath == null || optionsFilePath.isEmpty()) {
+  public void init(String sinkConfigPath) {
+    if (sinkConfigPath == null || sinkConfigPath.isEmpty()) {
       throw new IllegalArgumentException(
           "MySQL sink requires a valid shard configuration file path.");
     }
 
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(optionsFilePath);
+    List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkConfigPath);
     if (shards == null || shards.isEmpty()) {
-      throw new RuntimeException("No shards found in the provided shard file: " + optionsFilePath);
+      throw new RuntimeException("No shards found in the provided shard file: " + sinkConfigPath);
     }
     // Use the first shard to extract schema
     Shard firstShard = shards.get(0);
@@ -128,8 +125,13 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   }
 
   private DataGeneratorSchema scanMySqlSchema(Connection connection) throws SQLException {
-    String databaseName = connection.getCatalog();
-    MySqlInformationSchemaScanner scanner = scannerFactory.apply(connection, databaseName);
+    MySqlInformationSchemaScanner scanner;
+    if (this.testScanner != null) {
+      scanner = this.testScanner;
+    } else {
+      String databaseName = connection.getCatalog();
+      scanner = new MySqlInformationSchemaScanner(connection, databaseName);
+    }
     SourceSchema sourceSchema = scanner.scan();
 
     Map<String, DataGeneratorTable> tables =
@@ -176,9 +178,9 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
         .uniqueKeys(uniqueKeysBuilder.build())
         .isRoot(true)
         .insertQps(insertQps)
-        .updateQps(1)
-        .deleteQps(1)
-        .recordsPerTick(1)
+        .updateQps(0) // Default value
+        .deleteQps(0) // Default value
+        .recordsPerTick(1.0) // Default value
         .build();
   }
 

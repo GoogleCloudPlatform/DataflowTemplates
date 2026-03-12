@@ -43,7 +43,7 @@ public class SpannerTypeMapperTest {
     assertThat(mapper.getLogicalType("JSON", dialect, null)).isEqualTo(LogicalType.JSON);
     assertThat(mapper.getLogicalType("ARRAY<INT64>", dialect, null))
         .isEqualTo(LogicalType.STRING); // Default
-    assertThat(mapper.getLogicalType(null, dialect, null)).isEqualTo(LogicalType.STRING);
+    assertThrows(IllegalArgumentException.class, () -> mapper.getLogicalType(null, dialect, null));
   }
 
   @Test
@@ -62,7 +62,7 @@ public class SpannerTypeMapperTest {
     assertThat(mapper.getLogicalType("numeric(10,2)", dialect, null))
         .isEqualTo(LogicalType.NUMERIC);
     assertThat(mapper.getLogicalType("jsonb", dialect, null)).isEqualTo(LogicalType.JSON);
-    assertThat(mapper.getLogicalType(null, dialect, null)).isEqualTo(LogicalType.STRING);
+    assertThrows(IllegalArgumentException.class, () -> mapper.getLogicalType(null, dialect, null));
   }
 
   @Test

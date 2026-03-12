@@ -26,9 +26,15 @@ import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.MatchResult;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
@@ -53,24 +59,36 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   private final SpannerTypeMapper typeMapper = new SpannerTypeMapper();
 
   private final DdlFetcher ddlFetcher;
-  private final SpannerAccessorFetcher spannerAccessorFetcher;
 
   public SpannerSchemaFetcher() {
-    this(SpannerSchema::getInformationSchemaAsDdl, SpannerAccessor::getOrCreate);
+    this(SpannerSchema::getInformationSchemaAsDdl);
   }
 
   @VisibleForTesting
-  SpannerSchemaFetcher(DdlFetcher ddlFetcher, SpannerAccessorFetcher spannerAccessorFetcher) {
+  SpannerSchemaFetcher(DdlFetcher ddlFetcher) {
     this.ddlFetcher = ddlFetcher;
-    this.spannerAccessorFetcher = spannerAccessorFetcher;
   }
 
   @Override
-  public void init(String optionsFilePath, String jsonData) {
-    JSONObject json = new JSONObject(jsonData);
-    this.projectId = json.getString("projectId");
-    this.instanceId = json.getString("instanceId");
-    this.databaseId = json.getString("databaseId");
+  public void init(String sinkConfigPath) {
+    try {
+      MatchResult match = FileSystems.match(sinkConfigPath);
+      if (match.metadata().isEmpty()) {
+        throw new RuntimeException("Spanner sink config file not found: " + sinkConfigPath);
+      }
+      ResourceId resourceId = match.metadata().get(0).resourceId();
+      ReadableByteChannel channel = FileSystems.open(resourceId);
+      String content;
+      try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
+        content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+      }
+      JSONObject json = new JSONObject(content);
+      this.projectId = json.getString("projectId");
+      this.instanceId = json.getString("instanceId");
+      this.databaseId = json.getString("databaseId");
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Error reading Spanner sink config file: " + sinkConfigPath, e);
+    }
   }
 
   @Override
@@ -169,8 +187,6 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
       com.google.cloud.teleport.v2.spanner.ddl.Column column,
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
       com.google.cloud.spanner.Dialect dialect) {
-    boolean isPrimaryKey =
-        table.primaryKeys().stream().anyMatch(pk -> pk.name().equals(column.name()));
 
     return DataGeneratorColumn.builder()
         .name(column.name())

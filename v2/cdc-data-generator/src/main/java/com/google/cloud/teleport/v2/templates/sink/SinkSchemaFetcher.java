@@ -25,7 +25,7 @@ public interface SinkSchemaFetcher {
    *
    * @param jsonData The JSON string containing configuration options specific to the sink.
    */
-  void init(String optionsFilePath, String jsonData);
+  void init(String sinkConfigPath);
 
   /**
    * Fetches the schema definition from the sink.

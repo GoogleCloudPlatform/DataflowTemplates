@@ -27,7 +27,7 @@ public class MySqlTypeMapper implements TypeMapper {
   public LogicalType getLogicalType(
       String typeName, @Nullable Object dialect, @Nullable Long size) {
     if (typeName == null) {
-      return LogicalType.STRING;
+      throw new IllegalArgumentException("Type name cannot be null");
     }
 
     String upperType = typeName.toUpperCase(Locale.ROOT);
