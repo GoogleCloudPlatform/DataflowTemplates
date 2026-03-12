@@ -245,12 +245,15 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
                       @Override
                       protected CheckResult check() {
+                        String schema = cloudSqlSourceResourceManager.getDatabaseName();
                         cloudSqlSourceResourceManager.runSQLUpdate(
                             String.format(
-                                "ALTER TABLE %s ADD COLUMN new_col VARCHAR(200);", tableName));
+                                "ALTER TABLE %s.%s ADD COLUMN new_col VARCHAR(200);",
+                                schema, tableName));
                         return new CheckResult(true, "Added column new_col to source.");
                       }
                     },
+
                     new ConditionCheck() {
                       @Override
                       protected String getDescription() {
