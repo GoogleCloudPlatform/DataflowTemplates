@@ -404,7 +404,6 @@ public abstract class DatastreamToDML
         failsafeValue);
   }
 
-
   public String getDmlTemplate(JsonNode rowObj, List<String> primaryKeys) {
     Boolean isDelete = rowObj.get("_metadata_deleted").asBoolean();
     Boolean hasPrimaryKeys = primaryKeys.size() != 0;

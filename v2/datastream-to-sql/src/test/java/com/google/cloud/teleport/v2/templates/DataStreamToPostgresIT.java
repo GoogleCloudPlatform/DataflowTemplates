@@ -166,8 +166,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
     createReplicationSlotWithRetry(this.replicationSlot);
     cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
+        String.format("CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
     cloudSqlSourceResourceManager.runSQLUpdate(
@@ -200,7 +199,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             gcsPrefix,
             DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT);
     Stream stream =
-        datastreamResourceManager.createStream("stream-pg-add-col", sourceConfig, destinationConfig);
+        datastreamResourceManager.createStream(
+            "stream-pg-add-col", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
     com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
     com.google.pubsub.v1.SubscriptionName subscription =
@@ -246,7 +246,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                       @Override
                       protected CheckResult check() {
                         cloudSqlSourceResourceManager.runSQLUpdate(
-                            String.format("ALTER TABLE %s ADD COLUMN new_col VARCHAR(200);", tableName));
+                            String.format(
+                                "ALTER TABLE %s ADD COLUMN new_col VARCHAR(200);", tableName));
                         return new CheckResult(true, "Added column new_col to source.");
                       }
                     },
@@ -262,7 +263,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                         for (int i = NUM_EVENTS; i < NUM_EVENTS * 2; i++) {
                           Map<String, Object> values = new HashMap<>();
                           values.put(COLUMNS.get(0), i);
-                          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+                          values.put(
+                              COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
                           values.put(COLUMNS.get(2), new Random().nextInt(100));
                           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
                           values.put(COLUMNS.get(4), Instant.now().toString());

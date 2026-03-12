@@ -143,7 +143,6 @@ public class CreateDml
         .withDatabaseType(databaseType);
   }
 
-
   @Override
   public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
     DatastreamToDML datastreamToDML = getDatastreamToDML();
