@@ -335,7 +335,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(2), new Random().nextInt(100));
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
           values.put(COLUMNS.get(4), Instant.now().toString());
-          values.put(columnName, "new-val-" + i);
+          values.put(newColumn, "new-val-" + i);
           rows.add(values);
         }
         boolean success = cloudSqlSourceResourceManager.write(tableName, rows);

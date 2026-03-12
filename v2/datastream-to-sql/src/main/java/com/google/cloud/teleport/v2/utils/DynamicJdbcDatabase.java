@@ -43,7 +43,7 @@ public class DynamicJdbcDatabase implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DynamicJdbcDatabase.class);
 
-  private final DataSource dataSource;
+  private final transient DataSource dataSource;
   private final DataStreamClient datastreamClient;
 
   public DynamicJdbcDatabase(DataSource dataSource, DataStreamClient datastreamClient) {

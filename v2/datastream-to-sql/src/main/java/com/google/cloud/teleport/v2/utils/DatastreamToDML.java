@@ -60,10 +60,10 @@ public abstract class DatastreamToDML
   private static MappedObjectCache<List<String>, Map<String, String>> tableCache;
   private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
-  private DataSource dataSource;
+  private transient DataSource dataSource;
   private DataStreamClient datastreamClient;
   private String databaseType;
-  private DynamicJdbcDatabase dynamicJdbcDatabase;
+  private transient DynamicJdbcDatabase dynamicJdbcDatabase;
   public String quoteCharacter;
   protected String defaultCasing = "LOWERCASE";
   protected String columnCasing = "LOWERCASE";
