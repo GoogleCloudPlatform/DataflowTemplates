@@ -142,6 +142,151 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     runTest(tableName);
   }
 
+  @Test
+  public void testDataStreamPostgresToPostgresDynamicDDL() throws IOException {
+    String tableName = "pg_to_pg_dynamic_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
+    // Destination table is NOT created here to test table creation
+    runTest(tableName);
+  }
+
+  @Test
+  public void testDataStreamPostgresToPostgresDynamicDDLColumnAddition() throws IOException {
+    String tableName = "pg_to_pg_add_col_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
+    // Pre-create destination table with original columns
+    cloudSqlDestinationResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
+
+    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String user = cloudSqlSourceResourceManager.getUsername();
+    String schema = cloudSqlSourceResourceManager.getDatabaseName();
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("ALTER USER %s WITH REPLICATION;", user));
+
+    createReplicationSlotWithRetry(this.replicationSlot);
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format(
+            "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format(
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
+
+    JDBCSource jdbcSource =
+        PostgresqlSource.builder(
+                cloudSqlSourceResourceManager.getHost(),
+                cloudSqlSourceResourceManager.getUsername(),
+                cloudSqlSourceResourceManager.getPassword(),
+                cloudSqlSourceResourceManager.getPort(),
+                cloudSqlSourceResourceManager.getDatabaseName(),
+                this.replicationSlot,
+                publication)
+            .setAllowedTables(
+                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
+            .build();
+    String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    String gcsPrefixForNotification =
+        getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("postgres-profile", jdbcSource);
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile",
+            artifactBucketName,
+            gcsPrefix,
+            DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT);
+    Stream stream =
+        datastreamResourceManager.createStream("stream-pg-add-col", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+    com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
+    com.google.pubsub.v1.SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
+    String schemaMap =
+        String.format(
+            "%s:%s",
+            cloudSqlSourceResourceManager.getDatabaseName(),
+            cloudSqlDestinationResourceManager.getDatabaseName());
+    String jobName = PipelineUtils.createJobName(testName);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+            .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
+            .addParameter("gcsPubSubSubscription", subscription.toString())
+            .addParameter("inputFileFormat", "json")
+            .addParameter("streamName", stream.getName())
+            .addParameter("databaseType", "postgres")
+            .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
+            .addParameter("schemaMap", schemaMap)
+            .addParameter("databaseHost", cloudSqlDestinationResourceManager.getHost())
+            .addParameter(
+                "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
+            .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
+            .addParameter("databasePassword", cloudSqlDestinationResourceManager.getPassword());
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writePostgresData(tableName, cdcEvents),
+                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    new ConditionCheck() {
+                      @Override
+                      protected String getDescription() {
+                        return "Add column to source and destination.";
+                      }
+
+                      @Override
+                      protected CheckResult check() {
+                        cloudSqlSourceResourceManager.runSQLUpdate(
+                            String.format("ALTER TABLE %s ADD COLUMN new_col VARCHAR(200);", tableName));
+                        return new CheckResult(true, "Added column new_col to source.");
+                      }
+                    },
+                    new ConditionCheck() {
+                      @Override
+                      protected String getDescription() {
+                        return "Send data with new column.";
+                      }
+
+                      @Override
+                      protected CheckResult check() {
+                        List<Map<String, Object>> rows = new ArrayList<>();
+                        for (int i = NUM_EVENTS; i < NUM_EVENTS * 2; i++) {
+                          Map<String, Object> values = new HashMap<>();
+                          values.put(COLUMNS.get(0), i);
+                          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+                          values.put(COLUMNS.get(2), new Random().nextInt(100));
+                          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
+                          values.put(COLUMNS.get(4), Instant.now().toString());
+                          values.put("new_col", "dynamic_value_" + i);
+                          rows.add(values);
+                        }
+                        boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
+                        cdcEvents.get(tableName).addAll(rows);
+                        return new CheckResult(success, "Sent rows with new column.");
+                      }
+                    },
+                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
+                        .setMinRows(NUM_EVENTS * 2)
+                        .build(),
+                    checkDestinationRows(tableName, cdcEvents)))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
+
+    assertThatResult(result).meetsConditions();
+  }
+
   private void runTest(String sourceTableName) throws IOException {
     this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -60,6 +61,9 @@ public abstract class DatastreamToDML
   private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
+  private DataStreamClient datastreamClient;
+  private String databaseType;
+  private DynamicJdbcDatabase dynamicJdbcDatabase;
   public String quoteCharacter;
   protected String defaultCasing = "LOWERCASE";
   protected String columnCasing = "LOWERCASE";
@@ -115,6 +119,16 @@ public abstract class DatastreamToDML
     if (cacheMinutes != null) {
       this.schemaCacheRefreshMinutes = cacheMinutes;
     }
+    return this;
+  }
+
+  public DatastreamToDML withDataStreamClient(DataStreamClient datastreamClient) {
+    this.datastreamClient = datastreamClient;
+    return this;
+  }
+
+  public DatastreamToDML withDatabaseType(String databaseType) {
+    this.databaseType = databaseType;
     return this;
   }
 
@@ -280,6 +294,13 @@ public abstract class DatastreamToDML
     return quoteCharacter + name + quoteCharacter;
   }
 
+  public synchronized DynamicJdbcDatabase getDynamicJdbcDatabase() {
+    if (this.dynamicJdbcDatabase == null) {
+      this.dynamicJdbcDatabase = new DynamicJdbcDatabase(getDataSource(), datastreamClient);
+    }
+    return this.dynamicJdbcDatabase;
+  }
+
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
     // Oracle uses upper case while Postgres uses all lowercase.
@@ -291,8 +312,71 @@ public abstract class DatastreamToDML
 
     Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
     if (tableSchema.isEmpty()) {
-      throw new RuntimeException(
-          String.format("Target table not found: %s.%s", schemaName, tableName));
+      if (this.datastreamClient == null) {
+        throw new RuntimeException(
+            String.format("Target table not found: %s.%s", schemaName, tableName));
+      }
+
+      try {
+        LOG.info("Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
+        getDynamicJdbcDatabase()
+            .createTable(
+                row.getStreamName(),
+                row.getSchemaName(),
+                row.getTableName(),
+                schemaName,
+                tableName,
+                databaseType);
+        // Refresh cache
+        this.tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+        this.primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+        tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to create table via Dynamic DDL", e);
+      }
+    }
+
+    // Check for missing columns
+    List<String> missingColumns = new ArrayList<>();
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceFieldName = it.next();
+      if (sourceFieldName.startsWith("_metadata")) {
+        continue;
+      }
+      String casedColumnName = applyCasingLogic(sourceFieldName, this.columnCasing);
+      if (!tableSchema.containsKey(casedColumnName)) {
+        missingColumns.add(sourceFieldName);
+      }
+    }
+
+    if (!missingColumns.isEmpty()) {
+      if (this.datastreamClient == null) {
+        LOG.warn("Missing columns found but datastreamClient is null: {}", missingColumns);
+      } else {
+        try {
+          for (String missingColumn : missingColumns) {
+            LOG.info(
+                "Column not found, attempting Dynamic DDL to add: {}.{}.{}",
+                schemaName,
+                tableName,
+                missingColumn);
+            getDynamicJdbcDatabase()
+                .addColumn(
+                    row.getStreamName(),
+                    row.getSchemaName(),
+                    row.getTableName(),
+                    schemaName,
+                    tableName,
+                    missingColumn,
+                    databaseType);
+          }
+          // Refresh cache
+          this.tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+        } catch (Exception e) {
+          LOG.error("Failed to add columns via Dynamic DDL", e);
+        }
+      }
     }
 
     List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
@@ -319,6 +403,7 @@ public abstract class DatastreamToDML
         orderByValues,
         failsafeValue);
   }
+
 
   public String getDmlTemplate(JsonNode rowObj, List<String> primaryKeys) {
     Boolean isDelete = rowObj.get("_metadata_deleted").asBoolean();

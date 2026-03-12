@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.utils.DatastreamToMySQLDML;
@@ -45,6 +46,8 @@ public class CreateDml
   private static final String WINDOW_DURATION = "1s";
   private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
+  private static DataStreamClient datastreamClient;
+  private static String databaseType;
   private static String defaultCasing = "LOWERCASE";
   private static String columnCasing = "LOWERCASE";
   private static Map<String, String> schemaMap = new HashMap<String, String>();
@@ -104,6 +107,16 @@ public class CreateDml
     return this;
   }
 
+  public CreateDml withDataStreamClient(DataStreamClient datastreamClient) {
+    CreateDml.datastreamClient = datastreamClient;
+    return this;
+  }
+
+  public CreateDml withDatabaseType(String databaseType) {
+    CreateDml.databaseType = databaseType;
+    return this;
+  }
+
   public DatastreamToDML getDatastreamToDML() {
     DatastreamToDML datastreamToDML;
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
@@ -125,8 +138,11 @@ public class CreateDml
         .withSchemaMap(this.schemaMap)
         .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
-        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes);
+        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes)
+        .withDataStreamClient(datastreamClient)
+        .withDatabaseType(databaseType);
   }
+
 
   @Override
   public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
