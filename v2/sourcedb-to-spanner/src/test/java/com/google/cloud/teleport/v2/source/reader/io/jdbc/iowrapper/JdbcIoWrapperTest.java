@@ -33,6 +33,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -712,5 +714,64 @@ public class JdbcIoWrapperTest {
   @Test
   public void testIdGeneration() {
     assertThat(JdbcIOWrapperConfig.generateId()).isNotEqualTo(JdbcIOWrapperConfig.generateId());
+  }
+
+  @Test
+  public void testGetTableConfig() {
+
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("id")))
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setMaxPartitions(10)
+            .setMaxFetchSize(1000)
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+    String tableName = "testTable";
+    SourceColumnIndexInfo indexInfo =
+        SourceColumnIndexInfo.builder()
+            .setColumnName("id")
+            .setIndexType(IndexType.NUMERIC)
+            .setIndexName("PRIMARY")
+            .setIsPrimary(true)
+            .setCardinality(100L)
+            .setIsUnique(true)
+            .setOrdinalPosition(1)
+            .build();
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfoMap =
+        ImmutableMap.of(tableName, ImmutableList.of(indexInfo));
+
+    TableConfig tableConfig = JdbcIoWrapper.getTableConfig(tableName, config, indexInfoMap);
+
+    assertThat(tableConfig.tableName()).isEqualTo(tableName);
+    assertThat(tableConfig.dataSourceId()).isEqualTo(config.id());
+    assertThat(tableConfig.approxRowCount()).isEqualTo(100L);
+    assertThat(tableConfig.maxPartitions()).isEqualTo(10);
+    assertThat(tableConfig.fetchSize()).isEqualTo(1000);
+    assertThat(tableConfig.partitionColumns()).hasSize(1);
+    assertThat(tableConfig.partitionColumns().get(0).columnName()).isEqualTo("\"id\"");
+  }
+
+  @Test
+  public void testGetTableIdentifier() {
+    TableConfig tableConfig =
+        TableConfig.builder("testTable").setDataSourceId("testDataSource").build();
+
+    TableIdentifier tableIdentifier = JdbcIoWrapper.getTableIdentifier(tableConfig);
+
+    assertThat(tableIdentifier.tableName()).isEqualTo("\"testTable\"");
+    assertThat(tableIdentifier.dataSourceId()).isEqualTo("testDataSource");
   }
 }

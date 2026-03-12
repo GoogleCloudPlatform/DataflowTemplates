@@ -36,6 +36,7 @@ public class TableConfigTest {
         TableConfig.builder(testTable)
             .withPartitionColum(partitionColumn)
             .setApproxRowCount(42L)
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
             .build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
     assertThat(tableConfig.maxPartitions()).isNull();
@@ -52,6 +53,7 @@ public class TableConfigTest {
 
     TableConfig tableConfig =
         TableConfig.builder(testTable)
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
             .withPartitionColum(partitionColumn)
             .setMaxPartitions(maxPartitions)
             .setApproxRowCount(42L)

@@ -30,7 +30,11 @@ public final class FetchSizeCalculatorTest {
 
   @Before
   public void setUp() {
-    tableConfig = TableConfig.builder("t1").setApproxRowCount(100L).build();
+    tableConfig =
+        TableConfig.builder("t1")
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setApproxRowCount(100L)
+            .build();
   }
 
   @Test
@@ -43,7 +47,11 @@ public final class FetchSizeCalculatorTest {
   @Test
   public void testGetFetchSize_ExplicitFetchSize() {
     // Test when fetch size is explicitly configured in TableConfig.
-    TableConfig configWithFetchSize = TableConfig.builder("t1").setFetchSize(12345).build();
+    TableConfig configWithFetchSize =
+        TableConfig.builder("t1")
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setFetchSize(12345)
+            .build();
     int fetchSize = FetchSizeCalculator.getFetchSize(configWithFetchSize, 100L, null, null);
     assertEquals(12345, fetchSize);
   }

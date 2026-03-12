@@ -44,6 +44,9 @@ public abstract class TableConfig {
   @Nullable
   public abstract Integer fetchSize();
 
+  /** Datasource ID for reading this table. */
+  public abstract String dataSourceId();
+
   public static Builder builder(String tableName) {
     return new AutoValue_TableConfig.Builder()
         .setTableName(tableName)
@@ -64,6 +67,8 @@ public abstract class TableConfig {
     public abstract Builder setApproxRowCount(Long value);
 
     public abstract Builder setFetchSize(Integer value);
+
+    public abstract Builder setDataSourceId(String value);
 
     public Builder withPartitionColum(PartitionColumn column) {
       this.partitionColumnsBuilder().add(column);

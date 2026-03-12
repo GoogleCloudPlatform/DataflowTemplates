@@ -29,8 +29,8 @@ public abstract class TableIdentifier implements Serializable, Comparable<TableI
 
   public abstract String tableName();
 
-  // Future extension:
-  // public abstract String databaseIdentifier();
+  /** Datasource ID for reading this table. */
+  public abstract String dataSourceId();
 
   public static Builder builder() {
     return new AutoValue_TableIdentifier.Builder();
@@ -38,12 +38,15 @@ public abstract class TableIdentifier implements Serializable, Comparable<TableI
 
   @Override
   public int compareTo(TableIdentifier other) {
-    return this.tableName().compareTo(other.tableName());
+    int c = this.dataSourceId().compareTo(other.dataSourceId());
+    return (c != 0) ? c : this.tableName().compareTo(other.tableName());
   }
 
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setTableName(String value);
+
+    public abstract Builder setDataSourceId(String value);
 
     public abstract TableIdentifier build();
   }
