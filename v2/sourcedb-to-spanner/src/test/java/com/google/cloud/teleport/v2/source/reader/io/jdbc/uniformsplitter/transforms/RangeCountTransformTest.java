@@ -66,7 +66,11 @@ public class RangeCountTransformTest {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     Range singleColNonLastRange =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName(tableName)
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -76,7 +80,11 @@ public class RangeCountTransformTest {
             .build();
     Range bothColRange =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName(tableName)
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -86,7 +94,11 @@ public class RangeCountTransformTest {
             .build()
             .withChildRange(
                 Range.<Integer>builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName(tableName)
+                            .build())
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                     .setColName("col2")
                     .setColClass(Integer.class)
@@ -103,7 +115,10 @@ public class RangeCountTransformTest {
                 ImmutableList.of(
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName(tableName).build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName(tableName)
+                                .build())
                         .setPartitionColumns(
                             partitionCols.stream()
                                 .map(
