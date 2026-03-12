@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import autovalue.shaded.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Supplier;
