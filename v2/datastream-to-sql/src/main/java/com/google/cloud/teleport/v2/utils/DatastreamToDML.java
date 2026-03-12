@@ -307,65 +307,60 @@ public abstract class DatastreamToDML
     String schemaName = this.getTargetSchemaName(row);
     String tableName = this.getTargetTableName(row);
 
-    Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-    if (tableSchema.isEmpty()) {
-      if (this.datastreamClient == null) {
-        throw new RuntimeException(
-            String.format("Target table not found: %s.%s", schemaName, tableName));
-      }
+    Map<String, String> tableSchema;
+    List<String> primaryKeys;
 
-      synchronized (tableCache) {
-        // Re-check after acquiring lock
-        tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-        if (tableSchema.isEmpty()) {
-          try {
-            LOG.info(
-                "Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
-            getDynamicJdbcDatabase()
-                .createTable(
-                    row.getStreamName(),
-                    row.getSchemaName(),
-                    row.getTableName(),
-                    schemaName,
-                    tableName,
-                    databaseType);
-            // Refresh cache
-            tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
-            primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
-            tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-          } catch (Exception e) {
-            throw new RuntimeException("Failed to create table via Dynamic DDL", e);
-          }
+    synchronized (tableCache) {
+      tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+      if (tableSchema.isEmpty()) {
+        if (this.datastreamClient == null) {
+          throw new RuntimeException(
+              String.format("Target table not found: %s.%s", schemaName, tableName));
+        }
+
+        try {
+          LOG.info(
+              "Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
+          getDynamicJdbcDatabase()
+              .createTable(
+                  row.getStreamName(),
+                  row.getSchemaName(),
+                  row.getTableName(),
+                  schemaName,
+                  tableName,
+                  databaseType);
+          // Refresh cache
+          tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+        } catch (Exception e) {
+          throw new RuntimeException("Failed to create table via Dynamic DDL", e);
         }
       }
-    }
 
-    if (tableSchema.isEmpty()) {
-      throw new RuntimeException(
-          String.format(
-              "Target table still empty after Dynamic DDL: %s.%s", schemaName, tableName));
-    }
-
-    // Check for missing columns
-    List<String> missingColumns = new ArrayList<>();
-    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
-      String sourceFieldName = it.next();
-      if (sourceFieldName.startsWith("_metadata")) {
-        continue;
+      if (tableSchema.isEmpty()) {
+        throw new RuntimeException(
+            String.format(
+                "Target table still empty after Dynamic DDL: %s.%s", schemaName, tableName));
       }
-      String casedColumnName = applyCasingLogic(sourceFieldName, this.columnCasing);
-      if (!tableSchema.containsKey(casedColumnName)) {
-        missingColumns.add(sourceFieldName);
-      }
-    }
 
-    if (!missingColumns.isEmpty()) {
-      if (this.datastreamClient == null) {
-        LOG.warn("Missing columns found but datastreamClient is null: {}", missingColumns);
-      } else {
-        synchronized (tableCache) {
-          // Re-fetch schema after acquiring lock to see if other thread already added columns
-          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+      // Check for missing columns
+      List<String> missingColumns = new ArrayList<>();
+      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        if (sourceFieldName.startsWith("_metadata")) {
+          continue;
+        }
+        String casedColumnName = applyCasingLogic(sourceFieldName, this.columnCasing);
+        if (!tableSchema.containsKey(casedColumnName)) {
+          missingColumns.add(sourceFieldName);
+        }
+      }
+
+      if (!missingColumns.isEmpty()) {
+        if (this.datastreamClient == null) {
+          LOG.warn("Missing columns found but datastreamClient is null: {}", missingColumns);
+        } else {
           List<String> stillMissingColumns = new ArrayList<>();
           for (String missingColumn : missingColumns) {
             String casedColumnName = applyCasingLogic(missingColumn, this.columnCasing);
@@ -401,9 +396,10 @@ public abstract class DatastreamToDML
           }
         }
       }
+
+      primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     }
 
-    List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
     List<String> sourcePrimaryKeys = row.getPrimaryKeys();
     List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
