@@ -144,18 +144,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @Test
   public void testDataStreamPostgresToPostgresDynamicDDL() throws IOException {
-    String tableName = "pg_to_pg_dynamic_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    String tableName = "pg_ddl_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    // Create table only in source
     cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
-    // Destination table is NOT created here to test table creation
-    runTest(tableName);
-  }
-
-  @Test
-  public void testDataStreamPostgresToPostgresDynamicDDLColumnAddition() throws IOException {
-    String tableName = "pg_to_pg_add_col_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
-    cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
-    // Pre-create destination table with original columns
-    cloudSqlDestinationResourceManager.createTable(tableName, createJdbcSchema(COLUMNS, ROW_ID));
 
     this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
@@ -187,6 +178,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .setAllowedTables(
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
             .build();
+
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     String gcsPrefixForNotification =
         getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
@@ -199,13 +191,15 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             gcsPrefix,
             DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT);
     Stream stream =
-        datastreamResourceManager.createStream(
-            "stream-pg-add-col", sourceConfig, destinationConfig);
+        datastreamResourceManager.createStream("stream-pg-ddl", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
-    com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
+
+    com.google.pubsub.v1.TopicName topic =
+        pubsubResourceManager.createTopic("gcs-notifications-ddl");
     com.google.pubsub.v1.SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
+        pubsubResourceManager.createSubscription(topic, "dataflow-subscription-ddl");
     gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
+
     String schemaMap =
         String.format(
             "%s:%s",
@@ -226,61 +220,47 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
             .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
             .addParameter("databasePassword", cloudSqlDestinationResourceManager.getPassword());
+
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    String newColumnName = "new_col_" + RandomStringUtils.randomAlphanumeric(3).toLowerCase();
+
+    ConditionCheck waitForTableCreation =
+        new ConditionCheck() {
+          @Override
+          public @NonNull String getDescription() {
+            return "Wait for dynamic table creation in destination.";
+          }
+
+          @Override
+          public @NonNull CheckResult check() {
+            try {
+              // Use qualified name since template creates it in mapped schema
+              String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+              cloudSqlDestinationResourceManager.runSQLQuery(
+                  String.format("SELECT 1 FROM %s.%s LIMIT 1", destSchema, tableName));
+              return new CheckResult(true, "Table exists in destination.");
+            } catch (Exception e) {
+              return new CheckResult(false, "Table not created yet: " + e.getMessage());
+            }
+          }
+        };
+
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
+                    // 1. Initial write - should trigger table creation
                     writePostgresData(tableName, cdcEvents),
+                    waitForTableCreation,
                     JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
                         .setMinRows(NUM_EVENTS)
                         .build(),
-                    new ConditionCheck() {
-                      @Override
-                      protected String getDescription() {
-                        return "Add column to source and destination.";
-                      }
-
-                      @Override
-                      protected CheckResult check() {
-                        String schema = cloudSqlSourceResourceManager.getDatabaseName();
-                        cloudSqlSourceResourceManager.runSQLUpdate(
-                            String.format(
-                                "ALTER TABLE %s.%s ADD COLUMN new_col VARCHAR(200);",
-                                schema, tableName));
-                        return new CheckResult(true, "Added column new_col to source.");
-                      }
-                    },
-                    new ConditionCheck() {
-                      @Override
-                      protected String getDescription() {
-                        return "Send data with new column.";
-                      }
-
-                      @Override
-                      protected CheckResult check() {
-                        List<Map<String, Object>> rows = new ArrayList<>();
-                        for (int i = NUM_EVENTS; i < NUM_EVENTS * 2; i++) {
-                          Map<String, Object> values = new HashMap<>();
-                          values.put(COLUMNS.get(0), i);
-                          values.put(
-                              COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
-                          values.put(COLUMNS.get(2), new Random().nextInt(100));
-                          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
-                          values.put(COLUMNS.get(4), Instant.now().toString());
-                          values.put("new_col", "dynamic_value_" + i);
-                          rows.add(values);
-                        }
-                        boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
-                        cdcEvents.get(tableName).addAll(rows);
-                        return new CheckResult(success, "Sent rows with new column.");
-                      }
-                    },
-                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
-                        .setMinRows(NUM_EVENTS * 2)
-                        .build(),
+                    // 2. Add column and write more data - should trigger column addition
+                    addColumnToSource(tableName, newColumnName),
+                    writePostgresDataWithNewColumn(tableName, newColumnName, cdcEvents),
+                    checkDestinationColumnExists(tableName, newColumnName),
                     checkDestinationRows(tableName, cdcEvents)))
             .build();
 
@@ -289,6 +269,81 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
     assertThatResult(result).meetsConditions();
+  }
+
+  private ConditionCheck addColumnToSource(String tableName, String columnName) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Add column to source table.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        String schema = cloudSqlSourceResourceManager.getDatabaseName();
+        cloudSqlSourceResourceManager.runSQLUpdate(
+            String.format(
+                "ALTER TABLE %s.%s ADD COLUMN %s VARCHAR(255);", schema, tableName, columnName));
+        return new CheckResult(true, "Added column to source.");
+      }
+    };
+  }
+
+  private ConditionCheck checkDestinationColumnExists(String tableName, String columnName) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Check if column exists in destination.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        try {
+          String destSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+          String qualifiedTableName = destSchema + "." + tableName;
+          List<Map<String, Object>> rows =
+              cloudSqlDestinationResourceManager.readTable(qualifiedTableName);
+          if (rows.isEmpty()) {
+            return new CheckResult(false, "Table is empty.");
+          }
+          if (rows.get(0).containsKey(columnName)) {
+            return new CheckResult(true, "Column found in destination.");
+          }
+          return new CheckResult(false, "Column not found in destination.");
+        } catch (Exception e) {
+          return new CheckResult(false, "Error checking column: " + e.getMessage());
+        }
+      }
+    };
+  }
+
+  private ConditionCheck writePostgresDataWithNewColumn(
+      String tableName, String newColumn, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Send PostgreSQL events with new column.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = NUM_EVENTS; i < NUM_EVENTS * 2; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put(COLUMNS.get(0), i);
+          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+          values.put(COLUMNS.get(2), new Random().nextInt(100));
+          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
+          values.put(COLUMNS.get(4), Instant.now().toString());
+          values.put(columnName, "new-val-" + i);
+          rows.add(values);
+        }
+        boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
+        cdcEvents.get(tableName).addAll(rows);
+        return new CheckResult(
+            success, String.format("Sent %d rows with new column to %s.", rows.size(), tableName));
+      }
+    };
   }
 
   private void runTest(String sourceTableName) throws IOException {
@@ -615,7 +670,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Error during inactive replication slot cleanup: {}", e.getMessage());
+      LOG.warn("Error during replication slot cleanup: {}", e.getMessage());
     }
   }
 }
