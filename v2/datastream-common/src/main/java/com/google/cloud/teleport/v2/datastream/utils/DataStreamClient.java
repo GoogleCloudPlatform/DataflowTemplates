@@ -36,6 +36,10 @@ import com.google.api.services.datastream.v1.model.PostgresqlRdbms;
 import com.google.api.services.datastream.v1.model.PostgresqlSchema;
 import com.google.api.services.datastream.v1.model.PostgresqlTable;
 import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.SqlServerColumn;
+import com.google.api.services.datastream.v1.model.SqlServerRdbms;
+import com.google.api.services.datastream.v1.model.SqlServerSchema;
+import com.google.api.services.datastream.v1.model.SqlServerTable;
 import com.google.api.services.datastream.v1.model.Stream;
 import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
@@ -126,6 +130,8 @@ public class DataStreamClient implements Serializable {
       return getOracleObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
     } else if (sourceConnProfile.getPostgresqlSourceConfig() != null) {
       return getPostgresqlObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
+    } else if (sourceConnProfile.getSqlServerSourceConfig() != null) {
+      return getSqlServerObjectSchema(streamName, schemaName, tableName, sourceConnProfile);
     } else {
       LOG.error("Source Connection Profile Type Not Supported");
       throw new IOException("Source Connection Profile Type Not Supported");
@@ -142,6 +148,8 @@ public class DataStreamClient implements Serializable {
         return getOraclePrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
       } else if (sourceConnProfile.getPostgresqlSourceConfig() != null) {
         return getPostgresqlPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
+      } else if (sourceConnProfile.getSqlServerSourceConfig() != null) {
+        return getSqlServerPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
       } else {
         throw new IOException("Source Connection Profile Type Not Supported");
       }
@@ -177,6 +185,9 @@ public class DataStreamClient implements Serializable {
     } else if (sourceConnProfile.getPostgresqlSourceConfig() != null) {
       PostgresqlRdbms postgresqlRdbms = buildPostgresqlRdbmsForTable(schemaName, tableName);
       discoverRequest = discoverRequest.setPostgresqlRdbms(postgresqlRdbms);
+    } else if (sourceConnProfile.getSqlServerSourceConfig() != null) {
+      SqlServerRdbms sqlServerRdbms = buildSqlServerRdbmsForTable(schemaName, tableName);
+      discoverRequest = discoverRequest.setSqlServerRdbms(sqlServerRdbms);
     } else {
       throw new IOException("Source Connection Profile Type Not Supported");
     }
@@ -421,6 +432,122 @@ public class DataStreamClient implements Serializable {
     PostgresqlRdbms rdbms = new PostgresqlRdbms().setPostgresqlSchemas(postgresqlSchemas);
 
     return rdbms;
+  }
+
+  public List<String> getSqlServerPrimaryKeys(
+      String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
+      throws IOException {
+    List<String> primaryKeys = new ArrayList<String>();
+    SqlServerTable table =
+        discoverSqlServerTableSchema(streamName, schemaName, tableName, sourceConnProfile);
+    for (SqlServerColumn column : table.getColumns()) {
+      Boolean isPrimaryKey = column.getPrimaryKey();
+      if (BooleanUtils.isTrue(isPrimaryKey)) {
+        primaryKeys.add(column.getColumn());
+      }
+    }
+
+    return primaryKeys;
+  }
+
+  private Map<String, StandardSQLTypeName> getSqlServerObjectSchema(
+      String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
+      throws IOException {
+    Map<String, StandardSQLTypeName> objectSchema = new HashMap<String, StandardSQLTypeName>();
+
+    SqlServerTable table =
+        discoverSqlServerTableSchema(streamName, schemaName, tableName, sourceConnProfile);
+    for (SqlServerColumn column : table.getColumns()) {
+      StandardSQLTypeName bqType = convertSqlServerToBigQueryColumnType(column);
+      objectSchema.put(column.getColumn(), bqType);
+    }
+    return objectSchema;
+  }
+
+  /**
+   * Return a {@link SqlServerTable} object with schema and PK information.
+   *
+   * @param streamName A fully qualified Stream name (ie. projects/my-project/stream/my-stream)
+   * @param schemaName The name of the schema for the table being discovered.
+   * @param tableName The name of the table to discover.
+   * @param sourceConnProfile The SourceConfig connection profile to be discovered.
+   */
+  public SqlServerTable discoverSqlServerTableSchema(
+      String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
+      throws IOException {
+    Datastream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
+        getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
+
+    SqlServerRdbms tableResponse = discoverConnProfile.execute().getSqlServerRdbms();
+    SqlServerSchema schema = tableResponse.getSchemas().get(0);
+    SqlServerTable table = schema.getTables().get(0);
+
+    return table;
+  }
+
+  private SqlServerRdbms buildSqlServerRdbmsForTable(String schemaName, String tableName) {
+    List<SqlServerTable> sqlServerTables = new ArrayList<SqlServerTable>();
+    sqlServerTables.add(new SqlServerTable().setTable(tableName));
+
+    List<SqlServerSchema> sqlServerSchemas = new ArrayList<SqlServerSchema>();
+    sqlServerSchemas.add(
+        new SqlServerSchema().setSchema(schemaName).setTables(sqlServerTables));
+
+    SqlServerRdbms rdbms = new SqlServerRdbms().setSchemas(sqlServerSchemas);
+
+    return rdbms;
+  }
+
+  public StandardSQLTypeName convertSqlServerToBigQueryColumnType(SqlServerColumn column) {
+    String dataType = column.getDataType().toUpperCase();
+
+    switch (dataType) {
+      case "CHAR":
+      case "NCHAR":
+      case "VARCHAR":
+      case "NVARCHAR":
+      case "TEXT":
+      case "NTEXT":
+      case "UNIQUEIDENTIFIER":
+      case "XML":
+        return StandardSQLTypeName.STRING;
+      case "BIT":
+        return StandardSQLTypeName.BOOL;
+      case "TINYINT":
+      case "SMALLINT":
+      case "INT":
+      case "BIGINT":
+        return StandardSQLTypeName.INT64;
+      case "FLOAT":
+      case "REAL":
+        return StandardSQLTypeName.FLOAT64;
+      case "DECIMAL":
+      case "NUMERIC":
+      case "MONEY":
+      case "SMALLMONEY":
+        return StandardSQLTypeName.BIGNUMERIC;
+      case "BINARY":
+      case "VARBINARY":
+      case "IMAGE":
+        return StandardSQLTypeName.BYTES;
+      case "DATE":
+        return StandardSQLTypeName.DATE;
+      case "TIME":
+        return StandardSQLTypeName.TIME;
+      case "DATETIME":
+      case "DATETIME2":
+      case "SMALLDATETIME":
+      case "DATETIMEOFFSET":
+        return StandardSQLTypeName.TIMESTAMP;
+      default:
+    }
+
+    if (TIMESTAMP_PATTERN.matcher(dataType).matches()) {
+      return StandardSQLTypeName.TIMESTAMP;
+    } else {
+      LOG.warn("Datastream SQL Server Type Unknown, Default to String: \"{}\"", dataType);
+      return StandardSQLTypeName.STRING;
+    }
   }
 
   public StandardSQLTypeName convertOracleToBigQueryColumnType(OracleColumn column) {
