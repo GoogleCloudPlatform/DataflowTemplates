@@ -140,7 +140,7 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("location", POSTGRES_TABLE_NAME);
+            .addParameter("postgresTable", POSTGRES_TABLE_NAME);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

@@ -25,6 +25,7 @@ on:
       - '**/pom.xml'
       - '!v1/**/pom.xml'
       - '!v2/**/pom.xml'
+      # Include yaml and python modules
       - 'yaml/**'
       - 'python/**'
       # Include python files and Dockerfiles used for YAML and xlang templates.

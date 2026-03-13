@@ -108,7 +108,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("readQuery", String.format(READ_QUERY, tableName))
+            .addParameter("query", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
