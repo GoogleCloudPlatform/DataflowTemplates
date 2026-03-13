@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
@@ -38,6 +39,9 @@ import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.truth.Truth;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +54,7 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
@@ -59,6 +64,12 @@ import org.slf4j.LoggerFactory;
 public class DatastreamToDMLTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToDMLTest.class);
+
+  @Before
+  public void setUp() {
+    DatastreamToDML.clearCaches();
+  }
+
   private static final String JSON_STRING =
       "{"
           + "\"text_column\":\"value\","
@@ -1280,5 +1291,102 @@ public class DatastreamToDMLTest {
     String expectedJsonb = "'{\"c\":true,\"d\":[1,2]}'";
     String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
     assertEquals(expectedJsonb, actualJsonb);
+  }
+
+  @Test
+  public void testTargetSchemaName_publicSchemaFallback() {
+    // Arrange
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    Map<String, String> schemaMap = new HashMap<>();
+    schemaMap.put("mapped_source", "mapped_dest");
+    dml.withSchemaMap(schemaMap);
+
+    DatastreamRow row = mock(DatastreamRow.class);
+    when(row.getSchemaName()).thenReturn("public");
+    when(row.getTableName()).thenReturn("my_table");
+
+    // Act
+    String targetSchema = dml.getTargetSchemaName(row);
+
+    // Assert: Since 'public' isn't mapped but another mapping exists, it should fallback to the
+    // first mapped dest.
+    assertThat(targetSchema).isEqualTo("mapped_dest");
+  }
+
+  @Test
+  public void testDynamicDdl_triggersCreateTable() throws Exception {
+    // Arrange
+    DataSource ds = mock(DataSource.class);
+    DataSourceConfiguration dsConfig = mock(DataSourceConfiguration.class);
+    when(dsConfig.buildDatasource()).thenReturn(ds);
+
+    DynamicJdbcDatabase mockDb = mock(DynamicJdbcDatabase.class);
+    DataStreamClient mockClient = mock(DataStreamClient.class);
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(dsConfig);
+    dml.withDataStreamClient(mockClient);
+    dml.withDynamicJdbcDatabase(mockDb);
+    dml.withDatabaseType("postgres");
+
+    // Mock connection and metadata so getTableSchema returns empty initially
+    Connection mockConn = mock(Connection.class);
+    DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    when(ds.getConnection()).thenReturn(mockConn);
+    when(mockConn.getMetaData()).thenReturn(mockMeta);
+    // getColumns returns empty ResultSet
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockMeta.getColumns(any(), any(), any(), any())).thenReturn(mockRs);
+    when(mockRs.next()).thenReturn(false);
+
+    String json =
+        "{"
+            + "\"_metadata_schema\":\"source_schema\","
+            + "\"_metadata_table\":\"source_table\","
+            + "\"_metadata_stream\":\"stream1\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":123456,"
+            + "\"_metadata_read_timestamp\":123456,"
+            + "\"_metadata_primary_keys\":[\"id\"],"
+            + "\"id\":1"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+
+    // Act
+    try {
+      dml.convertJsonToDmlInfo(rowObj, json);
+    } catch (Exception e) {
+      // Expected to fail because table schema is still empty after DDL mock
+    }
+
+    // Assert
+    verify(mockDb)
+        .createTable(
+            eq("stream1"),
+            eq("source_schema"),
+            eq("source_table"),
+            eq("source_schema"),
+            eq("source_table"),
+            eq("postgres"));
+  }
+
+  @Test
+  public void testGetValueSql_withCasedColumnNames() {
+    // Arrange
+    String json = "{\"MyColumn\": true}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("my_column", "BOOLEAN"); // Cased destination column
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    dml.withColumnCasing("LOWERCASE");
+
+    // Act
+    String value = dml.getValueSql(rowObj, "MyColumn", tableSchema);
+
+    // Assert: Should correctly identify BOOLEAN type by casing 'MyColumn' to 'my_column'
+    // Postgres booleans are usually returned as 'true' or 'false' literals by Jackson if they are
+    // boolean nodes.
+    // Datastream JSON usually has booleans as true/false primitives.
+    assertThat(value).isEqualTo("true");
   }
 }

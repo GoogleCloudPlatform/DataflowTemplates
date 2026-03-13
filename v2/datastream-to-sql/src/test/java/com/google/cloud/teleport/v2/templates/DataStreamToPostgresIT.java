@@ -48,7 +48,6 @@ import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
@@ -254,9 +253,30 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                     // 1. Initial write - should trigger table creation
                     writePostgresData(tableName, cdcEvents),
                     waitForTableCreation,
-                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
+                    new ConditionCheck() {
+                      @Override
+                      public @NonNull String getDescription() {
+                        return "Check if destination has " + NUM_EVENTS + " rows and log them.";
+                      }
+
+                      @Override
+                      public @NonNull CheckResult check() {
+                        List<Map<String, Object>> actualRows =
+                            cloudSqlDestinationResourceManager.readTable(tableName);
+                        LOG.info(
+                            "Rows in destination table {}: {}. Total: {}",
+                            tableName,
+                            actualRows,
+                            actualRows.size());
+                        if (actualRows.size() >= NUM_EVENTS) {
+                          return new CheckResult(true);
+                        }
+                        return new CheckResult(
+                            false,
+                            String.format(
+                                "Expected %d rows but has only %d", NUM_EVENTS, actualRows.size()));
+                      }
+                    },
                     // 2. Add column and write more data - should trigger column addition
                     addColumnToSource(tableName, newColumnName),
                     writePostgresDataWithNewColumn(tableName, newColumnName, cdcEvents),
@@ -429,9 +449,30 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         ChainedConditionCheck.builder(
                 List.of(
                     writePostgresData(sourceTableName, cdcEvents),
-                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, sourceTableName)
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
+                    new ConditionCheck() {
+                      @Override
+                      public @NonNull String getDescription() {
+                        return "Check if destination has " + NUM_EVENTS + " rows and log them.";
+                      }
+
+                      @Override
+                      public @NonNull CheckResult check() {
+                        List<Map<String, Object>> actualRows =
+                            cloudSqlDestinationResourceManager.readTable(sourceTableName);
+                        LOG.info(
+                            "Rows in destination table {}: {}. Total: {}",
+                            sourceTableName,
+                            actualRows,
+                            actualRows.size());
+                        if (actualRows.size() >= NUM_EVENTS) {
+                          return new CheckResult(true);
+                        }
+                        return new CheckResult(
+                            false,
+                            String.format(
+                                "Expected %d rows but has only %d", NUM_EVENTS, actualRows.size()));
+                      }
+                    },
                     changePostgresData(sourceTableName, cdcEvents),
                     checkDestinationRows(sourceTableName, cdcEvents)))
             .build();

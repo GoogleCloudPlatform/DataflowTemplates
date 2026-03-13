@@ -75,14 +75,14 @@ public abstract class DatastreamToDML
   protected Boolean orderByIncludesIsDeleted = false;
   protected Integer schemaCacheRefreshMinutes = 1440;
 
-  private static final Cache<String, String> tableLockMap =
+  private static final Cache<String, Object> tableLockMap =
       CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
 
-  private static String getTableLock(String tableKey) {
+  private static Object getTableLock(String tableKey) {
     synchronized (tableLockMap) {
-      String lock = tableLockMap.getIfPresent(tableKey);
+      Object lock = tableLockMap.getIfPresent(tableKey);
       if (lock == null) {
-        lock = tableKey;
+        lock = new Object();
         tableLockMap.put(tableKey, lock);
       }
       return lock;
@@ -147,6 +147,16 @@ public abstract class DatastreamToDML
   public DatastreamToDML withDatabaseType(String databaseType) {
     this.databaseType = databaseType;
     return this;
+  }
+
+  public DatastreamToDML withDynamicJdbcDatabase(DynamicJdbcDatabase dynamicJdbcDatabase) {
+    this.dynamicJdbcDatabase = dynamicJdbcDatabase;
+    return this;
+  }
+
+  public static void clearCaches() {
+    tableCache = null;
+    primaryKeyCache = null;
   }
 
   protected String applyCasing(String name) {
@@ -325,7 +335,7 @@ public abstract class DatastreamToDML
     Map<String, String> tableSchema;
     List<String> primaryKeys;
 
-    String lock = getTableLock(tableKey);
+    Object lock = getTableLock(tableKey);
     synchronized (lock) {
       tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
       if (tableSchema.isEmpty()) {
@@ -360,13 +370,14 @@ public abstract class DatastreamToDML
             // DynamicJdbcDatabase,
             // but we can try to at least get it from the cache again after a small sleep.
             try {
-              Thread.sleep(500);
+              Thread.sleep(1000);
             } catch (InterruptedException ie) {
               /* ignore */
             }
             tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
             tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
           }
+          LOG.info("Schema after table creation for {}: {}", tableName, tableSchema);
         } catch (Exception e) {
           throw new RuntimeException("Failed to create table via Dynamic DDL", e);
         }
@@ -422,6 +433,7 @@ public abstract class DatastreamToDML
               // Refresh cache
               tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
               tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+              LOG.info("Schema after column addition for {}: {}", tableName, tableSchema);
             } catch (Exception e) {
               LOG.error("Failed to add columns via Dynamic DDL", e);
             }
@@ -430,6 +442,7 @@ public abstract class DatastreamToDML
       }
 
       primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+      LOG.debug("Primary keys for {}: {}", tableName, primaryKeys);
     }
 
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
@@ -509,7 +522,8 @@ public abstract class DatastreamToDML
     } else {
       columnValue = columnObj.toString();
     }
-    return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
+    String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+    return cleanDataTypeValueSql(columnValue, casedColumnName, tableSchema);
   }
 
   public String cleanDataTypeValueSql(
@@ -542,9 +556,9 @@ public abstract class DatastreamToDML
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+      if (overrideIsDeleted && "_metadata_deleted".equals(fieldName)) {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val == "true" ? "1" : "0");
+        fieldValues.add(val.equals("true") ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
