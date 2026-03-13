@@ -721,7 +721,7 @@ public class DataStreamToSpanner {
                       options.getDlqGcsPubSubSubscription(),
                       // file paths to ignore when re-consuming for retry
                       new ArrayList<String>(
-                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp", "skipped", "tmp_skipped")))));
     } else {
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
@@ -807,7 +807,8 @@ public class DataStreamToSpanner {
                     TupleTagList.of(
                         Arrays.asList(
                             DatastreamToSpannerConstants.FILTERED_EVENT_TAG,
-                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG))));
+                            DatastreamToSpannerConstants.PERMANENT_ERROR_TAG,
+                            DatastreamToSpannerConstants.SKIPPED_EVENT_TAG))));
 
     /*
      * Stage 3: Write filtered records to GCS
@@ -851,6 +852,26 @@ public class DataStreamToSpanner {
                     options.getShadowTablePrefix(),
                     options.getDatastreamSourceType(),
                     isRegularMode));
+
+    PCollection<FailsafeElement<String, String>> transformerSkippedEvents =
+        transformedRecords.get(DatastreamToSpannerConstants.SKIPPED_EVENT_TAG);
+    PCollection<FailsafeElement<String, String>> spannerSkippedEvents =
+        spannerWriteResults.skippedEvents();
+
+    PCollectionList.of(transformerSkippedEvents)
+        .and(spannerSkippedEvents)
+        .apply(Flatten.pCollections())
+        .apply(
+            "Skipped: Write Skipped Events to GCS",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write To Skipped Directory",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(options.getDeadLetterQueueDirectory() + "/skipped/")
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skipped/")
+                .setIncludePaneInfo(true)
+                .build());
     /*
      * Stage 5: Write failures to GCS Dead Letter Queue
      * a) Retryable errors are written to retry GCS Dead letter queue
