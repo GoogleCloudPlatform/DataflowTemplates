@@ -201,10 +201,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
 
     String schemaMap =
-        String.format(
-            "%s:%s",
-            cloudSqlSourceResourceManager.getDatabaseName(),
-            cloudSqlDestinationResourceManager.getDatabaseName());
+        String.format("public:%s", cloudSqlDestinationResourceManager.getDatabaseName());
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
@@ -403,10 +400,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
     gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
     String schemaMap =
-        String.format(
-            "%s:%s",
-            cloudSqlSourceResourceManager.getDatabaseName(),
-            cloudSqlDestinationResourceManager.getDatabaseName());
+        String.format("public:%s", cloudSqlDestinationResourceManager.getDatabaseName());
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
