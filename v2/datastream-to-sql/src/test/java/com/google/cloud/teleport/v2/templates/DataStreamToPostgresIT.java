@@ -263,13 +263,16 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                       public @NonNull CheckResult check() {
                         List<Map<String, Object>> actualRows =
                             cloudSqlDestinationResourceManager.readTable(tableName);
-                        List<Object> actualIds = new ArrayList<>();
+                        List<String> actualIds = new ArrayList<>();
                         for (Map<String, Object> row : actualRows) {
-                          actualIds.add(row.get(ROW_ID.toLowerCase()));
+                          Object idObj = row.get(ROW_ID.toLowerCase());
+                          if (idObj != null) {
+                            actualIds.add(idObj.toString());
+                          }
                         }
                         List<Integer> missingIds = new ArrayList<>();
                         for (int i = 0; i < NUM_EVENTS; i++) {
-                          if (!actualIds.contains(i) && !actualIds.contains((long) i)) {
+                          if (!actualIds.contains(String.valueOf(i))) {
                             missingIds.add(i);
                           }
                         }
@@ -539,8 +542,15 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
           String timestamp = Instant.now().toString();
           values.put(COLUMNS.get(4), timestamp);
+          // Add simulated metadata for sorting
+          values.put("_metadata_timestamp", timestamp);
+          values.put("_metadata_lsn", String.valueOf(i));
+          values.put("_metadata_stream", "stream1");
+          values.put("_metadata_schema", cloudSqlSourceResourceManager.getDatabaseName());
+          values.put("_metadata_table", tableName);
+
           rows.add(values);
-          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
+          LOG.info("IT Sending row_id={} with timestamp={} and lsn={}", i, timestamp, i);
           try {
             Thread.sleep(100);
           } catch (InterruptedException e) {

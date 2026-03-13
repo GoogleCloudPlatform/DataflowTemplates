@@ -218,11 +218,12 @@ public abstract class DatastreamToDML
       // Null rows suggest no DML is required.
       if (dmlInfo != null) {
         LOG.info(
-            "Processing record: Table={}, row_id={}, timestamp={}, PKs={}",
+            "Processing record: Table={}, row_id={}, timestamp={}, PKs={}, SQL={}",
             dmlInfo.getTableName(),
             rowObj.has("row_id") ? rowObj.get("row_id").asText() : "N/A",
             dmlInfo.getOrderByValueString(),
-            dmlInfo.getAllPkFields());
+            dmlInfo.getAllPkFields(),
+            dmlInfo.getDmlSql());
         LOG.debug("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
       } else {
