@@ -31,15 +31,15 @@ options:
         type: text
       - order: 5
         name: "postgresTable"
-        description: "The name of the table to write to."
-        help: "The name of the database table to write data to."
-        example: "public.my_destination_table"
-        required: true
+        description: "The name of the Postgres table."
+        help: "The name of the database table."
+        example: "public.my_table"
+        required: false
         type: text
       - order: 6
         name: "query"
-        description: "The SQL query to execute for reading data."
-        help: "The SQL query to execute on the source to extract data."
+        description: "The SQL query/statement to execute."
+        help: "The SQL query/statement to execute on the source/sink."
         example: "SELECT * FROM my_table WHERE status = 'active'"
         required: false
         type: text
