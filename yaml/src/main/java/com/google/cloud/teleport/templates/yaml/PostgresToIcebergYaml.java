@@ -85,19 +85,18 @@ public interface PostgresToIcebergYaml {
   @TemplateParameter.Text(
       order = 5,
       name = "postgresTable",
-      optional = false,
-      description = "The name of the table to write to.",
-      helpText = "The name of the database table to write data to.",
-      example = "public.my_destination_table")
-  @Validation.Required
+      optional = true,
+      description = "The name of the Postgres table.",
+      helpText = "The name of the database table.",
+      example = "public.my_table")
   String getPostgresTable();
 
   @TemplateParameter.Text(
       order = 6,
       name = "query",
       optional = true,
-      description = "The SQL query to execute for reading data.",
-      helpText = "The SQL query to execute on the source to extract data.",
+      description = "The SQL query/statement to execute.",
+      helpText = "The SQL query/statement to execute on the source/sink.",
       example = "SELECT * FROM my_table WHERE status = 'active'")
   String getQuery();
 
