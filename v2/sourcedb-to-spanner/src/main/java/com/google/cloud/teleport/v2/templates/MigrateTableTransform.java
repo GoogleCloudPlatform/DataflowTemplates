@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.transformer.SourceRowToMutationDoFn;
 import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import java.util.Arrays;
-import java.util.Map;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
@@ -36,9 +35,7 @@ import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Write.FileNaming;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.WriteFilesResult;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
@@ -54,6 +51,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,27 +65,20 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
   private Ddl ddl;
   private ISchemaMapper schemaMapper;
   private ReaderImpl reader;
-  private String shardId;
   private SQLDialect sqlDialect;
-
-  private Map<String, String> srcTableToShardIdColumnMap;
 
   public MigrateTableTransform(
       SourceDbToSpannerOptions options,
       SpannerConfig spannerConfig,
       Ddl ddl,
       ISchemaMapper schemaMapper,
-      ReaderImpl reader,
-      String shardId,
-      Map<String, String> srcTableToShardIdColumnMap) {
+      ReaderImpl reader) {
     this.options = options;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
     this.schemaMapper = schemaMapper;
     this.reader = reader;
-    this.shardId = StringUtils.isEmpty(shardId) ? "" : shardId;
     this.sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-    this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
   }
 
   @Override
@@ -98,16 +89,9 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
 
     if (options.getGcsOutputDirectory() != null && !options.getGcsOutputDirectory().isEmpty()) {
-      String avroDirectory;
-      if (shardId.isEmpty()) {
-        avroDirectory = options.getGcsOutputDirectory();
-      } else {
-        avroDirectory =
-            FileSystems.matchNewResource(options.getGcsOutputDirectory(), true)
-                .resolve(shardId, StandardResolveOptions.RESOLVE_DIRECTORY)
-                .toString();
-      }
-      writeToGCS(sourceRows, avroDirectory);
+      String avroBaseDirectory;
+      avroBaseDirectory = options.getGcsOutputDirectory();
+      writeToGCS(sourceRows, avroBaseDirectory);
     }
 
     CustomTransformation customTransformation =
@@ -147,16 +131,9 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     }
 
     // Dump Failed rows to DLQ
-    String dlqDirectory = outputDirectory + "dlq/severe/" + shardId;
+    String dlqDirectory = outputDirectory + "dlq/severe/";
     LOG.info("DLQ directory: {}", dlqDirectory);
-    DeadLetterQueue dlq =
-        DeadLetterQueue.create(
-            dlqDirectory,
-            ddl,
-            srcTableToShardIdColumnMap,
-            sqlDialect,
-            this.schemaMapper,
-            this.shardId);
+    DeadLetterQueue dlq = DeadLetterQueue.create(dlqDirectory, ddl, sqlDialect, this.schemaMapper);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -166,16 +143,10 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     /*
      * Write filtered records to GCS
      */
-    String filterEventsDirectory = outputDirectory + "filteredEvents/" + shardId;
+    String filterEventsDirectory = outputDirectory + "filteredEvents/";
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     DeadLetterQueue filteredEventsQueue =
-        DeadLetterQueue.create(
-            filterEventsDirectory,
-            ddl,
-            srcTableToShardIdColumnMap,
-            sqlDialect,
-            this.schemaMapper,
-            this.shardId);
+        DeadLetterQueue.create(filterEventsDirectory, ddl, sqlDialect, this.schemaMapper);
     filteredEventsQueue.filteredEventsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)
@@ -185,22 +156,20 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
   public WriteFilesResult<AvroDestination> writeToGCS(
       PCollection<SourceRow> sourceRows, String gcsOutputDirectory) {
-    String shardIdForMetric = this.shardId;
-    String metricName =
-        StringUtils.isEmpty(shardIdForMetric)
-            ? GCS_RECORDS_WRITTEN
-            : String.join("_", GCS_RECORDS_WRITTEN, shardIdForMetric);
     return sourceRows.apply(
         "WriteAvroToGCS",
         FileIO.<AvroDestination, SourceRow>writeDynamic()
             .by(
                 (record) ->
                     AvroDestination.of(
-                        record.tableName(), record.getPayload().getSchema().toString()))
+                        record.shardId(),
+                        record.tableName(),
+                        record.getPayload().getSchema().toString()))
             .via(
                 Contextful.fn(
                     record -> {
-                      Metrics.counter(MigrateTableTransform.class, metricName).inc();
+                      Metrics.counter(MigrateTableTransform.class, getMetricName(record.shardId()))
+                          .inc();
                       return record.toGcsRecord();
                     }),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
@@ -208,6 +177,16 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
             .to(gcsOutputDirectory)
             .withNumShards(0)
             .withNaming((SerializableFunction<AvroDestination, FileNaming>) AvroFileNaming::new));
+  }
+
+  @NotNull
+  @com.google.common.annotations.VisibleForTesting
+  static String getMetricName(String shardIdForMetric) {
+    String metricName =
+        StringUtils.isEmpty(shardIdForMetric)
+            ? GCS_RECORDS_WRITTEN
+            : String.join("_", GCS_RECORDS_WRITTEN, shardIdForMetric);
+    return metricName;
   }
 
   static class AvroFileNaming implements FileIO.Write.FileNaming {
@@ -229,8 +208,11 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
         int shardIndex,
         Compression compression) {
       String subDir = avroDestination.name;
+      String shardId =
+          StringUtils.isBlank(avroDestination.shardId) ? "" : (avroDestination.shardId + "/");
       return subDir
           + "/"
+          + shardId
           + defaultNaming.getFilename(window, pane, numShards, shardIndex, compression);
     }
   }
