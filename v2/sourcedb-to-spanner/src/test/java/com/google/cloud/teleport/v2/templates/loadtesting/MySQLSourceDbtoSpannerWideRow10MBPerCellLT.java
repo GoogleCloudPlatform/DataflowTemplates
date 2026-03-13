@@ -32,7 +32,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
   private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
 
-  // private static final String FETCH_SIZE = "0";
+  private static final String FETCH_SIZE = "0";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
@@ -59,7 +59,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
         new HashMap<>() {
           {
             put("workerMachineType", WORKER_MACHINE_TYPE);
-            // put("fetchSize", FETCH_SIZE);
+            put("fetchSize", FETCH_SIZE);
             put("network", VPC_NAME);
             put("subnetwork", SUBNET_NAME);
             put("workerRegion", VPC_REGION);
