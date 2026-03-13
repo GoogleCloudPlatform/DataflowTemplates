@@ -57,7 +57,6 @@ public class MySQLSourceDbtoSpannerWideRow50KBFetchSizeLT extends SourceDbToSpan
         new HashMap<>() {
           {
             put("workerMachineType", WORKER_MACHINE_TYPE);
-            // put("fetchSize", "0");
             put("numPartitions", "1");
           }
         };
