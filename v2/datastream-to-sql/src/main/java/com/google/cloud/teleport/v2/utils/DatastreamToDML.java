@@ -442,7 +442,21 @@ public abstract class DatastreamToDML
       }
 
       primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
-      LOG.debug("Primary keys for {}: {}", tableName, primaryKeys);
+
+      // If PKs are empty but table exists, metadata might be lagging on a different worker.
+      // Forced refresh once to be sure.
+      if (primaryKeys.isEmpty() || primaryKeys.equals(getDefaultPrimaryKeys())) {
+        primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+        primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+      }
+
+      if (primaryKeys.isEmpty() || primaryKeys.equals(getDefaultPrimaryKeys())) {
+        LOG.warn(
+            "Processing record for {} without detected primary keys. This may cause data loss due to state collisions. PKs: {}, Row: {}",
+            tableName,
+            primaryKeys,
+            rowObj.toString());
+      }
     }
 
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
