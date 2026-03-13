@@ -1332,6 +1332,54 @@ public class DdlTest {
   }
 
   @Test
+  public void pgUdfs() {
+    Ddl.Builder ddlBuilder =
+        Ddl.builder()
+            .createUdf("spanner.Foo1")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("spanner.Foo2")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("TEXT")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(
+                UdfParameter.parse("arg0 TEXT", "spanner.Foo", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 TEXT DEFAULT 'bar'", "spanner.Foo", Dialect.POSTGRESQL))
+            .endUdf();
+    assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
+    assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
+    Ddl ddl = ddlBuilder.build();
+
+    String expectedDdlString =
+        "\nCREATE FUNCTION `Foo1`() RETURN (SELECT 'bar')\n"
+            + "CREATE FUNCTION `Foo2`(`arg0` TEXT, `arg1` TEXT DEFAULT 'bar')"
+            + " RETURNS TEXT SECURITY INVOKER DETERMINISTIC RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE FUNCTION `Foo1`() RETURN (SELECT 'bar')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo2`(`arg0` TEXT, `arg1` TEXT DEFAULT 'bar')"
+                + " RETURNS TEXT SECURITY INVOKER DETERMINISTIC RETURN (SELECT 'bar')"));
+    assertNotNull(ddl.hashCode());
+
+    assertThat(
+        ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
   public void sequences() {
     Ddl ddl =
         Ddl.builder()
