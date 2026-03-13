@@ -1008,7 +1008,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       }
 
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-      if (entryPoint.isEmpty()) {
+      if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
         entryPoint = List.of(pythonTemplateLauncherEntryPoint);
       }
 
@@ -1053,23 +1053,29 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String dockerfilePath = dockerfileContainer + "/Dockerfile";
     File dockerfile = new File(dockerfilePath);
     if (!dockerfile.exists()) {
-      List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
+      List<String> allFilesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
+      if (allFilesToCopy.isEmpty()) {
+        allFilesToCopy = List.of("main.py", "requirements.txt");
+      }
+
+      // Separate flat files from directories
+      List<String> filesToCopy = new ArrayList<>();
+      Set<String> directoriesToCopy = new HashSet<>();
+      for (String f : allFilesToCopy) {
+        File source = new File(dockerfileContainer + "/" + f);
+        if (source.isDirectory()) {
+          directoriesToCopy.add(f);
+        } else {
+          filesToCopy.add(f);
+        }
+      }
       if (filesToCopy.isEmpty()) {
         filesToCopy = List.of("main.py", "requirements.txt");
       }
-      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-      if (entryPoint.isEmpty()) {
-        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
-      }
 
-      // Copy in requirements.txt if present
-      File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
-      File destRequirements = new File(dockerfileContainer + "/requirements.txt");
-      if (sourceRequirements.exists()) {
-        Files.copy(
-            sourceRequirements.toPath(),
-            destRequirements.toPath(),
-            StandardCopyOption.REPLACE_EXISTING);
+      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
+      if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
+        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
       }
 
       // Generate Dockerfile
@@ -1079,10 +1085,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                   definition.getTemplateAnnotation().type(),
                   beamVersion,
                   containerName,
-                  targetDirectory)
+                  outputClassesDirectory)
               .setBasePythonContainerImage(basePythonContainerImage)
               .setFilesToCopy(filesToCopy)
               .setEntryPoint(entryPoint);
+
+      if (!directoriesToCopy.isEmpty()) {
+        dockerfileBuilder.setDirectoriesToCopy(directoriesToCopy);
+      }
+
+      // Configure setup.py support if present
+      File setupFile = new File(dockerfileContainer + "/setup.py");
+      if (setupFile.exists()) {
+        dockerfileBuilder.setSetupFile("setup.py");
+      }
 
       // Set Airlock parameters
       if (internalMaven) {
