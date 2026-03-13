@@ -99,6 +99,13 @@
       <version>${snakeyaml.version}</version>
     </dependency>
 
+    <!-- Conscrypt Provider for Java 17 Dataflow Containers -->
+    <dependency>
+      <groupId>org.conscrypt</groupId>
+      <artifactId>conscrypt-openjdk-uber</artifactId>
+      <version>${conscrypt.version}</version>
+    </dependency>
+
     <!-- Testing -->
     <dependency>
       <groupId>com.google.truth</groupId>

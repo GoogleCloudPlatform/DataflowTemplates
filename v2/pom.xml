@@ -508,9 +508,6 @@
                                     </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
-                                        </excludes>
                                         <includes>
                                             <include>*:*</include>
                                         </includes>
