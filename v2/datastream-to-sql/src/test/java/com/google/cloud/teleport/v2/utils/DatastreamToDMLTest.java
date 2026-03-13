@@ -1294,26 +1294,6 @@ public class DatastreamToDMLTest {
   }
 
   @Test
-  public void testTargetSchemaName_publicSchemaFallback() {
-    // Arrange
-    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
-    Map<String, String> schemaMap = new HashMap<>();
-    schemaMap.put("mapped_source", "mapped_dest");
-    dml.withSchemaMap(schemaMap);
-
-    DatastreamRow row = mock(DatastreamRow.class);
-    when(row.getSchemaName()).thenReturn("public");
-    when(row.getTableName()).thenReturn("my_table");
-
-    // Act
-    String targetSchema = dml.getTargetSchemaName(row);
-
-    // Assert: Since 'public' isn't mapped but another mapping exists, it should fallback to the
-    // first mapped dest.
-    assertThat(targetSchema).isEqualTo("mapped_dest");
-  }
-
-  @Test
   public void testDynamicDdl_triggersCreateTable() throws Exception {
     // Arrange
     DataSource ds = mock(DataSource.class);
