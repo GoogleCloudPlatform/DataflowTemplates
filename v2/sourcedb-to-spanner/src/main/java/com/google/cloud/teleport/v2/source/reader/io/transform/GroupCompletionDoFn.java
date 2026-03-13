@@ -32,7 +32,7 @@ class GroupCompletionDoFn extends DoFn<KV<String, Long>, SourceTableReference> {
   public GroupCompletionDoFn(ImmutableList<SourceTableReference> tableReferences) {
     this.tableReferencesMap =
         tableReferences.stream()
-            .collect(Collectors.toMap(SourceTableReference::sourceTableName, ref -> ref));
+            .collect(Collectors.toMap(SourceTableReference::sourceTableSchemaUUID, ref -> ref));
   }
 
   @ProcessElement
