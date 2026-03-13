@@ -337,7 +337,11 @@ public class DynamicJdbcDatabase implements Serializable {
   private String generateMysqlCreateTableFromMysql(
       String schema, String table, MysqlTable sourceTable) {
     StringBuilder ddl = new StringBuilder();
-    ddl.append("CREATE TABLE IF NOT EXISTS `").append(table).append("` (");
+    ddl.append("CREATE TABLE IF NOT EXISTS `")
+        .append(schema)
+        .append("`.`")
+        .append(table)
+        .append("` (");
     List<String> columnDefinitions = new ArrayList<>();
     for (MysqlColumn column : sourceTable.getMysqlColumns()) {
       columnDefinitions.add("`" + column.getColumn() + "` " + mysqlToMysqlType(column));
@@ -362,7 +366,11 @@ public class DynamicJdbcDatabase implements Serializable {
   private String generateMysqlCreateTableFromOracle(
       String schema, String table, OracleTable sourceTable) {
     StringBuilder ddl = new StringBuilder();
-    ddl.append("CREATE TABLE IF NOT EXISTS `").append(table).append("` (");
+    ddl.append("CREATE TABLE IF NOT EXISTS `")
+        .append(schema)
+        .append("`.`")
+        .append(table)
+        .append("` (");
     List<String> columnDefinitions = new ArrayList<>();
     for (OracleColumn column : sourceTable.getOracleColumns()) {
       columnDefinitions.add("`" + column.getColumn() + "` " + oracleToMysqlType(column));
@@ -387,7 +395,11 @@ public class DynamicJdbcDatabase implements Serializable {
   private String generateMysqlCreateTableFromPostgres(
       String schema, String table, PostgresqlTable sourceTable) {
     StringBuilder ddl = new StringBuilder();
-    ddl.append("CREATE TABLE IF NOT EXISTS `").append(table).append("` (");
+    ddl.append("CREATE TABLE IF NOT EXISTS `")
+        .append(schema)
+        .append("`.`")
+        .append(table)
+        .append("` (");
     List<String> columnDefinitions = new ArrayList<>();
     for (PostgresqlColumn column : sourceTable.getPostgresqlColumns()) {
       columnDefinitions.add("`" + column.getColumn() + "` " + postgresToMysqlType(column));
@@ -411,6 +423,8 @@ public class DynamicJdbcDatabase implements Serializable {
 
   private String generateMysqlAddColumnFromMysql(String schema, String table, MysqlColumn column) {
     return "ALTER TABLE `"
+        + schema
+        + "`.`"
         + table
         + "` ADD COLUMN `"
         + column.getColumn()
@@ -422,6 +436,8 @@ public class DynamicJdbcDatabase implements Serializable {
   private String generateMysqlAddColumnFromOracle(
       String schema, String table, OracleColumn column) {
     return "ALTER TABLE `"
+        + schema
+        + "`.`"
         + table
         + "` ADD COLUMN `"
         + column.getColumn()
@@ -433,6 +449,8 @@ public class DynamicJdbcDatabase implements Serializable {
   private String generateMysqlAddColumnFromPostgres(
       String schema, String table, PostgresqlColumn column) {
     return "ALTER TABLE `"
+        + schema
+        + "`.`"
         + table
         + "` ADD COLUMN `"
         + column.getColumn()
