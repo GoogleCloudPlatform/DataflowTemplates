@@ -263,18 +263,30 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                       public @NonNull CheckResult check() {
                         List<Map<String, Object>> actualRows =
                             cloudSqlDestinationResourceManager.readTable(tableName);
+                        List<Object> actualIds = new ArrayList<>();
+                        for (Map<String, Object> row : actualRows) {
+                          actualIds.add(row.get(ROW_ID.toLowerCase()));
+                        }
+                        List<Integer> missingIds = new ArrayList<>();
+                        for (int i = 0; i < NUM_EVENTS; i++) {
+                          if (!actualIds.contains(i) && !actualIds.contains((long) i)) {
+                            missingIds.add(i);
+                          }
+                        }
                         LOG.info(
-                            "Rows in destination table {}: {}. Total: {}",
+                            "Rows in destination table {}: {}. Total: {}. Missing IDs: {}",
                             tableName,
                             actualRows,
-                            actualRows.size());
+                            actualRows.size(),
+                            missingIds);
                         if (actualRows.size() >= NUM_EVENTS) {
                           return new CheckResult(true);
                         }
                         return new CheckResult(
                             false,
                             String.format(
-                                "Expected %d rows but has only %d", NUM_EVENTS, actualRows.size()));
+                                "Expected %d rows but has only %d. Missing IDs: %s",
+                                NUM_EVENTS, actualRows.size(), missingIds));
                       }
                     },
                     // 2. Add column and write more data - should trigger column addition
@@ -354,11 +366,13 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
           values.put(COLUMNS.get(2), new Random().nextInt(100));
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
-          values.put(COLUMNS.get(4), Instant.now().toString());
+          String timestamp = Instant.now().toString();
+          values.put(COLUMNS.get(4), timestamp);
           values.put(newColumn, "new-val-" + i);
           rows.add(values);
+          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
           try {
-            Thread.sleep(10);
+            Thread.sleep(100);
           } catch (InterruptedException e) {
             // Ignore
           }
@@ -459,18 +473,30 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                       public @NonNull CheckResult check() {
                         List<Map<String, Object>> actualRows =
                             cloudSqlDestinationResourceManager.readTable(sourceTableName);
+                        List<Object> actualIds = new ArrayList<>();
+                        for (Map<String, Object> row : actualRows) {
+                          actualIds.add(row.get(ROW_ID.toLowerCase()));
+                        }
+                        List<Integer> missingIds = new ArrayList<>();
+                        for (int i = 0; i < NUM_EVENTS; i++) {
+                          if (!actualIds.contains(i) && !actualIds.contains((long) i)) {
+                            missingIds.add(i);
+                          }
+                        }
                         LOG.info(
-                            "Rows in destination table {}: {}. Total: {}",
+                            "Rows in destination table {}: {}. Total: {}. Missing IDs: {}",
                             sourceTableName,
                             actualRows,
-                            actualRows.size());
+                            actualRows.size(),
+                            missingIds);
                         if (actualRows.size() >= NUM_EVENTS) {
                           return new CheckResult(true);
                         }
                         return new CheckResult(
                             false,
                             String.format(
-                                "Expected %d rows but has only %d", NUM_EVENTS, actualRows.size()));
+                                "Expected %d rows but has only %d. Missing IDs: %s",
+                                NUM_EVENTS, actualRows.size(), missingIds));
                       }
                     },
                     changePostgresData(sourceTableName, cdcEvents),
@@ -511,10 +537,12 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
           values.put(COLUMNS.get(2), new Random().nextInt(100));
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
-          values.put(COLUMNS.get(4), Instant.now().toString());
+          String timestamp = Instant.now().toString();
+          values.put(COLUMNS.get(4), timestamp);
           rows.add(values);
+          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
           try {
-            Thread.sleep(10);
+            Thread.sleep(100);
           } catch (InterruptedException e) {
             // Ignore
           }

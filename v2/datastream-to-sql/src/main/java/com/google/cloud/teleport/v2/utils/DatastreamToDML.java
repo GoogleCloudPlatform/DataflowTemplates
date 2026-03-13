@@ -26,7 +26,6 @@ import com.google.common.base.CaseFormat;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -218,18 +217,20 @@ public abstract class DatastreamToDML
 
       // Null rows suggest no DML is required.
       if (dmlInfo != null) {
+        LOG.info(
+            "Processing record: Table={}, row_id={}, timestamp={}, PKs={}",
+            dmlInfo.getTableName(),
+            rowObj.has("row_id") ? rowObj.get("row_id").asText() : "N/A",
+            dmlInfo.getOrderByValueString(),
+            dmlInfo.getAllPkFields());
         LOG.debug("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
       } else {
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
-    } catch (IOException e) {
-      context.output(
-          ERROR_TAG,
-          FailsafeElement.of(element.getOriginalPayload(), jsonString)
-              .setErrorMessage(e.getMessage())
-              .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     } catch (Exception e) {
+      LOG.error(
+          "Failed to process record for DML. Row: {}, Error: {}", jsonString, e.getMessage(), e);
       context.output(
           ERROR_TAG,
           FailsafeElement.of(element.getOriginalPayload(), jsonString)
