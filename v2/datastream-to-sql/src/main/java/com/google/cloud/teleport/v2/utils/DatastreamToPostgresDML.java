@@ -74,7 +74,16 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
-    return schemaMappings.getOrDefault(row.getSchemaName(), applyCasing(row.getSchemaName()));
+    String sourceSchema = row.getSchemaName();
+    if (schemaMappings.containsKey(sourceSchema)) {
+      return schemaMappings.get(sourceSchema);
+    }
+    // If source schema is 'public' and it's not mapped, but we have other mappings,
+    // use the first mapping's destination as the target schema.
+    if ("public".equals(sourceSchema) && !schemaMappings.isEmpty()) {
+      return schemaMappings.values().iterator().next();
+    }
+    return applyCasing(sourceSchema);
   }
 
   @Override

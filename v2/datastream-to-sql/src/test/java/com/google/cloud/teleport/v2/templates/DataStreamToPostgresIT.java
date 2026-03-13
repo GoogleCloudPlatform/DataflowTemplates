@@ -338,7 +338,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(newColumn, "new-val-" + i);
           rows.add(values);
           try {
-            Thread.sleep(1);
+            Thread.sleep(10);
           } catch (InterruptedException e) {
             // Ignore
           }
@@ -473,7 +473,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(4), Instant.now().toString());
           rows.add(values);
           try {
-            Thread.sleep(1);
+            Thread.sleep(10);
           } catch (InterruptedException e) {
             // Ignore
           }
