@@ -46,6 +46,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
     createSpannerDDL("SourceDbToSpannerLT/WideRow/spanner-schema-10mib-per-cell.sql");
+    additionalExperiments.add("shuffle_mode=service");
 
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {

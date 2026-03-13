@@ -89,6 +89,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
   protected static final String VPC_REGION = "us-central1";
   protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
   protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
+  protected List<String> additionalExperiments = new java.util.ArrayList<>();
 
   public SourceDbToSpannerLTBase() {
     try {
@@ -222,6 +223,9 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
             .setParameters(params);
+    if (!additionalExperiments.isEmpty()) {
+      options.addEnvironment("additionalExperiments", additionalExperiments);
+    }
     environmentOptions.forEach(options::addEnvironment);
 
     // Act
