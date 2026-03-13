@@ -363,7 +363,16 @@ public class DeadLetterQueue implements Serializable {
     if (value == null) {
       json.put(key, (Object) null);
     } else if (value instanceof Number || value instanceof java.util.Collection) {
-      json.put(key, value);
+      try {
+        json.put(key, value);
+      } catch (Exception e) {
+        // Fallback to string if putting as-is fails.
+        // json.put fails if NaN and Infinity are passed.
+        // Postgres DB and Spanner contain NaN and Infinity values for Numbers.
+        // When we get here, we don't have any other option than to encode the value as string and
+        // write to json in DLQ file.
+        json.put(key, value.toString());
+      }
     } else {
       json.put(key, value.toString());
     }
