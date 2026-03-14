@@ -142,26 +142,6 @@ public interface IcebergToPostgresYaml {
 
   @TemplateParameter.Text(
       order = 11,
-      name = "driverClassName",
-      optional = true,
-      description =
-          "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver",
-      helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "org.postgresql.Driver")
-  @Default.String("org.postgresql.Driver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 12,
-      name = "driverJars",
-      optional = true,
-      description = "Comma-separated GCS paths of the JDBC driver jars.",
-      helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/postgresql-42.2.23.jar")
-  String getDriverJars();
-
-  @TemplateParameter.Text(
-      order = 13,
       name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
@@ -170,46 +150,25 @@ public interface IcebergToPostgresYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 14,
-      name = "connectionInitSql",
+      order = 12,
+      name = "postgresTable",
       optional = true,
-      description = "A list of SQL statements to execute upon connection initialization.",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
-  String getConnectionInitSql();
+      description = "The name of the Postgres table.",
+      helpText = "The name of the database table.",
+      example = "public.my_table")
+  String getPostgresTable();
 
   @TemplateParameter.Text(
-      order = 15,
-      name = "jdbcType",
+      order = 13,
+      name = "query",
       optional = true,
-      description = "Type of JDBC source. Default: postgres.",
-      helpText =
-          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "postgres")
-  @Default.String("postgres")
-  String getJdbcType();
-
-  @TemplateParameter.Text(
-      order = 16,
-      name = "location",
-      optional = false,
-      description = "The name of the table to write to.",
-      helpText = "The name of the database table to write data to.",
-      example = "public.my_destination_table")
-  @Validation.Required
-  String getLocation();
-
-  @TemplateParameter.Text(
-      order = 17,
-      name = "writeStatement",
-      optional = true,
-      description = "The SQL statement to use for inserting records.",
-      helpText = "The SQL query for inserting records, with placeholders for values.",
-      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
-  String getWriteStatement();
+      description = "The SQL query/statement to execute.",
+      helpText = "The SQL query/statement to execute on the source/sink.",
+      example = "SELECT * FROM my_table WHERE status = 'active'")
+  String getQuery();
 
   @TemplateParameter.Integer(
-      order = 18,
+      order = 14,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -219,7 +178,7 @@ public interface IcebergToPostgresYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 19,
+      order = 15,
       name = "autosharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
