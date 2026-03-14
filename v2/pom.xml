@@ -169,7 +169,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>4.33.1</version>
+            <version>4.34.0</version>
         </dependency>
     </dependencies>
 
@@ -701,6 +701,7 @@
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
         <module>common</module>
+        <module>cdc-data-generator</module>
         <module>dataplex</module>
         <module>datastream-common</module>
         <module>datastream-to-bigquery</module>
@@ -710,6 +711,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>firestore-to-firestore</module>
         <module>gcs-to-sourcedb</module>
         <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>

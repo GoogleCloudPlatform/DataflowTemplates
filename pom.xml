@@ -45,7 +45,7 @@
     <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-    <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
+    <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
     <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <jacoco.version>0.8.13</jacoco.version>
@@ -70,12 +70,12 @@
     <commons-text.version>1.10.0</commons-text.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
-    <dlp.version>3.85.0</dlp.version>
-    <failsafe.version>3.3.0</failsafe.version>
+    <dlp.version>3.90.0</dlp.version>
+    <failsafe.version>3.3.2</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
     <gson.version>2.13.2</gson.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.2</hadoop.version>
+    <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
     <jackson.version>2.21.1</jackson.version>
@@ -91,7 +91,7 @@
     <snakeyaml.version>2.4</snakeyaml.version>
     <snappy.version>1.1.10.8</snappy.version>
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
-    <surefire.version>3.5.3</surefire.version>
+    <surefire.version>3.5.5</surefire.version>
     <testcontainers.version>1.21.3</testcontainers.version>
     <truth.version>1.4.5</truth.version>
     <netty.version>4.1.128.Final</netty.version>
@@ -108,10 +108,10 @@
     <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
     <okio.version>3.16.4</okio.version>
-    <jetty.version>12.1.5</jetty.version>
+    <jetty.version>12.1.7</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
-    <postgres-socket-factory.version>1.27.1</postgres-socket-factory.version>
+    <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
@@ -309,6 +309,13 @@
         <groupId>org.eclipse.jetty.websocket</groupId>
         <artifactId>jetty-websocket-jetty-common</artifactId>
         <version>${jetty.version}</version>
+      </dependency>
+      <!--Pinning this dependency due to CVE-2025-67721-->
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>aircompressor</artifactId>
+        <version>2.0.3</version>
+        <scope>compile</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

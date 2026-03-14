@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import java.io.Serializable;
 import javax.annotation.Nullable;
 
@@ -28,6 +29,9 @@ import javax.annotation.Nullable;
  */
 @AutoValue
 public abstract class ColumnForBoundaryQuery implements Serializable {
+
+  /** Identifier of the table for a given boundary. */
+  public abstract TableIdentifier tableIdentifier();
 
   /**
    * @return column details.
@@ -71,6 +75,8 @@ public abstract class ColumnForBoundaryQuery implements Serializable {
 
   @AutoValue.Builder
   public abstract static class Builder {
+
+    public abstract Builder setTableIdentifier(TableIdentifier value);
 
     public abstract Builder setPartitionColumn(PartitionColumn value);
 

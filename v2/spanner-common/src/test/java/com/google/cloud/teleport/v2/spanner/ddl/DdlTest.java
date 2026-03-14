@@ -96,7 +96,18 @@ public class DdlTest {
         .primaryKey()
         .asc("id")
         .end()
-        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+        .indexes(
+            ImmutableList.of(
+                Index.builder()
+                    .name("UsersByFirstName")
+                    .table("Users")
+                    .columns()
+                    .create()
+                    .name("first_name")
+                    .asc()
+                    .endIndexColumn()
+                    .end()
+                    .build()))
         .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
@@ -112,7 +123,7 @@ public class DdlTest {
                 + " `balance` FLOAT32,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC)"
-                + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
     List<String> statements = ddl.statements();
@@ -130,7 +141,8 @@ public class DdlTest {
                 + " ) PRIMARY KEY (`id` ASC)"));
     assertThat(
         statements.get(1),
-        equalToCompressingWhiteSpace(" CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
+        equalToCompressingWhiteSpace(
+            " CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC)"));
     assertThat(
         statements.get(2),
         equalToCompressingWhiteSpace(
@@ -207,7 +219,17 @@ public class DdlTest {
         .asc("id")
         .end()
         .indexes(
-            ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
+            ImmutableList.of(
+                Index.builder(Dialect.POSTGRESQL)
+                    .name("UsersByFirstName")
+                    .table("Users")
+                    .columns()
+                    .create()
+                    .name("first_name")
+                    .asc()
+                    .endIndexColumn()
+                    .end()
+                    .build()))
         .foreignKeys(ImmutableList.of(usersForeignKeyBuilder.build()))
         .checkConstraints(
             ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
@@ -226,7 +248,7 @@ public class DdlTest {
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
-                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\"(\"first_name\" ASC)"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"));
     assertNotNull(ddl.hashCode());
