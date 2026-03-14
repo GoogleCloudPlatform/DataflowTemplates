@@ -639,6 +639,22 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             expectedRows,
             actualRows);
 
+        if (actualRows.isEmpty() && !expectedRows.isEmpty()) {
+          return new CheckResult(false, "Table is empty but expected rows.");
+        }
+
+        // Normalize expected rows to include nulls for any columns added dynamically
+        if (!actualRows.isEmpty()) {
+          Map<String, Object> firstActual = actualRows.get(0);
+          for (Map<String, Object> expected : expectedRows) {
+            for (String key : firstActual.keySet()) {
+              if (!expected.containsKey(key)) {
+                expected.put(key, null);
+              }
+            }
+          }
+        }
+
         long totalRows = actualRows.size();
         long maxRows = expectedRows.size();
 
