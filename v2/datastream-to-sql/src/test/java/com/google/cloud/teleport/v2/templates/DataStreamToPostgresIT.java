@@ -542,15 +542,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
           String timestamp = Instant.now().toString();
           values.put(COLUMNS.get(4), timestamp);
-          // Add simulated metadata for sorting
-          values.put("_metadata_timestamp", timestamp);
-          values.put("_metadata_lsn", String.valueOf(i));
-          values.put("_metadata_stream", "stream1");
-          values.put("_metadata_schema", cloudSqlSourceResourceManager.getDatabaseName());
-          values.put("_metadata_table", tableName);
 
           rows.add(values);
-          LOG.info("IT Sending row_id={} with timestamp={} and lsn={}", i, timestamp, i);
+          LOG.info("IT Sending row_id={} with timestamp={}", i, timestamp);
           try {
             Thread.sleep(100);
           } catch (InterruptedException e) {
