@@ -154,6 +154,11 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_lsn", getPostgresLsn(record));
       outputObject.put("_metadata_tx_id", getPostgresTxId(record));
+    } else if (sourceType.equals("sqlserver")) {
+      // SQL Server Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
       // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
@@ -280,13 +285,20 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.getSchema().getField("primary_keys") == null
-        || sourceMetadata.get("primary_keys") == null) {
-      return null;
+    if (sourceMetadata.getSchema().getField("primary_keys") != null
+        && sourceMetadata.get("primary_keys") != null) {
+      JsonNode dataInput = getSourceMetadataJson(record);
+      return dataInput.get("primary_keys");
     }
 
-    JsonNode dataInput = getSourceMetadataJson(record);
-    return dataInput.get("primary_keys");
+    // SQL Server uses replication_index instead of primary_keys
+    if (sourceMetadata.getSchema().getField("replication_index") != null
+        && sourceMetadata.get("replication_index") != null) {
+      JsonNode dataInput = getSourceMetadataJson(record);
+      return dataInput.get("replication_index");
+    }
+
+    return null;
   }
 
   private String getUUID() {
