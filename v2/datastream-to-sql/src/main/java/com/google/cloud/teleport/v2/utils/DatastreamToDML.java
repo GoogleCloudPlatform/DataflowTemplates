@@ -359,25 +359,27 @@ public abstract class DatastreamToDML
                   databaseType);
           // Refresh cache
           tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
-          primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          if (primaryKeyCache != null) {
+            primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          }
           tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
 
           // If still empty, the JDBC metadata might be lagging.
-          // We can try to populate it from Datastream discovery as a fallback.
-          if (tableSchema.isEmpty()) {
+          // We perform a few retries with increasing backoff.
+          int retries = 0;
+          while (tableSchema.isEmpty() && retries < 3) {
             LOG.warn(
-                "Target table {} not found in JDBC metadata after creation, using discovery as fallback.",
-                tableName);
-            // This is a bit complex to do perfectly here without duplicating logic from
-            // DynamicJdbcDatabase,
-            // but we can try to at least get it from the cache again after a small sleep.
+                "Target table {} not found in JDBC metadata after creation, retry {}/3.",
+                tableName,
+                retries + 1);
             try {
-              Thread.sleep(1000);
+              Thread.sleep(2000L * (retries + 1));
             } catch (InterruptedException ie) {
               /* ignore */
             }
             tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
             tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+            retries++;
           }
           LOG.info("Schema after table creation for {}: {}", tableName, tableSchema);
         } catch (Exception e) {

@@ -22,6 +22,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -1368,5 +1369,124 @@ public class DatastreamToDMLTest {
     // boolean nodes.
     // Datastream JSON usually has booleans as true/false primitives.
     assertThat(value).isEqualTo("true");
+  }
+
+  @Test
+  public void testDynamicDdl_retriesOnMetadataLag() throws Exception {
+    // Arrange
+    DataSource ds = mock(DataSource.class);
+    DataSourceConfiguration dsConfig = mock(DataSourceConfiguration.class);
+    when(dsConfig.buildDatasource()).thenReturn(ds);
+
+    DynamicJdbcDatabase mockDb = mock(DynamicJdbcDatabase.class);
+    DataStreamClient mockClient = mock(DataStreamClient.class);
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(dsConfig);
+    dml.withDataStreamClient(mockClient);
+    dml.withDynamicJdbcDatabase(mockDb);
+    dml.withDatabaseType("postgres");
+
+    Connection mockConn = mock(Connection.class);
+    DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    when(ds.getConnection()).thenReturn(mockConn);
+    when(mockConn.getMetaData()).thenReturn(mockMeta);
+
+    // Mock ResultSet to return empty first time, then return a column
+    ResultSet mockRsEmpty = mock(ResultSet.class);
+    when(mockRsEmpty.next()).thenReturn(false);
+
+    ResultSet mockRsWithData = mock(ResultSet.class);
+    when(mockRsWithData.next()).thenReturn(true, false);
+    when(mockRsWithData.getString("COLUMN_NAME")).thenReturn("id");
+    when(mockRsWithData.getString("TYPE_NAME")).thenReturn("INTEGER");
+    // Attempt 1 (after create) returns empty, Retry 1 returns empty, Retry 2 returns data.
+    when(mockMeta.getColumns(any(), any(), any(), any()))
+        .thenReturn(mockRsEmpty, mockRsEmpty, mockRsWithData);
+
+    // Mock PK retrieval to return data
+    ResultSet mockRsPk = mock(ResultSet.class);
+    when(mockMeta.getPrimaryKeys(any(), any(), any())).thenReturn(mockRsPk);
+    when(mockRsPk.next()).thenReturn(true, false);
+    when(mockRsPk.getString("COLUMN_NAME")).thenReturn("id");
+
+    String json =
+        "{"
+            + "\"_metadata_schema\":\"source_schema\","
+            + "\"_metadata_table\":\"source_table\","
+            + "\"_metadata_stream\":\"stream1\","
+            + "\"_metadata_source_type\":\"postgres\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":123456,"
+            + "\"_metadata_read_timestamp\":123456,"
+            + "\"_metadata_primary_keys\":[\"id\"],"
+            + "\"id\":1"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+
+    // Act
+    DmlInfo result = dml.convertJsonToDmlInfo(rowObj, json);
+
+    // Assert
+    assertThat(result).isNotNull();
+    assertThat(result.getAllPkFields()).contains("id");
+    // Verify createTable was called
+    verify(mockDb).createTable(any(), any(), any(), any(), any(), any());
+    // Verify getColumns was called at least twice (initial check + at least one retry)
+    verify(mockMeta, atLeast(2)).getColumns(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testPrimaryKeys_forcedRefreshOnLag() throws Exception {
+    // Arrange
+    DataSource ds = mock(DataSource.class);
+    DataSourceConfiguration dsConfig = mock(DataSourceConfiguration.class);
+    when(dsConfig.buildDatasource()).thenReturn(ds);
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(dsConfig);
+    dml.withDatabaseType("postgres");
+
+    Connection mockConn = mock(Connection.class);
+    DatabaseMetaData mockMeta = mock(DatabaseMetaData.class);
+    when(ds.getConnection()).thenReturn(mockConn);
+    when(mockConn.getMetaData()).thenReturn(mockMeta);
+
+    // Mock ResultSet for columns (always return data)
+    ResultSet mockRsCol = mock(ResultSet.class);
+    when(mockRsCol.next()).thenReturn(true, false);
+    when(mockRsCol.getString("COLUMN_NAME")).thenReturn("id");
+    when(mockRsCol.getString("TYPE_NAME")).thenReturn("INTEGER");
+    when(mockMeta.getColumns(any(), any(), any(), any())).thenReturn(mockRsCol);
+
+    // Mock ResultSet for PKs: return empty first time, then data (due to forced refresh)
+    ResultSet mockRsPkEmpty = mock(ResultSet.class);
+    when(mockRsPkEmpty.next()).thenReturn(false);
+
+    ResultSet mockRsPkWithData = mock(ResultSet.class);
+    when(mockRsPkWithData.next()).thenReturn(true, false);
+    when(mockRsPkWithData.getString("COLUMN_NAME")).thenReturn("id");
+
+    when(mockMeta.getPrimaryKeys(any(), any(), any())).thenReturn(mockRsPkEmpty, mockRsPkWithData);
+
+    String json =
+        "{"
+            + "\"_metadata_schema\":\"source_schema\","
+            + "\"_metadata_table\":\"source_table\","
+            + "\"_metadata_stream\":\"stream1\","
+            + "\"_metadata_source_type\":\"postgres\","
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":123456,"
+            + "\"_metadata_read_timestamp\":123456,"
+            + "\"_metadata_primary_keys\":[\"id\"],"
+            + "\"id\":1"
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+
+    // Act
+    DmlInfo result = dml.convertJsonToDmlInfo(rowObj, json);
+
+    // Assert
+    assertThat(result.getAllPkFields()).contains("id");
+    // Verify getPrimaryKeys was called at least twice (initial check + forced refresh)
+    verify(mockMeta, atLeast(2)).getPrimaryKeys(any(), any(), any());
   }
 }
