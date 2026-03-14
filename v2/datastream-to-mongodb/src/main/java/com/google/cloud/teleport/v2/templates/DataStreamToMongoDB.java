@@ -44,9 +44,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This pipeline ingests DataStream data from GCS. The data is then transformed to BSON documents
- * they are automatically added to MongoDB.
- *
- * <p>Example Usage: TODO: FIX EXAMPLE USAGE
+ * and they are automatically added to MongoDB.
  */
 public class DataStreamToMongoDB {
 
@@ -197,7 +195,7 @@ public class DataStreamToMongoDB {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    LOG.info("Starting Input Files to BigQuery");
+    LOG.info("Starting DataStream to MongoDB");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
