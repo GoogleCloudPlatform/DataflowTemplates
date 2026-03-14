@@ -629,17 +629,29 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        long totalRows = cloudSqlDestinationResourceManager.getRowCount(tableName);
-        long maxRows = cdcEvents.get(tableName).size();
+        List<Map<String, Object>> expectedRows = cdcEvents.get(tableName);
+        List<Map<String, Object>> actualRows =
+            cloudSqlDestinationResourceManager.readTable(tableName);
+
+        LOG.info(
+            "Checking rows for table {}. Expected: {}, Actual: {}",
+            tableName,
+            expectedRows,
+            actualRows);
+
+        long totalRows = actualRows.size();
+        long maxRows = expectedRows.size();
+
         if (totalRows > maxRows) {
           return new CheckResult(
               false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
         }
         try {
-          checkJdbcTable(tableName, cdcEvents);
+          assertThatRecords(actualRows).hasRecordsUnordered(expectedRows);
           return new CheckResult(true, "JDBC table contains expected rows.");
         } catch (AssertionError error) {
-          return new CheckResult(false, "JDBC table does not contain expected rows.");
+          return new CheckResult(
+              false, "JDBC table does not contain expected rows: " + error.getMessage());
         }
       }
     };
