@@ -41,7 +41,7 @@ import org.apache.beam.sdk.options.Validation;
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The input Pub/Sub topic must exist.",
+      "Either the input Pub/Sub topic or subscription must exist.",
       "The mapToField Pub/Sub error topic must exist.",
       "The output AlloyDb instance must exist."
     },
@@ -51,20 +51,30 @@ public interface PubSubToAlloyDbYaml {
 
   @TemplateParameter.Text(
       order = 1,
-      name = "subscription",
-      optional = false,
-      description = "Pub/Sub subscription",
-      helpText = "Pub/Sub subscription to read the input from.",
-      example = "projects/your-project-id/subscriptions/your-subscription-name")
-  @Validation.Required
-  String getSubscription();
+      name = "topic",
+      optional = true,
+      description = "Pub/Sub topic",
+      helpText =
+          "Pub/Sub topic to read the input from. Provide either topic or subscription, not both.",
+      example = "projects/your-project-id/topics/your-topic-name")
+  String getTopic();
 
   @TemplateParameter.Text(
       order = 2,
+      name = "subscription",
+      optional = true,
+      description = "Pub/Sub subscription",
+      helpText =
+          "Pub/Sub subscription to read the input from. Provide either subscription or topic, not both.",
+      example = "projects/your-project-id/subscriptions/your-subscription-name")
+  String getSubscription();
+
+  @TemplateParameter.Text(
+      order = 3,
       name = "format",
       optional = false,
       description = "The message format.",
-      helpText = "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.",
+      helpText = "The message format. One of: AVRO, JSON, PROTO or STRING.",
       example = "JSON")
   @Validation.Required
   String getFormat();
@@ -154,15 +164,15 @@ public interface PubSubToAlloyDbYaml {
 
   @TemplateParameter.Text(
       order = 11,
-      name = "jdbcUrl",
+      name = "url",
       optional = false,
       description = "JDBC connection URL for AlloyDb",
       helpText =
-          "The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE",
+          "Connection URL for the JDBC sink. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE",
       example =
           "jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE")
   @Validation.Required
-  String getJdbcUrl();
+  String getUrl();
 
   @TemplateParameter.Text(
       order = 12,
@@ -179,21 +189,12 @@ public interface PubSubToAlloyDbYaml {
       name = "password",
       optional = false,
       description = "AlloyDb database password",
-      helpText = "Password for AlloyDb authentication")
+      helpText = "Password for AlloyDb authentication.")
   @Validation.Required
   String getPassword();
 
   @TemplateParameter.Text(
       order = 14,
-      name = "driverClassName",
-      optional = true,
-      description = "JDBC driver class name",
-      helpText = "The JDBC driver class name for connecting to AlloyDb",
-      example = "org.postgresql.Driver")
-  String getDriverClassName();
-
-  @TemplateParameter.Text(
-      order = 15,
       name = "connectionProperties",
       optional = true,
       description = "Connection properties for AlloyDb",
@@ -203,36 +204,27 @@ public interface PubSubToAlloyDbYaml {
   String getConnectionProperties();
 
   @TemplateParameter.Text(
-      order = 16,
-      name = "connectionInitSql",
-      optional = true,
-      description = "A list of SQL statements to execute upon connection initialization",
-      helpText = "A list of SQL statements to execute when a new connection is established.",
-      example = "[\"SET TIME ZONE UTC\"]")
-  String getConnectionInitSql();
-
-  @TemplateParameter.Text(
-      order = 17,
-      name = "location",
+      order = 15,
+      name = "table",
       optional = false,
       description = "Target table name in AlloyDb",
-      helpText = "The name of the table where records will be written",
+      helpText = "Name of the table to write to.",
       example = "my_table")
   @Validation.Required
-  String getLocation();
+  String getTable();
 
   @TemplateParameter.Text(
-      order = 18,
-      name = "writeStatement",
+      order = 16,
+      name = "query",
       optional = false,
-      description = "SQL statement for writing records",
-      helpText = "The SQL INSERT or UPSERT statement template for writing records to AlloyDb",
+      description = "SQL query for writing records",
+      helpText = "SQL query used to insert records into the JDBC sink.",
       example = "INSERT INTO table_name (col1, col2) VALUES (?, ?)")
   @Validation.Required
-  String getWriteStatement();
+  String getQuery();
 
   @TemplateParameter.Integer(
-      order = 19,
+      order = 17,
       name = "batchSize",
       optional = true,
       description = "Batch size for write operations",
@@ -241,15 +233,15 @@ public interface PubSubToAlloyDbYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 20,
-      name = "autosharding",
+      order = 18,
+      name = "autoSharding",
       optional = true,
       description = "Enable autosharding for parallel writes",
-      helpText = "Whether to use autosharding for distributing writes across multiple connections")
-  Boolean getAutosharding();
+      helpText = "If true, enables using a dynamically determined number of shards to write.")
+  Boolean getAutoSharding();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 19,
       name = "network",
       optional = true,
       description = "VPC Network name",
@@ -258,7 +250,7 @@ public interface PubSubToAlloyDbYaml {
   String getNetwork();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 20,
       name = "subnetwork",
       optional = true,
       description = "Subnetwork name",
@@ -267,7 +259,7 @@ public interface PubSubToAlloyDbYaml {
   String getSubnetwork();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 21,
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",

@@ -16,7 +16,7 @@ template:
   documentation: ""
   contactInformation: "https://cloud.google.com/support"
   requirements: {
-    "The input Pub/Sub topic must exist.",
+    "Either the input Pub/Sub topic or subscription must exist.",
     "The mapToField Pub/Sub error topic must exist.",
     "The output AlloyDb instance must exist."
   }
@@ -52,6 +52,7 @@ pipeline:
     - type: ReadFromPubSub
       name: ReadMessages
       config:
+        topic: {{ topic }}
         subscription: {{ subscription }}
         format: {{ format }}
         schema: {{ schema }}
@@ -60,7 +61,7 @@ pipeline:
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
     - type: MapToFields
-      name: ConvertStringsToBytes
+      name: TransformData
       input: ReadMessages
       config:
         language: {{ language }}
@@ -69,27 +70,24 @@ pipeline:
           output: errors
     - type: WindowInto
       name: WindowInto
-      input: ConvertStringsToBytes
+      input: TransformData
       config:
         windowing: {{ windowing }}
     - type: WriteToPostgres
       name: WriteGoodMessagesToAlloyDb
       input: WindowInto
       config:
-        driver_class_name: {{ driverClassName | default("org.postgresql.Driver") }}
-        url: "{{ jdbcUrl }}"
+        url: "{{ url }}"
         username: "{{ username }}"
         password: "{{ password }}"
-        table: "{{ location }}"
-        write_statement: "{{ writeStatement }}"
+        table: "{{ table }}"
+        query: "{{ query }}"
         batch_size: {{ batchSize }}
-        autosharding: {{ autosharding }}
-        type: "postgres"
+        auto_sharding: {{ autoSharding }}
         connection_properties: {{ connectionProperties }}
-        connection_init_sql: {{ connectionInitSql }}
     - type: WriteToPubSub
       name: WriteTransformationErrorsToDeadLetterQueue
-      input: ConvertStringsToBytes.errors
+      input: TransformData.errors
       config:
         topic: {{ outputDeadLetterPubSubTopic }}
         format: {{ format }}

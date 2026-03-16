@@ -30,6 +30,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -54,9 +55,9 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PubSubToAlloyDbYaml.class)
 @RunWith(JUnit4.class)
-public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
+public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubToAlloyDBYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubToAlloyDbYamlIT.class);
   private static final int MESSAGES_COUNT = 10;
   private static final int BAD_MESSAGES_COUNT = 3;
 
@@ -77,13 +78,18 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
 
   @Test
   public void testPubSubToAlloyDb() throws IOException {
-    pubSubToAlloyDb(Function.identity());
+    pubSubToAlloyDb(Function.identity(), /* useSubscription= */ false);
   }
 
-  @SuppressWarnings("unchecked")
+  @Test
+  public void testPubSubToAlloyDbViaSubscription() throws IOException {
+    pubSubToAlloyDb(Function.identity(), /* useSubscription= */ true);
+  }
+
   public void pubSubToAlloyDb(
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
-          paramsAdder)
+          paramsAdder,
+      boolean useSubscription)
       throws IOException {
 
     LOG.info("Starting PubSubToAlloyDb test. Test name: {}. Spec path: {}", testName, specPath);
@@ -92,21 +98,32 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
 
     LOG.info("Creating main and dead letter queue topics...");
     TopicName topic = pubsubResourceManager.createTopic("input");
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, "input-subscription");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
+
+    PipelineLauncher.LaunchConfig.Builder optionsBuilder =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath);
+
+    if (useSubscription) {
+      LOG.info("Creating subscription on input topic for pipeline to consume from...");
+      SubscriptionName inputSubscription =
+          pubsubResourceManager.createSubscription(topic, "input-subscription");
+      optionsBuilder.addParameter("subscription", inputSubscription.toString());
+    } else {
+      optionsBuilder.addParameter("topic", topic.toString());
+    }
 
     LOG.info("Creating AlloyDb (Postgres) table...");
     String tableName = "test_table";
-    Map<String, String> columns = Map.of("id", "INTEGER", "name_upper", "VARCHAR(64)");
+    LinkedHashMap<String, String> columns = new LinkedHashMap<>();
+    columns.put("id", "INTEGER");
+    columns.put("name_upper", "VARCHAR(64)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
     postgresResourceManager.createTable(tableName, schema);
 
     LOG.info("Creating launch config with yaml pipeline parameters...");
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(testName, specPath)
-                .addParameter("subscription", subscription.toString())
+            optionsBuilder
                 .addParameter("format", "JSON")
                 .addParameter(
                     "schema",
@@ -119,19 +136,19 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
                         + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"INT64\"},"
                         + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"STRING\"}"
                         + "}")
-                .addParameter("jdbcUrl", postgresResourceManager.getUri())
+                .addParameter("url", postgresResourceManager.getUri())
                 .addParameter("username", postgresResourceManager.getUsername())
                 .addParameter("password", postgresResourceManager.getPassword())
-                .addParameter("location", tableName)
+                .addParameter("table", tableName)
                 .addParameter(
-                    "writeStatement",
-                    "INSERT INTO " + tableName + " (id, name_upper) VALUES (?, ?)")
+                    "query", "INSERT INTO " + tableName + " (id, name_upper) VALUES (?, ?)")
                 .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString()));
 
     /********************************* Act **********************************/
 
     LOG.info("Launching template with options...");
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    LOG.info("Template launched. LaunchInfo: {}", info);
     assertThatPipeline(info).isRunning();
 
     LOG.info("Creating messages to be published into the topic...");
@@ -206,5 +223,16 @@ public final class PubSubToAlloyDBYamlIT extends TemplateTestBase {
     LOG.info("Verifying rows in AlloyDb...");
     long finalRowCount = postgresResourceManager.getRowCount(tableName);
     assertThat(finalRowCount).isEqualTo(MESSAGES_COUNT);
+
+    LOG.info("Verifying row content (name_upper transformation)...");
+    List<Map<String, Object>> rows = postgresResourceManager.readTable(tableName);
+    rows.sort((a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
+    for (int i = 0; i < rows.size(); i++) {
+      Map<String, Object> row = rows.get(i);
+      int expectedId = i + 1;
+      String expectedNameUpper = "NAME_" + expectedId;
+      assertThat(((Number) row.get("id")).intValue()).isEqualTo(expectedId);
+      assertThat(row.get("name_upper").toString()).isEqualTo(expectedNameUpper);
+    }
   }
 }
