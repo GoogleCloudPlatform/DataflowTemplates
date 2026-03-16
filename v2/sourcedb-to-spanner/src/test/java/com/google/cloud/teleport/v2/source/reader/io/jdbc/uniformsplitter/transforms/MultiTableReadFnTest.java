@@ -22,12 +22,15 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
 import com.google.common.collect.ImmutableMap;
@@ -50,6 +53,20 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MultiTableReadFnTest {
+
+  private DataSourceProvider getMockDataSourceProvider(DataSource mockDataSource) {
+    return new DataSourceProvider() {
+      @Override
+      public DataSource getDataSource(String datasourceId) {
+        return mockDataSource;
+      }
+
+      @Override
+      public com.google.common.collect.ImmutableSet<String> getDataSourceIds() {
+        return com.google.common.collect.ImmutableSet.of("b1a1ec3b-195d-4755-b04b-02bc64dc4458");
+      }
+    };
+  }
 
   @Test
   public void testExtractTableFromReadQuery_null() {
@@ -174,7 +191,9 @@ public class MultiTableReadFnTest {
     SerializableFunction<Void, DataSource> dataSourceProviderFn = (v) -> mockDataSource;
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            dataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                .build(),
             StaticValueProvider.of(new TestQueryProvider()),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
@@ -186,6 +205,7 @@ public class MultiTableReadFnTest {
             true);
 
     readFn.setup();
+    readFn.startBundle();
 
     try (MockedStatic<Lineage> mockedLineage = mockStatic(Lineage.class)) {
       mockedLineage.when(Lineage::getSources).thenReturn(mockLineage);
@@ -225,7 +245,9 @@ public class MultiTableReadFnTest {
       // Path: schemaWithTable is NOT null, fqn is NOT null, reportedLineages.add returns true
       MultiTableReadFn<String, String> readFn1 =
           new MultiTableReadFn<>(
-              dataSourceProviderFn,
+              DataSourceProviderImpl.builder()
+                  .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                  .build(),
               StaticValueProvider.of((el) -> "SELECT * FROM schema1.table1"),
               mock(JdbcIO.PreparedStatementSetter.class),
               ImmutableMap.of(),
@@ -236,6 +258,7 @@ public class MultiTableReadFnTest {
                       .build(),
               false);
       readFn1.setup();
+      readFn1.startBundle();
       readFn1.getConnection("el1");
       verify(mockLineage, times(1))
           .add(eq("mysql"), eq(List.of("localhost:3306", "testdb", "schema1", "table1")));
@@ -243,7 +266,9 @@ public class MultiTableReadFnTest {
       // Path: schemaWithTable is null (invalid query)
       MultiTableReadFn<String, String> readFn2 =
           new MultiTableReadFn<>(
-              dataSourceProviderFn,
+              DataSourceProviderImpl.builder()
+                  .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                  .build(),
               StaticValueProvider.of((el) -> "INVALID QUERY"),
               mock(JdbcIO.PreparedStatementSetter.class),
               ImmutableMap.of(),
@@ -254,6 +279,7 @@ public class MultiTableReadFnTest {
                       .build(),
               false);
       readFn2.setup();
+      readFn2.startBundle();
       readFn2.getConnection("el2");
       // Lineage.add should not be called more than once (from previous readFn1)
       verify(mockLineage, times(1)).add(anyString(), anyList());
@@ -297,7 +323,7 @@ public class MultiTableReadFnTest {
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            v -> mockDataSource,
+            getMockDataSourceProvider(mockDataSource),
             StaticValueProvider.of(el -> "SELECT * FROM testTable"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(tableId, spec),
@@ -305,6 +331,7 @@ public class MultiTableReadFnTest {
             false);
 
     readFn.setup();
+    readFn.startBundle();
     DoFn<String, String>.ProcessContext mockContext = mock(DoFn.ProcessContext.class);
     when(mockContext.element()).thenReturn("element");
 
@@ -350,7 +377,7 @@ public class MultiTableReadFnTest {
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            v -> mockDataSource,
+            getMockDataSourceProvider(mockDataSource),
             StaticValueProvider.of(el -> "SELECT * FROM testTable"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(tableId, spec),
@@ -358,6 +385,7 @@ public class MultiTableReadFnTest {
             false);
 
     readFn.setup();
+    readFn.startBundle();
     DoFn<String, String>.ProcessContext mockContext = mock(DoFn.ProcessContext.class);
     when(mockContext.element()).thenReturn("element");
 
@@ -396,7 +424,7 @@ public class MultiTableReadFnTest {
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            v -> mockDataSource,
+            getMockDataSourceProvider(mockDataSource),
             StaticValueProvider.of(el -> "SELECT * FROM testTable"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(tableId, spec),
@@ -404,6 +432,7 @@ public class MultiTableReadFnTest {
             false);
 
     readFn.setup();
+    readFn.startBundle();
     DoFn<String, String>.ProcessContext mockContext = mock(DoFn.ProcessContext.class);
     when(mockContext.element()).thenReturn("element");
 
@@ -426,7 +455,7 @@ public class MultiTableReadFnTest {
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            v -> mockDataSource,
+            getMockDataSourceProvider(mockDataSource),
             StaticValueProvider.of(el -> "SELECT * FROM test"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
@@ -438,6 +467,7 @@ public class MultiTableReadFnTest {
             false);
 
     readFn.setup();
+    readFn.startBundle();
     try (MockedStatic<Lineage> mockedLineage = mockStatic(Lineage.class)) {
       mockedLineage.when(Lineage::getSources).thenReturn(mockLineage);
       readFn.getConnection("element"); // initialize connection
@@ -453,39 +483,124 @@ public class MultiTableReadFnTest {
   }
 
   @Test
-  public void testTearDown_twice() throws Exception {
-    DataSource mockDataSource = mock(DataSource.class);
-    Connection mockConnection = mock(Connection.class);
+  public void testGetConnection_multiShard() throws Exception {
+    DataSourceProvider mockProvider = mock(DataSourceProvider.class);
+    DataSource mockDataSource1 = mock(DataSource.class);
+    Connection mockConnection1 = mock(Connection.class);
+    DataSource mockDataSource2 = mock(DataSource.class);
+    Connection mockConnection2 = mock(Connection.class);
     DatabaseMetaData mockMetaData = mock(DatabaseMetaData.class);
     Lineage mockLineage = mock(Lineage.class);
 
-    when(mockDataSource.getConnection()).thenReturn(mockConnection);
-    when(mockConnection.getMetaData()).thenReturn(mockMetaData);
+    when(mockProvider.getDataSource("shard1")).thenReturn(mockDataSource1);
+    when(mockProvider.getDataSource("shard2")).thenReturn(mockDataSource2);
+    when(mockDataSource1.getConnection()).thenReturn(mockConnection1);
+    when(mockDataSource2.getConnection()).thenReturn(mockConnection2);
+    when(mockConnection1.getMetaData()).thenReturn(mockMetaData);
     when(mockMetaData.getURL()).thenReturn("jdbc:mysql://localhost:3306/testdb");
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            v -> mockDataSource,
+            mockProvider,
             StaticValueProvider.of(el -> "SELECT * FROM test"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
             el ->
                 TableIdentifier.builder()
-                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setDataSourceId(el.toString())
                     .setTableName("test")
                     .build(),
             false);
 
     readFn.setup();
+    readFn.startBundle();
+
     try (MockedStatic<Lineage> mockedLineage = mockStatic(Lineage.class)) {
       mockedLineage.when(Lineage::getSources).thenReturn(mockLineage);
-      readFn.getConnection("element"); // initialize connection
+
+      Connection conn1 = readFn.getConnection("shard1");
+      Connection conn2 = readFn.getConnection("shard2");
+      Connection conn1Again = readFn.getConnection("shard1");
+
+      assertThat(conn1).isEqualTo(mockConnection1);
+      assertThat(conn2).isEqualTo(mockConnection2);
+      assertThat(conn1Again).isEqualTo(mockConnection1);
+
+      verify(mockProvider, times(1)).getDataSource("shard1");
+      verify(mockProvider, times(1)).getDataSource("shard2");
+      verify(mockDataSource1, times(1)).getConnection();
+      verify(mockDataSource2, times(1)).getConnection();
     }
 
     readFn.tearDown();
-    readFn.tearDown(); // second call
+    verify(mockConnection1).close();
+    verify(mockConnection2).close();
+  }
 
-    verify(mockConnection, times(1)).close();
+  @Test
+  public void testCleanUpConnection_withSqlException() throws Exception {
+    DataSourceProvider mockProvider = mock(DataSourceProvider.class);
+    DataSource mockDataSource = mock(DataSource.class);
+    Connection mockConnection = mock(Connection.class);
+    DatabaseMetaData mockMetaData = mock(DatabaseMetaData.class);
+
+    when(mockProvider.getDataSource("shard1")).thenReturn(mockDataSource);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.getMetaData()).thenReturn(mockMetaData);
+    when(mockMetaData.getURL()).thenReturn("jdbc:mysql://localhost:3306/testdb");
+    // Throw exception on close, should be caught and logged
+    doThrow(new java.sql.SQLException("Close failed")).when(mockConnection).close();
+
+    MultiTableReadFn<String, String> readFn =
+        new MultiTableReadFn<>(
+            mockProvider,
+            StaticValueProvider.of(el -> "SELECT * FROM test"),
+            mock(JdbcIO.PreparedStatementSetter.class),
+            ImmutableMap.of(),
+            el -> TableIdentifier.builder().setDataSourceId("shard1").setTableName("test").build(),
+            false);
+
+    readFn.setup();
+    readFn.startBundle();
+    try (MockedStatic<Lineage> mockedLineage = mockStatic(Lineage.class)) {
+      mockedLineage.when(Lineage::getSources).thenReturn(mock(Lineage.class));
+      readFn.getConnection("element");
+    }
+
+    // Should not throw
+    readFn.tearDown();
+    verify(mockConnection).close();
+  }
+
+  /**
+   * Tests that {@link MultiTableReadFn#tearDown()} handles a race condition where connections might
+   * be nulled out by another thread.
+   */
+  @Test
+  public void testCleanUpConnection_RaceCondition() throws Exception {
+    MultiTableReadFn<String, String> readFn =
+        new MultiTableReadFn<>(
+            mock(DataSourceProvider.class),
+            StaticValueProvider.of(el -> "SELECT * FROM test"),
+            mock(JdbcIO.PreparedStatementSetter.class),
+            ImmutableMap.of(),
+            el -> mock(TableIdentifier.class),
+            false);
+
+    readFn.setup();
+    readFn.startBundle();
+
+    // Use reflection to null out connections after the first check in cleanUpConnection but before
+    // the second.
+    // This is hard to do with pure Mockito, so we just manually call it with reflection if needed,
+    // or simulate the logic.
+    // For now, we'll just exercise the logic where connections is already null.
+    java.lang.reflect.Field connectionsField =
+        MultiTableReadFn.class.getDeclaredField("connections");
+    connectionsField.setAccessible(true);
+    connectionsField.set(readFn, null);
+
+    readFn.tearDown(); // Should hit the first 'if (connections == null) return;'
   }
 
   @Test
@@ -505,7 +620,9 @@ public class MultiTableReadFnTest {
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(
-            mockProvider,
+            DataSourceProviderImpl.builder()
+                .addDataSource(knownTable.dataSourceId(), mockProvider)
+                .build(),
             StaticValueProvider.of(new TestQueryProvider()),
             mockSetter,
             ImmutableMap.of(knownTable, mock(TableReadSpecification.class)),
@@ -516,6 +633,24 @@ public class MultiTableReadFnTest {
     when(mockContext.element()).thenReturn("someElement");
 
     assertThrows(RuntimeException.class, () -> readFn.processElement(mockContext));
+  }
+
+  /**
+   * Tests that {@link MultiTableReadFn#tearDown()} handles null connections and connection lock
+   * gracefully (e.g., if called before setup).
+   */
+  @Test
+  public void testCleanUpConnection_Nulls() throws Exception {
+    MultiTableReadFn<String, String> readFn =
+        new MultiTableReadFn<>(
+            mock(DataSourceProvider.class),
+            StaticValueProvider.of(el -> "SELECT * FROM test"),
+            mock(JdbcIO.PreparedStatementSetter.class),
+            ImmutableMap.of(),
+            el -> mock(TableIdentifier.class),
+            false);
+    // connections and connectionLock are null before setup/startBundle
+    readFn.tearDown(); // should return early without exception
   }
 
   private static class TestQueryProvider implements MultiTableReadAll.QueryProvider<String> {

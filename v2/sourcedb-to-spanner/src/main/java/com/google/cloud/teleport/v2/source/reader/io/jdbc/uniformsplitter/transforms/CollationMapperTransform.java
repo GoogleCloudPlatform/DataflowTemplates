@@ -16,21 +16,21 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.util.Map;
-import java.util.stream.Collectors;
-import javax.sql.DataSource;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollectionView;
 
@@ -44,10 +44,10 @@ public abstract class CollationMapperTransform
     implements Serializable {
 
   /** List of {@link CollationReference} to discover the mapping for. */
-  public abstract ImmutableList<CollationReference> collationReferences();
+  public abstract ImmutableList<KV<String, CollationReference>> collationReferences();
 
   /** Provider for connection pool. */
-  public abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
+  public abstract DataSourceProvider dataSourceProvider();
 
   /** Provider to dialect specific Collation mapping query. */
   public abstract UniformSplitterDBAdapter dbAdapter();
@@ -73,12 +73,10 @@ public abstract class CollationMapperTransform
             .apply("To Empty Map View", View.asMap());
       }
       return input
-          .apply(
-              "Create-Collation-References",
-              Create.of(collationReferences().stream().distinct().collect(Collectors.toList())))
+          .apply("Create-Collation-References", Create.of(collationReferences()))
           .apply(
               "Generate-Mappers",
-              ParDo.of(new CollationMapperDoFn(dataSourceProviderFn(), dbAdapter())))
+              ParDo.of(new CollationMapperDoFn(dataSourceProvider(), dbAdapter())))
           .setCoder(
               KvCoder.of(
                   input.getPipeline().getCoderRegistry().getCoder(CollationReference.class),
@@ -96,13 +94,40 @@ public abstract class CollationMapperTransform
 
   @AutoValue.Builder
   public abstract static class Builder {
+    private ImmutableList<CollationReference> collationReferencesToDiscover;
 
-    public abstract Builder setCollationReferences(ImmutableList<CollationReference> value);
+    public Builder setCollationReferencesToDiscover(ImmutableList<CollationReference> value) {
+      this.collationReferencesToDiscover = value;
+      return this;
+    }
 
-    public abstract Builder setDataSourceProviderFn(SerializableFunction<Void, DataSource> value);
+    abstract Builder setCollationReferences(ImmutableList<KV<String, CollationReference>> value);
+
+    public abstract Builder setDataSourceProvider(DataSourceProvider value);
+
+    abstract DataSourceProvider dataSourceProvider();
 
     public abstract Builder setDbAdapter(UniformSplitterDBAdapter value);
 
-    public abstract CollationMapperTransform build();
+    public abstract CollationMapperTransform autoBuild();
+
+    public CollationMapperTransform build() {
+      ImmutableList<CollationReference> deDupedRefs =
+          collationReferencesToDiscover.stream()
+              .distinct()
+              .collect(ImmutableList.toImmutableList());
+      ImmutableList<String> ids =
+          ImmutableList.copyOf(this.dataSourceProvider().getDataSourceIds());
+      Preconditions.checkState(ids.size() > 0, "No DataSources Configured for collation detection");
+      ImmutableList.Builder<KV<String, CollationReference>> collationReferencesBuilder =
+          ImmutableList.builder();
+      // Round-robin collations across available shards.
+      // All shards of the same database should have the same collation mapping.
+      for (int i = 0; i < deDupedRefs.size(); i++) {
+        collationReferencesBuilder.add(KV.of(ids.get(i % ids.size()), deDupedRefs.get(i)));
+      }
+      this.setCollationReferences(collationReferencesBuilder.build());
+      return autoBuild();
+    }
   }
 }

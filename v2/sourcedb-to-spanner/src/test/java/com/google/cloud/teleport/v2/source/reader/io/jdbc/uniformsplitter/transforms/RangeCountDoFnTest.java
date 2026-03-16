@@ -28,6 +28,7 @@ import static org.mockito.Mockito.withSettings;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
@@ -84,7 +85,9 @@ public class RangeCountDoFnTest {
     when(mockResultSet.getLong(1)).thenReturn(42L);
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
@@ -118,7 +121,6 @@ public class RangeCountDoFnTest {
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
 
     verify(mockOut).output(rangeCaptor.capture());
@@ -145,7 +147,9 @@ public class RangeCountDoFnTest {
                 "Query execution was interrupted, maximum statement execution time exceeded"));
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
@@ -179,7 +183,6 @@ public class RangeCountDoFnTest {
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
 
@@ -203,7 +206,9 @@ public class RangeCountDoFnTest {
     when(mockPreparedStatemet.executeQuery()).thenThrow(new SQLException("test"));
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
@@ -237,7 +242,6 @@ public class RangeCountDoFnTest {
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     assertThrows(
         SQLException.class,
         () -> rangeCountDoFn.processElement(input, mockOut, mockProcessContext));
@@ -258,7 +262,9 @@ public class RangeCountDoFnTest {
     when(mockResultSet.wasNull()).thenReturn(true) /* Null ResultSet */;
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
@@ -292,7 +298,6 @@ public class RangeCountDoFnTest {
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     verify(mockOut, times(2)).output(rangeCaptor.capture());
@@ -323,7 +328,9 @@ public class RangeCountDoFnTest {
 
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(tableSpec1));
@@ -342,7 +349,6 @@ public class RangeCountDoFnTest {
             .setEnd(100)
             .build();
 
-    rangeCountDoFn.setup();
     assertThrows(
         RuntimeException.class,
         () -> rangeCountDoFn.processElement(inputMissingTable, mockOut, mockProcessContext));
@@ -463,7 +469,9 @@ public class RangeCountDoFnTest {
 
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(tableSpec1, tableSpec2));
@@ -523,7 +531,6 @@ public class RangeCountDoFnTest {
             .setEnd(200)
             .build();
 
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input1, mockOut, mockProcessContext);
     rangeCountDoFn.processElement(input2, mockOut, mockProcessContext);
 

@@ -15,8 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
-import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
-
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
@@ -28,6 +27,8 @@ import com.google.re2j.Pattern;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -61,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, OutputT> {
 
-  private final SerializableFunction<Void, DataSource> dataSourceProviderFn;
+  private final DataSourceProvider dataSourceProvider;
   private final ValueProvider<QueryProvider> query;
   private final PreparedStatementSetter<ParameterT> parameterSetter;
   private final ImmutableMap<TableIdentifier, TableReadSpecification<OutputT>>
@@ -69,10 +70,10 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
   private final SerializableFunction<ParameterT, TableIdentifier> tableIdentifierFn;
   private final boolean disableAutoCommit;
 
-  private Lock connectionLock = new ReentrantLock();
-  private @Nullable DataSource dataSource;
+  private transient Lock connectionLock;
+  private transient DataSourceManager dataSourceManager;
   // Connections are instance-local and handled per-bundle for thread safety.
-  private @Nullable Connection connection;
+  private transient Map<String, Connection> connections;
 
   /** Keep track of the tables for which lineage has already been reported to avoid duplicates. */
   private transient Set<KV<String, String>> reportedLineages = ConcurrentHashMap.newKeySet();
@@ -80,13 +81,13 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
   private static final Logger LOG = LoggerFactory.getLogger(MultiTableReadFn.class);
 
   public MultiTableReadFn(
-      SerializableFunction<Void, DataSource> dataSourceProviderFn,
+      DataSourceProvider dataSourceProvider,
       ValueProvider<QueryProvider> query,
       PreparedStatementSetter<ParameterT> parameterSetter,
       ImmutableMap<TableIdentifier, TableReadSpecification<OutputT>> tableReadSpecifications,
       SerializableFunction<ParameterT, TableIdentifier> tableIdentifierFn,
       boolean disableAutoCommit) {
-    this.dataSourceProviderFn = dataSourceProviderFn;
+    this.dataSourceProvider = dataSourceProvider;
     this.query = query;
     this.parameterSetter = parameterSetter;
     this.tableReadSpecifications = tableReadSpecifications;
@@ -97,7 +98,14 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
   @Setup
   public void setup() throws Exception {
     this.reportedLineages = ConcurrentHashMap.newKeySet();
-    dataSource = dataSourceProviderFn.apply(null);
+    this.connectionLock = new ReentrantLock();
+  }
+
+  @StartBundle
+  public void startBundle() {
+    this.connections = new ConcurrentHashMap<>();
+    this.dataSourceManager =
+        DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }
 
   /**
@@ -111,31 +119,32 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
    */
   @VisibleForTesting
   protected Connection getConnection(ParameterT element) throws Exception {
-    Connection connection = this.connection;
+    TableIdentifier tableIdentifier = tableIdentifierFn.apply(element);
+    String dataSourceId = tableIdentifier.dataSourceId();
+    Connection connection = this.connections.get(dataSourceId);
     if (connection == null) {
-      DataSource validSource = checkStateNotNull(this.dataSource);
       connectionLock.lock();
       try {
-        // Double-checked locking to ensure only one connection is created per DoFn instance.
-        // This If Case is missing in upstream JDBCIO.ReadFN.
-        if (this.connection == null) {
-          connection = validSource.getConnection();
-          this.connection = connection;
+        connection = this.connections.get(dataSourceId);
+        if (connection == null) {
+          DataSource dataSource = dataSourceManager.getDatasource(dataSourceId);
+          connection = dataSource.getConnection();
+          this.connections.put(dataSourceId, connection);
 
           // PostgreSQL requires autocommit to be disabled to enable cursor streaming
           // see https://jdbc.postgresql.org/documentation/head/query.html#query-with-cursor
           // This option is configurable as Informix will error
           // if calling setAutoCommit on a non-logged database
           if (disableAutoCommit) {
-            LOG.info("Autocommit has been disabled");
+            LOG.info("Autocommit has been disabled for shard {}", dataSourceId);
             connection.setAutoCommit(false);
           }
+
+          reportLineage(element, connection, dataSource, query, reportedLineages);
         }
       } finally {
         connectionLock.unlock();
       }
-
-      reportLineage(element, connection, validSource, query, reportedLineages);
     }
     return connection;
   }
@@ -208,7 +217,7 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
   // https://github.com/apache/beam/blob/676c998dec78e878d54ad21cde46f91cc9a598b7/sdks/java/io/jdbc/src/main/java/org/apache/beam/sdk/io/jdbc/JdbcUtil.java#L836
   private static final Pattern READ_STATEMENT_PATTERN =
       Pattern.compile(
-          "SELECT\\s+.+?\\s+FROM\\s+(\\[?`?(?<schemaName>[^\\s\\[\\]`]+)\\]?`?\\.)?\\[?`?(?<tableName>[^\\s\\[\\]`]+)\\]?`?",
+          "SELECT\\s+.+?\\s+FROM\\s+(\\[?`?(?P<schemaName>[^\\s\\[\\]`]+)\\]?`?\\.)?\\[?`?(?P<tableName>[^\\s\\[\\]`]+)\\]?`?",
           Pattern.CASE_INSENSITIVE);
 
   /**
@@ -275,13 +284,30 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
     cleanUpConnection();
   }
 
-  private void cleanUpConnection() throws Exception {
-    if (connection != null) {
-      try {
-        connection.close();
-      } finally {
-        connection = null;
+  private void cleanUpConnection() {
+    if (connectionLock == null || connections == null) {
+      return;
+    }
+    connectionLock.lock();
+    try {
+      if (connections == null) {
+        return;
       }
+      for (Connection conn : connections.values()) {
+        if (conn != null) {
+          try {
+            conn.close();
+          } catch (SQLException e) {
+            LOG.warn("Failed to close connection", e);
+          }
+        }
+      }
+      connections.clear();
+    } finally {
+      connectionLock.unlock();
+      dataSourceManager.closeAll();
+      this.connections = null;
+      this.dataSourceManager = null;
     }
   }
 }

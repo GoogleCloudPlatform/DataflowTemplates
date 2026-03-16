@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
@@ -45,6 +47,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadAll;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -91,8 +94,15 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
   private static final long SPLITTER_DEFAULT_COUNT_QUERY_TIMEOUT_MILLIS = 5 * 1000;
 
-  /** Provider for {@link DataSource}. Required parameter. */
-  abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
+  /**
+   * Provider for {@link DataSource}.
+   *
+   * <p>Note: The implementation of {@link DataSourceProvider} must be fully serializable as it is a
+   * member of this transform and will be serialized to Dataflow workers.
+   *
+   * @return The data source provider.
+   */
+  abstract DataSourceProvider dataSourceProvider();
 
   /**
    * Implementations of {@link UniformSplitterDBAdapter} to get queries as per the dialect of the
@@ -174,7 +184,6 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
    */
   @Override
   public PCollection<T> expand(PBegin input) {
-    // TODO(vardhanvthigle): Move this side-input generation out to DB level.
     PCollectionView<Map<CollationReference, CollationMapper>> collationMapperView =
         getCollationMapperView(input);
     BoundaryTypeMapper typeMapper =
@@ -207,7 +216,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
       RangeCountTransform rangeCountTransform =
           RangeCountTransform.builder()
-              .setDataSourceProviderFn(dataSourceProviderFn())
+              .setDataSourceProvider(dataSourceProvider())
               .setDbAdapter(dbAdapter())
               .setTableSplitSpecifications(tableSplitSpecifications())
               .setBoundaryTypeMapper(typeMapper)
@@ -216,7 +225,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
       RangeBoundaryTransform rangeBoundaryTransform =
           RangeBoundaryTransform.builder()
-              .setDataSourceProviderFn(dataSourceProviderFn())
+              .setDataSourceProvider(dataSourceProvider())
               .setBoundaryTypeMapper(typeMapper)
               .setDbAdapter(dbAdapter())
               .setTableSplitSpecifications(tableSplitSpecifications())
@@ -326,7 +335,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
                 tableReadSpecifications(),
                 dbAdapter(),
                 rangePrepareator,
-                dataSourceProviderFn()));
+                dataSourceProvider()));
   }
 
   @VisibleForTesting
@@ -358,7 +367,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
    * @param tableReadSpecifications specifications for reading tables.
    * @param dbAdapter the database adapter for generating queries.
    * @param rangePrepareator the parameter setter for the read query.
-   * @param dataSourceProviderFn the provider for the data source.
+   * @param dataSourceProvider the provider for the data source.
    * @return a configured MultiTableReadAll transform.
    */
   @VisibleForTesting
@@ -368,7 +377,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
       ImmutableMap<TableIdentifier, TableReadSpecification<T>> tableReadSpecifications,
       UniformSplitterDBAdapter dbAdapter,
       PreparedStatementSetter<Range> rangePrepareator,
-      SerializableFunction<Void, DataSource> dataSourceProviderFn) {
+      DataSourceProvider dataSourceProvider) {
     QueryProviderImpl queryProvider =
         QueryProviderImpl.builder()
             .setTableSplitSpecifications(tableSplitSpecifications, dbAdapter)
@@ -378,7 +387,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
             .setOutputParallelization(false)
             .setQueryProvider(StaticValueProvider.of(queryProvider))
             .setParameterSetter(rangePrepareator)
-            .setDataSourceProviderFn(dataSourceProviderFn)
+            .setDataSourceProvider(dataSourceProvider)
             .setTableReadSpecifications(tableReadSpecifications)
             .setTableIdentifierFn(new RangeToTableIdentifierFn())
             .setDisableAutoCommit(true)
@@ -402,9 +411,9 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     return input.apply(
         getTransformName("CollationMapper", null, null),
         CollationMapperTransform.builder()
-            .setCollationReferences(collationReferences)
+            .setCollationReferencesToDiscover(collationReferences)
             .setDbAdapter(dbAdapter())
-            .setDataSourceProviderFn(dataSourceProviderFn())
+            .setDataSourceProvider(dataSourceProvider())
             .build());
   }
 
@@ -435,7 +444,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     RangeBoundaryTransform rangeBoundaryTransform =
         RangeBoundaryTransform.builder()
             .setBoundaryTypeMapper(typeMapper)
-            .setDataSourceProviderFn(dataSourceProviderFn())
+            .setDataSourceProvider(dataSourceProvider())
             .setDbAdapter(dbAdapter())
             .setTableSplitSpecifications(tableSplitSpecifications())
             .build();
@@ -558,8 +567,16 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
   @AutoValue.Builder
   public abstract static class Builder<T> {
 
-    public abstract Builder<T> setDataSourceProviderFn(
-        SerializableFunction<Void, DataSource> value);
+    public abstract Builder<T> setDataSourceProvider(DataSourceProvider value);
+
+    // TODO Remove in subsequent PR
+    private SerializableFunction<Void, DataSource> dataSourceProviderSerializableFunction = null;
+
+    // TODO Remove in subsequent PR
+    public Builder<T> setDataSourceProviderFn(SerializableFunction<Void, DataSource> value) {
+      this.dataSourceProviderSerializableFunction = value;
+      return this;
+    }
 
     public abstract Builder<T> setDbAdapter(UniformSplitterDBAdapter value);
 
@@ -609,6 +626,15 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     }
 
     public ReadWithUniformPartitions<T> build() {
+      // TODO Remove in subsequent PR
+      if (this.dataSourceProviderSerializableFunction != null) {
+        this.setDataSourceProvider(
+            DataSourceProviderImpl.builder()
+                .addDataSource(
+                    this.tableSplitSpecifications().get(0).tableIdentifier().dataSourceId(),
+                    this.dataSourceProviderSerializableFunction)
+                .build());
+      }
       validateParameters();
 
       java.util.Set<TableIdentifier> splitIdentifiers =

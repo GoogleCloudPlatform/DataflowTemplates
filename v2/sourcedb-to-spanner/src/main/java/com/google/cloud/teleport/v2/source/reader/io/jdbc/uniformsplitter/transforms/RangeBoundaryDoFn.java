@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQueryPreparedStatementSetter;
@@ -38,7 +39,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implements Serializable {
 
   private static final Logger logger = LoggerFactory.getLogger(RangeBoundaryDoFn.class);
-  private final SerializableFunction<Void, DataSource> dataSourceProviderFn;
+  private final DataSourceProvider dataSourceProvider;
 
   private final UniformSplitterDBAdapter dbAdapter;
 
@@ -54,23 +54,22 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
   private final ColumnForBoundaryQueryPreparedStatementSetter
       columnForBoundaryQueryPreparedStatementSetter;
 
+  private transient DataSourceManager dataSourceManager;
+
   @JsonIgnore
   private transient @Nullable Map<TableIdentifier, TableSplitSpecification>
       tableSplitSpecificationMap;
 
   @Nullable private BoundaryTypeMapper boundaryTypeMapper;
 
-  @JsonIgnore private transient @Nullable DataSource dataSource;
-
   RangeBoundaryDoFn(
-      SerializableFunction<Void, DataSource> dataSourceProviderFn,
+      DataSourceProvider dataSourceProvider,
       UniformSplitterDBAdapter dbAdapter,
       ImmutableList<TableSplitSpecification> tableSplitSpecifications,
       BoundaryTypeMapper boundaryTypeMapper) {
-    this.dataSourceProviderFn = dataSourceProviderFn;
+    this.dataSourceProvider = dataSourceProvider;
     this.dbAdapter = dbAdapter;
     this.tableSplitSpecifications = tableSplitSpecifications;
-    this.dataSource = null;
     this.boundaryTypeMapper = boundaryTypeMapper;
     this.columnForBoundaryQueryPreparedStatementSetter =
         new ColumnForBoundaryQueryPreparedStatementSetter(tableSplitSpecifications);
@@ -78,15 +77,16 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
 
   @Setup
   public void setup() throws Exception {
-    dataSource = dataSourceProviderFn.apply(null);
     this.tableSplitSpecificationMap =
         this.tableSplitSpecifications.stream()
             .collect(
                 Collectors.toMap(TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
-  private Connection acquireConnection() throws SQLException {
-    return checkStateNotNull(this.dataSource).getConnection();
+  @StartBundle
+  public void startBundle() {
+    this.dataSourceManager =
+        DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }
 
   /**
@@ -110,8 +110,8 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
                 .map(pc -> pc.columnName())
                 .collect(ImmutableList.toImmutableList()),
             input.columnName());
-
-    try (Connection conn = acquireConnection()) {
+    DataSource dataSource = dataSourceManager.getDatasource(input.tableIdentifier().dataSourceId());
+    try (Connection conn = dataSource.getConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
               boundaryQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
@@ -149,6 +149,29 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
           boundaryQuery,
           dataSource);
       throw new RuntimeException(e);
+    }
+  }
+
+  @FinishBundle
+  public void finishBundle() throws Exception {
+    cleanupDataSource();
+  }
+
+  @Teardown
+  public void tearDown() throws Exception {
+    cleanupDataSource();
+  }
+
+  /**
+   * Closes all active data source connections.
+   *
+   * <p>This method ensures that the {@link DataSourceManager} releases all resources, preventing
+   * connection pool leaks during bundle finish or worker teardown.
+   */
+  void cleanupDataSource() {
+    if (this.dataSourceManager != null) {
+      this.dataSourceManager.closeAll();
+      this.dataSourceManager = null;
     }
   }
 }
