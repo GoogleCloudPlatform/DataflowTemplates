@@ -12,7 +12,7 @@ template:
   flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "PubSubToAlloyDb.yaml"
   filesToCopy: >
-    {"PubSubToAlloyDb.yaml", "main.py", "requirements.txt", "options/pubsub_options.yaml", "options/alloydb_options.yaml", "options/maptofields_options.yaml", "options/windowinto_options.yaml"}
+    {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/alloydb_options.yaml", "options/maptofields_options.yaml", "options/windowinto_options.yaml"}
   documentation: ""
   contactInformation: "https://cloud.google.com/support"
   requirements: {
