@@ -47,18 +47,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link PostgresToIcebergYaml} template. */
+/** Integration test for {@link PostgreSQLToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PostgresToIcebergYaml.class)
+@TemplateIntegrationTest(PostgreSQLToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class PostgresToIcebergYamlIT extends TemplateTestBase {
+public class PostgreSQLToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
 
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";

@@ -47,18 +47,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link MySqlToIcebergYaml} template. */
+/** Integration test for {@link MySQLToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(MySqlToIcebergYaml.class)
+@TemplateIntegrationTest(MySQLToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class MySqlToIcebergYamlIT extends TemplateTestBase {
+public class MySQLToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
 
   private MySQLResourceManager mySQLResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";

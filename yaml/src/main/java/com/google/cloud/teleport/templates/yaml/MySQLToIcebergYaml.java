@@ -22,29 +22,29 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "SqlServer_To_Iceberg_Yaml",
+    name = "MySQL_To_Iceberg_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "SqlServer to Iceberg (YAML)",
+    displayName = "MySQL to Iceberg (YAML)",
     description =
-        "The SqlServer to Iceberg template is a batch pipeline executes the user provided SQL query to read data from SqlServer table and outputs the records to Iceberg table.",
+        "The MySQL to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySQL table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "SqlServerToIceberg.yaml",
+    yamlTemplateFile = "MySQLToIceberg.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
-      "options/sqlserver_options.yaml",
+      "options/mysql_options.yaml",
       "options/iceberg_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The Input SqlServer instance and table must exist.",
+      "The Input MySQL instance and table must exist.",
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
     hidden = false)
-public interface SqlServerToIcebergYaml {
+public interface MySQLToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -52,7 +52,7 @@ public interface SqlServerToIcebergYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:sqlserver://localhost:12345;databaseName=your-db")
+      example = "jdbc:mysql://your-host:3306/your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -79,10 +79,10 @@ public interface SqlServerToIcebergYaml {
       name = "driverClassName",
       optional = true,
       description =
-          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr",
+          "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
+      example = "com.mysql.jdbc.Driver")
+  @Default.String("com.mysql.jdbc.Driver")
   String getDriverClassName();
 
   @TemplateParameter.Text(
@@ -91,7 +91,7 @@ public interface SqlServerToIcebergYaml {
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
       helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
+      example = "gs://your-bucket/mysql-42.2.23.jar")
   String getDriverJars();
 
   @TemplateParameter.Text(
@@ -116,11 +116,11 @@ public interface SqlServerToIcebergYaml {
       order = 8,
       name = "jdbcType",
       optional = true,
-      description = "Type of JDBC source. Default: mssql.",
+      description = "Type of JDBC source. Default: mysql.",
       helpText =
           "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "mssql")
-  @Default.String("mssql")
+      example = "mysql")
+  @Default.String("mysql")
   String getJdbcType();
 
   @TemplateParameter.Text(

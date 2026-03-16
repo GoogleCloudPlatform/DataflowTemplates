@@ -50,18 +50,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link SqlServerToIcebergYaml} template. */
+/** Integration test for {@link SQLServerToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(SqlServerToIcebergYaml.class)
+@TemplateIntegrationTest(SQLServerToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class SqlServerToIcebergYamlIT extends TemplateTestBase {
+public class SQLServerToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
 
   private MSSQLResourceManager mssqlResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(SqlServerToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SQLServerToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
