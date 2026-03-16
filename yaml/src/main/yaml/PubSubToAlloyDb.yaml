@@ -17,7 +17,7 @@ template:
   contactInformation: "https://cloud.google.com/support"
   requirements: {
     "Either the input Pub/Sub topic or subscription must exist.",
-    "The mapToField Pub/Sub error topic must exist.",
+    "The mapToFields Pub/Sub error topic must exist.",
     "The output AlloyDb instance must exist."
   }
   streaming: true
