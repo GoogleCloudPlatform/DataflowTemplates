@@ -42,7 +42,7 @@ import org.apache.beam.sdk.options.Validation;
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "Either the input Pub/Sub topic or subscription must exist.",
-      "The mapToField Pub/Sub error topic must exist.",
+      "The mapToFields Pub/Sub error topic must exist.",
       "The output AlloyDb instance must exist."
     },
     streaming = true,
@@ -74,7 +74,7 @@ public interface PubSubToAlloyDbYaml {
       name = "format",
       optional = false,
       description = "The message format.",
-      helpText = "The message format. One of: AVRO, JSON, PROTO or STRING.",
+      helpText = "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.",
       example = "JSON")
   @Validation.Required
   String getFormat();
