@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download Test Report
-      uses: dawidd6/action-download-artifact@09b07ec687d10771279a426c79925ee415c12906 # v17
+      uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
       with:
         name: surefire-.*test-results
         name_is_regexp: true
