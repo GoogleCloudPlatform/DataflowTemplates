@@ -371,6 +371,9 @@ public class DeadLetterQueue implements Serializable {
         // Postgres DB and Spanner contain NaN and Infinity values for Numbers.
         // When we get here, we don't have any other option than to encode the value as string and
         // write to json in DLQ file.
+        LOG.warn(
+            "Failure while creating DLQ event JSON. Failed to put a column value in original type, falling back to string",
+            e);
         json.put(key, value.toString());
       }
     } else {
