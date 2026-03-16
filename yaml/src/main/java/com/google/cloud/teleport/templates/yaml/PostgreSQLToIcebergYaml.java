@@ -32,7 +32,7 @@ import org.apache.beam.sdk.options.Validation;
     filesToCopy = {
       "main.py",
       "requirements.txt",
-      "options/postgresql_options.yaml",
+      "options/postgres_options.yaml",
       "options/iceberg_options.yaml"
     },
     documentation = "",
