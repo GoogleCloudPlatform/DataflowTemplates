@@ -73,7 +73,7 @@ public class DatastreamRow {
     return getStringValue("_metadata_stream");
   }
 
-  /* Return the String source type for the given data (eg. mysql, oracle). */
+  /* Return the String source type for the given data (e.g. mysql, oracle). */
   public String getSourceType() {
     return getStringValue("_metadata_source_type");
   }
