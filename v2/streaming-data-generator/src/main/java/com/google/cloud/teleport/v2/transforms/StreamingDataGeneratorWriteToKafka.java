@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -189,7 +190,7 @@ public final class StreamingDataGeneratorWriteToKafka {
               .withTopic(getPipelineOptions().getKafkaTopic())
               .withValueSerializer(StringSerializer.class)
               .withProducerConfigUpdates(
-                  java.util.Map.of(
+                  Map.of(
                       "linger.ms", 100,
                       "batch.size", 64000));
       if (ManagedKafkaRegex.matcher(getPipelineOptions().getBootstrapServer()).matches()) {
