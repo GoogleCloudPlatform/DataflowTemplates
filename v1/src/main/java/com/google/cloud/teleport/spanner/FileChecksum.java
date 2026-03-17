@@ -45,6 +45,22 @@ public class FileChecksum {
   }
 
   /**
+   * Calculate the CRC32C checksum of a local file.
+   *
+   * @param p - Path of the file.
+   * @return Base64 encoded string representing the CRC32C hash of the file.
+   */
+  public static String getLocalFileChecksumCrc32c(Path p) {
+    try {
+      return Base64.getEncoder()
+          .encodeToString(Files.asByteSource(p.toFile()).hash(Hashing.crc32c()).asBytes());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+
+  /**
    * Calculate the checksums of a set of files on GCS.
    *
    * @param gcsUtil - Used to retrieve the files.
@@ -60,6 +76,29 @@ public class FileChecksum {
           throw ex;
         }
         checksums.add(objectOrIOException.storageObject().getMd5Hash());
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return checksums;
+  }
+
+  /**
+   * Calculate the CRC32C checksums of a set of files on GCS.
+   *
+   * @param gcsUtil - Used to retrieve the files.
+   * @param gcsPaths - List of paths of the files.
+   * @return A List of String representing the CRC32C hashes of the files.
+   */
+  public static List<String> getGcsFileChecksumsCrc32c(GcsUtil gcsUtil, List<GcsPath> gcsPaths) {
+    List<String> checksums = new ArrayList<>();
+    try {
+      for (StorageObjectOrIOException objectOrIOException : gcsUtil.getObjects(gcsPaths)) {
+        IOException ex = objectOrIOException.ioException();
+        if (ex != null) {
+          throw ex;
+        }
+        checksums.add(objectOrIOException.storageObject().getCrc32c());
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
