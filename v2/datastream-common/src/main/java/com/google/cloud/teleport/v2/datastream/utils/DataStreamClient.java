@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link DataStreamClient} provides access to the DataStream APIs required to process CDC
- * DataStream data and maintain schema aligment.
+ * DataStream data and maintain schema alignment.
  */
 public class DataStreamClient implements Serializable {
 
