@@ -79,6 +79,7 @@ Example usage::
 """
 
 import dataclasses
+import random
 from enum import Enum
 from typing import Any
 from typing import Optional
@@ -336,16 +337,58 @@ class MetricSpec:
 # ---------------------------------------------------------------------------
 
 
+class _SumCombineFn(beam.CombineFn):
+  def create_accumulator(self):
+    return 0
+
+  def add_input(self, accumulator, element):
+    return accumulator + element
+
+  def merge_accumulators(self, accumulators):
+    return sum(accumulators)
+
+  def extract_output(self, accumulator):
+    return accumulator
+
+
+class _MinCombineFn(beam.CombineFn):
+  def create_accumulator(self):
+    return float('inf')
+
+  def add_input(self, accumulator, element):
+    return element if element < accumulator else accumulator
+
+  def merge_accumulators(self, accumulators):
+    return min(accumulators)
+
+  def extract_output(self, accumulator):
+    return accumulator
+
+
+class _MaxCombineFn(beam.CombineFn):
+  def create_accumulator(self):
+    return float('-inf')
+
+  def add_input(self, accumulator, element):
+    return element if element > accumulator else accumulator
+
+  def merge_accumulators(self, accumulators):
+    return max(accumulators)
+
+  def extract_output(self, accumulator):
+    return accumulator
+
+
 def _get_combiner_for_agg(agg_op):
   """Map AggOp enum to a Beam CombineFn instance."""
   if agg_op == AggOp.SUM:
-    return beam.CombineFn.from_callable(sum)
+    return _SumCombineFn()
   elif agg_op == AggOp.COUNT:
     return combiners.CountCombineFn()
   elif agg_op == AggOp.MIN:
-    return beam.CombineFn.from_callable(min)
+    return _MinCombineFn()
   elif agg_op == AggOp.MAX:
-    return beam.CombineFn.from_callable(max)
+    return _MaxCombineFn()
   elif agg_op == AggOp.MEAN:
     return combiners.MeanCombineFn()
   else:
@@ -435,19 +478,32 @@ class ComputeMetric(beam.PTransform):
 
     # Step 3: Aggregate
     measures = agg.measures
-    combine_fn = combiners.TupleCombineFn(
-        *[_get_combiner_for_agg(m.agg) for m in measures])
     aliases = [m.alias for m in measures]
-
-    def extract_fields(row_dict):
-      return tuple(
-          row_dict.get(m.field) if m.agg != AggOp.COUNT else 1
-          for m in measures)
-
-    def to_alias_dict(values):
-      return dict(zip(aliases, values))
-
     is_keyed = bool(agg.group_by)
+
+    # Single-measure optimization: skip TupleCombineFn overhead (avoids
+    # tuple creation/unpacking per element on the hot path).
+    if len(measures) == 1:
+      combine_fn = _get_combiner_for_agg(measures[0].agg)
+      _m0 = measures[0]
+      _a0 = aliases[0]
+
+      def extract_fields(row_dict):
+        return row_dict.get(_m0.field) if _m0.agg != AggOp.COUNT else 1
+
+      def to_alias_dict(value):
+        return {_a0: value}
+    else:
+      combine_fn = combiners.TupleCombineFn(
+          *[_get_combiner_for_agg(m.agg) for m in measures])
+
+      def extract_fields(row_dict):
+        return tuple(
+            row_dict.get(m.field) if m.agg != AggOp.COUNT else 1
+            for m in measures)
+
+      def to_alias_dict(values):
+        return dict(zip(aliases, values))
 
     if is_keyed:
       group_by_fields = agg.group_by
@@ -462,10 +518,18 @@ class ComputeMetric(beam.PTransform):
           | 'Combine' >> beam.CombinePerKey(combine_fn)
           | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
     else:
+      _NUM_SHARDS = 200
+
+      def _shard_fields(row_dict):
+        return (random.randint(0, _NUM_SHARDS - 1), extract_fields(row_dict))
+
       aggregated = (
           windowed
-          | 'ExtractFields' >> beam.Map(extract_fields)
-          | 'Combine' >> beam.CombineGlobally(combine_fn).without_defaults()
+          | 'ShardAndExtract' >> beam.Map(_shard_fields)
+          | 'PartialCombine' >> beam.CombinePerKey(combine_fn)
+          | 'DropShard' >> beam.Values()
+          | 'FinalCombine' >> beam.CombineGlobally(
+              combine_fn).without_defaults()
           | 'ToDict' >> beam.Map(to_alias_dict))
 
     # Step 4: Apply metric expression and set output type hints

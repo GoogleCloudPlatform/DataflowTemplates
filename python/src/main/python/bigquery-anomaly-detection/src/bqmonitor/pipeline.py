@@ -896,7 +896,8 @@ def build_pipeline(pipeline, options, metric_spec, detector):
       buffer_sec=options.buffer_sec,
       columns=columns,
       change_type_column=change_type_col,
-      change_timestamp_column=change_ts_col)
+      change_timestamp_column=change_ts_col,
+      decompress_shards=400)
   if stop_time is not None:
     cdc_kwargs['stop_time'] = stop_time
   if options.temp_dataset:
