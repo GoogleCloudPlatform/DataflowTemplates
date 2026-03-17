@@ -79,7 +79,6 @@ Example usage::
 """
 
 import dataclasses
-import random
 from enum import Enum
 from typing import Any
 from typing import Optional
@@ -518,18 +517,10 @@ class ComputeMetric(beam.PTransform):
           | 'Combine' >> beam.CombinePerKey(combine_fn)
           | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
     else:
-      _NUM_SHARDS = 200
-
-      def _shard_fields(row_dict):
-        return (random.randint(0, _NUM_SHARDS - 1), extract_fields(row_dict))
-
       aggregated = (
           windowed
-          | 'ShardAndExtract' >> beam.Map(_shard_fields)
-          | 'PartialCombine' >> beam.CombinePerKey(combine_fn)
-          | 'DropShard' >> beam.Values()
-          | 'FinalCombine' >> beam.CombineGlobally(
-              combine_fn).without_defaults()
+          | 'ExtractFields' >> beam.Map(extract_fields)
+          | 'Combine' >> beam.CombineGlobally(combine_fn).without_defaults()
           | 'ToDict' >> beam.Map(to_alias_dict))
 
     # Step 4: Apply metric expression and set output type hints
