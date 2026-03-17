@@ -882,7 +882,6 @@ class _ReadStorageStreamsSDF(beam.DoFn,
     total_streams = len(stream_names)
 
     streams_read = 0
-    total_rows = 0
 
     _LOGGER.info(
         '[Read] Reading streams [%d, %d) of %d total for %s',
@@ -906,9 +905,12 @@ class _ReadStorageStreamsSDF(beam.DoFn,
 
       stream_rows = 0
       if self._emit_raw_batches:
+        stream_batches = 0
         for raw_batch in self._read_stream_raw(stream_name):
           yield TimestampedValue(raw_batch, element.range_start)
-          stream_rows += 1
+          stream_batches += 1
+        Metrics.counter(
+            'BigQueryChangeHistory', 'batches_emitted').inc(stream_batches)
       else:
         for row in self._read_stream(stream_name):
           ts = row.get(self._change_timestamp_column)
@@ -921,8 +923,8 @@ class _ReadStorageStreamsSDF(beam.DoFn,
 
           yield TimestampedValue(row, ts)
           stream_rows += 1
-      total_rows += stream_rows
-      Metrics.counter('BigQueryChangeHistory', 'rows_emitted').inc(stream_rows)
+        Metrics.counter(
+            'BigQueryChangeHistory', 'rows_emitted').inc(stream_rows)
 
       streams_read += 1
       _LOGGER.info(
@@ -949,11 +951,10 @@ class _ReadStorageStreamsSDF(beam.DoFn,
     if streams_read > 0:
       _LOGGER.info(
           '[Read] Emitting cleanup signal for %s: '
-          'streams_read=%d, total_streams=%d, total_rows=%d',
+          'streams_read=%d, total_streams=%d',
           table_key,
           streams_read,
-          total_streams,
-          total_rows)
+          total_streams)
       yield beam.pvalue.TaggedOutput(
           _CLEANUP_TAG, (table_key, (streams_read, total_streams)))
 
