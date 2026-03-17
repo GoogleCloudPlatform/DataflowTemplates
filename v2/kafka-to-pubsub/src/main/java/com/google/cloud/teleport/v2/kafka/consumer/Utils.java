@@ -135,7 +135,7 @@ public class Utils {
         credentialMap.put(SSL_CREDENTIALS, sslCredentials);
       } catch (NullPointerException e) {
         LOG.warn(
-            "There is no enough information to configure SSL."
+            "There is not enough information to configure SSL."
                 + "Trying to initiate an unsecure connection.",
             e);
       }

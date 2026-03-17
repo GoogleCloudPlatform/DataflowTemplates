@@ -27,7 +27,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 /**
  * Utility class with methods which converts text fields in change events represented by JSONObject
  * to Cloud Spanner types. The field types come from spanner change streams hence the data formats
- * are going to the the same.
+ * are going to be the same.
  */
 public class DataChangeRecordTypeConvertor {
 
