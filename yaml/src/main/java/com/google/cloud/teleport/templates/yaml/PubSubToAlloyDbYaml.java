@@ -30,7 +30,6 @@ import org.apache.beam.sdk.options.Validation;
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToAlloyDb.yaml",
     filesToCopy = {
-      "PubSubToAlloyDb.yaml",
       "main.py",
       "requirements.txt",
       "options/pubsub_options.yaml",
