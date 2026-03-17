@@ -124,6 +124,8 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             optionsBuilder
+                .addParameter("network", "default")
+                .addParameter("subnetwork", "regions/" + REGION + "/subnetworks/default")
                 .addParameter("format", "JSON")
                 .addParameter(
                     "schema",
