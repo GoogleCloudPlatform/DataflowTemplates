@@ -1,9 +1,8 @@
 
-MySql to Iceberg (YAML) template
+MySQL to Iceberg (YAML) template
 ---
-The MySql to Iceberg template is a batch pipeline executes the user provided SQL
-query to read data from MySql table
-and outputs the records to Iceberg table.
+The MySQL to Iceberg template is a batch pipeline executes the user provided SQL
+query to read data from MySQL table and outputs the records to Iceberg table.
 
 
 
@@ -38,6 +37,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
@@ -58,7 +58,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/MySqlToIcebergYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/MySQLToIcebergYaml.java)
 
 ### Templates Plugin
 
@@ -100,7 +100,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="MySql_To_Iceberg_Yaml" \
+-DtemplateName="MySQL_To_Iceberg_Yaml" \
 -f yaml
 ```
 
@@ -111,7 +111,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/MySql_To_Iceberg_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/MySQL_To_Iceberg_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -131,7 +131,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MySql_To_Iceberg_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/MySQL_To_Iceberg_Yaml"
 
 ### Required
 export JDBC_URL=<jdbcUrl>
@@ -156,6 +156,7 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
+export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -185,6 +186,7 @@ gcloud dataflow flex-template run "mysql-to-iceberg-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
+  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
@@ -229,6 +231,7 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
+export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -240,8 +243,8 @@ mvn clean package -PtemplatesRun \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
 -DjobName="mysql-to-iceberg-yaml-job" \
--DtemplateName="MySql_To_Iceberg_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-DtemplateName="MySQL_To_Iceberg_Yaml" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -259,7 +262,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/yaml/terraform/MySql_To_Iceberg_Yaml
+cd v2/yaml/terraform/MySQL_To_Iceberg_Yaml
 terraform init
 terraform apply
 ```
@@ -282,7 +285,7 @@ variable "region" {
 resource "google_dataflow_flex_template_job" "mysql_to_iceberg_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MySql_To_Iceberg_Yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/MySQL_To_Iceberg_Yaml"
   name              = "mysql-to-iceberg-yaml"
   region            = var.region
   parameters        = {
@@ -306,6 +309,7 @@ resource "google_dataflow_flex_template_job" "mysql_to_iceberg_yaml" {
     # outputParallelization = "<outputParallelization>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
+    # filter = "<filter>"
     # keep = "<keep>"
     # only = "<only>"
     # partitionFields = "<partitionFields>"

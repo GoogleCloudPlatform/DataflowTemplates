@@ -1,8 +1,8 @@
 
-Iceberg to Postgres (YAML) template
+Iceberg to PostgreSQL (YAML) template
 ---
-The Iceberg to Postgres template is a batch pipeline that reads data from an
-Iceberg table and outputs the records to a Postgres database table.
+The Iceberg to PostgreSQL template is a batch pipeline that reads data from an
+Iceberg table and outputs the records to a PostgreSQL database table.
 
 
 
@@ -18,24 +18,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
 * **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **jdbcUrl**: The JDBC connection URL. For example, `jdbc:postgresql://your-host:5432/your-db`.
-* **location**: The name of the database table to write data to. For example, `public.my_table`.
 
 ### Optional parameters
 
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **drop**: A list of field names to drop from the source record. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
 * **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
-* **keep**: A list of field names to keep in the source record. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `org.postgresql.Driver`. Defaults to: org.postgresql.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/postgresql-42.2.23.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `postgres`.
-* **writeStatement**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
-* **batchSize**: The number of records to group together for each write. For example, `1000`.
-* **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `false`.
+* **postgresTable**: The name of the database table. For example, `public.my_table`.
+* **query**: The SQL query/statement to execute on the source/sink. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
+* **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
 
 
 
@@ -52,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/IcebergToPostgresYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/IcebergToPostgreSQLYaml.java)
 
 ### Templates Plugin
 
@@ -94,7 +90,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="Iceberg_To_Postgres_Yaml" \
+-DtemplateName="Iceberg_To_PostgreSQL_Yaml" \
 -f yaml
 ```
 
@@ -105,7 +101,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Iceberg_To_Postgres_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/Iceberg_To_PostgreSQL_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -125,14 +121,13 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Iceberg_To_Postgres_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Iceberg_To_PostgreSQL_Yaml"
 
 ### Required
 export TABLE=<table>
 export CATALOG_NAME=<catalogName>
 export CATALOG_PROPERTIES=<catalogProperties>
 export JDBC_URL=<jdbcUrl>
-export LOCATION=<location>
 
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
@@ -141,16 +136,13 @@ export FILTER=<filter>
 export KEEP=<keep>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=org.postgresql.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=postgres
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export POSTGRES_TABLE=<postgresTable>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
-gcloud dataflow flex-template run "iceberg-to-postgres-yaml-job" \
+gcloud dataflow flex-template run "iceberg-to-postgresql-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -164,13 +156,9 @@ gcloud dataflow flex-template run "iceberg-to-postgres-yaml-job" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
-  --parameters "location=$LOCATION" \
-  --parameters "writeStatement=$WRITE_STATEMENT" \
+  --parameters "postgresTable=$POSTGRES_TABLE" \
+  --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autosharding=$AUTOSHARDING"
 ```
@@ -195,7 +183,6 @@ export TABLE=<table>
 export CATALOG_NAME=<catalogName>
 export CATALOG_PROPERTIES=<catalogProperties>
 export JDBC_URL=<jdbcUrl>
-export LOCATION=<location>
 
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
@@ -204,13 +191,10 @@ export FILTER=<filter>
 export KEEP=<keep>
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=org.postgresql.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=postgres
-export WRITE_STATEMENT=<writeStatement>
-export BATCH_SIZE=<batchSize>
+export POSTGRES_TABLE=<postgresTable>
+export QUERY=<query>
+export BATCH_SIZE=1000
 export AUTOSHARDING=<autosharding>
 
 mvn clean package -PtemplatesRun \
@@ -218,9 +202,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="iceberg-to-postgres-yaml-job" \
--DtemplateName="Iceberg_To_Postgres_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-DjobName="iceberg-to-postgresql-yaml-job" \
+-DtemplateName="Iceberg_To_PostgreSQL_Yaml" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,postgresTable=$POSTGRES_TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
 -f yaml
 ```
 
@@ -238,7 +222,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/yaml/terraform/Iceberg_To_Postgres_Yaml
+cd v2/yaml/terraform/Iceberg_To_PostgreSQL_Yaml
 terraform init
 terraform apply
 ```
@@ -258,31 +242,27 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "iceberg_to_postgres_yaml" {
+resource "google_dataflow_flex_template_job" "iceberg_to_postgresql_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Iceberg_To_Postgres_Yaml"
-  name              = "iceberg-to-postgres-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Iceberg_To_PostgreSQL_Yaml"
+  name              = "iceberg-to-postgresql-yaml"
   region            = var.region
   parameters        = {
     table = "<table>"
     catalogName = "<catalogName>"
     catalogProperties = "<catalogProperties>"
     jdbcUrl = "<jdbcUrl>"
-    location = "<location>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
     # filter = "<filter>"
     # keep = "<keep>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "org.postgresql.Driver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "postgres"
-    # writeStatement = "<writeStatement>"
-    # batchSize = "<batchSize>"
+    # postgresTable = "<postgresTable>"
+    # query = "<query>"
+    # batchSize = "1000"
     # autosharding = "<autosharding>"
   }
 }

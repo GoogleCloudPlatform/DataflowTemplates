@@ -22,14 +22,14 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "MySql_To_Iceberg_Yaml",
+    name = "MySQL_To_Iceberg_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "MySql to Iceberg (YAML)",
+    displayName = "MySQL to Iceberg (YAML)",
     description =
-        "The MySql to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySql table and outputs the records to Iceberg table.",
+        "The MySQL to Iceberg template is a batch pipeline executes the user provided SQL query to read data from MySQL table and outputs the records to Iceberg table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "MySqlToIceberg.yaml",
+    yamlTemplateFile = "MySQLToIceberg.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
@@ -39,12 +39,12 @@ import org.apache.beam.sdk.options.Validation;
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The Input MySql instance and table must exist.",
+      "The Input MySQL instance and table must exist.",
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
     hidden = false)
-public interface MySqlToIcebergYaml {
+public interface MySQLToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,

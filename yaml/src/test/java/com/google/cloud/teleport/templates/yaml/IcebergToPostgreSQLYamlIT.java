@@ -47,13 +47,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToPostgresYaml} template. */
+/** Integration test for {@link IcebergToPostgreSQLYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToPostgresYaml.class)
+@TemplateIntegrationTest(IcebergToPostgreSQLYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToPostgresYamlIT extends TemplateTestBase {
+public class IcebergToPostgreSQLYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToPostgresYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToPostgreSQLYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";

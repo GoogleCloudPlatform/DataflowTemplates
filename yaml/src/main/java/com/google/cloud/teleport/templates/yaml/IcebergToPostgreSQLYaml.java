@@ -22,14 +22,14 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Iceberg_To_Postgres_Yaml",
+    name = "Iceberg_To_PostgreSQL_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "Iceberg to Postgres (YAML)",
+    displayName = "Iceberg to PostgreSQL (YAML)",
     description =
-        "The Iceberg to Postgres template is a batch pipeline that reads data from an Iceberg table and outputs the records to a Postgres database table.",
+        "The Iceberg to PostgreSQL template is a batch pipeline that reads data from an Iceberg table and outputs the records to a PostgreSQL database table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "IcebergToPostgres.yaml",
+    yamlTemplateFile = "IcebergToPostgreSQL.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
@@ -40,11 +40,11 @@ import org.apache.beam.sdk.options.Validation;
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Input Iceberg table must exist and be accessible through the provided catalog.",
-      "The Output Postgres instance must exist and the target table must exist or be created."
+      "The Output PostgreSQL instance must exist and the target table must exist or be created."
     },
     streaming = false,
     hidden = false)
-public interface IcebergToPostgresYaml {
+public interface IcebergToPostgreSQLYaml {
 
   @TemplateParameter.Text(
       order = 1,
