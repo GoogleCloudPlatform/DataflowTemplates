@@ -79,6 +79,7 @@ Example usage::
 """
 
 import dataclasses
+import random
 from enum import Enum
 from typing import Any
 from typing import Optional
@@ -105,6 +106,27 @@ class AggOp(Enum):
   MIN = 'MIN'
   MAX = 'MAX'
   MEAN = 'MEAN'
+
+
+class FanoutStrategy(Enum):
+  """Strategy for global (non-keyed) aggregation parallelism.
+
+  NONE: Plain CombineGlobally, no fanout. Relies on combiner lifting (PGBK)
+      for mapper-side pre-combining. Works well when upstream provides enough
+      parallel bundles (e.g. decompress_shards) and streaming state I/O on a
+      single key is not a bottleneck.
+  HOTKEY_FANOUT: Uses CombineGlobally.with_fanout(). Per-bundle nonce sharding.
+      Better PGBK table efficiency (1 slot per bundle), but shard distribution
+      depends on bundle count and sizes. Good for multi-key CombinePerKey where
+      only a few keys are hot.
+  SHARDED: Per-element random sharding with _PreCombineFn/_PostCombineFn.
+      Uniform distribution regardless of bundle count. One extra GBK vs NONE,
+      but distributes streaming state I/O across shard keys. Best for single
+      global key at high throughput.
+  """
+  NONE = 'none'
+  HOTKEY_FANOUT = 'hotkey_fanout'
+  SHARDED = 'sharded'
 
 
 @dataclasses.dataclass(frozen=True)
@@ -157,10 +179,16 @@ class AggregationSpec:
     window: Window configuration.
     group_by: Field names for grouping. Empty list means global aggregation.
     measures: List of aggregation measures.
+    fanout_strategy: Strategy for global (non-keyed) aggregation parallelism.
+        Ignored when group_by is non-empty. Default is SHARDED.
+    fanout: Number of shards for SHARDED or HOTKEY_FANOUT strategies.
+        Ignored for NONE.
   """
   window: WindowSpec = dataclasses.field(default_factory=WindowSpec)
   group_by: list = dataclasses.field(default_factory=list)
   measures: list = dataclasses.field(default_factory=list)
+  fanout_strategy: FanoutStrategy = FanoutStrategy.SHARDED
+  fanout: int = 400
 
 
 @specifiable
@@ -250,6 +278,8 @@ class MetricSpec:
             'measures': [{
                 'field': m.field, 'agg': m.agg.value, 'alias': m.alias
             } for m in self.aggregation.measures],
+            'fanout_strategy': self.aggregation.fanout_strategy.value,
+            'fanout': self.aggregation.fanout,
         },
     }
     if self.derived_fields:
@@ -318,11 +348,16 @@ class MetricSpec:
             f"got {type(expr_val).__name__}. "
             f"Example: \"clicks / impressions\"")
       measure_combiner = Expr.from_string(expr_val)
+    fanout_strategy = FanoutStrategy(
+        agg_dict.get('fanout_strategy', 'sharded'))
+    fanout = agg_dict.get('fanout', 400)
     return cls(
         aggregation=AggregationSpec(
             window=window,
             group_by=agg_dict.get('group_by', []),
             measures=measures,
+            fanout_strategy=fanout_strategy,
+            fanout=fanout,
         ),
         derived_fields=derived_fields,
         measure_combiner=measure_combiner,
@@ -392,6 +427,42 @@ def _get_combiner_for_agg(agg_op):
     return combiners.MeanCombineFn()
   else:
     raise ValueError(f"Unknown aggregation operator: {agg_op}")
+
+
+class _PreCombineFn(beam.CombineFn):
+  """Stage 1 wrapper: extract_output returns the raw accumulator."""
+  def __init__(self, combine_fn):
+    self._combine_fn = combine_fn
+
+  def create_accumulator(self):
+    return self._combine_fn.create_accumulator()
+
+  def add_input(self, accumulator, element):
+    return self._combine_fn.add_input(accumulator, element)
+
+  def merge_accumulators(self, accumulators):
+    return self._combine_fn.merge_accumulators(accumulators)
+
+  def extract_output(self, accumulator):
+    return accumulator  # pass raw accumulator, NOT final output
+
+
+class _PostCombineFn(beam.CombineFn):
+  """Stage 2 wrapper: add_input merges an accumulator from Stage 1."""
+  def __init__(self, combine_fn):
+    self._combine_fn = combine_fn
+
+  def create_accumulator(self):
+    return self._combine_fn.create_accumulator()
+
+  def add_input(self, accumulator, element):
+    return self._combine_fn.merge_accumulators([accumulator, element])
+
+  def merge_accumulators(self, accumulators):
+    return self._combine_fn.merge_accumulators(accumulators)
+
+  def extract_output(self, accumulator):
+    return self._combine_fn.extract_output(accumulator)
 
 
 class _DerivedFieldsFn:
@@ -517,11 +588,40 @@ class ComputeMetric(beam.PTransform):
           | 'Combine' >> beam.CombinePerKey(combine_fn)
           | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
     else:
-      aggregated = (
-          windowed
-          | 'ExtractFields' >> beam.Map(extract_fields)
-          | 'Combine' >> beam.CombineGlobally(combine_fn).without_defaults()
-          | 'ToDict' >> beam.Map(to_alias_dict))
+      strategy = agg.fanout_strategy
+      if strategy == FanoutStrategy.NONE:
+        aggregated = (
+            windowed
+            | 'ExtractFields' >> beam.Map(extract_fields)
+            | 'Combine' >> beam.CombineGlobally(
+                combine_fn).without_defaults()
+            | 'ToDict' >> beam.Map(to_alias_dict))
+      elif strategy == FanoutStrategy.HOTKEY_FANOUT:
+        aggregated = (
+            windowed
+            | 'ExtractFields' >> beam.Map(extract_fields)
+            | 'Combine' >> beam.CombineGlobally(
+                combine_fn).with_fanout(agg.fanout).without_defaults()
+            | 'ToDict' >> beam.Map(to_alias_dict))
+      elif strategy == FanoutStrategy.SHARDED:
+        _num_shards = agg.fanout
+
+        def _shard_fields(row_dict):
+          return (random.randint(0, _num_shards - 1),
+                  extract_fields(row_dict))
+
+        pre_fn = _PreCombineFn(combine_fn)
+        post_fn = _PostCombineFn(combine_fn)
+        aggregated = (
+            windowed
+            | 'ShardAndExtract' >> beam.Map(_shard_fields)
+            | 'PartialCombine' >> beam.CombinePerKey(pre_fn)
+            | 'DropShard' >> beam.Values()
+            | 'FinalCombine' >> beam.CombineGlobally(
+                post_fn).without_defaults()
+            | 'ToDict' >> beam.Map(to_alias_dict))
+      else:
+        raise ValueError(f"Unknown fanout strategy: {strategy}")
 
     # Step 4: Apply metric expression and set output type hints
     metric_dofn = _ApplyMetricExpr(spec.measure_combiner, is_keyed)

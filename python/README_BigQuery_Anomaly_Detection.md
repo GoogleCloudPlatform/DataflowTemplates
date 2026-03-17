@@ -65,12 +65,40 @@ aggregated into a single numeric value for anomaly detection.
 | `aggregation.measures[].field` | Yes | Input field name (ignored for `COUNT`). |
 | `aggregation.measures[].agg` | Yes | `SUM`, `COUNT`, `MIN`, `MAX`, or `MEAN`. |
 | `aggregation.measures[].alias` | Yes | Output name for this measure. |
+| `aggregation.fanout_strategy` | No | Parallelism strategy for global (non-keyed) aggregation: `sharded` (default), `hotkey_fanout`, or `none`. Ignored when `group_by` is set. See [Fanout Strategies](#fanout-strategies). |
+| `aggregation.fanout` | No | Number of shards for `sharded` or `hotkey_fanout`. Default: `400`. Ignored for `none`. |
 | `derived_fields` | No | Pre-aggregation computed columns. |
 | `measure_combiner` | When >1 measure | Post-aggregation expression combining measure aliases. |
 
 Expressions support: `+`, `-`, `*`, `/`, `//`, `%`, `**`, comparisons,
 `and/or/not`, `if/else`, safe builtins (`abs`, `min`, `max`, `round`),
 and parentheses. Bare names are field references.
+
+### Fanout Strategies
+
+For global aggregation (no `group_by`), all elements are combined under a
+single key. At high throughput this creates a bottleneck on the single reducer's
+streaming state I/O. The `fanout_strategy` controls how elements are distributed
+across intermediate reducers before the final merge.
+
+| Strategy | How it works | Best for |
+|---|---|---|
+| `sharded` (default) | Per-element random sharding into N shard keys. Stage 1 `CombinePerKey` reduces each shard independently. Stage 2 `CombineGlobally` merges N partial accumulators. | High-throughput global aggregation (e.g., 1M+ rows/sec). Uniform distribution regardless of bundle count. |
+| `hotkey_fanout` | Beam's built-in `CombineGlobally.with_fanout(N)`. Per-bundle nonce sharding — all elements in one bundle go to the same shard. Better mapper-side pre-combine (PGBK) table efficiency. | When upstream provides many small bundles, or for moderate throughput where PGBK efficiency matters. |
+| `none` | Plain `CombineGlobally` with no fanout. Relies on Dataflow's combiner lifting (PGBK) for mapper-side pre-combining. | Low throughput, or when upstream already provides enough parallel bundles (e.g., `decompress_shards`) and streaming state I/O is not a bottleneck. |
+
+Example with explicit fanout settings:
+
+```json
+{
+  "aggregation": {
+    "window": {"type": "fixed", "size_seconds": 60},
+    "measures": [{"field": "amount", "agg": "SUM", "alias": "revenue"}],
+    "fanout_strategy": "sharded",
+    "fanout": 400
+  }
+}
+```
 
 ## Detector Spec Reference
 
