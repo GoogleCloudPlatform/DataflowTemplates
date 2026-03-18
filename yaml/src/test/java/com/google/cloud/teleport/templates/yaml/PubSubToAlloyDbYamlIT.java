@@ -130,7 +130,7 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
                 .addParameter(
                     "schema",
                     "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("windowing", "type: fixed\nsize: 10s")
+                .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
                 .addParameter("language", "python")
                 .addParameter(
                     "fields",
