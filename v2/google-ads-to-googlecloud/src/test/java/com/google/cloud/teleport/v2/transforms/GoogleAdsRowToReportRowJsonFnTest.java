@@ -52,7 +52,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
             .apply(ParDo.of(new GoogleAdsRowToReportRowJsonFn(query)));
 
     String expected =
-        "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date\":\"1970-01-01\",\"campaign_status\":\"ENABLED\"}";
+        "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date_time\":\"1970-01-01 12:00:00\",\"campaign_status\":\"ENABLED\"}";
     PAssert.that(actual).containsInAnyOrder(expected);
     pipeline.run();
   }
