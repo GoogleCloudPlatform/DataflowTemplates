@@ -42,7 +42,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
                 Campaign.newBuilder()
                     .setId(1234567890L)
                     .setName("foo")
-                    .setStartDate("1970-01-01")
+                    .setStartDateTime("1970-01-01 12:00:00")
                     .setStatus(CampaignStatus.ENABLED))
             .build();
 
