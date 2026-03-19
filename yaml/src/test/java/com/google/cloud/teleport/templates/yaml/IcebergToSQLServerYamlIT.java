@@ -47,13 +47,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToSqlServerYaml} template. */
+/** Integration test for {@link IcebergToSQLServerYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToSqlServerYaml.class)
+@TemplateIntegrationTest(IcebergToSQLServerYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToSqlServerYamlIT extends TemplateTestBase {
+public class IcebergToSQLServerYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToSqlServerYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToSQLServerYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -94,7 +94,7 @@ public class IcebergToSqlServerYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testIcebergToSqlServer() throws IOException {
+  public void testIcebergToSQLServer() throws IOException {
     // Iceberg setup
 
     // Create namespace in the REST catalog

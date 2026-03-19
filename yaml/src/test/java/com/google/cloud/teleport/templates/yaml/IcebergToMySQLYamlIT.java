@@ -46,16 +46,16 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToMySqlYaml} template. */
+/** Integration test for {@link IcebergToMySQLYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToMySqlYaml.class)
+@TemplateIntegrationTest(IcebergToMySQLYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToMySqlYamlIT extends TemplateTestBase {
+public class IcebergToMySQLYamlIT extends TemplateTestBase {
 
   private MySQLResourceManager mySQLResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToMySqlYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToMySQLYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -86,7 +86,7 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
   }
 
   @Test
-  public void testIcebergToMySql() throws IOException {
+  public void testIcebergToMySQL() throws IOException {
 
     // Iceberg setup
 
@@ -113,7 +113,7 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
     icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
-    // MySql setup
+    // MySQL setup
     String tableName = "source_table";
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER");
