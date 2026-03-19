@@ -55,7 +55,7 @@ public class IcebergToMySqlYamlIT extends TemplateTestBase {
   private MySQLResourceManager mySQLResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToMySqlYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
