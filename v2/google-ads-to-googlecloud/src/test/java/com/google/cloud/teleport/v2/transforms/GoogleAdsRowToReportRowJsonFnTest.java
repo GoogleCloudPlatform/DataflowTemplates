@@ -35,7 +35,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
   @Test
   public void testRowToJsonWithValidInput() {
     String query =
-        "SELECT campaign.id, campaign.name, campaign.start_date, campaign.status FROM campaign";
+        "SELECT campaign.id, campaign.name, campaign.start_date_time, campaign.status FROM campaign";
     GoogleAdsRow row =
         GoogleAdsRow.newBuilder()
             .setCampaign(
