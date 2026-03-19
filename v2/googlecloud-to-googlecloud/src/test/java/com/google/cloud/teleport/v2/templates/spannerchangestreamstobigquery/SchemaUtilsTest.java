@@ -1101,4 +1101,149 @@ public class SchemaUtilsTest {
     assertThat(SpannerToBigQueryUtils.cleanSpannerType("ARRAY<NUMERIC<PG_NUMERIC>>"))
         .isEqualTo("ARRAY<NUMERIC>");
   }
+
+  @Test
+  public void testTableRowColumnsToBigQueryIOFields_UUID() {
+    TableRow tableRow = new TableRow();
+    // GoogleSQL UUID
+    tableRow.put("GsqlUuidCol", "");
+    tableRow.put("_type_GsqlUuidCol", "UUID");
+    // GoogleSQL ARRAY<UUID>
+    tableRow.put("GsqlUuidArrCol", "");
+    tableRow.put("_type_GsqlUuidArrCol", "ARRAY<UUID>");
+    // PostgreSQL UUID (treated as STRING)
+    tableRow.put("PgUuidCol", "");
+    tableRow.put("_type_PgUuidCol", "STRING");
+    // PostgreSQL UUID[] (treated as ARRAY<STRING>)
+    tableRow.put("PgUuidArrCol", "");
+    tableRow.put("_type_PgUuidArrCol", "ARRAY<STRING>");
+
+    List<TableFieldSchema> expectedFields =
+        ImmutableList.of(
+            new TableFieldSchema()
+                .setName("GsqlUuidCol")
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName("GsqlUuidArrCol")
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName("PgUuidCol")
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName("PgUuidArrCol")
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("STRING"));
+
+    List<TableFieldSchema> actualFields =
+        SpannerToBigQueryUtils.tableRowColumnsToBigQueryIOFields(tableRow, false);
+    assertThat(actualFields).containsExactlyElementsIn(expectedFields);
+  }
+
+  @Test
+  public void testSpannerSnapshotRowToBigQueryTableRow_GoogleSQL_UUID() {
+    String colName = "GsqlUuidCol";
+    String uuidVal = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+    TrackedSpannerColumn column = TrackedSpannerColumn.create(colName, Type.uuid(), 1, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(column);
+    TableRow tableRow = new TableRow();
+
+    ResultSet resultSet = Mockito.mock(ResultSet.class);
+    when(resultSet.next()).thenReturn(true).thenReturn(false);
+    when(resultSet.isNull(colName)).thenReturn(false);
+    when(resultSet.getString(colName)).thenReturn(uuidVal);
+    SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
+        resultSet, spannerColumns, tableRow);
+
+    assertThat(tableRow.get(colName)).isEqualTo(uuidVal);
+  }
+
+  @Test
+  public void testSpannerSnapshotRowToBigQueryTableRow_GoogleSQL_ARRAY_UUID() {
+    String colName = "GsqlUuidArrCol";
+    List<String> uuidList =
+        ImmutableList.of(
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12");
+    List<String> expectedList =
+        ImmutableList.of(
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12");
+    TrackedSpannerColumn column =
+        TrackedSpannerColumn.create(colName, Type.array(Type.uuid()), 1, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(column);
+    TableRow tableRow = new TableRow();
+    ResultSet resultSet = Mockito.mock(ResultSet.class);
+    when(resultSet.next()).thenReturn(true).thenReturn(false);
+    when(resultSet.isNull(colName)).thenReturn(false);
+    when(resultSet.getStringList(colName)).thenReturn(uuidList);
+    SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
+        resultSet, spannerColumns, tableRow);
+
+    assertThat(tableRow.get(colName)).isEqualTo(expectedList);
+  }
+
+  @Test
+  public void testSpannerSnapshotRowToBigQueryTableRow_PostgreSQL_UUID() {
+    String colName = "PgUuidCol";
+    String uuidVal = "c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13";
+    // PG UUID is treated as Type.string()
+    TrackedSpannerColumn column = TrackedSpannerColumn.create(colName, Type.string(), 1, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(column);
+    TableRow tableRow = new TableRow();
+    List<Type.StructField> structFields =
+        ImmutableList.of(Type.StructField.of(colName, Type.string()));
+
+    ResultSet resultSet =
+        ResultSets.forRows(
+            Type.struct(structFields),
+            Collections.singletonList(
+                Struct.newBuilder().set(colName).to(Value.string(uuidVal)).build()));
+    SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
+        resultSet, spannerColumns, tableRow);
+    assertThat(tableRow.get(colName)).isEqualTo(uuidVal);
+  }
+
+  @Test
+  public void testAddSpannerNonPkColumnsToTableRow_GoogleSQL_ARRAY_UUID() throws Exception {
+    String colName = "GsqlUuidArrCol";
+    List<String> uuidList =
+        ImmutableList.of(
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12");
+    String newValuesJson =
+        "{\""
+            + colName
+            + "\":[\"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11\", \"b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12\"]}";
+    TrackedSpannerColumn column =
+        TrackedSpannerColumn.create(colName, Type.array(Type.uuid()), 1, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(column);
+    TableRow tableRow = new TableRow();
+
+    SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
+        newValuesJson, spannerColumns, tableRow, ModType.INSERT);
+
+    assertThat(tableRow.get(colName)).isInstanceOf(List.class);
+    assertThat((List<String>) tableRow.get(colName)).containsExactlyElementsIn(uuidList);
+    assertThat(tableRow.get("_type_" + colName)).isEqualTo("ARRAY<UUID>");
+  }
+
+  @Test
+  public void testAddSpannerNonPkColumnsToTableRow_GoogleSQL_ARRAY_UUID_WithNulls()
+      throws Exception {
+    String colName = "GsqlUuidArrCol";
+    List<String> expectedUuidList = ImmutableList.of("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+    String newValuesJson = "{\"" + colName + "\":[\"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11\", null]}";
+    TrackedSpannerColumn column =
+        TrackedSpannerColumn.create(colName, Type.array(Type.uuid()), 1, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(column);
+    TableRow tableRow = new TableRow();
+
+    SpannerToBigQueryUtils.addSpannerNonPkColumnsToTableRow(
+        newValuesJson, spannerColumns, tableRow, ModType.INSERT);
+
+    assertThat(tableRow.get(colName)).isInstanceOf(List.class);
+    // Nulls should be filtered out
+    assertThat((List<String>) tableRow.get(colName)).containsExactlyElementsIn(expectedUuidList);
+    assertThat(tableRow.get("_type_" + colName)).isEqualTo("ARRAY<UUID>");
+  }
 }

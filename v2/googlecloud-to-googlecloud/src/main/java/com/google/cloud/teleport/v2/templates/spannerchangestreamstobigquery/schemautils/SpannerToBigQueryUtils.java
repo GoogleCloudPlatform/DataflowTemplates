@@ -101,11 +101,13 @@ public class SpannerToBigQueryUtils {
           "PG_NUMERIC",
           "PG_JSONB",
           "STRING",
-          "TIMESTAMP"
+          "TIMESTAMP",
+          "UUID"
         };
     Set<String> supportedTypes = Set.of(supportedTypesArr);
     if (type.startsWith("ARRAY")) {
       String arrayItemType = type.substring(6, type.length() - 1);
+
       if (supportedTypes.contains(arrayItemType)) {
         if (arrayItemType.equals("PG_NUMERIC")) {
           bigQueryField.setType("STRING");
@@ -114,6 +116,8 @@ public class SpannerToBigQueryUtils {
         } else if (arrayItemType.equals("FLOAT32")) {
           // BigQuery does not support the FLOAT32 type.
           bigQueryField.setType("FLOAT64");
+        } else if (arrayItemType.equals("UUID")) {
+          bigQueryField.setType("STRING");
         } else {
           bigQueryField.setType(arrayItemType);
         }
@@ -136,6 +140,8 @@ public class SpannerToBigQueryUtils {
         } else if (type.equals("FLOAT32")) {
           // BigQuery does not support the FLOAT32 type.
           bigQueryField.setType("FLOAT64");
+        } else if (type.equals("UUID")) {
+          bigQueryField.setType("STRING");
         } else {
           bigQueryField.setType(type);
         }
@@ -203,11 +209,16 @@ public class SpannerToBigQueryUtils {
       return removeNulls(resultSet.getPgJsonbList(columnName));
     } else if (columnType.equals(Type.array(Type.string()))) {
       return removeNulls(resultSet.getStringList(columnName));
+    } else if (columnType.equals(Type.array(Type.uuid()))) {
+      return removeNulls(resultSet.getStringList(columnName));
     } else if (columnType.equals(Type.array(Type.timestamp()))) {
       return removeNulls(resultSet.getTimestampList(columnName)).stream()
           .map(e -> e.toString())
           .collect(Collectors.toList());
     } else {
+      if (columnType.equals(Type.uuid())) {
+        return resultSet.getString(columnName);
+      }
       Type.Code columnTypeCode = columnType.getCode();
       switch (columnTypeCode) {
         case BOOL:
@@ -242,6 +253,7 @@ public class SpannerToBigQueryUtils {
   }
 
   private static <T> List<T> removeNulls(List<T> list) {
+
     return list.stream().filter(Objects::nonNull).collect(Collectors.toList());
   }
 
@@ -310,7 +322,8 @@ public class SpannerToBigQueryUtils {
           || columnType.equals(Type.array(Type.pgNumeric()))
           || columnType.equals(Type.array(Type.pgJsonb()))
           || columnType.equals(Type.array(Type.string()))
-          || columnType.equals(Type.array(Type.timestamp()))) {
+          || columnType.equals(Type.array(Type.timestamp()))
+          || columnType.equals(Type.array(Type.uuid()))) {
         JSONArray jsonArray = newValuesJsonObject.getJSONArray(columnName);
         List<Object> objects = new ArrayList<>(jsonArray.length());
         for (int i = 0; i < jsonArray.length(); i++) {
