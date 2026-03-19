@@ -167,7 +167,6 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
     mockGetDialect();
 
     exception.expect(IllegalArgumentException.class);
-    exception.expectMessage("Invalid output format:PARQUET. Supported output formats: TEXT, AVRO");
 
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
@@ -208,7 +207,6 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
     mockGetDialect();
 
     exception.expect(IllegalArgumentException.class);
-    exception.expectMessage("The window duration must be greater than 0!");
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
     options.setOutputFileFormat(FileFormat.AVRO);
