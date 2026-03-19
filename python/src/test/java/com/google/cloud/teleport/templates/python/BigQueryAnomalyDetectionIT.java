@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
@@ -30,9 +31,13 @@ import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -40,6 +45,7 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
+import org.apache.beam.it.gcp.bigquery.matchers.BigQueryAsserts;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.json.JSONObject;
@@ -66,6 +72,10 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryAnomalyDetectionIT.class);
 
   private static final String TABLE_NAME = "anomaly_test";
+  private static final String SINK_TABLE_NAME = "anomaly_results";
+
+  // Window size used in all metric specs (seconds).
+  private static final int WINDOW_SIZE_SEC = 1;
 
   // Baseline: insert 100 rows every second for ~6 minutes (360 batches).
   // Each batch lands in one 1-second window, giving the detector many data
@@ -132,7 +142,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     // 1-second fixed windows, MEAN of amount, RobustZScore detector.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":1},\"measures\":[{\"field\":\"amount\","
+            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "},\"measures\":[{\"field\":\"amount\","
             + "\"agg\":\"MEAN\",\"alias\":\"avg_amount\"}]}}";
     String detectorSpec = "{\"type\":\"RobustZScore\"}";
 
@@ -142,6 +153,13 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             bigQueryResourceManager.getProjectId(),
             bigQueryResourceManager.getDatasetId(),
             TABLE_NAME);
+
+    String sinkTableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            SINK_TABLE_NAME);
 
     // --- Act ---
 
@@ -156,7 +174,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             .addParameter("poll_interval_sec", "15")
             .addParameter("start_offset_sec", "300")
             .addParameter("duration_sec", "600")
-            .addParameter("log_all_results", "true");
+            .addParameter("log_all_results", "true")
+            .addParameter("sink_table", sinkTableRef);
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -222,6 +241,9 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
 
     assertThat(payload.getString("event_description")).contains("Anomaly detected");
     assertThat(payload.getString("agent_id")).isEqualTo("RobustZScore");
+
+    // --- Verify BQ sink table ---
+    verifySinkTable(SINK_TABLE_NAME, WINDOW_SIZE_SEC, null /* no keys expected */);
   }
 
   /**
@@ -248,10 +270,13 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "ctr-anomaly-output-sub");
 
+    String sinkTableName = "ctr_results";
+
     // Grouped ratio: CTR = clicks / impressions per campaign_type.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":1},\"group_by\":[\"campaign_type\"],"
+            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "},\"group_by\":[\"campaign_type\"],"
             + "\"measures\":[{\"field\":\"is_click\",\"agg\":\"SUM\",\"alias\":\"clicks\"},"
             + "{\"field\":\"is_click\",\"agg\":\"COUNT\",\"alias\":\"impressions\"}]},"
             + "\"measure_combiner\":{\"expression\":\"clicks / impressions\"}}";
@@ -264,6 +289,13 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             bigQueryResourceManager.getDatasetId(),
             tableName);
 
+    String sinkTableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            sinkTableName);
+
     // --- Act ---
 
     LaunchConfig.Builder options =
@@ -275,7 +307,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             .addParameter("poll_interval_sec", "15")
             .addParameter("start_offset_sec", "300")
             .addParameter("duration_sec", "600")
-            .addParameter("log_all_results", "true");
+            .addParameter("log_all_results", "true")
+            .addParameter("sink_table", sinkTableRef);
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -345,6 +378,10 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     assertThat(payload.getString("event_description")).contains("Anomaly detected");
     assertThat(payload.getString("agent_id")).isEqualTo("RobustZScore");
     assertThat(payload.has("key")).isTrue();
+
+    // --- Verify BQ sink table ---
+    Set<String> expectedKeys = Set.of("('search',)", "('display',)");
+    verifySinkTable(sinkTableName, WINDOW_SIZE_SEC, expectedKeys);
   }
 
   /**
@@ -370,10 +407,13 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "threshold-output-sub");
 
+    String sinkTableName = "threshold_results";
+
     // Simple MEAN metric with Threshold detector.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":1},\"measures\":[{\"field\":\"amount\","
+            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "},\"measures\":[{\"field\":\"amount\","
             + "\"agg\":\"MEAN\",\"alias\":\"avg_amount\"}]}}";
     String detectorSpec = "{\"type\":\"Threshold\",\"expression\":\"value >= 100\"}";
 
@@ -383,6 +423,13 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             bigQueryResourceManager.getProjectId(),
             bigQueryResourceManager.getDatasetId(),
             tableName);
+
+    String sinkTableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            sinkTableName);
 
     // --- Act ---
 
@@ -395,7 +442,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             .addParameter("poll_interval_sec", "15")
             .addParameter("start_offset_sec", "300")
             .addParameter("duration_sec", "600")
-            .addParameter("log_all_results", "true");
+            .addParameter("log_all_results", "true")
+            .addParameter("sink_table", sinkTableRef);
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
@@ -454,5 +502,79 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
 
     assertThat(payload.getString("event_description")).contains("Anomaly detected");
     assertThat(payload.getString("agent_id")).isEqualTo("Threshold(value >= 100)");
+
+    // --- Verify BQ sink table ---
+    verifySinkTable(sinkTableName, WINDOW_SIZE_SEC, null /* no keys expected */);
+  }
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Verifies the BQ sink table written by the pipeline.
+   *
+   * @param tableName sink table name
+   * @param windowSizeSec expected window duration in seconds
+   * @param expectedKeys if non-null, the set of expected key values; if null, key must be absent
+   */
+  private void verifySinkTable(String tableName, int windowSizeSec, Set<String> expectedKeys) {
+    TableResult tableResult = bigQueryResourceManager.readTable(tableName);
+    List<Map<String, Object>> rows = BigQueryAsserts.tableResultToRecords(tableResult);
+
+    assertThat(rows).isNotEmpty();
+    LOG.info("Sink table '{}' has {} rows", tableName, rows.size());
+
+    boolean hasOutlier = false;
+    Set<String> observedKeys = new HashSet<>();
+    Set<Integer> validLabels = Set.of(-2, 0, 1);
+
+    for (Map<String, Object> row : rows) {
+      // All expected columns exist.
+      assertThat(row).containsKey("window_start");
+      assertThat(row).containsKey("window_end");
+      assertThat(row).containsKey("value");
+      assertThat(row).containsKey("label");
+
+      // Window timestamps parse as valid ISO-8601 UTC.
+      String windowStart = row.get("window_start").toString();
+      String windowEnd = row.get("window_end").toString();
+      Instant start = Instant.parse(windowStart);
+      Instant end = Instant.parse(windowEnd);
+
+      // Window duration matches expected size.
+      long durationSec = end.getEpochSecond() - start.getEpochSecond();
+      assertThat(durationSec).isEqualTo(windowSizeSec);
+
+      // Value is a valid number.
+      assertThat(row.get("value")).isNotNull();
+      double value = ((Number) row.get("value")).doubleValue();
+      assertThat(Double.isNaN(value)).isFalse();
+
+      // Label is valid.
+      int label = ((Number) row.get("label")).intValue();
+      assertThat(validLabels).contains(label);
+
+      if (label == 1) {
+        hasOutlier = true;
+      }
+
+      // Track keys.
+      if (row.containsKey("key") && row.get("key") != null) {
+        observedKeys.add(row.get("key").toString());
+      }
+    }
+
+    // At least one outlier was detected.
+    assertThat(hasOutlier).isTrue();
+
+    // Verify keys.
+    if (expectedKeys != null) {
+      assertThat(observedKeys).isEqualTo(expectedKeys);
+    } else {
+      assertThat(observedKeys).isEmpty();
+    }
+
+    LOG.info("Sink table '{}' verification passed ({} rows, outlier found)", tableName, rows.size());
   }
 }

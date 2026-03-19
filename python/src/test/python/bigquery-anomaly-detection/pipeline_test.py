@@ -27,6 +27,7 @@ from apache_beam.ml.anomaly.base import AnomalyPrediction
 from apache_beam.ml.anomaly.base import AnomalyResult
 
 from bqmonitor.pipeline import _FormatAnomalyAsJson
+from bqmonitor.pipeline import _FormatResultForBQ
 from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _ThresholdAlert
@@ -229,6 +230,57 @@ class FormatAnomalyAsJsonTest(unittest.TestCase):
     outputs = list(dofn.process(result))
     payload = json.loads(outputs[0])
     self.assertEqual(payload['agent_id'], 'Threshold(value >= 100)')
+
+
+class FormatResultForBQTest(unittest.TestCase):
+  """Tests for _FormatResultForBQ DoFn."""
+
+  def _make_result(self, label, value=42.0, score=5.0):
+    row = beam.Row(value=value, window_start=1000.0, window_end=1001.0)
+    prediction = AnomalyPrediction(
+        model_id='TestModel', score=score, label=label)
+    return AnomalyResult(example=row, predictions=[prediction])
+
+  def test_outlier_row(self):
+    dofn = _FormatResultForBQ()
+    results = list(dofn.process(self._make_result(label=1, value=99.0,
+                                                  score=4.5)))
+    self.assertEqual(len(results), 1)
+    row = results[0]
+    self.assertAlmostEqual(row['value'], 99.0)
+    self.assertAlmostEqual(row['score'], 4.5)
+    self.assertEqual(row['label'], 1)
+    self.assertIn('window_start', row)
+    self.assertIn('window_end', row)
+    self.assertNotIn('key', row)
+
+  def test_normal_row(self):
+    dofn = _FormatResultForBQ()
+    results = list(dofn.process(self._make_result(label=0)))
+    self.assertEqual(len(results), 1)
+    self.assertEqual(results[0]['label'], 0)
+
+  def test_warmup_row(self):
+    dofn = _FormatResultForBQ()
+    results = list(dofn.process(self._make_result(label=-2)))
+    self.assertEqual(len(results), 1)
+    self.assertEqual(results[0]['label'], -2)
+
+  def test_keyed_row_includes_key(self):
+    dofn = _FormatResultForBQ()
+    result = self._make_result(label=1)
+    outputs = list(dofn.process(('campaign_search', result)))
+    self.assertEqual(len(outputs), 1)
+    self.assertEqual(outputs[0]['key'], 'campaign_search')
+
+  def test_none_score(self):
+    row = beam.Row(value=10.0, window_start=0.0, window_end=1.0)
+    prediction = AnomalyPrediction(
+        model_id='Test', score=None, label=0)
+    result = AnomalyResult(example=row, predictions=[prediction])
+    dofn = _FormatResultForBQ()
+    outputs = list(dofn.process(result))
+    self.assertIsNone(outputs[0]['score'])
 
 
 if __name__ == '__main__':

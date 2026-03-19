@@ -224,6 +224,7 @@ import re
 import time
 
 import apache_beam as beam
+from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.gcp.pubsub import WriteToPubSub
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
@@ -312,9 +313,11 @@ class _LogAnomalyResult(beam.DoFn):
       tag = 'WARMUP'
 
     ws = datetime.datetime.fromtimestamp(
-        example.window_start, tz=datetime.timezone.utc).strftime('%H:%M:%S')
+        example.window_start, tz=datetime.timezone.utc).strftime(
+            '%Y-%m-%dT%H:%M:%S.%fZ')
     we = datetime.datetime.fromtimestamp(
-        example.window_end, tz=datetime.timezone.utc).strftime('%H:%M:%S')
+        example.window_end, tz=datetime.timezone.utc).strftime(
+            '%Y-%m-%dT%H:%M:%S.%fZ')
     window_str = f'{ws}-{we}'
 
     if key is not None:
@@ -385,9 +388,11 @@ class _FormatAnomalyAsJson(beam.DoFn):
 
     example = result.example
     ws = datetime.datetime.fromtimestamp(
-        example.window_start, tz=datetime.timezone.utc).strftime('%H:%M:%S')
+        example.window_start, tz=datetime.timezone.utc).strftime(
+            '%Y-%m-%dT%H:%M:%S.%fZ')
     we = datetime.datetime.fromtimestamp(
-        example.window_end, tz=datetime.timezone.utc).strftime('%H:%M:%S')
+        example.window_end, tz=datetime.timezone.utc).strftime(
+            '%Y-%m-%dT%H:%M:%S.%fZ')
 
     payload = {
         'event_description': (
@@ -400,6 +405,41 @@ class _FormatAnomalyAsJson(beam.DoFn):
       payload['key'] = str(key)
 
     yield json.dumps(payload).encode('utf-8')
+
+
+_SINK_SCHEMA = {
+    'fields': [
+        {'name': 'window_start', 'type': 'TIMESTAMP', 'mode': 'REQUIRED'},
+        {'name': 'window_end', 'type': 'TIMESTAMP', 'mode': 'REQUIRED'},
+        {'name': 'value', 'type': 'FLOAT64', 'mode': 'REQUIRED'},
+        {'name': 'score', 'type': 'FLOAT64', 'mode': 'NULLABLE'},
+        {'name': 'label', 'type': 'INT64', 'mode': 'REQUIRED'},
+        {'name': 'key', 'type': 'STRING', 'mode': 'NULLABLE'},
+    ]
+}
+
+
+class _FormatResultForBQ(beam.DoFn):
+  """Converts all AnomalyResult elements to BQ row dicts."""
+  def process(self, element):
+    key, result = _unpack_result(element)
+    prediction = result.predictions[0]
+    example = result.example
+
+    row = {
+        'window_start': datetime.datetime.fromtimestamp(
+            example.window_start, tz=datetime.timezone.utc).isoformat(),
+        'window_end': datetime.datetime.fromtimestamp(
+            example.window_end, tz=datetime.timezone.utc).isoformat(),
+        'value': float(example.value),
+        'score': float(prediction.score) if prediction.score is not None
+        else None,
+        'label': int(prediction.label),
+    }
+    if key is not None:
+      row['key'] = str(key)
+
+    yield row
 
 
 # ---------------------------------------------------------------------------
@@ -465,6 +505,20 @@ class AnomalyMonitorOptions(PipelineOptions):
         default='false',
         help='Log all anomaly detection results (normal, outlier, warmup) '
         'at WARNING level. Default: false.')
+    parser.add_argument(
+        '--sink_table',
+        default=None,
+        help='BigQuery table to write all anomaly detection results to. '
+        'Format: project:dataset.table. If unset, results are not written '
+        'to BigQuery.')
+    parser.add_argument(
+        '--write_method',
+        default='STORAGE_WRITE_API',
+        choices=[
+            'STORAGE_WRITE_API', 'DEFAULT', 'FILE_LOADS',
+            'STREAMING_INSERTS'],
+        help='BigQuery write method for the sink table. '
+        'Default: STORAGE_WRITE_API.')
 
 
 # ---------------------------------------------------------------------------
@@ -927,6 +981,19 @@ def build_pipeline(pipeline, options, metric_spec, detector):
       anomalies
       | 'FormatAnomalies' >> beam.ParDo(_FormatAnomalyAsJson())
       | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
+
+  # Write all results to a BigQuery sink table (if configured).
+  if options.sink_table:
+    sink_table = options.sink_table.replace(':', '.')
+    _ = (
+        anomalies
+        | 'FormatForBQ' >> beam.ParDo(_FormatResultForBQ())
+        | 'WriteSink' >> WriteToBigQuery(
+            table=sink_table,
+            method=options.write_method,
+            schema=_SINK_SCHEMA,
+            create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND))
 
   return anomalies
 

@@ -133,4 +133,27 @@ public interface BigQueryAnomalyDetection {
           "Log all anomaly detection results (normal, outlier, warmup) "
               + "at WARNING level. Default: false.")
   Boolean getLogAllResults();
+
+  @TemplateParameter.Text(
+      order = 12,
+      optional = true,
+      name = "sink_table",
+      description = "Sink BigQuery Table",
+      helpText =
+          "BigQuery table to write all anomaly detection results to. "
+              + "Format: project:dataset.table. If unset, results are not written to BigQuery.",
+      regexes = {"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"})
+  String getSinkTable();
+
+  @TemplateParameter.Text(
+      order = 13,
+      optional = true,
+      name = "write_method",
+      description = "BigQuery Write Method",
+      helpText =
+          "BigQuery write method for the sink table: "
+              + "STORAGE_WRITE_API, DEFAULT, FILE_LOADS, or STREAMING_INSERTS. "
+              + "Default: STORAGE_WRITE_API.",
+      regexes = {"^(STORAGE_WRITE_API|DEFAULT|FILE_LOADS|STREAMING_INSERTS)$"})
+  String getWriteMethod();
 }
