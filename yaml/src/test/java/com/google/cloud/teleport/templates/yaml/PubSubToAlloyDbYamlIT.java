@@ -135,8 +135,8 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
                 .addParameter(
                     "fields",
                     "{"
-                        + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"INT64\"},"
-                        + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"STRING\"}"
+                        + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"integer\"},"
+                        + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"string\"}"
                         + "}")
                 .addParameter("url", postgresResourceManager.getUri())
                 .addParameter("username", postgresResourceManager.getUsername())
