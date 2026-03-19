@@ -19,6 +19,7 @@ package org.apache.beam.it.gcp.cloudsql;
 
 import static org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManagerUtils.generateDatabaseName;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
@@ -151,6 +152,10 @@ public abstract class CloudSqlResourceManager
   public abstract static class Builder
       extends AbstractJDBCResourceManager.Builder<@NonNull CloudSqlContainer<?>> {
 
+    protected String projectId;
+    protected String region;
+    protected GoogleCredentials credentials;
+
     private String dbName;
     private boolean usingCustomDb;
 
@@ -171,6 +176,31 @@ public abstract class CloudSqlResourceManager
       this.configurePassword();
       this.useStaticContainer();
 
+      return this;
+    }
+
+    public Builder maybeUseStaticInstance(String host, int port, String userName, String password) {
+      this.setHost(host);
+      this.setPort(port);
+      this.setUsername(userName);
+      this.setPassword(password);
+      this.useStaticContainer();
+
+      return this;
+    }
+
+    public Builder setProjectId(String projectId) {
+      this.projectId = projectId;
+      return this;
+    }
+
+    public Builder setRegion(String region) {
+      this.region = region;
+      return this;
+    }
+
+    public Builder setCredentials(GoogleCredentials credentials) {
+      this.credentials = credentials;
       return this;
     }
 

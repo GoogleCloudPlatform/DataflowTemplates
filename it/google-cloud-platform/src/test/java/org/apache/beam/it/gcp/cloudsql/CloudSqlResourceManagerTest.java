@@ -48,10 +48,16 @@ public class CloudSqlResourceManagerTest {
     private final boolean initialized;
     private boolean createdDatabase;
     private String lastRunSqlCommand;
+    private final String projectId;
+    private final String region;
+    private final com.google.auth.oauth2.GoogleCredentials credentials;
 
     private MockCloudSqlResourceManager(Builder builder) {
       super(builder);
       this.initialized = true;
+      this.projectId = builder.projectId;
+      this.region = builder.region;
+      this.credentials = builder.credentials;
     }
 
     @Override
@@ -181,6 +187,59 @@ public class CloudSqlResourceManagerTest {
 
     assertThat(testManager.lastRunSqlCommand).contains("DROP TABLE");
     assertThat(testManager.createdTables).isEmpty();
+  }
+
+  @Test
+  public void testMaybeUseStaticInstanceWithHost() {
+    CloudSqlResourceManager.Builder builder =
+        new CloudSqlResourceManager.Builder(TEST_ID) {
+          @Override
+          public @NonNull CloudSqlResourceManager build() {
+            return new MockCloudSqlResourceManager(this);
+          }
+
+          @Override
+          protected void configurePort() {
+            this.setPort(1234);
+          }
+        };
+
+    String customHost = "10.1.1.1";
+    builder.maybeUseStaticInstance(customHost, 1234, "testUser", "testPassword");
+    CloudSqlResourceManager manager = (CloudSqlResourceManager) builder.build();
+
+    assertThat(manager.getHost()).isEqualTo(customHost);
+  }
+
+  @Test
+  public void testBuilder() {
+    CloudSqlResourceManager.Builder builder =
+        new CloudSqlResourceManager.Builder(TEST_ID) {
+          @Override
+          public @NonNull CloudSqlResourceManager build() {
+            return new MockCloudSqlResourceManager(this);
+          }
+
+          @Override
+          protected void configurePort() {
+            this.setPort(1234);
+          }
+        };
+
+    com.google.auth.oauth2.GoogleCredentials credentials =
+        org.mockito.Mockito.mock(com.google.auth.oauth2.GoogleCredentials.class);
+    builder
+        .setProjectId("test-project")
+        .setRegion("test-region")
+        .setCredentials(credentials)
+        .setHost(HOST)
+        .setPort(Integer.parseInt(PORT));
+
+    MockCloudSqlResourceManager manager = (MockCloudSqlResourceManager) builder.build();
+
+    assertThat(manager.projectId).isEqualTo("test-project");
+    assertThat(manager.region).isEqualTo("test-region");
+    assertThat(manager.credentials).isEqualTo(credentials);
   }
 
   /*

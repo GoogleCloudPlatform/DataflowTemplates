@@ -61,6 +61,11 @@
             <artifactId>google-api-services-dataflow</artifactId>
             <version>${dataflow-api.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-sqladmin</artifactId>
+            <version>${sqladmin-api.version}</version>
+        </dependency>
 
         <!-- JDBC dependencies for CloudSQL -->
         <dependency>
