@@ -121,7 +121,9 @@ public interface BigQueryAnomalyDetection {
       order = 4,
       name = "topic",
       description = "Pub/Sub Topic",
-      helpText = "Pub/Sub topic name for anomaly results.")
+      helpText =
+          "Pub/Sub topic for anomaly results. "
+              + "Full path: projects/<project>/topics/<topic>.")
   String getTopic();
 
   @TemplateParameter.Boolean(
@@ -145,20 +147,8 @@ public interface BigQueryAnomalyDetection {
       regexes = {"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"})
   String getSinkTable();
 
-  @TemplateParameter.Text(
-      order = 13,
-      optional = true,
-      name = "write_method",
-      description = "BigQuery Write Method",
-      helpText =
-          "BigQuery write method for the sink table: "
-              + "STORAGE_WRITE_API, DEFAULT, FILE_LOADS, or STREAMING_INSERTS. "
-              + "Default: STORAGE_WRITE_API.",
-      regexes = {"^(STORAGE_WRITE_API|DEFAULT|FILE_LOADS|STREAMING_INSERTS)$"})
-  String getWriteMethod();
-
   @TemplateParameter.Integer(
-      order = 14,
+      order = 13,
       optional = true,
       name = "decompress_shards",
       description = "Decompress Shards",
@@ -169,7 +159,7 @@ public interface BigQueryAnomalyDetection {
   Integer getDecompressShards();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 14,
       optional = true,
       name = "fanout_strategy",
       description = "Fanout Strategy",
@@ -181,7 +171,7 @@ public interface BigQueryAnomalyDetection {
   String getFanoutStrategy();
 
   @TemplateParameter.Integer(
-      order = 16,
+      order = 15,
       optional = true,
       name = "fanout",
       description = "Fanout Shards",

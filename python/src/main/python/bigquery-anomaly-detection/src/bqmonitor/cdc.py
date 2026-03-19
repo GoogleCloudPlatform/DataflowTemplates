@@ -903,7 +903,6 @@ class _ReadStorageStreamsSDF(beam.DoFn,
       _LOGGER.info(
           '[Read] try_claim(%d) succeeded: reading stream %s', i, stream_name)
 
-      stream_rows = 0
       if self._emit_raw_batches:
         stream_batches = 0
         for raw_batch in self._read_stream_raw(stream_name):
@@ -911,7 +910,11 @@ class _ReadStorageStreamsSDF(beam.DoFn,
           stream_batches += 1
         Metrics.counter(
             'BigQueryChangeHistory', 'batches_emitted').inc(stream_batches)
+        _LOGGER.info(
+            '[Read] Finished reading stream %d for %s: %d batches',
+            i, table_key, stream_batches)
       else:
+        stream_rows = 0
         for row in self._read_stream(stream_name):
           ts = row.get(self._change_timestamp_column)
           if ts is None:
@@ -925,13 +928,11 @@ class _ReadStorageStreamsSDF(beam.DoFn,
           stream_rows += 1
         Metrics.counter(
             'BigQueryChangeHistory', 'rows_emitted').inc(stream_rows)
+        _LOGGER.info(
+            '[Read] Finished reading stream %d for %s: %d rows',
+            i, table_key, stream_rows)
 
       streams_read += 1
-      _LOGGER.info(
-          '[Read] Finished reading stream %d for %s: %d rows',
-          i,
-          table_key,
-          stream_rows)
       Metrics.counter('BigQueryChangeHistory', 'streams_read').inc()
 
     # Advance watermark to range_end after reading all streams. The

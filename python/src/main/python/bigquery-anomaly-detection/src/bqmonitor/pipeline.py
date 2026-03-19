@@ -258,6 +258,26 @@ _TABLE_RE = re.compile(
 # ---------------------------------------------------------------------------
 
 
+def _validate_topic_path(topic):
+  """Validate that a Pub/Sub topic is a full resource path.
+
+  Args:
+    topic: Full Pub/Sub topic path, e.g.
+        'projects/my-project/topics/my-topic'.
+
+  Returns:
+    The validated topic path.
+
+  Raises:
+    ValueError: If the topic is not a full resource path.
+  """
+  if not (topic.startswith('projects/') and '/topics/' in topic):
+    raise ValueError(
+        f"--topic must be a full Pub/Sub resource path "
+        f"(projects/<project>/topics/<topic>), got: '{topic}'")
+  return topic
+
+
 def _unpack_result(element):
   """Unpack a possibly-keyed AnomalyResult element.
 
@@ -500,7 +520,8 @@ class AnomalyMonitorOptions(PipelineOptions):
     parser.add_argument(
         '--topic',
         default=None,
-        help='Pub/Sub topic name for anomaly results.')
+        help='Pub/Sub topic for anomaly results. '
+        'Full path: projects/<project>/topics/<topic>.')
     parser.add_argument(
         '--log_all_results',
         default='false',
@@ -512,14 +533,6 @@ class AnomalyMonitorOptions(PipelineOptions):
         help='BigQuery table to write all anomaly detection results to. '
         'Format: project:dataset.table. If unset, results are not written '
         'to BigQuery.')
-    parser.add_argument(
-        '--write_method',
-        default='STORAGE_WRITE_API',
-        choices=[
-            'STORAGE_WRITE_API', 'DEFAULT', 'FILE_LOADS',
-            'STREAMING_INSERTS'],
-        help='BigQuery write method for the sink table. '
-        'Default: STORAGE_WRITE_API.')
     parser.add_argument(
         '--decompress_shards',
         type=int,
@@ -760,7 +773,7 @@ def _preflight_checks(options):
   client library). Raises ValueError on definite failures.
   """
   project, dataset, table_name = _parse_table_ref(options.table)
-  topic_path = f'projects/{project}/topics/{options.topic}'
+  topic_path = _validate_topic_path(options.topic)
 
   _check_bq_source_table(project, dataset, table_name, options)
   _check_bq_temp_dataset(project, options)
@@ -998,8 +1011,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
     _ = anomalies | 'LogResults' >> beam.ParDo(_LogAnomalyResult())
 
   # Publish anomalies (label == 1) to Pub/Sub.
-  project, _, _ = _parse_table_ref(options.table)
-  topic_path = f'projects/{project}/topics/{options.topic}'
+  topic_path = _validate_topic_path(options.topic)
 
   _ = (
       anomalies
@@ -1014,7 +1026,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
         | 'FormatForBQ' >> beam.ParDo(_FormatResultForBQ())
         | 'WriteSink' >> WriteToBigQuery(
             table=sink_table,
-            method=options.write_method,
+            method='STREAMING_INSERTS',
             schema=_SINK_SCHEMA,
             create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND))

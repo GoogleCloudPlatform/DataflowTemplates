@@ -19,7 +19,7 @@ fixed-threshold alerter based on a boolean expression).
 * **table**: BigQuery table to monitor. Format: `project:dataset.table`.
 * **metric_spec**: JSON string defining the metric computation (see [Metric Spec Reference](#metric-spec-reference) below).
 * **detector_spec**: JSON string defining the anomaly detector (see [Detector Spec Reference](#detector-spec-reference) below).
-* **topic**: Pub/Sub topic name for anomaly results. The full topic path is inferred from the table's project: `projects/{project}/topics/{topic}`.
+* **topic**: Pub/Sub topic for anomaly results. Full path: `projects/<project>/topics/<topic>`.
 
 ### Optional parameters
 * **poll_interval_sec**: Seconds between BigQuery CDC polls. Default: `60`.
@@ -30,7 +30,6 @@ fixed-threshold alerter based on a boolean expression).
 * **temp_dataset**: BigQuery dataset for temp tables. If unset, auto-created.
 * **log_all_results**: Log all anomaly detection results (normal, outlier, warmup) at WARNING level. Default: `false`.
 * **sink_table**: BigQuery table to write all anomaly detection results to. Format: `project:dataset.table`. If unset, results are not written to BigQuery.
-* **write_method**: BigQuery write method for the sink table: `STORAGE_WRITE_API`, `DEFAULT`, `FILE_LOADS`, or `STREAMING_INSERTS`. Default: `STORAGE_WRITE_API`.
 * **decompress_shards**: Number of shards for CDC Arrow batch decompression fan-out. Spreads decompression CPU across workers. `0` disables fan-out (decode inline). Default: `400`.
 * **fanout_strategy**: Parallelism strategy for global (non-keyed) metric aggregation: `sharded`, `hotkey_fanout`, or `none`. Ignored when `group_by` is set. Default: `sharded`. See [Fanout Strategies](#fanout-strategies).
 * **fanout**: Number of shards for `sharded` or `hotkey_fanout` strategies. Ignored for `none`. Default: `400`.
@@ -220,7 +219,7 @@ gcloud dataflow flex-template run "bq-anomaly-$(date +%Y%m%d-%H%M%S)" \
   --parameters table="$PROJECT:my_dataset.my_table" \
   --parameters metric_spec='{"aggregation":{"window":{"type":"fixed","size_seconds":60},"measures":[{"field":"amount","agg":"SUM","alias":"revenue"}]}}' \
   --parameters detector_spec='{"type":"ZScore"}' \
-  --parameters topic="bqmonitor-anomalies" \
+  --parameters topic="projects/$PROJECT/topics/bqmonitor-anomalies" \
   --parameters duration_sec="300"
 ```
 
