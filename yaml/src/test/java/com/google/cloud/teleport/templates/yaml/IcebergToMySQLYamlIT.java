@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
@@ -35,7 +34,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MSSQLResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
@@ -47,39 +46,32 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToSqlServerYaml} template. */
+/** Integration test for {@link IcebergToMySQLYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToSqlServerYaml.class)
+@TemplateIntegrationTest(IcebergToMySQLYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToSqlServerYamlIT extends TemplateTestBase {
+public class IcebergToMySQLYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToSqlServerYamlIT.class);
+  private MySQLResourceManager mySQLResourceManager;
+  private IcebergResourceManager icebergResourceManager;
+  private GcsResourceManager warehouseGcsResourceManager;
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToMySQLYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
   private static final String NAMESPACE = "iceberg_namespace";
-  private static final String ICEBERG_TABLE_NAME = "source_table";
+  private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-
-  // SQL Server Setup
-  private static final String SQLSERVER_TABLE_NAME = "target_table";
-
-  private MSSQLResourceManager mssqlResourceManager;
-  private IcebergResourceManager icebergResourceManager;
-  private GcsResourceManager warehouseGcsResourceManager;
 
   @Before
   public void setUp() throws IOException {
-    // Initialize SQL Server resource manager
-    mssqlResourceManager = MSSQLResourceManager.builder(testName).build();
+    mySQLResourceManager = MySQLResourceManager.builder(testName).build();
 
-    // Initialize GCS for Iceberg warehouse
     warehouseGcsResourceManager =
         GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
     warehouseGcsResourceManager.registerTempDir(NAMESPACE);
-    LOG.info("Warehouse bucket created: {}", warehouseGcsResourceManager.getBucket());
+    LOG.info("warehouse bucket created {}", warehouseGcsResourceManager.getBucket());
 
-    // Initialize Iceberg resource manager
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
@@ -90,11 +82,12 @@ public class IcebergToSqlServerYamlIT extends TemplateTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        mssqlResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+        mySQLResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
-  public void testIcebergToSqlServer() throws IOException {
+  public void testIcebergToMySQL() throws IOException {
+
     // Iceberg setup
 
     // Create namespace in the REST catalog
@@ -120,41 +113,29 @@ public class IcebergToSqlServerYamlIT extends TemplateTestBase {
     icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
-    // SQL Server setup
-    HashMap<String, String> sqlServerColumns = new HashMap<>();
-    sqlServerColumns.put("id", "INTEGER");
-    sqlServerColumns.put("name", "VARCHAR(255)");
-    sqlServerColumns.put("active", "INTEGER");
-    JDBCResourceManager.JDBCSchema sqlServerSchema =
-        new JDBCResourceManager.JDBCSchema(sqlServerColumns, "id");
+    // MySQL setup
+    String tableName = "source_table";
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put("id", "INTEGER");
+    columns.put("name", "VARCHAR(255)");
+    columns.put("active", "INTEGER");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
-    mssqlResourceManager.createTable(SQLSERVER_TABLE_NAME, sqlServerSchema);
+    mySQLResourceManager.createTable(tableName, schema);
 
-    // Pipeline execution
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
-            .addParameter("jdbcUrl", mssqlResourceManager.getUri())
-            .addParameter("username", mssqlResourceManager.getUsername())
-            .addParameter("password", mssqlResourceManager.getPassword())
-            .addParameter("location", SQLSERVER_TABLE_NAME);
-
-    // FOR INTEGRATION TESTS DEBUGGING PURPOSE: Logging the configuration parameters
-    LOG.info("=== Pipeline Parameters ===");
-    LOG.info("table: {}", ICEBERG_TABLE_IDENTIFIER);
-    LOG.info("catalogName: {}", CATALOG_NAME);
-    LOG.info("catalogProperties: {}", new org.json.JSONObject(getCatalogProperties()).toString());
-    LOG.info("jdbcUrl: {}", mssqlResourceManager.getUri());
-    LOG.info("username: {}", mssqlResourceManager.getUsername());
-    LOG.info("location: {}", SQLSERVER_TABLE_NAME);
-    LOG.info("specPath: {}", specPath);
-    LOG.info("=== End Pipeline Parameters ===");
+            .addParameter("jdbcUrl", mySQLResourceManager.getUri())
+            .addParameter("username", mySQLResourceManager.getUsername())
+            .addParameter("password", mySQLResourceManager.getPassword())
+            .addParameter("location", tableName);
 
     // Act
-    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
@@ -162,37 +143,17 @@ public class IcebergToSqlServerYamlIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
+    List<Map<String, Object>> mySqlRecords = mySQLResourceManager.readTable(tableName);
+    assertNotNull(mySqlRecords);
+    assertEquals(3, mySqlRecords.size());
 
-    // Read records from SQL Server table
-    List<Map<String, Object>> sqlServerRecords =
-        mssqlResourceManager.readTable(SQLSERVER_TABLE_NAME);
-    LOG.info("SQL Server target table contains {} records", sqlServerRecords.size());
-
-    assertNotNull("SQL Server records should not be null", sqlServerRecords);
-    assertEquals(
-        "Expected 3 records in SQL Server table, got: " + sqlServerRecords.size(),
-        3,
-        sqlServerRecords.size());
-
-    sqlServerRecords.sort(
+    mySqlRecords.sort(
         (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
 
-    Map<String, Object> record1 = sqlServerRecords.get(0);
-    assertEquals("Record 1 id should be 1", 1, ((Number) record1.get("id")).intValue());
-    assertEquals("Record 1 name should be Alice", "Alice", record1.get("name"));
-    assertEquals("Record 1 active should be 1", 1, ((Number) record1.get("active")).intValue());
-
-    Map<String, Object> record2 = sqlServerRecords.get(1);
-    assertEquals("Record 2 id should be 2", 2, ((Number) record2.get("id")).intValue());
-    assertEquals("Record 2 name should be Bob", "Bob", record2.get("name"));
-    assertEquals("Record 2 active should be 0", 0, ((Number) record2.get("active")).intValue());
-
-    Map<String, Object> record3 = sqlServerRecords.get(2);
-    assertEquals("Record 3 id should be 3", 3, ((Number) record3.get("id")).intValue());
-    assertEquals("Record 3 name should be Charlie", "Charlie", record3.get("name"));
-    assertEquals("Record 3 active should be 1", 1, ((Number) record3.get("active")).intValue());
-
-    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL Server.");
+    assertEquals(
+        "Expected 3 records in SQL table, got: " + mySqlRecords.size(), 3, mySqlRecords.size());
+    assertEquals(mySqlRecords, icebergRecords);
+    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL.");
   }
 
   @Override

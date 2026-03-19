@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.yaml;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -32,9 +33,9 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
@@ -46,18 +47,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for {@link IcebergToSqlYaml} template using existing Cloud SQL. This test
- * connects to a pre-configured Cloud SQL instance and dynamically creates the needed database and
- * tables. To run the test: 1. Run Cloud SQL proxy locally
- * https://docs.cloud.google.com/sql/docs/mysql/sql-proxy#install 2. Run the test using mvn
- */
+/** Integration test for {@link IcebergToSQLServerYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToMySqlYaml.class)
+@TemplateIntegrationTest(IcebergToSQLServerYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
+public class IcebergToSQLServerYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToMySqlYamlITLocal.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToSQLServerYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -65,28 +61,18 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
   private static final String ICEBERG_TABLE_NAME = "source_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
-  // Cloud SQL proxy local IP. This allows the test running locally to connect to Cloud SQL to setup
-  // test data and tables, and then cleanup. Change accordingly.
-  private static final String LOCAL_PROXY_IP = "127.0.0.1";
+  // SQL Server Setup
+  private static final String SQLSERVER_TABLE_NAME = "target_table";
 
-  // Cloud SQL real IP for Dataflow Workers to connect to Cloud SQL when the job runs. Change
-  // accordingly.
-  private static final String CLOUD_SQL_REAL_IP = "10.74.192.17";
-
-  // Cloud SQL credentials. Change accordingly.
-  private static final String CLOUD_SQL_USERNAME = "root";
-  private static final String CLOUD_SQL_PASSWORD = "test";
-
-  private static final int CLOUD_SQL_PORT = 3306;
-
-  private static final String TABLE_NAME = "target_table";
-
+  private MSSQLResourceManager mssqlResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private CloudMySQLResourceManager mySQLResourceManager;
 
   @Before
   public void setUp() throws IOException {
+    // Initialize SQL Server resource manager
+    mssqlResourceManager = MSSQLResourceManager.builder(testName).build();
+
     // Initialize GCS for Iceberg warehouse
     warehouseGcsResourceManager =
         GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
@@ -99,26 +85,16 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
-
-    mySQLResourceManager =
-        (CloudMySQLResourceManager)
-            CloudMySQLResourceManager.builder(testName)
-                .setUsername(CLOUD_SQL_USERNAME)
-                .setPassword(CLOUD_SQL_PASSWORD)
-                .setHost(LOCAL_PROXY_IP)
-                .setPort(CLOUD_SQL_PORT)
-                .build();
   }
 
   @After
   public void tearDown() {
-    // Clean up other resources
     ResourceManagerUtils.cleanResources(
-        mySQLResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+        mssqlResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
-  public void testIcebergToMySql() throws Exception {
+  public void testIcebergToSQLServer() throws IOException {
     // Iceberg setup
 
     // Create namespace in the REST catalog
@@ -144,20 +120,15 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
     icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
-    // SQL setup, create table using LOCAL connection "Proxy"
-    LOG.info("Creating SQL table: {}", TABLE_NAME);
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put("id", "INTEGER");
-    columns.put("name", "VARCHAR(255)");
-    columns.put("active", "INTEGER");
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
-    try {
-      mySQLResourceManager.createTable(TABLE_NAME, schema);
-      LOG.info("Successfully created table: {}", TABLE_NAME);
-    } catch (Exception e) {
-      LOG.error("Failed to create SQL table: {}", TABLE_NAME, e);
-      throw e;
-    }
+    // SQL Server setup
+    HashMap<String, String> sqlServerColumns = new HashMap<>();
+    sqlServerColumns.put("id", "INTEGER");
+    sqlServerColumns.put("name", "VARCHAR(255)");
+    sqlServerColumns.put("active", "INTEGER");
+    JDBCResourceManager.JDBCSchema sqlServerSchema =
+        new JDBCResourceManager.JDBCSchema(sqlServerColumns, "id");
+
+    mssqlResourceManager.createTable(SQLSERVER_TABLE_NAME, sqlServerSchema);
 
     // Pipeline execution
     LaunchConfig.Builder options =
@@ -166,17 +137,21 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
-            .addParameter(
-                "jdbcUrl",
-                getJdbcUrl(
-                    CLOUD_SQL_REAL_IP,
-                    CLOUD_SQL_PORT,
-                    mySQLResourceManager.getDatabaseName())) // <--- USE THE REAL IP FOR DATAFLOW
-            .addParameter("username", CLOUD_SQL_USERNAME)
-            .addParameter("password", CLOUD_SQL_PASSWORD)
-            .addParameter(
-                "location",
-                String.format("%s.%s", mySQLResourceManager.getDatabaseName(), TABLE_NAME));
+            .addParameter("jdbcUrl", mssqlResourceManager.getUri())
+            .addParameter("username", mssqlResourceManager.getUsername())
+            .addParameter("password", mssqlResourceManager.getPassword())
+            .addParameter("location", SQLSERVER_TABLE_NAME);
+
+    // FOR INTEGRATION TESTS DEBUGGING PURPOSE: Logging the configuration parameters
+    LOG.info("=== Pipeline Parameters ===");
+    LOG.info("table: {}", ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("catalogName: {}", CATALOG_NAME);
+    LOG.info("catalogProperties: {}", new org.json.JSONObject(getCatalogProperties()).toString());
+    LOG.info("jdbcUrl: {}", mssqlResourceManager.getUri());
+    LOG.info("username: {}", mssqlResourceManager.getUsername());
+    LOG.info("location: {}", SQLSERVER_TABLE_NAME);
+    LOG.info("specPath: {}", specPath);
+    LOG.info("=== End Pipeline Parameters ===");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -188,15 +163,36 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    // Read records using LOCAL connection "Proxy"
-    List<Map<String, Object>> sqlRecords = readMySqlTable(TABLE_NAME);
-    sqlRecords.sort(
+    // Read records from SQL Server table
+    List<Map<String, Object>> sqlServerRecords =
+        mssqlResourceManager.readTable(SQLSERVER_TABLE_NAME);
+    LOG.info("SQL Server target table contains {} records", sqlServerRecords.size());
+
+    assertNotNull("SQL Server records should not be null", sqlServerRecords);
+    assertEquals(
+        "Expected 3 records in SQL Server table, got: " + sqlServerRecords.size(),
+        3,
+        sqlServerRecords.size());
+
+    sqlServerRecords.sort(
         (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
 
-    assertEquals(
-        "Expected 3 records in SQL table, got: " + sqlRecords.size(), 3, sqlRecords.size());
-    assertEquals(sqlRecords, icebergRecords);
-    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL.");
+    Map<String, Object> record1 = sqlServerRecords.get(0);
+    assertEquals("Record 1 id should be 1", 1, ((Number) record1.get("id")).intValue());
+    assertEquals("Record 1 name should be Alice", "Alice", record1.get("name"));
+    assertEquals("Record 1 active should be 1", 1, ((Number) record1.get("active")).intValue());
+
+    Map<String, Object> record2 = sqlServerRecords.get(1);
+    assertEquals("Record 2 id should be 2", 2, ((Number) record2.get("id")).intValue());
+    assertEquals("Record 2 name should be Bob", "Bob", record2.get("name"));
+    assertEquals("Record 2 active should be 0", 0, ((Number) record2.get("active")).intValue());
+
+    Map<String, Object> record3 = sqlServerRecords.get(2);
+    assertEquals("Record 3 id should be 3", 3, ((Number) record3.get("id")).intValue());
+    assertEquals("Record 3 name should be Charlie", "Charlie", record3.get("name"));
+    assertEquals("Record 3 active should be 1", 1, ((Number) record3.get("active")).intValue());
+
+    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL Server.");
   }
 
   @Override
@@ -216,22 +212,5 @@ public class IcebergToMySqlYamlITLocal extends TemplateTestBase {
         "header.x-goog-user-project", PROJECT,
         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
         "rest-metrics-reporting-enabled", "false");
-  }
-
-  // Reads all records from the SQL table using the LOCAL PROXY connection.
-  private List<Map<String, Object>> readMySqlTable(String tableName) throws Exception {
-    try {
-      LOG.info("Reading records from SQL table: {}", tableName);
-      List<Map<String, Object>> mySqlRecords = mySQLResourceManager.readTable(tableName);
-      LOG.info("MySql records: {}", mySqlRecords);
-      return mySqlRecords;
-    } catch (Exception e) {
-      LOG.error("Failed to read from SQL table: {}", tableName, e);
-      throw e;
-    }
-  }
-
-  private String getJdbcUrl(String ip, int port, String database) {
-    return String.format("jdbc:mysql://%s:%d/%s", ip, port, database);
   }
 }
