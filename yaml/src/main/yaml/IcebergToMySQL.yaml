@@ -45,12 +45,12 @@ pipeline:
     - type: WriteToMySql
       name: WriteToMySql
       config:
-        url: {{ jdbcUrl }}
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
         auto_sharding: {{ autosharding }}
         connection_init_sql: {{ connectionInitSql }}
         connection_properties: {{ connectionProperties }}
-        username: {{ username }}
-        password: {{ password }}
         query: {{ insertQuery }}
         table: {{ location }}
         batch_size: {{ batchSize }}
