@@ -534,14 +534,6 @@ class AnomalyMonitorOptions(PipelineOptions):
         'Format: project:dataset.table. If unset, results are not written '
         'to BigQuery.')
     parser.add_argument(
-        '--write_method',
-        default='STORAGE_WRITE_API',
-        choices=[
-            'STORAGE_WRITE_API', 'DEFAULT', 'FILE_LOADS',
-            'STREAMING_INSERTS'],
-        help='BigQuery write method for the sink table. '
-        'Default: STORAGE_WRITE_API.')
-    parser.add_argument(
         '--decompress_shards',
         type=int,
         default=400,
@@ -1034,7 +1026,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
         | 'FormatForBQ' >> beam.ParDo(_FormatResultForBQ())
         | 'WriteSink' >> WriteToBigQuery(
             table=sink_table,
-            method=options.write_method,
+            method='STREAMING_INSERTS',
             schema=_SINK_SCHEMA,
             create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND))
