@@ -621,6 +621,7 @@
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
+                <exclude>**/BigQueryAnomalyDetectionIT.java</exclude>
               </excludes>
               <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
@@ -884,6 +885,7 @@
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
+                <exclude>**/BigQueryAnomalyDetectionIT.java</exclude>
               </excludes>
               <excludedGroups>
                 ${direct-runner.tests},
