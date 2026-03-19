@@ -91,4 +91,28 @@ public final class TypesUtilsTest {
     final JSONObject invalidJsonObject = new JSONObject("{\"type_code\":\"STRING\"}");
     assertThrows(JSONException.class, () -> TypesUtils.extractTypeFromTypeCode(invalidJsonObject));
   }
+
+  @Test
+  public void testInformationSchemaGoogleSQLTypeToSpannerType_UUID() {
+    assertThat(TypesUtils.informationSchemaGoogleSQLTypeToSpannerType("UUID"))
+        .isEqualTo(Type.uuid());
+  }
+
+  @Test
+  public void testInformationSchemaGoogleSQLTypeToSpannerType_ARRAY_UUID() {
+    assertThat(TypesUtils.informationSchemaGoogleSQLTypeToSpannerType("ARRAY<UUID>"))
+        .isEqualTo(Type.array(Type.uuid()));
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLTypeToSpannerType_UUID() {
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("UUID"))
+        .isEqualTo(Type.string());
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLTypeToSpannerType_ARRAY_UUID() {
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("UUID[]"))
+        .isEqualTo(Type.array(Type.string()));
+  }
 }
