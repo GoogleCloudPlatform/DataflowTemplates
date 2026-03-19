@@ -759,14 +759,14 @@ def _parse_detector_spec(json_str):
 # ---------------------------------------------------------------------------
 
 
-def _preflight_checks(options):
+def _preflight_checks(options, metric_spec):
   """Validate GCP resources are accessible before building the pipeline.
 
   Checks:
     - BigQuery source table exists and is readable.
+    - Required metric columns exist in the source table (dry-run query).
     - BigQuery temp dataset is writable (if specified) or datasets.create
       permission exists (dry-run only — does not actually create).
-    - BigQuery query job dry-run succeeds (validates CDC function access).
     - Pub/Sub topic exists.
 
   Logs warnings and continues if a check cannot be performed (e.g. missing
@@ -775,13 +775,21 @@ def _preflight_checks(options):
   project, dataset, table_name = _parse_table_ref(options.table)
   topic_path = _validate_topic_path(options.topic)
 
-  _check_bq_source_table(project, dataset, table_name, options)
+  required_columns = sorted(metric_spec.required_source_columns())
+  _check_bq_source_table(project, dataset, table_name, options,
+                         required_columns)
   _check_bq_temp_dataset(project, options)
   _check_pubsub_topic(topic_path)
 
 
-def _check_bq_source_table(project, dataset, table_name, options):
-  """Verify the source BigQuery table exists and is accessible."""
+def _check_bq_source_table(project, dataset, table_name, options,
+                           required_columns):
+  """Verify the source BigQuery table exists and required columns are present.
+
+  Runs a dry-run CDC query selecting the columns referenced by the metric
+  spec. This validates table access, CDC function access, and column
+  existence in a single round-trip.
+  """
   try:
     from apache_beam.io.gcp import bigquery_tools
     from apache_beam.io.gcp.internal.clients import bigquery
@@ -804,12 +812,15 @@ def _check_bq_source_table(project, dataset, table_name, options):
         f"bigquery.tables.get and bigquery.tables.getData permissions. "
         f"Error: {e}") from e
 
-  # Dry-run a CDC query to verify APPENDS/CHANGES access.
+  # Dry-run a CDC query selecting the metric's required columns.
+  # This validates CDC function access and column existence in one step.
+  select_clause = ', '.join(required_columns) if required_columns else '1'
   try:
     sql = (
-        f"SELECT 1 FROM {options.change_function}"
+        f"SELECT {select_clause} FROM {options.change_function}"
         f"(TABLE `{project}.{dataset}.{table_name}`, "
         f"NULL, NULL) LIMIT 0")
+    _LOGGER.info('[Preflight] Dry-run query: %s', sql)
     request = bigquery.BigqueryJobsInsertRequest(
         projectId=project,
         job=bigquery.Job(
@@ -820,14 +831,16 @@ def _check_bq_source_table(project, dataset, table_name, options):
                 dryRun=True)))
     bq.client.jobs.Insert(request)
     _LOGGER.info(
-        '[Preflight] %s() access verified for %s:%s.%s',
-        options.change_function, project, dataset, table_name)
+        '[Preflight] %s() access and columns %s verified for %s:%s.%s',
+        options.change_function, required_columns,
+        project, dataset, table_name)
   except Exception as e:
     raise ValueError(
         f"Cannot execute {options.change_function}() on "
-        f"'{project}:{dataset}.{table_name}'. "
-        f"Verify the table has change history enabled and the service "
-        f"account has bigquery.jobs.create permission. "
+        f"'{project}:{dataset}.{table_name}' "
+        f"with columns {required_columns}. "
+        f"Verify the table has change history enabled, the columns exist, "
+        f"and the service account has bigquery.jobs.create permission. "
         f"Error: {e}") from e
 
 
@@ -1052,7 +1065,7 @@ def run(argv=None):
   detector = _parse_detector_spec(monitor_options.detector_spec)
 
   # Check GCP resources are accessible.
-  _preflight_checks(monitor_options)
+  _preflight_checks(monitor_options, metric_spec)
 
   options.view_as(SetupOptions).save_main_session = True
 
