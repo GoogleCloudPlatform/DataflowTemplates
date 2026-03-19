@@ -1009,19 +1009,19 @@ public class JdbcIoWrapperTest {
 
     // Assert
     // Legacy: shard2.t2 (1), shard3.t3a (1), shard3.t3b (1) = 3 transforms
-    // Uniform: shard5 (1), shard6 (1) = 2 transforms
-    // Total = 5 entries
-    assertThat(tableReaders).hasSize(5);
+    // Uniform: shard5 (1), shard6 (1) = 1 transform (combined)
+    // Total = 4 entries
+    assertThat(tableReaders).hasSize(4);
 
     // Verify Legacy readers
     long legacyCount =
         tableReaders.values().stream().filter(v -> v instanceof JdbcIO.ReadWithPartitions).count();
     assertThat(legacyCount).isEqualTo(3);
 
-    // Verify Uniform readers
+    // Verify that we have one combined Uniform reader
     long uniformCount =
         tableReaders.values().stream().filter(v -> v instanceof ReadWithUniformPartitions).count();
-    assertThat(uniformCount).isEqualTo(2);
+    assertThat(uniformCount).isEqualTo(1);
 
     // Verify table names in keys
     java.util.List<String> allTableNames =
@@ -1095,6 +1095,10 @@ public class JdbcIoWrapperTest {
         .containsNoDuplicates();
   }
 
+  /**
+   * Tests that {@link JdbcIoWrapper#getPerSourceDiscoveries} correctly propagates exceptions when
+   * schema discovery fails for a shard.
+   */
   @Test
   public void testGetPerSourceDiscoveries_Fails() throws RetriableSchemaDiscoveryException {
     SourceSchemaReference schemaRef =
@@ -1122,6 +1126,10 @@ public class JdbcIoWrapperTest {
     assertThrows(RuntimeException.class, () -> JdbcIoWrapper.getPerSourceDiscoveries(group));
   }
 
+  /**
+   * Tests that {@link JdbcIoWrapper#getPerSourceDiscoveries} logs a warning and continues when
+   * closing a data source fails after discovery.
+   */
   @Test
   public void testGetPerSourceDiscovery_LogsWarning_WhenCloseFails() throws Exception {
     SourceSchemaReference schemaRef =
@@ -1304,7 +1312,7 @@ public class JdbcIoWrapperTest {
         ImmutableMap.builder();
 
     JdbcIoWrapper.accumulateSpecs(
-        discovery, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+        ImmutableList.of(discovery), tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
 
     ImmutableList<SourceTableReference> tableRefs = tableReferencesBuilder.build();
     ImmutableList<TableSplitSpecification> splitSpecs = splitSpecsBuilder.build();
@@ -1357,7 +1365,7 @@ public class JdbcIoWrapperTest {
         ImmutableMap.builder();
 
     JdbcIoWrapper.accumulateSpecs(
-        discovery, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+        ImmutableList.of(discovery), tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
 
     assertThat(tableReferencesBuilder.build()).isEmpty();
     assertThat(splitSpecsBuilder.build()).isEmpty();
@@ -1368,6 +1376,41 @@ public class JdbcIoWrapperTest {
    * Tests that {@link JdbcIoWrapper#accumulateSpecs} does not generate split specifications when
    * the uniform partitions feature is disabled.
    */
+  @Test
+  public void testAccumulateSpecs_FeatureDisabled() {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .setSourceDbURL("jdbc:mysql://localhost/test")
+            .setDbAuth(
+                LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("com.mysql.cj.jdbc.Driver")
+            .setSourceSchemaReference(schemaRef)
+            .build();
+    TableConfig tableConfig = TableConfig.builder("testTable").setDataSourceId("shard1").build();
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u"))
+            .setTableConfigs(ImmutableList.of(tableConfig))
+            .setSourceSchema(SourceSchema.builder().setSchemaReference(schemaRef).build())
+            .build();
+
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+
+    JdbcIoWrapper.accumulateSpecs(
+        ImmutableList.of(discovery), tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+
+    assertThat(splitSpecsBuilder.build()).isEmpty();
+    assertThat(readSpecsBuilder.build()).isEmpty();
+  }
+
   @Test
   public void testGetDataSourceProvider() {
     JdbcIOWrapperConfig config1 =

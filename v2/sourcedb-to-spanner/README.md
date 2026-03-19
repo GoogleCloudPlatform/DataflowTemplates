@@ -138,3 +138,12 @@ gcloud storage ls <outputDirectory>/dlq/severe/**.json | wc -l
 However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
 * **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
 * **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.
+
+#### Assumptions
+* The template assumes that:
+  - The source and spanner schemas are compatible with each other.
+  - In case of multi-sharded migrations:
+    * All shards have the same mapping for table and columns from source to spanner.
+    * All shards have same dialect (mixed dialect migration will cause pipeline failure during initialization)
+    * For tables with string primary key, all shards have the same weights for a given collation (the collection weight detection
+      is queried on available shards for efficient parallel discovery).

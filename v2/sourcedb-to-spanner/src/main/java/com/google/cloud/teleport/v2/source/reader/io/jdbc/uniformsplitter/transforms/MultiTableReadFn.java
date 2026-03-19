@@ -304,10 +304,10 @@ public class MultiTableReadFn<ParameterT, OutputT> extends DoFn<ParameterT, Outp
       }
       connections.clear();
     } finally {
-      connectionLock.unlock();
       dataSourceManager.closeAll();
       this.connections = null;
       this.dataSourceManager = null;
+      connectionLock.unlock();
     }
   }
 }

@@ -49,6 +49,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -77,10 +78,13 @@ import org.slf4j.LoggerFactory;
  *  and maxPartitionHints (auto inferred) to the pipeline controller helping a better sequencing of tables.
  */
 public final class JdbcIoWrapper implements IoWrapper {
+
   private static final Logger LOG = LoggerFactory.getLogger(JdbcIoWrapper.class);
   // We parallelize to 4 threads to work well with the default launcher machine we get.
   // With this for 1024 shards test we have the launcher complete in 4 minutes in the load test.
   private static final int SOURCE_DISCOVERY_PARALLELISM = 4;
+  // Number of shards per log emitted at the end of discovery.
+  public static final int MAX_SHARDS_PER_LOG = 50;
 
   private final ImmutableMap<
           ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
@@ -334,6 +338,12 @@ public final class JdbcIoWrapper implements IoWrapper {
 
   private static int getFetchSize(
       JdbcIOWrapperConfig config, TableConfig tableConfig, SourceTableSchema sourceTableSchema) {
+    if (tableConfig.fetchSize() != null) {
+      return tableConfig.fetchSize();
+    }
+    if (config.maxFetchSize() != null) {
+      return config.maxFetchSize();
+    }
     return FetchSizeCalculator.getFetchSize(
         tableConfig,
         sourceTableSchema.estimatedRowSize(),
@@ -640,42 +650,50 @@ public final class JdbcIoWrapper implements IoWrapper {
 
     /* Todo  in subsequent PR for multishard graphsize support, pass this to table reader. */
     DataSourceProvider dataSourceProvider = getDataSourceProvider(perSourceDiscoveries);
-    for (PerSourceDiscovery perSourceDiscovery : perSourceDiscoveries) {
-      ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
-      ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
-      ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
-          ImmutableMap.builder();
-      JdbcIOWrapperConfig config = perSourceDiscovery.config();
-      DataSourceConfiguration dataSourceConfiguration =
-          perSourceDiscovery.dataSourceConfiguration();
-      ImmutableList<TableConfig> tableConfigs = perSourceDiscovery.tableConfigs();
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+    accumulateSpecs(
+        perSourceDiscoveries, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
 
-      if (!config.readWithUniformPartitionsFeatureEnabled() || tableConfigs.isEmpty()) {
-        continue;
-      }
-      accumulateSpecs(
-          perSourceDiscovery, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
-
-      ReadWithUniformPartitions<SourceRow> readWithUniformPartitions =
-          ReadWithUniformPartitions.<SourceRow>builder()
-              .setTableSplitSpecifications(splitSpecsBuilder.build())
-              .setTableReadSpecifications(readSpecsBuilder.build())
-              .setDataSourceProviderFn(
-                  JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
-              .setDbAdapter(dialectAdapter)
-              .setWaitOn(waitOn)
-              .setDbParallelizationForSplitProcess(dbParallelizationForSplitProcess)
-              .setDbParallelizationForReads(dbParallelizationForReads)
-              .setAdditionalOperationsOnRanges(additionalOperationsOnRanges)
-              .build();
-
-      LOG.info(
-          "Configured Multi-Table ReadWithUniformPartitions {} for tables {} with config {}",
-          readWithUniformPartitions,
-          tableConfigs.stream().map(TableConfig::tableName).collect(Collectors.toList()),
-          config);
-      tableReadersBuilder.put(tableReferencesBuilder.build(), readWithUniformPartitions);
+    ImmutableList<SourceTableReference> tableReferences = tableReferencesBuilder.build();
+    if (tableReferences.isEmpty()) {
+      return ImmutableMap.of();
     }
+
+    ReadWithUniformPartitions<SourceRow> readWithUniformPartitions =
+        ReadWithUniformPartitions.<SourceRow>builder()
+            .setTableSplitSpecifications(splitSpecsBuilder.build())
+            .setTableReadSpecifications(readSpecsBuilder.build())
+            .setDataSourceProvider(dataSourceProvider)
+            .setDbAdapter(dialectAdapter)
+            .setWaitOn(waitOn)
+            .setDbParallelizationForSplitProcess(dbParallelizationForSplitProcess)
+            .setDbParallelizationForReads(dbParallelizationForReads)
+            .setAdditionalOperationsOnRanges(additionalOperationsOnRanges)
+            .build();
+
+    // We batch the partitions in groups of MAX_SHARDS_PER_LOG batches for
+    // enhanced log readability and debuggability at the same time containing
+    // the number of logs emitted.
+    Lists.partition(perSourceDiscoveries, MAX_SHARDS_PER_LOG)
+        .forEach(
+            batch ->
+                LOG.info(
+                    "Configured Multi-Table ReadWithUniformPartitions for sources batch: {}",
+                    batch.stream()
+                        .map(
+                            d ->
+                                "id="
+                                    + d.config().id()
+                                    + ":"
+                                    + "shard_id="
+                                    + d.config().shardID()
+                                    + ":'"
+                                    + d.sourceSchema().schemaReference().jdbc().toString())
+                        .collect(Collectors.joining(","))));
+    tableReadersBuilder.put(tableReferences, readWithUniformPartitions);
     return tableReadersBuilder.build();
   }
 
@@ -701,58 +719,72 @@ public final class JdbcIoWrapper implements IoWrapper {
   /* Todo  in subsequent PR for multishard graphsize support accumulate specs across a list of sourceDiscovereies */
   @VisibleForTesting
   protected static void accumulateSpecs(
-      PerSourceDiscovery perSourceDiscovery,
+      ImmutableList<PerSourceDiscovery> perSourceDiscoveries,
       ImmutableList.Builder<SourceTableReference> tableReferencesBuilder,
       ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder,
       ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder) {
 
-    JdbcIOWrapperConfig config = perSourceDiscovery.config();
-    SourceSchemaReference sourceSchemaReference =
-        perSourceDiscovery.sourceSchema().schemaReference();
-    ImmutableList<TableConfig> tableConfigs = perSourceDiscovery.tableConfigs();
-    for (TableConfig tableConfig : tableConfigs) {
-      SourceTableSchema sourceTableSchema =
-          findSourceTableSchema(perSourceDiscovery.sourceSchema(), tableConfig);
-      int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
-      TableIdentifier tableIdentifier = getTableIdentifier(tableConfig);
-
-      TableSplitSpecification.Builder tableSplitSpecificationBuilder =
-          TableSplitSpecification.builder()
-              .setTableIdentifier(tableIdentifier)
-              .setPartitionColumns(tableConfig.partitionColumns())
-              .setApproxRowCount(tableConfig.approxRowCount());
-      if (tableConfig.maxPartitions() != null) {
-        tableSplitSpecificationBuilder =
-            tableSplitSpecificationBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
+    for (PerSourceDiscovery perSourceDiscovery : perSourceDiscoveries) {
+      JdbcIOWrapperConfig config = perSourceDiscovery.config();
+      SourceSchemaReference sourceSchemaReference =
+          perSourceDiscovery.sourceSchema().schemaReference();
+      ImmutableList<TableConfig> tableConfigs = perSourceDiscovery.tableConfigs();
+      if (!config.readWithUniformPartitionsFeatureEnabled() || tableConfigs.isEmpty()) {
+        continue;
       }
-      if (config.splitStageCountHint() >= 0) {
-        tableSplitSpecificationBuilder =
-            tableSplitSpecificationBuilder.setSplitStagesCount((long) config.splitStageCountHint());
-      }
-      splitSpecsBuilder.add(tableSplitSpecificationBuilder.build());
+      for (TableConfig tableConfig : tableConfigs) {
 
-      TableReadSpecification.Builder<SourceRow> tableReadSpecificationBuilder =
-          TableReadSpecification.<SourceRow>builder()
-              .setFetchSize(fetchSize)
-              .setTableIdentifier(tableIdentifier)
-              .setRowMapper(
-                  new JdbcSourceRowMapper(
-                      config.valueMappingsProvider(),
-                      sourceSchemaReference,
-                      sourceTableSchema,
-                      config.shardID()));
-      if (config.maxFetchSize() != null) {
-        tableReadSpecificationBuilder =
-            tableReadSpecificationBuilder.setFetchSize(config.maxFetchSize());
-      }
-      readSpecsBuilder.put(tableIdentifier, tableReadSpecificationBuilder.build());
+        SourceTableSchema sourceTableSchema =
+            findSourceTableSchema(perSourceDiscovery.sourceSchema(), tableConfig);
+        // This returns configured fetchSize if user has configured it in pipeline options,
+        // otherwise it auto-infers the fetchsize.
+        int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
+        TableIdentifier tableIdentifier = getTableIdentifier(tableConfig);
 
-      tableReferencesBuilder.add(
-          SourceTableReference.builder()
-              .setSourceSchemaReference(sourceSchemaReference)
-              .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
-              .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
-              .build());
+        TableSplitSpecification.Builder tableSplitSpecificationBuilder =
+            TableSplitSpecification.builder()
+                .setTableIdentifier(tableIdentifier)
+                .setPartitionColumns(tableConfig.partitionColumns())
+                .setApproxRowCount(tableConfig.approxRowCount());
+        if (tableConfig.maxPartitions() != null) {
+          tableSplitSpecificationBuilder =
+              tableSplitSpecificationBuilder.setMaxPartitionsHint(
+                  (long) tableConfig.maxPartitions());
+        }
+        // If the splitStageCountHint is not overridden,
+        // it's auto inferred by ReadWithUniformPartitions.
+        // Please see Javadocs of ReadWithUniformPartitions for additional information.
+        if (config.splitStageCountHint() >= 0) {
+          tableSplitSpecificationBuilder =
+              tableSplitSpecificationBuilder.setSplitStagesCount(
+                  (long) config.splitStageCountHint());
+        }
+        splitSpecsBuilder.add(tableSplitSpecificationBuilder.build());
+
+        TableReadSpecification.Builder<SourceRow> tableReadSpecificationBuilder =
+            TableReadSpecification.<SourceRow>builder()
+                .setFetchSize(fetchSize)
+                .setTableIdentifier(tableIdentifier)
+                .setRowMapper(
+                    new JdbcSourceRowMapper(
+                        config.valueMappingsProvider(),
+                        sourceSchemaReference,
+                        sourceTableSchema,
+                        config.shardID()));
+        readSpecsBuilder.put(tableIdentifier, tableReadSpecificationBuilder.build());
+
+        tableReferencesBuilder.add(
+            SourceTableReference.builder()
+                .setSourceSchemaReference(sourceSchemaReference)
+                .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
+                .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
+                .build());
+        LOG.info(
+            "Configuring Multi-Table ReadWithUniformPartitions for source-id {} tables {} with config {}",
+            config.id(),
+            tableConfigs.stream().map(TableConfig::tableName).collect(Collectors.toList()),
+            config);
+      }
     }
   }
 

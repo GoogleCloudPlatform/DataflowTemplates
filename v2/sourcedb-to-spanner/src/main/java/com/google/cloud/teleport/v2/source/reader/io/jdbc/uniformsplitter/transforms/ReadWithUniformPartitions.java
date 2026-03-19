@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
@@ -569,15 +568,6 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
 
     public abstract Builder<T> setDataSourceProvider(DataSourceProvider value);
 
-    // TODO Remove in subsequent PR
-    private SerializableFunction<Void, DataSource> dataSourceProviderSerializableFunction = null;
-
-    // TODO Remove in subsequent PR
-    public Builder<T> setDataSourceProviderFn(SerializableFunction<Void, DataSource> value) {
-      this.dataSourceProviderSerializableFunction = value;
-      return this;
-    }
-
     public abstract Builder<T> setDbAdapter(UniformSplitterDBAdapter value);
 
     public abstract Builder<T> setCountQueryTimeoutMillis(long value);
@@ -626,15 +616,6 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     }
 
     public ReadWithUniformPartitions<T> build() {
-      // TODO Remove in subsequent PR
-      if (this.dataSourceProviderSerializableFunction != null) {
-        this.setDataSourceProvider(
-            DataSourceProviderImpl.builder()
-                .addDataSource(
-                    this.tableSplitSpecifications().get(0).tableIdentifier().dataSourceId(),
-                    this.dataSourceProviderSerializableFunction)
-                .build());
-      }
       validateParameters();
 
       java.util.Set<TableIdentifier> splitIdentifiers =

@@ -36,7 +36,12 @@ import org.apache.beam.sdk.values.PCollectionView;
 
 /**
  * Generate the Side-Input that encodes the Collation Mapping information for given instance of
- * {@link ReadWithUniformPartitions}.
+ * {@link ReadWithUniformPartitions}. Note: this PTransform Round-robins collations across available
+ * shards. All shards of for a given migration are assumed to have the same collation mapping. It's
+ * unlikely for different shards to have a different mapping of collations, this assumption helps us
+ * avoid the need for maintaining a per-Shard map of collation (which would add significant
+ * presssure on the worker memory). It also helps us parallelize the discovery across shards to get
+ * better performance.
  */
 @AutoValue
 public abstract class CollationMapperTransform
