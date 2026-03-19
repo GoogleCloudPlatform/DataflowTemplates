@@ -179,16 +179,10 @@ class AggregationSpec:
     window: Window configuration.
     group_by: Field names for grouping. Empty list means global aggregation.
     measures: List of aggregation measures.
-    fanout_strategy: Strategy for global (non-keyed) aggregation parallelism.
-        Ignored when group_by is non-empty. Default is SHARDED.
-    fanout: Number of shards for SHARDED or HOTKEY_FANOUT strategies.
-        Ignored for NONE.
   """
   window: WindowSpec = dataclasses.field(default_factory=WindowSpec)
   group_by: list = dataclasses.field(default_factory=list)
   measures: list = dataclasses.field(default_factory=list)
-  fanout_strategy: FanoutStrategy = FanoutStrategy.SHARDED
-  fanout: int = 400
 
 
 @specifiable
@@ -278,8 +272,6 @@ class MetricSpec:
             'measures': [{
                 'field': m.field, 'agg': m.agg.value, 'alias': m.alias
             } for m in self.aggregation.measures],
-            'fanout_strategy': self.aggregation.fanout_strategy.value,
-            'fanout': self.aggregation.fanout,
         },
     }
     if self.derived_fields:
@@ -348,16 +340,11 @@ class MetricSpec:
             f"got {type(expr_val).__name__}. "
             f"Example: \"clicks / impressions\"")
       measure_combiner = Expr.from_string(expr_val)
-    fanout_strategy = FanoutStrategy(
-        agg_dict.get('fanout_strategy', 'sharded'))
-    fanout = agg_dict.get('fanout', 400)
     return cls(
         aggregation=AggregationSpec(
             window=window,
             group_by=agg_dict.get('group_by', []),
             measures=measures,
-            fanout_strategy=fanout_strategy,
-            fanout=fanout,
         ),
         derived_fields=derived_fields,
         measure_combiner=measure_combiner,
@@ -521,10 +508,17 @@ class ComputeMetric(beam.PTransform):
 
   Args:
     metric_spec: A ``MetricSpec`` defining the metric computation.
+    fanout_strategy: Strategy for global (non-keyed) aggregation parallelism.
+        Ignored when group_by is set. Default: SHARDED.
+    fanout: Number of shards for SHARDED or HOTKEY_FANOUT strategies.
+        Ignored for NONE. Default: 400.
   """
-  def __init__(self, metric_spec):
+  def __init__(self, metric_spec, fanout_strategy=FanoutStrategy.SHARDED,
+               fanout=400):
     super().__init__()
     self._spec = metric_spec
+    self._fanout_strategy = fanout_strategy
+    self._fanout = fanout
 
   def expand(self, pcoll):
     spec = self._spec
@@ -588,7 +582,7 @@ class ComputeMetric(beam.PTransform):
           | 'Combine' >> beam.CombinePerKey(combine_fn)
           | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
     else:
-      strategy = agg.fanout_strategy
+      strategy = self._fanout_strategy
       if strategy == FanoutStrategy.NONE:
         aggregated = (
             windowed
@@ -601,10 +595,10 @@ class ComputeMetric(beam.PTransform):
             windowed
             | 'ExtractFields' >> beam.Map(extract_fields)
             | 'Combine' >> beam.CombineGlobally(
-                combine_fn).with_fanout(agg.fanout).without_defaults()
+                combine_fn).with_fanout(self._fanout).without_defaults()
             | 'ToDict' >> beam.Map(to_alias_dict))
       elif strategy == FanoutStrategy.SHARDED:
-        _num_shards = agg.fanout
+        _num_shards = self._fanout
 
         def _shard_fields(row_dict):
           return (random.randint(0, _num_shards - 1),

@@ -156,4 +156,37 @@ public interface BigQueryAnomalyDetection {
               + "Default: STORAGE_WRITE_API.",
       regexes = {"^(STORAGE_WRITE_API|DEFAULT|FILE_LOADS|STREAMING_INSERTS)$"})
   String getWriteMethod();
+
+  @TemplateParameter.Integer(
+      order = 14,
+      optional = true,
+      name = "decompress_shards",
+      description = "Decompress Shards",
+      helpText =
+          "Number of shards for CDC Arrow batch decompression fan-out. "
+              + "Spreads decompression CPU across workers. "
+              + "0 disables fan-out (decode inline). Default: 400.")
+  Integer getDecompressShards();
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      name = "fanout_strategy",
+      description = "Fanout Strategy",
+      helpText =
+          "Parallelism strategy for global (non-keyed) metric aggregation: "
+              + "sharded, hotkey_fanout, or none. "
+              + "Ignored when group_by is set. Default: sharded.",
+      regexes = {"^(sharded|hotkey_fanout|none)$"})
+  String getFanoutStrategy();
+
+  @TemplateParameter.Integer(
+      order = 16,
+      optional = true,
+      name = "fanout",
+      description = "Fanout Shards",
+      helpText =
+          "Number of shards for sharded or hotkey_fanout strategies. "
+              + "Ignored for none. Default: 400.")
+  Integer getFanout();
 }

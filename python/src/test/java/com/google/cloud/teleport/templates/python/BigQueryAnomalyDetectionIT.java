@@ -142,7 +142,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     // 1-second fixed windows, MEAN of amount, RobustZScore detector.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "\"size_seconds\":"
+            + WINDOW_SIZE_SEC
             + "},\"measures\":[{\"field\":\"amount\","
             + "\"agg\":\"MEAN\",\"alias\":\"avg_amount\"}]}}";
     String detectorSpec = "{\"type\":\"RobustZScore\"}";
@@ -275,7 +276,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     // Grouped ratio: CTR = clicks / impressions per campaign_type.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "\"size_seconds\":"
+            + WINDOW_SIZE_SEC
             + "},\"group_by\":[\"campaign_type\"],"
             + "\"measures\":[{\"field\":\"is_click\",\"agg\":\"SUM\",\"alias\":\"clicks\"},"
             + "{\"field\":\"is_click\",\"agg\":\"COUNT\",\"alias\":\"impressions\"}]},"
@@ -412,7 +414,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     // Simple MEAN metric with Threshold detector.
     String metricSpec =
         "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
-            + "\"size_seconds\":" + WINDOW_SIZE_SEC
+            + "\"size_seconds\":"
+            + WINDOW_SIZE_SEC
             + "},\"measures\":[{\"field\":\"amount\","
             + "\"agg\":\"MEAN\",\"alias\":\"avg_amount\"}]}}";
     String detectorSpec = "{\"type\":\"Threshold\",\"expression\":\"value >= 100\"}";
@@ -575,6 +578,7 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
       assertThat(observedKeys).isEmpty();
     }
 
-    LOG.info("Sink table '{}' verification passed ({} rows, outlier found)", tableName, rows.size());
+    LOG.info(
+        "Sink table '{}' verification passed ({} rows, outlier found)", tableName, rows.size());
   }
 }

@@ -147,7 +147,7 @@ class ThresholdAlertTest(unittest.TestCase):
     result = results[0]
     self.assertIsInstance(result, AnomalyResult)
     self.assertEqual(result.predictions[0].label, 1)
-    self.assertEqual(result.predictions[0].score, 500.0)
+    self.assertIsNone(result.predictions[0].score)
     self.assertEqual(
         result.predictions[0].model_id, 'Threshold(value >= 100)')
 

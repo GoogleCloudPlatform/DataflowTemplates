@@ -230,6 +230,7 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 
 from bqmonitor.metric import ComputeMetric
+from bqmonitor.metric import FanoutStrategy
 from bqmonitor.metric import MetricSpec
 from bqmonitor.safe_eval import Expr
 from apache_beam.ml.anomaly.base import AnomalyPrediction
@@ -366,7 +367,7 @@ class _ThresholdAlert(beam.DoFn):
 
     prediction = AnomalyPrediction(
         model_id=f'Threshold({self._expression_text})',
-        score=float(value),
+        score=None,
         label=1 if is_alert else 0,
         threshold=None)
 
@@ -519,6 +520,25 @@ class AnomalyMonitorOptions(PipelineOptions):
             'STREAMING_INSERTS'],
         help='BigQuery write method for the sink table. '
         'Default: STORAGE_WRITE_API.')
+    parser.add_argument(
+        '--decompress_shards',
+        type=int,
+        default=400,
+        help='Number of shards for CDC Arrow batch decompression fan-out. '
+        'Spreads decompression CPU across workers. '
+        '0 disables fan-out (decode inline). Default: 400.')
+    parser.add_argument(
+        '--fanout_strategy',
+        default='sharded',
+        choices=['sharded', 'hotkey_fanout', 'none'],
+        help='Parallelism strategy for global (non-keyed) metric '
+        'aggregation. Ignored when group_by is set. Default: sharded.')
+    parser.add_argument(
+        '--fanout',
+        type=int,
+        default=400,
+        help='Number of shards for sharded or hotkey_fanout strategies. '
+        'Ignored for none. Default: 400.')
 
 
 # ---------------------------------------------------------------------------
@@ -951,14 +971,18 @@ def build_pipeline(pipeline, options, metric_spec, detector):
       columns=columns,
       change_type_column=change_type_col,
       change_timestamp_column=change_ts_col,
-      decompress_shards=400)
+      decompress_shards=(
+          options.decompress_shards if options.decompress_shards > 0
+          else None))
   if stop_time is not None:
     cdc_kwargs['stop_time'] = stop_time
   if options.temp_dataset:
     cdc_kwargs['temp_dataset'] = options.temp_dataset
 
   rows = pipeline | 'ReadCDC' >> ReadBigQueryChangeHistory(**cdc_kwargs)
-  metrics = rows | 'ComputeMetric' >> ComputeMetric(metric_spec)
+  fanout_strategy = FanoutStrategy(options.fanout_strategy)
+  metrics = rows | 'ComputeMetric' >> ComputeMetric(
+      metric_spec, fanout_strategy=fanout_strategy, fanout=options.fanout)
 
   # Rewindow into GlobalWindows so the anomaly detector sees the full
   # stream of window results as a time series, not isolated per-window.

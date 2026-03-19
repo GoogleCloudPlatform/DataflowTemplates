@@ -29,6 +29,11 @@ fixed-threshold alerter based on a boolean expression).
 * **duration_sec**: How long to run in seconds. `0` means run forever. Default: `0`.
 * **temp_dataset**: BigQuery dataset for temp tables. If unset, auto-created.
 * **log_all_results**: Log all anomaly detection results (normal, outlier, warmup) at WARNING level. Default: `false`.
+* **sink_table**: BigQuery table to write all anomaly detection results to. Format: `project:dataset.table`. If unset, results are not written to BigQuery.
+* **write_method**: BigQuery write method for the sink table: `STORAGE_WRITE_API`, `DEFAULT`, `FILE_LOADS`, or `STREAMING_INSERTS`. Default: `STORAGE_WRITE_API`.
+* **decompress_shards**: Number of shards for CDC Arrow batch decompression fan-out. Spreads decompression CPU across workers. `0` disables fan-out (decode inline). Default: `400`.
+* **fanout_strategy**: Parallelism strategy for global (non-keyed) metric aggregation: `sharded`, `hotkey_fanout`, or `none`. Ignored when `group_by` is set. Default: `sharded`. See [Fanout Strategies](#fanout-strategies).
+* **fanout**: Number of shards for `sharded` or `hotkey_fanout` strategies. Ignored for `none`. Default: `400`.
 
 ## Metric Spec Reference
 
@@ -65,40 +70,12 @@ aggregated into a single numeric value for anomaly detection.
 | `aggregation.measures[].field` | Yes | Input field name (ignored for `COUNT`). |
 | `aggregation.measures[].agg` | Yes | `SUM`, `COUNT`, `MIN`, `MAX`, or `MEAN`. |
 | `aggregation.measures[].alias` | Yes | Output name for this measure. |
-| `aggregation.fanout_strategy` | No | Parallelism strategy for global (non-keyed) aggregation: `sharded` (default), `hotkey_fanout`, or `none`. Ignored when `group_by` is set. See [Fanout Strategies](#fanout-strategies). |
-| `aggregation.fanout` | No | Number of shards for `sharded` or `hotkey_fanout`. Default: `400`. Ignored for `none`. |
 | `derived_fields` | No | Pre-aggregation computed columns. |
 | `measure_combiner` | When >1 measure | Post-aggregation expression combining measure aliases. |
 
 Expressions support: `+`, `-`, `*`, `/`, `//`, `%`, `**`, comparisons,
 `and/or/not`, `if/else`, safe builtins (`abs`, `min`, `max`, `round`),
 and parentheses. Bare names are field references.
-
-### Fanout Strategies
-
-For global aggregation (no `group_by`), all elements are combined under a
-single key. At high throughput this creates a bottleneck on the single reducer's
-streaming state I/O. The `fanout_strategy` controls how elements are distributed
-across intermediate reducers before the final merge.
-
-| Strategy | How it works | Best for |
-|---|---|---|
-| `sharded` (default) | Per-element random sharding into N shard keys. Stage 1 `CombinePerKey` reduces each shard independently. Stage 2 `CombineGlobally` merges N partial accumulators. | High-throughput global aggregation (e.g., 1M+ rows/sec). Uniform distribution regardless of bundle count. |
-| `hotkey_fanout` | Beam's built-in `CombineGlobally.with_fanout(N)`. Per-bundle nonce sharding — all elements in one bundle go to the same shard. Better mapper-side pre-combine (PGBK) table efficiency. | When upstream provides many small bundles, or for moderate throughput where PGBK efficiency matters. |
-| `none` | Plain `CombineGlobally` with no fanout. Relies on Dataflow's combiner lifting (PGBK) for mapper-side pre-combining. | Low throughput, or when upstream already provides enough parallel bundles (e.g., `decompress_shards`) and streaming state I/O is not a bottleneck. |
-
-Example with explicit fanout settings:
-
-```json
-{
-  "aggregation": {
-    "window": {"type": "fixed", "size_seconds": 60},
-    "measures": [{"field": "amount", "agg": "SUM", "alias": "revenue"}],
-    "fanout_strategy": "sharded",
-    "fanout": 400
-  }
-}
-```
 
 ## Detector Spec Reference
 
@@ -141,7 +118,7 @@ as JSON messages:
 
 ```json
 {
-  "event_description": "Anomaly detected value=1234.56 score=4.2 in window=12:00:00-13:00:00",
+  "event_description": "Anomaly detected value=1234.56 score=4.2 in window=2026-03-19T12:00:00.000000Z-2026-03-19T13:00:00.000000Z",
   "agent_id": "ZScore",
   "key": "(campaign_a, chrome)"
 }
@@ -151,6 +128,19 @@ The `key` field is only present for grouped (keyed) metrics.
 
 Set `--log_all_results` to log all results (normal, outlier, warmup) at
 WARNING level in the Dataflow worker logs.
+
+## Fanout Strategies
+
+For global aggregation (no `group_by`), all elements are combined under a
+single key. At high throughput this creates a bottleneck on the single reducer's
+streaming state I/O. The `fanout_strategy` pipeline parameter controls how
+elements are distributed across intermediate reducers before the final merge.
+
+| Strategy | How it works | Best for |
+|---|---|---|
+| `sharded` (default) | Per-element random sharding into N shard keys. Stage 1 `CombinePerKey` reduces each shard independently. Stage 2 `CombineGlobally` merges N partial accumulators. | High-throughput global aggregation (e.g., 1M+ rows/sec). Uniform distribution regardless of bundle count. |
+| `hotkey_fanout` | Beam's built-in `CombineGlobally.with_fanout(N)`. Per-bundle nonce sharding — all elements in one bundle go to the same shard. Better mapper-side pre-combine (PGBK) table efficiency. | When upstream provides many small bundles, or for moderate throughput where PGBK efficiency matters. |
+| `none` | Plain `CombineGlobally` with no fanout. Relies on Dataflow's combiner lifting (PGBK) for mapper-side pre-combining. | Low throughput, or when upstream already provides enough parallel bundles (e.g., `decompress_shards`) and streaming state I/O is not a bottleneck. |
 
 ## Getting Started
 

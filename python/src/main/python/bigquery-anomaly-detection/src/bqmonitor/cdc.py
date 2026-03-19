@@ -986,7 +986,7 @@ class _ReadStorageStreamsSDF(beam.DoFn,
     """Read all rows from a single Storage API stream as dicts.
 
     When batch_arrow_read is enabled, converts entire Arrow RecordBatches
-    at once using to_pydict() instead of calling .as_py() on each cell
+    at once using to_pylist() instead of calling .as_py() on each cell
     individually. This is ~1.5x faster for large tables at the cost of ~2x
     peak memory per batch.
     """
@@ -1205,7 +1205,7 @@ class ReadBigQueryChangeHistory(beam.PTransform):
         on the CHANGES/APPENDS query. Do not include the WHERE keyword.
         Example: ``'status = "active" AND region = "US"'``.
     batch_arrow_read: If True (default), convert Arrow RecordBatches in
-        bulk using to_pydict() instead of per-cell .as_py() calls.
+        bulk using to_pylist() instead of per-cell .as_py() calls.
         This is 1.5x faster for large tables at the cost of ~2x peak
         memory per RecordBatch. Set to False for minimal memory usage.
     max_split_rounds: Maximum number of recursive SplitReadStream
