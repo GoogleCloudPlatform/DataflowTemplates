@@ -22,6 +22,8 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.spanner.SessionNotFoundException;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
@@ -166,7 +168,7 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   public void testFileFormatFactoryInvalid() {
     mockGetDialect();
 
-    exception.expect(IllegalArgumentException.class);
+    exception.expect(SpannerException.class);
 
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
@@ -206,7 +208,7 @@ public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
   public void testInvalidWindowDuration() {
     mockGetDialect();
 
-    exception.expect(IllegalArgumentException.class);
+    exception.expect(SessionNotFoundException.class);
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
     options.setOutputFileFormat(FileFormat.AVRO);
