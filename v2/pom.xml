@@ -508,6 +508,9 @@
                                     </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <artifactSet>
+                                        <excludes>
+                                            <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
+                                        </excludes>
                                         <includes>
                                             <include>*:*</include>
                                         </includes>
@@ -698,6 +701,7 @@
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
         <module>common</module>
+        <module>cdc-data-generator</module>
         <module>dataplex</module>
         <module>datastream-common</module>
         <module>datastream-to-bigquery</module>
@@ -707,6 +711,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>firestore-to-firestore</module>
         <module>gcs-to-sourcedb</module>
         <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
