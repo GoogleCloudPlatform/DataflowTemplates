@@ -816,14 +816,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (System.getProperty("skipShade") == null
           || System.getProperty("skipShade").equalsIgnoreCase("false")) {
         List<Element> paths = new ArrayList<>();
-        for (File commandSpecFile : containerStageTracker.getCommandSpecFile(containerName)) {
-          paths.add(
-              element(
-                  "path",
-                  element("from", targetDirectory + "/classes"),
-                  element("includes", commandSpecFile.getName()),
-                  element("into", "/template/" + containerName + "/resources")));
-        }
+        File commandSpecFolder = containerStageTracker.getCommandSpecFolder(containerName);
+        paths.add(
+            element(
+                "path",
+                element("from", commandSpecFolder.getPath()),
+                element("includes", "*" + TemplateSpecsGenerator.COMMAND_SPEC_SUFFIX),
+                element("into", "/template/" + containerName + "/resources")));
 
         elements.add(element("extraDirectories", element("paths", paths.toArray(new Element[0]))));
 
@@ -1607,6 +1606,23 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     Collection<File> getCommandSpecFile(String containerName) {
       return containers.get(containerName).commandSpecFiles.values();
+    }
+
+    /** Get command spec file common folder. */
+    File getCommandSpecFolder(String containerName) {
+      Collection<File> files = containers.get(containerName).commandSpecFiles.values();
+      File commonFolder = null;
+      for (File file : files) {
+        if (commonFolder == null) {
+          commonFolder = file.getParentFile();
+        } else {
+          if (!commonFolder.equals(file.getParentFile())) {
+            throw new IllegalArgumentException(
+                "Command spec needs to be in same folder to be staged within single container layer");
+          }
+        }
+      }
+      return commonFolder;
     }
 
     String getMappingJson(String containerName) {
