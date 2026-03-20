@@ -210,8 +210,10 @@ public class DockerfileGenerator {
 
       this.parameters.put("filesToCopy", "");
       this.parameters.put("directoriesToCopy", "");
+      this.parameters.put("requirementsFile", "requirements_all.txt");
       this.parameters.put("setupFileEnv", "");
       this.parameters.put("setupInstall", "");
+      this.parameters.put("workerRequirementsEnv", "");
       this.parameters.put("commandSpec", "");
     }
 
@@ -340,6 +342,18 @@ public class DockerfileGenerator {
     }
 
     /**
+     * Sets the requirements file used for {@code pip install} and {@code pip download} at Docker
+     * build time. Defaults to {@code requirements.txt}.
+     *
+     * @param requirementsFile the requirements filename (e.g. "requirements_all.txt").
+     * @return this {@link Builder}.
+     */
+    public Builder setRequirementsFile(String requirementsFile) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(requirementsFile));
+      return addStringParameter("requirementsFile", requirementsFile);
+    }
+
+    /**
      * Configures the Dockerfile to install a Python package via {@code pip install .} at build time
      * and sets {@code FLEX_TEMPLATE_PYTHON_SETUP_FILE} so the Beam stager packages the source code
      * for distribution to workers. The absolute path avoids issues with {@code os.chdir()}.
@@ -355,6 +369,22 @@ public class DockerfileGenerator {
           "setupFileEnv",
           "ENV FLEX_TEMPLATE_PYTHON_SETUP_FILE=\"" + workDir + "/" + setupFile + "\"");
       addParameter("setupInstall", "RUN pip install --no-cache-dir .");
+      return this;
+    }
+
+    /**
+     * Sets {@code FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE} so the Beam stager stages extra
+     * (non-Beam) dependencies to workers. Only use this for dependencies not already present on the
+     * Beam SDK worker image.
+     *
+     * @param requirementsFile the worker requirements filename (e.g. "requirements.txt").
+     * @return this {@link Builder}.
+     */
+    public Builder setWorkerRequirementsFile(String requirementsFile) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(requirementsFile));
+      addParameter(
+          "workerRequirementsEnv",
+          "ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=\"" + requirementsFile + "\"");
       return this;
     }
 

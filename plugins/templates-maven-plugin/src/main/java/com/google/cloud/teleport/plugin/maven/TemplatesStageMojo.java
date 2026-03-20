@@ -1096,6 +1096,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         dockerfileBuilder.setSetupFile("setup.py");
       }
 
+      // If requirements.txt exists, set FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+      // so extra (non-Beam) deps are staged to workers.
+      File workerRequirements = new File(dockerfileContainer + "/requirements.txt");
+      if (workerRequirements.exists()) {
+        dockerfileBuilder.setWorkerRequirementsFile("requirements.txt");
+      }
+
       // Set Airlock parameters
       if (internalMaven) {
         dockerfileBuilder
