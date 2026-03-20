@@ -75,8 +75,7 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
+import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
@@ -85,11 +84,14 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -556,7 +558,7 @@ public class SpannerToSourceDb {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
-
+    long startTime = System.currentTimeMillis();
     Pipeline pipeline = Pipeline.create(options);
     pipeline
         .getOptions()
@@ -685,9 +687,33 @@ public class SpannerToSourceDb {
                               "/tmp_skip/",
                               "/" + options.getSkipDirectoryName())))));
     } else {
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      if (isRegularMode) {
+        reconsumedElements =
+            dlqManager.getReconsumerDataTransform(
+                pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      } else {
+        LOG.info(
+            "Pipeline running in retryDLQ mode. Enabling hybrid consumption model: "
+                + "Continuous read from retry/ and One-Shot read from severe/ "
+                + "(covering files modified before {})",
+            new java.util.Date(startTime));
+
+        PCollection<String> continuousRecords =
+            pipeline.apply(
+                "Read retry from Continuous",
+                dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+        PCollection<String> oneShotRecords =
+            pipeline.apply(
+                "Read severe from OneShot",
+                getDlqOneShotReconsumer(dlqManager.getSevereDlqDirectory(), startTime));
+
+        PCollection<String> allRecords =
+            PCollectionList.of(continuousRecords)
+                .and(oneShotRecords)
+                .apply("Flatten DLQ Records", Flatten.pCollections());
+
+        reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+      }
     }
 
     PCollection<FailsafeElement<String, String>> dlqJsonStrRecords =
@@ -917,16 +943,40 @@ public class SpannerToSourceDb {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-    } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
-      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
-    }
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
+  }
+
+  private static PTransform<PBegin, PCollection<String>> getDlqOneShotReconsumer(
+      String severeDlqDirectory, long startTime) {
+    return new PTransform<PBegin, PCollection<String>>() {
+      @Override
+      public PCollection<String> expand(PBegin in) {
+        return in.getPipeline()
+            .apply("MatchSevere", FileIO.match().filepattern(severeDlqDirectory + "**"))
+            .apply("FilterHistoricallySevere", Filter.by(m -> m.lastModifiedMillis() < startTime))
+            .apply(
+                "LogSevereFileProcessing",
+                org.apache.beam.sdk.transforms.ParDo.of(
+                    new org.apache.beam.sdk.transforms.DoFn<
+                        org.apache.beam.sdk.io.fs.MatchResult.Metadata,
+                        org.apache.beam.sdk.io.fs.MatchResult.Metadata>() {
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        org.apache.beam.sdk.io.fs.MatchResult.Metadata m = c.element();
+                        LOG.info(
+                            "DLQ OneShot: Processing severe file {} last modified at {}",
+                            m.resourceId().toString(),
+                            m.lastModifiedMillis());
+                        c.output(m);
+                      }
+                    }))
+            .apply("ReshuffleBeforeConsume", Reshuffle.viaRandomKey())
+            .apply(
+                "ConsumeMatches",
+                com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer
+                    .moveAndConsumeMatches());
+      }
+    };
   }
 
   private static Connection createJdbcConnection(Shard shard) {

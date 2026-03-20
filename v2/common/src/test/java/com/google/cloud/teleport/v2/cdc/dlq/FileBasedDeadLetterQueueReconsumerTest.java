@@ -137,4 +137,25 @@ public class FileBasedDeadLetterQueueReconsumerTest {
 
     assertThat(text).isEqualTo(expected);
   }
+
+  @Test
+  public void testFlattenBoundedAndUnbounded() {
+    PCollection<String> bounded = p.apply("Bounded", org.apache.beam.sdk.transforms.Create.of("A"));
+    // GenerateSequence is Unbounded
+    PCollection<String> unbounded =
+        p.apply(
+                "Unbounded",
+                org.apache.beam.sdk.io.GenerateSequence.from(0)
+                    .withMaxReadTime(org.joda.time.Duration.standardSeconds(1)))
+            .apply(
+                org.apache.beam.sdk.transforms.MapElements.into(
+                        org.apache.beam.sdk.values.TypeDescriptors.strings())
+                    .via(String::valueOf));
+
+    org.apache.beam.sdk.values.PCollectionList.of(bounded)
+        .and(unbounded)
+        .apply(org.apache.beam.sdk.transforms.Flatten.pCollections());
+
+    p.run().waitUntilFinish();
+  }
 }
