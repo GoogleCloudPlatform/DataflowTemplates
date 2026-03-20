@@ -23,7 +23,7 @@ suitable for feeding directly into ``AnomalyDetection``.
 
 Example usage::
 
-  from apache_beam.ml.anomaly.metric import (
+  from bqmonitor.metric import (
       MetricSpec, AggregationSpec, WindowSpec, MeasureSpec,
       DerivedField, WindowType, AggOp, ComputeMetric)
   from bqmonitor.safe_eval import Expr
