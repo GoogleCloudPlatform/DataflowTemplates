@@ -372,7 +372,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                   uploadToGcs(storage, path, objectName);
                   String baseName = fileName.substring(0, fileName.length() - ".yaml".length());
                   String displayName =
-                      StringUtils.join(StringUtils.splitByCharacterTypeCamelCase(baseName), " ");
+                      "blueprints".equals(subFolder)
+                          ? String.join(" to ", baseName.split("To"))
+                          : baseName;
                   entries.add(new ManifestEntry(displayName, objectName));
                 });
       }

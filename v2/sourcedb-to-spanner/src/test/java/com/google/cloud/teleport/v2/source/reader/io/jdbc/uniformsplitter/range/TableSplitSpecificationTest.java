@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
@@ -97,6 +98,136 @@ public class TableSplitSpecificationTest {
     assertThat(TableSplitSpecification.logToBaseTwo(63L)).isEqualTo(6L);
     assertThat(TableSplitSpecification.logToBaseTwo(64L)).isEqualTo(6L);
     assertThat(TableSplitSpecification.logToBaseTwo(65L)).isEqualTo(7L);
+  }
+
+  @Test
+  public void testTableSplitSpecificationWithInitialRange() {
+    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    PartitionColumn col1 =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
+    PartitionColumn col2 =
+        PartitionColumn.builder().setColumnName("col2").setColumnClass(Long.class).build();
+    ImmutableList<PartitionColumn> partitionColumns = ImmutableList.of(col1, col2);
+
+    Range initialRange =
+        Range.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setColName("col1")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    TableSplitSpecification spec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setPartitionColumns(partitionColumns)
+            .setApproxRowCount(1000L)
+            .setInitialRange(initialRange)
+            .build();
+
+    assertThat(spec.initialRange()).isEqualTo(initialRange);
+  }
+
+  @Test
+  public void testTableSplitSpecificationWithInitialRangeMismatchTable() {
+    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier otherTable = TableIdentifier.builder().setTableName("other_table").build();
+    PartitionColumn col1 =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
+
+    Range initialRange =
+        Range.builder()
+            .setTableIdentifier(otherTable)
+            .setColName("col1")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            TableSplitSpecification.builder()
+                .setTableIdentifier(tableIdentifier)
+                .setPartitionColumns(ImmutableList.of(col1))
+                .setApproxRowCount(1000L)
+                .setInitialRange(initialRange)
+                .build());
+  }
+
+  @Test
+  public void testTableSplitSpecificationWithInitialRangeMismatchColumn() {
+
+    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+
+    PartitionColumn col1 =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
+
+    Range initialRange =
+        Range.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setColName("wrong_col")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            TableSplitSpecification.builder()
+                .setTableIdentifier(tableIdentifier)
+                .setPartitionColumns(ImmutableList.of(col1))
+                .setApproxRowCount(1000L)
+                .setInitialRange(initialRange)
+                .build());
+  }
+
+  @Test
+  public void testTableSplitSpecificationWithInitialRangeChildMismatchColumn() {
+
+    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+
+    PartitionColumn col1 =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
+
+    PartitionColumn col2 =
+        PartitionColumn.builder().setColumnName("col2").setColumnClass(Long.class).build();
+
+    Range childRange =
+        Range.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setColName("wrong_col")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(100L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build();
+
+    Range initialRange =
+        Range.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setColName("col1")
+            .setColClass(Long.class)
+            .setStart(0L)
+            .setEnd(0L)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
+            .build()
+            .withChildRange(childRange, null);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            TableSplitSpecification.builder()
+                .setTableIdentifier(tableIdentifier)
+                .setPartitionColumns(ImmutableList.of(col1, col2))
+                .setApproxRowCount(1000L)
+                .setInitialRange(initialRange)
+                .build());
   }
 
   @Test

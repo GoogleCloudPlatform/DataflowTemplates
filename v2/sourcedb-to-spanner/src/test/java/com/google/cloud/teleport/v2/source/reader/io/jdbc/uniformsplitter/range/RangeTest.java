@@ -33,6 +33,8 @@ public class RangeTest {
     long end = 42L;
     Range range =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -40,6 +42,8 @@ public class RangeTest {
             .setEnd(end)
             .build();
 
+    assertThat(range.boundary().tableIdentifier().tableName()).isEqualTo("testTable");
+    assertThat(range.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(range.colName()).isEqualTo(colName);
     assertThat(range.start()).isEqualTo(start);
     assertThat(range.end()).isEqualTo(end);
@@ -69,6 +73,8 @@ public class RangeTest {
   public void testRangeWithChild() {
     Range basicRange =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -106,6 +112,8 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -121,6 +129,8 @@ public class RangeTest {
     long mid = 21L;
     Range rangeChild =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -169,6 +179,8 @@ public class RangeTest {
   public void testAccumulateCount() {
     Range uncountedRange =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -191,6 +203,7 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -206,6 +219,7 @@ public class RangeTest {
     long mid = 21L;
     Range leftChild =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -218,6 +232,7 @@ public class RangeTest {
 
     Range rightChild =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -235,6 +250,29 @@ public class RangeTest {
     // Basic Mergability
     assertThat(leftRange.isMergable(rightRange)).isTrue();
     assertThat(rightRange.isMergable(leftRange)).isTrue();
+    // Ranges from different tables don't merge
+    assertThat(
+            leftRange.isMergable(
+                rightRange.toBuilder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder().setTableName("testTable2").build())
+                    .build()))
+        .isFalse();
+
+    assertThat(
+            rightRange.isMergable(
+                leftRange.toBuilder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder().setTableName("testTable2").build())
+                    .build()))
+        .isFalse();
+    assertThat(
+            leftChild.isMergable(
+                rightChild.toBuilder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder().setTableName("testTable2").build())
+                    .build()))
+        .isFalse();
     // Non-Overlapping ranges are not mergable.
     assertThat(
             rightRange.isMergable(
@@ -266,6 +304,7 @@ public class RangeTest {
   public void testRangeEquality() {
     Range basicRange =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -289,6 +328,7 @@ public class RangeTest {
     assertThat(basicRange)
         .isNotEqualTo(
             Range.builder()
+                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
                 .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                 .setColName(basicRange.colName())
                 .setColClass(Integer.class)

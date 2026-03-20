@@ -703,6 +703,34 @@ public class DeadLetterQueueTest {
     assertTrue(payload.contains("\"_metadata_shard_id\":\"shard-456\""));
   }
 
+  @Test
+  public void testMutationToDlqElementWithNaNAndInfinity() {
+    DeadLetterQueue dlq = DeadLetterQueue.create("testDir", null, null, SQLDialect.MYSQL, null);
+    Mutation mutation =
+        Mutation.newInsertBuilder("testTable")
+            .set("id")
+            .to(1)
+            .set("nan_double")
+            .to(Double.NaN)
+            .set("inf_double")
+            .to(Double.POSITIVE_INFINITY)
+            .set("nan_float")
+            .to(Float.NaN)
+            .set("inf_float")
+            .to(Float.POSITIVE_INFINITY)
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(mutation);
+
+    assertNotNull(dlqElement);
+    String payload = dlqElement.getOriginalPayload();
+    assertTrue(payload.contains("\"id\":1"));
+    assertTrue(payload.contains("\"nan_double\":\"NaN\""));
+    assertTrue(payload.contains("\"inf_double\":\"Infinity\""));
+    assertTrue(payload.contains("\"nan_float\":\"NaN\""));
+    assertTrue(payload.contains("\"inf_float\":\"Infinity\""));
+  }
+
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
     return new IdentityMapper(spannerDdl);
   }

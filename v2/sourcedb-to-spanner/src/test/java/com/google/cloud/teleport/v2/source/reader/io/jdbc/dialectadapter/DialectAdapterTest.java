@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
@@ -38,6 +39,19 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class DialectAdapterTest {
   @Mock CassandraSchemaReference mockCassandraSchemaReference;
   @Mock CassandraDataSource mockCassandraDataSource;
+
+  @Test
+  public void testGenerateInClause() {
+    assertThat(DialectAdapter.generateInClause(1)).isEqualTo("(?)");
+    assertThat(DialectAdapter.generateInClause(2)).isEqualTo("(?,?)");
+    assertThat(DialectAdapter.generateInClause(5)).isEqualTo("(?,?,?,?,?)");
+  }
+
+  @Test
+  public void testGenerateInClause_invalidSize() {
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(0));
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(-1));
+  }
 
   @Test
   public void testMismatchedSource() {
@@ -102,5 +116,25 @@ public class DialectAdapterTest {
     long expectedSize = 300L;
     org.junit.Assert.assertEquals(
         expectedSize, dialectAdapter.estimateRowSize(mockSourceTableSchema, mockProvider));
+  }
+
+  @Test
+  public void testEstimateRowSize_Overflow() {
+    DialectAdapter dialectAdapter = Mockito.mock(DialectAdapter.class);
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.anyMap(), ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+
+    SourceColumnType col1 = new SourceColumnType("col1", null, null);
+    SourceColumnType col2 = new SourceColumnType("col2", null, null);
+
+    JdbcValueMappingsProvider mockProvider = Mockito.mock(JdbcValueMappingsProvider.class);
+    Mockito.when(mockProvider.estimateColumnSize(col1)).thenReturn(Integer.MAX_VALUE);
+    Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(10);
+
+    long size =
+        dialectAdapter.estimateRowSize(ImmutableMap.of("col1", col1, "col2", col2), mockProvider);
+    org.junit.Assert.assertEquals((long) Integer.MAX_VALUE + 10, size);
   }
 }

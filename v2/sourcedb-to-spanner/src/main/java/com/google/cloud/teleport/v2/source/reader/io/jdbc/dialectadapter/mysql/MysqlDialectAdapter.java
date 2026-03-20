@@ -37,6 +37,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Pattern;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -127,7 +128,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 + "TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = '%s' ",
             sourceSchemaReference.dbName());
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
-    try (Statement stmt = dataSource.getConnection().createStatement()) {
+    try (Connection conn = dataSource.getConnection();
+        Statement stmt = conn.createStatement()) {
       ResultSet rs = stmt.executeQuery(tableDiscoveryQuery);
       while (rs.next()) {
         tablesBuilder.add(rs.getString(1));
@@ -187,18 +189,34 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
     logger.info(
         String.format(
             "Discovering table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
-    String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
+    String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference, tables.size());
 
-    ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> tableSchemaBuilder =
-        ImmutableMap.<String, ImmutableMap<String, SourceColumnType>>builder();
-    try (PreparedStatement statement =
-        dataSource.getConnection().prepareStatement(discoveryQuery)) {
-      tables.forEach(table -> tableSchemaBuilder.put(table, getTableCols(table, statement)));
+    Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
+    tables.forEach(table -> builders.put(table, ImmutableMap.builder()));
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
+      statement.setFetchSize(1000);
+      for (int i = 0; i < tables.size(); i++) {
+        statement.setString(i + 1, tables.get(i));
+      }
+      ResultSet rs = statement.executeQuery();
+      while (rs.next()) {
+        String tableName = rs.getString("TABLE_NAME");
+        String colName = rs.getString(InformationSchemaCols.NAME_COL);
+        SourceColumnType colType = resultSetToSourceColumnType(rs);
+        if (builders.containsKey(tableName)) {
+          builders.get(tableName).put(colName, colType);
+        }
+      }
     } catch (SQLTransientConnectionException e) {
       logger.warn(
           String.format(
@@ -225,12 +243,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       schemaDiscoveryErrors.inc();
       throw e;
     }
-    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
-        tableSchemaBuilder.build();
+    ImmutableMap.Builder<String, ImmutableMap<String, SourceColumnType>> result =
+        ImmutableMap.builder();
+    builders.forEach((table, builder) -> result.put(table, builder.build()));
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema = result.build();
     logger.info(
         String.format(
-            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s, schema: %s",
-            dataSource, sourceSchemaReference, tables, tableSchema));
+            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
+            dataSource, sourceSchemaReference, tables));
 
     return tableSchema;
   }
@@ -251,17 +272,32 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
+    if (tables.isEmpty()) {
+      return ImmutableMap.of();
+    }
     logger.info(
         String.format(
             "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
-    String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference);
-    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
-        ImmutableMap.<String, ImmutableList<SourceColumnIndexInfo>>builder();
+    String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference, tables.size());
 
-    try (PreparedStatement statement =
-        dataSource.getConnection().prepareStatement(discoveryQuery)) {
-      tables.forEach(table -> tableIndexesBuilder.put(table, getTableIndexes(table, statement)));
+    Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
+    tables.forEach(table -> builders.put(table, ImmutableList.builder()));
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
+      statement.setFetchSize(1000);
+      for (int i = 0; i < tables.size(); i++) {
+        statement.setString(i + 1, tables.get(i));
+      }
+      ResultSet rs = statement.executeQuery();
+      while (rs.next()) {
+        String tableName = rs.getString("TABLE_NAME");
+        SourceColumnIndexInfo info = resultSetToSourceColumnIndexInfo(rs);
+        if (builders.containsKey(tableName)) {
+          builders.get(tableName).add(info);
+        }
+      }
     } catch (SQLTransientConnectionException e) {
       logger.warn(
           String.format(
@@ -288,35 +324,78 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       schemaDiscoveryErrors.inc();
       throw e;
     }
-    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
-        tableIndexesBuilder.build();
+    ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> result =
+        ImmutableMap.builder();
+    builders.forEach((table, builder) -> result.put(table, builder.build()));
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes = result.build();
     logger.info(
         String.format(
-            "Discovered Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s.\nIndexes: %s",
-            dataSource, sourceSchemaReference, tables, tableIndexes));
+            "Discovered Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
+            dataSource, sourceSchemaReference, tables));
     return tableIndexes;
   }
 
-  protected static String getSchemaDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
-    return "SELECT "
+  protected static String getSchemaDiscoveryQuery(
+      JdbcSchemaReference sourceSchemaReference, int numTables) {
+    return "SELECT TABLE_NAME, "
         + String.join(",", InformationSchemaCols.colList())
         + " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = "
         + "'"
         + sourceSchemaReference.dbName()
         + "'"
         + " AND"
-        + " TABLE_NAME = ?";
+        + " TABLE_NAME IN "
+        + DialectAdapter.generateInClause(numTables);
   }
 
   /**
    * Discover Indexed columns and their Collations(if applicable). You could try this on <a href =
-   * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/3>db-fiddle</a>
+   * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/5>db-fiddle</a>
    *
    * @param sourceSchemaReference
    * @return
    */
-  protected static String getIndexDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
-    return "SELECT *"
+  protected static String getIndexDiscoveryQuery(
+      JdbcSchemaReference sourceSchemaReference, int numTables) {
+    // We are selecting only the necessary columns as are quering multiple tables
+    // And we would like the resultset to be crisp.
+    return "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as '"
+        + InformationSchemaStatsCols.COL_NAME_COL
+        + "', "
+        + "stats.INDEX_NAME as '"
+        + InformationSchemaStatsCols.INDEX_NAME_COL
+        + "', "
+        + "stats.SEQ_IN_INDEX as '"
+        + InformationSchemaStatsCols.ORDINAL_POS_COL
+        + "', "
+        + "stats.NON_UNIQUE as '"
+        + InformationSchemaStatsCols.NON_UNIQ_COL
+        + "', "
+        + "stats.CARDINALITY as '"
+        + InformationSchemaStatsCols.CARDINALITY_COL
+        + "', "
+        + "cols.COLUMN_TYPE as '"
+        + InformationSchemaStatsCols.TYPE_COL
+        + "', "
+        + "cols.CHARACTER_MAXIMUM_LENGTH as '"
+        + InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL
+        + "', "
+        + "cols.CHARACTER_SET_NAME as '"
+        + InformationSchemaStatsCols.CHARACTER_SET_COL
+        + "', "
+        + "cols.COLLATION_NAME as '"
+        + InformationSchemaStatsCols.COLLATION_COL
+        + "', "
+        + "cols.DATETIME_PRECISION as '"
+        + InformationSchemaStatsCols.DATETIME_PRECISION_COL
+        + "', "
+        + "collations.PAD_ATTRIBUTE as '"
+        + InformationSchemaStatsCols.PAD_SPACE_COL
+        + "', "
+        + "cols.NUMERIC_SCALE as '"
+        + InformationSchemaStatsCols.NUMERIC_SCALE_COL
+        + "' "
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
         + "INFORMATION_SCHEMA.COLUMNS cols"
@@ -333,28 +412,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + sourceSchemaReference.dbName()
         + "'"
         + " AND"
-        + " stats.TABLE_NAME = ?";
-  }
-
-  private ImmutableMap<String, SourceColumnType> getTableCols(
-      String table, PreparedStatement statement) throws SchemaDiscoveryException {
-    var colsBuilder = ImmutableMap.<String, SourceColumnType>builder();
-    try {
-      statement.setString(1, table);
-      ResultSet rs = statement.executeQuery();
-      while (rs.next()) {
-        String colName = rs.getString(InformationSchemaCols.NAME_COL);
-        SourceColumnType colType = resultSetToSourceColumnType(rs);
-        colsBuilder.put(colName, colType);
-      }
-    } catch (java.sql.SQLException e) {
-      logger.error(
-          String.format(
-              "Sql error while discovering table schema with statement=%s table=%s, cause=%s",
-              statement, table, e));
-      throw new SchemaDiscoveryException(e);
-    }
-    return colsBuilder.build();
+        + " stats.TABLE_NAME IN "
+        + DialectAdapter.generateInClause(numTables);
   }
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
@@ -395,8 +454,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
-   * #getIndexDiscoveryQuery(JdbcSchemaReference)}. This method takes care of the fact that older
-   * versions of MySQL notably Mysql5.7 don't have a {@link
+   * #getIndexDiscoveryQuery(JdbcSchemaReference, int)}. This method takes care of the fact that
+   * older versions of MySQL notably Mysql5.7 don't have a {@link
    * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
    */
   @VisibleForTesting
@@ -408,113 +467,97 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
       }
     }
-    // For MySql5.7 there is no pad-space column
+    // For MySql5.7 there is no pad-space column in the INFORMATION_SCHEMA.COLLATIONS table.
+    // In these older versions, non-binary string comparisons (like VARCHAR) always follow
+    // PAD SPACE rules (where trailing spaces are ignored). We default to this behavior
+    // to ensure correct partitioning across both MySQL 5.7 and 8.x.
     logger.info(
         "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
         InformationSchemaStatsCols.PAD_SPACE_COL);
     return PAD_SPACE;
   }
 
-  private ImmutableList<SourceColumnIndexInfo> getTableIndexes(
-      String table, PreparedStatement statement) throws SchemaDiscoveryException {
-
-    ImmutableList.Builder<SourceColumnIndexInfo> indexesBuilder =
-        ImmutableList.<SourceColumnIndexInfo>builder();
-    try {
-      statement.setString(1, table);
-      ResultSet rs = statement.executeQuery();
-      while (rs.next()) {
-        String colName = rs.getString(InformationSchemaStatsCols.COL_NAME_COL);
-        String indexName = rs.getString(InformationSchemaStatsCols.INDEX_NAME_COL);
-        boolean isUnique = !rs.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL);
-        boolean isPrimary = indexName.trim().toUpperCase().equals("PRIMARY");
-        long cardinality = rs.getLong(InformationSchemaStatsCols.CARDINALITY_COL);
-        long ordinalPosition = rs.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL);
-        @Nullable
-        Integer stringMaxLength = rs.getInt(InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL);
-        if (rs.wasNull()) {
-          stringMaxLength = null;
-        }
-        @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
-        @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
-        @Nullable String padSpace = getPadSpaceString(rs);
-        int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
-        boolean hasNumericScale = !rs.wasNull();
-        @Nullable
-        Integer datetimePrecision = rs.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL);
-        if (rs.wasNull()) {
-          datetimePrecision = null;
-        }
-        logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numericScale {}, datetimePrecision {}",
-            colName,
-            indexName,
-            isUnique,
-            isPrimary,
-            cardinality,
-            ordinalPosition,
-            characterSet,
-            collation,
-            padSpace,
-            numericScale,
-            datetimePrecision);
-        // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
-        // Column.
-        String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
-        IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
-        CollationReference collationReference = null;
-        if (indexType.equals(IndexType.STRING)) {
-          collationReference =
-              CollationReference.builder()
-                  .setDbCharacterSet(escapeMySql(characterSet))
-                  .setDbCollation(escapeMySql(collation))
-                  .setPadSpace(
-                      (padSpace == null) ? false : padSpace.trim().toUpperCase().equals(PAD_SPACE))
-                  .build();
-        } else {
-          stringMaxLength = null;
-        }
-
-        BigDecimal decimalStepSize = null;
-        if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DOUBLE)) {
-          if (numericScale > 0) {
-            // Example: If scale is 2, decimal step is 0.01
-            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
-          } else if (indexType.equals(IndexType.FLOAT)) {
-            // Trying to pick a sane default 1e-5 (there is no defined default step for float point
-            // type)
-            decimalStepSize = new BigDecimal("0.00001");
-          } else {
-            // Trying to pick a sane default 1e-10 (there is no defined default step for double
-            // type)
-            decimalStepSize = new BigDecimal("0.0000000001");
-          }
-        }
-
-        indexesBuilder.add(
-            SourceColumnIndexInfo.builder()
-                .setColumnName(colName)
-                .setIndexName(indexName)
-                .setIsUnique(isUnique)
-                .setIsPrimary(isPrimary)
-                .setCardinality(cardinality)
-                .setOrdinalPosition(ordinalPosition)
-                .setIndexType(indexType)
-                .setCollationReference(collationReference)
-                .setStringMaxLength(stringMaxLength)
-                .setNumericScale(hasNumericScale ? numericScale : null)
-                .setDecimalStepSize(decimalStepSize)
-                .setDatetimePrecision(datetimePrecision)
-                .build());
-      }
-    } catch (java.sql.SQLException e) {
-      logger.error(
-          String.format(
-              "Sql error while discovering table schema with statement=%s table=%s, cause=%s",
-              statement, table, e));
-      throw new SchemaDiscoveryException(e);
+  private SourceColumnIndexInfo resultSetToSourceColumnIndexInfo(ResultSet rs) throws SQLException {
+    String colName = rs.getString(InformationSchemaStatsCols.COL_NAME_COL);
+    String indexName = rs.getString(InformationSchemaStatsCols.INDEX_NAME_COL);
+    boolean isUnique = !rs.getBoolean(InformationSchemaStatsCols.NON_UNIQ_COL);
+    boolean isPrimary = indexName.trim().toUpperCase().equals("PRIMARY");
+    long cardinality = rs.getLong(InformationSchemaStatsCols.CARDINALITY_COL);
+    long ordinalPosition = rs.getLong(InformationSchemaStatsCols.ORDINAL_POS_COL);
+    @Nullable Integer stringMaxLength = rs.getInt(InformationSchemaStatsCols.CHAR_MAX_LENGTH_COL);
+    if (rs.wasNull()) {
+      stringMaxLength = null;
     }
-    return indexesBuilder.build();
+    @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
+    @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
+    @Nullable String padSpace = getPadSpaceString(rs);
+    int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
+    boolean hasNumericScale = !rs.wasNull();
+    @Nullable
+    Integer datetimePrecision = rs.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL);
+    if (rs.wasNull()) {
+      datetimePrecision = null;
+    }
+    logger.debug(
+        "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numericScale {}, datetimePrecision {}",
+        colName,
+        indexName,
+        isUnique,
+        isPrimary,
+        cardinality,
+        ordinalPosition,
+        characterSet,
+        collation,
+        padSpace,
+        numericScale,
+        datetimePrecision);
+    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
+    // Column.
+    String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
+    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
+    CollationReference collationReference = null;
+    if (indexType.equals(IndexType.STRING)) {
+      collationReference =
+          CollationReference.builder()
+              .setDbCharacterSet(escapeMySql(characterSet))
+              .setDbCollation(escapeMySql(collation))
+              .setPadSpace(
+                  (padSpace == null) ? false : padSpace.trim().toUpperCase().equals(PAD_SPACE))
+              .build();
+    } else {
+      stringMaxLength = null;
+    }
+
+    BigDecimal decimalStepSize = null;
+    if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DOUBLE)) {
+      if (numericScale > 0) {
+        // Example: If scale is 2, decimal step is 0.01
+        decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+      } else if (indexType.equals(IndexType.FLOAT)) {
+        // Trying to pick a sane default 1e-5 (there is no defined default step for float point
+        // type)
+        decimalStepSize = new BigDecimal("0.00001");
+      } else {
+        // Trying to pick a sane default 1e-10 (there is no defined default step for double
+        // type)
+        decimalStepSize = new BigDecimal("0.0000000001");
+      }
+    }
+
+    return SourceColumnIndexInfo.builder()
+        .setColumnName(colName)
+        .setIndexName(indexName)
+        .setIsUnique(isUnique)
+        .setIsPrimary(isPrimary)
+        .setCardinality(cardinality)
+        .setOrdinalPosition(ordinalPosition)
+        .setIndexType(indexType)
+        .setCollationReference(collationReference)
+        .setStringMaxLength(stringMaxLength)
+        .setNumericScale(hasNumericScale ? numericScale : null)
+        .setDecimalStepSize(decimalStepSize)
+        .setDatetimePrecision(datetimePrecision)
+        .build();
   }
 
   @VisibleForTesting

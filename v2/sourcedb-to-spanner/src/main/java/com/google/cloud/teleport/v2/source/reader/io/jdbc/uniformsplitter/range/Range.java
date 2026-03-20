@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
@@ -90,6 +91,10 @@ public abstract class Range implements Serializable, Comparable<Range> {
   @Nullable
   public Object end() {
     return this.boundary().end();
+  }
+
+  public TableIdentifier tableIdentifier() {
+    return this.boundary().tableIdentifier();
   }
 
   /**
@@ -249,6 +254,9 @@ public abstract class Range implements Serializable, Comparable<Range> {
       }
       return this.childRange().isMergable(other.childRange());
     } else {
+      if (!this.boundary().tableIdentifier().equals(other.boundary().tableIdentifier())) {
+        return false;
+      }
       return Objects.equal(this.end(), other.start()) || Objects.equal(this.start(), other.end());
     }
   }
@@ -401,9 +409,20 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return this;
     }
 
+    @VisibleForTesting
+    public <T extends Serializable> Builder setSplitIndex(String splitIndex) {
+      this.boundaryBuilder().setSplitIndex(splitIndex);
+      return this;
+    }
+
     public <T extends Serializable> Builder setBoundarySplitter(
         BoundarySplitter<T> boundarySplitter) {
       this.boundaryBuilder().setBoundarySplitter(boundarySplitter);
+      return this;
+    }
+
+    public <T extends Serializable> Builder setTableIdentifier(TableIdentifier tableIdentifier) {
+      this.boundaryBuilder().setTableIdentifier(tableIdentifier);
       return this;
     }
 
