@@ -1,0 +1,47 @@
+initial
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Mon Mar 9 09:12:57 2026 -0400
+#
+# On branch bqmonitor
+# Your branch is up to date with 'origin/bqmonitor'.
+#
+# Changes to be committed:
+#	modified:   plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java
+#	modified:   plugins/core-plugin/src/main/resources/Dockerfile-template-python
+#	modified:   plugins/core-plugin/src/test/java/com/google/cloud/teleport/plugin/DockerfileGeneratorTest.java
+#	modified:   plugins/templates-maven-plugin/src/main/java/com/google/cloud/teleport/plugin/maven/TemplatesStageMojo.java
+#	new file:   python/README_BigQuery_Anomaly_Detection.md
+#	new file:   python/default_base_bqmonitor_requirements.txt
+#	modified:   python/generate_all_dependencies.sh
+#	new file:   python/src/main/java/com/google/cloud/teleport/templates/python/BigQueryAnomalyDetection.java
+#	new file:   python/src/main/python/bigquery-anomaly-detection/main.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/pyproject.toml
+#	new file:   python/src/main/python/bigquery-anomaly-detection/requirements.txt
+#	new file:   python/src/main/python/bigquery-anomaly-detection/setup.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/src/bqmonitor/__init__.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/src/bqmonitor/cdc.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/src/bqmonitor/metric.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/src/bqmonitor/pipeline.py
+#	new file:   python/src/main/python/bigquery-anomaly-detection/src/bqmonitor/safe_eval.py
+#	modified:   python/src/main/python/job-builder-server/requirements.txt
+#	modified:   python/src/main/python/streaming-llm/requirements.txt
+#	modified:   python/src/main/python/word-count-python/requirements.txt
+#	modified:   python/src/main/python/yaml-template/requirements.txt
+#	new file:   python/src/test/java/com/google/cloud/teleport/templates/python/BigQueryAnomalyDetectionIT.java
+#	modified:   v2/googlecloud-and-mongodb/src/main/resources/requirements.txt
+#	modified:   v2/googlecloud-to-elasticsearch/src/main/resources/requirements.txt
+#	modified:   v2/googlecloud-to-googlecloud/src/main/resources/requirements.txt
+#	modified:   v2/googlecloud-to-splunk/src/main/resources/requirements.txt
+#	modified:   v2/pubsub-binary-to-bigquery/src/main/resources/requirements.txt
+#	modified:   yaml/src/main/python/requirements.txt
+#
+# Untracked files:
+#	diff.txt
+#	launcher_logs.txt
+#	v1/logs.txt
+#	v1/src/main/java/com/google/cloud/teleport/templates/unwrap-hec-payload.js
+#	yaml/src/test/python/logs.txt
+#

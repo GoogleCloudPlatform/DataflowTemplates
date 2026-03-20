@@ -1,0 +1,12 @@
+pyproject.toml
+setup.py
+src/bqmonitor/__init__.py
+src/bqmonitor/cdc.py
+src/bqmonitor/metric.py
+src/bqmonitor/pipeline.py
+src/bqmonitor/safe_eval.py
+src/bqmonitor.egg-info/PKG-INFO
+src/bqmonitor.egg-info/SOURCES.txt
+src/bqmonitor.egg-info/dependency_links.txt
+src/bqmonitor.egg-info/requires.txt
+src/bqmonitor.egg-info/top_level.txt

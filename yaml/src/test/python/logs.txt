@@ -1,0 +1,174 @@
+INFO 2026-03-09T02:06:28.673334Z 25da79b966a1: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z bb49a14329f4: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 9da13df7853e: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 97a855169b32: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 4f4fb700ef54: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z ffa033d43a24: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 69f5905c68af: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 1903739d92ce: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z db5da881245a: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z b9b516572f65: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z a163ea7aaf4d: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 15f39d89d5ea: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 37486ddfaacf: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z d9ef0252c0f9: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 454acab13e47: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 9627d305a483: Pulling fs layer
+INFO 2026-03-09T02:06:28.673334Z 6dc8224e38b6: Waiting
+INFO 2026-03-09T02:06:28.673334Z dca0c57760a4: Waiting
+INFO 2026-03-09T02:06:28.673334Z a89a34efd609: Waiting
+INFO 2026-03-09T02:06:28.673334Z d513cb1965c3: Waiting
+INFO 2026-03-09T02:06:28.673334Z c9e80133c84a: Waiting
+INFO 2026-03-09T02:06:28.673334Z 25da79b966a1: Waiting
+INFO 2026-03-09T02:06:28.673334Z bb49a14329f4: Waiting
+INFO 2026-03-09T02:06:28.673334Z 9da13df7853e: Waiting
+INFO 2026-03-09T02:06:28.673334Z 97a855169b32: Waiting
+INFO 2026-03-09T02:06:28.673334Z 4f4fb700ef54: Waiting
+INFO 2026-03-09T02:06:28.673334Z ffa033d43a24: Waiting
+INFO 2026-03-09T02:06:28.673334Z 69f5905c68af: Waiting
+INFO 2026-03-09T02:06:28.673334Z 1903739d92ce: Waiting
+INFO 2026-03-09T02:06:28.673334Z db5da881245a: Waiting
+INFO 2026-03-09T02:06:28.673334Z b9b516572f65: Waiting
+INFO 2026-03-09T02:06:28.673334Z a163ea7aaf4d: Waiting
+INFO 2026-03-09T02:06:28.673334Z 15f39d89d5ea: Waiting
+INFO 2026-03-09T02:06:28.673334Z 37486ddfaacf: Waiting
+INFO 2026-03-09T02:06:28.673334Z d9ef0252c0f9: Waiting
+INFO 2026-03-09T02:06:28.673334Z 454acab13e47: Waiting
+INFO 2026-03-09T02:06:28.673334Z 9627d305a483: Waiting
+INFO 2026-03-09T02:06:29.350835Z 89edcaae7ec4: Verifying Checksum
+INFO 2026-03-09T02:06:29.350835Z 89edcaae7ec4: Download complete
+INFO 2026-03-09T02:06:29.686224Z 51a25504b9e4: Verifying Checksum
+INFO 2026-03-09T02:06:29.686224Z 51a25504b9e4: Download complete
+INFO 2026-03-09T02:06:30.363201Z bbceb0035429: Verifying Checksum
+INFO 2026-03-09T02:06:30.363201Z bbceb0035429: Download complete
+INFO 2026-03-09T02:06:30.363201Z dca0c57760a4: Verifying Checksum
+INFO 2026-03-09T02:06:30.363201Z dca0c57760a4: Download complete
+INFO 2026-03-09T02:06:30.701087Z d513cb1965c3: Verifying Checksum
+INFO 2026-03-09T02:06:30.701087Z d513cb1965c3: Download complete
+INFO 2026-03-09T02:06:30.701087Z c9e80133c84a: Verifying Checksum
+INFO 2026-03-09T02:06:30.701087Z c9e80133c84a: Download complete
+INFO 2026-03-09T02:06:31.040142Z a89a34efd609: Verifying Checksum
+INFO 2026-03-09T02:06:31.040142Z a89a34efd609: Download complete
+INFO 2026-03-09T02:06:31.378400Z 25da79b966a1: Verifying Checksum
+INFO 2026-03-09T02:06:31.378400Z 25da79b966a1: Download complete
+INFO 2026-03-09T02:06:31.378400Z bb49a14329f4: Verifying Checksum
+INFO 2026-03-09T02:06:31.378400Z bb49a14329f4: Download complete
+INFO 2026-03-09T02:06:32.053527Z 97a855169b32: Verifying Checksum
+INFO 2026-03-09T02:06:32.053527Z 97a855169b32: Download complete
+INFO 2026-03-09T02:06:32.053527Z 6dc8224e38b6: Verifying Checksum
+INFO 2026-03-09T02:06:32.053527Z 6dc8224e38b6: Download complete
+INFO 2026-03-09T02:06:32.053527Z 4f4fb700ef54: Verifying Checksum
+INFO 2026-03-09T02:06:32.053527Z 4f4fb700ef54: Download complete
+INFO 2026-03-09T02:06:32.393404Z 69f5905c68af: Verifying Checksum
+INFO 2026-03-09T02:06:32.393404Z 69f5905c68af: Download complete
+INFO 2026-03-09T02:06:32.732299Z 1903739d92ce: Verifying Checksum
+INFO 2026-03-09T02:06:32.732299Z 1903739d92ce: Download complete
+INFO 2026-03-09T02:06:32.732299Z ffa033d43a24: Verifying Checksum
+INFO 2026-03-09T02:06:32.732299Z ffa033d43a24: Download complete
+INFO 2026-03-09T02:06:33.076752Z b9b516572f65: Verifying Checksum
+INFO 2026-03-09T02:06:33.076752Z b9b516572f65: Download complete
+INFO 2026-03-09T02:06:33.416626Z a163ea7aaf4d: Verifying Checksum
+INFO 2026-03-09T02:06:33.416626Z a163ea7aaf4d: Download complete
+INFO 2026-03-09T02:06:33.416626Z db5da881245a: Verifying Checksum
+INFO 2026-03-09T02:06:33.416626Z db5da881245a: Download complete
+INFO 2026-03-09T02:06:33.757106Z 15f39d89d5ea: Verifying Checksum
+INFO 2026-03-09T02:06:33.757106Z 15f39d89d5ea: Download complete
+INFO 2026-03-09T02:06:33.757106Z 37486ddfaacf: Verifying Checksum
+INFO 2026-03-09T02:06:33.757106Z 37486ddfaacf: Download complete
+INFO 2026-03-09T02:06:34.094939Z 454acab13e47: Verifying Checksum
+INFO 2026-03-09T02:06:34.094939Z 454acab13e47: Download complete
+INFO 2026-03-09T02:06:37.139572Z 9627d305a483: Verifying Checksum
+INFO 2026-03-09T02:06:37.139572Z 9627d305a483: Download complete
+INFO 2026-03-09T02:06:37.814366Z d9ef0252c0f9: Verifying Checksum
+INFO 2026-03-09T02:06:37.814366Z d9ef0252c0f9: Download complete
+DEFAULT 2026-03-09T02:06:38.420039793Z {"logging.googleapis.com/diagnostic":{…}}
+INFO 2026-03-09T02:06:39.162925Z 9da13df7853e: Verifying Checksum
+INFO 2026-03-09T02:06:39.162925Z 9da13df7853e: Download complete
+INFO 2026-03-09T02:06:41.915470Z 51a25504b9e4: Pull complete
+INFO 2026-03-09T02:06:42.921627Z 89edcaae7ec4: Pull complete
+INFO 2026-03-09T02:06:46.959514Z bbceb0035429: Pull complete
+INFO 2026-03-09T02:06:57.091681Z 6dc8224e38b6: Pull complete
+INFO 2026-03-09T02:06:57.463157Z dca0c57760a4: Pull complete
+INFO 2026-03-09T02:06:58.758697Z a89a34efd609: Pull complete
+INFO 2026-03-09T02:06:58.783226Z d513cb1965c3: Pull complete
+INFO 2026-03-09T02:06:58.812620Z c9e80133c84a: Pull complete
+INFO 2026-03-09T02:06:58.868172Z 25da79b966a1: Pull complete
+INFO 2026-03-09T02:06:59.423365Z bb49a14329f4: Pull complete
+INFO 2026-03-09T02:07:12.193327114Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:07:12.243909585Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:07:53.309512Z 9da13df7853e: Pull complete
+INFO 2026-03-09T02:07:53.496088Z 97a855169b32: Pull complete
+INFO 2026-03-09T02:07:53.535016Z 4f4fb700ef54: Pull complete
+INFO 2026-03-09T02:07:54.613317Z ffa033d43a24: Pull complete
+INFO 2026-03-09T02:07:54.642387Z 69f5905c68af: Pull complete
+INFO 2026-03-09T02:07:54.700608Z 1903739d92ce: Pull complete
+INFO 2026-03-09T02:07:55.362918Z db5da881245a: Pull complete
+INFO 2026-03-09T02:07:55.471125Z b9b516572f65: Pull complete
+INFO 2026-03-09T02:07:55.494017Z a163ea7aaf4d: Pull complete
+INFO 2026-03-09T02:07:55.529306Z 15f39d89d5ea: Pull complete
+INFO 2026-03-09T02:07:55.577133Z 37486ddfaacf: Pull complete
+INFO 2026-03-09T02:08:05.403942Z d9ef0252c0f9: Pull complete
+INFO 2026-03-09T02:08:05.463627Z 454acab13e47: Pull complete
+INFO 2026-03-09T02:08:07.426188Z 9627d305a483: Pull complete
+INFO 2026-03-09T02:08:07.499032Z Digest: sha256:33c3234a2972acdfaf6e4e4923c4c04cdfa5386584752b307920ffa7e0e4d81c
+INFO 2026-03-09T02:08:07.527300Z Status: Downloaded newer image for gcr.io/dataflow-twest/bigquery-anomaly-detection:templates
+INFO 2026-03-09T02:08:10.256159Z Started template launcher.
+INFO 2026-03-09T02:08:10.256442Z Created new fluentd log writer for: /var/log/dataflow/template_launcher/runner-json.log
+INFO 2026-03-09T02:08:10.272963Z Initialize Python template.
+INFO 2026-03-09T02:08:10.272994Z Falling back to using template-container args from metadata: template-container-args
+INFO 2026-03-09T02:08:10.274655Z Validating template-container-args: {"consoleLogsLocation":"gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/console_logs","environment":{"additionalUserLabels":{"goog-dataflow-provided-template-name":"bigquery_anomaly_detection","goog-dataflow-provided-template-type":"flex","goog-dataflow-provided-template-version":"templates"},"region":"us-central1","serviceAccountEmail":"672035346122-compute@developer.gserviceaccount.com","stagingLocation":"gs://dataflow-staging-us-central1-672035346122/staging","tempLocation":"gs://dataflow-staging-us-central1-672035346122/tmp"},"jobId":"2026-03-08_19_05_44-10851595192709598734","jobName":"bq-anomaly-detection-20260308-220542","jobObjectLocation":"gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/job_object","operationResultLocation":"gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/operation_result","parameters":{"detector_spec":"{\"type\":\"ZScore\"}","duration_sec":"60000","labels":"goog-dataflow-provided-template-name=bigquery_anomaly_detection,goog-dataflow-provided-template-type=flex,goog-dataflow-provided-template-version=templates","metric_spec":"{\"aggregation\":{\"window\":{\"type\":\"fixed\",\"size_seconds\":60},\"measures\":[{\"field\":\"amount\",\"agg\":\"SUM\",\"alias\":\"revenue\"}]}}","staging_location":"gs://dataflow-staging-us-central1-672035346122/staging","table":"dataflow-twest:cdc.cuj1_revenue","temp_location":"gs://dataflow-staging-us-central1-672035346122/tmp"},"projectId":"dataflow-twest","projectNumber":"672035346122"}
+INFO 2026-03-09T02:08:10.275196Z Extracting operation result location.
+INFO 2026-03-09T02:08:10.275222Z Operation result location: gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/operation_result
+INFO 2026-03-09T02:08:10.275243Z Extracting console log location.
+INFO 2026-03-09T02:08:10.275258Z Console logs location: gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/console_logs
+INFO 2026-03-09T02:08:10.275285Z Extracting Python command specs.
+INFO 2026-03-09T02:08:10.275579Z py options not set in env
+INFO 2026-03-09T02:08:10.275881Z Generating launch args.
+INFO 2026-03-09T02:08:10.275944Z extra package not set in env
+INFO 2026-03-09T02:08:10.276149Z Overriding temp_location with value: gs://dataflow-staging-us-central1-672035346122/tmp (previous value: gs://dataflow-staging-us-central1-672035346122/tmp)
+INFO 2026-03-09T02:08:10.276191Z Overriding staging_location with value: gs://dataflow-staging-us-central1-672035346122/staging (previous value: gs://dataflow-staging-us-central1-672035346122/staging)
+INFO 2026-03-09T02:08:10.276227Z Validating ExpectedFeatures.
+INFO 2026-03-09T02:08:10.276256Z Launching Python template.
+INFO 2026-03-09T02:08:10.276286Z Using launch args: [main.py --requirements_file=requirements.txt --setup_file=setup.py --service_account_email=672035346122-compute@developer.gserviceaccount.com --temp_location=gs://dataflow-staging-us-central1-672035346122/tmp --duration_sec=60000 --labels=goog-dataflow-provided-template-name=bigquery_anomaly_detection,goog-dataflow-provided-template-type=flex,goog-dataflow-provided-template-version=templates --metric_spec={"aggregation":{"window":{"type":"fixed","size_seconds":60},"measures":[{"field":"amount","agg":"SUM","alias":"revenue"}]}} --job_name=bq-anomaly-detection-20260308-220542 --template_location=gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/job_object --staging_location=gs://dataflow-staging-us-central1-672035346122/staging --detector_spec={"type":"ZScore"} --table=dataflow-twest:cdc.cuj1_revenue --runner=DataflowRunner --project=dataflow-twest --region=us-central1 --labels=goog-dataflow-provided-template-name=bigquery_anomaly_detection --labels=goog-dataflow-provided-template-type=flex --labels=goog-dataflow-provided-template-version=templates]
+INFO 2026-03-09T02:08:10.276363Z Executing: python main.py --requirements_file=requirements.txt --setup_file=setup.py --service_account_email=672035346122-compute@developer.gserviceaccount.com --temp_location=gs://dataflow-staging-us-central1-672035346122/tmp --duration_sec=60000 --labels=goog-dataflow-provided-template-name=bigquery_anomaly_detection,goog-dataflow-provided-template-type=flex,goog-dataflow-provided-template-version=templates --metric_spec={"aggregation":{"window":{"type":"fixed","size_seconds":60},"measures":[{"field":"amount","agg":"SUM","alias":"revenue"}]}} --job_name=bq-anomaly-detection-20260308-220542 --template_location=gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/job_object --staging_location=gs://dataflow-staging-us-central1-672035346122/staging --detector_spec={"type":"ZScore"} --table=dataflow-twest:cdc.cuj1_revenue --runner=DataflowRunner --project=dataflow-twest --region=us-central1 --labels=goog-dataflow-provided-template-name=bigquery_anomaly_detection --labels=goog-dataflow-provided-template-type=flex --labels=goog-dataflow-provided-template-version=templates
+INFO 2026-03-09T02:08:12.261837790Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:08:12.285837729Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:08:15.368191Z INFO:root:Runner defaulting to pickling library: cloudpickle.
+INFO 2026-03-09T02:08:15.699737Z INFO:bqmonitor.pipeline:Anomaly Monitor Pipeline
+INFO 2026-03-09T02:08:15.700040Z INFO:bqmonitor.pipeline: Table: dataflow-twest:cdc.cuj1_revenue
+INFO 2026-03-09T02:08:15.700801Z INFO:bqmonitor.pipeline: Detector: ZScore
+INFO 2026-03-09T02:08:15.700845Z INFO:bqmonitor.pipeline: Poll interval: 60 sec
+INFO 2026-03-09T02:08:15.700858Z INFO:bqmonitor.pipeline: Change function: APPENDS
+INFO 2026-03-09T02:08:15.703105Z INFO:bqmonitor.cdc:[ReadBigQueryChangeHistory] expand: table=dataflow-twest:cdc.cuj1_revenue, project=dataflow-twest, change_function=APPENDS, poll_interval=60 sec, buffer=15 sec, temp_dataset=beam_ch_temp_d675c22ea835, start_time=2026-03-09T02:07:15.699528, stop_time=2026-03-09T18:48:15.699561
+INFO 2026-03-09T02:08:16.505962Z INFO:apache_beam.runners.portability.stager:Executing command: ['/usr/local/bin/python', '-m', 'pip', 'download', '--dest', '/tmp/dataflow-requirements-cache', '-r', '/tmp/tmpdomyicgq/tmp_requirements.txt', '--exists-action', 'i', '--no-deps', '--implementation', 'cp', '--abi', 'cp311', '--platform', 'manylinux2014_x86_64']
+INFO 2026-03-09T02:09:12.328460761Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:09:12.337164465Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:10:12.399860201Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:10:12.407236450Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:11:12.466812105Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:11:12.473020138Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:12:12.533832015Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:12:12.541077867Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:13:12.601196600Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:13:12.608047107Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:14:12.670822784Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:14:12.681825403Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:15:12.738540131Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:15:12.744628891Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:16:12.804301470Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:16:12.812084112Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:17:12.870803438Z [resource.labels.instanceId: 4363657088992515093] Network interface setup disabled, skipping...
+INFO 2026-03-09T02:17:12.878947243Z [resource.labels.instanceId: 4363657088992515093] Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T02:18:04.071831868Z Shutting down the Sandbox, launcher-2026030819054410851595192709598734 of type GCE Instance, used for launching.
+NOTICE 2026-03-09T02:18:04.172540Z [protoPayload.serviceName: Compute Engine] [protoPayload.methodName: delete] [protoPayload.resourceName: projects/dataflow-twest/zones/us-central1-c/instances/launcher-2026030819054410851595192709598734] [protoPayload.authenticationInfo.principalEmail: service-672035346122@dataflow-service-producer-prod.iam.gserviceaccount.com] audit_log, method: "beta.compute.instances.delete", principal_email: "service-672035346122@dataflow-service-producer-prod.iam.gserviceaccount.com"
+INFO 2026-03-09T02:18:06.148112188Z [resource.labels.instanceId: 4363657088992515093] Starting shutdown scripts (version 20250701.01).
+DEFAULT 2026-03-09T02:18:06.148157580Z [resource.labels.instanceId: 4363657088992515093] {"logging.googleapis.com/diagnostic":{…}}
+INFO 2026-03-09T02:18:06.202566873Z [resource.labels.instanceId: 4363657088992515093] No shutdown scripts to run.
+DEFAULT 2026-03-09T02:18:06.223194492Z ping
+ERROR 2026-03-09T02:18:06.728407894Z [severity: ERROR] [resource.labels.instanceId: 4363657088992515093] Error watching metadata: context canceled
+INFO 2026-03-09T02:18:06.728589111Z [resource.labels.instanceId: 4363657088992515093] GCE Agent Stopped
+DEFAULT 2026-03-09T02:18:06.764140739Z ping
+NOTICE 2026-03-09T02:18:09.238392758Z [resource.labels.instanceId: 4363657088992515093] {"@type":"type.googleapis.com/cloud_integrity.IntegrityEvent", "bootCounter":"1", "shutdownEvent":{…}}
+NOTICE 2026-03-09T02:18:26.499917Z [protoPayload.serviceName: Compute Engine] [protoPayload.methodName: delete] [protoPayload.resourceName: projects/dataflow-twest/zones/us-central1-c/instances/launcher-2026030819054410851595192709598734] [protoPayload.authenticationInfo.principalEmail: service-672035346122@dataflow-service-producer-prod.iam.gserviceaccount.com] audit_log, method: "beta.compute.instances.delete", principal_email: "service-672035346122@dataflow-service-producer-prod.iam.gserviceaccount.com"
+INFO 2026-03-09T02:18:26.555009267Z Sandbox, launcher-2026030819054410851595192709598734, stopped.
+ERROR 2026-03-09T02:18:26.832731464Z [severity: ERROR] Timeout in polling result file: gs://dataflow-staging-us-central1-672035346122/staging/template_launches/2026-03-08_19_05_44-10851595192709598734/operation_result. Service account: 672035346122-compute@developer.gserviceaccount.com Image URL: gcr.io/dataflow-twest/bigquery-anomaly-detection:templates Troubleshooting guide at https://cloud.google.com/dataflow/docs/guides/troubleshoot-templates#timeout-polling

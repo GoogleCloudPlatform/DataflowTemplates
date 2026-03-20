@@ -1,0 +1,110 @@
+INFO 2026-03-09T03:39:53.776630163Z Control channel established.
+INFO 2026-03-09T03:39:53.780595Z Received WorkerStatus stream from SDK harness sdk-0-0_sibling_1
+INFO 2026-03-09T03:39:53.780915498Z Initializing SDKHarness with unbounded number of workers.
+INFO 2026-03-09T03:39:53.783929Z Received WorkerStatus stream from SDK harness sdk-0-0
+INFO 2026-03-09T03:39:53.784362077Z Initializing SDKHarness with unbounded number of workers.
+INFO 2026-03-09T03:39:53.786175251Z Python sdk harness starting.
+INFO 2026-03-09T03:39:53.787254Z Received Control stream from SDK harness sdk-0-0_sibling_1 in environment ref_Environment_default_environment_1
+INFO 2026-03-09T03:39:53.789668560Z Python sdk harness starting.
+INFO 2026-03-09T03:39:53.790370Z Received Control stream from SDK harness sdk-0-0 in environment ref_Environment_default_environment_1
+INFO 2026-03-09T03:39:54.181697Z Initial healthz success
+INFO 2026-03-09T03:39:54.777374Z All SDK Harnesses registered!
+INFO 2026-03-09T03:39:54.777388Z Enabling element sampling: false
+INFO 2026-03-09T03:39:54.777394Z Enabling exception sampling: true
+INFO 2026-03-09T03:39:54.777395Z Samples will be placed in gs://dataflow-staging-us-central1-672035346122/tmp/bq-anomaly-detection-20260308-233319.1773027387.496692
+INFO 2026-03-09T03:39:54.777975Z Starting data sampling telemetry fiber to report back every 1m
+INFO 2026-03-09T03:39:54.920366824Z All workers have finished the startup processes and began to receive work requests.
+INFO 2026-03-09T03:39:54.980275Z *******************************************
+INFO 2026-03-09T03:39:54.980286Z Starting Windmill Service user worker
+INFO 2026-03-09T03:39:54.980288Z over GRPC with dispatcher endpoint:
+INFO 2026-03-09T03:39:54.980289Z us-central1-dataflowstreaming-pa.googleapis.com
+INFO 2026-03-09T03:39:54.980290Z and job_header:
+INFO 2026-03-09T03:39:54.980290Z go/debugonly job_id: "2026-03-08_20_33_20-8665938784994540780" project_id: "dataflow-twest" worker_id: "bq-anomaly-detection-2026-03082036-zoa2-harness-df7k" client_id: 5109655414601672542 region_id: "us-central1"
+INFO 2026-03-09T03:39:54.980948Z *******************************************
+INFO 2026-03-09T03:39:54.981554Z Experimental GetWorkClient enabled: false for job: 2026-03-08_20_33_20-8665938784994540780
+INFO 2026-03-09T03:39:55.262806Z Experimental GetWorkClient enabled: false for job: 2026-03-08_20_33_20-8665938784994540780
+INFO 2026-03-09T03:39:55.262892Z Using the fiber scheduler with admission limit of 24
+INFO 2026-03-09T03:39:55.262895Z Using the fiber scheduler
+INFO 2026-03-09T03:39:55.263112Z Using --util_time_backoff_seed=391544512
+INFO 2026-03-09T03:39:55.264495Z Channel 0x71b3ff5f90a0 state changed to 1 from 0
+INFO 2026-03-09T03:39:55.274121Z Channel 0x71b3ff5f90a0 state changed to 2 from 1
+INFO 2026-03-09T03:40:01.899818Z Network interface setup disabled, skipping...
+INFO 2026-03-09T03:40:01.903546Z Completed adding/removing routes for aliases, forwarded IP and target-instance IPs
+INFO 2026-03-09T03:40:14.637564Z found namespace: k8s.io
+INFO 2026-03-09T03:40:14.650623Z found namespace: moby
+INFO 2026-03-09T03:40:14.651531Z Executing: /bin/lsblk /dev/sda -b -d -J
+INFO 2026-03-09T03:40:29.616279Z Successfully sampled resources
+INFO 2026-03-09T03:40:54.388741493Z Creating insecure state channel for localhost:12371.
+INFO 2026-03-09T03:40:54.389101982Z State channel established.
+INFO 2026-03-09T03:40:54.390314Z Received State stream from SDK harness sdk-0-0
+INFO 2026-03-09T03:40:54.390354Z State service got sdk harness for worker sdk-0-0
+INFO 2026-03-09T03:40:54.391253709Z Creating client data channel for localhost:12371
+INFO 2026-03-09T03:40:54.391568660Z Data channel established.
+INFO 2026-03-09T03:40:54.392774Z Received Data stream from SDK harness sdk-0-0
+ERROR 2026-03-09T03:40:54.399064064Z [severity: ERROR] Error processing instruction process_bundle-1-12. Original traceback is Traceback (most recent call last): File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 316, in _execute response = task() ^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 390, in <lambda> lambda: self.create_worker().do_instruction(request), request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 669, in do_instruction return getattr(self, request_type)( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 701, in process_bundle bundle_processor = self.bundle_processor_cache.get( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 517, in get processor = bundle_processor.BundleProcessor( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1143, in __init__ self.ops = future.result(timeout=3600) ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 456, in result return self.__get_result() ^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result raise self._exception File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58, in run result = self.fn(*self.args, **self.kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1218, in create_execution_tree return collections.OrderedDict([( ^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1221, in <listcomp> get_operation(transform_id))) for transform_id in sorted( ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper result = cache[args] = func(*args) ^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py…
+DEBUG 2026-03-09T03:40:54.399191551Z Traceback (most recent call last): File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 316, in _execute response = task() ^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 390, in <lambda> lambda: self.create_worker().do_instruction(request), request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 669, in do_instruction return getattr(self, request_type)( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 701, in process_bundle bundle_processor = self.bundle_processor_cache.get( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 517, in get processor = bundle_processor.BundleProcessor( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1143, in __init__ self.ops = future.result(timeout=3600) ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 456, in result return self.__get_result() ^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result raise self._exception File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58, in run result = self.fn(*self.args, **self.kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1218, in create_execution_tree return collections.OrderedDict([( ^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1221, in <listcomp> get_operation(transform_id))) for transform_id in sorted( ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper result = cache[args] = func(*args) ^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1195, in get_operation transform_consumers = { …
+ERROR 2026-03-09T03:40:54.400573Z [severity: ERROR] Work item for sharding key f82d1fc396533601 tokens (380075396200816357, 14268627245424784485) encountered error during processing, will be retried (possibly on another worker): generic::unknown: Traceback (most recent call last): File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 316, in _execute response = task() ^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 390, in <lambda> lambda: self.create_worker().do_instruction(request), request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 669, in do_instruction return getattr(self, request_type)( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 701, in process_bundle bundle_processor = self.bundle_processor_cache.get( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 517, in get processor = bundle_processor.BundleProcessor( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1143, in __init__ self.ops = future.result(timeout=3600) ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 456, in result return self.__get_result() ^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result raise self._exception File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58, in run result = self.fn(*self.args, **self.kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1218, in create_execution_tree return collections.OrderedDict([( ^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1221, in <listcomp> get_operation(transform_id))) for transform_id in sorted( ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper result = cache[args] = func(*args) …
+INFO 2026-03-09T03:40:54.400755Z E0309 03:40:54.400573 87 work_item_processor.cc:587] Work item for sharding key f82d1fc396533601 tokens (380075396200816357, 14268627245424784485) encountered error during processing, will be retried (possibly on another worker): generic::unknown: Traceback (most recent call last):
+INFO 2026-03-09T03:40:54.400936Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 316, in _execute
+INFO 2026-03-09T03:40:54.400970Z response = task()
+INFO 2026-03-09T03:40:54.400989Z ^^^^^^
+INFO 2026-03-09T03:40:54.401005Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 390, in <lambda>
+INFO 2026-03-09T03:40:54.401028Z lambda: self.create_worker().do_instruction(request), request)
+INFO 2026-03-09T03:40:54.401049Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401072Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 669, in do_instruction
+INFO 2026-03-09T03:40:54.401097Z return getattr(self, request_type)(
+INFO 2026-03-09T03:40:54.401113Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401129Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 701, in process_bundle
+INFO 2026-03-09T03:40:54.401153Z bundle_processor = self.bundle_processor_cache.get(
+INFO 2026-03-09T03:40:54.401171Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401186Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 517, in get
+INFO 2026-03-09T03:40:54.401204Z processor = bundle_processor.BundleProcessor(
+INFO 2026-03-09T03:40:54.401219Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401234Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1143, in __init__
+INFO 2026-03-09T03:40:54.401252Z self.ops = future.result(timeout=3600)
+INFO 2026-03-09T03:40:54.401266Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+WARNING 2026-03-09T03:40:54.401278Z [severity: WARNING] Error while processing a work item: UNKNOWN: Traceback (most recent call last): File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 316, in _execute response = task() ^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 390, in <lambda> lambda: self.create_worker().do_instruction(request), request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 669, in do_instruction return getattr(self, request_type)( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 701, in process_bundle bundle_processor = self.bundle_processor_cache.get( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/sdk_worker.py", line 517, in get processor = bundle_processor.BundleProcessor( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1143, in __init__ self.ops = future.result(timeout=3600) ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 456, in result return self.__get_result() ^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result raise self._exception File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58, in run result = self.fn(*self.args, **self.kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1218, in create_execution_tree return collections.OrderedDict([( ^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1221, in <listcomp> get_operation(transform_id))) for transform_id in sorted( ^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper result = cache[args] = func(*args) ^^^^^^^^^^^ File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1195, in get_operat…
+INFO 2026-03-09T03:40:54.401281Z File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 456, in result
+INFO 2026-03-09T03:40:54.401302Z return self.__get_result()
+INFO 2026-03-09T03:40:54.401317Z ^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401330Z File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result
+INFO 2026-03-09T03:40:54.401405Z raise self._exception
+INFO 2026-03-09T03:40:54.401428Z File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+INFO 2026-03-09T03:40:54.401447Z result = self.fn(*self.args, **self.kwargs)
+INFO 2026-03-09T03:40:54.401463Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401481Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1218, in create_execution_tree
+INFO 2026-03-09T03:40:54.401517Z return collections.OrderedDict([(
+INFO 2026-03-09T03:40:54.401533Z ^^
+INFO 2026-03-09T03:40:54.401548Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1221, in <listcomp>
+INFO 2026-03-09T03:40:54.401568Z get_operation(transform_id))) for transform_id in sorted(
+INFO 2026-03-09T03:40:54.401585Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401602Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper
+INFO 2026-03-09T03:40:54.401625Z result = cache[args] = func(*args)
+INFO 2026-03-09T03:40:54.401642Z ^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401676Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1195, in get_operation
+INFO 2026-03-09T03:40:54.401700Z transform_consumers = {
+INFO 2026-03-09T03:40:54.401716Z ^
+INFO 2026-03-09T03:40:54.401740Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1196, in <dictcomp>
+INFO 2026-03-09T03:40:54.401759Z tag: [get_operation(op) for op in pcoll_consumers[pcoll_id]]
+INFO 2026-03-09T03:40:54.401770Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401780Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1196, in <listcomp>
+INFO 2026-03-09T03:40:54.401791Z tag: [get_operation(op) for op in pcoll_consumers[pcoll_id]]
+INFO 2026-03-09T03:40:54.401801Z ^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401810Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper
+INFO 2026-03-09T03:40:54.401823Z result = cache[args] = func(*args)
+INFO 2026-03-09T03:40:54.401832Z ^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401840Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1195, in get_operation
+INFO 2026-03-09T03:40:54.401852Z transform_consumers = {
+INFO 2026-03-09T03:40:54.401872Z ^
+INFO 2026-03-09T03:40:54.401881Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1196, in <dictcomp>
+INFO 2026-03-09T03:40:54.401893Z tag: [get_operation(op) for op in pcoll_consumers[pcoll_id]]
+INFO 2026-03-09T03:40:54.401902Z ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401912Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1196, in <listcomp>
+INFO 2026-03-09T03:40:54.401927Z tag: [get_operation(op) for op in pcoll_consumers[pcoll_id]]
+INFO 2026-03-09T03:40:54.401937Z ^^^^^^^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401945Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1043, in wrapper
+INFO 2026-03-09T03:40:54.401957Z result = cache[args] = func(*args)
+INFO 2026-03-09T03:40:54.401966Z ^^^^^^^^^^^
+INFO 2026-03-09T03:40:54.401975Z File "/usr/local/lib/python3.11/site-packages/apache_beam/runners/worker/bundle_processor.py", line 1195, in get_operation
+INFO 2026-03-09T03:40:54.401993Z transform_consumers = {
+INFO 2026-03-09T03:40:54.402002Z ^

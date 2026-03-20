@@ -6,24 +6,21 @@ ${filesToCopy}
 ${directoriesToCopy}
 WORKDIR $WORKDIR
 
-# Do NOT use ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE here. All deps are preinstalled
-# at build time. That env var triggers the Beam stager to re-resolve requirements on the
-# launcher VM, where platform tag mismatches cause pip to compile C extensions (e.g. numpy)
-# from source, freezing or timing out the launcher.
+# Do NOT use ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE here. That env var triggers
+# the Beam stager to run pip download --platform manylinux2014_x86_64 for every package,
+# which is broken for packages that no longer publish manylinux2014 wheels (e.g. numpy 2.4+).
+# See https://github.com/pypa/pip/issues/10760
 # FLEX_TEMPLATE_PYTHON_SETUP_FILE (via setupFileEnv) IS needed to stage custom code to workers.
-# TODO: For templates without setup.py that need non-beam deps on workers, split requirements
-# into a build-only lockfile and a stager-safe extra-requirements file.
-ARG REQUIREMENTS_FILE=requirements.txt
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE=main.py
 ${setupFileEnv}
 
-RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt file found" && exit 1 ; fi
+RUN if ! [ -f ${requirementsFile} ] ; then >&2 echo "error: no ${requirementsFile} file found" && exit 1 ; fi
 
 # Set up custom PyPi repository, if applicable
 ${airlockConfig}
 
-RUN pip install -U --require-hashes -r $REQUIREMENTS_FILE
+RUN pip install -U --require-hashes -r ${requirementsFile}
 ${setupInstall}
-RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE
+RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r ${requirementsFile}
 
 ENTRYPOINT ${entryPoint}

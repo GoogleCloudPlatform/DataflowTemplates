@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: bqmonitor
+Version: 0.1.0
+Summary: BigQuery anomaly monitoring pipeline (Dataflow Flex Template)
+Requires-Python: >=3.11
+Requires-Dist: apache-beam[gcp]==2.71.0
+Requires-Dist: google-cloud-bigquery-storage
+Dynamic: requires-python
