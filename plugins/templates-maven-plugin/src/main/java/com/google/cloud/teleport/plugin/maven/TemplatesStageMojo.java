@@ -1069,10 +1069,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           filesToCopy.add(f);
         }
       }
-      if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt");
-      }
-
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
         entryPoint = List.of(pythonTemplateLauncherEntryPoint);
