@@ -1096,6 +1096,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         dockerfileBuilder.setSetupFile("setup.py");
       }
 
+      // Use requirements_all.txt if present (full build lockfile, separate from worker deps)
+      File requirementsAll = new File(dockerfileContainer + "/requirements_all.txt");
+      if (requirementsAll.exists()) {
+        dockerfileBuilder.setRequirementsFile("requirements_all.txt");
+      }
+
       // Set Airlock parameters
       if (internalMaven) {
         dockerfileBuilder

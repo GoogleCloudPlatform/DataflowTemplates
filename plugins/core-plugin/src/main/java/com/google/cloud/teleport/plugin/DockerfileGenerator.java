@@ -210,6 +210,7 @@ public class DockerfileGenerator {
 
       this.parameters.put("filesToCopy", "");
       this.parameters.put("directoriesToCopy", "");
+      this.parameters.put("requirementsFile", "requirements.txt");
       this.parameters.put("setupFileEnv", "");
       this.parameters.put("setupInstall", "");
       this.parameters.put("commandSpec", "");
@@ -337,6 +338,18 @@ public class DockerfileGenerator {
       }
 
       return addStringParameter("directoriesToCopy", directories.toString());
+    }
+
+    /**
+     * Sets the requirements file used for {@code pip install} and {@code pip download} at Docker
+     * build time. Defaults to {@code requirements.txt}.
+     *
+     * @param requirementsFile the requirements filename (e.g. "requirements_all.txt").
+     * @return this {@link Builder}.
+     */
+    public Builder setRequirementsFile(String requirementsFile) {
+      Preconditions.checkArgument(!Strings.isNullOrEmpty(requirementsFile));
+      return addStringParameter("requirementsFile", requirementsFile);
     }
 
     /**
