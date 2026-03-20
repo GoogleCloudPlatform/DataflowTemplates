@@ -33,7 +33,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
             + "(ZScore, IQR, or RobustZScore), and publishes anomalies to Pub/Sub.",
     preview = true,
     flexContainerName = "bigquery-anomaly-detection",
-    filesToCopy = {"main.py", "setup.py", "pyproject.toml", "requirements.txt", "src"},
+    filesToCopy = {"main.py", "setup.py", "pyproject.toml", "requirements_all.txt", "src"},
     contactInformation = "https://cloud.google.com/support",
     streaming = true)
 public interface BigQueryAnomalyDetection {
