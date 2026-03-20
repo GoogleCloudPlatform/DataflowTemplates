@@ -75,7 +75,6 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
@@ -84,14 +83,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -703,9 +699,7 @@ public class SpannerToSourceDb {
                 "Read retry from Continuous",
                 dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
         PCollection<String> oneShotRecords =
-            pipeline.apply(
-                "Read severe from OneShot",
-                getDlqOneShotReconsumer(dlqManager.getSevereDlqDirectory(), startTime));
+            pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
 
         PCollection<String> allRecords =
             PCollectionList.of(continuousRecords)
@@ -944,39 +938,6 @@ public class SpannerToSourceDb {
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-  }
-
-  private static PTransform<PBegin, PCollection<String>> getDlqOneShotReconsumer(
-      String severeDlqDirectory, long startTime) {
-    return new PTransform<PBegin, PCollection<String>>() {
-      @Override
-      public PCollection<String> expand(PBegin in) {
-        return in.getPipeline()
-            .apply("MatchSevere", FileIO.match().filepattern(severeDlqDirectory + "**"))
-            .apply("FilterHistoricallySevere", Filter.by(m -> m.lastModifiedMillis() < startTime))
-            .apply(
-                "LogSevereFileProcessing",
-                org.apache.beam.sdk.transforms.ParDo.of(
-                    new org.apache.beam.sdk.transforms.DoFn<
-                        org.apache.beam.sdk.io.fs.MatchResult.Metadata,
-                        org.apache.beam.sdk.io.fs.MatchResult.Metadata>() {
-                      @ProcessElement
-                      public void processElement(ProcessContext c) {
-                        org.apache.beam.sdk.io.fs.MatchResult.Metadata m = c.element();
-                        LOG.info(
-                            "DLQ OneShot: Processing severe file {} last modified at {}",
-                            m.resourceId().toString(),
-                            m.lastModifiedMillis());
-                        c.output(m);
-                      }
-                    }))
-            .apply("ReshuffleBeforeConsume", Reshuffle.viaRandomKey())
-            .apply(
-                "ConsumeMatches",
-                com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer
-                    .moveAndConsumeMatches());
-      }
-    };
   }
 
   private static Connection createJdbcConnection(Shard shard) {

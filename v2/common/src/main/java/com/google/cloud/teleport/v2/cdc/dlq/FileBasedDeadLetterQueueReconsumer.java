@@ -96,7 +96,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
   }
 
   /** Build a {@link PTransform} that consumes matched DLQ files. */
-  public static PTransform<PCollection<Metadata>, PCollection<String>> moveAndConsumeMatches() {
+  static PTransform<PCollection<Metadata>, PCollection<String>> moveAndConsumeMatches() {
     return new PTransform<PCollection<Metadata>, PCollection<String>>() {
       @Override
       public PCollection<String> expand(PCollection<Metadata> input) {
@@ -223,5 +223,26 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       throws IOException, FileNotFoundException {
     InputStream jsonStream = Channels.newInputStream(FileSystems.open(resourceId));
     return new BufferedReader(new InputStreamReader(jsonStream, StandardCharsets.UTF_8));
+  }
+
+  /**
+   * A "One-Shot" PTransform that scans a DLQ directory exactly once, filtering for files older than
+   * the specified startTime.
+   */
+  static PTransform<PBegin, PCollection<String>> consumeSingleTimeRange(
+      String dlqDirectory, long startTimeMillis) {
+    return new PTransform<PBegin, PCollection<String>>() {
+      @Override
+      public PCollection<String> expand(PBegin in) {
+        return in.getPipeline()
+            .apply("MatchSevere", FileIO.match().filepattern(dlqDirectory + "**"))
+            .apply(
+                "FilterHistoricallySevere",
+                org.apache.beam.sdk.transforms.Filter.by(
+                    m -> m.lastModifiedMillis() < startTimeMillis))
+            .apply("ReshuffleBeforeConsume", Reshuffle.viaRandomKey())
+            .apply("ConsumeMatches", moveAndConsumeMatches());
+      }
+    };
   }
 }
