@@ -8,7 +8,7 @@ setup(
     packages=find_packages(where='src'),
     python_requires='>=3.11',
     install_requires=[
-        'apache-beam[gcp]==2.71.0',
+        'apache-beam[gcp]>=2.71.0',
         'google-cloud-bigquery-storage',
     ],
 )
