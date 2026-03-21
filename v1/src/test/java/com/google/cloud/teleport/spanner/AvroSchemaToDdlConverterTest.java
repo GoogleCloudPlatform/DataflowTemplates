@@ -1031,6 +1031,57 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void tableWithOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ { \"name\" : \"id\",\"type\" : \"long\",\"sqlType\" : \"INT64\" } ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
+            + "  \"spannerTableOptions_0\": \"fulltext_dictionary_table=true\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id`              INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC), OPTIONS (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
+  public void pgTableWithOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ { \"name\" : \"id\",\"type\" : \"long\",\"sqlType\" : \"bigint\" } ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerPrimaryKey_0\" : \"\\\"id\\\" ASC\","
+            + "  \"spannerTableOptions_0\": \"fulltext_dictionary_table=true\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"              bigint NOT NULL,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) WITH (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
   public void changeStreams() {
     String avroString1 =
         "{"

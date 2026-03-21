@@ -59,6 +59,8 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> checkConstraints();
 
+  public abstract ImmutableList<String> tableOptions();
+
   public abstract Builder autoToBuilder();
 
   public abstract Dialect dialect();
@@ -81,7 +83,8 @@ public abstract class Table implements Serializable {
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
         .checkConstraints(ImmutableList.of())
-        .onDeleteCascade(false);
+        .onDeleteCascade(false)
+        .tableOptions(ImmutableList.of());
   }
 
   public static Builder builder() {
@@ -123,6 +126,9 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
+    if (!tableOptions().isEmpty()) {
+      appendable.append("\nWITH (").append(String.join(", ", tableOptions())).append(")");
+    }
     if (interleaveInParent() != null) {
       appendable
           .append(" \nINTERLEAVE IN ")
@@ -163,6 +169,9 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n) PRIMARY KEY (", "")));
     }
     appendable.append(")");
+    if (!tableOptions().isEmpty()) {
+      appendable.append(",\nOPTIONS (").append(String.join(", ", tableOptions())).append(")");
+    }
     if (interleaveInParent() != null) {
       appendable
           .append(",\nINTERLEAVE IN ")
@@ -228,7 +237,9 @@ public abstract class Table implements Serializable {
 
     public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
 
-    public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
+        public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
+
+    public abstract Builder tableOptions(ImmutableList<String> tableOptions);
 
     abstract Builder dialect(Dialect dialect);
 

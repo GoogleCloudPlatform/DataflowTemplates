@@ -93,6 +93,7 @@ public class InformationSchemaScanner {
     }
     listColumns(builder);
     listColumnOptions(builder);
+    listTableOptions(builder);
     if (isModelSupported()) {
       listModels(builder);
       listModelOptions(builder);
@@ -762,6 +763,67 @@ public class InformationSchemaScanner {
           .columnOptions(options)
           .endColumn()
           .endTable();
+    }
+  }
+
+  private void listTableOptions(Ddl.Builder builder) {
+    Statement statement = listTableOptionsSQL();
+
+    ResultSet resultSet = context.executeQuery(statement);
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String tableCatalog = resultSet.getString(0);
+      String tableSchema = resultSet.getString(1);
+      String tableName = getQualifiedName(tableSchema, resultSet.getString(2));
+      String optionName = resultSet.getString(3);
+      String optionType = resultSet.getString(4);
+      String optionValue = resultSet.getString(5);
+
+      if (!TableOptionAllowlist.TABLE_OPTION_ALLOWLIST.contains(optionName)) {
+        continue;
+      }
+
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(tableName, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        String quoteChar =
+            dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+        options.add(
+            optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String tableName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createTable(tableName).tableOptions(options).endTable();
+    }
+  }
+
+  @VisibleForTesting
+  Statement listTableOptionsSQL() {
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        return Statement.of(
+            "SELECT t.table_catalog, t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.option_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_catalog, t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.option_name");
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
   }
 

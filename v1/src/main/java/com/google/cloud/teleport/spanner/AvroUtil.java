@@ -46,6 +46,7 @@ public class AvroUtil {
   public static final String SPANNER_PARENT = "spannerParent";
   public static final String SPANNER_INTERLEAVE_TYPE = "spannerInterleaveType";
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
+  public static final String SPANNER_TABLE_OPTIONS = "spannerTableOptions_";
   public static final String SPANNER_REMOTE = "spannerRemote";
   public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";
   public static final String SPANNER_SEQUENCE_KIND = "sequenceKind";
