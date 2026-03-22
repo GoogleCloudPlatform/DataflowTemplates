@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.clickhouse.options.PubSubToClickHouseOptions
 import com.google.cloud.teleport.v2.clickhouse.templates.PubSubToClickHouse;
 import com.google.cloud.teleport.v2.clickhouse.templates.PubSubToClickHouse.PubSubMessageToClickHouseRowFn;
 import com.google.common.collect.ImmutableMap;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.apache.beam.sdk.io.clickhouse.TableSchema;
@@ -413,6 +414,65 @@ public class PubSubToClickHouseTest {
     PAssert.that(result.get(PubSubToClickHouse.TRANSFORM_DEADLETTER_OUT)).empty();
 
     pipeline.run().waitUntilFinish();
+  }
+
+  // ── stackTraceToString ───────────────────────────────────────────────────
+
+  @Test
+  public void testDeadLetterStackTraceContainsStackFrames() {
+    PCollectionTuple result = applyFn(stringFn(), List.of(message("not valid json {{")));
+
+    result.get(PubSubToClickHouse.TRANSFORM_OUT).setRowSchema(STRING_SCHEMA);
+    result
+        .get(PubSubToClickHouse.TRANSFORM_DEADLETTER_OUT)
+        .setRowSchema(PubSubToClickHouse.DEADLETTER_SCHEMA);
+
+    PAssert.that(result.get(PubSubToClickHouse.TRANSFORM_DEADLETTER_OUT))
+        .satisfies(
+            rows -> {
+              String stackTrace = rows.iterator().next().getString("stack_trace");
+              assertThat(stackTrace).contains("at ");
+              return null;
+            });
+
+    pipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testStackTraceToStringWithCyclicCauseDoesNotHang() throws Exception {
+    // Create a cyclic cause chain by overriding getCause() — avoids JDK field reflection
+    // restrictions and still exercises printStackTrace's cycle detection.
+    class CyclicException extends RuntimeException {
+      private Throwable customCause;
+
+      CyclicException(String message) {
+        super(message);
+      }
+
+      void setCustomCause(Throwable cause) {
+        this.customCause = cause;
+      }
+
+      @Override
+      public Throwable getCause() {
+        return customCause;
+      }
+    }
+
+    CyclicException e1 = new CyclicException("first");
+    CyclicException e2 = new CyclicException("second");
+    e1.setCustomCause(e2);
+    e2.setCustomCause(e1); // e1 → e2 → e1 (cycle)
+
+    Method method =
+        PubSubMessageToClickHouseRowFn.class.getDeclaredMethod(
+            "stackTraceToString", Throwable.class);
+    method.setAccessible(true);
+
+    String result = (String) method.invoke(null, e1);
+
+    assertThat(result).contains("first");
+    assertThat(result).contains("CIRCULAR REFERENCE");
   }
 
   @Test
