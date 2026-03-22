@@ -67,6 +67,23 @@ import org.slf4j.LoggerFactory;
  * destination — a ClickHouse table, a Pub/Sub topic, or both — determined implicitly by which of
  * {@code --clickHouseDeadLetterTable} and {@code --deadLetterTopic} are provided.
  *
+ * <p>When {@code --clickHouseDeadLetterTable} is set, the dead-letter table must exist before
+ * running the pipeline. Minimal example for a single-node deployment:
+ *
+ * <pre>{@code
+ * CREATE TABLE my_dead_letter (
+ *     raw_message   String,
+ *     error_message String,
+ *     stack_trace   String,
+ *     failed_at     String
+ * ) ENGINE = MergeTree()
+ * ORDER BY failed_at;
+ * }</pre>
+ *
+ * <p><b>Note:</b> adapt the engine and {@code ORDER BY} clause for your deployment — use
+ * {@code ReplicatedMergeTree} for replicated tables, add {@code ON CLUSTER} for distributed
+ * setups, and adjust partitioning or TTL as needed.
+ *
  * <p>Check out the README for instructions on how to use or modify this template.
  */
 @Template(
