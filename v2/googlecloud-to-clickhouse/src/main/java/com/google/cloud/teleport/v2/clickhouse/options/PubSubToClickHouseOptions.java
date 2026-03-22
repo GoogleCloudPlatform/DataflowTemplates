@@ -180,7 +180,6 @@ public interface PubSubToClickHouseOptions extends PipelineOptions {
       helpText =
           "Maximum number of rows per INSERT statement sent to ClickHouse. Defaults to 1,000,000.",
       example = "10000")
-  @Default.Long(1000000L)
   Long getMaxInsertBlockSize();
 
   void setMaxInsertBlockSize(Long maxInsertBlockSize);
