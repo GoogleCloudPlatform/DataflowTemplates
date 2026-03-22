@@ -492,7 +492,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
   /**
    * Derives the ClickHouse HTTP URL from the JDBC connection string exposed by the resource
    * manager. The JDBC format is {@code jdbc:clickhouse://HOST:PORT/default}; the template requires
-   * {@code http://HOST:PORT}. Would need to be updated once we move the Resource Manager to use the New ClickHouse Java V2 client
+   * {@code http://HOST:PORT}. Would need to be updated once we move the Resource Manager to use the
+   * New ClickHouse Java V2 client
    */
   private String getClickHouseHttpUrl() {
     String jdbcUrl = clickHouseResourceManager.getJdbcConnectionString();
