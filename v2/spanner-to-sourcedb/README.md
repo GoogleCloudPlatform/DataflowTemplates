@@ -36,7 +36,7 @@ The Dataflow job that handles reverse replication runs in two modes:
 
 - **regular**: This is the default mode, where the events streamed by Spanner change streams are picked up and converted to source compatible data types and applied to source database. It also does automatic retry of retryable errors and once the retry is exhausted, moves them to the 'severe' folder of the dead letter queue (DLQ) directory in GCS. Permanent errors are also moved to the 'severe' folder of dead letter queue.
 
-- **retryDLQ**: This mode looks at the 'severe' folder of DLQ and retries the events. This mode is ideal to run when all the permanent and/or retryable errors are fixed - for example any bug fix/ dependent data migration is complete.This mode only reads from DLQ and not from Spanner change streams.If the records processed from 'severe' directory go into retry directory - they are retried again.
+- **retryDLQ**: This mode looks at both the `severe` and `retry` folders of the DLQ and retries the events. This mode is ideal to run when all the permanent and/or retryable errors are fixed - for example any bug fix/ dependent data migration is complete. This mode only reads from DLQ and not from Spanner change streams.
 
 #### Current error scenarios
 
@@ -331,7 +331,13 @@ StatusRuntimeException: UNAVAILABLE: ping timeout
 
 ### Retry of Reverse Replication DLQ
 
-When running to reprocess the 'severe' DLQ directory, run the Dataflow job with 'retryDLQ' run mode. This will reprocess the 'severe' directory records and apply them to source database.
+When running to reprocess the DLQ directory, run the Dataflow job with `retryDLQ` run mode. This will reprocess both the `severe` and `retry` directory records and apply them to source database.
+
+#### End State Monitoring
+
+Because the continuous reader watches the `retry/` directory indefinitely, the `retryDLQ` job graph will remain RUNNING. To know when all errors have finished their retry cycles:
+* **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
+* **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.
 
 ## Reverse Replication Limitations
 

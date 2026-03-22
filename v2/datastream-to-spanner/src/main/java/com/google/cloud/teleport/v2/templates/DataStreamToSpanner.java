@@ -121,9 +121,8 @@ import org.slf4j.LoggerFactory;
           + " encountered errors along with the error reason in text format. The errors can be"
           + " transient or permanent and are stored in appropriate Cloud Storage folders in the"
           + " error queue. The transient errors are retried automatically while the permanent"
-          + " errors are not. In case of permanent errors, you have the option of making"
-          + " corrections to the change events and moving them to the retriable bucket while the"
-          + " template is running."
+          + " errors are not. In case of permanent errors, you can run the pipeline in retryDLQ mode."
+          + " This mode is used to retry errors in both the retry and severe buckets after the underlying errors are fixed."
     },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
@@ -368,7 +367,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Run mode - currently supported are : regular or retryDLQ",
         enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
-        helpText = "This is the run mode type, whether regular or with retryDLQ.")
+        helpText =
+            "This is the run mode type, whether regular or with retryDLQ. retryDLQ is used to retry errors in both the retry and severe DLQ directories.")
     @Default.String("regular")
     String getRunMode();
 

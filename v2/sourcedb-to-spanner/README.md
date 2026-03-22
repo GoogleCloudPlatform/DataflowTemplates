@@ -92,7 +92,14 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 #### Replaying DLQ entries.
 Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
 To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job either:
-1.  In `retryDLQ` mode to retry errors in the severe bucket which are retried infinitely, unless they are successfully migrated to Spanner in which case they are deleted from the dlq directory.
+1.  In `retryDLQ` mode to retry errors in both the `severe` and `retry` buckets which are retried infinitely, unless they are successfully migrated to Spanner in which case they are deleted from the dlq directory.
+
+#### End State Monitoring
+
+Because the continuous reader watches the `retry/` directory indefinitely, the `retryDLQ` job graph will remain RUNNING. To know when all errors have finished their retry cycles:
+* **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
+* **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.
+
 
 Sample Command:
 ```bash
