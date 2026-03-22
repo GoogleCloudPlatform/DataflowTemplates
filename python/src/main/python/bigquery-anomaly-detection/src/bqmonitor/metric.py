@@ -452,6 +452,85 @@ class _PostCombineFn(beam.CombineFn):
     return self._combine_fn.extract_output(accumulator)
 
 
+class _MapperSidePrecombine(beam.DoFn):
+  """Mapper-side pre-aggregation within each bundle.
+
+  Mirrors PGBKCVOperation (operations.py) but as a user-level DoFn so
+  Dataflow still sees the downstream CombinePerKey and applies incremental
+  state-side merging.
+
+  Buffers KV<key, value> elements in an in-memory table keyed by
+  (window, key), folding values via the CombineFn. On finish_bundle,
+  emits KV<key, accumulator> with correct window and timestamp metadata.
+
+  The downstream CombinePerKey must use _PostCombineFn to treat incoming
+  elements as accumulators.
+  """
+  def __init__(self, combine_fn, max_keys=100_000):
+    self._combine_fn = combine_fn
+    self._max_keys = max_keys
+
+  def setup(self):
+    self._combine_fn.setup()
+    # Cache bound methods to avoid attribute lookup per element.
+    self._add_input = self._combine_fn.add_input
+    self._create_accumulator = self._combine_fn.create_accumulator
+    compact_method = getattr(self._combine_fn, 'compact', None)
+    if (compact_method is not None and
+        compact_method.__func__ is not beam.CombineFn.compact):
+      self._compact = compact_method
+    else:
+      self._compact = None
+
+  def start_bundle(self):
+    self._table = {}  # (window, key) -> [accumulator, timestamp]
+    self._key_count = 0
+
+  def process(self, element, window=beam.DoFn.WindowParam,
+              timestamp=beam.DoFn.TimestampParam):
+    key, value = element
+    wkey = (window, key)
+    table = self._table
+    entry = table.get(wkey)
+    if entry is not None:
+      entry[0] = self._add_input(entry[0], value)
+      if timestamp < entry[1]:
+        entry[1] = timestamp
+    else:
+      if self._key_count >= self._max_keys:
+        # Evict 10% of entries, same strategy as PGBKCVOperation.
+        target = self._key_count * 9 // 10
+        old_wkeys = []
+        for old_wkey, old_entry in table.items():
+          old_wkeys.append(old_wkey)
+          yield self._make_windowed_value(old_wkey, old_entry)
+          self._key_count -= 1
+          if self._key_count <= target:
+            break
+        for old_wkey in reversed(old_wkeys):
+          del table[old_wkey]
+      self._key_count += 1
+      acc = self._add_input(self._create_accumulator(), value)
+      table[wkey] = [acc, timestamp]
+
+  def finish_bundle(self):
+    for wkey, entry in self._table.items():
+      yield self._make_windowed_value(wkey, entry)
+    self._table = None
+    self._key_count = 0
+
+  def _make_windowed_value(self, wkey, entry):
+    window, key = wkey
+    accumulator, timestamp = entry
+    if self._compact is not None:
+      accumulator = self._compact(accumulator)
+    return beam.utils.windowed_value.WindowedValue(
+        (key, accumulator), timestamp, (window,))
+
+  def teardown(self):
+    self._combine_fn.teardown()
+
+
 class _DerivedFieldsFn:
   """Callable that evaluates derived field expressions on each row dict.
 
@@ -512,13 +591,19 @@ class ComputeMetric(beam.PTransform):
         Ignored when group_by is set. Default: SHARDED.
     fanout: Number of shards for SHARDED or HOTKEY_FANOUT strategies.
         Ignored for NONE. Default: 400.
+    mapper_side_precombine: If True, pre-aggregates values per key within
+        each bundle before shuffle (like PGBKCVOperation). Reduces shuffle
+        volume without adding extra GBKs. The downstream CombinePerKey is
+        preserved so Dataflow still applies incremental state-side merging.
+        Effective when few keys see high throughput (>100k rows/sec/key).
   """
   def __init__(self, metric_spec, fanout_strategy=FanoutStrategy.SHARDED,
-               fanout=400):
+               fanout=400, mapper_side_precombine=False):
     super().__init__()
     self._spec = metric_spec
     self._fanout_strategy = fanout_strategy
     self._fanout = fanout
+    self._mapper_side_precombine = mapper_side_precombine
 
   def expand(self, pcoll):
     spec = self._spec
@@ -569,6 +654,9 @@ class ComputeMetric(beam.PTransform):
       def to_alias_dict(values):
         return dict(zip(aliases, values))
 
+    precombine = self._mapper_side_precombine
+    post_fn = _PostCombineFn(combine_fn) if precombine else None
+
     if is_keyed:
       group_by_fields = agg.group_by
 
@@ -577,26 +665,58 @@ class ComputeMetric(beam.PTransform):
         return (key, extract_fields(row_dict))
 
       keyed = windowed | 'ExtractKey' >> beam.Map(extract_key_and_fields)
-      aggregated = (
-          keyed
-          | 'Combine' >> beam.CombinePerKey(combine_fn)
-          | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
+      if precombine:
+        aggregated = (
+            keyed
+            | 'Precombine' >> beam.ParDo(
+                _MapperSidePrecombine(combine_fn))
+            | 'Combine' >> beam.CombinePerKey(post_fn)
+            | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
+      else:
+        aggregated = (
+            keyed
+            | 'Combine' >> beam.CombinePerKey(combine_fn)
+            | 'ToDict' >> beam.MapTuple(lambda k, v: (k, to_alias_dict(v))))
     else:
       strategy = self._fanout_strategy
       if strategy == FanoutStrategy.NONE:
-        aggregated = (
-            windowed
-            | 'ExtractFields' >> beam.Map(extract_fields)
-            | 'Combine' >> beam.CombineGlobally(
-                combine_fn).without_defaults()
-            | 'ToDict' >> beam.Map(to_alias_dict))
+        if precombine:
+          aggregated = (
+              windowed
+              | 'ExtractFields' >> beam.Map(
+                  lambda row_dict: (None, extract_fields(row_dict)))
+              | 'Precombine' >> beam.ParDo(
+                  _MapperSidePrecombine(combine_fn))
+              | 'DropKey' >> beam.Values()
+              | 'Combine' >> beam.CombineGlobally(
+                  post_fn).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
+        else:
+          aggregated = (
+              windowed
+              | 'ExtractFields' >> beam.Map(extract_fields)
+              | 'Combine' >> beam.CombineGlobally(
+                  combine_fn).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
       elif strategy == FanoutStrategy.HOTKEY_FANOUT:
-        aggregated = (
-            windowed
-            | 'ExtractFields' >> beam.Map(extract_fields)
-            | 'Combine' >> beam.CombineGlobally(
-                combine_fn).with_fanout(self._fanout).without_defaults()
-            | 'ToDict' >> beam.Map(to_alias_dict))
+        if precombine:
+          aggregated = (
+              windowed
+              | 'ExtractFields' >> beam.Map(
+                  lambda row_dict: (None, extract_fields(row_dict)))
+              | 'Precombine' >> beam.ParDo(
+                  _MapperSidePrecombine(combine_fn))
+              | 'DropKey' >> beam.Values()
+              | 'Combine' >> beam.CombineGlobally(
+                  post_fn).with_fanout(self._fanout).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
+        else:
+          aggregated = (
+              windowed
+              | 'ExtractFields' >> beam.Map(extract_fields)
+              | 'Combine' >> beam.CombineGlobally(
+                  combine_fn).with_fanout(self._fanout).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
       elif strategy == FanoutStrategy.SHARDED:
         _num_shards = self._fanout
 
@@ -605,15 +725,27 @@ class ComputeMetric(beam.PTransform):
                   extract_fields(row_dict))
 
         pre_fn = _PreCombineFn(combine_fn)
-        post_fn = _PostCombineFn(combine_fn)
-        aggregated = (
-            windowed
-            | 'ShardAndExtract' >> beam.Map(_shard_fields)
-            | 'PartialCombine' >> beam.CombinePerKey(pre_fn)
-            | 'DropShard' >> beam.Values()
-            | 'FinalCombine' >> beam.CombineGlobally(
-                post_fn).without_defaults()
-            | 'ToDict' >> beam.Map(to_alias_dict))
+        shard_post_fn = _PostCombineFn(combine_fn)
+        if precombine:
+          aggregated = (
+              windowed
+              | 'ShardAndExtract' >> beam.Map(_shard_fields)
+              | 'Precombine' >> beam.ParDo(
+                  _MapperSidePrecombine(combine_fn))
+              | 'PartialCombine' >> beam.CombinePerKey(post_fn)
+              | 'DropShard' >> beam.Values()
+              | 'FinalCombine' >> beam.CombineGlobally(
+                  shard_post_fn).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
+        else:
+          aggregated = (
+              windowed
+              | 'ShardAndExtract' >> beam.Map(_shard_fields)
+              | 'PartialCombine' >> beam.CombinePerKey(pre_fn)
+              | 'DropShard' >> beam.Values()
+              | 'FinalCombine' >> beam.CombineGlobally(
+                  shard_post_fn).without_defaults()
+              | 'ToDict' >> beam.Map(to_alias_dict))
       else:
         raise ValueError(f"Unknown fanout strategy: {strategy}")
 

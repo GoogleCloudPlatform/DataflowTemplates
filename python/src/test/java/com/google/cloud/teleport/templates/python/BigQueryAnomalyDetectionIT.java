@@ -111,7 +111,12 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
 
   @Test
   public void testGroupedRatioMetric() throws IOException, InterruptedException {
-    testGroupedRatioMetricImpl();
+    testGroupedRatioMetricImpl(/* mapperSidePrecombine= */ false);
+  }
+
+  @Test
+  public void testGroupedRatioMetricWithPrecombine() throws IOException, InterruptedException {
+    testGroupedRatioMetricImpl(/* mapperSidePrecombine= */ true);
   }
 
   @Test
@@ -254,7 +259,8 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
    * injects an anomalous spike in one campaign's CTR (~90%), and verifies the pipeline detects the
    * anomaly and publishes it to Pub/Sub with the correct key.
    */
-  private void testGroupedRatioMetricImpl() throws IOException, InterruptedException {
+  private void testGroupedRatioMetricImpl(boolean mapperSidePrecombine)
+      throws IOException, InterruptedException {
     // --- Arrange ---
 
     String tableName = "ctr_test";
@@ -311,6 +317,10 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
             .addParameter("duration_sec", "600")
             .addParameter("log_all_results", "true")
             .addParameter("sink_table", sinkTableRef);
+
+    if (mapperSidePrecombine) {
+      options.addParameter("mapper_side_precombine", "true");
+    }
 
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();

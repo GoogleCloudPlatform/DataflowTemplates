@@ -178,4 +178,17 @@ public interface BigQueryAnomalyDetection {
           "Number of shards for sharded or hotkey_fanout strategies. "
               + "Ignored for none. Default: 400.")
   Integer getFanout();
+
+  @TemplateParameter.Boolean(
+      order = 16,
+      optional = true,
+      name = "mapper_side_precombine",
+      description = "Mapper-Side Pre-Combine",
+      helpText =
+          "Enable mapper-side pre-aggregation within each bundle before shuffle. "
+              + "Reduces shuffle volume by folding values per key locally (like "
+              + "PGBKCVOperation) while preserving Dataflow's incremental state-side "
+              + "merging on the downstream CombinePerKey. Effective when few keys "
+              + "see high throughput (>100k rows/sec/key). Default: false.")
+  Boolean getMapperSidePrecombine();
 }

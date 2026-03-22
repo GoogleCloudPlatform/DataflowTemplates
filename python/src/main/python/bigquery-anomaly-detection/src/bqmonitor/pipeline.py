@@ -552,6 +552,14 @@ class AnomalyMonitorOptions(PipelineOptions):
         default=400,
         help='Number of shards for sharded or hotkey_fanout strategies. '
         'Ignored for none. Default: 400.')
+    parser.add_argument(
+        '--mapper_side_precombine',
+        type=lambda v: v.lower() in ('true', '1', 'yes'),
+        default=False,
+        help='Enable mapper-side pre-aggregation within each bundle before '
+        'shuffle. Reduces shuffle volume by folding values per key locally '
+        'while preserving Dataflow incremental state-side merging. '
+        'Effective at >100k rows/sec/key. Default: false.')
 
 
 # ---------------------------------------------------------------------------
@@ -1008,7 +1016,8 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   rows = pipeline | 'ReadCDC' >> ReadBigQueryChangeHistory(**cdc_kwargs)
   fanout_strategy = FanoutStrategy(options.fanout_strategy)
   metrics = rows | 'ComputeMetric' >> ComputeMetric(
-      metric_spec, fanout_strategy=fanout_strategy, fanout=options.fanout)
+      metric_spec, fanout_strategy=fanout_strategy, fanout=options.fanout,
+      mapper_side_precombine=options.mapper_side_precombine)
 
   # Rewindow into GlobalWindows so the anomaly detector sees the full
   # stream of window results as a time series, not isolated per-window.
