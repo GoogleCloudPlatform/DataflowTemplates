@@ -688,12 +688,6 @@ public class SpannerToSourceDb {
             dlqManager.getReconsumerDataTransform(
                 pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
       } else {
-        LOG.info(
-            "Pipeline running in retryDLQ mode. Enabling hybrid consumption model: "
-                + "Continuous read from retry/ and One-Shot read from severe/ "
-                + "(covering files modified before {})",
-            new java.util.Date(startTime));
-
         PCollection<String> continuousRecords =
             pipeline.apply(
                 "Read retry from Continuous",
