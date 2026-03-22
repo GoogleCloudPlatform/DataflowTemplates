@@ -21,6 +21,8 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.clickhouse.options.PubSubToClickHouseOptions;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
@@ -463,19 +465,9 @@ public class PubSubToClickHouse {
     }
 
     private static String stackTraceToString(Throwable t) {
-      StringBuilder sb = new StringBuilder();
-      Throwable current = t;
-      while (current != null) {
-        sb.append(current.toString()).append("\n");
-        for (StackTraceElement el : current.getStackTrace()) {
-          sb.append("  at ").append(el.toString()).append("\n");
-        }
-        current = current.getCause();
-        if (current != null) {
-          sb.append("Caused by: ");
-        }
-      }
-      return sb.toString();
+      StringWriter sw = new StringWriter();
+      t.printStackTrace(new PrintWriter(sw));
+      return sw.toString();
     }
   }
 }
