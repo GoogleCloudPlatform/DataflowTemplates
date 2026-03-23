@@ -536,10 +536,10 @@ class AnomalyMonitorOptions(PipelineOptions):
     parser.add_argument(
         '--decompress_shards',
         type=int,
-        default=400,
+        default=1200,
         help='Number of shards for CDC Arrow batch decompression fan-out. '
         'Spreads decompression CPU across workers. '
-        '0 disables fan-out (decode inline). Default: 400.')
+        '0 disables fan-out (decode inline). Default: 1200.')
     parser.add_argument(
         '--fanout_strategy',
         default='sharded',
