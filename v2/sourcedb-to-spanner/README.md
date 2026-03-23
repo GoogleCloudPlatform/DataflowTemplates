@@ -92,11 +92,14 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 #### Replaying DLQ entries.
 Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
 To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job either:
-1.  In `retryDLQ` mode to retry errors in both the `severe` and `retry` buckets which are retried infinitely, unless they are successfully migrated to Spanner in which case they are deleted from the dlq directory.
+1.  In `retryDLQ` mode to retry errors exclusively in the `severe` bucket once, safely alongside a job of `regular` mode of [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) that retries errors in `retry` bucket. For this to work, the `regular` job should be pointing towards the same DLQ directory used in the SourcedbToSpanner job.
+2.  In `retryAllDLQ` mode to retry errors in both the `severe` and `retry` buckets. This mode is meant to be run ONLY when `regular` mode as described above is not running.
 
 #### End State Monitoring
 
-Because the continuous reader watches the `retry/` directory indefinitely, the `retryDLQ` job graph will remain RUNNING. To know when all errors have finished their retry cycles:
+Because `retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
+
+However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
 * **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
 * **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.
 

@@ -365,10 +365,14 @@ public class DataStreamToSpanner {
     @TemplateParameter.Enum(
         order = 20,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
+        enumOptions = {
+          @TemplateEnumOption("regular"),
+          @TemplateEnumOption("retryDLQ"),
+          @TemplateEnumOption("retryAllDLQ")
+        },
         helpText =
-            "This is the run mode type, whether regular or with retryDLQ. retryDLQ is used to retry errors in both the retry and severe DLQ directories.")
+            "This is the run mode type. Default is regular. retryDLQ is used to safely retry errors natively in the severe directory only. retryAllDLQ is used to retry errors simultaneously from both the retry and severe DLQ directories.")
     @Default.String("regular")
     String getRunMode();
 
@@ -626,7 +630,8 @@ public class DataStreamToSpanner {
     UncaughtExceptionLogger.register();
     LOG.info("Starting DataStream to Cloud Spanner");
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    options.setStreaming(true);
+    boolean isRetryDLQMode = "retryDLQ".equals(options.getRunMode());
+    options.setStreaming(!isRetryDLQMode);
     validateSourceType(options);
     run(options);
   }
@@ -726,21 +731,26 @@ public class DataStreamToSpanner {
         reconsumedElements =
             dlqManager.getReconsumerDataTransform(
                 pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-      } else {
-        PCollection<String> continuousRecords =
-            pipeline.apply(
-                "Read retry from Continuous",
-                dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
-
+      } else { // retryDLQ or retryAllDLQ mode
         PCollection<String> oneShotRecords =
             pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
 
-        PCollection<String> allRecords =
-            PCollectionList.of(continuousRecords)
-                .and(oneShotRecords)
-                .apply("Flatten DLQ Records", Flatten.pCollections());
+        if ("retryDLQ".equals(options.getRunMode())) {
+          reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
+        } else {
+          // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
+          PCollection<String> continuousRecords =
+              pipeline.apply(
+                  "Read retry from Continuous",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
 
-        reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+          PCollection<String> allRecords =
+              PCollectionList.of(continuousRecords)
+                  .and(oneShotRecords)
+                  .apply("Flatten DLQ Records", Flatten.pCollections());
+
+          reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+        }
       }
     }
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
