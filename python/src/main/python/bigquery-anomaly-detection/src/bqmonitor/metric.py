@@ -465,6 +465,9 @@ class _MapperSidePrecombine(beam.DoFn):
 
   The downstream CombinePerKey must use _PostCombineFn to treat incoming
   elements as accumulators.
+
+  Uses OUTPUT_AT_EOW timestamp semantics (the Beam default): output
+  timestamp is window.max_timestamp(), matching PGBKCVOperation behavior.
   """
   def __init__(self, combine_fn, max_keys=100_000):
     self._combine_fn = combine_fn
@@ -483,49 +486,44 @@ class _MapperSidePrecombine(beam.DoFn):
       self._compact = None
 
   def start_bundle(self):
-    self._table = {}  # (window, key) -> [accumulator, timestamp]
+    self._table = {}  # (window, key) -> accumulator
     self._key_count = 0
 
-  def process(self, element, window=beam.DoFn.WindowParam,
-              timestamp=beam.DoFn.TimestampParam):
+  def process(self, element, window=beam.DoFn.WindowParam):
     key, value = element
     wkey = (window, key)
     table = self._table
     entry = table.get(wkey)
     if entry is not None:
-      entry[0] = self._add_input(entry[0], value)
-      if timestamp < entry[1]:
-        entry[1] = timestamp
+      table[wkey] = self._add_input(entry, value)
     else:
       if self._key_count >= self._max_keys:
         # Evict 10% of entries, same strategy as PGBKCVOperation.
         target = self._key_count * 9 // 10
         old_wkeys = []
-        for old_wkey, old_entry in table.items():
+        for old_wkey, old_acc in table.items():
           old_wkeys.append(old_wkey)
-          yield self._make_windowed_value(old_wkey, old_entry)
+          yield self._make_windowed_value(old_wkey, old_acc)
           self._key_count -= 1
           if self._key_count <= target:
             break
         for old_wkey in reversed(old_wkeys):
           del table[old_wkey]
       self._key_count += 1
-      acc = self._add_input(self._create_accumulator(), value)
-      table[wkey] = [acc, timestamp]
+      table[wkey] = self._add_input(self._create_accumulator(), value)
 
   def finish_bundle(self):
-    for wkey, entry in self._table.items():
-      yield self._make_windowed_value(wkey, entry)
+    for wkey, acc in self._table.items():
+      yield self._make_windowed_value(wkey, acc)
     self._table = None
     self._key_count = 0
 
-  def _make_windowed_value(self, wkey, entry):
+  def _make_windowed_value(self, wkey, accumulator):
     window, key = wkey
-    accumulator, timestamp = entry
     if self._compact is not None:
       accumulator = self._compact(accumulator)
     return beam.utils.windowed_value.WindowedValue(
-        (key, accumulator), timestamp, (window,))
+        (key, accumulator), window.max_timestamp(), (window,))
 
   def teardown(self):
     self._combine_fn.teardown()

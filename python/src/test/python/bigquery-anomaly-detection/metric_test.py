@@ -262,8 +262,7 @@ class MapperSidePrecombineDoFnTest(unittest.TestCase):
     dofn.start_bundle()
     mid_results = []
     for wv in windowed_values:
-      result = dofn.process(
-          wv.value, window=wv.windows[0], timestamp=wv.timestamp)
+      result = dofn.process(wv.value, window=wv.windows[0])
       if result:
         mid_results.extend(result)
     finish_results = list(dofn.finish_bundle())
@@ -333,8 +332,8 @@ class MapperSidePrecombineDoFnTest(unittest.TestCase):
     self.assertEqual(by_window[w1], 8)
     self.assertEqual(by_window[w2], 8)
 
-  def test_timestamp_preserves_earliest(self):
-    """Output timestamp should be the earliest of all folded elements."""
+  def test_timestamp_is_end_of_window(self):
+    """Output timestamp should be window.max_timestamp() (OUTPUT_AT_EOW)."""
     w = beam_window.IntervalWindow(0, 60)
     elements = [
         self._make_wv('a', 1, timestamp=30, window=w),
@@ -343,7 +342,7 @@ class MapperSidePrecombineDoFnTest(unittest.TestCase):
     ]
     results = self._run_precombine(_SumCombineFn(), elements)
     self.assertEqual(len(results), 1)
-    self.assertEqual(results[0].timestamp, Timestamp(10))
+    self.assertEqual(results[0].timestamp, w.max_timestamp())
 
   def test_window_metadata_preserved(self):
     """Output WindowedValue should carry the correct window."""
