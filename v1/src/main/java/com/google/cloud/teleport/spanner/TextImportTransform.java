@@ -57,8 +57,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Create;
@@ -221,13 +219,11 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               "Failed mutations as String " + depth,
               ParDo.of(
                   new DoFn<com.google.cloud.teleport.spanner.spannerio.MutationGroup, String>() {
-                    private final Counter failedSpannerWrites =
-                        Metrics.counter(TextImportTransform.class, "FailedSpannerWrites");
-
                     @ProcessElement
                     public void processElement(ProcessContext c) {
-                      failedSpannerWrites.inc();
-                      c.output(c.element().primary().toString());
+                      for (com.google.cloud.spanner.Mutation m : c.element()) {
+                        c.output(m.toString());
+                      }
                     }
                   }))
           .apply(
@@ -235,7 +231,11 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               TextIO.<String>writeCustomType()
                   .to(invalidOutputPath)
                   .withSuffix(
-                      java.util.UUID.randomUUID().toString() + "-spanner-depth-" + depth + ".csv")
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
                   .skipIfEmpty()
                   .withFormatFunction(SerializableFunctions.identity()));
     }
@@ -320,9 +320,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           .apply(
               TextIO.<String>writeCustomType()
                   .to(options.getInvalidOutputPath())
+                  .withSuffix("-" + java.util.UUID.randomUUID().toString() + "-parsing-errors.csv")
                   .skipIfEmpty()
-                  .withFormatFunction(SerializableFunctions.identity())
-                  .withNumShards(1));
+                  .withFormatFunction(SerializableFunctions.identity()));
 
       return outputCollections.get(mutationTag);
     }
