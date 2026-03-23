@@ -214,6 +214,7 @@ public class DockerfileGenerator {
       this.parameters.put("setupFileEnv", "");
       this.parameters.put("setupInstall", "");
       this.parameters.put("workerRequirementsEnv", "");
+      this.parameters.put("workerRequirementsCache", "");
       this.parameters.put("commandSpec", "");
     }
 
@@ -342,8 +343,8 @@ public class DockerfileGenerator {
     }
 
     /**
-     * Sets the requirements file used for {@code pip install} and {@code pip download} at Docker
-     * build time. Defaults to {@code requirements_all.txt}.
+     * Sets the requirements file used for {@code pip install} at Docker build time. Defaults to
+     * {@code requirements_all.txt}.
      *
      * @param requirementsFile the requirements filename (e.g. "requirements_all.txt").
      * @return this {@link Builder}.
@@ -385,6 +386,10 @@ public class DockerfileGenerator {
       addParameter(
           "workerRequirementsEnv",
           "ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=\"" + requirementsFile + "\"");
+      addParameter(
+          "workerRequirementsCache",
+          "RUN pip download --no-cache-dir --dest /tmp/dataflow-requirements-cache -r "
+              + requirementsFile);
       return this;
     }
 

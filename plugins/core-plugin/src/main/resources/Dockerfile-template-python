@@ -17,6 +17,6 @@ ${airlockConfig}
 
 RUN pip install -U --require-hashes -r ${requirementsFile}
 ${setupInstall}
-RUN pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r ${requirementsFile}
+${workerRequirementsCache}
 
 ENTRYPOINT ${entryPoint}
