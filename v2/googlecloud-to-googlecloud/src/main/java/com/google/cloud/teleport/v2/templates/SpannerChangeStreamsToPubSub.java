@@ -158,10 +158,17 @@ public class SpannerChangeStreamsToPubSub {
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
+    if (System.getenv("SPANNER_EMULATOR_HOST") != null) {
+      spannerConfig =
+          spannerConfig.withEmulatorHost(
+              ValueProvider.StaticValueProvider.of(System.getenv("SPANNER_EMULATOR_HOST")));
+    } else if (options.getSpannerHost() != null && !options.getSpannerHost().isEmpty()) {
+      spannerConfig =
+          spannerConfig.withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    }
     // Propagate database role for fine-grained access control on change stream.
     if (options.getSpannerDatabaseRole() != null) {
       spannerConfig =
