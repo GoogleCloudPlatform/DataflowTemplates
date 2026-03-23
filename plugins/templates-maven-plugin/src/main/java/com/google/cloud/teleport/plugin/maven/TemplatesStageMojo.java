@@ -1055,7 +1055,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (!dockerfile.exists()) {
       List<String> allFilesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
       if (allFilesToCopy.isEmpty()) {
-        allFilesToCopy = List.of("main.py", "requirements.txt");
+        allFilesToCopy = List.of("main.py", "requirements_all.txt");
       }
 
       // Separate flat files from directories
@@ -1069,6 +1069,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           filesToCopy.add(f);
         }
       }
+      // Include requirements.txt (worker deps) in COPY if present
+      File workerRequirements = new File(dockerfileContainer + "/requirements.txt");
+      if (workerRequirements.exists() && !filesToCopy.contains("requirements.txt")) {
+        filesToCopy.add("requirements.txt");
+      }
+
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
         entryPoint = List.of(pythonTemplateLauncherEntryPoint);
@@ -1098,7 +1104,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       // If requirements.txt exists, set FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
       // so extra (non-Beam) deps are staged to workers.
-      File workerRequirements = new File(dockerfileContainer + "/requirements.txt");
       if (workerRequirements.exists()) {
         dockerfileBuilder.setWorkerRequirementsFile("requirements.txt");
       }

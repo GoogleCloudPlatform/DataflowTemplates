@@ -343,7 +343,7 @@ public class DockerfileGenerator {
 
     /**
      * Sets the requirements file used for {@code pip install} and {@code pip download} at Docker
-     * build time. Defaults to {@code requirements.txt}.
+     * build time. Defaults to {@code requirements_all.txt}.
      *
      * @param requirementsFile the requirements filename (e.g. "requirements_all.txt").
      * @return this {@link Builder}.
