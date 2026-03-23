@@ -73,7 +73,8 @@ public interface BigQueryAnomalyDetection {
       name = "topic",
       description = "Pub/Sub Topic",
       helpText =
-          "Pub/Sub topic for anomaly results. " + "Full path: projects/<project>/topics/<topic>.")
+          "Pub/Sub topic for anomaly results. " + "Full path: projects/<project>/topics/<topic>.",
+      regexes = {"^projects/[^/]+/topics/[^/]+$"})
   String getTopic();
 
   @TemplateParameter.Integer(

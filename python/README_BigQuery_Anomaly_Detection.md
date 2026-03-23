@@ -146,8 +146,8 @@ global aggregation.
 ### Requirements
 
 * Java 17
-* Maven 3.9.9+
-* Python 3.11+
+* Maven
+* Python 3.11
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
   * `gcloud auth login`
