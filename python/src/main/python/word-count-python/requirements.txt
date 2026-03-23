@@ -200,9 +200,9 @@ asn1crypto==1.5.1 \
     --hash=sha256:13ae38502be632115abf8a24cbe5f4da52e3b5231990aff31123c805306ccb9c \
     --hash=sha256:db4e40728b728508912cbb3d44f19ce188f218e9eba635821bb4b68564f8fd67
     # via scramp
-attrs==25.4.0 \
-    --hash=sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11 \
-    --hash=sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373
+attrs==26.1.0 \
+    --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309 \
+    --hash=sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32
     # via aiohttp
 backports-tarfile==1.2.0 \
     --hash=sha256:77e284d754527b01fb1e6fa8a1afe577858ebe4e9dad8919e34c862cb399bc34 \
@@ -444,9 +444,9 @@ charset-normalizer==3.4.6 \
     --hash=sha256:f98059e4fcd3e3e4e2d632b7cf81c2faae96c43c60b569e9c621468082f1d104 \
     --hash=sha256:fcce033e4021347d80ed9c66dcf1e7b1546319834b74445f561d2e2221de5659
     # via requests
-cloud-sql-python-connector==1.20.0 \
-    --hash=sha256:aa7c30631c5f455d14d561d7b0b414a97652a1b582a301f5570ba2cea2aa9105 \
-    --hash=sha256:fdd96153b950040b0252453115604c142922b72cf3636146165a648ac5f6fc30
+cloud-sql-python-connector==1.20.1 \
+    --hash=sha256:7e826875c5c284e1dfd872ab81d8c75eb82dd67ad1bbf43b9e74489342765255 \
+    --hash=sha256:c00f9d81205eb658fe06f9f353e00646eb3f55d2d86de01dc1222eec1f5f2fc9
     # via apache-beam
 cryptography==46.0.5 \
     --hash=sha256:02f547fce831f5096c9a567fd41bc12ca8f11df260959ecc7c3202555cc47a72 \
@@ -768,9 +768,9 @@ google-auth-httplib2==0.2.1 \
     --hash=sha256:1be94c611db91c01f9703e7f62b0a59bbd5587a95571c7b6fade510d648bc08b \
     --hash=sha256:5ef03be3927423c87fb69607b42df23a444e434ddb2555b73b3679793187b7de
     # via apache-beam
-google-cloud-aiplatform==1.141.0 \
-    --hash=sha256:6bd25b4d514c40b8181ca703e1b313ad6d0454ab8006fc9907fb3e9f672f31d1 \
-    --hash=sha256:e3b1cdb28865dd862aac9c685dfc5ac076488705aba0a5354016efadcddd59c6
+google-cloud-aiplatform==1.142.0 \
+    --hash=sha256:17c91db9b613cbbafb2c36335b123686aeb2b4b8448be5134b565ae07165a39a \
+    --hash=sha256:87b49e002703dc14885093e9b264587db84222bef5f70f5a442d03f41beecdd1
     # via apache-beam
 google-cloud-bigquery==3.40.1 \
     --hash=sha256:75afcfb6e007238fe1deefb2182105249321145ff921784fe7b1de2b4ba24506 \
@@ -894,9 +894,9 @@ google-crc32c==1.8.0 \
     #   google-cloud-bigtable
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==1.67.0 \
-    --hash=sha256:58b0484ff2d4335fa53c724b489e9f807fcca8115d9cdbd8fdf341121fbd6d2d \
-    --hash=sha256:897195a6a9742deb6de240b99227189ada8b2d901d61bdfba836c3092021eab6
+google-genai==1.68.0 \
+    --hash=sha256:a1bc9919c0e2ea2907d1e319b65471d3d6d58c54822039a249fe1323e4178d15 \
+    --hash=sha256:ac30c0b8bc630f9372993a97e4a11dae0e36f2e10d7c55eacdca95a9fa14ca96
     # via google-cloud-aiplatform
 google-resumable-media==2.8.0 \
     --hash=sha256:dd14a116af303845a8d932ddae161a26e86cc229645bc98b39f026f9b1717582 \
@@ -1052,9 +1052,9 @@ jaraco-classes==3.4.0 \
     --hash=sha256:47a024b51d0239c0dd8c8540c6c7f484be3b8fcf0b2d85c13825780d3b3f3acd \
     --hash=sha256:f662826b6bed8cace05e7ff873ce0f9283b5c924470fe664fff1c2f00f581790
     # via keyring
-jaraco-context==6.1.1 \
-    --hash=sha256:0df6a0287258f3e364072c3e40d5411b20cafa30cb28c4839d24319cecf9f808 \
-    --hash=sha256:bc046b2dc94f1e5532bd02402684414575cc11f565d929b6563125deb0a6e581
+jaraco-context==6.1.2 \
+    --hash=sha256:bf8150b79a2d5d91ae48629d8b427a8f7ba0e1097dd6202a9059f29a36379535 \
+    --hash=sha256:f1a6c9d391e661cc5b8d39861ff077a7dc24dc23833ccee564b234b81c82dfe3
     # via keyring
 jaraco-functools==4.4.0 \
     --hash=sha256:9eec1e36f45c818d9bf307c8948eb03b2b56cd44087b3cdc989abca1f20b9176 \
