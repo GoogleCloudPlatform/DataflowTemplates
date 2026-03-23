@@ -214,7 +214,7 @@ jobs:
           **/surefire-reports/html/**
         retention-days: 10
     - name: Integration Test report on GitHub
-      uses: dorny/test-reporter@v2
+      uses: dorny/test-reporter@v3
       if: always()
       with:
         name: Integration Test report on GitHub
