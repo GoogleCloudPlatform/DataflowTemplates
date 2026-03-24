@@ -77,7 +77,8 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException(
           "Could not find source table name for spanner table: " + spannerTableName, e);
     }
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable = sourceSchema.table(sourceTableName);
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
+        sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -92,14 +93,15 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
               sourceTableName));
     }
 
-    Map<String, String> pkcolumnNameValues = getPkColumnValues(
-        schemaMapper,
-        spannerTable,
-        sourceTable,
-        dmlGeneratorRequest.getNewValuesJson(),
-        dmlGeneratorRequest.getKeyValuesJson(),
-        dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-        dmlGeneratorRequest.getCustomTransformationResponse());
+    Map<String, String> pkcolumnNameValues =
+        getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getNewValuesJson(),
+            dmlGeneratorRequest.getKeyValuesJson(),
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -144,13 +146,16 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       index++;
     }
 
-    String conflictCols = primaryKeys.stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
-    String updateValues = allColumnNameValues.keySet().stream()
-        .filter(k -> !primaryKeys.contains(k))
-        .map(k -> "\"" + k + "\" = EXCLUDED.\"" + k + "\"")
-        .collect(Collectors.joining(","));
+    String conflictCols =
+        primaryKeys.stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
+    String updateValues =
+        allColumnNameValues.keySet().stream()
+            .filter(k -> !primaryKeys.contains(k))
+            .map(k -> "\"" + k + "\" = EXCLUDED.\"" + k + "\"")
+            .collect(Collectors.joining(","));
 
-    String returnVal = "INSERT INTO \"" + tableName + "\" (" + allColumns + ") VALUES (" + allValues + ")";
+    String returnVal =
+        "INSERT INTO \"" + tableName + "\" (" + allColumns + ") VALUES (" + allValues + ")";
 
     if (updateValues.isEmpty()) {
       returnVal += " ON CONFLICT (" + conflictCols + ") DO NOTHING";
@@ -186,14 +191,15 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
-    Map<String, String> columnNameValues = getColumnValues(
-        dmlGeneratorRequest.getSchemaMapper(),
-        spannerTable,
-        sourceTable,
-        dmlGeneratorRequest.getNewValuesJson(),
-        dmlGeneratorRequest.getKeyValuesJson(),
-        dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-        dmlGeneratorRequest.getCustomTransformationResponse());
+    Map<String, String> columnNameValues =
+        getColumnValues(
+            dmlGeneratorRequest.getSchemaMapper(),
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getNewValuesJson(),
+            dmlGeneratorRequest.getKeyValuesJson(),
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse());
     columnNameValues.putAll(pkcolumnNameValues);
     return getUpsertStatement(
         sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
@@ -243,15 +249,17 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
           response.put(colName, "NULL");
           continue;
         }
-        columnValue = getMappedColumnValue(
-            spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+        columnValue =
+            getMappedColumnValue(
+                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(colName, "NULL");
           continue;
         }
-        columnValue = getMappedColumnValue(
-            spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+        columnValue =
+            getMappedColumnValue(
+                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         continue;
       }
@@ -324,15 +332,17 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
           response.put(sourceColName, "NULL");
           continue;
         }
-        columnValue = getMappedColumnValue(
-            spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+        columnValue =
+            getMappedColumnValue(
+                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
           response.put(sourceColName, "NULL");
           continue;
         }
-        columnValue = getMappedColumnValue(
-            spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+        columnValue =
+            getMappedColumnValue(
+                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
@@ -342,14 +352,15 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     }
 
     if (doesGeneratedColumnExist) {
-      Map<String, String> generatedColumnValues = getColumnValues(
-          schemaMapper,
-          spannerTable,
-          sourceTable,
-          newValuesJson,
-          keyValuesJson,
-          sourceDbTimezoneOffset,
-          customTransformationResponse);
+      Map<String, String> generatedColumnValues =
+          getColumnValues(
+              schemaMapper,
+              spannerTable,
+              sourceTable,
+              newValuesJson,
+              keyValuesJson,
+              sourceDbTimezoneOffset,
+              customTransformationResponse);
       response.putAll(generatedColumnValues);
     }
 
@@ -372,9 +383,10 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       colInputValue = String.valueOf(valuesJson.getBoolean(colName));
     } else if (colType.getCode().equals(Type.Code.ARRAY)
         && colType.getArrayElementType().getCode().equals(Type.Code.STRING)) {
-      colInputValue = valuesJson.getJSONArray(colName).toList().stream()
-          .map(String::valueOf)
-          .collect(Collectors.joining(","));
+      colInputValue =
+          valuesJson.getJSONArray(colName).toList().stream()
+              .map(String::valueOf)
+              .collect(Collectors.joining(","));
     } else if (colType.getCode().equals(Type.Code.BYTES)) {
       if (sourceColDef.type().toLowerCase().equals("bytea")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
@@ -385,11 +397,12 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     } else {
       colInputValue = valuesJson.getString(colName);
     }
-    String response = getColumnValueByType(
-        sourceColDef.type().toLowerCase(),
-        colInputValue,
-        sourceDbTimezoneOffset,
-        colType.toString());
+    String response =
+        getColumnValueByType(
+            sourceColDef.type().toLowerCase(),
+            colInputValue,
+            sourceDbTimezoneOffset,
+            colType.toString());
     return response;
   }
 
