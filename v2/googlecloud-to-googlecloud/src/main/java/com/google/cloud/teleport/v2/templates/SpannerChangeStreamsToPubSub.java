@@ -161,14 +161,16 @@ public class SpannerChangeStreamsToPubSub {
             .withProjectId(spannerProjectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
-    String host = options.getSpannerHost();
-    if (host != null && !host.isEmpty()) {
-      if (host.startsWith("http://")) {
-        spannerConfig = spannerConfig.withEmulatorHost(ValueProvider.StaticValueProvider.of(host));
-      } else {
-        spannerConfig = spannerConfig.withHost(ValueProvider.StaticValueProvider.of(host));
-      }
+
+    if (options.getUseSpannerEmulatorHost() != null && options.getUseSpannerEmulatorHost()) {
+      spannerConfig =
+          spannerConfig.withEmulatorHost(
+              ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    } else {
+      spannerConfig =
+          spannerConfig.withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
     }
+
     // Propagate database role for fine-grained access control on change stream.
     if (options.getSpannerDatabaseRole() != null) {
       spannerConfig =
