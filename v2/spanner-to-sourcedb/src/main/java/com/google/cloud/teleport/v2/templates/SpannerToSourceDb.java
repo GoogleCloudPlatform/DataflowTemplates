@@ -639,7 +639,9 @@ public class SpannerToSourceDb {
 
     List<Shard> shards;
     String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
+        || com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL.equals(
+            options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
       shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
@@ -970,7 +972,11 @@ public class SpannerToSourceDb {
     SourceSchemaScanner scanner = null;
     SourceSchema sourceSchema = null;
     try {
-      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)
+          || options
+              .getSourceType()
+              .equals(
+                  com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL)) {
         Connection connection =
             createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
         scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
