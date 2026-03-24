@@ -1,0 +1,300 @@
+{
+ "SpSchema": {
+  "t1": {
+   "Name": "bool_table",
+   "ColIds": [
+    "c_id",
+    "c1_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c1_1": {
+     "Name": "bool_col",
+     "T": {
+      "Name": "BOOL",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c1_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t1"
+  },
+  "t2": {
+   "Name": "int64_table",
+   "ColIds": [
+    "c_id",
+    "c2_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c2_1": {
+     "Name": "int64_col",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c2_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t2"
+  },
+  "t3": {
+   "Name": "float64_table",
+   "ColIds": [
+    "c_id",
+    "c3_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c3_1": {
+     "Name": "float64_col",
+     "T": {
+      "Name": "FLOAT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c3_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t3"
+  },
+  "t4": {
+   "Name": "string_table",
+   "ColIds": [
+    "c_id",
+    "c4_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c4_1": {
+     "Name": "string_col",
+     "T": {
+      "Name": "STRING",
+      "Len": 9223372036854775807,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c4_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t4"
+  },
+  "t5": {
+   "Name": "bytes_table",
+   "ColIds": [
+    "c_id",
+    "c5_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c5_1": {
+     "Name": "bytes_col",
+     "T": {
+      "Name": "BYTES",
+      "Len": 9223372036854775807,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c5_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t5"
+  },
+  "t6": {
+   "Name": "date_table",
+   "ColIds": [
+    "c_id",
+    "c6_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c6_1": {
+     "Name": "date_col",
+     "T": {
+      "Name": "DATE",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c6_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t6"
+  },
+  "t7": {
+   "Name": "numeric_table",
+   "ColIds": [
+    "c_id",
+    "c7_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c7_1": {
+     "Name": "numeric_col",
+     "T": {
+      "Name": "NUMERIC",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c7_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t7"
+  },
+  "t8": {
+   "Name": "timestamp_table",
+   "ColIds": [
+    "c_id",
+    "c8_1"
+   ],
+   "ColDefs": {
+    "c_id": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": true,
+     "Id": "c_id"
+    },
+    "c8_1": {
+     "Name": "timestamp_col",
+     "T": {
+      "Name": "TIMESTAMP",
+      "Len": 0,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Id": "c8_1"
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c_id",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "Id": "t8"
+  }
+ }
+}

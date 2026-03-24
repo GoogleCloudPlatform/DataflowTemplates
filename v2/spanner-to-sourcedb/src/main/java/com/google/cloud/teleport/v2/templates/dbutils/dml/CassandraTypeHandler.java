@@ -303,7 +303,7 @@ public class CassandraTypeHandler {
     try {
       if (spannerType.contains("string")) {
         return valuesJson.optString(columnName, null);
-      } else if (spannerType.contains("bytes")) {
+      } else if (spannerType.contains("bytes") || spannerType.contains("bytea")) {
         if (valuesJson.isNull(columnName)) {
           return null;
         }

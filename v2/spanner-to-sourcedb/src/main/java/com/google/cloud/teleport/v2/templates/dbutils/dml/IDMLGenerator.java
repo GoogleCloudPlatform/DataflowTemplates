@@ -37,4 +37,28 @@ public interface IDMLGenerator {
    * @return a {@link DMLGeneratorResponse} object containing the generated DML statement.
    */
   DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest);
+
+  /**
+   * Helper method to retrieve the actual case-sensitive column name from a JSON object via a
+   * case-insensitive search. This is needed to handle Spanner PostgreSQL dialect which folds
+   * unquoted identifiers to lowercase.
+   *
+   * @param json the JSON object to search
+   * @param columnName the column name to look for (case-insensitive)
+   * @return the actual column name present in the JSON, or null if not found
+   */
+  default String getExactColumnName(org.json.JSONObject json, String columnName) {
+    if (json == null || columnName == null) {
+      return null;
+    }
+    if (json.has(columnName)) {
+      return columnName;
+    }
+    for (String key : json.keySet()) {
+      if (key.equalsIgnoreCase(columnName)) {
+        return key;
+      }
+    }
+    return null;
+  }
 }

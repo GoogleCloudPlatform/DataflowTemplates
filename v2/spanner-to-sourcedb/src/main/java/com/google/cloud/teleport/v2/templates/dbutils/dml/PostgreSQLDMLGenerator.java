@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -38,10 +38,11 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Creates DML statements. */
-public class MySQLDMLGenerator implements IDMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
+/** Creates DML statements for PostgreSQL. */
+public class PostgreSQLDMLGenerator implements IDMLGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLDMLGenerator.class);
 
+  @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
       throw new InvalidDMLGenerationException(
@@ -76,8 +77,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException(
           "Could not find source table name for spanner table: " + spannerTableName, e);
     }
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
-        sourceSchema.table(sourceTableName);
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -92,15 +92,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
               sourceTableName));
     }
 
-    Map<String, String> pkcolumnNameValues =
-        getPkColumnValues(
-            schemaMapper,
-            spannerTable,
-            sourceTable,
-            dmlGeneratorRequest.getNewValuesJson(),
-            dmlGeneratorRequest.getKeyValuesJson(),
-            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+    Map<String, String> pkcolumnNameValues = getPkColumnValues(
+        schemaMapper,
+        spannerTable,
+        sourceTable,
+        dmlGeneratorRequest.getNewValuesJson(),
+        dmlGeneratorRequest.getKeyValuesJson(),
+        dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+        dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -124,40 +123,40 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName, Map<String, String> allColumnNameValues) {
+      String tableName, Map<String, String> allColumnNameValues, List<String> primaryKeys) {
 
     String allColumns = "";
     String allValues = "";
-    String updateValues = "";
 
     int index = 0;
 
     for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
-      allColumns += "`" + colName + "`";
+      allColumns += "\"" + colName + "\"";
       allValues += colValue;
-      updateValues += " `" + colName + "` = " + colValue;
 
       // Add comma if not the last item in this loop
       if (index + 1 < allColumnNameValues.size()) {
         allColumns += ",";
         allValues += ",";
-        updateValues += ",";
       }
       index++;
     }
-    String returnVal =
-        "INSERT INTO `"
-            + tableName
-            + "`("
-            + allColumns
-            + ")"
-            + " VALUES ("
-            + allValues
-            + ") "
-            + "ON DUPLICATE KEY UPDATE "
-            + updateValues;
+
+    String conflictCols = primaryKeys.stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
+    String updateValues = allColumnNameValues.keySet().stream()
+        .filter(k -> !primaryKeys.contains(k))
+        .map(k -> "\"" + k + "\" = EXCLUDED.\"" + k + "\"")
+        .collect(Collectors.joining(","));
+
+    String returnVal = "INSERT INTO \"" + tableName + "\" (" + allColumns + ") VALUES (" + allValues + ")";
+
+    if (updateValues.isEmpty()) {
+      returnVal += " ON CONFLICT (" + conflictCols + ") DO NOTHING";
+    } else {
+      returnVal += " ON CONFLICT (" + conflictCols + ") DO UPDATE SET " + updateValues;
+    }
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -171,13 +170,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += " `" + colName + "` = " + colValue;
+      deleteValues += " \"" + colName + "\" = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
         deleteValues += " AND ";
       }
       index++;
     }
-    String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
+    String returnVal = "DELETE FROM \"" + tableName + "\" WHERE " + deleteValues;
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -187,17 +186,17 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
-    Map<String, String> columnNameValues =
-        getColumnValues(
-            dmlGeneratorRequest.getSchemaMapper(),
-            spannerTable,
-            sourceTable,
-            dmlGeneratorRequest.getNewValuesJson(),
-            dmlGeneratorRequest.getKeyValuesJson(),
-            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+    Map<String, String> columnNameValues = getColumnValues(
+        dmlGeneratorRequest.getSchemaMapper(),
+        spannerTable,
+        sourceTable,
+        dmlGeneratorRequest.getNewValuesJson(),
+        dmlGeneratorRequest.getKeyValuesJson(),
+        dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+        dmlGeneratorRequest.getCustomTransformationResponse());
     columnNameValues.putAll(pkcolumnNameValues);
-    return getUpsertStatement(sourceTable.name(), columnNameValues);
+    return getUpsertStatement(
+        sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
   }
 
   private static Map<String, String> getColumnValues(
@@ -210,19 +209,6 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
 
-    /*
-    Get all non-primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - continue to next,
-      as the column will be stored with default/null values
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - continue to next,
-      as the column will be stored with default/null values
-    */
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
     if (customTransformationResponse != null) {
@@ -253,23 +239,19 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String columnValue = "";
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
-        // get the value based on Spanner and Source type
         if (keyValuesJson.isNull(actualColName)) {
           response.put(colName, "NULL");
           continue;
         }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+        columnValue = getMappedColumnValue(
+            spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
-        // get the value based on Spanner and Source type
         if (newValuesJson.isNull(actualColName)) {
           response.put(colName, "NULL");
           continue;
         }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+        columnValue = getMappedColumnValue(
+            spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         continue;
       }
@@ -289,17 +271,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
-    /*
-    Get all primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - return null
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - return null
-    */
+
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
     if (customTransformationResponse != null) {
@@ -348,23 +320,19 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String columnValue = "";
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
-        // get the value based on Spanner and Source type
         if (keyValuesJson.isNull(actualColName)) {
           response.put(sourceColName, "NULL");
           continue;
         }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+        columnValue = getMappedColumnValue(
+            spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
-        // get the value based on Spanner and Source type
         if (newValuesJson.isNull(actualColName)) {
           response.put(sourceColName, "NULL");
           continue;
         }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+        columnValue = getMappedColumnValue(
+            spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
@@ -374,21 +342,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
 
     if (doesGeneratedColumnExist) {
-      // Generated column expression between source DB and spanner can have
-      // differences. Hence, values of generated column cannot be used from the change
-      // stream. If Primary key is generated column, then the DML statement need to
-      // have the respective dependent column values. Since we cannot identify the
-      // dependent columns, we are adding all the non-generated columns to the
-      // response.
-      Map<String, String> generatedColumnValues =
-          getColumnValues(
-              schemaMapper,
-              spannerTable,
-              sourceTable,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset,
-              customTransformationResponse);
+      Map<String, String> generatedColumnValues = getColumnValues(
+          schemaMapper,
+          spannerTable,
+          sourceTable,
+          newValuesJson,
+          keyValuesJson,
+          sourceDbTimezoneOffset,
+          customTransformationResponse);
       response.putAll(generatedColumnValues);
     }
 
@@ -406,68 +367,50 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String colName = spannerColDef.name();
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)) {
-      // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if (colType.getCode().equals(Type.Code.BOOL)) {
-      colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
+      colInputValue = String.valueOf(valuesJson.getBoolean(colName));
     } else if (colType.getCode().equals(Type.Code.ARRAY)
         && colType.getArrayElementType().getCode().equals(Type.Code.STRING)) {
-      colInputValue =
-          valuesJson.getJSONArray(colName).toList().stream()
-              .map(String::valueOf)
-              .collect(Collectors.joining(","));
+      colInputValue = valuesJson.getJSONArray(colName).toList().stream()
+          .map(String::valueOf)
+          .collect(Collectors.joining(","));
     } else if (colType.getCode().equals(Type.Code.BYTES)) {
-      if (sourceColDef.type().toLowerCase().equals("bit")) {
+      if (sourceColDef.type().toLowerCase().equals("bytea")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
       } else {
-        colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
+        // Postgres decode: decode('base64string', 'base64')
+        colInputValue = "decode('" + valuesJson.getString(colName) + "', 'base64')";
       }
     } else {
       colInputValue = valuesJson.getString(colName);
     }
-    String response =
-        getColumnValueByType(
-            sourceColDef.type(), colInputValue, sourceDbTimezoneOffset, colType.toString());
+    String response = getColumnValueByType(
+        sourceColDef.type().toLowerCase(),
+        colInputValue,
+        sourceDbTimezoneOffset,
+        colType.toString());
     return response;
   }
 
-  /**
-   * Decodes a Base64 encoded string and formats the resulting bytes into a hexadecimal string
-   * prefixed with 'x'.
-   *
-   * @param base64EncodedString The Base64 encoded string to decode.
-   * @return A string in the format x'&lt;hex representation of the bytes$gt;', or x'' if the input
-   *     is null or empty after decoding.
-   * @throws IllegalArgumentException If the input string is not a valid Base64 encoding.
-   */
   @VisibleForTesting
   protected static String convertBase64ToHex(String base64EncodedString) {
     if (base64EncodedString == null) {
       return null;
     }
     if (StringUtils.isEmpty(base64EncodedString)) {
-      return "x''";
+      return "''";
     }
 
     try {
-      // 1. Decode the Base64 string into bytes
       byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
-
-      // 2. Convert the bytes to a hexadecimal string
       StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
       for (byte b : decodedBytes) {
-        // Use Integer.toHexString to get the hex representation of each byte.
-        // & 0xFF ensures that the byte is treated as an unsigned value
-        // (otherwise, negative bytes would get a longer hex string like "ffffffxx").
-        // We then format it to always be two characters, padding with '0' if necessary.
         hexStringBuilder.append(String.format("%02x", b & 0xFF));
       }
-
-      // 3. Prefix with x' and suffix with '
-      return "x'" + hexStringBuilder.toString() + "'";
+      return "'\\x" + hexStringBuilder.toString() + "'";
 
     } catch (IllegalArgumentException e) {
-      // Re-throw or wrap the exception if Base64 decoding fails.
       throw new IllegalArgumentException(
           "Invalid Base64 encoded string provided: " + e.getMessage(), e);
     }
@@ -476,49 +419,32 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
-    String cleanedNullBytes = "";
-    String decodedString = "";
     switch (columnType) {
       case "varchar":
       case "char":
       case "text":
-      case "tinytext":
-      case "mediumtext":
-      case "longtext":
-      case "enum":
+      case "character varying":
+      case "json":
+      case "jsonb":
       case "date":
       case "time":
-      case "year":
-      case "set":
-      case "json":
-      case "geometry":
-      case "geometrycollection":
-      case "point":
-      case "multipoint":
-      case "linestring":
-      case "multilinestring":
-      case "polygon":
-      case "multipolygon":
-      case "tinyblob":
-      case "mediumblob":
-      case "blob":
-      case "longblob":
+      case "uuid":
         response = getQuotedEscapedString(colValue, spannerColType);
         break;
       case "timestamp":
-      case "datetime":
-        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
-        response =
-            " CONVERT_TZ("
-                + getQuotedEscapedString(colValue, spannerColType)
-                + ",'+00:00','"
-                + sourceDbTimezoneOffset
-                + "')";
-
+      case "timestamp without time zone":
+      case "timestamp with time zone":
+      case "timestamptz":
+        // For postgres, we can use the timestamptz string directly or cast it.
+        // E.g., '2023-01-01T12:00:00Z'
+        response = getQuotedEscapedString(colValue, spannerColType) + "::timestamptz";
+        // Optionally applying timezone offset if necessary via AT TIME ZONE, but if the
+        // string has a Z, Postgres handles it.
         break;
+      case "bytea":
       case "binary":
       case "varbinary":
-        response = getBinaryString(colValue, spannerColType);
+        response = colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
         break;
       default:
         response = colValue;
@@ -529,7 +455,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
+    // PostgreSQL defaults to standard conforming strings, so backslash is just a
+    // backslash, except in E'' strings.
+    // For standard string literals '', we just need to escape the single quote as
+    // ''
     return cleanedNullBytes;
   }
 
@@ -538,12 +467,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return input;
     }
     String cleanedString = escapeString(input);
-    String response = "\'" + cleanedString + "\'";
-    return response;
-  }
-
-  private static String getBinaryString(String input, String spannerColType) {
-    String response = "BINARY(" + getQuotedEscapedString(input, spannerColType) + ")";
+    String response = "'" + cleanedString + "'";
     return response;
   }
 }

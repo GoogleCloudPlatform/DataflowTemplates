@@ -355,11 +355,12 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (spannerColDef == null) {
         continue;
       }
-      if (keyValuesJson.has(spannerColumnName)) {
+      String actualColName = spannerColDef.name();
+      if (keyValuesJson.has(actualColName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColumnName)) {
+      } else if (newValuesJson.has(actualColName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
@@ -442,16 +443,17 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
         return null;
       }
-      if (keyValuesJson.has(spannerColName)) {
+      String actualColName = spannerColDef.name();
+      if (keyValuesJson.has(actualColName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColName)) {
+      } else if (newValuesJson.has(actualColName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", spannerColName);
+        LOG.warn("The column {} was not found in input record", actualColName);
         return null;
       }
       response.put(sourceColName, columnValue);
