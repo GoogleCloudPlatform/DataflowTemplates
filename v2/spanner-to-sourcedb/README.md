@@ -34,11 +34,11 @@ The reverse replication is eventually consistent. Meaning once there are no retr
 
 The Dataflow job that handles reverse replication runs in two modes:
 
-- **regular**: This is the default mode, where the events streamed by Spanner change streams are picked up and converted to source compatible data types and applied to source database. It also does automatic retry of retryable errors and once the retry is exhausted, moves them to the 'severe' folder of the dead letter queue (DLQ) directory in GCS. Permanent errors are also moved to the 'severe' folder of dead letter queue.
+- **regular**: This is the default mode, where the events streamed by Spanner change streams are picked up and converted to source compatible data types and applied to source database. It also does automatic retry of retryable errors and once the retry is exhausted, moves them to the `severe` folder of the dead letter queue (DLQ) directory in GCS. Permanent errors are also moved to the `severe` folder of dead letter queue.
 
 - **retryDLQ**: This mode looks exclusively at the `severe` folder of the DLQ and retries the events once. This mode explores errors identified as permanent or exhausted, making it ideal to safely run **concurrently** alongside `regular` mode to clear out permanent errors once a bug is fixed or schema is updated. This mode only reads from DLQ and not from Spanner change streams. Any newly generated retryable errors spill automatically into the `retry` directory to be handled safely by the `regular` pipeline.
 
-- **retryAllDLQ**: This mode looks at both the `severe` and `retry` folders of the DLQ and retries the events. This mode is meant to be run ONLY when `regular` mode is offline, otherwise it will conflict with its readers on the `retry/` directory. This mode only reads from DLQ and not from Spanner change streams. If the records processed from 'severe' directory go into retry directory - they are retried again continuously.
+  - **retryAllDLQ**: This mode looks at both the `severe` and `retry` folders of the DLQ and retries the events. This mode is meant to be run ONLY when `regular` mode is offline, otherwise it will conflict with its readers on the `retry/` directory. This mode only reads from DLQ and not from Spanner change streams. If the records processed from `severe` directory go into `retry` directory - they are retried again continuously.
 
 #### Current error scenarios
 
@@ -337,7 +337,7 @@ When running to reprocess the DLQ directory, run the Dataflow job with `retryDLQ
 
 #### End State Monitoring
 
-Because `retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
+`retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
 
 However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
 * **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.

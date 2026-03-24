@@ -97,7 +97,7 @@ To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-t
 
 #### End State Monitoring
 
-Because `retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
+`retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
 
 However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
 * **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
