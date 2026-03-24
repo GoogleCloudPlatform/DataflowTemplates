@@ -178,7 +178,10 @@ public class ShadowTableCreator {
     Column.Builder processedCommitTimestampColumnBuilder =
         shadowTableBuilder.column(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME);
     shadowTableBuilder.addColumn(
-        processedCommitTimestampColumnBuilder.type(Type.timestamp()).notNull(false).autoBuild());
+        processedCommitTimestampColumnBuilder
+            .type(dialect == Dialect.POSTGRESQL ? Type.pgTimestamptz() : Type.timestamp())
+            .notNull(false)
+            .autoBuild());
 
     // Add record sequence column to hold the record sequence change stream record written
     // to source
@@ -186,7 +189,10 @@ public class ShadowTableCreator {
     Column.Builder recordSequenceColumnBuilder =
         shadowTableBuilder.column(Constants.RECORD_SEQ_COLUMN_NAME);
     shadowTableBuilder.addColumn(
-        recordSequenceColumnBuilder.type(Type.int64()).notNull(false).autoBuild());
+        recordSequenceColumnBuilder
+            .type(dialect == Dialect.POSTGRESQL ? Type.pgInt8() : Type.int64())
+            .notNull(false)
+            .autoBuild());
 
     return shadowTableBuilder.build();
   }
