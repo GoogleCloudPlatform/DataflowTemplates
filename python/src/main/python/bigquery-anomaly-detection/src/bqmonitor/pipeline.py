@@ -536,22 +536,22 @@ class AnomalyMonitorOptions(PipelineOptions):
     parser.add_argument(
         '--decompress_shards',
         type=int,
-        default=400,
+        default=1200,
         help='Number of shards for CDC Arrow batch decompression fan-out. '
         'Spreads decompression CPU across workers. '
-        '0 disables fan-out (decode inline). Default: 400.')
+        '0 disables fan-out (decode inline). Default: 1200.')
     parser.add_argument(
         '--fanout_strategy',
         default='sharded',
-        choices=['sharded', 'hotkey_fanout', 'none'],
-        help='Parallelism strategy for global (non-keyed) metric '
-        'aggregation. Ignored when group_by is set. Default: sharded.')
+        choices=['sharded', 'hotkey_fanout', 'none', 'precombine'],
+        help='Parallelism strategy for metric aggregation: '
+        'sharded, hotkey_fanout, precombine, or none. Default: sharded.')
     parser.add_argument(
         '--fanout',
         type=int,
         default=400,
         help='Number of shards for sharded or hotkey_fanout strategies. '
-        'Ignored for none. Default: 400.')
+        'Ignored for none and precombine. Default: 400.')
 
 
 # ---------------------------------------------------------------------------
