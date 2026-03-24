@@ -972,11 +972,7 @@ public class SpannerToSourceDb {
     SourceSchemaScanner scanner = null;
     SourceSchema sourceSchema = null;
     try {
-      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)
-          || options
-              .getSourceType()
-              .equals(
-                  com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL)) {
+      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
         Connection connection =
             createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
         scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());

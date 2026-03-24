@@ -230,7 +230,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put(
                 "sourceShardsFilePath",
                 getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                    (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                            && !Objects.equals(
+                                sourceType,
+                                com.google.cloud.teleport.v2.templates.constants.Constants
+                                    .SOURCE_POSTGRESQL))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
