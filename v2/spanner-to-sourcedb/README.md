@@ -38,7 +38,7 @@ The Dataflow job that handles reverse replication runs in two modes:
 
 - **retryDLQ**: This mode looks exclusively at the `severe` folder of the DLQ and retries the events once. This mode explores errors identified as permanent or exhausted, making it ideal to safely run **concurrently** alongside `regular` mode to clear out permanent errors once a bug is fixed or schema is updated. This mode only reads from DLQ and not from Spanner change streams. Any newly generated retryable errors spill automatically into the `retry` directory to be handled safely by the `regular` pipeline.
 
-  - **retryAllDLQ**: This mode looks at both the `severe` and `retry` folders of the DLQ and retries the events. This mode is meant to be run ONLY when `regular` mode is offline, otherwise it will conflict with its readers on the `retry/` directory. This mode only reads from DLQ and not from Spanner change streams. If the records processed from `severe` directory go into `retry` directory - they are retried again continuously.
+- **retryAllDLQ**: This mode looks at both the `severe` and `retry` folders of the DLQ and retries the events. This mode is meant to be run ONLY when `regular` mode is offline, otherwise it will conflict with its readers on the `retry/` directory. This mode only reads from DLQ and not from Spanner change streams. If the records processed from `severe` directory go into `retry` directory - they are retried again continuously.
 
 #### Current error scenarios
 
@@ -142,22 +142,22 @@ The file should be a list of JSONs as:
 
 ```json
 [
-    {
+  {
     "logicalShardId": "shard1",
     "host": "10.11.12.13",
     "user": "root",
     "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
     "port": "3306",
     "dbName": "db1"
-    },
-    {
+  },
+  {
     "logicalShardId": "shard2",
     "host": "10.11.12.14",
     "user": "root",
     "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
     "port": "3306",
     "dbName": "db2"
-    }
+  }
 ]
 ```
 
@@ -333,7 +333,9 @@ StatusRuntimeException: UNAVAILABLE: ping timeout
 
 ### Retry of Reverse Replication DLQ
 
-When running to reprocess the DLQ directory, run the Dataflow job with `retryDLQ` or `retryAllDLQ` run mode depending on whether the `regular` pipeline is also running. `retryDLQ` will exclusively process the `severe` array of errors safely. `retryAllDLQ` will reprocess both the `severe` and `retry` directory records and apply them to source database, and should only be run if `regular` is stopped.
+When running to reprocess the DLQ directory, you can run the Dataflow job in one of two retry modes depending on your pipeline state:
+*   **`retryDLQ`**: Consumes only severe errors and should be run side-by-side with the regular pipeline (because the regular pipeline will handle the transient errors in the retry bucket).
+*   **`retryAllDLQ`**: Consumes errors from both the retry and severe buckets. It should NOT be run when the regular pipeline is active, as the concurrent retry mechanisms will clash. Use `retryAllDLQ` only if the regular pipeline is stopped.
 
 #### End State Monitoring
 

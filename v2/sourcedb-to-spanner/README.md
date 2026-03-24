@@ -90,10 +90,12 @@ gcloud dataflow flex-template run ${JOB_NAME} \
         --additional-experiments=disable_runner_v2
 ```
 #### Replaying DLQ entries.
-Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
-To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job either:
-1.  In `retryDLQ` mode to retry errors exclusively in the `severe` bucket once, safely alongside a job of `regular` mode of [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) that retries errors in `retry` bucket. For this to work, the `regular` job should be pointing towards the same DLQ directory used in the SourcedbToSpanner job.
-2.  In `retryAllDLQ` mode to retry errors in both the `severe` and `retry` buckets. This mode is meant to be run ONLY when `regular` mode as described above is not running.
+Any errors transforming a source row or failures writing to Spanner are written to the `dlq/severe/` path within your `outputDirectory`. It is recommended to retry these DLQ entries before applying any change capture (if any).
+
+To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in one of two retry modes:
+
+*   **`retryDLQ`**: Recommended if you plan to run the live migration (`regular` mode) concurrently AND use the exact same DLQ directory used in the SourceDbToSpanner (bulk) job. The live migration pipeline will handle the transient errors in the `retry` bucket, while this `retryDLQ` mode safely and exclusively processes the `severe` bucket errors.
+*   **`retryAllDLQ`**: Recommended if you are NOT planning to run live migration right away, OR if your live migration uses a different DLQ bucket. This mode processes both `severe` and `retry` transient errors simultaneously. **WARNING:** This mode should NOT be run alongside an active live migration pipeline in `regular` mode targeting the same DLQ directory, as the concurrent retry mechanisms will clash.
 
 #### End State Monitoring
 
