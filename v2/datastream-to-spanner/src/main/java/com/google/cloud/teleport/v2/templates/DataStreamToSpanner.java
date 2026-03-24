@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -121,8 +122,13 @@ import org.slf4j.LoggerFactory;
           + " encountered errors along with the error reason in text format. The errors can be"
           + " transient or permanent and are stored in appropriate Cloud Storage folders in the"
           + " error queue. The transient errors are retried automatically while the permanent"
-          + " errors are not. In case of permanent errors, you can run the pipeline in retryDLQ mode."
-          + " This mode is used to retry errors in both the retry and severe buckets after the underlying errors are fixed."
+          + " errors are not. In case of permanent errors, you can run the pipeline in one of"
+          + " two retry modes depending on your pipeline state. The `retryDLQ` mode consumes only"
+          + " severe errors and should be run side-by-side with the regular pipeline (because the"
+          + " regular pipeline will handle the transient errors in the retry bucket). "
+          + " The `retryAllDLQ` mode consumes errors from both the retry and severe buckets. It"
+          + " should NOT be run when the regular pipeline is active, as the concurrent retry"
+          + " mechanisms will clash. Use `retryAllDLQ` only if the regular pipeline is stopped."
     },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
@@ -367,13 +373,13 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
         enumOptions = {
-          @TemplateEnumOption("regular"),
-          @TemplateEnumOption("retryDLQ"),
-          @TemplateEnumOption("retryAllDLQ")
+          @TemplateEnumOption(Constants.RUN_MODE_REGULAR),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_ALL_DLQ)
         },
         helpText =
             "This is the run mode type. Default is regular. retryDLQ is used to safely retry errors natively in the severe directory only. retryAllDLQ is used to retry errors simultaneously from both the retry and severe DLQ directories.")
-    @Default.String("regular")
+    @Default.String(Constants.RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -577,7 +583,7 @@ public class DataStreamToSpanner {
   }
 
   private static void validateSourceType(Options options) {
-    boolean isRetryMode = "retryDLQ".equals(options.getRunMode());
+    boolean isRetryMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     if (isRetryMode) {
       // retry mode does not read from Datastream
       return;
@@ -630,7 +636,7 @@ public class DataStreamToSpanner {
     UncaughtExceptionLogger.register();
     LOG.info("Starting DataStream to Cloud Spanner");
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    boolean isRetryDLQMode = "retryDLQ".equals(options.getRunMode());
+    boolean isRetryDLQMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     options.setStreaming(!isRetryDLQMode);
     validateSourceType(options);
     run(options);
@@ -715,7 +721,7 @@ public class DataStreamToSpanner {
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = Constants.RUN_MODE_REGULAR.equals(options.getRunMode());
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
@@ -735,7 +741,7 @@ public class DataStreamToSpanner {
         PCollection<String> oneShotRecords =
             pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
 
-        if ("retryDLQ".equals(options.getRunMode())) {
+        if (Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
           reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
         } else {
           // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets

@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -369,13 +372,13 @@ public class SpannerToSourceDb {
         optional = true,
         description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
         enumOptions = {
-          @TemplateEnumOption("regular"),
-          @TemplateEnumOption("retryDLQ"),
-          @TemplateEnumOption("retryAllDLQ")
+          @TemplateEnumOption(RUN_MODE_REGULAR),
+          @TemplateEnumOption(RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(RUN_MODE_RETRY_ALL_DLQ)
         },
         helpText =
             "This is the run mode type. Default is regular. retryDLQ is used to safely retry errors natively in the severe directory only. retryAllDLQ is used to retry errors simultaneously from both the retry and severe DLQ directories.")
-    @Default.String("regular")
+    @Default.String(RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -545,7 +548,7 @@ public class SpannerToSourceDb {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    boolean isRetryDLQMode = "retryDLQ".equals(options.getRunMode());
+    boolean isRetryDLQMode = RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     options.setStreaming(!isRetryDLQMode);
 
     run(options);
@@ -660,7 +663,7 @@ public class SpannerToSourceDb {
       }
     }
 
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
@@ -695,7 +698,7 @@ public class SpannerToSourceDb {
         PCollection<String> oneShotRecords =
             pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
 
-        if ("retryDLQ".equals(options.getRunMode())) {
+        if (RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
           reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
         } else {
           // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
