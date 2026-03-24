@@ -280,17 +280,19 @@ public class PubSubToClickHouse {
     /*
      * Step 4: Write successful rows to ClickHouse.
      */
-    windowedMain.apply(
-        "Write to ClickHouse",
+    ClickHouseIO.Write<Row> clickHouseWriter =
         ClickHouseIO.<Row>write(
                 options.getClickHouseUrl(),
                 options.getClickHouseDatabase(),
                 options.getClickHouseTable())
             .withProperties(props)
-            .withMaxInsertBlockSize(options.getMaxInsertBlockSize())
             .withMaxRetries(options.getMaxRetries())
             .withInsertDeduplicate(options.getInsertDeduplicate())
-            .withInsertDistributedSync(options.getInsertDistributedSync()));
+            .withInsertDistributedSync(options.getInsertDistributedSync());
+    if (options.getMaxInsertBlockSize() != null) {
+      clickHouseWriter = clickHouseWriter.withMaxInsertBlockSize(options.getMaxInsertBlockSize());
+    }
+    windowedMain.apply("Write to ClickHouse", clickHouseWriter);
 
     /*
      * Step 5: Route dead-letter rows to configured destination(s).
