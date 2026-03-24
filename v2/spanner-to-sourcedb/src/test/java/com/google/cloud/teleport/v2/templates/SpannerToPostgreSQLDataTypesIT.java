@@ -74,7 +74,7 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToPostgreSQLDataTypesIT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerToPostgreSQLDataTypesIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToPostgreSQLDataTypesIT/session.json";
+
   private static final String POSTGRES_SCHEMA_FILE_RESOURCE =
       "SpannerToPostgreSQLDataTypesIT/postgresql-schema.sql";
 
@@ -97,8 +97,6 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createPGShardConfig(gcsResourceManager, jdbcResourceManager);
 
-    gcsResourceManager.uploadArtifact(
-        "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
     pubsubResourceManager = setUpPubSubResourceManager();
     SubscriptionName subscriptionName =
         createPubsubResources(
@@ -107,12 +105,8 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
             getGcsPath("dlq", gcsResourceManager)
                 .replace("gs://" + gcsResourceManager.getBucket(), ""),
             gcsResourceManager);
-    Map<String, String> jobParameters =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-          }
-        };
+
+    Map<String, String> jobParameters = new HashMap<>();
     jobInfo =
         launchDataflowJob(
             gcsResourceManager,
