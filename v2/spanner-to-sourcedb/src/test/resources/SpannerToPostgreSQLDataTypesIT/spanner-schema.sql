@@ -6,3 +6,10 @@ CREATE TABLE bytes_table (id INT64, bytes_col BYTES(MAX)) PRIMARY KEY(id);
 CREATE TABLE date_table (id INT64, date_col DATE) PRIMARY KEY(id);
 CREATE TABLE numeric_table (id INT64, numeric_col NUMERIC) PRIMARY KEY(id);
 CREATE TABLE timestamp_table (id INT64, timestamp_col TIMESTAMP) PRIMARY KEY(id);
+
+CREATE CHANGE STREAM allstream
+  FOR ALL OPTIONS (
+  value_capture_type = 'NEW_ROW',
+  retention_period = '7d',
+  allow_txn_exclusion = true
+);
