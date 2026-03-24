@@ -222,11 +222,10 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
                         .build()))
             .build();
 
-    assertThatResult(
-            pipelineOperator()
-                .waitForConditionAndCancel(
-                    createConfig(liveJobInfo, Duration.ofMinutes(15)), conditionCheck))
-        .meetsConditions();
+    PipelineOperator.Result resultLive =
+        pipelineOperator().waitUntilDone(createConfig(liveJobInfo, Duration.ofMinutes(15)));
+    assertThatResult(resultLive).isLaunchFinished();
+    assertTrue(conditionCheck.get());
 
     // Verify CT Data
     List<Map<String, Object>> expectedDataNonNull = getExpectedData();
