@@ -47,7 +47,7 @@
         <dataplex.api.version>v1-rev20251113-2.0.0</dataplex.api.version>
         <!-- ActiveMQ uses JMS 1.1 for versions < 5.18.0 -->
         <!-- This can only be upgraded after Beam moves to JMS 2.0 -->
-        <activemq.version>5.17.7</activemq.version>
+        <activemq.version>6.2.2</activemq.version>
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
 
