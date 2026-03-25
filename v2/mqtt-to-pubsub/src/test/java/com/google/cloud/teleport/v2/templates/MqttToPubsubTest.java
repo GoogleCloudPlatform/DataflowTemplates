@@ -76,7 +76,7 @@ public class MqttToPubsubTest {
         PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
     // Simulate a user accidentally pasting a Pub/Sub topic string
     options.setInputTopic("projects/my-gcp-project/topics/my-pubsub-topic");
-    
+
     assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
   }
 
