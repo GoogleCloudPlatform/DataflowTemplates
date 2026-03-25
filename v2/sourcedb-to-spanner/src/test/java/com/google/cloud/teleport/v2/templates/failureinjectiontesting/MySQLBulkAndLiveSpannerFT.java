@@ -178,8 +178,9 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
             .build();
 
     result =
-        pipelineOperator().waitUntilDone(createConfig(retryLiveJobInfo, Duration.ofMinutes(8)));
-    assertThatResult(result).isLaunchFinished();
-    assertTrue(conditionCheck.get());
+        pipelineOperator()
+            .waitForConditionAndCancel(
+                createConfig(retryLiveJobInfo, Duration.ofMinutes(8)), conditionCheck);
+    assertThatResult(result).meetsConditions();
   }
 }
