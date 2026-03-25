@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -29,7 +28,6 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Waiting Dataflow release b/492536316")
 public class MySQLSourceDbtoSpannerWideRow50KBFetchSizeLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
   private static final String LAUNCHER_MACHINE_TYPE = "n2-standard-4";
