@@ -69,4 +69,26 @@ public class MqttToPubsubTest {
     // Expected to not throw an exception:
     MqttToPubsub.validate(options);
   }
+
+  @Test
+  public void testValidationFailPubSubTopicAsMqttInput() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    // Simulate a user accidentally pasting a Pub/Sub topic string
+    options.setInputTopic("projects/my-gcp-project/topics/my-pubsub-topic");
+    
+    assertThrows(IllegalArgumentException.class, () -> MqttToPubsub.validate(options));
+  }
+
+  @Test
+  public void testValidationSuccess() {
+    MqttToPubsub.MqttToPubsubOptions options =
+        PipelineOptionsFactory.create().as(MqttToPubsub.MqttToPubsubOptions.class);
+    options.setUsername("test");
+    options.setPassword("test");
+    options.setInputTopic("sensor/data/temperature"); // Added a valid MQTT topic
+
+    // Expected to not throw an exception:
+    MqttToPubsub.validate(options);
+  }
 }
