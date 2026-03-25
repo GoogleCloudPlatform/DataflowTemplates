@@ -71,8 +71,6 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
   private static final String WIDE_ROW_TABLE = "wide_row";
   private static final List<String> TABLES =
       List.of(LARGE_PK_TABLE, LARGE_IDX_TABLE, LARGE_CELL_TABLE, WIDE_ROW_TABLE);
-  private static final String PUBLICATION_NAME = "tbl_idx_limits_test_publication";
-  private static final String REPLICATION_SLOT_NAME = "tbl_idx_limits_test_replication_slot";
 
   private static CloudPostgresResourceManager postgresResourceManager;
   private static SpannerResourceManager spannerResourceManager;
@@ -82,6 +80,8 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
   private static HashSet<PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+
+  private static CloudPostgresResourceManager.ReplicationInfo replicationInfo;
 
   @Before
   public void setUp() throws IOException {
@@ -119,6 +119,8 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
                 .build();
         LOG.info("Datastream resource manager created");
 
+        replicationInfo = postgresResourceManager.createLogicalReplication();
+
         PostgresqlSource postgresqlSource =
             PostgresqlSource.builder(
                     postgresResourceManager.getHost(),
@@ -126,8 +128,8 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
                     postgresResourceManager.getPassword(),
                     postgresResourceManager.getPort(),
                     postgresResourceManager.getDatabaseName(),
-                    REPLICATION_SLOT_NAME,
-                    PUBLICATION_NAME)
+                    replicationInfo.getReplicationSlotName(),
+                    replicationInfo.getPublicationName())
                 .setAllowedTables(Map.of("public", TABLES))
                 .build();
 
@@ -160,18 +162,6 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
 
     // It is important to clean up Datastream before trying to drop the replication slot.
     ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    try {
-      postgresResourceManager.runSQLQuery(
-          "SELECT pg_drop_replication_slot('" + REPLICATION_SLOT_NAME + "')");
-    } catch (Exception e) {
-      LOG.warn("Failed to drop replication slot {}:", REPLICATION_SLOT_NAME, e);
-    }
-    try {
-      postgresResourceManager.runSQLUpdate("DROP PUBLICATION IF EXISTS " + PUBLICATION_NAME);
-    } catch (Exception e) {
-      LOG.warn("Failed to drop publication {}:", PUBLICATION_NAME, e);
-    }
 
     ResourceManagerUtils.cleanResources(
         postgresResourceManager, spannerResourceManager, gcsResourceManager, pubsubResourceManager);

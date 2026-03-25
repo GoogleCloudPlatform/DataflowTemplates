@@ -1,5 +1,3 @@
-ALTER USER CURRENT_USER WITH REPLICATION;
-
 CREATE TABLE large_pk_table (
     pk_col1 VARCHAR(4096) NOT NULL,
     pk_col2 VARCHAR(4096) NOT NULL,
@@ -223,7 +221,3 @@ CREATE TABLE wide_row (
   col159 TEXT,
   col160 TEXT
 );
-
-
-CREATE PUBLICATION tbl_idx_limits_test_publication FOR ALL TABLES;
-SELECT pg_create_logical_replication_slot('tbl_idx_limits_test_replication_slot', 'pgoutput');
