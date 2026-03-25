@@ -1,20 +1,20 @@
 template:
 
-  name: "Iceberg_To_Postgres_Yaml"
+  name: "Iceberg_To_PostgreSQL_Yaml"
   category: "BATCH"
   type: "YAML"
-  display_name: "Iceberg to Postgres (YAML)"
+  display_name: "Iceberg to PostgreSQL (YAML)"
   description: >
-    The Iceberg to Postgres template is a batch pipeline that reads data from an Iceberg table
-    and outputs the records to a Postgres database table.
-  flex_container_name: "iceberg-to-postgres-yaml"
-  yamlTemplateFile: "IcebergToPostgres.yaml"
+    The Iceberg to PostgreSQL template is a batch pipeline that reads data from an Iceberg table
+    and outputs the records to a PostgreSQL database table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergToPostgreSQL.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/postgres_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
      "The Input Iceberg table must exist and be accessible through the provided catalog.",
-     "The Output Postgres instance must exist and the target table must exist or be created."
+     "The Output PostgreSQL instance must exist and the target table must exist or be created."
    }
   streaming: false
   hidden: false
@@ -46,19 +46,14 @@ pipeline:
     - type: WriteToPostgres
       name: WriteToPostgres
       config:
-        driver_class_name: {{ driverClassName | default("org.postgresql.Driver")}}
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
-        query: {{ writeQuery }}
-        driver_jars: {{ driverJars }}
+        query: {{ query }}
         connection_properties: {{ connectionProperties }}
-        connection_init_sql: {{ connectionInitSql }}
-        write_statement: {{ writeStatement }}
-        table: {{ location }}
+        table: {{ postgresTable }}
         batch_size: {{ batchSize }}
         autosharding: {{ autosharding }}
-        type: {{ jdbcType | default("postgres") }}
 
 options:
   streaming: false

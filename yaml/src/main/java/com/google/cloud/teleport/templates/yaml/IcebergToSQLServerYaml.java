@@ -22,29 +22,29 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Iceberg_To_Postgres_Yaml",
+    name = "Iceberg_To_SqlServer_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "Iceberg to Postgres (YAML)",
+    displayName = "Iceberg to SqlServer (YAML)",
     description =
-        "The Iceberg to Postgres template is a batch pipeline that reads data from an Iceberg table and outputs the records to a Postgres database table.",
+        "The Iceberg to SqlServer template is a batch pipeline that reads data from an Iceberg table and outputs the records to a SqlServer database table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "IcebergToPostgres.yaml",
+    yamlTemplateFile = "IcebergToSQLServer.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
       "options/iceberg_options.yaml",
-      "options/postgres_options.yaml"
+      "options/sqlserver_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Input Iceberg table must exist and be accessible through the provided catalog.",
-      "The Output Postgres instance must exist and the target table must exist or be created."
+      "The Output SqlServer instance must exist and the target table must exist or be created."
     },
     streaming = false,
     hidden = false)
-public interface IcebergToPostgresYaml {
+public interface IcebergToSQLServerYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -89,10 +89,8 @@ public interface IcebergToPostgresYaml {
       order = 5,
       name = "drop",
       optional = true,
-      description =
-          "A list of field names to drop from the Iceberg record before writing to Postgres.",
-      helpText =
-          "A list of field names to drop from the source record. Mutually exclusive with 'keep' and 'only'.",
+      description = "A list of field names to drop from the input record before writing.",
+      helpText = "A list of field names to drop. Mutually exclusive with 'keep' and 'only'.",
       example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
   String getDrop();
 
@@ -100,8 +98,7 @@ public interface IcebergToPostgresYaml {
       order = 6,
       name = "filter",
       optional = true,
-      description =
-          "An optional filter expression to apply to the input records from the Iceberg table.",
+      description = "An optional filter expression to apply to the input records.",
       helpText = "A filter expression to apply to records from the Iceberg table.",
       example = "age > 18")
   String getFilter();
@@ -110,10 +107,8 @@ public interface IcebergToPostgresYaml {
       order = 7,
       name = "keep",
       optional = true,
-      description =
-          "A list of field names to keep from the Iceberg record when writing to Postgres.",
-      helpText =
-          "A list of field names to keep in the source record. Mutually exclusive with 'drop' and 'only'.",
+      description = "A list of field names to keep in the input record.",
+      helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
       example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
 
@@ -123,7 +118,7 @@ public interface IcebergToPostgresYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:sqlserver://localhost:12345;databaseName=your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -150,10 +145,10 @@ public interface IcebergToPostgresYaml {
       name = "driverClassName",
       optional = true,
       description =
-          "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver",
+          "The fully-qualified class name of the JDBC driver. Default: com.microsoft.sqlserver.jdbc.SQLServerDriverr",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "org.postgresql.Driver")
-  @Default.String("org.postgresql.Driver")
+      example = "com.microsoft.sqlserver.jdbc.SQLServerDriver")
+  @Default.String("com.microsoft.sqlserver.jdbc.SQLServerDriver")
   String getDriverClassName();
 
   @TemplateParameter.Text(
@@ -162,7 +157,7 @@ public interface IcebergToPostgresYaml {
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
       helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/postgresql-42.2.23.jar")
+      example = "gs://your-bucket/mssql-jdbc-12.2.0.jre11.jar")
   String getDriverJars();
 
   @TemplateParameter.Text(
@@ -187,11 +182,11 @@ public interface IcebergToPostgresYaml {
       order = 15,
       name = "jdbcType",
       optional = true,
-      description = "Type of JDBC source. Default: postgres.",
+      description = "Type of JDBC source. Default: mssql.",
       helpText =
           "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "postgres")
-  @Default.String("postgres")
+      example = "mssql")
+  @Default.String("mssql")
   String getJdbcType();
 
   @TemplateParameter.Text(
@@ -200,17 +195,18 @@ public interface IcebergToPostgresYaml {
       optional = false,
       description = "The name of the table to write to.",
       helpText = "The name of the database table to write data to.",
-      example = "public.my_table")
+      example = "public.my_destination_table")
+  @Validation.Required
   String getLocation();
 
   @TemplateParameter.Text(
       order = 17,
-      name = "writeStatement",
+      name = "query",
       optional = true,
       description = "The SQL statement to use for inserting records.",
       helpText = "The SQL query for inserting records, with placeholders for values.",
       example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
-  String getWriteStatement();
+  String getQuery();
 
   @TemplateParameter.Integer(
       order = 18,
@@ -219,6 +215,7 @@ public interface IcebergToPostgresYaml {
       description = "The number of records to group for each write operation.",
       helpText = "The number of records to group together for each write.",
       example = "1000")
+  @Default.Integer(1000)
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
@@ -227,6 +224,6 @@ public interface IcebergToPostgresYaml {
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
       helpText = "If true, a dynamic number of shards will be used for writing.",
-      example = "false")
+      example = "False")
   Boolean getAutosharding();
 }

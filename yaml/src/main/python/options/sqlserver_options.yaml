@@ -122,7 +122,7 @@ options:
         required: true
         type: text
       - order: 2
-        name: "writeStatement"
+        name: "query"
         description: "The SQL statement to use for inserting records."
         help: "The SQL query for inserting records, with placeholders for values."
         example: "INSERT INTO my_table (col1, col2) VALUES(?, ?)"

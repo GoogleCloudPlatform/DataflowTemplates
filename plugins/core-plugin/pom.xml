@@ -34,7 +34,7 @@
   <properties>
     <reflections.version>0.9.11</reflections.version>
     <freemarker.version>2.3.32</freemarker.version>
-    <auto-value.version>1.11.0</auto-value.version>
+    <auto-value.version>1.11.1</auto-value.version>
   </properties>
 
   <dependencies>

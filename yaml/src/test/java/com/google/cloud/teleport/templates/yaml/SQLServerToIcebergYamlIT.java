@@ -36,7 +36,10 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
+import org.apache.iceberg.PartitionField;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.data.Record;
 import org.junit.After;
 import org.junit.Before;
@@ -47,18 +50,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link PostgresToIcebergYaml} template. */
+/** Integration test for {@link SQLServerToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(PostgresToIcebergYaml.class)
+@TemplateIntegrationTest(SQLServerToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class PostgresToIcebergYamlIT extends TemplateTestBase {
+public class SQLServerToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
 
-  private PostgresResourceManager postgresResourceManager;
+  private MSSQLResourceManager mssqlResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SQLServerToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -68,7 +71,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
   @Before
   public void setUp() throws IOException {
-    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    mssqlResourceManager = MSSQLResourceManager.builder(testName).build();
 
     warehouseGcsResourceManager =
         GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
@@ -85,32 +88,35 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        postgresResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+        mssqlResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
-  public void testPostgresToIceberg() throws IOException {
-    // Postgres setup
+  public void testSqlServerToIceberg() throws IOException {
+    // SQL Server setup
     String tableName = "source_table";
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER");
     columns.put("active", "INTEGER");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
-    postgresResourceManager.createTable(tableName, schema);
+    mssqlResourceManager.createTable(tableName, schema);
 
     List<Map<String, Object>> records =
         List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
-    postgresResourceManager.write(tableName, records);
+    mssqlResourceManager.write(tableName, records);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("jdbcUrl", postgresResourceManager.getUri())
-            .addParameter("username", postgresResourceManager.getUsername())
-            .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("jdbcUrl", mssqlResourceManager.getUri())
+            .addParameter("username", mssqlResourceManager.getUsername())
+            .addParameter("password", mssqlResourceManager.getPassword())
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
+            .addParameter("fetchSize", "1")
+            .addParameter("disableAutoCommit", "true")
+            .addParameter("partitionFields", "[active]")
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
 
@@ -135,6 +141,24 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     assertEquals(1, actualRecord1.getField("active"));
     assertEquals(2, actualRecord2.getField("id"));
     assertEquals(0, actualRecord2.getField("active"));
+
+    Table icebergTable = icebergResourceManager.loadTable(ICEBERG_TABLE_IDENTIFIER);
+
+    PartitionSpec spec = icebergTable.spec();
+
+    // Table should be partitioned
+    assertEquals(true, spec.isPartitioned());
+    assertEquals(1, spec.fields().size());
+
+    PartitionField partitionField = spec.fields().get(0);
+
+    // Partition field name matches YAML option
+    assertEquals("active", partitionField.name());
+
+    // Partition source column is the "active" column
+    int activeFieldId = icebergTable.schema().findField("active").fieldId();
+
+    assertEquals(activeFieldId, partitionField.sourceId());
   }
 
   @Override

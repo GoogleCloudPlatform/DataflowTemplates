@@ -36,7 +36,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.iceberg.data.Record;
 import org.junit.After;
 import org.junit.Before;
@@ -47,18 +47,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link MySqlToIcebergYaml} template. */
+/** Integration test for {@link PostgreSQLToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(MySqlToIcebergYaml.class)
+@TemplateIntegrationTest(PostgreSQLToIcebergYaml.class)
 @RunWith(JUnit4.class)
-public class MySqlToIcebergYamlIT extends TemplateTestBase {
+public class PostgreSQLToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
 
-  private MySQLResourceManager mySQLResourceManager;
+  private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlToIcebergYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -68,7 +68,7 @@ public class MySqlToIcebergYamlIT extends TemplateTestBase {
 
   @Before
   public void setUp() throws IOException {
-    mySQLResourceManager = MySQLResourceManager.builder(testName).build();
+    postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
     warehouseGcsResourceManager =
         GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
@@ -85,30 +85,30 @@ public class MySqlToIcebergYamlIT extends TemplateTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        mySQLResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+        postgresResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
-  public void testMySqlToIceberg() throws IOException {
-    // MySql setup
+  public void testPostgresToIceberg() throws IOException {
+    // Postgres setup
     String tableName = "source_table";
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER");
     columns.put("active", "INTEGER");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
-    mySQLResourceManager.createTable(tableName, schema);
+    postgresResourceManager.createTable(tableName, schema);
 
     List<Map<String, Object>> records =
         List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
-    mySQLResourceManager.write(tableName, records);
+    postgresResourceManager.write(tableName, records);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("jdbcUrl", mySQLResourceManager.getUri())
-            .addParameter("username", mySQLResourceManager.getUsername())
-            .addParameter("password", mySQLResourceManager.getPassword())
-            .addParameter("readQuery", String.format(READ_QUERY, tableName))
+            .addParameter("jdbcUrl", postgresResourceManager.getUri())
+            .addParameter("username", postgresResourceManager.getUsername())
+            .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("query", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(

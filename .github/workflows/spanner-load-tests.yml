@@ -68,7 +68,7 @@ jobs:
             **/surefire-reports/html/**
         retention-days: 30
     - name: Load Test report on GitHub
-      uses: dorny/test-reporter@v2
+      uses: dorny/test-reporter@v3
       if: always()
       with:
         name: Load Test report on GitHub

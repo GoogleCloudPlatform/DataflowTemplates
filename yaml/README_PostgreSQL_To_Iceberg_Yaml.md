@@ -1,8 +1,8 @@
 
-Postgres to Iceberg (YAML) template
+PostgreSQL to Iceberg (YAML) template
 ---
-The Postgres to Iceberg template is a batch pipeline executes the user provided
-SQL query to read data from Postgres table and outputs the records to Iceberg
+The PostgreSQL to Iceberg template is a batch pipeline executes the user provided
+SQL query to read data from PostgreSQL table and outputs the records to Iceberg
 table.
 
 
@@ -24,13 +24,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `org.postgresql.Driver`. Defaults to: org.postgresql.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/postgresql-42.2.23.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
-* **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `postgres`.
-* **location**: The name of the database table to read data from. For example, `public.my_table`.
-* **readQuery**: The SQL query to execute on the source to extract data. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **postgresTable**: The name of the database table. For example, `public.my_table`.
+* **query**: The SQL query/statement to execute on the source/sink. For example, `SELECT * FROM my_table WHERE status = 'active'`.
 * **partitionColumn**: The name of a numeric column that will be used for partitioning the data. For example, `id`.
 * **numPartitions**: The number of partitions to create for parallel reading. For example, `10`.
 * **fetchSize**: The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors. For example, `50000`.
@@ -38,6 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputParallelization**: If true, the resulting PCollection will be reshuffled. For example, `True`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
@@ -58,7 +55,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PostgresToIcebergYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PostgreSQLToIcebergYaml.java)
 
 ### Templates Plugin
 
@@ -100,7 +97,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="Postgres_To_Iceberg_Yaml" \
+-DtemplateName="PostgreSQL_To_Iceberg_Yaml" \
 -f yaml
 ```
 
@@ -111,7 +108,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Postgres_To_Iceberg_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/PostgreSQL_To_Iceberg_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -131,7 +128,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Postgres_To_Iceberg_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PostgreSQL_To_Iceberg_Yaml"
 
 ### Required
 export JDBC_URL=<jdbcUrl>
@@ -142,13 +139,9 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=org.postgresql.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=postgres
-export LOCATION=<location>
-export READ_QUERY=<readQuery>
+export POSTGRES_TABLE=<postgresTable>
+export QUERY=<query>
 export PARTITION_COLUMN=<partitionColumn>
 export NUM_PARTITIONS=<numPartitions>
 export FETCH_SIZE=<fetchSize>
@@ -156,25 +149,22 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
+export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
 export TABLE_PROPERTIES=<tableProperties>
 
-gcloud dataflow flex-template run "postgres-to-iceberg-yaml-job" \
+gcloud dataflow flex-template run "postgresql-to-iceberg-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
-  --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
-  --parameters "location=$LOCATION" \
-  --parameters "readQuery=$READ_QUERY" \
+  --parameters "postgresTable=$POSTGRES_TABLE" \
+  --parameters "query=$QUERY" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "fetchSize=$FETCH_SIZE" \
@@ -185,6 +175,7 @@ gcloud dataflow flex-template run "postgres-to-iceberg-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
+  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
@@ -215,13 +206,9 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=org.postgresql.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=postgres
-export LOCATION=<location>
-export READ_QUERY=<readQuery>
+export POSTGRES_TABLE=<postgresTable>
+export QUERY=<query>
 export PARTITION_COLUMN=<partitionColumn>
 export NUM_PARTITIONS=<numPartitions>
 export FETCH_SIZE=<fetchSize>
@@ -229,6 +216,7 @@ export DISABLE_AUTO_COMMIT=<disableAutoCommit>
 export OUTPUT_PARALLELIZATION=<outputParallelization>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
+export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -239,9 +227,9 @@ mvn clean package -PtemplatesRun \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="postgres-to-iceberg-yaml-job" \
--DtemplateName="Postgres_To_Iceberg_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-DjobName="postgresql-to-iceberg-yaml-job" \
+-DtemplateName="PostgreSQL_To_Iceberg_Yaml" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,postgresTable=$POSTGRES_TABLE,query=$QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
 -f yaml
 ```
 
@@ -259,7 +247,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/yaml/terraform/Postgres_To_Iceberg_Yaml
+cd v2/yaml/terraform/PostgreSQL_To_Iceberg_Yaml
 terraform init
 terraform apply
 ```
@@ -279,11 +267,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "postgres_to_iceberg_yaml" {
+resource "google_dataflow_flex_template_job" "postgresql_to_iceberg_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Postgres_To_Iceberg_Yaml"
-  name              = "postgres-to-iceberg-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PostgreSQL_To_Iceberg_Yaml"
+  name              = "postgresql-to-iceberg-yaml"
   region            = var.region
   parameters        = {
     jdbcUrl = "<jdbcUrl>"
@@ -292,13 +280,9 @@ resource "google_dataflow_flex_template_job" "postgres_to_iceberg_yaml" {
     catalogProperties = "<catalogProperties>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "org.postgresql.Driver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
-    # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "postgres"
-    # location = "<location>"
-    # readQuery = "<readQuery>"
+    # postgresTable = "<postgresTable>"
+    # query = "<query>"
     # partitionColumn = "<partitionColumn>"
     # numPartitions = "<numPartitions>"
     # fetchSize = "<fetchSize>"
@@ -306,6 +290,7 @@ resource "google_dataflow_flex_template_job" "postgres_to_iceberg_yaml" {
     # outputParallelization = "<outputParallelization>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
+    # filter = "<filter>"
     # keep = "<keep>"
     # only = "<only>"
     # partitionFields = "<partitionFields>"

@@ -35,7 +35,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
@@ -47,13 +47,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link IcebergToPostgresYaml} template. */
+/** Integration test for {@link IcebergToSQLServerYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(IcebergToPostgresYaml.class)
+@TemplateIntegrationTest(IcebergToSQLServerYaml.class)
 @RunWith(JUnit4.class)
-public class IcebergToPostgresYamlIT extends TemplateTestBase {
+public class IcebergToSQLServerYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergToPostgresYamlIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IcebergToSQLServerYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -61,17 +61,17 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   private static final String ICEBERG_TABLE_NAME = "source_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
-  // Postgres Setup
-  private static final String POSTGRES_TABLE_NAME = "target_table";
+  // SQL Server Setup
+  private static final String SQLSERVER_TABLE_NAME = "target_table";
 
-  private PostgresResourceManager postgresResourceManager;
+  private MSSQLResourceManager mssqlResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
 
   @Before
   public void setUp() throws IOException {
-    // Initialize Postgres resource manager
-    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    // Initialize SQL Server resource manager
+    mssqlResourceManager = MSSQLResourceManager.builder(testName).build();
 
     // Initialize GCS for Iceberg warehouse
     warehouseGcsResourceManager =
@@ -90,11 +90,11 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
-        postgresResourceManager, icebergResourceManager, warehouseGcsResourceManager);
+        mssqlResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
-  public void testIcebergToPostgres() throws IOException {
+  public void testIcebergToSQLServer() throws IOException {
     // Iceberg setup
 
     // Create namespace in the REST catalog
@@ -120,15 +120,15 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
     icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
-    // Postgres setup
-    HashMap<String, String> postgresColumns = new HashMap<>();
-    postgresColumns.put("id", "INTEGER");
-    postgresColumns.put("name", "VARCHAR(255)");
-    postgresColumns.put("active", "INTEGER");
-    JDBCResourceManager.JDBCSchema postgresSchema =
-        new JDBCResourceManager.JDBCSchema(postgresColumns, "id");
+    // SQL Server setup
+    HashMap<String, String> sqlServerColumns = new HashMap<>();
+    sqlServerColumns.put("id", "INTEGER");
+    sqlServerColumns.put("name", "VARCHAR(255)");
+    sqlServerColumns.put("active", "INTEGER");
+    JDBCResourceManager.JDBCSchema sqlServerSchema =
+        new JDBCResourceManager.JDBCSchema(sqlServerColumns, "id");
 
-    postgresResourceManager.createTable(POSTGRES_TABLE_NAME, postgresSchema);
+    mssqlResourceManager.createTable(SQLSERVER_TABLE_NAME, sqlServerSchema);
 
     // Pipeline execution
     LaunchConfig.Builder options =
@@ -137,10 +137,21 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
-            .addParameter("jdbcUrl", postgresResourceManager.getUri())
-            .addParameter("username", postgresResourceManager.getUsername())
-            .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("location", POSTGRES_TABLE_NAME);
+            .addParameter("jdbcUrl", mssqlResourceManager.getUri())
+            .addParameter("username", mssqlResourceManager.getUsername())
+            .addParameter("password", mssqlResourceManager.getPassword())
+            .addParameter("location", SQLSERVER_TABLE_NAME);
+
+    // FOR INTEGRATION TESTS DEBUGGING PURPOSE: Logging the configuration parameters
+    LOG.info("=== Pipeline Parameters ===");
+    LOG.info("table: {}", ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("catalogName: {}", CATALOG_NAME);
+    LOG.info("catalogProperties: {}", new org.json.JSONObject(getCatalogProperties()).toString());
+    LOG.info("jdbcUrl: {}", mssqlResourceManager.getUri());
+    LOG.info("username: {}", mssqlResourceManager.getUsername());
+    LOG.info("location: {}", SQLSERVER_TABLE_NAME);
+    LOG.info("specPath: {}", specPath);
+    LOG.info("=== End Pipeline Parameters ===");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -152,36 +163,36 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    // Read records from Postgres table
-    List<Map<String, Object>> postgresRecords =
-        postgresResourceManager.readTable(POSTGRES_TABLE_NAME);
-    LOG.info("Postgres target table contains {} records", postgresRecords.size());
+    // Read records from SQL Server table
+    List<Map<String, Object>> sqlServerRecords =
+        mssqlResourceManager.readTable(SQLSERVER_TABLE_NAME);
+    LOG.info("SQL Server target table contains {} records", sqlServerRecords.size());
 
-    assertNotNull("Postgres records should not be null", postgresRecords);
+    assertNotNull("SQL Server records should not be null", sqlServerRecords);
     assertEquals(
-        "Expected 3 records in Postgres table, got: " + postgresRecords.size(),
+        "Expected 3 records in SQL Server table, got: " + sqlServerRecords.size(),
         3,
-        postgresRecords.size());
+        sqlServerRecords.size());
 
-    postgresRecords.sort(
+    sqlServerRecords.sort(
         (a, b) -> ((Number) a.get("id")).intValue() - ((Number) b.get("id")).intValue());
 
-    Map<String, Object> record1 = postgresRecords.get(0);
+    Map<String, Object> record1 = sqlServerRecords.get(0);
     assertEquals("Record 1 id should be 1", 1, ((Number) record1.get("id")).intValue());
     assertEquals("Record 1 name should be Alice", "Alice", record1.get("name"));
     assertEquals("Record 1 active should be 1", 1, ((Number) record1.get("active")).intValue());
 
-    Map<String, Object> record2 = postgresRecords.get(1);
+    Map<String, Object> record2 = sqlServerRecords.get(1);
     assertEquals("Record 2 id should be 2", 2, ((Number) record2.get("id")).intValue());
     assertEquals("Record 2 name should be Bob", "Bob", record2.get("name"));
     assertEquals("Record 2 active should be 0", 0, ((Number) record2.get("active")).intValue());
 
-    Map<String, Object> record3 = postgresRecords.get(2);
+    Map<String, Object> record3 = sqlServerRecords.get(2);
     assertEquals("Record 3 id should be 3", 3, ((Number) record3.get("id")).intValue());
     assertEquals("Record 3 name should be Charlie", "Charlie", record3.get("name"));
     assertEquals("Record 3 active should be 1", 1, ((Number) record3.get("active")).intValue());
 
-    LOG.info("All assertions passed. Records successfully transferred from Iceberg to Postgres.");
+    LOG.info("All assertions passed. Records successfully transferred from Iceberg to SQL Server.");
   }
 
   @Override

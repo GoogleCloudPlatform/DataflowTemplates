@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bqmonitor"
+version = "0.1.0"
+description = "BigQuery anomaly monitoring pipeline (Dataflow Flex Template)"
+requires-python = ">=3.11"
+dependencies = [
+    "apache-beam[gcp]==2.71.0",
+    "google-cloud-bigquery-storage",
+]

@@ -22,29 +22,29 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "Postgres_To_Iceberg_Yaml",
+    name = "Iceberg_To_MySql_Yaml",
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
-    displayName = "Postgres to Iceberg (YAML)",
+    displayName = "Iceberg to MySql (YAML)",
     description =
-        "The Postgres to Iceberg template is a batch pipeline executes the user provided SQL query to read data from Postgres table and outputs the records to Iceberg table.",
+        "The Iceberg to MySql template is a batch pipeline that executes the user provided SQL query to read data from Iceberg and outputs the records to MySQL table.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PostgresToIceberg.yaml",
+    yamlTemplateFile = "IcebergToMySQL.yaml",
     filesToCopy = {
       "main.py",
       "requirements.txt",
-      "options/postgres_options.yaml",
+      "options/mysql_options.yaml",
       "options/iceberg_options.yaml"
     },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The Input Postgres instance and table must exist.",
-      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+      "The Input Iceberg table must exist.",
+      "The Output MySQL table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
     hidden = false)
-public interface PostgresToIcebergYaml {
+public interface IcebergToMySQLYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -52,7 +52,7 @@ public interface PostgresToIcebergYaml {
       optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
-      example = "jdbc:postgresql://your-host:5432/your-db")
+      example = "jdbc:mysql://your-host:3306/your-db")
   @Validation.Required
   String getJdbcUrl();
 
@@ -79,10 +79,10 @@ public interface PostgresToIcebergYaml {
       name = "driverClassName",
       optional = true,
       description =
-          "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver",
+          "The fully-qualified class name of the JDBC driver. Default: com.mysql.jdbc.Driver",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
-      example = "org.postgresql.Driver")
-  @Default.String("org.postgresql.Driver")
+      example = "com.mysql.jdbc.Driver")
+  @Default.String("com.mysql.jdbc.Driver")
   String getDriverClassName();
 
   @TemplateParameter.Text(
@@ -91,7 +91,7 @@ public interface PostgresToIcebergYaml {
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
       helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
-      example = "gs://your-bucket/postgresql-42.2.23.jar")
+      example = "gs://your-bucket/mysql-42.2.23.jar")
   String getDriverJars();
 
   @TemplateParameter.Text(
@@ -116,80 +116,53 @@ public interface PostgresToIcebergYaml {
       order = 8,
       name = "jdbcType",
       optional = true,
-      description = "Type of JDBC source. Default: postgres.",
+      description = "Type of JDBC source. Default: mysql.",
       helpText =
           "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
-      example = "postgres")
-  @Default.String("postgres")
+      example = "mysql")
+  @Default.String("mysql")
   String getJdbcType();
 
   @TemplateParameter.Text(
       order = 9,
       name = "location",
-      optional = true,
-      description = "The name of the table to read from.",
-      helpText = "The name of the database table to read data from.",
-      example = "public.my_table")
+      optional = false,
+      description = "The name of the table to write to.",
+      helpText = "The name of the database table to write data to.",
+      example = "public.my_destination_table")
+  @Validation.Required
   String getLocation();
 
   @TemplateParameter.Text(
       order = 10,
-      name = "readQuery",
+      name = "writeStatement",
       optional = true,
-      description = "The SQL query to execute for reading data.",
-      helpText = "The SQL query to execute on the source to extract data.",
-      example = "SELECT * FROM my_table WHERE status = 'active'")
-  String getReadQuery();
+      description = "The SQL statement to use for inserting records.",
+      helpText = "The SQL query for inserting records, with placeholders for values.",
+      example = "INSERT INTO my_table (col1, col2) VALUES(?, ?)")
+  String getWriteStatement();
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Integer(
       order = 11,
-      name = "partitionColumn",
+      name = "batchSize",
       optional = true,
-      description = "The name of a numeric column to be used for partitioning.",
-      helpText = "The name of a numeric column that will be used for partitioning the data.",
-      example = "id")
-  String getPartitionColumn();
+      description = "The number of records to group for each write operation.",
+      helpText = "The number of records to group together for each write.",
+      example = "1000")
+  @Default.Integer(1000)
+  Integer getBatchSize();
 
-  @TemplateParameter.Integer(
+  @TemplateParameter.Boolean(
       order = 12,
-      name = "numPartitions",
+      name = "autosharding",
       optional = true,
-      description = "The number of partitions to divide the data into.",
-      helpText = "The number of partitions to create for parallel reading.",
-      example = "10")
-  Integer getNumPartitions();
-
-  @TemplateParameter.Integer(
-      order = 13,
-      name = "fetchSize",
-      optional = true,
-      description = "The number of rows to fetch from the database at a time.",
-      helpText =
-          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
-      example = "50000")
-  Integer getFetchSize();
-
-  @TemplateParameter.Boolean(
-      order = 14,
-      name = "disableAutoCommit",
-      optional = true,
-      description = "Whether to disable auto-commit on read.",
-      helpText =
-          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
-      example = "True")
-  Boolean getDisableAutoCommit();
-
-  @TemplateParameter.Boolean(
-      order = 15,
-      name = "outputParallelization",
-      optional = true,
-      description = "Whether to reshuffle the PCollection to distribute results to all workers.",
-      helpText = "If true, the resulting PCollection will be reshuffled.",
-      example = "True")
-  Boolean getOutputParallelization();
+      description = "If true, enables using a dynamically determined number of shards to write.",
+      helpText = "If true, a dynamic number of shards will be used for writing.",
+      example = "False")
+  Boolean getAutosharding();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 13,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -199,7 +172,7 @@ public interface PostgresToIcebergYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 14,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -209,7 +182,7 @@ public interface PostgresToIcebergYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 15,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -219,7 +192,7 @@ public interface PostgresToIcebergYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 16,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -228,7 +201,7 @@ public interface PostgresToIcebergYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 17,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -237,38 +210,20 @@ public interface PostgresToIcebergYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 18,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
+
+  @TemplateParameter.Text(
+      order = 19,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
       helpText = "A list of field names to keep. Mutually exclusive with 'drop' and 'only'.",
       example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
-
-  @TemplateParameter.Text(
-      order = 22,
-      name = "only",
-      optional = true,
-      description = "The name of a single record field that should be written.",
-      helpText = "The name of a single field to write. Mutually exclusive with 'keep' and 'drop'.",
-      example = "my_record_field")
-  String getOnly();
-
-  @TemplateParameter.Text(
-      order = 23,
-      name = "partitionFields",
-      optional = true,
-      description = "Fields used to create a partition spec for new tables.",
-      helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
-      example = "[\"day(ts)\", \"bucket(id, 4)\"]")
-  String getPartitionFields();
-
-  @TemplateParameter.Text(
-      order = 24,
-      name = "tableProperties",
-      optional = true,
-      description = "Iceberg table properties to be set on table creation.",
-      helpText = "A map of Iceberg table properties to set when the table is created.",
-      example = "{\"commit.retry.num-retries\": \"2\"}")
-  String getTableProperties();
 }

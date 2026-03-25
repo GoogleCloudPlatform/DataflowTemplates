@@ -295,13 +295,22 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         sourceSchemaReference,
         tables);
 
+    // https://www.db-fiddle.com/f/eUSGErdEWNQL8FhMj99Kb7/0
     final String query =
         "SELECT ixs.tablename AS table_name,"
             + "  a.attname AS column_name,"
             + "  ixs.indexname AS index_name,"
             + "  ix.indisunique AS is_unique,"
             + "  ix.indisprimary AS is_primary,"
-            + "  c.reltuples AS cardinality,"
+            + "("
+            + "SELECT SUM(pc.reltuples)"
+            + " FROM pg_catalog.pg_class pc"
+            + "  WHERE pc.oid IN ("
+            + "  SELECT inhrelid FROM pg_catalog.pg_inherits WHERE inhparent = c.oid"
+            + "  UNION"
+            + "  SELECT c.oid"
+            + " )"
+            + ") AS cardinality,"
             + "  a.attnum AS ordinal_position,"
             + "  t.typname AS type_name,"
             + "  information_schema._pg_char_max_length(a.atttypid, a.atttypmod) AS type_length,"
