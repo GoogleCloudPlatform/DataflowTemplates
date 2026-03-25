@@ -76,10 +76,10 @@ public class MqttToPubsub {
         throw new IllegalArgumentException(
             "While username is provided, password is required for authentication");
       }
-        if (options.getInputTopic() != null && options.getInputTopic().startsWith("projects/")) {
-          throw new IllegalArgumentException(
-              "The input topic looks like a Pub/Sub topic (starts with 'projects/'). " +
-              "Please provide a valid MQTT topic string instead.");
+      if (options.getInputTopic() != null && options.getInputTopic().startsWith("projects/")) {
+        throw new IllegalArgumentException(
+            "The input topic looks like a Pub/Sub topic (starts with 'projects/'). " +
+            "Please provide a valid MQTT topic string instead.");
       }
     }
   }
