@@ -92,10 +92,10 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 #### Replaying DLQ entries.
 Any errors transforming a source row or failures writing to Spanner are written to the `dlq/severe/` path within your `outputDirectory`. It is recommended to retry these DLQ entries before applying any change capture (if any).
 
-To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in one of two retry modes:
+To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in one of two retry modes depending on your pipeline state:
 
-*   **`retryDLQ`**: Recommended if you plan to run the live migration (`regular` mode) concurrently AND use the exact same DLQ directory used in the SourceDbToSpanner (bulk) job. The live migration pipeline will handle the transient errors in the `retry` bucket, while this `retryDLQ` mode safely and exclusively processes the `severe` bucket errors.
-*   **`retryAllDLQ`**: Recommended if you are NOT planning to run live migration right away, OR if your live migration uses a different DLQ bucket. This mode processes both `severe` and `retry` transient errors simultaneously. **WARNING:** This mode should NOT be run alongside an active live migration pipeline in `regular` mode targeting the same DLQ directory, as the concurrent retry mechanisms will clash.
+*   **`retryDLQ`**: Use this mode if you plan to run the live migration (`regular` mode) concurrently AND use the exact same DLQ directory used in the SourceDbToSpanner (bulk) job. The live migration pipeline will handle the transient errors in the `retry` bucket, while this `retryDLQ` mode safely and exclusively processes the `severe` bucket errors.
+*   **`retryAllDLQ`**: Use this mode if you are only running a bulk run or if the regular Cloud_Datastream_to_Spanner pipeline is stopped. `retryAllDLQ` consumes errors from both the `retry` and `severe` buckets. **WARNING:** Do NOT run `retryAllDLQ` concurrently with an active regular Cloud_Datastream_to_Spanner pipeline as they will conflict.
 
 Sample Command:
 ```bash

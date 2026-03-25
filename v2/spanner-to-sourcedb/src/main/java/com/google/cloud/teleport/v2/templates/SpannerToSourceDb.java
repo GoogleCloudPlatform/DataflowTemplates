@@ -377,7 +377,7 @@ public class SpannerToSourceDb {
           @TemplateEnumOption(RUN_MODE_RETRY_ALL_DLQ)
         },
         helpText =
-            "This is the run mode type. Default is regular. retryDLQ is used to safely retry errors natively in the severe directory only. retryAllDLQ is used to retry errors simultaneously from both the retry and severe DLQ directories.")
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
     @Default.String(RUN_MODE_REGULAR)
     String getRunMode();
 

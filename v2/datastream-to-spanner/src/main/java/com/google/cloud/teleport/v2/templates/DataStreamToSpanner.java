@@ -123,12 +123,12 @@ import org.slf4j.LoggerFactory;
           + " transient or permanent and are stored in appropriate Cloud Storage folders in the"
           + " error queue. The transient errors are retried automatically while the permanent"
           + " errors are not. In case of permanent errors, you can run the pipeline in one of"
-          + " two retry modes depending on your pipeline state. The `retryDLQ` mode consumes only"
-          + " severe errors and should be run side-by-side with the regular pipeline (because the"
-          + " regular pipeline will handle the transient errors in the retry bucket). "
-          + " The `retryAllDLQ` mode consumes errors from both the retry and severe buckets. It"
-          + " should NOT be run when the regular pipeline is active, as the concurrent retry"
-          + " mechanisms will clash. Use `retryAllDLQ` only if the regular pipeline is stopped."
+          + " two retry modes depending on your pipeline state. Use `retryDLQ` mode when the"
+          + " regular pipeline is concurrently running and pointing to the same DLQ directory."
+          + " This mode consumes only severe errors while the regular mode will consume the retriable errors."
+          + " Use `retryAllDLQ` mode when the regular pipeline is not running or is stopped."
+          + " The `retryAllDLQ` mode consumes errors from both the retry and severe buckets. Do NOT run `retryAllDLQ` concurrently"
+          + " with the regular pipeline as they will conflict."
     },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
@@ -378,7 +378,7 @@ public class DataStreamToSpanner {
           @TemplateEnumOption(Constants.RUN_MODE_RETRY_ALL_DLQ)
         },
         helpText =
-            "This is the run mode type. Default is regular. retryDLQ is used to safely retry errors natively in the severe directory only. retryAllDLQ is used to retry errors simultaneously from both the retry and severe DLQ directories.")
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your live migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
     @Default.String(Constants.RUN_MODE_REGULAR)
     String getRunMode();
 

@@ -334,8 +334,8 @@ StatusRuntimeException: UNAVAILABLE: ping timeout
 ### Retry of Reverse Replication DLQ
 
 When running to reprocess the DLQ directory, you can run the Dataflow job in one of two retry modes depending on your pipeline state:
-*   **`retryDLQ`**: Consumes only severe errors and should be run side-by-side with the regular pipeline (because the regular pipeline will handle the transient errors in the retry bucket).
-*   **`retryAllDLQ`**: Consumes errors from both the retry and severe buckets. It should NOT be run when the regular pipeline is active, as the concurrent retry mechanisms will clash. Use `retryAllDLQ` only if the regular pipeline is stopped.
+*   **`retryDLQ`**: Use this mode if the regular pipeline is concurrently running and pointing to the same DLQ directory. `retryDLQ` consumes only severe errors.
+*   **`retryAllDLQ`**: Use this mode only if the regular pipeline is stopped. `retryAllDLQ` consumes errors from both the `retry` and `severe` buckets. **WARNING:** Do NOT run `retryAllDLQ` concurrently with an active regular pipeline as they will conflict.
 
 #### End State Monitoring
 
