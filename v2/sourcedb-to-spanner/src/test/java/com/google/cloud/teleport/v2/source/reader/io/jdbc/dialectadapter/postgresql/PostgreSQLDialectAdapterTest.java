@@ -117,6 +117,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
     when(mockResultSet.getString("column_name")).thenReturn("id", "col1", "col2", "col3");
     when(mockResultSet.getString("data_type")).thenReturn("bigint", "text", "varchar", "numeric");
     when(mockResultSet.getLong("character_maximum_length")).thenReturn(0L, 0L, 100L, 0L);
@@ -153,6 +154,27 @@ public class PostgreSQLDialectAdapterTest {
                 "col1", new SourceColumnType("text", new Long[] {}, null),
                 "col2", new SourceColumnType("varchar", new Long[] {100L}, null),
                 "col3", new SourceColumnType("numeric", new Long[] {100L, 200L}, null)));
+  }
+
+  @Test
+  public void testDiscoverTableSchemaBulk() throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("table1", "table2");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("table1", "table2");
+    when(mockResultSet.getString("column_name")).thenReturn("id", "id");
+    when(mockResultSet.getString("data_type")).thenReturn("bigint", "bigint");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        adapter.discoverTableSchema(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(result).hasSize(2);
+    assertThat(result).containsKey("table1");
+    assertThat(result).containsKey("table2");
   }
 
   @Test
@@ -204,6 +226,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
     when(mockResultSet.getString("column_name")).thenReturn("id", "col1", "col2", "col3");
     when(mockResultSet.getString("index_name"))
         .thenReturn("table_pkey", "table_uniq", "table_index", "table_index");
@@ -272,6 +295,32 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(2L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
                     .build()));
+  }
+
+  @Test
+  public void testDiscoverTableIndexesBulk()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("table1", "table2");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("table1", "table2");
+    when(mockResultSet.getString("column_name")).thenReturn("id", "id");
+    when(mockResultSet.getString("index_name")).thenReturn("pk1", "pk2");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true, true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true, true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
+    when(mockResultSet.getString("type_category")).thenReturn("N", "N");
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(result).hasSize(2);
+    assertThat(result).containsKey("table1");
+    assertThat(result).containsKey("table2");
   }
 
   @Test
@@ -388,5 +437,73 @@ public class PostgreSQLDialectAdapterTest {
     assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.CHARSET_REPLACEMENT_TAG);
     assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.COLLATION_REPLACEMENT_TAG);
     assertThat(collationsOrderQuery).doesNotContain(ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG);
+  }
+
+  @Test
+  public void testDiscoverTableSchema_emptyTableList()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        adapter.discoverTableSchema(mockDataSource, sourceSchemaReference, ImmutableList.of());
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  public void testDiscoverTableIndexes_emptyTableList()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, ImmutableList.of());
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  public void testDiscoverTableSchema_skipsExtraTables()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String extraTable = "extraTable";
+    ImmutableList<String> tables = ImmutableList.of(table1);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn(table1, extraTable);
+    when(mockResultSet.getString("column_name")).thenReturn("id", "id");
+    when(mockResultSet.getString("data_type")).thenReturn("bigint", "bigint");
+    when(mockResultSet.wasNull()).thenReturn(true, true, true, true, true, true);
+
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> result =
+        adapter.discoverTableSchema(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(result).hasSize(1);
+    assertThat(result).containsKey(table1);
+    assertThat(result).doesNotContainKey(extraTable);
+  }
+
+  @Test
+  public void testDiscoverTableIndexes_skipsExtraTables()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    final String table1 = "table1";
+    final String extraTable = "extraTable";
+    ImmutableList<String> tables = ImmutableList.of(table1);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn(table1, extraTable);
+    when(mockResultSet.getString("column_name")).thenReturn("id", "id");
+    when(mockResultSet.getString("index_name")).thenReturn("pk1", "pk2");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true, true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true, true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
+    when(mockResultSet.getString("type_category")).thenReturn("N", "N");
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(result).hasSize(1);
+    assertThat(result).containsKey(table1);
+    assertThat(result).doesNotContainKey(extraTable);
   }
 }

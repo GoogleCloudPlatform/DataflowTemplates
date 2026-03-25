@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
@@ -32,30 +33,21 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /** Factory to construct {@link BoundaryExtractor} for supported {@link class}. */
 public class BoundaryExtractorFactory {
 
+  @FunctionalInterface
+  public interface BoundaryDurationExtractor extends Serializable {
+    Duration extract(ResultSet rs, int index) throws SQLException;
+  }
+
   public static final Class BYTE_ARRAY_CLASS = (new byte[] {}).getClass();
   private static final ImmutableMap<Class, BoundaryExtractor<?>> extractorMap =
       ImmutableMap.<Class, BoundaryExtractor<?>>builder()
-          .put(
-              Integer.class,
-              (BoundaryExtractor<Integer>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromIntegers(partitionColumn, resultSet, boundaryTypeMapper))
-          .put(
-              Long.class,
-              (BoundaryExtractor<Long>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromLongs(partitionColumn, resultSet, boundaryTypeMapper))
+          .put(Integer.class, (BoundaryExtractor<Integer>) BoundaryExtractorFactory::fromIntegers)
+          .put(Long.class, (BoundaryExtractor<Long>) BoundaryExtractorFactory::fromLongs)
           .put(String.class, (BoundaryExtractor<String>) BoundaryExtractorFactory::fromStrings)
           .put(
               BigDecimal.class,
-              (BoundaryExtractor<BigDecimal>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromBigDecimals(partitionColumn, resultSet, boundaryTypeMapper))
-          .put(
-              BYTE_ARRAY_CLASS,
-              (BoundaryExtractor<byte[]>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromBinary(partitionColumn, resultSet, boundaryTypeMapper))
+              (BoundaryExtractor<BigDecimal>) BoundaryExtractorFactory::fromBigDecimals)
+          .put(BYTE_ARRAY_CLASS, (BoundaryExtractor<byte[]>) BoundaryExtractorFactory::fromBinary)
           .put(
               Timestamp.class,
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
@@ -63,7 +55,17 @@ public class BoundaryExtractorFactory {
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
           .put(
-              Duration.class, (BoundaryExtractor<Duration>) BoundaryExtractorFactory::fromDurations)
+              Duration.class,
+              (BoundaryExtractor<Duration>)
+                  (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) -> {
+                    // Fallback when adapter is not provided: use the default string parsing logic
+                    return fromDurations(
+                        partitionColumn,
+                        resultSet,
+                        boundaryTypeMapper,
+                        tableIdentifier,
+                        (rs, index) -> parseTimeStringToDuration(rs.getString(index)));
+                  })
           .build();
 
   /**
@@ -81,14 +83,41 @@ public class BoundaryExtractorFactory {
     return extractor;
   }
 
+  /**
+   * Create a {@link BoundaryExtractor} for the required class, using dialect-specific extraction
+   * logic if available from the {@link UniformSplitterDBAdapter}.
+   *
+   * @param c class of the column.
+   * @param dbAdapter dialect adapter providing custom extraction logic.
+   * @return boundary extractor.
+   */
+  public static <T extends Serializable> BoundaryExtractor<T> create(
+      Class<T> c, UniformSplitterDBAdapter dbAdapter) {
+
+    if (c.equals(Duration.class) && dbAdapter != null) {
+      BoundaryExtractor<Duration> extractor =
+          (partitionColumn, resultSet, boundaryTypeMapper, tableIdentifier) ->
+              fromDurations(
+                  partitionColumn,
+                  resultSet,
+                  boundaryTypeMapper,
+                  tableIdentifier,
+                  dbAdapter::extractBoundaryDuration);
+      return (BoundaryExtractor<T>) extractor;
+    }
+    return create(c);
+  }
+
   private static Boundary<Integer> fromIntegers(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Integer.class));
     resultSet.next();
     return Boundary.<Integer>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getInt(1))
         .setEnd(resultSet.getInt(2))
@@ -100,11 +129,13 @@ public class BoundaryExtractorFactory {
   private static Boundary<Long> fromLongs(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Long.class));
     resultSet.next();
     return Boundary.<Long>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getLong(1))
         .setEnd(resultSet.getLong(2))
@@ -116,13 +147,15 @@ public class BoundaryExtractorFactory {
   private static Boundary<BigDecimal> fromBigDecimals(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BigDecimal.class));
     resultSet.next();
     BigDecimal start = resultSet.getBigDecimal(1);
     BigDecimal end = resultSet.getBigDecimal(2);
     return Boundary.<BigDecimal>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(start)
         .setEnd(end)
@@ -134,13 +167,15 @@ public class BoundaryExtractorFactory {
   private static Boundary<byte[]> fromBinary(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
     byte[] start = resultSet.getBytes(1);
     byte[] end = resultSet.getBytes(2);
     return Boundary.<byte[]>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(start)
         .setEnd(end)
@@ -152,7 +187,8 @@ public class BoundaryExtractorFactory {
   private static Boundary<String> fromStrings(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(String.class));
     Preconditions.checkArgument(
@@ -160,6 +196,7 @@ public class BoundaryExtractorFactory {
         "String extractor needs boundaryTypeMapper. PartitionColumn = " + partitionColumn);
     resultSet.next();
     return Boundary.<String>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
@@ -173,11 +210,13 @@ public class BoundaryExtractorFactory {
   private static Boundary<Timestamp> fromTimestamps(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Timestamp.class));
     resultSet.next();
     return Boundary.<Timestamp>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getTimestamp(1, utcCalendar))
         .setEnd(resultSet.getTimestamp(2, utcCalendar))
@@ -189,11 +228,13 @@ public class BoundaryExtractorFactory {
   private static Boundary<Date> fromDates(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Date.class));
     resultSet.next();
     return Boundary.<Date>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getDate(1, utcCalendar))
         .setEnd(resultSet.getDate(2, utcCalendar))
@@ -205,11 +246,13 @@ public class BoundaryExtractorFactory {
   private static Boundary<Float> fromFloats(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Float.class));
     resultSet.next();
     return Boundary.<Float>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getFloat(1))
         .setEnd(resultSet.getFloat(2))
@@ -221,11 +264,13 @@ public class BoundaryExtractorFactory {
   private static Boundary<Double> fromDoubles(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Double.class));
     resultSet.next();
     return Boundary.<Double>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
         .setStart(resultSet.getDouble(1))
         .setEnd(resultSet.getDouble(2))
@@ -237,14 +282,17 @@ public class BoundaryExtractorFactory {
   private static Boundary<Duration> fromDurations(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier,
+      BoundaryDurationExtractor durationExtractor)
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(Duration.class));
     resultSet.next();
     return Boundary.<Duration>builder()
+        .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
-        .setStart(parseTimeStringToDuration(resultSet.getString(1)))
-        .setEnd(parseTimeStringToDuration(resultSet.getString(2)))
+        .setStart(durationExtractor.extract(resultSet, 1))
+        .setEnd(durationExtractor.extract(resultSet, 2))
         .setBoundarySplitter(BoundarySplitterFactory.create(Duration.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
@@ -255,7 +303,7 @@ public class BoundaryExtractorFactory {
    * format "PThhHmmMss.sssS".
    */
   @VisibleForTesting
-  protected static Duration parseTimeStringToDuration(String timeString) {
+  public static Duration parseTimeStringToDuration(String timeString) {
     if (timeString == null || timeString.isBlank()) {
       return null;
     }

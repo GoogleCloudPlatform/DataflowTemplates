@@ -1,0 +1,113 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: BigQuery Anomaly Detection PR
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'python/src/main/python/bigquery-anomaly-detection/**'
+      - 'python/src/test/python/bigquery-anomaly-detection/**'
+      - 'python/src/main/java/**/BigQueryAnomalyDetection*.java'
+      - 'python/src/test/java/**/BigQueryAnomalyDetection*.java'
+      - '.github/workflows/bqmonitor-pr.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+  IT_REGION: us-west2
+
+permissions:
+  actions: write
+  checks: write
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  python_unit_tests:
+    name: Python Unit Tests
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install dependencies and run tests
+        working-directory: python
+        run: |
+          pip install -r src/test/python/bigquery-anomaly-detection/requirements-test.txt
+          pip install -e src/main/python/bigquery-anomaly-detection
+          python -m unittest discover \
+            -s src/test/python/bigquery-anomaly-detection \
+            -p '*_test.py' \
+            -v
+  java_build:
+    name: Build
+    timeout-minutes: 60
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: |
+          ./cicd/run-build \
+          --modules-to-build="YAML"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_integration_tests:
+    name: Integration Tests
+    needs: [python_unit_tests, java_build]
+    timeout-minutes: 120
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --modules-to-build="YAML" \
+          --it-region="${{ env.IT_REGION }}" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-connect-2" \
+          --test="BigQueryAnomalyDetectionIT"
+      - name: Upload Integration Tests Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: surefire-integration-test-results
+          path: |
+            **/surefire-reports/TEST-*.xml
+            **/surefire-reports/*.html
+            **/surefire-reports/html/**
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()

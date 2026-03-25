@@ -54,7 +54,7 @@ public interface KafkaToIcebergYaml {
           "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.",
       helpText =
           "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2",
-      example = "host1:port1,host2:port2")
+      example = "host1:port1,host2:port2,localhost:9092,127.0.0.1:9093")
   @Validation.Required
   String getBootstrapServers();
 
@@ -181,7 +181,7 @@ public interface KafkaToIcebergYaml {
       optional = true,
       description = "The schema in which the data is encoded in the Kafka topic.",
       helpText =
-          "The schema in which the data is encoded in the Kafka topic. For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}",
+          "The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO.",
       example =
           "{\"type\": \"record\", \"name\": \"User\", \"fields\": [{\"name\": \"name\", \"type\": \"string\"}]}")
   String getSchema();
@@ -236,6 +236,15 @@ public interface KafkaToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 20,
+      name = "filter",
+      optional = true,
+      description = "An optional filter expression to apply to the input records.",
+      helpText = "A filter expression to apply to records from the Iceberg table.",
+      example = "age > 18")
+  String getFilter();
+
+  @TemplateParameter.Text(
+      order = 21,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -244,7 +253,7 @@ public interface KafkaToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 22,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -253,7 +262,7 @@ public interface KafkaToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 23,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -262,7 +271,7 @@ public interface KafkaToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 23,
+      order = 24,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
@@ -271,7 +280,7 @@ public interface KafkaToIcebergYaml {
   String getTableProperties();
 
   @TemplateParameter.Integer(
-      order = 24,
+      order = 25,
       name = "triggeringFrequencySeconds",
       optional = false,
       description = "For a streaming pipeline, the frequency at which snapshots are produced.",
@@ -281,7 +290,7 @@ public interface KafkaToIcebergYaml {
   Integer getTriggeringFrequencySeconds();
 
   @TemplateParameter.Text(
-      order = 25,
+      order = 26,
       name = "sdfCheckpointAfterDuration",
       optional = true,
       description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
@@ -292,7 +301,7 @@ public interface KafkaToIcebergYaml {
   String getSdfCheckpointAfterDuration();
 
   @TemplateParameter.Integer(
-      order = 26,
+      order = 27,
       name = "sdfCheckpointAfterOutputBytes",
       optional = true,
       description =

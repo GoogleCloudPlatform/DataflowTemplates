@@ -16,7 +16,8 @@ resources = {
         "cloud-teleport-spanner-it-6",
         "cloud-teleport-spanner-it-7",
         "cloud-teleport-spanner-it-8",
-        "cloud-teleport-spanner-it-9"],
+        "cloud-teleport-spanner-it-9",
+        "cloud-teleport-testing-it-gitactions"],
     "delete_threshold_in_days": 2
   },
   "span-cloud-teleport-testing": {

@@ -86,8 +86,9 @@ public class CassandraIoWrapperTest {
     SourceSchema mockSourceSchema = Mockito.mock(SourceSchema.class);
     SourceTableReference mockSourceTableReference = Mockito.mock(SourceTableReference.class);
     CassandraIO.Read<SourceRow> mockTableReader = Mockito.mock(CassandraIO.Read.class);
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
-        mockTableReaders = ImmutableMap.of(mockSourceTableReference, mockTableReader);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        mockTableReaders =
+            ImmutableMap.of(ImmutableList.of(mockSourceTableReference), mockTableReader);
 
     try (MockedStatic mockCassandraIoWrapperHelper = mockStatic(CassandraIOWrapperHelper.class)) {
       mockCassandraIoWrapperHelper

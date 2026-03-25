@@ -63,19 +63,17 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
   public SpannerResourceManager spannerResourceManager;
   public SpannerResourceManager spannerMetadataResourceManager;
-  public List<JDBCResourceManager> jdbcResourceManagers;
+  public List<JDBCResourceManager> jdbcResourceManagers = new ArrayList<>();
   public GcsResourceManager gcsResourceManager;
-  protected static PubsubResourceManager pubsubResourceManager;
+  protected PubsubResourceManager pubsubResourceManager;
   protected SubscriptionName subscriptionName;
 
-  public void setupResourceManagers(
-      String spannerDdlResource, String sessionFileResource, String artifactBucket)
+  public void setupResourceManagers(String spannerDdlResource, String sessionFileResource)
       throws IOException {
     spannerResourceManager = createSpannerDatabase(spannerDdlResource);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
 
     gcsResourceManager.uploadArtifact(
         SESSION_FILE_NAME, Resources.getResource(sessionFileResource).getPath());
@@ -85,12 +83,11 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath(artifactBucket, "dlq", gcsResourceManager)
-                .replace("gs://" + artifactBucket, ""));
+            getGcsPath("dlq", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket(), ""));
   }
 
   public void setupMySQLResourceManager(int numShards) throws IOException {
-    jdbcResourceManagers = new ArrayList<>();
     for (int i = 0; i < numShards; ++i) {
       jdbcResourceManagers.add(MySQLResourceManager.builder(testName).build());
     }
@@ -104,8 +101,10 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
-    for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
-      ResourceManagerUtils.cleanResources(jdbcResourceManager);
+    if (jdbcResourceManagers != null) {
+      for (JDBCResourceManager jdbcResourceManager : jdbcResourceManagers) {
+        ResourceManagerUtils.cleanResources(jdbcResourceManager);
+      }
     }
   }
 
@@ -190,7 +189,6 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchDataflowJob(
-      String artifactBucket,
       int numWorkers,
       int maxWorkers,
       CustomTransformation customTransformation,
@@ -204,21 +202,17 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         new HashMap<>() {
           {
             if (sessionFileName != null) {
-              put(
-                  "sessionFilePath",
-                  getGcsPath(artifactBucket, sessionFileName, gcsResourceManager));
+              put("sessionFilePath", getGcsPath(sessionFileName, gcsResourceManager));
             }
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", project);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(artifactBucket, shardFileName, gcsResourceManager));
+            put("sourceShardsFilePath", getGcsPath(shardFileName, gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
-            put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
+            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "100");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
@@ -227,8 +221,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
     if (customTransformation != null) {
       params.put(
-          "transformationJarPath",
-          getGcsPath(artifactBucket, customTransformation.jarPath(), gcsResourceManager));
+          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
     }
 
@@ -244,10 +237,12 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     return jobInfo;
   }
 
-  public String getGcsPath(
-      String bucket, String artifactId, GcsResourceManager gcsResourceManager) {
+  public String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
     return ArtifactUtils.getFullGcsPath(
-        bucket, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
   }
 
   public Map<String, Double> getCustomCounters(

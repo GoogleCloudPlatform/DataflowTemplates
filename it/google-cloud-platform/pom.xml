@@ -25,9 +25,6 @@
 
     <artifactId>it-google-cloud-platform</artifactId>
 
-    <properties>
-        <parquet-avro.version>1.15.2</parquet-avro.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -116,6 +113,14 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-datastore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-firestore-admin</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>

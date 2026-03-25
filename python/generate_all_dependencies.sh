@@ -20,6 +20,7 @@ set -e
 SCRIPTPATH=$(dirname "$0")
 
 sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/streaming-llm/base_requirements.txt $SCRIPTPATH/../python/src/main/python/streaming-llm/requirements.txt
+sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_bqmonitor_requirements.txt $SCRIPTPATH/../python/src/main/python/bigquery-anomaly-detection/requirements_all.txt
 # Generate a base set of dependencies to use for any templates without special dependencies
 mkdir -p $SCRIPTPATH/__build__/
 sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_python_requirements.txt $SCRIPTPATH/__build__/default_python_requirements.txt

@@ -41,7 +41,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
@@ -63,7 +62,6 @@ import org.junit.After;
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   protected static final String SPEC_PATH =
       "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner";
-  protected final String artifactBucket = TestProperties.artifactBucket();
   protected String testRootDir;
   protected final int maxWorkers = 100;
   protected final int numWorkers = 50;
@@ -97,8 +95,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             .setMonitoringClient(monitoringClient)
             .build();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, testRootDir, CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, project, region)
             .setCredentialsProvider(CREDENTIALS_PROVIDER)
@@ -148,18 +145,20 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     Stream stream =
         createDatastreamResources(
-            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
+            gcsResourceManager.getBucket(), gcsPrefix, mySQLSource, datastreamResourceManager);
 
     // Setup Parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix));
+            put("inputFilePattern", getGcsPath(gcsResourceManager.getBucket(), gcsPrefix));
             put("streamName", stream.getName());
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("projectId", project);
-            put("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix));
+            put(
+                "deadLetterQueueDirectory",
+                getGcsPath(gcsResourceManager.getBucket(), dlqGcsPrefix));
             put("gcsPubSubSubscription", subscription.toString());
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
@@ -255,14 +254,14 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    * Helper function for creating all datastream resources required by DataStreamToSpanner template.
    * Source connection profile, Destination connection profile, Stream. And then Starts the stream.
    *
-   * @param artifactBucketName
+   * @param bucketName
    * @param gcsPrefix
    * @param jdbcSource
    * @param datastreamResourceManager
    * @return created stream
    */
   public Stream createDatastreamResources(
-      String artifactBucketName,
+      String bucketName,
       String gcsPrefix,
       JDBCSource jdbcSource,
       DatastreamResourceManager datastreamResourceManager) {
@@ -274,7 +273,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     DestinationConfig destinationConfig =
         datastreamResourceManager.buildGCSDestinationConfig(
             "gcs",
-            artifactBucketName,
+            bucketName,
             gcsPrefix,
             DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
 

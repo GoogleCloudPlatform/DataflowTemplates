@@ -21,7 +21,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -54,9 +58,9 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
 
   private final UniformSplitterDBAdapter dbAdapter;
 
-  private final String countQuery;
+  private final ImmutableMap<TableIdentifier, String> countQueries;
 
-  private final long numColumns;
+  private final RangePreparedStatementSetter rangePreparedStatementSetter;
 
   @JsonIgnore private transient @Nullable DataSource dataSource;
 
@@ -64,13 +68,23 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       SerializableFunction<Void, DataSource> dataSourceProviderFn,
       long timeoutMillis,
       UniformSplitterDBAdapter dbAdapter,
-      String tableNme,
-      ImmutableList<String> partitionColumns) {
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications) {
     this.dataSourceProviderFn = dataSourceProviderFn;
     this.timeoutMillis = timeoutMillis;
     this.dbAdapter = dbAdapter;
-    this.countQuery = dbAdapter.getCountQuery(tableNme, partitionColumns, timeoutMillis);
-    this.numColumns = partitionColumns.size();
+    ImmutableMap.Builder<TableIdentifier, String> countQueriesBuilder = ImmutableMap.builder();
+    for (TableSplitSpecification tableSplitSpecification : tableSplitSpecifications) {
+      countQueriesBuilder.put(
+          tableSplitSpecification.tableIdentifier(),
+          dbAdapter.getCountQuery(
+              tableSplitSpecification.tableIdentifier().tableName(),
+              tableSplitSpecification.partitionColumns().stream()
+                  .map(pc -> pc.columnName())
+                  .collect(ImmutableList.toImmutableList()),
+              timeoutMillis));
+    }
+    this.countQueries = countQueriesBuilder.build();
+    this.rangePreparedStatementSetter = new RangePreparedStatementSetter(tableSplitSpecifications);
     this.dataSource = null;
   }
 
@@ -97,12 +111,20 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       throws SQLException {
 
     long count = Range.INDETERMINATE_COUNT;
+    if (isInvalidValidRange(input, countQueries)) {
+      logger.error(
+          "Got Range {} for unknown tableIdentifier. Known Identifiers are {} and {}",
+          input,
+          countQueries);
+      throw new RuntimeException("Invalid Range");
+    }
+    String countQuery = countQueries.get(input.tableIdentifier());
     try (Connection conn = acquireConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
-              this.countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+              countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
-      new RangePreparedStatementSetter(numColumns).setParameters(input, stmt);
+      rangePreparedStatementSetter.setParameters(input, stmt);
       ResultSet rs = stmt.executeQuery();
       if (rs.next()) {
         count = rs.getLong(1);
@@ -162,6 +184,12 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
     logger.debug(
         "Counting Range = {}, Query = {}, DataSource = {}", output, countQuery, dataSource);
     out.output(output); // Output the counted Range.
+  }
+
+  @VisibleForTesting
+  protected static boolean isInvalidValidRange(
+      Range input, ImmutableMap<TableIdentifier, String> countQueries) {
+    return !countQueries.containsKey(input.tableIdentifier());
   }
 
   private boolean checkTimeout(SQLException e) {
