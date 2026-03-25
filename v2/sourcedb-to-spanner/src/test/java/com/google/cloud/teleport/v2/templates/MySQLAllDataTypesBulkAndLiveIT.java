@@ -193,7 +193,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
             .build();
 
     liveJobInfo =
-        launchFwdDataflowJobInRetryDlqMode(
+        launchFwdDataflowJobInDlqRetry(
             spannerResourceManager,
             getGcsPath("output", gcsResourceManager),
             getGcsPath("output/dlq", gcsResourceManager),
@@ -222,10 +222,11 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
                         .build()))
             .build();
 
-    PipelineOperator.Result resultLive =
-        pipelineOperator().waitUntilDone(createConfig(liveJobInfo, Duration.ofMinutes(15)));
-    assertThatResult(resultLive).isLaunchFinished();
-    assertTrue(conditionCheck.get());
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(liveJobInfo, Duration.ofMinutes(15)), conditionCheck))
+        .meetsConditions();
 
     // Verify CT Data
     List<Map<String, Object>> expectedDataNonNull = getExpectedData();
