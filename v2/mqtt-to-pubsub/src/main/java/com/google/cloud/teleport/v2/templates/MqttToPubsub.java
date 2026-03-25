@@ -78,8 +78,8 @@ public class MqttToPubsub {
       }
       if (options.getInputTopic() != null && options.getInputTopic().startsWith("projects/")) {
         throw new IllegalArgumentException(
-            "The input topic looks like a Pub/Sub topic (starts with 'projects/'). " +
-                "Please provide a valid MQTT topic string instead.");
+             "The input topic looks like a Pub/Sub topic (starts with 'projects/'). " +
+                 "Please provide a valid MQTT topic string instead.");
       }
     }
   }
