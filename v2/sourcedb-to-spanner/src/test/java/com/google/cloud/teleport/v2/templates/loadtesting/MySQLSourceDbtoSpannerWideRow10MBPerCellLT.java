@@ -31,6 +31,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
   private static final String LAUNCHER_MACHINE_TYPE = "n2-standard-4";
+  private static final String FETCH_SIZE = "0";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
@@ -58,6 +59,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
         new HashMap<>() {
           {
             put("workerMachineType", WORKER_MACHINE_TYPE);
+            put("fetchSize", FETCH_SIZE);
             put("network", VPC_NAME);
             put("subnetwork", SUBNET_NAME);
             put("workerRegion", VPC_REGION);
