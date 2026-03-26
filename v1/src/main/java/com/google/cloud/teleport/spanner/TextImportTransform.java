@@ -196,7 +196,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Reshuffle text files " + depth, Reshuffle.viaRandomKey())
               .apply(
                   "Text files as mutations. Depth: " + depth,
-                  new TextTableFilesAsMutations(ddlView, tableColumnsView));
+                  new TextTableFilesAsMutations(ddlView, tableColumnsView, depth));
 
       SpannerWriteResult result =
           mutations
@@ -249,12 +249,15 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     private final PCollectionView<Ddl> ddlView;
     private final PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView;
+    private final int depth;
 
     public TextTableFilesAsMutations(
         PCollectionView<Ddl> ddlView,
-        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView) {
+        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
+        int depth) {
       this.ddlView = ddlView;
       this.tableColumnsView = tableColumnsView;
+      this.depth = depth;
     }
 
     @Override
@@ -320,7 +323,12 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           .apply(
               TextIO.<String>writeCustomType()
                   .to(options.getInvalidOutputPath())
-                  .withSuffix("-" + java.util.UUID.randomUUID().toString() + "-parsing-errors.csv")
+                  .withSuffix(
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
                   .skipIfEmpty()
                   .withFormatFunction(SerializableFunctions.identity()));
 
