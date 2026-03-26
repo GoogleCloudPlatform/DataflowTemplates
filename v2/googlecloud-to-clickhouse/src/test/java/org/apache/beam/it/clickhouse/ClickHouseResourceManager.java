@@ -59,6 +59,8 @@ public class ClickHouseResourceManager extends TestContainerResourceManager<Gene
   private static final String DEFAULT_CLICKHOUSE_CONTAINER_TAG = "23.8";
 
   private final String jdbcConnectionString;
+  private final String username;
+  private final String password;
 
   final List<String> managedTableNames = new ArrayList<>();
 
@@ -82,12 +84,18 @@ public class ClickHouseResourceManager extends TestContainerResourceManager<Gene
       throws SQLException {
     super(container, builder);
 
+    this.username = container.getUsername();
+    this.password = container.getPassword();
     this.jdbcConnectionString =
         "jdbc:clickhouse://"
             + this.getHost()
             + ":"
             + this.getPort(CLICKHOUSE_INTERNAL_PORT)
-            + "/default";
+            + "/default"
+            + "?user="
+            + this.username
+            + "&password="
+            + this.password;
 
     this.connection =
         clickHosueConnection != null ? clickHosueConnection : container.createConnection("");
@@ -118,6 +126,16 @@ public class ClickHouseResourceManager extends TestContainerResourceManager<Gene
   /** Returns the JDBC connection string to the ClickHouse service. */
   public synchronized String getJdbcConnectionString() {
     return jdbcConnectionString;
+  }
+
+  /** Returns the username for the ClickHouse service. */
+  public synchronized String getUsername() {
+    return username;
+  }
+
+  /** Returns the password for the ClickHouse service. */
+  public synchronized String getPassword() {
+    return password;
   }
 
   synchronized boolean tableExists(String tableName) throws SQLException {
