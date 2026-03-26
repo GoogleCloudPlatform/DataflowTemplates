@@ -61,9 +61,9 @@ import org.slf4j.LoggerFactory;
     supportsAtLeastOnce = true)
 public class MqttToPubsub {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsub.class);
-    private static final Pattern PUBSUB_TOPIC_PATTERN =
-      Pattern.compile("^projects/[\\w:-]+/topics/[\\w:-]+$");
+  private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsub.class);
+  private static final Pattern PUBSUB_TOPIC_PATTERN =
+    Pattern.compile("^projects/[\\w:-]+/topics/[\\w:-]+$");
 
   /**
    * Runs a pipeline which reads data from Mqtt topic and writes it to Cloud PubSub.
