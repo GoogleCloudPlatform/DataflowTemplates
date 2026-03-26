@@ -116,13 +116,15 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
                 .setCustomParameters("mode=bad")
                 .build();
 
-        createAndUploadJarToGcs(gcsResourceManager);
+        gcsResourceManager.uploadArtifact("input/customShard.jar", getCustomShardJarPath());
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
                 put(
                     "schemaOverridesFilePath",
                     getGcsPath("input/overrides.json", gcsResourceManager));
+                put("dlqMaxRetryCount", "20");
+                put("dlqRetryMinutes", "60");
               }
             };
         jobInfo =
@@ -224,6 +226,8 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     retryParams.put("runMode", "retryAllDLQ");
     retryParams.put(
         "schemaOverridesFilePath", getGcsPath("input/overrides.json", gcsResourceManager));
+    retryParams.put("dlqMaxRetryCount", "20");
+    retryParams.put("dlqRetryMinutes", "60");
 
     PipelineLauncher.LaunchInfo retryJobInfo =
         launchDataflowJob(
@@ -255,8 +259,8 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
                         .setMaxRows(2)
                         .build(),
                     JDBCRowsCheck.builder(jdbcResourceManager, "Customers")
-                        .setMinRows(3)
-                        .setMaxRows(3)
+                        .setMinRows(2)
+                        .setMaxRows(2)
                         .build(),
                     JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
                         .setMinRows(2)
@@ -271,6 +275,24 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
 
     assertThatResult(retryResult).meetsConditions();
     LOG.info("Retry job completed processing (conditions met)");
+
+    // 8. Verify DLQ data after retry
+    LOG.info("Verifying DLQ data after retry");
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
+    LOG.info("DLQ retry bucket has 1 event");
+
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
+    LOG.info("DLQ severe bucket has 1 event");
 
     // 8. Verify MySQL data
     // AllDataTypes
