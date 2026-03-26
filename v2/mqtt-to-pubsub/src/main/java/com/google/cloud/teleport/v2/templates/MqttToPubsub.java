@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -28,6 +29,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dataflow template which reads data from Mqtt Topic and writes it to Cloud PubSub.
@@ -58,6 +61,10 @@ import org.apache.beam.sdk.transforms.ParDo;
     supportsAtLeastOnce = true)
 public class MqttToPubsub {
 
+  private static final Logger LOG = LoggerFactory.getLogger(MqttToPubsub.class);
+  private static final Pattern PUBSUB_TOPIC_PATTERN =
+      Pattern.compile("^projects/[\\w:-]+/topics/[\\w:-]+$");
+
   /**
    * Runs a pipeline which reads data from Mqtt topic and writes it to Cloud PubSub.
    *
@@ -75,6 +82,13 @@ public class MqttToPubsub {
           && (options.getPassword() == null || options.getPassword().isBlank())) {
         throw new IllegalArgumentException(
             "While username is provided, password is required for authentication");
+      }
+      if (options.getInputTopic() != null
+          && PUBSUB_TOPIC_PATTERN.matcher(options.getInputTopic()).matches()) {
+        LOG.warn(
+            "The input topic '{}' matches the format of a Google Cloud Pub/Sub topic. "
+                + "Please verify that this is a valid MQTT topic and not a misconfigured Pub/Sub topic.",
+            options.getInputTopic());
       }
     }
   }
