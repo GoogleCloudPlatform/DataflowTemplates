@@ -126,9 +126,6 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
-    if (!tableOptions().isEmpty()) {
-      appendable.append("\nWITH (").append(String.join(", ", tableOptions())).append(")");
-    }
     if (interleaveInParent() != null) {
       appendable
           .append(" \nINTERLEAVE IN ")
@@ -137,6 +134,9 @@ public abstract class Table implements Serializable {
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
+    }
+    if (!tableOptions().isEmpty()) {
+      appendable.append("\nWITH (").append(String.join(", ", tableOptions())).append(")");
     }
     if (includeIndexes) {
       appendable.append("\n");
@@ -169,9 +169,6 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n) PRIMARY KEY (", "")));
     }
     appendable.append(")");
-    if (!tableOptions().isEmpty()) {
-      appendable.append(",\nOPTIONS (").append(String.join(", ", tableOptions())).append(")");
-    }
     if (interleaveInParent() != null) {
       appendable
           .append(",\nINTERLEAVE IN ")
@@ -180,6 +177,9 @@ public abstract class Table implements Serializable {
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
+    }
+    if (!tableOptions().isEmpty()) {
+      appendable.append(",\nOPTIONS (").append(String.join(", ", tableOptions())).append(")");
     }
     if (includeIndexes) {
       appendable.append("\n");

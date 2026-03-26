@@ -53,7 +53,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_TABLE_OPTIONS;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_TABLE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
@@ -198,7 +198,7 @@ public class DdlToAvroSchemaConverter {
         recordBuilder.prop(SPANNER_CHECK_CONSTRAINT + i, table.checkConstraints().get(i));
       }
       for (int i = 0; i < table.tableOptions().size(); i++) {
-        recordBuilder.prop(SPANNER_TABLE_OPTIONS + i, table.tableOptions().get(i));
+        recordBuilder.prop(SPANNER_TABLE_OPTION + i, table.tableOptions().get(i));
       }
       SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
       int columnOrdinal = 0;

@@ -50,7 +50,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTE
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_TABLE_OPTIONS;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_TABLE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
@@ -407,7 +407,7 @@ public class DdlToAvroSchemaConverterTest {
         avroSchema.getProp(SPANNER_CHECK_CONSTRAINT + "0"),
         equalTo("CONSTRAINT ck CHECK (`first_name` != `last_name`)"));
     assertThat(
-        avroSchema.getProp(SPANNER_TABLE_OPTIONS + "0"),
+        avroSchema.getProp(SPANNER_TABLE_OPTION + "0"),
         equalTo("fulltext_dictionary_table=true"));
 
     System.out.println(avroSchema.toString(true));
@@ -670,7 +670,7 @@ public class DdlToAvroSchemaConverterTest {
         avroSchema.getProp(SPANNER_CHECK_CONSTRAINT + "0"),
         equalTo("CONSTRAINT ck CHECK (\"first_name\" != \"last_name\")"));
     assertThat(
-        avroSchema.getProp(SPANNER_TABLE_OPTIONS + "0"),
+        avroSchema.getProp(SPANNER_TABLE_OPTION + "0"),
         equalTo("fulltext_dictionary_table=true"));
   }
 

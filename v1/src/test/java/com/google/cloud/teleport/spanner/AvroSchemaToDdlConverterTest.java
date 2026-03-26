@@ -1035,12 +1035,15 @@ public class AvroSchemaToDdlConverterTest {
     String avroString =
         "{"
             + "  \"type\" : \"record\","
-            + "  \"name\" : \"Users\","
+            + "  \"name\" : \"CustomDictionary\","
             + "  \"namespace\" : \"spannertest\","
-            + "  \"fields\" : [ { \"name\" : \"id\",\"type\" : \"long\",\"sqlType\" : \"INT64\" } ],"
+            + "  \"fields\" : [ "
+            + "    { \"name\" : \"Key\",\"type\" : \"string\",\"sqlType\" : \"STRING(MAX)\" },"
+            + "    { \"name\" : \"Value\",\"type\" : {\"type\":\"array\",\"items\":\"string\"},\"sqlType\" : \"ARRAY<STRING(MAX)>\" }"
+            + " ],"
             + "  \"googleStorage\" : \"CloudSpanner\","
-            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
-            + "  \"spannerTableOptions_0\": \"fulltext_dictionary_table=true\""
+            + "  \"spannerPrimaryKey_0\" : \"`Key` ASC\","
+            + "  \"spannerTableOption_0\": \"fulltext_dictionary_table=true\""
             + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
@@ -1050,9 +1053,10 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "CREATE TABLE `Users` ("
-                + " `id`              INT64 NOT NULL,"
-                + " ) PRIMARY KEY (`id` ASC), OPTIONS (fulltext_dictionary_table=true)"));
+            "CREATE TABLE `CustomDictionary` ("
+                + " `Key`                                    STRING(MAX) NOT NULL,"
+                + " `Value`                                  ARRAY<STRING(MAX)> NOT NULL,"
+                + " ) PRIMARY KEY (`Key` ASC),\nOPTIONS (fulltext_dictionary_table=true)"));
   }
 
   @Test
@@ -1060,12 +1064,15 @@ public class AvroSchemaToDdlConverterTest {
     String avroString =
         "{"
             + "  \"type\" : \"record\","
-            + "  \"name\" : \"Users\","
+            + "  \"name\" : \"CustomDictionary\","
             + "  \"namespace\" : \"spannertest\","
-            + "  \"fields\" : [ { \"name\" : \"id\",\"type\" : \"long\",\"sqlType\" : \"bigint\" } ],"
+            + "  \"fields\" : [ "
+            + "    { \"name\" : \"Key\",\"type\" : \"string\",\"sqlType\" : \"character varying\" },"
+            + "    { \"name\" : \"Value\",\"type\" : {\"type\":\"array\",\"items\":\"string\"},\"sqlType\" : \"character varying[]\" }"
+            + " ],"
             + "  \"googleStorage\" : \"CloudSpanner\","
-            + "  \"spannerPrimaryKey_0\" : \"\\\"id\\\" ASC\","
-            + "  \"spannerTableOptions_0\": \"fulltext_dictionary_table=true\""
+            + "  \"spannerPrimaryKey_0\" : \"\\\"Key\\\" ASC\","
+            + "  \"spannerTableOption_0\": \"fulltext_dictionary_table=true\""
             + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
@@ -1075,9 +1082,10 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "CREATE TABLE \"Users\" ("
-                + " \"id\"              bigint NOT NULL,"
-                + " PRIMARY KEY (\"id\")"
+            "CREATE TABLE \"CustomDictionary\" ("
+                + " \"Key\"                                    character varying NOT NULL,"
+                + " \"Value\"                                  character varying[] NOT NULL,"
+                + " PRIMARY KEY (\"Key\")"
                 + " ) WITH (fulltext_dictionary_table=true)"));
   }
 

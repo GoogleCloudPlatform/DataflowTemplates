@@ -788,8 +788,7 @@ public class InformationSchemaScanner {
           allOptions.computeIfAbsent(tableName, k -> ImmutableList.builder());
 
       if (optionType.equalsIgnoreCase("STRING")) {
-        String quoteChar =
-            dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+        String quoteChar = com.google.cloud.teleport.spanner.common.NameUtils.literalQuote(dialect);
         options.add(
             optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
       } else if (optionType.equalsIgnoreCase("character varying")) {
