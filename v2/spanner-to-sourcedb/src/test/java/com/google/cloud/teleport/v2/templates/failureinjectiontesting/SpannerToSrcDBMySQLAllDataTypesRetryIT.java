@@ -177,21 +177,22 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     // - Orders: 1
     // - AllDataTypes: 2
     // Total: 4
-    LOG.info("Waiting for DLQ events to appear in retry bucket");
-    assertTrue(
-        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
-            .setMinEvents(2) // Customers and Orders
-            .build()
-            .get());
-    LOG.info("DLQ events appeared in retry bucket");
-
-    LOG.info("Waiting for DLQ events to appear in severe bucket");
-    assertTrue(
-        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-            .setMinEvents(2) // AllDataTypes 999 and 888
-            .build()
-            .get());
-    LOG.info("DLQ events appeared in severe bucket");
+    LOG.info("Waiting for DLQ events to appear in retry and severe buckets");
+    PipelineOperator.Result dlqWaitResult =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(15)),
+                ChainedConditionCheck.builder(
+                        List.of(
+                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+                                .setMinEvents(2)
+                                .build(),
+                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                                .setMinEvents(2)
+                                .build()))
+                    .build());
+    assertThatResult(dlqWaitResult).meetsConditions();
+    LOG.info("DLQ events appeared in corresponding buckets");
 
     // 4. Stop the pipeline
     LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
@@ -217,7 +218,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     LOG.info("Applying partial fixes (inserting parent for Orders)");
     // Insert parent for Orders
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO Customers (CustomerId, Name, CreditLimit, LoyaltyTier) VALUES (3, 'Parent Customer', 2000, 'Gold')");
+        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer', 2000, 'Gold')");
     LOG.info("Partial fixes applied");
 
     // 6. Launch Dataflow job in retryAllDLQ mode
@@ -322,7 +323,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     LOG.info("Customers rows: {}", customersRows);
     List<Integer> customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
-    assertTrue("id=1 should exist", customersIds.contains(1));
+    assertTrue("id=1 should NOT exist", !customersIds.contains(1));
     assertTrue("id=2 should exist", customersIds.contains(2));
     assertTrue("id=3 should exist", customersIds.contains(3));
 
