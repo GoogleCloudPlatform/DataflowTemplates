@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.Map.entry;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.transforms.Aggregation;
 import com.google.cloud.teleport.v2.neo4j.transforms.Order;
 import com.google.cloud.teleport.v2.neo4j.transforms.OrderBy;
@@ -63,7 +63,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(nodeTarget)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(nodeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            false);
 
     assertThat(targets.getNodes())
         .isEqualTo(
@@ -135,7 +138,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(nodeTarget)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(nodeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            false);
 
     var expectedTarget =
         new NodeTarget(
@@ -261,7 +267,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(nodeTarget)), new OptionsParams(), new JobSpecIndex(), true);
+            new JSONArray(List.of(nodeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            true);
 
     var expectedSchema =
         new NodeSchema(
@@ -405,7 +414,7 @@ public class TargetMapperTest {
     var targets =
         TargetMapper.parse(
             new JSONArray(List.of(sourceNodeTarget, targetNodeTarget, edgeTarget)),
-            new OptionsParams(),
+            new OverlayTokens(Map.of()),
             new JobSpecIndex(),
             false);
 
@@ -574,7 +583,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(edgeTarget)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(edgeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            false);
 
     assertThat(targets.getNodes())
         .isEqualTo(
@@ -732,7 +744,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(edgeTarget)), new OptionsParams(), new JobSpecIndex(), true);
+            new JSONArray(List.of(edgeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            true);
 
     var expectedSchema =
         new RelationshipSchema(
@@ -794,7 +809,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(jsonTarget)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(jsonTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            false);
 
     assertThat(targets.getNodes()).isEmpty();
     assertThat(targets.getRelationships()).isEmpty();
@@ -825,7 +843,10 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(nodeTarget)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(nodeTarget)),
+            new OverlayTokens(Map.of()),
+            new JobSpecIndex(),
+            false);
 
     var target = targets.getNodes().iterator().next();
     assertThat(target.getProperties())
@@ -872,7 +893,7 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(target)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(target)), new OverlayTokens(Map.of()), new JobSpecIndex(), false);
 
     assertThat(targets.getRelationships()).hasSize(1);
     assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MERGE);
@@ -893,7 +914,7 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(target)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(target)), new OverlayTokens(Map.of()), new JobSpecIndex(), false);
 
     assertThat(targets.getRelationships()).hasSize(1);
     assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MERGE);
@@ -913,7 +934,7 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(target)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(target)), new OverlayTokens(Map.of()), new JobSpecIndex(), false);
 
     assertThat(targets.getRelationships()).hasSize(1);
     assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MATCH);
@@ -933,7 +954,7 @@ public class TargetMapperTest {
 
     var targets =
         TargetMapper.parse(
-            new JSONArray(List.of(target)), new OptionsParams(), new JobSpecIndex(), false);
+            new JSONArray(List.of(target)), new OverlayTokens(Map.of()), new JobSpecIndex(), false);
 
     assertThat(targets.getRelationships()).hasSize(1);
     assertThat(targets.getRelationships().get(0).getNodeMatchMode()).isEqualTo(NodeMatchMode.MATCH);
@@ -999,7 +1020,7 @@ public class TargetMapperTest {
     var index = new JobSpecIndex();
     TargetMapper.index(jsonTargets, index);
 
-    var targets = TargetMapper.parse(jsonTargets, new OptionsParams(), index, false);
+    var targets = TargetMapper.parse(jsonTargets, new OverlayTokens(Map.of()), index, false);
 
     assertThat(targets.getNodes()).hasSize(1);
     var target = targets.getNodes().iterator().next();
@@ -1043,7 +1064,7 @@ public class TargetMapperTest {
     var index = new JobSpecIndex();
     TargetMapper.index(jsonTargets, index);
 
-    var targets = TargetMapper.parse(jsonTargets, new OptionsParams(), index, false);
+    var targets = TargetMapper.parse(jsonTargets, new OverlayTokens(Map.of()), index, false);
 
     assertThat(targets.getNodes()).hasSize(1);
     var target = targets.getNodes().iterator().next();
@@ -1092,7 +1113,7 @@ public class TargetMapperTest {
     var index = new JobSpecIndex();
     TargetMapper.index(jsonTargets, index);
 
-    var targets = TargetMapper.parse(jsonTargets, new OptionsParams(), index, false);
+    var targets = TargetMapper.parse(jsonTargets, new OverlayTokens(Map.of()), index, false);
 
     assertThat(targets.getRelationships()).hasSize(1);
     var target = targets.getRelationships().iterator().next();
@@ -1140,7 +1161,7 @@ public class TargetMapperTest {
     var index = new JobSpecIndex();
     TargetMapper.index(jsonTargets, index);
 
-    var targets = TargetMapper.parse(jsonTargets, new OptionsParams(), index, false);
+    var targets = TargetMapper.parse(jsonTargets, new OverlayTokens(Map.of()), index, false);
 
     assertThat(targets.getCustomQueries()).hasSize(1);
     var target = targets.getCustomQueries().iterator().next();

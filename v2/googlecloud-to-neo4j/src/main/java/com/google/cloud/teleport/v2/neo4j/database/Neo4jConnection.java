@@ -113,10 +113,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       var capabilities = capabilities();
 
       if (capabilities.hasCreateOrReplaceDatabase()) {
-        recreateDatabase(capabilities);
+        recreateDatabase();
       } else {
         deleteData();
-        dropSchema(capabilities);
+        dropSchema();
       }
     } catch (Exception exception) {
       LOG.error(
@@ -128,7 +128,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     }
   }
 
-  private void recreateDatabase(Neo4jCapabilities capabilities) {
+  private void recreateDatabase() {
     try {
       String database = !StringUtils.isEmpty(this.database) ? this.database : "neo4j";
       String cypher = "CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS";
@@ -140,7 +140,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
           cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
       deleteData();
-      dropSchema(capabilities);
+      dropSchema();
     }
   }
 
@@ -150,7 +150,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     runAutocommit(ddeCypher, databaseResetMetadata("cit-detach-delete"));
   }
 
-  private void dropSchema(Neo4jCapabilities capabilities) {
+  private void dropSchema() {
     try (var session = getSession()) {
       LOG.info("Dropping constraints");
       var constraints =
