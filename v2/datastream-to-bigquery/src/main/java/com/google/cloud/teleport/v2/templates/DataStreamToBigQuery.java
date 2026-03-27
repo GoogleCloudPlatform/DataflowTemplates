@@ -115,7 +115,7 @@ import org.slf4j.LoggerFactory;
       "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
       "BigQuery destination datasets are created and the Compute Engine Service Account has been granted admin access to them.",
       "A primary key is necessary in the source table for the destination replica table to be created.",
-      "A MySQL or Oracle source database. PostgreSQL databases are not supported."
+      "A MySQL, Oracle, or SQL Server source database. PostgreSQL databases are not supported."
     },
     streaming = true,
     supportsAtLeastOnce = true,
@@ -379,7 +379,7 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Datastream source type override",
         helpText =
-            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
+            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', 'sqlserver', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
     String getDatastreamSourceType();
 
     void setDatastreamSourceType(String value);
