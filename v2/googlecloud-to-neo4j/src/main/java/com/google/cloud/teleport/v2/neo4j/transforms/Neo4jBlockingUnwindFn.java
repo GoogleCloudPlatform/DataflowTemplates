@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
+import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
@@ -30,6 +31,10 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.summary.ResultSummary;
+import org.neo4j.importer.v1.ImportSpecification;
+import org.neo4j.importer.v1.targets.CustomQueryTarget;
+import org.neo4j.importer.v1.targets.EntityTarget;
+import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +43,9 @@ import org.slf4j.LoggerFactory;
 public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
-  private final String cypher;
+  private final ImportSpecification importSpecification;
+  private final Target target;
+  private final String staticCypher;
   private final SerializableFunction<Row, Map<String, Object>> parametersFunction;
   private final boolean logCypher;
   private final String unwindMapName;
@@ -46,8 +53,30 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   private final List<Map<String, Object>> parameters;
   private final ReportedSourceType reportedSourceType;
   private final TargetType targetType;
+  private transient String cypher;
   private boolean loggingDone;
-  private Neo4jConnection neo4jConnection;
+  private transient Neo4jConnection neo4jConnection;
+
+  public Neo4jBlockingUnwindFn(
+      ReportedSourceType reportedSourceType,
+      ImportSpecification importSpecification,
+      Target target,
+      boolean logCypher,
+      String unwindMapName,
+      SerializableFunction<Row, Map<String, Object>> parametersFunction,
+      SerializableSupplier<Neo4jConnection> connectionSupplier) {
+
+    this(
+        reportedSourceType,
+        target.getTargetType(),
+        null,
+        importSpecification,
+        target,
+        logCypher,
+        unwindMapName,
+        parametersFunction,
+        connectionSupplier);
+  }
 
   public Neo4jBlockingUnwindFn(
       ReportedSourceType reportedSourceType,
@@ -58,9 +87,34 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
       SerializableFunction<Row, Map<String, Object>> parametersFunction,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
 
+    this(
+        reportedSourceType,
+        targetType,
+        cypher,
+        null,
+        null,
+        logCypher,
+        unwindMapName,
+        parametersFunction,
+        connectionSupplier);
+  }
+
+  private Neo4jBlockingUnwindFn(
+      ReportedSourceType reportedSourceType,
+      TargetType targetType,
+      String staticCypher,
+      ImportSpecification importSpecification,
+      Target target,
+      boolean logCypher,
+      String unwindMapName,
+      SerializableFunction<Row, Map<String, Object>> parametersFunction,
+      SerializableSupplier<Neo4jConnection> connectionSupplier) {
+
     this.reportedSourceType = reportedSourceType;
     this.targetType = targetType;
-    this.cypher = cypher;
+    this.staticCypher = staticCypher;
+    this.importSpecification = importSpecification;
+    this.target = target;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
     this.unwindMapName = unwindMapName;
@@ -73,6 +127,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   @Setup
   public void setup() {
     this.neo4jConnection = connectionSupplier.get();
+    this.cypher = resolveCypher();
   }
 
   @ProcessElement
@@ -87,7 +142,9 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
 
   @Teardown
   public void tearDown() {
-    this.neo4jConnection.close();
+    if (this.neo4jConnection != null) {
+      this.neo4jConnection.close();
+    }
   }
 
   private void executeCypherUnwindStatement() {
@@ -131,6 +188,25 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
           "Error writing " + parameters.size() + " rows to Neo4j with Cypher: " + cypher, e);
     }
     parameters.clear();
+  }
+
+  private String resolveCypher() {
+    if (target == null) {
+      return staticCypher;
+    }
+
+    if (targetType == TargetType.QUERY) {
+      var query = ((CustomQueryTarget) target).getQuery();
+      LOG.info("Custom cypher query: {}", query);
+      return query;
+    }
+
+    var capabilities = neo4jConnection.capabilities();
+    var query =
+        CypherGenerator.getImportStatement(
+            importSpecification, (EntityTarget) target, capabilities);
+    LOG.info("Unwind cypher query: {}", query);
+    return query;
   }
 
   private static String getParametersString(Map<String, Object> parametersMap) {
