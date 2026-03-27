@@ -490,8 +490,7 @@ public class DataStreamClient implements Serializable {
     sqlServerTables.add(new SqlServerTable().setTable(tableName));
 
     List<SqlServerSchema> sqlServerSchemas = new ArrayList<SqlServerSchema>();
-    sqlServerSchemas.add(
-        new SqlServerSchema().setSchema(schemaName).setTables(sqlServerTables));
+    sqlServerSchemas.add(new SqlServerSchema().setSchema(schemaName).setTables(sqlServerTables));
 
     SqlServerRdbms rdbms = new SqlServerRdbms().setSchemas(sqlServerSchemas);
 

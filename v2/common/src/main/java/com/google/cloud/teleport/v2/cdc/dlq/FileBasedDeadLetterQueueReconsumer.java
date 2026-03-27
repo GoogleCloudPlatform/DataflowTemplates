@@ -98,7 +98,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
   }
 
   /** Build a {@link PTransform} that consumes matched DLQ files. */
-  public static PTransform<PCollection<Metadata>, PCollection<String>> moveAndConsumeMatches() {
+  static PTransform<PCollection<Metadata>, PCollection<String>> moveAndConsumeMatches() {
     return new PTransform<PCollection<Metadata>, PCollection<String>>() {
       @Override
       public PCollection<String> expand(PCollection<Metadata> input) {

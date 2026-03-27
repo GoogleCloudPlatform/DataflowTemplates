@@ -66,7 +66,9 @@ public class SpannerToSourceDbRetryTransformation implements ISpannerMigrationTr
     if (tableName.equalsIgnoreCase("Orders")) {
       Object sourceObj = requestRow.get("OrderSource");
       String source = (sourceObj != null) ? (String) sourceObj : "UNKNOWN_SYSTEM";
-      String legacySys = source + "_v1"; // Removing single quotes as per standard string handling
+      // Enclose in single quotes since DML generator injects custom responses directly as raw
+      // values
+      String legacySys = "'" + source + "_v1'";
       responseRow.put("LegacyOrderSystem", legacySys);
       return new MigrationTransformationResponse(responseRow, false);
     } else if (tableName.equalsIgnoreCase("AllDataTypes")) {
