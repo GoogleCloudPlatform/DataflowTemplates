@@ -1,0 +1,6 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Mar 27 14:08:05 EDT 2026
+bigtable-beam-import-2.16.2-SNAPSHOT-shaded.jar>=
+bigtable-beam-import-2.16.2-SNAPSHOT-tests.jar>=
+bigtable-beam-import-2.16.2-SNAPSHOT.jar>=
+bigtable-beam-import-2.16.2-SNAPSHOT.pom>=

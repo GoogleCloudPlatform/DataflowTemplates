@@ -1,0 +1,298 @@
+<!--
+Copyright 2017 Google LLC
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.google.cloud.bigtable</groupId>
+    <artifactId>bigtable-dataflow-parent</artifactId>
+    <version>2.16.1</version> <!-- {x-version-update:bigtable-client-parent:current} -->
+  </parent>
+
+  <artifactId>bigtable-hbase-beam</artifactId>
+  <packaging>jar</packaging>
+  <name>${project.groupId}:${project.artifactId}</name>
+  <description>
+    This project contains artifacts that provide Cloud Bigtable client readers
+    and writers in Google Cloud Dataflow.
+  </description>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- fix conflict beam internal between beam-sdks-java-core & beam-model-pipeline -->
+      <dependency>
+        <groupId>com.google.errorprone</groupId>
+        <artifactId>error_prone_annotations</artifactId>
+        <version>2.20.0</version>
+      </dependency>
+
+      <!-- fix the version conflict where beam is using 1.8.2 and google-cloud-shared-config
+           is using a newer version -->
+      <dependency>
+        <groupId>com.google.auto.value</groupId>
+        <artifactId>auto-value-annotations</artifactId>
+        <version>1.8.2</version>
+      </dependency>
+
+
+      <!-- fix conflict between hbase slf & beam -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>2.0.16</version>
+      </dependency>
+
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Beam Group: should come first since we will be running in the beam ecosystem -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-hbase</artifactId>
+      <version>${beam.version}</version>
+      <!-- HBaseCoderProviderRegistrar discovered during runtime -->
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Bigtable Group: ordering doesn't matter since everything is shaded -->
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>bigtable-hbase-2.x-shaded</artifactId>
+      <version>2.16.1</version> <!-- {x-version-update:bigtable-client-parent:current} -->
+      <exclusions>
+        <!-- Workaround MNG-5899 & MSHADE-206. Maven >= 3.3.0 doesn't use the dependency reduced
+        pom.xml files when invoking the build from a parent project. So we have to manually exclude
+        the dependencies. Note that this works in conjunction with the manually promoted dependencies
+        in bigtable-hbase-2.x-shaded/pom.xml -->
+        <exclusion>
+          <groupId>${project.groupId}</groupId>
+          <artifactId>bigtable-hbase-2.x</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>google-cloud-bigtable</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.opencensus</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-census</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Test Group -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
+      <version>${beam.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>${commons-lang.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-library</artifactId>
+      <version>${hamcrest.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>bigtableDataflowIntegrationTest</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>api-integration-test</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <phase>none</phase>
+              </execution>
+              <execution>
+                <id>api-gap-test</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <phase>integration-test</phase>
+                <configuration>
+                  <!-- to enable netty logging, include:
+                  -Djava.util.logging.config.file=src/test/resources/logging.properties
+                  -->
+                  <forkCount>1</forkCount>
+                  <includes>
+                    <include>**/CloudBigtableIOIntegrationTest.java</include>
+                  </includes>
+                  <reportNameSuffix>bigtable-server</reportNameSuffix>
+                  <systemPropertyVariables>
+                    <bigtable.test.extra.resources>
+                      bigtable-test.xml
+                    </bigtable.test.extra.resources>
+                  </systemPropertyVariables>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <windowtitle>
+              Apache Beam + Cloud Bigtable Connector API
+            </windowtitle>
+            <doctitle>
+              Apache Beam + Cloud Bigtable Connector API
+            </doctitle>
+            <overview>../overview.html</overview>
+            <bottom><![CDATA[<br>]]></bottom>
+
+            <offlineLinks>
+              <offlineLink>
+                <url>
+                  https://beam.apache.org/releases/javadoc/${beam.version}/
+                </url>
+                <location>${basedir}/javadoc/beam-docs</location>
+              </offlineLink>
+              <offlineLink>
+                <url>https://hbase.apache.org/2.0/apidocs/</url>
+                <location>${basedir}/javadoc/hbase-docs</location>
+              </offlineLink>
+            </offlineLinks>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+              <phase>package</phase>
+            </execution>
+          </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <executions>
+          <execution>
+            <id>enforce</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <!-- All hbase deps are provided and we have no hope of enforcing rules on them -->
+                <banDuplicateClasses>
+                  <ignoreClasses>
+                    <!-- hbase-shaded-client has an incorrect shading config that doesnt relocate
+                    classes for multiversioned jars. This most likely renders them unusable. Furthermore
+                    bigtable-hbase doesnt use the jackson functionality in hbase. So its safe to ignore
+                    the conflict with beam -->
+                    <ignoreClass>META-INF/versions/*/com/fasterxml/jackson/core/io/doubleparser/*</ignoreClass>
+                  </ignoreClasses>
+                </banDuplicateClasses>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <excludes>
+                <exclude>**/*IntegrationTest.java</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.google.cloud.bigtable.test</groupId>
+        <artifactId>bigtable-build-helper</artifactId>
+        <version>2.16.1</version> <!-- {x-version-update:bigtable-client-parent:current} -->
+        <executions>
+          <execution>
+            <id>verify-mirror-deps-beam</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>verify-mirror-deps</goal>
+            </goals>
+            <configuration>
+              <targetDependencies>
+                <targetDependency>org.apache.beam:beam-sdks-java-core:${beam.version}</targetDependency>
+              </targetDependencies>
+              <ignoredDependencies>
+                <!-- beam's dependency tree has an older version closer higher in the tree -->
+                <dependency>com.google.errorprone:error_prone_annotations</dependency>
+                <!-- upperbound of beam & hbase client -->
+                <dependency>org.slf4j:slf4j-api</dependency>
+              </ignoredDependencies>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

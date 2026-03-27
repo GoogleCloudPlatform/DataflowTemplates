@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Mar 27 14:07:40 EDT 2026
+bigtable-hbase-beam-2.16.2-SNAPSHOT-tests.jar>=
+bigtable-hbase-beam-2.16.2-SNAPSHOT.jar>=
+bigtable-hbase-beam-2.16.2-SNAPSHOT.pom>=

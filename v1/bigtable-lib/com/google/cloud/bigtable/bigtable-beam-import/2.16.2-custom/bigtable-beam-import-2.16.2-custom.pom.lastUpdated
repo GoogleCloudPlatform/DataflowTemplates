@@ -1,0 +1,6 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Mar 27 14:00:29 EDT 2026
+@default-splunk-artifactory-https\://splunk.jfrog.io/splunk/ext-releases-local/.lastUpdated=1774634429746
+https\://packages.confluent.io/maven/.error=
+https\://packages.confluent.io/maven/.lastUpdated=1774634429697
+https\://splunk.jfrog.io/splunk/ext-releases-local/.error=Could not transfer artifact com.google.cloud.bigtable\:bigtable-beam-import\:pom\:2.16.2-SNAPSHOT from/to splunk-artifactory (https\://splunk.jfrog.io/splunk/ext-releases-local)\: status code\: 409, reason phrase\:  (409)
