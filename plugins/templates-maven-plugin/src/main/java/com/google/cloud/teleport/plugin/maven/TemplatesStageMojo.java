@@ -373,9 +373,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
     if (definition.isClassic()) {
-      return stageClassicTemplate(definition, imageSpec, pluginManager);
+      String templateName = definition.getTemplateAnnotation().name();
+      if (templateName.toLowerCase().contains("bigtable")) {
+        LOG.info("staging " + templateName);
+        return stageClassicTemplate(definition, imageSpec, pluginManager);
+      }
+      return "";
     } else {
-      return stageFlexTemplate(definition, imageSpec, pluginManager);
+      return "";
+      // return stageFlexTemplate(definition, imageSpec, pluginManager);
     }
   }
 
