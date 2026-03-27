@@ -115,7 +115,7 @@ import org.slf4j.LoggerFactory;
       "<a href=\"https://cloud.google.com/storage/docs/reporting-changes\">Cloud Storage Pub/Sub notifications</a> are enabled for the Datastream data.",
       "BigQuery destination datasets are created and the Compute Engine Service Account has been granted admin access to them.",
       "A primary key is necessary in the source table for the destination replica table to be created.",
-      "A MySQL, Oracle, or SQL Server source database. PostgreSQL databases are not supported."
+      "A MySQL, Oracle, PostgreSQL, or SQL Server source database."
     },
     streaming = true,
     supportsAtLeastOnce = true,

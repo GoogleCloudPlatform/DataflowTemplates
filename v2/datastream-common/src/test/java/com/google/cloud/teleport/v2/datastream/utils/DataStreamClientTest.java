@@ -39,7 +39,7 @@ import java.util.List;
 import org.junit.Ignore;
 import org.junit.Test;
 
-/** Test cases for the {@link SchemaUtils} class. */
+/** Test cases for the {@link DataStreamClient} class. */
 public class DataStreamClientTest {
 
   /** Test whether {@link DataStreamClient#getParentFromConnectionProfileName(String)}} regex. */
@@ -412,8 +412,6 @@ public class DataStreamClientTest {
     assertEquals("Key1", primaryKeys.get(0));
     assertEquals("Key2", primaryKeys.get(1));
   }
-
-  // --- SQL Server: getSqlServerObjectSchema tests (via getObjectSchema, mocked) ---
 
   @Test
   public void testGetSqlServerPrimaryKeys_nullPrimaryKeyField() throws IOException {
