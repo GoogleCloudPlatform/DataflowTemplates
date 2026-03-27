@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Beam Expansion Service
         working-directory: beam
-        run: ./gradlew -Ppublishing :sdks:java:io:expansion-service:PublishToMavenLocal -x test
+        run: ./gradlew -Ppublishing :sdks:java:io:expansion-service:PublishToMavenLocal -x test -Dmaven.user.settings=/dev/null
 
       - name: Add dependency to pom.xml
         env:
@@ -89,7 +89,7 @@ jobs:
 
       - name: Build Beam Starter
         working-directory: beam-starter-java-provider
-        run: mvn package
+        run: mvn package -s /dev/null
 
       - name: Rename JAR and Upload
         working-directory: beam-starter-java-provider/target
