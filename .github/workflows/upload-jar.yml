@@ -1,0 +1,82 @@
+name: Build and Upload Beam Jar
+# Workflow designed for getting Beam providers out earlier than a beam release
+
+on:
+  workflow_dispatch:
+    inputs:
+      jar_name:
+        description: 'Name of the jar file (artifactId)'
+        required: false
+        default: 'beam-sdks-java-io-expansion-service'
+      bucket_path:
+        description: 'GCS bucket path (e.g., gs://my-bucket/path)'
+        required: true
+
+
+jobs:
+  build-and-upload:
+    runs-on:  [self-hosted, release]
+
+    steps:
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Clone Apache Beam
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: apache/beam
+          path: beam
+
+      - name: Clone Beam Starter
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: apache/beam-starter-java-provider
+          path: beam-starter-java-provider
+
+      - name: Build Beam Expansion Service
+        working-directory: beam
+        run: ./gradlew -Ppublishing :sdks:java:io:expansion-service:PublishToMavenLocal -x test
+
+      - name: Add dependency to pom.xml
+        env:
+          JAR_NAME: ${{ github.event.inputs.jar_name }}
+        run: |
+          python3 -c "
+          import os
+
+          pom_path = 'beam-starter-java-provider/pom.xml'
+          jar_name = os.environ.get('JAR_NAME')
+
+          with open(pom_path, 'r') as f:
+              content = f.read()
+
+          dependency_template = '''    <dependency>
+                  <groupId>org.apache.beam</groupId>
+                  <artifactId>@JAR_NAME@</artifactId>
+                  <version>2.73.0-SNAPSHOT</version>
+              </dependency>'''
+          
+          dependency = dependency_template.replace('@JAR_NAME@', jar_name)
+
+          if '</dependencies>' in content:
+              content = content.replace('</dependencies>', dependency + '\n    </dependencies>')
+          else:
+              print('Warning: </dependencies> not found in pom.xml')
+
+          with open(pom_path, 'w') as f:
+              f.write(content)
+          "
+
+      - name: Build Beam Starter
+        working-directory: beam-starter-java-provider
+        run: mvn package
+
+      - name: Rename JAR and Upload
+        working-directory: beam-starter-java-provider/target
+        env:
+          BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
+        run: |
+          gcloud storage cp xlang-transforms-bundled-1.0-SNAPSHOT.jar "$BUCKET_PATH"
