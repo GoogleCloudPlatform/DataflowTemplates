@@ -342,10 +342,15 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     // assertTrue("id=1 should exist", allDataTypesIds.contains(1));
     // assertTrue("id=999 should exist", allDataTypesIds.contains(999));
     // assertTrue("id=888 should NOT exist", !allDataTypesIds.contains(888));
-    if (!allDataTypesIds.contains(1)) LOG.warn("Visibility: id=1 should exist in AllDataTypes");
-    if (!allDataTypesIds.contains(999)) LOG.warn("Visibility: id=999 should exist in AllDataTypes");
-    if (allDataTypesIds.contains(888))
+    if (!allDataTypesIds.contains(1)) {
+      LOG.warn("Visibility: id=1 should exist in AllDataTypes");
+    }
+    if (!allDataTypesIds.contains(999)) {
+      LOG.warn("Visibility: id=999 should exist in AllDataTypes");
+    }
+    if (allDataTypesIds.contains(888)) {
       LOG.warn("Visibility: id=888 should NOT exist in AllDataTypes");
+    }
 
     List<Map<String, Object>> customersRows =
         jdbcResourceManager.runSQLQuery("SELECT CustomerId FROM Customers");
@@ -355,9 +360,15 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     // assertTrue("id=1 should NOT exist", !customersIds.contains(1));
     // assertTrue("id=2 should exist", customersIds.contains(2));
     // assertTrue("id=3 should exist", customersIds.contains(3));
-    if (customersIds.contains(1)) LOG.warn("Visibility: id=1 should NOT exist in Customers");
-    if (!customersIds.contains(2)) LOG.warn("Visibility: id=2 should exist in Customers");
-    if (!customersIds.contains(3)) LOG.warn("Visibility: id=3 should exist in Customers");
+    if (customersIds.contains(1)) {
+      LOG.warn("Visibility: id=1 should NOT exist in Customers");
+    }
+    if (!customersIds.contains(2)) {
+      LOG.warn("Visibility: id=2 should exist in Customers");
+    }
+    if (!customersIds.contains(3)) {
+      LOG.warn("Visibility: id=3 should exist in Customers");
+    }
 
     List<Map<String, Object>> ordersRows =
         jdbcResourceManager.runSQLQuery("SELECT OrderId FROM Orders");
@@ -366,8 +377,12 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
         ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
     // assertTrue("id=101 should exist", ordersIds.contains(101));
     // assertTrue("id=102 should exist", ordersIds.contains(102));
-    if (!ordersIds.contains(101)) LOG.warn("Visibility: id=101 should exist in Orders");
-    if (!ordersIds.contains(102)) LOG.warn("Visibility: id=102 should exist in Orders");
+    if (!ordersIds.contains(101)) {
+      LOG.warn("Visibility: id=101 should exist in Orders");
+    }
+    if (!ordersIds.contains(102)) {
+      LOG.warn("Visibility: id=102 should exist in Orders");
+    }
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {
