@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 import static java.util.Arrays.stream;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -259,12 +260,30 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
     return subscription;
   }
 
-  public PipelineLauncher.LaunchInfo launchFwdDataflowJobInRetryDlqMode(
+  public PipelineLauncher.LaunchInfo launchFwdDataflowJobInDlqRetry(
       SpannerResourceManager spannerResourceManager,
       String inputLocationFullPath,
       String dlqLocationFullPath,
       GcsResourceManager gcsResourceManager,
       CustomTransformation customTransformation)
+      throws IOException {
+    return launchFwdDataflowJobInDlqRetry(
+        spannerResourceManager,
+        inputLocationFullPath,
+        dlqLocationFullPath,
+        gcsResourceManager,
+        customTransformation,
+        Constants.RUN_MODE_RETRY_ALL_DLQ); // By default we use retryAllDLQ mode in tests as it is
+    // self-sufficient
+  }
+
+  public PipelineLauncher.LaunchInfo launchFwdDataflowJobInDlqRetry(
+      SpannerResourceManager spannerResourceManager,
+      String inputLocationFullPath,
+      String dlqLocationFullPath,
+      GcsResourceManager gcsResourceManager,
+      CustomTransformation customTransformation,
+      String runMode)
       throws IOException {
 
     // launch dataflow template
@@ -281,7 +300,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("deadLetterQueueDirectory", dlqLocationFullPath)
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            .addParameter("runMode", "retryDLQ")
+            .addParameter("runMode", runMode) // in case a test wants to use retryDLQ mode
             .addParameter("dlqRetryMinutes", "1")
             .addParameter("workerMachineType", "n2-standard-4");
 
