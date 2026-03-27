@@ -1,5 +1,22 @@
+# ====================================================================================
+# Purpose:
+#   This workflow builds and uploads a Beam Provider JAR to Google Cloud Storage (GCS).
+#   It is designed to release Beam providers earlier than standard Beam releases.
+#   The workflow:
+#     1. Clones Apache Beam and builds the expansion service.
+#     2. Adds this build as a dependency to the Beam Starter project.
+#     3. Builds the Beam Starter project.
+#     4. Uploads the bundled JAR to a specified GCS bucket.
+#
+# How to Run:
+#   This workflow is triggered manually via GitHub Actions `workflow_dispatch`.
+#   Required Inputs:
+#     - bucket_path: The GCS bucket destination (e.g., gs://my-bucket/path).
+#   Optional Inputs:
+#     - jar_name: The artifactId of the JAR (defaults to 'beam-sdks-java-io-expansion-service').
+# ====================================================================================
+
 name: Build and Upload Beam Jar
-# Workflow designed for getting Beam providers out earlier than a beam release
 
 on:
   workflow_dispatch:
