@@ -235,7 +235,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
@@ -244,6 +243,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("workerMachineType", "n2-standard-4");
           }
         };
+
+    if (subscriptionName != null) {
+      params.put("dlqGcsPubSubSubscription", subscriptionName);
+    }
+
     if (jobParameters != null) {
       params.putAll(jobParameters);
     }
