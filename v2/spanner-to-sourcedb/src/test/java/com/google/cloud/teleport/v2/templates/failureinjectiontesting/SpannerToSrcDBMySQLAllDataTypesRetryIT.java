@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -25,7 +26,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
 import com.google.common.io.Resources;
-import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -38,7 +38,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
-import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -52,6 +51,55 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Integration test for the reverse replication flow from Spanner to MySQL using retryAllDLQ mode.
+ *
+ * <p>This test validates the following scenarios for a non-sharded schema during reverse
+ * replication:
+ *
+ * <ul>
+ *   <li><b>Severe errors:</b> Simulates transformer errors that cannot be bypassed.
+ *   <li><b>Retriable errors:</b> Includes check constraint and foreign key violations.
+ *   <li><b>Fixable errors:</b> Verifies if corrected items are successfully migrated and written to
+ *       MySQL.
+ *   <li><b>Non-fixable errors:</b> Verifies if un-processed items are written back to GCS.
+ * </ul>
+ *
+ * <p>Edge cases covered:
+ *
+ * <ul>
+ *   <li>All datatypes support.
+ *   <li>Primary key differences (e.g., MySQL PK has an extra column; verifies Spanner can supply
+ *       sufficient data).
+ *   <li>Handling of added, deleted, or renamed columns between Spanner and MySQL.
+ *   <li>Foreign key integration and dependencies.
+ *   <li>Transformation errors fixed.
+ * </ul>
+ *
+ * <p>Simulation methodology for reverse replication (where MySQL is the target and Spanner is the
+ * source):
+ *
+ * <ul>
+ *   <li><b>Schema Differences:</b>
+ *       <ul>
+ *         <li>MySQL has a stricter check constraint than Spanner (causes retriable error, not fixed
+ *             before retryDLQ).
+ *         <li>MySQL has a foreign key relationship missing in Spanner (causes retriable error,
+ *             fixed before retryDLQ).
+ *         <li>A column dropped in Spanner still exists in MySQL (requires custom transformation or
+ *             nullability to succeed).
+ *         <li>A column added to Spanner does not exist in MySQL.
+ *         <li>MySQL PK has an extra column (test if source gets enough info if spanner PK has fewer
+ *             cols).
+ *       </ul>
+ *   <li><b>Other Requirements:</b>
+ *       <ul>
+ *         <li>A custom error-injecting transformation simulates a severe error (fixed before
+ *             retryDLQ).
+ *         <li>A schema override file is supplied to reconcile schema changes.
+ *       </ul>
+ * </ul>
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -73,8 +121,6 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
   public static SpannerResourceManager spannerMetadataResourceManager;
   public static MySQLResourceManager jdbcResourceManager;
   public static GcsResourceManager gcsResourceManager;
-  private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
 
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -99,15 +145,6 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
         gcsResourceManager.uploadArtifact(
             "input/overrides.json", Resources.getResource(OVERRIDES_FILE_RESOURCE).getPath());
 
-        pubsubResourceManager = setUpPubSubResourceManager();
-        subscriptionName =
-            createPubsubResources(
-                "rr-it-sub", // identifierSuffix
-                pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager)
-                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
-                gcsResourceManager);
-
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "input/customShard.jar", // Use relative path!
@@ -123,7 +160,10 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
                     "schemaOverridesFilePath",
                     getGcsPath("input/overrides.json", gcsResourceManager));
                 put("dlqMaxRetryCount", "20");
-                put("dlqRetryMinutes", "60");
+                put(
+                    "dlqRetryMinutes",
+                    "60"); // keeping these high so that the test can comfortably read the static
+                // retry/ bucket
               }
             };
         jobInfo =
@@ -131,8 +171,8 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
                 gcsResourceManager,
                 spannerResourceManager,
                 spannerMetadataResourceManager,
-                null, // Passing null disables Pub/Sub consumer, leaving DLQ items statically in the
-                // bucket
+                null, // Passing null disables Pub/Sub consumer, leaving retry DLQ items statically
+                // in the bucket
                 null,
                 null,
                 null,
@@ -158,8 +198,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
         spannerResourceManager,
         jdbcResourceManager,
         spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+        gcsResourceManager);
   }
 
   @Test
@@ -167,11 +206,18 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     LOG.info("Starting testSpannerToSrcDBRetryAllDLQ");
     assertThatPipeline(jobInfo).isRunning();
 
-    LOG.info("Inserting data into Spanner");
-    insertDataInSpanner();
-    LOG.info("Data inserted into Spanner");
+    // 1. Insert parent rows directly into MySQL. This prevents out-of-order Dataflow failures
+    //    since Dataflow processes asynchronously and might process child rows before parent rows.
+    LOG.info("Inserting parent rows directly into MySQL");
+    jdbcResourceManager.runSQLUpdate(
+        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
-    // 3. Wait for DLQ events to appear
+    // 2. Insert all test data into the source Spanner database.
+    LOG.info("Inserting test data into Spanner");
+    insertDataInSpanner();
+    LOG.info("Data inserted into Spanner successfully");
+
+    // 3. Wait for DLQ events to appear in corresponding buckets.
     // Total events expected:
     // - Customers: 1
     // - Orders: 1
@@ -191,23 +237,18 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
                                 .setMinEvents(2)
                                 .build()))
                     .build());
-    // assertThatResult(dlqWaitResult).meetsConditions();
-    if (dlqWaitResult != PipelineOperator.Result.CONDITION_MET) {
-      LOG.warn("Condition for DLQ events appearing was not met (Result: {})", dlqWaitResult);
-    } else {
-      LOG.info("DLQ events appeared in corresponding buckets");
-    }
+    assertThatResult(dlqWaitResult).meetsConditions();
+    LOG.info("DLQ events successfully generated in corresponding buckets");
 
-    // 4. Stop the pipeline
+    // 4. Stop the regular pipeline. The retry pipeline must run independently.
     LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
     pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
 
-    // Wait for job to be cancelled (up to 5 minutes)
+    // Wait for the pipeline job to be cancelled (up to 5 minutes)
     boolean cancelled = false;
     for (int i = 0; i < 30; i++) {
       PipelineLauncher.JobState status =
           pipelineLauncher.getJobStatus(PROJECT, REGION, jobInfo.jobId());
-      LOG.info("Checking regular pipeline status: {}", status);
       if (status == PipelineLauncher.JobState.CANCELLED
           || status == PipelineLauncher.JobState.DRAINED) {
         cancelled = true;
@@ -218,15 +259,14 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     assertTrue("Job did not cancel in time", cancelled);
     LOG.info("Regular pipeline stopped successfully");
 
-    // 5. Apply partial fixes
-    LOG.info("Applying partial fixes (inserting parent for Orders)");
-    // Insert parent for Orders
+    // 5. Apply partial fixes to simulate user intervention correcting data before DLQ retry.
+    // Insert parent for Orders to fix the foreign key violation.
+    LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer', 2000, 'Gold')");
-    LOG.info("Partial fixes applied");
 
-    // 6. Launch Dataflow job in retryAllDLQ mode
-    LOG.info("Launching retryAllDLQ job with schema overrides");
+    // 6. Launch a new Dataflow job in retryAllDLQ mode to process the DLQ items.
+    LOG.info("Launching retryAllDLQ job with schema overrides to process DLQ");
     Map<String, String> retryParams = new HashMap<>();
     retryParams.put("runMode", "retryAllDLQ");
     retryParams.put(
@@ -239,15 +279,16 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
             gcsResourceManager,
             spannerResourceManager,
             spannerMetadataResourceManager,
-            null, // Not used in retryAllDLQ mode, implicitly uses File-based reconsumer
+            null,
             null,
             null,
             null,
             null,
             CustomTransformation.builder(
-                    "input/customShard.jar", // Use relative path!
-                    "com.custom.SpannerToSourceDbRetryTransformation")
-                .setCustomParameters("mode=semi-fixed")
+                    "input/customShard.jar", "com.custom.SpannerToSourceDbRetryTransformation")
+                .setCustomParameters(
+                    "mode=semi-fixed") // This fixes one of our severe errors simulated in the
+                // transformer
                 .build(),
             MYSQL_SOURCE_TYPE,
             retryParams);
@@ -255,6 +296,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
 
     assertThatPipeline(retryJobInfo).isRunning();
 
+    // 7. Wait for the retry job to process events and ensure they reach the target MySQL database.
     LOG.info("Waiting for retry job to process events");
     ConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -278,111 +320,65 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
             .waitForConditionAndCancel(
                 createConfig(retryJobInfo, Duration.ofMinutes(15)), conditionCheck);
 
-    // assertThatResult(retryResult).meetsConditions();
-    // LOG.info("Retry job completed processing (conditions met)");
-    if (retryResult != PipelineOperator.Result.CONDITION_MET) {
-      LOG.warn("Retry job conditions were not met (Result: {})", retryResult);
-    }
-    LOG.info("Retry job completed processing (conditions met or bypassed)");
+    assertThatResult(retryResult).meetsConditions();
+    LOG.info("Retry job completed processing successfully");
 
-    // // 8. Verify DLQ data after retry
-    // LOG.info("Verifying DLQ data after retry");
-    // assertTrue(
-    //     DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
-    //         .setMinEvents(1)
-    //         .setMaxEvents(1)
-    //         .build()
-    //         .get());
-    // LOG.info("DLQ retry bucket has 1 event");
+    // 8. Verify DLQ contents after the retry. The non-fixable errors should be written back.
+    LOG.info("Verifying DLQ contents after retry processing");
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
+    LOG.info("DLQ retry bucket has 1 event");
 
-    // assertTrue(
-    //     DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-    //         .setMinEvents(1)
-    //         .setMaxEvents(1)
-    //         .build()
-    //         .get());
-    // LOG.info("DLQ severe bucket has 1 event");
-    try {
-      long retryEvents =
-          org.apache.beam.it.gcp.datastream.conditions.DlqEventsCounter.calculateTotalEvents(
-              gcsResourceManager, "dlq/retry/");
-      LOG.info("Visibility - DLQ retry bucket has {} events", retryEvents);
-    } catch (Exception e) {
-      LOG.warn("Could not calculate retry events count: {}", e.getMessage());
-    }
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
+    LOG.info("DLQ severe bucket has 1 event");
 
-    try {
-      long severeEvents =
-          org.apache.beam.it.gcp.datastream.conditions.DlqEventsCounter.calculateTotalEvents(
-              gcsResourceManager, "dlq/severe/");
-      LOG.info("Visibility - DLQ severe bucket has {} events", severeEvents);
-    } catch (Exception e) {
-      LOG.warn("Could not calculate severe events count: {}", e.getMessage());
-    }
+    // 9. Verify target MySQL database has the correct updated state.
+    LOG.info("Verifying target MySQL database contents");
 
-    // 8. Verify MySQL data
-    // AllDataTypes
+    // AllDataTypes:
     // id=1 should exist
     // id=999 should exist (fixed)
-    // id=888 should NOT exist (written back)
-    // Customers
-    // id=2 should exist
-    // 8. Verify MySQL data
-    LOG.info("Verifying MySQL data");
-
-    LOG.info("AllDataTypes row count: {}", jdbcResourceManager.getRowCount("AllDataTypes"));
-    LOG.info("Customers row count: {}", jdbcResourceManager.getRowCount("Customers"));
-    LOG.info("Orders row count: {}", jdbcResourceManager.getRowCount("Orders"));
-
+    // id=888 should NOT exist (written back since the transformation error wasn't fixed)
     List<Map<String, Object>> allDataTypesRows =
         jdbcResourceManager.runSQLQuery("SELECT id FROM AllDataTypes");
-    LOG.info("AllDataTypes rows: {}", allDataTypesRows);
     List<Integer> allDataTypesIds =
         allDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
-    // assertTrue("id=1 should exist", allDataTypesIds.contains(1));
-    // assertTrue("id=999 should exist", allDataTypesIds.contains(999));
-    // assertTrue("id=888 should NOT exist", !allDataTypesIds.contains(888));
-    if (!allDataTypesIds.contains(1)) {
-      LOG.warn("Visibility: id=1 should exist in AllDataTypes");
-    }
-    if (!allDataTypesIds.contains(999)) {
-      LOG.warn("Visibility: id=999 should exist in AllDataTypes");
-    }
-    if (allDataTypesIds.contains(888)) {
-      LOG.warn("Visibility: id=888 should NOT exist in AllDataTypes");
-    }
+    assertTrue("id=1 should exist", allDataTypesIds.contains(1));
+    assertTrue("id=999 should exist", allDataTypesIds.contains(999));
+    assertTrue("id=888 should NOT exist", !allDataTypesIds.contains(888));
 
+    // Customers:
+    // id=2 should exist (inserted directly)
+    // id=3 should exist (inserted as a partial fix)
+    // id=1 should NOT exist (check constraint violation wasn't fixed)
     List<Map<String, Object>> customersRows =
         jdbcResourceManager.runSQLQuery("SELECT CustomerId FROM Customers");
-    LOG.info("Customers rows: {}", customersRows);
     List<Integer> customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
-    // assertTrue("id=1 should NOT exist", !customersIds.contains(1));
-    // assertTrue("id=2 should exist", customersIds.contains(2));
-    // assertTrue("id=3 should exist", customersIds.contains(3));
-    if (customersIds.contains(1)) {
-      LOG.warn("Visibility: id=1 should NOT exist in Customers");
-    }
-    if (!customersIds.contains(2)) {
-      LOG.warn("Visibility: id=2 should exist in Customers");
-    }
-    if (!customersIds.contains(3)) {
-      LOG.warn("Visibility: id=3 should exist in Customers");
-    }
+    assertTrue("id=1 should NOT exist", !customersIds.contains(1));
+    assertTrue("id=2 should exist", customersIds.contains(2));
+    assertTrue("id=3 should exist", customersIds.contains(3));
 
+    // Orders:
+    // id=101 should exist (FK issue fixed by inserting parent)
+    // id=102 should exist (parent was seeded originally)
     List<Map<String, Object>> ordersRows =
         jdbcResourceManager.runSQLQuery("SELECT OrderId FROM Orders");
-    LOG.info("Orders rows: {}", ordersRows);
     List<Integer> ordersIds =
         ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
-    // assertTrue("id=101 should exist", ordersIds.contains(101));
-    // assertTrue("id=102 should exist", ordersIds.contains(102));
-    if (!ordersIds.contains(101)) {
-      LOG.warn("Visibility: id=101 should exist in Orders");
-    }
-    if (!ordersIds.contains(102)) {
-      LOG.warn("Visibility: id=102 should exist in Orders");
-    }
+    assertTrue("id=101 should exist", ordersIds.contains(101));
+    assertTrue("id=102 should exist", ordersIds.contains(102));
+
+    LOG.info("Verified target MySQL database contents successfully");
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {
@@ -408,17 +404,6 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
             .to(500) // this will fail due to check constraint at source
             .set("LoyaltyTier")
             .to("Bronze")
-            .build();
-    com.google.cloud.spanner.Mutation customer2 =
-        com.google.cloud.spanner.Mutation.newInsertOrUpdateBuilder("Customers")
-            .set("CustomerId")
-            .to(2)
-            .set("CustomerName")
-            .to("Customer 2")
-            .set("CreditLimit")
-            .to(1500)
-            .set("LoyaltyTier")
-            .to("Silver")
             .build();
 
     com.google.cloud.spanner.Mutation order101 =
@@ -485,7 +470,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
             .build();
 
     spannerResourceManager.write(
-        List.of(customer1, customer2, order101, order102, allTypes1, allTypes999, allTypes888));
+        List.of(customer1, order101, order102, allTypes1, allTypes999, allTypes888));
   }
 
   private String getCustomShardJarPath() {
