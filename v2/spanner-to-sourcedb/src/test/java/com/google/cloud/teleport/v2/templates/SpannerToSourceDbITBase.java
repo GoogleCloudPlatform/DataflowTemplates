@@ -264,6 +264,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       params.put(
           "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        params.put("transformationCustomParameters", customTransformation.customParameters());
+      }
     }
 
     // Construct template
