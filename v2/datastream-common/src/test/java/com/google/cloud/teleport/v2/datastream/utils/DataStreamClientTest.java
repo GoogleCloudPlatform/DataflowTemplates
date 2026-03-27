@@ -29,7 +29,6 @@ import com.google.api.services.datastream.v1.model.SqlServerRdbms;
 import com.google.api.services.datastream.v1.model.SqlServerSchema;
 import com.google.api.services.datastream.v1.model.SqlServerTable;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -107,8 +106,9 @@ public class DataStreamClientTest {
   @Test
   public void testConvertSqlServerToBigQueryColumnType_stringTypes() throws IOException {
     DataStreamClient datastream = new DataStreamClient(null);
-    String[] stringTypes = {"CHAR", "NCHAR", "VARCHAR", "NVARCHAR", "TEXT", "NTEXT",
-        "UNIQUEIDENTIFIER", "XML"};
+    String[] stringTypes = {
+      "CHAR", "NCHAR", "VARCHAR", "NVARCHAR", "TEXT", "NTEXT", "UNIQUEIDENTIFIER", "XML"
+    };
 
     for (String type : stringTypes) {
       SqlServerColumn column = new SqlServerColumn().setDataType(type);
@@ -122,8 +122,9 @@ public class DataStreamClientTest {
   @Test
   public void testConvertSqlServerToBigQueryColumnType_stringTypesLowerCase() throws IOException {
     DataStreamClient datastream = new DataStreamClient(null);
-    String[] stringTypes = {"char", "nchar", "varchar", "nvarchar", "text", "ntext",
-        "uniqueidentifier", "xml"};
+    String[] stringTypes = {
+      "char", "nchar", "varchar", "nvarchar", "text", "ntext", "uniqueidentifier", "xml"
+    };
 
     for (String type : stringTypes) {
       SqlServerColumn column = new SqlServerColumn().setDataType(type);
@@ -139,8 +140,7 @@ public class DataStreamClientTest {
     DataStreamClient datastream = new DataStreamClient(null);
     SqlServerColumn column = new SqlServerColumn().setDataType("BIT");
 
-    assertEquals(StandardSQLTypeName.BOOL,
-        datastream.convertSqlServerToBigQueryColumnType(column));
+    assertEquals(StandardSQLTypeName.BOOL, datastream.convertSqlServerToBigQueryColumnType(column));
   }
 
   @Test
@@ -204,8 +204,7 @@ public class DataStreamClientTest {
     DataStreamClient datastream = new DataStreamClient(null);
     SqlServerColumn column = new SqlServerColumn().setDataType("DATE");
 
-    assertEquals(StandardSQLTypeName.DATE,
-        datastream.convertSqlServerToBigQueryColumnType(column));
+    assertEquals(StandardSQLTypeName.DATE, datastream.convertSqlServerToBigQueryColumnType(column));
   }
 
   @Test
@@ -213,8 +212,7 @@ public class DataStreamClientTest {
     DataStreamClient datastream = new DataStreamClient(null);
     SqlServerColumn column = new SqlServerColumn().setDataType("TIME");
 
-    assertEquals(StandardSQLTypeName.TIME,
-        datastream.convertSqlServerToBigQueryColumnType(column));
+    assertEquals(StandardSQLTypeName.TIME, datastream.convertSqlServerToBigQueryColumnType(column));
   }
 
   @Test
@@ -237,8 +235,8 @@ public class DataStreamClientTest {
     DataStreamClient datastream = new DataStreamClient(null);
     SqlServerColumn column = new SqlServerColumn().setDataType("UNKNOWN_TYPE");
 
-    assertEquals(StandardSQLTypeName.STRING,
-        datastream.convertSqlServerToBigQueryColumnType(column));
+    assertEquals(
+        StandardSQLTypeName.STRING, datastream.convertSqlServerToBigQueryColumnType(column));
   }
 
   @Test
@@ -259,8 +257,7 @@ public class DataStreamClientTest {
 
   @Test
   public void testBuildSqlServerRdbmsForTable()
-      throws IOException, NoSuchMethodException, InvocationTargetException,
-          IllegalAccessException {
+      throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     DataStreamClient datastream = new DataStreamClient(null);
 
     Method buildMethod =
@@ -270,8 +267,7 @@ public class DataStreamClientTest {
 
     String schemaName = "dbo";
     String tableName = "Customers";
-    SqlServerRdbms rdbms =
-        (SqlServerRdbms) buildMethod.invoke(datastream, schemaName, tableName);
+    SqlServerRdbms rdbms = (SqlServerRdbms) buildMethod.invoke(datastream, schemaName, tableName);
 
     assertNotNull(rdbms);
     assertNotNull(rdbms.getSchemas());
@@ -288,8 +284,7 @@ public class DataStreamClientTest {
 
   @Test
   public void testBuildSqlServerRdbmsForTable_specialCharacters()
-      throws IOException, NoSuchMethodException, InvocationTargetException,
-          IllegalAccessException {
+      throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     DataStreamClient datastream = new DataStreamClient(null);
 
     Method buildMethod =
@@ -299,8 +294,7 @@ public class DataStreamClientTest {
 
     String schemaName = "my-schema.v2";
     String tableName = "my_table-name.2";
-    SqlServerRdbms rdbms =
-        (SqlServerRdbms) buildMethod.invoke(datastream, schemaName, tableName);
+    SqlServerRdbms rdbms = (SqlServerRdbms) buildMethod.invoke(datastream, schemaName, tableName);
 
     assertNotNull(rdbms);
     SqlServerSchema schema = rdbms.getSchemas().get(0);
@@ -327,8 +321,7 @@ public class DataStreamClientTest {
         new SqlServerColumn().setColumn("LineId").setPrimaryKey(true).setDataType("INT");
     SqlServerColumn nonPkColumn =
         new SqlServerColumn().setColumn("Description").setPrimaryKey(false).setDataType("VARCHAR");
-    SqlServerColumn nullPkColumn =
-        new SqlServerColumn().setColumn("Amount").setDataType("DECIMAL");
+    SqlServerColumn nullPkColumn = new SqlServerColumn().setColumn("Amount").setDataType("DECIMAL");
 
     SqlServerTable mockTable =
         new SqlServerTable()
@@ -341,8 +334,7 @@ public class DataStreamClientTest {
             eq(streamName), eq(schemaName), eq(tableName), eq(sourceConnProfile));
 
     List<String> primaryKeys =
-        datastream.getSqlServerPrimaryKeys(
-            streamName, schemaName, tableName, sourceConnProfile);
+        datastream.getSqlServerPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
 
     assertEquals(2, primaryKeys.size());
     assertEquals("OrderId", primaryKeys.get(0));
@@ -364,9 +356,7 @@ public class DataStreamClientTest {
         new SqlServerColumn().setColumn("Timestamp").setPrimaryKey(false).setDataType("DATETIME");
 
     SqlServerTable mockTable =
-        new SqlServerTable()
-            .setTable(tableName)
-            .setColumns(Arrays.asList(col1, col2));
+        new SqlServerTable().setTable(tableName).setColumns(Arrays.asList(col1, col2));
 
     doReturn(mockTable)
         .when(datastream)
@@ -374,8 +364,7 @@ public class DataStreamClientTest {
             eq(streamName), eq(schemaName), eq(tableName), eq(sourceConnProfile));
 
     List<String> primaryKeys =
-        datastream.getSqlServerPrimaryKeys(
-            streamName, schemaName, tableName, sourceConnProfile);
+        datastream.getSqlServerPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
 
     assertTrue(primaryKeys.isEmpty());
   }
@@ -395,9 +384,7 @@ public class DataStreamClientTest {
         new SqlServerColumn().setColumn("Key2").setPrimaryKey(true).setDataType("INT");
 
     SqlServerTable mockTable =
-        new SqlServerTable()
-            .setTable(tableName)
-            .setColumns(Arrays.asList(col1, col2));
+        new SqlServerTable().setTable(tableName).setColumns(Arrays.asList(col1, col2));
 
     doReturn(mockTable)
         .when(datastream)
@@ -405,8 +392,7 @@ public class DataStreamClientTest {
             eq(streamName), eq(schemaName), eq(tableName), eq(sourceConnProfile));
 
     List<String> primaryKeys =
-        datastream.getSqlServerPrimaryKeys(
-            streamName, schemaName, tableName, sourceConnProfile);
+        datastream.getSqlServerPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
 
     assertEquals(2, primaryKeys.size());
     assertEquals("Key1", primaryKeys.get(0));
@@ -422,8 +408,7 @@ public class DataStreamClientTest {
     String tableName = "NullPkTable";
     SourceConfig sourceConnProfile = new SourceConfig();
 
-    SqlServerColumn colWithNullPk =
-        new SqlServerColumn().setColumn("ColA").setDataType("INT");
+    SqlServerColumn colWithNullPk = new SqlServerColumn().setColumn("ColA").setDataType("INT");
     SqlServerColumn colWithFalsePk =
         new SqlServerColumn().setColumn("ColB").setPrimaryKey(false).setDataType("VARCHAR");
     SqlServerColumn colWithTruePk =
@@ -440,8 +425,7 @@ public class DataStreamClientTest {
             eq(streamName), eq(schemaName), eq(tableName), eq(sourceConnProfile));
 
     List<String> primaryKeys =
-        datastream.getSqlServerPrimaryKeys(
-            streamName, schemaName, tableName, sourceConnProfile);
+        datastream.getSqlServerPrimaryKeys(streamName, schemaName, tableName, sourceConnProfile);
 
     assertEquals(1, primaryKeys.size());
     assertEquals("ColC", primaryKeys.get(0));
