@@ -195,9 +195,8 @@ public class DatastreamRow {
   public List<String> getSortFields() {
     if (this.getSourceType().equals("mysql")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
-    } else if (this.getSourceType().equals("postgresql")) {
-      return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
-    } else if (this.getSourceType().equals("sqlserver")) {
+    } else if (this.getSourceType().equals("postgresql")
+        || this.getSourceType().equals("sqlserver")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_lsn");
     } else {
       // Current default is oracle.
