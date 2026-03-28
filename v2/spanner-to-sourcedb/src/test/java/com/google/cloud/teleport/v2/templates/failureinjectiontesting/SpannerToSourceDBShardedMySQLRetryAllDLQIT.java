@@ -137,7 +137,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                 spannerResourceManager,
                 spannerMetadataResourceManager,
                 null, // Passing null disables Pub/Sub consumer, leaving retry DLQ items statically
-                "test-suffix",
+                getClass().getSimpleName(),
                 "input/customShard.jar",
                 "com.custom.CustomShardIdFetcherForRetryIT",
                 null,
@@ -236,7 +236,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
             spannerResourceManager,
             spannerMetadataResourceManager,
             null,
-            "test-suffix",
+            getClass().getSimpleName(),
             "input/customShard.jar",
             "com.custom.CustomShardIdFetcherForRetryIT",
             null,
