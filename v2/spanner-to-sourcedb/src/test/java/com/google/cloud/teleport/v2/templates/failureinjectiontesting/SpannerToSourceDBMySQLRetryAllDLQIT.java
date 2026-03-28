@@ -52,70 +52,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for the reverse replication flow from Spanner to MySQL using retryAllDLQ mode.
+ * Integration test for reverse replication from Spanner to MySQL using the retryAllDLQ mode.
  *
- * <p>This test validates the following scenarios for a non-sharded schema during reverse
- * replication:
+ * <p>Objective: Verify that the retryAllDLQ batch job correctly processes and retries ALL Dead
+ * Letter Queue (DLQ) events when the main pipeline is stopped.
  *
- * <ul>
- *   <li><b>Severe errors:</b> Simulates transformer errors that cannot be bypassed.
- *   <li><b>Retriable errors:</b> Includes check constraint and foreign key violations.
- *   <li><b>Fixable errors:</b> Verifies if corrected items are successfully migrated and written to
- *       MySQL.
- *   <li><b>Non-fixable errors:</b> Verifies if un-processed items are written back to GCS.
- * </ul>
- *
- * <p>Edge cases covered:
- *
- * <ul>
- *   <li>All datatypes support.
- *   <li>Primary key differences (e.g., MySQL PK has an extra column; verifies Spanner can supply
- *       sufficient data).
- *   <li>Handling of added, deleted, or renamed columns between Spanner and MySQL.
- *   <li>Foreign key integration and dependencies.
- *   <li>Transformation errors fixed.
- * </ul>
- *
- * <p>Simulation methodology for reverse replication (where MySQL is the target and Spanner is the
- * source):
- *
- * <ul>
- *   <li><b>Schema Differences:</b>
- *       <ul>
- *         <li>MySQL has a stricter check constraint than Spanner (causes retriable error, not fixed
- *             before retryDLQ).
- *         <li>MySQL has a foreign key relationship missing in Spanner (causes retriable error,
- *             fixed before retryDLQ).
- *         <li>A column dropped in Spanner still exists in MySQL (requires custom transformation or
- *             nullability to succeed).
- *         <li>A column added to Spanner does not exist in MySQL.
- *         <li>MySQL PK has an extra column (test if source gets enough info if spanner PK has fewer
- *             cols).
- *       </ul>
- *   <li><b>Other Requirements:</b>
- *       <ul>
- *         <li>A custom error-injecting transformation simulates a severe error (fixed before
- *             retryDLQ).
- *         <li>A schema override file is supplied to reconcile schema changes.
- *       </ul>
- * </ul>
+ * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
+ * and foreign key violations via the retryAllDLQ pipeline. - Processing severe errors introduced by
+ * custom transformation failures via the retryAllDLQ pipeline. - Retrying fixed items successfully
+ * in both retry/ and severe/ buckets: e.g. fixing a foreign key violation by inserting a missing
+ * parent row, and using a corrected transformation file. - Ensuring non-fixable items remain
+ * correctly logged under their respective error buckets. - Validating schema complexities between
+ * Source and Spanner, including mismatched primary keys, added, deleted, and renamed columns, as
+ * well as all datatypes. - Utilizing the schema overrides file to reconcile schema differences. -
+ * Utilizing the static DLQ file-based consumer (instead of the Pub/Sub consumer flow).
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITBase {
+public class SpannerToSourceDBMySQLRetryAllDLQIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToSrcDBMySQLAllDataTypesRetryIT.class);
+      LoggerFactory.getLogger(SpannerToSourceDBMySQLRetryAllDLQIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryIT/spanner-schema.sql";
+      "SpannerToSourceDBMySQLRetryAllDLQIT/spanner-schema.sql";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryIT/mysql-schema.sql";
+      "SpannerToSourceDBMySQLRetryAllDLQIT/mysql-schema.sql";
   private static final String OVERRIDES_FILE_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryIT/overrides.json";
+      "SpannerToSourceDBMySQLRetryAllDLQIT/overrides.json";
 
-  private static final HashSet<SpannerToSrcDBMySQLAllDataTypesRetryIT> testInstances =
-      new HashSet<>();
+  private static final HashSet<SpannerToSourceDBMySQLRetryAllDLQIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager spannerMetadataResourceManager;
@@ -125,18 +91,18 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (SpannerToSrcDBMySQLAllDataTypesRetryIT.class) {
+    synchronized (SpannerToSourceDBMySQLRetryAllDLQIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(SpannerToSrcDBMySQLAllDataTypesRetryIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(SpannerToSourceDBMySQLRetryAllDLQIT.SPANNER_DDL_RESOURCE);
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
-            jdbcResourceManager, SpannerToSrcDBMySQLAllDataTypesRetryIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager, SpannerToSourceDBMySQLRetryAllDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -191,7 +157,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSrcDBMySQLAllDataTypesRetryIT instance : testInstances) {
+    for (SpannerToSourceDBMySQLRetryAllDLQIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -475,10 +441,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
     String userDir = System.getProperty("user.dir");
     if (userDir.endsWith("v2/spanner-to-sourcedb")) {
       return "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
-    } else if (userDir.endsWith("DataflowTemplates")) {
-      return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
-    } else {
-      return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
     }
+    return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
   }
 }

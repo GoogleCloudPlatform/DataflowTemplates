@@ -52,27 +52,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for reverse replication from Spanner to MySQL using retryDLQ mode.
+ * Integration test for reverse replication from Spanner to MySQL using the retryDLQ mode.
  *
- * <p>This test validates DLQ error handling for a non-sharded schema with a concurrent retryDLQ
- * batch job.
+ * <p>Objective: Verify that the retryDLQ batch job correctly processes and retries severe Dead
+ * Letter Queue (DLQ) events alongside an actively running streaming pipeline (that processes retry/
+ * errors).
+ *
+ * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
+ * and foreign key violations via the regular pipeline. - Processing severe errors introduced by
+ * custom transformation failures via the retryDLQ pipeline. - Retrying fixed items successfully in
+ * both retry/ and severe/ buckets: e.g. fixing a foreign key violation by inserting a missing
+ * parent row, and using a corrected transformation file. - Ensuring non-fixable items remain
+ * correctly logged under their respective error buckets. - Validating schema complexities between
+ * Source and Spanner, including mismatched primary keys, added, deleted, and renamed columns, as
+ * well as all datatypes. - Utilizing the schema overrides file to reconcile schema differences. -
+ * Utilizing the active dlqPubSubConsumer flow to continuously receive and process streaming DLQ
+ * retries.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDbITBase {
+public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToSrcDBMySQLAllDataTypesRetryDLQIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDBMySQLRetryDLQIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryDLQIT/spanner-schema.sql";
+      "SpannerToSourceDBMySQLRetryDLQIT/spanner-schema.sql";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryDLQIT/mysql-schema.sql";
+      "SpannerToSourceDBMySQLRetryDLQIT/mysql-schema.sql";
   private static final String OVERRIDES_FILE_RESOURCE =
-      "SpannerToSrcDBMySQLAllDataTypesRetryDLQIT/overrides.json";
+      "SpannerToSourceDBMySQLRetryDLQIT/overrides.json";
 
-  private static final HashSet<SpannerToSrcDBMySQLAllDataTypesRetryDLQIT> testInstances =
-      new HashSet<>();
+  private static final HashSet<SpannerToSourceDBMySQLRetryDLQIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager spannerMetadataResourceManager;
@@ -83,19 +93,18 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (SpannerToSrcDBMySQLAllDataTypesRetryDLQIT.class) {
+    synchronized (SpannerToSourceDBMySQLRetryDLQIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(SpannerToSrcDBMySQLAllDataTypesRetryDLQIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(SpannerToSourceDBMySQLRetryDLQIT.SPANNER_DDL_RESOURCE);
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
-            jdbcResourceManager,
-            SpannerToSrcDBMySQLAllDataTypesRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager, SpannerToSourceDBMySQLRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -111,12 +120,6 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
                 .build();
 
         gcsResourceManager.uploadArtifact("input/customShard.jar", getCustomShardJarPath());
-
-        // // Setup PubSub so regular pipeline continuously retries
-        // pubsubResourceManager = setUpPubSubResourceManager();
-        // SubscriptionName subscriptionName =
-        //     createPubsubResources(
-        //         "dlq-sub", pubsubResourceManager, "dlq", gcsResourceManager);
 
         pubsubResourceManager = setUpPubSubResourceManager();
         SubscriptionName subscriptionName =
@@ -157,7 +160,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSrcDBMySQLAllDataTypesRetryDLQIT instance : testInstances) {
+    for (SpannerToSourceDBMySQLRetryDLQIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -172,19 +175,15 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
   public void testSpannerToSrcDBRetryDLQ() throws Exception {
     assertThatPipeline(jobInfo).isRunning();
 
-    // Insert parent rows directly into MySQL. This prevents out-of-order Dataflow failures
-    // since Dataflow processes asynchronously and might process child rows before parent rows.
+    // Insert parent rows directly into MySQL to prevent out-of-order Dataflow failures.
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
-    // Insert all test data into the source Spanner database.
     insertDataInSpanner();
-    LOG.info("Data inserted into Spanner successfully");
 
-    // Wait for DLQ events to appear in severe bucket ONLY.
-    // The retry bucket will be continuously deleted and re-written by the pubsub and SHOULD NOT be
-    // asserted on.
-    LOG.info("Waiting for DLQ events to appear in severe/ bucket.");
+    // Wait for DLQ events to appear in the severe bucket. The retry bucket should not be
+    // asserted on because it is continuously deleted and re-written by the PubSub subscriptions.
+    LOG.info("Waiting for DLQ events to appear in severe bucket");
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
@@ -196,11 +195,8 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
                                 .build()))
                     .build());
     assertThatResult(dlqWaitResult).meetsConditions();
-    LOG.info("DLQ events successfully generated in severe bucket");
 
-    // To ensure that the error cases of retry/ bucket are correctly identified,
-    // we can assert the SQL database to check that those failing rows were NOT migrated,
-    // while the success cases were.
+    // Verify the MySQL database to ensure failing rows were NOT migrated, while success cases were.
     LOG.info("Verifying MySQL state before retry job runs");
     List<Map<String, Object>> customersRows =
         jdbcResourceManager.runSQLQuery("SELECT CustomerId FROM Customers");
@@ -242,30 +238,24 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
             null,
             CustomTransformation.builder(
                     "input/customShard.jar", "com.custom.SpannerToSourceDbRetryTransformation")
-                .setCustomParameters(
-                    "mode=semi-fixed") // This fixes one of our severe errors simulated in the
-                // transformer
+                .setCustomParameters("mode=semi-fixed") // Fixes one of the simulated severe errors
                 .build(),
             MYSQL_SOURCE_TYPE,
             retryParams);
-    LOG.info("RetryDLQ job launched: {}", retryJobInfo.jobId());
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    // Insert the fix for some of the errors (the parent row for the failing child row)
     LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer', 2000, 'Gold')");
 
-    // Wait for the retry job to finish processing. Since it is retryDLQ, it is a batch job and will
-    // complete on its own.
+    // Wait for the retryDLQ batch job to complete automatically
     LOG.info("Waiting for the retryDLQ job to complete automatically");
     PipelineOperator.Result retryJobResult =
         pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(15)));
     assertThatResult(retryJobResult).isLaunchFinished();
 
-    // Once this job has completed, assert ONLY the severe bucket (should have 1 entry)
-    LOG.info("Waiting for DLQ events to appear in severe/ bucket after retryDLQ job completes");
+    LOG.info("Verifying that severe bucket has exactly 1 entry after retryDLQ job completes");
     PipelineOperator.Result dlqRetryWaitResult =
         pipelineOperator()
             .waitForCondition(
@@ -279,8 +269,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
                     .build());
     assertThatResult(dlqRetryWaitResult).meetsConditions();
 
-    // Verify target MySQL database has the correct updated state.
-    // Check MySQL for both the fixed rows and for the absence of the non-fixed retriable error
+    // Verify target MySQL database for both the fixed rows and for the absence of non-fixed errors
     LOG.info("Verifying final target MySQL database contents");
 
     customersRows = jdbcResourceManager.runSQLQuery("SELECT CustomerId FROM Customers");
@@ -417,10 +406,7 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryDLQIT extends SpannerToSourceDb
     String userDir = System.getProperty("user.dir");
     if (userDir.endsWith("v2/spanner-to-sourcedb")) {
       return "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
-    } else if (userDir.endsWith("DataflowTemplates")) {
-      return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
-    } else {
-      return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
     }
+    return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
   }
 }

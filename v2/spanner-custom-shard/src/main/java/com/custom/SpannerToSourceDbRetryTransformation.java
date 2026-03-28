@@ -24,6 +24,23 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Custom transformation class used for failure injection testing in Spanner to Source reverse
+ * replication.
+ *
+ * <p>Overview: This transformer injects severe transformation errors to test the pipeline's Dead
+ * Letter Queue (DLQ) processing and error handling.
+ *
+ * <p>Test Usage modes: - mode=bad: Intentionally throws InvalidTransformationException on rows with
+ * ID 999 and 888 in the AllDataTypes table. Used during the main pipeline run to force these rows
+ * into the severe DLQ error bucket. - mode=semi-fixed: Intentionally throws an exception only on
+ * row ID 888. This simulates a scenario where a user pushes a corrected transformation JAR for the
+ * retry pipeline. Row 999 successfully migrates during the retry, while row 888 correctly fails
+ * again and gets routed back into the DLQ.
+ *
+ * <p>For the Orders table, it translates the OrderSource column into a custom LegacyOrderSystem
+ * column to validate standard data transformation operations.
+ */
 public class SpannerToSourceDbRetryTransformation implements ISpannerMigrationTransformer {
 
   private static final Logger LOG =
