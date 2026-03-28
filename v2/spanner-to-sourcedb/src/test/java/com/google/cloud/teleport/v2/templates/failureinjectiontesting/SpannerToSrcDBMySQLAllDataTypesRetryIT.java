@@ -296,53 +296,51 @@ public class SpannerToSrcDBMySQLAllDataTypesRetryIT extends SpannerToSourceDbITB
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    // 7. Wait for the retry job to process events and ensure they reach the target MySQL database.
-    LOG.info("Waiting for retry job to process events");
-    ConditionCheck conditionCheck =
+    // 7. Wait for the retry job to process events and ensure they reach the DLQ correctly BEFORE
+    // cancelling.
+    LOG.info("Waiting for DLQ events to appear in retry and severe buckets after retry");
+    ConditionCheck dlqConditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    JDBCRowsCheck.builder(jdbcResourceManager, "AllDataTypes")
-                        .setMinRows(2)
-                        .setMaxRows(2)
+                    DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+                        .setMinEvents(1)
+                        .setMaxEvents(1)
                         .build(),
-                    JDBCRowsCheck.builder(jdbcResourceManager, "Customers")
-                        .setMinRows(2)
-                        .setMaxRows(2)
-                        .build(),
-                    JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
-                        .setMinRows(2)
-                        .setMaxRows(2)
+                    DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                        .setMinEvents(1)
+                        .setMaxEvents(1)
                         .build()))
             .build();
 
     PipelineOperator.Result retryResult =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(retryJobInfo, Duration.ofMinutes(15)), conditionCheck);
+                createConfig(retryJobInfo, Duration.ofMinutes(15)), dlqConditionCheck);
 
     assertThatResult(retryResult).meetsConditions();
     LOG.info("Retry job completed processing successfully");
 
-    // 8. Verify DLQ contents after the retry. The non-fixable errors should be written back.
-    LOG.info("Verifying DLQ contents after retry processing");
-    assertTrue(
-        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
-            .setMinEvents(1)
-            .setMaxEvents(1)
-            .build()
-            .get());
-    LOG.info("DLQ retry bucket has 1 event");
-
-    assertTrue(
-        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-            .setMinEvents(1)
-            .setMaxEvents(1)
-            .build()
-            .get());
-    LOG.info("DLQ severe bucket has 1 event");
-
-    // 9. Verify target MySQL database has the correct updated state.
+    // 8. Verify target MySQL database has the correct updated state.
     LOG.info("Verifying target MySQL database contents");
+
+    assertTrue(
+        JDBCRowsCheck.builder(jdbcResourceManager, "AllDataTypes")
+            .setMinRows(2)
+            .setMaxRows(2)
+            .build()
+            .get());
+    assertTrue(
+        JDBCRowsCheck.builder(jdbcResourceManager, "Customers")
+            .setMinRows(2)
+            .setMaxRows(2)
+            .build()
+            .get());
+    assertTrue(
+        JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
+            .setMinRows(2)
+            .setMaxRows(2)
+            .build()
+            .get());
 
     // AllDataTypes:
     // id=1 should exist
