@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link DataStreamClient} provides access to the DataStream APIs required to process CDC
- * DataStream data and maintain schema aligment.
+ * DataStream data and maintain schema alignment.
  */
 public class DataStreamClient implements Serializable {
 
@@ -194,7 +194,7 @@ public class DataStreamClient implements Serializable {
   /**
    * Return a {@link Stream} with the related information required to request schema discovery.
    *
-   * @param streamName The fully qualified Stream name. ie. project/my-project/stream/my-stream
+   * @param streamName The fully qualified Stream name. i.e. project/my-project/stream/my-stream
    */
   public Stream getStream(String streamName) throws IOException {
 
@@ -209,7 +209,7 @@ public class DataStreamClient implements Serializable {
    * Return a {@link SourceConfig} ConnectionProfile object which can be used for schema discovery
    * and connection information.
    *
-   * @param streamName The ID of a DataStream Stream (ie. project/my-project/stream/my-stream).
+   * @param streamName The ID of a DataStream Stream (i.e. project/my-project/stream/my-stream).
    */
   public SourceConfig getSourceConnectionProfile(String streamName) throws IOException {
     Stream stream = getStream(streamName);
@@ -221,7 +221,7 @@ public class DataStreamClient implements Serializable {
 
   /**
    * Return a DataStream API parent string representing the base required for a Discovery API
-   * request (ie. projects/my-project/locations/my-location).
+   * request (i.e. projects/my-project/locations/my-location).
    *
    * @param connectionProfileName The ID of a ConnectionProfile. ie.
    *     project/my-project/locations/my-location/connectionProfiles/my-connection-profile
@@ -266,7 +266,7 @@ public class DataStreamClient implements Serializable {
   /**
    * Return a {@link MysqlTable} object with schema and PK information.
    *
-   * @param streamName A fully qualified Stream name (ie. projects/my-project/stream/my-stream)
+   * @param streamName A fully qualified Stream name (i.e. projects/my-project/stream/my-stream)
    * @param schemaName The name of the schema for the table being discovered.
    * @param tableName The name of the table to discover.
    * @param sourceConnProfile The SourceConfig connection profile to be discovered.
@@ -359,7 +359,7 @@ public class DataStreamClient implements Serializable {
   /**
    * Return a {@link OracleTable} object with schema and PK information.
    *
-   * @param streamName A fully qualified Stream name (ie. projects/my-project/stream/my-stream)
+   * @param streamName A fully qualified Stream name (i.e. projects/my-project/stream/my-stream)
    * @param schemaName The name of the schema for the table being discovered.
    * @param tableName The name of the table to discover.
    * @param sourceConnProfile The SourceConfig connection profile to be discovered.
@@ -392,7 +392,7 @@ public class DataStreamClient implements Serializable {
   /**
    * Return a {@link PostgresqlTable} object with schema and PK information.
    *
-   * @param streamName A fully qualified Stream name (ie. projects/my-project/stream/my-stream)
+   * @param streamName A fully qualified Stream name (i.e. projects/my-project/stream/my-stream)
    * @param schemaName The name of the schema for the table being discovered.
    * @param tableName The name of the table to discover.
    * @param sourceConnProfile The SourceConfig connection profile to be discovered.
