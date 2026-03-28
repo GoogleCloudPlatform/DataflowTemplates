@@ -52,7 +52,7 @@ CREATE TABLE AllDataTypes (
 	integer_unsigned_col INT64,     -- From: integer_unsigned_col int(10)
 	timestamp_col TIMESTAMP,        -- From: timestamp_col timestamp
 	set_col STRING(MAX),            -- From: set_col set[]
-) PRIMARY KEY (d);
+) PRIMARY KEY (id);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
