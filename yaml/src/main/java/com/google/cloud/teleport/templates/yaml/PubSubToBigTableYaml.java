@@ -68,7 +68,7 @@ public interface PubSubToBigTableYaml {
       optional = false,
       description = "Data schema.",
       helpText =
-          "A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.",
+          "A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.",
       example = "")
   @Validation.Required
   String getSchema();

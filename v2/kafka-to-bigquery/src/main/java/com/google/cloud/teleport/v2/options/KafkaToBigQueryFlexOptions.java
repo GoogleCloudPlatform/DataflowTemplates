@@ -34,7 +34,7 @@ public interface KafkaToBigQueryFlexOptions
         SchemaRegistryOptions,
         BigQueryDeadLetterQueueOptions,
         JavascriptTextTransformerOptions {
-  // This is a duplicate option that already exist in KafkaReadOptions but keeping it here
+  // This is a duplicate option that already exists in KafkaReadOptions but keeping it here
   // so the KafkaTopic appears above the authentication enum on the Templates UI.
   @TemplateParameter.KafkaReadTopic(
       order = 1,

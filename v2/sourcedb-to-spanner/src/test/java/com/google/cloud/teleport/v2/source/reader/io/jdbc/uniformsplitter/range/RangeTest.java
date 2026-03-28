@@ -90,7 +90,7 @@ public class RangeTest {
     assertThat(rangeWithChildCounted.childRange().count()).isEqualTo(42L);
     assertThat(rangeWithChild.height()).isEqualTo(1L);
     assertThat(rangeWithChildCounted.height()).isEqualTo(1L);
-    /* Child cant be added on a splitable range */
+    /* Child can't be added on a splitable range */
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -98,7 +98,7 @@ public class RangeTest {
                 .setStart((long) basicRange.end() - 2)
                 .build()
                 .withChildRange(basicRange.toBuilder().setColName("long_col_2").build(), null));
-    /* Child cant be added with same column name */
+    /* Child can't be added with same column name */
     assertThrows(
         IllegalArgumentException.class,
         () -> basicRange.withChildRange(basicRange.toBuilder().build(), null));

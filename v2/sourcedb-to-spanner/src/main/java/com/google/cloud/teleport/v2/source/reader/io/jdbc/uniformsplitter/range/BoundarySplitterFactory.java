@@ -130,7 +130,7 @@ public class BoundarySplitterFactory {
      * 3. (start + (end/2 - start/2) does not have consistent rounding. For example this will give 11 for 9 and 12 (rounded-up) and give 11 for 10 and 13 too (rounded-down).
      * 4. The method we have used here is free of overflows. Here is how it works
      * 4.1 a + b = (a^b) + (a&b) << 1. bit wise addition is xor of individual bits + carry left shifted by 1.
-     * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
+     * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions don't have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
   }
@@ -180,7 +180,7 @@ public class BoundarySplitterFactory {
      * 3. (start + (end/2 - start/2) does not have consistent rounding. For example this will give 11 for 9 and 12 (rounded-up) and give 11 for 10 and 13 too (rounded-down).
      * 4. The method we have used here is free of overflows. Here is how it works
      * 4.1 a + b = (a^b) + (a&b) << 1. bit wise addition is xor of individual bits + carry left shifted by 1.
-     * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
+     * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions don't have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
   }

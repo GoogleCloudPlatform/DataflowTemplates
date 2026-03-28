@@ -198,7 +198,7 @@ public class GCSToSourceDb {
         order = 11,
         optional = false,
         description = "Cloud Spanner Database to store the shard progress when reading from gcs",
-        helpText = "This is the database to store  the shard progress of the files processed..")
+        helpText = "This is the database to store the shard progress of the files processed.")
     String getMetadataDatabase();
 
     void setMetadataDatabase(String value);

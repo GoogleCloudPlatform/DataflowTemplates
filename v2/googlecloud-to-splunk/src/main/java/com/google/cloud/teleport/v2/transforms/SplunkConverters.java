@@ -123,7 +123,7 @@ public final class SplunkConverters {
         helpText =
             "Disable SSL certificate validation (true/false). Default false (validation "
                 + "enabled). If true, the certificates are not validated (all certificates are "
-                + "trusted) and  `rootCaCertificatePath` parameter is ignored.")
+                + "trusted) and `rootCaCertificatePath` parameter is ignored.")
     Boolean getDisableCertificateValidation();
 
     void setDisableCertificateValidation(Boolean disableCertificateValidation);
