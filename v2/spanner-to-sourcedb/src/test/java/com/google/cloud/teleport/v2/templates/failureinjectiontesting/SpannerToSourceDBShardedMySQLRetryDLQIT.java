@@ -56,13 +56,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for reverse replication from Spanner to MySQL using the retryDLQ mode for
- * sharded clusters.
+ * Integration test for reverse replication from Spanner to MySQL using the retryDLQ mode in a
+ * sharded schema setup.
  *
  * <p>Objective: Verify that the retryDLQ batch job correctly processes and retries severe Dead
  * Letter Queue (DLQ) events alongside an actively running streaming pipeline (that processes retry/
- * errors). Validates that rows dynamically route to the correct shards via migration_shard_id
- * native extraction configured via the session file.
+ * errors) in a sharded setup.
+ *
+ * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
+ * and foreign key violations via the regular pipeline. - Processing severe errors introduced by
+ * custom transformation failures via the retryDLQ pipeline. - Retrying fixed items successfully in
+ * both retry/ and severe/ buckets logically distributed across multiple shards. - Ensuring
+ * non-fixable items remain correctly logged under their respective error buckets. - Validating
+ * schema complexities between Source and Spanner, including mismatched primary keys, added,
+ * deleted, and renamed columns, as well as all datatypes. - Validating that row events are
+ * correctly dynamically routed to the appropriate logical shards via the migration_shard_id
+ * natively extracted from the Spanner DB and configured via the active session file.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -255,17 +264,16 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
+    // Apply partial fixes in MySQL to simulate user intervention.
     jdbcResourceManagerShardA.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
     // Wait for the retryDLQ batch job to complete automatically
-    LOG.info("Waiting for the retryDLQ job to complete automatically");
     PipelineOperator.Result retryJobResult =
         pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(15)));
     assertThatResult(retryJobResult).isLaunchFinished();
 
-    LOG.info("Verifying that severe bucket has exactly 1 entry after retryDLQ job completes");
+    // Verify that severe bucket has exactly 1 entry after retryDLQ job completes.
     PipelineOperator.Result dlqRetryWaitResult =
         pipelineOperator()
             .waitForCondition(
@@ -317,7 +325,6 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
     assertTrue("id=888 should NOT exist on Shard B", !shardBAllDataTypesIds.contains(888));
 
     // Cancel the regular streaming job as the final step.
-    LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
     pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
 
     // Wait for the regular pipeline to be cancelled (up to 5 minutes)
@@ -333,7 +340,6 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
       Thread.sleep(10000);
     }
     assertTrue("Job did not cancel in time", cancelled);
-    LOG.info("Regular pipeline stopped successfully");
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {

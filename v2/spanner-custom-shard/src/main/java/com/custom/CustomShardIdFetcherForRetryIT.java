@@ -20,6 +20,17 @@ import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import java.util.Map;
 
+/**
+ * A custom shard ID fetcher implementation used in sharded integration tests.
+ *
+ * <p>This fetcher evaluates the Spanner record's primary keys (either {@code CustomerId} or {@code
+ * id}) and applies a modulo operation to dynamically route records to specific logical shards
+ * ({@code testShardA} for odd numbers, {@code testShardB} for even numbers).
+ *
+ * <p>It is specifically designed for integration testing (e.g., verifying {@code retryAllDLQ}
+ * behavior in a sharded schema) to ensure that the pipeline correctly extracts IDs and routes rows
+ * to their target shards when native {@code migration_shard_id} schema columns are omitted.
+ */
 public class CustomShardIdFetcherForRetryIT implements IShardIdFetcher {
 
   @Override

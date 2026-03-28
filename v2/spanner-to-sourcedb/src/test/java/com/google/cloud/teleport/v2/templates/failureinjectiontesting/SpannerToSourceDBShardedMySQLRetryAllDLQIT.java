@@ -56,11 +56,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for reverse replication from Spanner to MySQL using the retryAllDLQ mode.
+ * Integration test for reverse replication from Spanner to MySQL using the retryAllDLQ mode in a
+ * sharded schema setup.
  *
  * <p>Objective: Verify that the retryAllDLQ batch job correctly processes and retries ALL Dead
- * Letter Queue (DLQ) events when the main pipeline is stopped inside a sharded topology using
- * custom shard logic.
+ * Letter Queue (DLQ) events when the main pipeline is stopped in a sharded setup.
+ *
+ * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
+ * and foreign key violations via the retryAllDLQ pipeline. - Processing severe errors introduced by
+ * custom transformation failures via the retryAllDLQ pipeline. - Retrying fixed items successfully
+ * in both retry/ and severe/ buckets logically distributed across multiple shards. - Ensuring
+ * non-fixable items remain correctly logged under their respective error buckets. - Validating
+ * schema complexities between Source and Spanner, including mismatched primary keys, added,
+ * deleted, and renamed columns, as well as all datatypes. - Utilizing the static DLQ file-based
+ * consumer (instead of the Pub/Sub consumer flow). - Validating that row events are correctly
+ * dynamically routed to the appropriate custom logical shards using a Custom Shard ID Fetcher.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -163,17 +173,13 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
 
   @Test
   public void testSpannerToSrcDBRetryAllDLQ() throws Exception {
-    LOG.info("Starting testSpannerToSrcDBRetryAllDLQ for sharded execution");
     assertThatPipeline(jobInfo).isRunning();
 
-    // 1. Insert parent rows directly into MySQL.
-    LOG.info("Inserting parent rows directly into MySQL");
+    // Insert parent rows directly into MySQL to prevent out-of-order Dataflow failures.
     // customer2 routes to ShardB (2%2==0)
     jdbcResourceManagerShardB.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
-    // 2. Insert test data into the source Spanner database.
-    LOG.info("Inserting test data into Spanner");
     insertDataInSpanner();
     LOG.info("Data inserted into Spanner successfully");
 
@@ -182,7 +188,6 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
     // - Customers: 1
     // - Orders: 1
     // - AllDataTypes: 2
-    LOG.info("Waiting for DLQ events to appear in retry and severe buckets");
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
@@ -197,10 +202,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                                 .build()))
                     .build());
     assertThatResult(dlqWaitResult).meetsConditions();
-    LOG.info("DLQ events appeared in corresponding buckets");
 
-    // 4. Stop the regular pipeline.
-    LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
     pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
 
     boolean cancelled = false;
@@ -215,15 +217,12 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
       Thread.sleep(10000);
     }
     assertTrue("Job did not cancel in time", cancelled);
-    LOG.info("Regular pipeline stopped successfully");
 
-    // 5. Apply partial fixes to simulate user intervention correcting data before DLQ retry.
-    LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
+    // Apply partial fixes in MySQL to simulate user intervention correcting data before DLQ retry.
     jdbcResourceManagerShardA.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
-    // 6. Launch a new Dataflow job in retryAllDLQ mode.
-    LOG.info("Launching retryAllDLQ job with schema overrides to process DLQ");
+    // Launch a new Dataflow job in retryAllDLQ mode to process the DLQ items offline.
     Map<String, String> retryParams = new HashMap<>();
     retryParams.put("runMode", "retryAllDLQ");
     retryParams.put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
@@ -246,13 +245,9 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                 .build(),
             MYSQL_SOURCE_TYPE,
             retryParams);
-    LOG.info("RetryAllDLQ job launched: {}", retryJobInfo.jobId());
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    // 7. Wait for the retry job to process events and ensure they reach the DLQ correctly BEFORE
-    // cancelling.
-    LOG.info("Waiting for DLQ events to appear in retry and severe buckets after retry");
     ConditionCheck dlqConditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
@@ -272,7 +267,6 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                 createConfig(retryJobInfo, Duration.ofMinutes(15)), dlqConditionCheck);
 
     assertThatResult(retryResult).meetsConditions();
-    LOG.info("Retry job completed processing successfully");
 
     // 8. Verify target MySQL database has the correct updated state.
     LOG.info("Verifying MySQL data across logical shards");
