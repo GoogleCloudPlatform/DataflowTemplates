@@ -65,7 +65,7 @@ CREATE TABLE Orders (
 	OrderValue NUMERIC,               -- From: OrderValue decimal(10,2)
 	migration_shard_id STRING(50),
 	OrderSource STRING(50) NOT NULL ,
-) PRIMARY KEY (migration_shard_id, CustomerId, OrderId)
+) PRIMARY KEY (migration_shard_id, CustomerId, OrderId);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
