@@ -94,7 +94,7 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
     dlqColumns.put("raw_message", "String");
     dlqColumns.put("error_message", "String");
     dlqColumns.put("stack_trace", "String");
-    dlqColumns.put("failed_at", "String");
+    dlqColumns.put("failed_at", "DateTime");
     clickHouseResourceManager.createTable(dlqTableName, dlqColumns, null, null);
 
     // Act
@@ -241,7 +241,7 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
     dlqColumns.put("raw_message", "String");
     dlqColumns.put("error_message", "String");
     dlqColumns.put("stack_trace", "String");
-    dlqColumns.put("failed_at", "String");
+    dlqColumns.put("failed_at", "DateTime");
     clickHouseResourceManager.createTable(dlqTableName, dlqColumns, null, null);
 
     // Act
@@ -322,7 +322,7 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
     dlqColumns.put("raw_message", "String");
     dlqColumns.put("error_message", "String");
     dlqColumns.put("stack_trace", "String");
-    dlqColumns.put("failed_at", "String");
+    dlqColumns.put("failed_at", "DateTime");
     clickHouseResourceManager.createTable(dlqTableName, dlqColumns, null, null);
 
     // Act
@@ -382,7 +382,7 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
     dlqColumns.put("raw_message", "String");
     dlqColumns.put("error_message", "String");
     dlqColumns.put("stack_trace", "String");
-    dlqColumns.put("failed_at", "String");
+    dlqColumns.put("failed_at", "DateTime");
     clickHouseResourceManager.createTable(dlqTableName, dlqColumns, null, null);
 
     // Act
@@ -445,7 +445,7 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
     dlqColumns.put("raw_message", "String");
     dlqColumns.put("error_message", "String");
     dlqColumns.put("stack_trace", "String");
-    dlqColumns.put("failed_at", "String");
+    dlqColumns.put("failed_at", "DateTime");
     clickHouseResourceManager.createTable(dlqTableName, dlqColumns, null, null);
 
     // Act — time-only mode: windowSeconds set, batchRowCount deliberately omitted

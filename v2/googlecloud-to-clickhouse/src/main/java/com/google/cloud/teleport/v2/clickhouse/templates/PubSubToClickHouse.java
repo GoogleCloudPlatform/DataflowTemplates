@@ -77,7 +77,7 @@ import org.slf4j.LoggerFactory;
  *     raw_message   String,
  *     error_message String,
  *     stack_trace   String,
- *     failed_at     String
+ *     failed_at     DateTime
  * ) ENGINE = MergeTree()
  * ORDER BY failed_at;
  * }</pre>
@@ -111,7 +111,7 @@ import org.slf4j.LoggerFactory;
       "Messages must be encoded as valid JSON.",
       "The ClickHouse target table must exist and column names must match the JSON message fields.",
       "When --clickHouseDeadLetterTable is set, the ClickHouse dead-letter table must exist "
-          + "with schema: (raw_message String, error_message String, stack_trace String, failed_at String).",
+          + "with schema: (raw_message String, error_message String, stack_trace String, failed_at DateTime).",
       "When --deadLetterTopic is set, the dead-letter Pub/Sub topic must exist.",
       "At least one of --clickHouseDeadLetterTable or --deadLetterTopic must be provided."
     },
@@ -133,7 +133,7 @@ public class PubSubToClickHouse {
           .addStringField("raw_message")
           .addStringField("error_message")
           .addStringField("stack_trace")
-          .addStringField("failed_at")
+          .addDateTimeField("failed_at")
           .build();
 
   /**
@@ -329,8 +329,8 @@ public class PubSubToClickHouse {
                                         ? row.getString("error_message")
                                         : "",
                                 "failedAt",
-                                    row.getString("failed_at") != null
-                                        ? row.getString("failed_at")
+                                    row.getDateTime("failed_at") != null
+                                        ? row.getDateTime("failed_at").toString()
                                         : "");
                         return new PubsubMessage(payload, attributes);
                       }))
@@ -458,7 +458,7 @@ public class PubSubToClickHouse {
                     payload,
                     e.getMessage() != null ? e.getMessage() : "null",
                     stackTraceToString(e),
-                    DateTime.now().toString("yyyy-MM-dd HH:mm:ss"))
+                    DateTime.now())
                 .build();
 
         out.get(TRANSFORM_DEADLETTER_OUT).output(deadLetterRow);

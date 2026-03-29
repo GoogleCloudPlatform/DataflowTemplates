@@ -240,7 +240,7 @@ public class PubSubToClickHouseTest {
               assertThat(dlq.getString("raw_message")).isEqualTo(badPayload);
               assertThat(dlq.getString("error_message")).isNotEmpty();
               assertThat(dlq.getString("stack_trace")).isNotEmpty();
-              assertThat(dlq.getString("failed_at")).isNotEmpty();
+              assertThat(dlq.getDateTime("failed_at")).isNotNull();
               return null;
             });
 

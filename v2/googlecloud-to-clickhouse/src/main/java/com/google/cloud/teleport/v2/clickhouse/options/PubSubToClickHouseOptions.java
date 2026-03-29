@@ -118,7 +118,7 @@ public interface PubSubToClickHouseOptions extends PipelineOptions {
               + "Can be combined with --deadLetterTopic to write to both destinations simultaneously. "
               + "At least one of --clickHouseDeadLetterTable or --deadLetterTopic must be provided. "
               + "The table must exist in ClickHouse with the following schema: "
-              + "(raw_message String, error_message String, stack_trace String, failed_at String).",
+              + "(raw_message String, error_message String, stack_trace String, failed_at DateTime).",
       example = "my_table_dead_letter")
   String getClickHouseDeadLetterTable();
 
