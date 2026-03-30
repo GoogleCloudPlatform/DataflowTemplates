@@ -101,7 +101,7 @@ import org.slf4j.LoggerFactory;
             + "--deadLetterTopic are provided. "
             + "The target table and any ClickHouse dead-letter table must exist prior to execution.",
     optionsClass = PubSubToClickHouseOptions.class,
-    flexContainerName = "pubsub-to-clickhouse",
+    flexContainerName = "googlecloud-to-clickhouse",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/pubsub-to-clickhouse",
     contactInformation = "https://cloud.google.com/support",
