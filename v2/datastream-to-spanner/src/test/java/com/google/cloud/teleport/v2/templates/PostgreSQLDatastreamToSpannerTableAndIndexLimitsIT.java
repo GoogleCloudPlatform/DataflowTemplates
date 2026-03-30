@@ -194,12 +194,11 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
     }
     rows.forEach(
         row -> {
-          assertThat(row.getString("pk_col1").equals("A".repeat(4092)));
-          assertThat(row.getString("pk_col2").equals("B".repeat(4092)));
-          assertThat(row.getString("pk_col3").equals("C".repeat(8)));
-          assertThat(
-              row.getString("value_col")
-                  .equals("Primary key with size exactly equal to 8192 bytes"));
+          assertThat(row.getString("pk_col1")).isEqualTo("A".repeat(4092));
+          assertThat(row.getString("pk_col2")).isEqualTo("B".repeat(4092));
+          assertThat(row.getString("pk_col3")).isEqualTo("C".repeat(8));
+          assertThat(row.getString("value_col"))
+              .isEqualTo("Primary key with size exactly equal to 8192 bytes");
         });
   }
 
@@ -227,13 +226,12 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
     }
     rows.forEach(
         row -> {
-          assertThat(row.getLong("pk_col") == (1L));
-          assertThat(row.getString("idx_col1").equals("A".repeat(4091)));
-          assertThat(row.getString("idx_col2").equals("B".repeat(4091)));
-          assertThat(
-              row.getString("value_col")
-                  .equals(
-                      "Index key with size less than or equal to 8192 bytes (including PK size)"));
+          assertThat(row.getLong("pk_col")).isEqualTo(1L);
+          assertThat(row.getString("idx_col1")).isEqualTo("A".repeat(4091));
+          assertThat(row.getString("idx_col2")).isEqualTo("B".repeat(4091));
+          assertThat(row.getString("value_col"))
+              .isEqualTo(
+                  "Index key with size less than or equal to 8192 bytes (including PK size)");
         });
   }
 
@@ -261,11 +259,11 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
     }
     rows.forEach(
         row -> {
-          assertThat(row.getLong("id") == (1L));
+          assertThat(row.getLong("id")).isEqualTo(1L);
           assertThat(
               row.getBytes("max_string_col_to_bytes")
                   .equals("a".repeat(10485760).getBytes(StandardCharsets.UTF_8)));
-          assertThat(row.getString("max_string_col_to_str").equals("a".repeat(2621440)));
+          assertThat(row.getString("max_string_col_to_str")).isEqualTo("a".repeat(2621440));
         });
   }
 
