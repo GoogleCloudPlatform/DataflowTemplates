@@ -65,6 +65,7 @@ public class SchemaLoaderTest {
                       .foreignKeys(ImmutableList.of())
                       .uniqueKeys(ImmutableList.of())
                       .updateQps(0)
+                      .insertQps(0)
                       .deleteQps(0)
                       .recordsPerTick(1)
                       .build()))
