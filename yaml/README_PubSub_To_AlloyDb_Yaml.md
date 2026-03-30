@@ -16,34 +16,32 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **format**: The message format. One of: AVRO, JSON, PROTO or STRING. For example, `JSON`.
-* **language**: The language used to define (and execute) the expressions and callables in fields. For example, `python`.
+* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
+* **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
+* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **url**: Connection URL for the JDBC sink. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
+* **url**: The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
 * **username**: Username for AlloyDb authentication For example, `postgres`.
-* **password**: Password for AlloyDb authentication.
-* **table**: Name of the table to write to. For example, `my_table`.
+* **password**: Password for AlloyDb authentication For example, `your-password`.
+* **table**: The name of the table where records will be written For example, `my_table`.
 * **query**: SQL query used to insert records into the JDBC sink. For example, `INSERT INTO table_name (col1, col2) VALUES (?, ?)`.
 * **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
 
 ### Optional parameters
 
-* **topic**: Pub/Sub topic to read the input from. Provide either topic or subscription, not both. For example, `projects/your-project-id/topics/your-topic-name`.
-* **subscription**: Pub/Sub subscription to read the input from. Provide either subscription or topic, not both. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
-* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition. For example, `fields:
-  - name: "message_body"
-    type: "STRING"`.
-* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.
-* **attributeMap**: Name of a field in which to store the full set of attributes associated with this message.
-* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute will be used for deduplication of messages.
-* **timestampAttribute**: Message value to use as element timestamp. If None, uses message publishing time as the timestamp.
-* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing For example, `type: fixed
-size: 60s`.
+* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.
+* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.
+* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.
+* **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
+* **errorHandling**: This option specifies whether and where to output error rows.
+* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
 * **connectionProperties**: Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10 For example, `sslmode=require;connectTimeout=10`.
-* **batchSize**: Number of records to batch before writing to the database For example, `100`.
-* **autoSharding**: If true, enables using a dynamically determined number of shards to write.
 * **network**: The VPC network where AlloyDB is located. For example, `default`.
 * **subnetwork**: The subnetwork for Dataflow workers. Required for custom VPCs. For example, `regions/us-central1/subnetworks/my-subnet`.
+* **batchSize**: Number of records to batch before writing to the database For example, `100`.
+* **autoSharding**: If true, enables using a dynamically determined number of shards to write. For example, `True`. Defaults to: false.
 
 
 
@@ -136,7 +134,9 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_AlloyDb_Yaml"
 
 ### Required
+export TOPIC=<topic>
 export FORMAT=<format>
+export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
 export URL=<url>
@@ -147,32 +147,32 @@ export QUERY=<query>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
-export TOPIC=<topic>
-export SUBSCRIPTION=<subscription>
-export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
-export ATTRIBUTE_MAP=<attributeMap>
+export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export ERROR_HANDLING=<errorHandling>
+export SUBSCRIPTION=<subscription>
 export WINDOWING=<windowing>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export BATCH_SIZE=<batchSize>
-export AUTO_SHARDING=<autoSharding>
 export NETWORK=<network>
 export SUBNETWORK=<subnetwork>
+export BATCH_SIZE=<batchSize>
+export AUTO_SHARDING=false
 
 gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "topic=$TOPIC" \
-  --parameters "subscription=$SUBSCRIPTION" \
   --parameters "format=$FORMAT" \
   --parameters "schema=$SCHEMA" \
   --parameters "attributes=$ATTRIBUTES" \
-  --parameters "attributeMap=$ATTRIBUTE_MAP" \
+  --parameters "attributesMap=$ATTRIBUTES_MAP" \
   --parameters "idAttribute=$ID_ATTRIBUTE" \
   --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
+  --parameters "errorHandling=$ERROR_HANDLING" \
+  --parameters "subscription=$SUBSCRIPTION" \
   --parameters "language=$LANGUAGE" \
   --parameters "fields=$FIELDS" \
   --parameters "windowing=$WINDOWING" \
@@ -180,12 +180,12 @@ gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "network=$NETWORK" \
+  --parameters "subnetwork=$SUBNETWORK" \
   --parameters "table=$TABLE" \
   --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
   --parameters "autoSharding=$AUTO_SHARDING" \
-  --parameters "network=$NETWORK" \
-  --parameters "subnetwork=$SUBNETWORK" \
   --parameters "outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC"
 ```
 
@@ -205,7 +205,9 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
+export TOPIC=<topic>
 export FORMAT=<format>
+export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
 export URL=<url>
@@ -216,19 +218,18 @@ export QUERY=<query>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
-export TOPIC=<topic>
-export SUBSCRIPTION=<subscription>
-export SCHEMA=<schema>
 export ATTRIBUTES=<attributes>
-export ATTRIBUTE_MAP=<attributeMap>
+export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export ERROR_HANDLING=<errorHandling>
+export SUBSCRIPTION=<subscription>
 export WINDOWING=<windowing>
 export CONNECTION_PROPERTIES=<connectionProperties>
-export BATCH_SIZE=<batchSize>
-export AUTO_SHARDING=<autoSharding>
 export NETWORK=<network>
 export SUBNETWORK=<subnetwork>
+export BATCH_SIZE=<batchSize>
+export AUTO_SHARDING=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -237,7 +238,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-alloydb-yaml-job" \
 -DtemplateName="PubSub_To_AlloyDb_Yaml" \
--Dparameters="topic=$TOPIC,subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributeMap=$ATTRIBUTE_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,url=$URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,table=$TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,network=$NETWORK,subnetwork=$SUBNETWORK,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,url=$URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,network=$NETWORK,subnetwork=$SUBNETWORK,table=$TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
 -f yaml
 ```
 
@@ -282,7 +283,9 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
   name              = "pubsub-to-alloydb-yaml"
   region            = var.region
   parameters        = {
+    topic = "<topic>"
     format = "<format>"
+    schema = "<schema>"
     language = "<language>"
     fields = "<fields>"
     url = "<url>"
@@ -291,19 +294,18 @@ resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
     table = "<table>"
     query = "<query>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
-    # topic = "<topic>"
-    # subscription = "<subscription>"
-    # schema = "<schema>"
     # attributes = "<attributes>"
-    # attributeMap = "<attributeMap>"
+    # attributesMap = "<attributesMap>"
     # idAttribute = "<idAttribute>"
     # timestampAttribute = "<timestampAttribute>"
+    # errorHandling = "<errorHandling>"
+    # subscription = "<subscription>"
     # windowing = "<windowing>"
     # connectionProperties = "<connectionProperties>"
-    # batchSize = "<batchSize>"
-    # autoSharding = "<autoSharding>"
     # network = "<network>"
     # subnetwork = "<subnetwork>"
+    # batchSize = "<batchSize>"
+    # autoSharding = "false"
   }
 }
 ```

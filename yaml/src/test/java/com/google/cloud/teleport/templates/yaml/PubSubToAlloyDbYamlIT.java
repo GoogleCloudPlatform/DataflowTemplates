@@ -30,10 +30,11 @@ import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -47,15 +48,27 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PubSubToAlloyDbYaml}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PubSubToAlloyDbYaml.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
+
+  enum InputMode {
+    TOPIC,
+    SUBSCRIPTION
+  }
+
+  @Parameterized.Parameter public InputMode inputMode;
+
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> parameters() {
+    return Arrays.asList(new Object[][] {{InputMode.TOPIC}, {InputMode.SUBSCRIPTION}});
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToAlloyDbYamlIT.class);
   private static final int MESSAGES_COUNT = 10;
@@ -78,41 +91,34 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
 
   @Test
   public void testPubSubToAlloyDb() throws IOException {
-    pubSubToAlloyDb(Function.identity(), /* useSubscription= */ false);
-  }
 
-  @Test
-  public void testPubSubToAlloyDbViaSubscription() throws IOException {
-    pubSubToAlloyDb(Function.identity(), /* useSubscription= */ true);
-  }
-
-  public void pubSubToAlloyDb(
-      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
-          paramsAdder,
-      boolean useSubscription)
-      throws IOException {
-
-    LOG.info("Starting PubSubToAlloyDb test. Test name: {}. Spec path: {}", testName, specPath);
+    LOG.info(
+        "Starting PubSubToAlloyDb test [mode={}]. Test name: {}. Spec path: {}",
+        inputMode,
+        testName,
+        specPath);
 
     /******************************* Arrange ********************************/
 
-    LOG.info("Creating main and dead letter queue topics...");
+    LOG.info("Creating input and dead letter queue topics...");
     TopicName topic = pubsubResourceManager.createTopic("input");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
 
     PipelineLauncher.LaunchConfig.Builder optionsBuilder =
         PipelineLauncher.LaunchConfig.builder(testName, specPath);
 
-    if (useSubscription) {
-      LOG.info("Creating subscription on input topic for pipeline to consume from...");
+    if (inputMode == InputMode.TOPIC) {
+      LOG.info("Configuring pipeline to read from topic: {}", topic);
+      optionsBuilder.addParameter("topic", topic.toString());
+    } else {
       SubscriptionName inputSubscription =
           pubsubResourceManager.createSubscription(topic, "input-subscription");
+      LOG.info("Configuring pipeline to read from subscription: {}", inputSubscription);
       optionsBuilder.addParameter("subscription", inputSubscription.toString());
-    } else {
-      optionsBuilder.addParameter("topic", topic.toString());
     }
 
     LOG.info("Creating AlloyDb (Postgres) table...");
+    TopicName publishTopic = topic;
     String tableName = "test_table";
     LinkedHashMap<String, String> columns = new LinkedHashMap<>();
     columns.put("id", "INTEGER");
@@ -122,29 +128,27 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
 
     LOG.info("Creating launch config with yaml pipeline parameters...");
     PipelineLauncher.LaunchConfig.Builder options =
-        paramsAdder.apply(
-            optionsBuilder
-                .addParameter("network", "default")
-                .addParameter("subnetwork", "regions/" + REGION + "/subnetworks/default")
-                .addParameter("format", "JSON")
-                .addParameter(
-                    "schema",
-                    "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
-                .addParameter("language", "python")
-                .addParameter(
-                    "fields",
-                    "{"
-                        + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"integer\"},"
-                        + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"string\"}"
-                        + "}")
-                .addParameter("url", postgresResourceManager.getUri())
-                .addParameter("username", postgresResourceManager.getUsername())
-                .addParameter("password", postgresResourceManager.getPassword())
-                .addParameter("table", tableName)
-                .addParameter(
-                    "query", "INSERT INTO " + tableName + " (id, name_upper) VALUES (?, ?)")
-                .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString()));
+        optionsBuilder
+            .addParameter("network", "default")
+            .addParameter("subnetwork", "regions/" + REGION + "/subnetworks/default")
+            .addParameter("format", "JSON")
+            .addParameter(
+                "schema",
+                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
+            .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
+            .addParameter("language", "python")
+            .addParameter(
+                "fields",
+                "{"
+                    + "\"id\": {\"expression\": \"int(id)\", \"output_type\": \"integer\"},"
+                    + "\"name_upper\": {\"expression\": \"name.upper()\", \"output_type\": \"string\"}"
+                    + "}")
+            .addParameter("url", postgresResourceManager.getUri())
+            .addParameter("username", postgresResourceManager.getUsername())
+            .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("table", tableName)
+            .addParameter("query", "INSERT INTO " + tableName + " (id, name_upper) VALUES (?, ?)")
+            .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString());
 
     /********************************* Act **********************************/
 
@@ -169,7 +173,8 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
 
     Publisher publisher = null;
     try {
-      publisher = Publisher.newBuilder(topic).setCredentialsProvider(credentialsProvider).build();
+      publisher =
+          Publisher.newBuilder(publishTopic).setCredentialsProvider(credentialsProvider).build();
       final Publisher finalPublisher = publisher;
 
       SubscriptionName dlqSubscription =
