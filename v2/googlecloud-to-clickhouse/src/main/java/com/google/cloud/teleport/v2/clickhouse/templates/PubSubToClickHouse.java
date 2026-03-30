@@ -82,9 +82,9 @@ import org.slf4j.LoggerFactory;
  * ORDER BY failed_at;
  * }</pre>
  *
- * <p><b>Note:</b> adapt the engine and {@code ORDER BY} clause for your deployment — use
- * {@code ReplicatedMergeTree} for replicated tables, add {@code ON CLUSTER} for distributed
- * setups, and adjust partitioning or TTL as needed.
+ * <p><b>Note:</b> adapt the engine and {@code ORDER BY} clause for your deployment — use {@code
+ * ReplicatedMergeTree} for replicated tables, add {@code ON CLUSTER} for distributed setups, and
+ * adjust partitioning or TTL as needed.
  *
  * <p>Check out the README for instructions on how to use or modify this template.
  */
