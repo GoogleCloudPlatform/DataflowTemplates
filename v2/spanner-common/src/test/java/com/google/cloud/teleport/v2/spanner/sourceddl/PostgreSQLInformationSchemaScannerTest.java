@@ -131,9 +131,6 @@ public class PostgreSQLInformationSchemaScannerTest {
     assertEquals("id", column.name());
     assertEquals("integer", column.type());
     assertEquals(false, column.isNullable());
-    // isPrimaryKey is not set in scanColumns natively in this implementation, it's
-    // tracked in the table.
-    // wait table.primaryKeyColumns will have it.
     assertEquals(false, column.isGenerated());
     assertEquals(1, table.primaryKeyColumns().size());
     assertEquals("id", table.primaryKeyColumns().get(0));

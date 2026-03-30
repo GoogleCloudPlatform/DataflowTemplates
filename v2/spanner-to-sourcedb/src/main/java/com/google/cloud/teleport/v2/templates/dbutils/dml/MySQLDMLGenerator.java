@@ -251,19 +251,18 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         continue;
       }
       String columnValue = "";
-      String actualColName = spannerColDef.name();
-      if (keyValuesJson.has(actualColName)) {
+      if (keyValuesJson.has(spannerColumnName)) {
         // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(actualColName)) {
+        if (keyValuesJson.isNull(spannerColumnName)) {
           response.put(colName, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(actualColName)) {
+      } else if (newValuesJson.has(spannerColumnName)) {
         // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(actualColName)) {
+        if (newValuesJson.isNull(spannerColumnName)) {
           response.put(colName, "NULL");
           continue;
         }
@@ -346,19 +345,18 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         return null;
       }
       String columnValue = "";
-      String actualColName = spannerColDef.name();
-      if (keyValuesJson.has(actualColName)) {
+      if (keyValuesJson.has(spannerColName)) {
         // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(actualColName)) {
+        if (keyValuesJson.isNull(spannerColName)) {
           response.put(sourceColName, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(actualColName)) {
+      } else if (newValuesJson.has(spannerColName)) {
         // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(actualColName)) {
+        if (newValuesJson.isNull(spannerColName)) {
           response.put(sourceColName, "NULL");
           continue;
         }
@@ -366,7 +364,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", actualColName);
+        LOG.warn("The column {} was not found in input record", spannerColName);
         return null;
       }
 
