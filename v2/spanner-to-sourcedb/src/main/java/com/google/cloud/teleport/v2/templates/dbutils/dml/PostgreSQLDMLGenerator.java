@@ -377,17 +377,26 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
     if (colType.getCode().equals(Type.Code.FLOAT64)
-        || colType.getCode().equals(Type.Code.FLOAT32)) {
+        || colType.getCode().equals(Type.Code.FLOAT32)
+        || colType.getCode().equals(Type.Code.PG_FLOAT4)
+        || colType.getCode().equals(Type.Code.PG_FLOAT8)
+        || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
       colInputValue = valuesJson.getBigDecimal(colName).toString();
-    } else if (colType.getCode().equals(Type.Code.BOOL)) {
+    } else if (colType.getCode().equals(Type.Code.BOOL)
+        || colType.getCode().equals(Type.Code.PG_BOOL)) {
       colInputValue = String.valueOf(valuesJson.getBoolean(colName));
-    } else if (colType.getCode().equals(Type.Code.ARRAY)
-        && colType.getArrayElementType().getCode().equals(Type.Code.STRING)) {
+    } else if ((colType.getCode().equals(Type.Code.ARRAY)
+            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+        || (colType.getCode().equals(Type.Code.PG_ARRAY)
+            && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
+
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
-    } else if (colType.getCode().equals(Type.Code.BYTES)) {
+    } else if (colType.getCode().equals(Type.Code.BYTES)
+        || colType.getCode().equals(Type.Code.PG_BYTEA)) {
       if (sourceColDef.type().toLowerCase().equals("bytea")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
       } else {
