@@ -268,7 +268,7 @@ public interface PubSubToAlloyDbYaml {
       description = "Enable autosharding for parallel writes",
       helpText = "If true, enables using a dynamically determined number of shards to write.",
       example = "True")
-  @Default.Boolean(False)
+  @Default.Boolean(false)
   Boolean getAutoSharding();
 
   @TemplateParameter.Text(
