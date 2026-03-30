@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static java.util.Map.entry;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -23,7 +24,9 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -142,7 +145,7 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
                 "datastream-to-spanner-table-and-index-limits",
                 spannerResourceManager,
                 pubsubResourceManager,
-                Map.of("dlqMaxRetryCount", "1"),
+                new HashMap<>(),
                 null,
                 null,
                 gcsResourceManager,
@@ -189,18 +192,15 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
       LOG.error("Exception while reading spanner rows from {}", LARGE_PK_TABLE, e);
       throw e;
     }
-    SpannerAsserts.assertThatStructs(rows)
-        .hasRecordsUnorderedCaseInsensitiveColumns(
-            List.of(
-                Map.ofEntries(
-                    // `assertThatStructs` converts the `rows` structs to records which eventually
-                    // calls
-                    // `com.google.cloud.spanner.Value.StringImpl::valueToString`, which truncates
-                    // strings to 33 characters
-                    entry("pk_col1", "A".repeat(33) + "..."),
-                    entry("pk_col2", "B".repeat(33) + "..."),
-                    entry("pk_col3", "C".repeat(8)),
-                    entry("value_col", "Primary key with size exactly equ..."))));
+    rows.forEach(
+        row -> {
+          assertThat(row.getString("pk_col1").equals("A".repeat(4092)));
+          assertThat(row.getString("pk_col2").equals("B".repeat(4092)));
+          assertThat(row.getString("pk_col3").equals("C".repeat(8)));
+          assertThat(
+              row.getString("value_col")
+                  .equals("Primary key with size exactly equal to 8192 bytes"));
+        });
   }
 
   @Test
@@ -225,18 +225,16 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
       LOG.error("Exception while reading spanner rows from {}", LARGE_IDX_TABLE, e);
       throw e;
     }
-    SpannerAsserts.assertThatStructs(rows)
-        .hasRecordsUnorderedCaseInsensitiveColumns(
-            List.of(
-                Map.ofEntries(
-                    // `assertThatStructs` converts the `rows` structs to records which eventually
-                    // calls
-                    // `com.google.cloud.spanner.Value.StringImpl::valueToString`, which truncates
-                    // strings to 33 characters
-                    entry("pk_col", 1),
-                    entry("idx_col1", "A".repeat(33) + "..."),
-                    entry("idx_col2", "B".repeat(33) + "..."),
-                    entry("value_col", "Index key with size less than or ..."))));
+    rows.forEach(
+        row -> {
+          assertThat(row.getLong("pk_col") == (1L));
+          assertThat(row.getString("idx_col1").equals("A".repeat(4091)));
+          assertThat(row.getString("idx_col2").equals("B".repeat(4091)));
+          assertThat(
+              row.getString("value_col")
+                  .equals(
+                      "Index key with size less than or equal to 8192 bytes (including PK size)"));
+        });
   }
 
   @Test
@@ -254,13 +252,21 @@ public class PostgreSQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStre
     assertThatResult(result).meetsConditions();
     List<Struct> rows = null;
     try {
-      rows = spannerResourceManager.readTableRecords(LARGE_CELL_TABLE, List.of("id"));
+      rows =
+          spannerResourceManager.readTableRecords(
+              LARGE_CELL_TABLE, List.of("id", "max_string_col_to_bytes", "max_string_col_to_str"));
     } catch (Exception e) {
       LOG.error("Exception while reading spanner rows from {}", LARGE_CELL_TABLE, e);
       throw e;
     }
-    SpannerAsserts.assertThatStructs(rows)
-        .hasRecordsUnorderedCaseInsensitiveColumns(List.of(Map.ofEntries(entry("id", 1))));
+    rows.forEach(
+        row -> {
+          assertThat(row.getLong("id") == (1L));
+          assertThat(
+              row.getBytes("max_string_col_to_bytes")
+                  .equals("a".repeat(10485760).getBytes(StandardCharsets.UTF_8)));
+          assertThat(row.getString("max_string_col_to_str").equals("a".repeat(2621440)));
+        });
   }
 
   @Test
