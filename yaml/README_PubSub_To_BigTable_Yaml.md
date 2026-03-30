@@ -19,7 +19,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
 * **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
@@ -31,12 +30,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **topic**: Pub/Sub topic to read the input from. Exactly one of topic or subscription must be provided. If a topic is given, a new temporary subscription is created for each pipeline run, even if a subscription for that topic already exists. For example, `projects/your-project-id/topics/your-topic-name`.
 * **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields.  For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`.
 * **attributesMap**: Name of a field in which to store the full set of attributes associated with this message.  For example, if the format is `raw` and `attribute_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attribute_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map.
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort.
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.
 * **errorHandling**: This option specifies whether and where to output error rows.
-* **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **subscription**: Pub/Sub subscription to read the input from. Exactly one of subscription or topic must be provided. Use this when you want to read from an existing subscription without creating a new one. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
 
 
@@ -130,7 +130,6 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_BigTable_Yaml"
 
 ### Required
-export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
@@ -141,6 +140,7 @@ export TABLE_ID=<tableId>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
+export TOPIC=<topic>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
@@ -187,7 +187,6 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export TOPIC=<topic>
 export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
@@ -198,6 +197,7 @@ export TABLE_ID=<tableId>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
+export TOPIC=<topic>
 export ATTRIBUTES=<attributes>
 export ATTRIBUTES_MAP=<attributesMap>
 export ID_ATTRIBUTE=<idAttribute>
@@ -258,7 +258,6 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
   name              = "pubsub-to-bigtable-yaml"
   region            = var.region
   parameters        = {
-    topic = "<topic>"
     format = "<format>"
     schema = "<schema>"
     language = "<language>"
@@ -267,6 +266,7 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     instanceId = "<instanceId>"
     tableId = "<tableId>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
+    # topic = "<topic>"
     # attributes = "<attributes>"
     # attributesMap = "<attributesMap>"
     # idAttribute = "<idAttribute>"

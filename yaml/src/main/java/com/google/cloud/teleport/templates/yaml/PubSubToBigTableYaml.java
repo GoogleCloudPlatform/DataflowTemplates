@@ -34,7 +34,7 @@ import org.apache.beam.sdk.options.Validation;
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-      "The input Pub/Sub topic must exist.",
+      "Either the input Pub/Sub topic or subscription must exist.",
       "The mapToField Pub/Sub error topic must exist.",
       "The output BigTable table must exist."
     },
@@ -45,11 +45,11 @@ public interface PubSubToBigTableYaml {
   @TemplateParameter.Text(
       order = 1,
       name = "topic",
-      optional = false,
+      optional = true,
       description = "Pub/Sub input topic",
-      helpText = "Pub/Sub topic to read the input from.",
+      helpText =
+          "Pub/Sub topic to read the input from. Exactly one of topic or subscription must be provided. If a topic is given, a new temporary subscription is created for each pipeline run, even if a subscription for that topic already exists.",
       example = "projects/your-project-id/topics/your-topic-name")
-  @Validation.Required
   String getTopic();
 
   @TemplateParameter.Text(
@@ -128,7 +128,8 @@ public interface PubSubToBigTableYaml {
       name = "subscription",
       optional = true,
       description = "Pub/Sub subscription",
-      helpText = "Pub/Sub subscription to read the input from.",
+      helpText =
+          "Pub/Sub subscription to read the input from. Exactly one of subscription or topic must be provided. Use this when you want to read from an existing subscription without creating a new one.",
       example = "projects/your-project-id/subscriptions/your-subscription-name")
   String getSubscription();
 
