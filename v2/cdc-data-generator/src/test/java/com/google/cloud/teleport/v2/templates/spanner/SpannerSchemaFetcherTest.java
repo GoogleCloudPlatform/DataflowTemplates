@@ -102,7 +102,6 @@ public class SpannerSchemaFetcherTest {
     File configFile = tempFolder.newFile("config.json");
     Files.writeString(configFile.toPath(), defaultJson.toString());
     fetcher.init(configFile.getAbsolutePath());
-    fetcher.setInsertQps(100);
 
     Table tableA = Table.builder().name("TableA").build();
     when(mockDdl.allTables()).thenReturn(ImmutableList.of(tableA));
@@ -113,7 +112,7 @@ public class SpannerSchemaFetcherTest {
     assertThat(schema.tables()).hasSize(1);
     assertThat(schema.tables()).containsKey("TableA");
     DataGeneratorTable actualTable = schema.tables().get("TableA");
-    assertThat(actualTable.insertQps()).isEqualTo(100);
+
     assertThat(actualTable.isRoot()).isTrue();
   }
 
@@ -122,7 +121,6 @@ public class SpannerSchemaFetcherTest {
     File configFile = tempFolder.newFile("config.json");
     Files.writeString(configFile.toPath(), defaultJson.toString());
     fetcher.init(configFile.getAbsolutePath());
-    fetcher.setInsertQps(50);
 
     // Mock DDL components
     Table mockTableB = mock(Table.class);
@@ -175,7 +173,6 @@ public class SpannerSchemaFetcherTest {
     assertThat(actualTable.uniqueKeys().get(0).name()).isEqualTo("idx_b_col2");
     assertThat(actualTable.interleavedInTable()).isEqualTo("TableA");
     assertThat(actualTable.isRoot()).isFalse();
-    assertThat(actualTable.insertQps()).isEqualTo(50);
   }
 
   @Test

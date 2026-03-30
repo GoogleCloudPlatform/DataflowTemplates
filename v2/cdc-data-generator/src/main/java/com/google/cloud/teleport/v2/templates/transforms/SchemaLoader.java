@@ -38,8 +38,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGeneratorSchema>> {
 
   protected final SinkType sinkType;
-  protected final String sinkOptionsPath;
-  protected final Integer insertQps;
+  protected final String sinkConfigPath;
   private final FetchSchemaFn customFn;
 
   private static final Map<SinkType, Supplier<SinkSchemaFetcher>> fetcherRegistry =
@@ -51,16 +50,15 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
     // Register new sink fetcher implementations here
   }
 
-  public SchemaLoader(SinkType sinkType, String path, Integer qps) {
-    this(sinkType, path, qps, null);
+  public SchemaLoader(SinkType sinkType, String path) {
+    this(sinkType, path, null);
   }
 
   // Internal constructor for testing
   @VisibleForTesting
-  SchemaLoader(SinkType sinkType, String path, Integer qps, FetchSchemaFn customFn) {
+  SchemaLoader(SinkType sinkType, String path, FetchSchemaFn customFn) {
     this.sinkType = sinkType;
-    this.sinkOptionsPath = path;
-    this.insertQps = qps;
+    this.sinkConfigPath = path;
     this.customFn = customFn;
   }
 
@@ -68,7 +66,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
   public PCollectionView<DataGeneratorSchema> expand(PBegin input) {
 
     FetchSchemaFn fetchFn =
-        (customFn != null) ? customFn : new FetchSchemaFn(sinkType, sinkOptionsPath, insertQps);
+        (customFn != null) ? customFn : new FetchSchemaFn(sinkType, sinkConfigPath);
     return input
         .apply("CreateSinkType", Create.of(sinkType))
         .apply("FetchSchema", ParDo.of(fetchFn))

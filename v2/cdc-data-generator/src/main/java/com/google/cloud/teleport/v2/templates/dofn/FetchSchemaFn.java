@@ -38,13 +38,11 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
           SinkType.MYSQL, MySqlSchemaFetcher::new);
 
   private final SinkType sinkType;
-  private final String sinkOptionsPath;
-  private final int insertQps;
+  private final String sinkConfigPath;
 
-  public FetchSchemaFn(SinkType sinkType, String sinkOptionsPath, Integer insertQps) {
+  public FetchSchemaFn(SinkType sinkType, String sinkConfigPath) {
     this.sinkType = sinkType;
-    this.sinkOptionsPath = sinkOptionsPath;
-    this.insertQps = insertQps != null ? insertQps : 1;
+    this.sinkConfigPath = sinkConfigPath;
   }
 
   @ProcessElement
@@ -52,8 +50,7 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
     try {
       SinkSchemaFetcher fetcher = createFetcher(sinkType);
 
-      fetcher.init(sinkOptionsPath);
-      fetcher.setInsertQps(insertQps);
+      fetcher.init(sinkConfigPath);
       DataGeneratorSchema schema = fetcher.getSchema();
       LOG.info("Fetched Schema: {}", schema);
       receiver.output(schema);

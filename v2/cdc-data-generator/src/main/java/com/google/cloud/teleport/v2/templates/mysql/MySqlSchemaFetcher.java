@@ -52,12 +52,11 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   private String connectionUrl;
   private String username;
   private String password;
-  private int insertQps;
+
   private final MySqlTypeMapper typeMapper = new MySqlTypeMapper();
 
   private final ShardFileReader shardFileReader;
   private final ConnectionProvider connectionProvider;
-  private MySqlInformationSchemaScanner testScanner;
 
   public MySqlSchemaFetcher() {
     this(new ShardFileReader(new SecretManagerAccessorImpl()), null);
@@ -70,8 +69,9 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   }
 
   @VisibleForTesting
-  void setTestScanner(MySqlInformationSchemaScanner testScanner) {
-    this.testScanner = testScanner;
+  protected MySqlInformationSchemaScanner createScanner(
+      Connection connection, String databaseName) {
+    return new MySqlInformationSchemaScanner(connection, databaseName);
   }
 
   @Override
@@ -106,11 +106,6 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   }
 
   @Override
-  public void setInsertQps(int insertQps) {
-    this.insertQps = insertQps;
-  }
-
-  @Override
   public DataGeneratorSchema getSchema() throws IOException {
     try {
       if (driverClassName != null && !driverClassName.isEmpty()) {
@@ -125,13 +120,8 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   }
 
   private DataGeneratorSchema scanMySqlSchema(Connection connection) throws SQLException {
-    MySqlInformationSchemaScanner scanner;
-    if (this.testScanner != null) {
-      scanner = this.testScanner;
-    } else {
-      String databaseName = connection.getCatalog();
-      scanner = new MySqlInformationSchemaScanner(connection, databaseName);
-    }
+    String databaseName = connection.getCatalog();
+    MySqlInformationSchemaScanner scanner = createScanner(connection, databaseName);
     SourceSchema sourceSchema = scanner.scan();
 
     Map<String, DataGeneratorTable> tables =
@@ -177,7 +167,7 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
         .foreignKeys(foreignKeysBuilder.build())
         .uniqueKeys(uniqueKeysBuilder.build())
         .isRoot(true)
-        .insertQps(insertQps)
+        .insertQps(0)
         .updateQps(0) // Default value
         .deleteQps(0) // Default value
         .recordsPerTick(1.0) // Default value

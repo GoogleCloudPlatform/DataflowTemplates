@@ -55,7 +55,7 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   private String projectId;
   private String instanceId;
   private String databaseId;
-  private int insertQps;
+
   private final SpannerTypeMapper typeMapper = new SpannerTypeMapper();
 
   private final DdlFetcher ddlFetcher;
@@ -89,11 +89,6 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
     } catch (java.io.IOException e) {
       throw new RuntimeException("Error reading Spanner sink config file: " + sinkConfigPath, e);
     }
-  }
-
-  @Override
-  public void setInsertQps(int insertQps) {
-    this.insertQps = insertQps;
   }
 
   @Override
@@ -176,7 +171,7 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
         .foreignKeys(fksBuilder.build())
         .uniqueKeys(uniqueKeysBuilder.build())
         .isRoot(table.interleavingParent() == null)
-        .insertQps(insertQps)
+        .insertQps(0)
         .updateQps(0) // Default value
         .deleteQps(0) // Default value
         .recordsPerTick(1) // Default value

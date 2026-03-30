@@ -62,8 +62,14 @@ public class MySqlSchemaFetcherTest {
   @Before
   public void setUp() throws SQLException {
     when(mockConnectionProvider.get()).thenReturn(mockConnection);
-    fetcher = new MySqlSchemaFetcher(mockShardFileReader, mockConnectionProvider);
-    fetcher.setTestScanner(mockScanner);
+    fetcher =
+        new MySqlSchemaFetcher(mockShardFileReader, mockConnectionProvider) {
+          @Override
+          protected MySqlInformationSchemaScanner createScanner(
+              Connection connection, String databaseName) {
+            return mockScanner;
+          }
+        };
   }
 
   @Test
@@ -168,8 +174,6 @@ public class MySqlSchemaFetcherTest {
     when(mockScanner.scan()).thenReturn(sourceSchema);
     when(mockConnection.getCatalog()).thenReturn("testdb");
 
-    int testQps = 100;
-    fetcher.setInsertQps(testQps);
     DataGeneratorSchema schema = fetcher.getSchema();
     assertThat(schema.tables()).hasSize(1);
     DataGeneratorTable actualTable = schema.tables().get("TableA");
@@ -183,7 +187,6 @@ public class MySqlSchemaFetcherTest {
     assertThat(actualTable.foreignKeys().get(0).name()).isEqualTo("fk_test");
     assertThat(actualTable.uniqueKeys()).hasSize(1);
     assertThat(actualTable.uniqueKeys().get(0).name()).isEqualTo("idx_unique");
-    assertThat(actualTable.insertQps()).isEqualTo(testQps);
   }
 
   @Test

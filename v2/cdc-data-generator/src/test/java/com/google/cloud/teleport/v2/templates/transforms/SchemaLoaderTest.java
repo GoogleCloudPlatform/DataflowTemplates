@@ -52,9 +52,6 @@ public class SchemaLoaderTest {
     public void init(String path) {}
 
     @Override
-    public void setInsertQps(int qps) {}
-
-    @Override
     public DataGeneratorSchema getSchema() {
       return DataGeneratorSchema.builder()
           .tables(
@@ -67,7 +64,6 @@ public class SchemaLoaderTest {
                       .primaryKeys(ImmutableList.of())
                       .foreignKeys(ImmutableList.of())
                       .uniqueKeys(ImmutableList.of())
-                      .insertQps(1)
                       .updateQps(0)
                       .deleteQps(0)
                       .recordsPerTick(1)
@@ -78,8 +74,8 @@ public class SchemaLoaderTest {
 
   /** * A Mock DoFn that overrides the fetcher creation logic. */
   private static class MockFetchSchemaFn extends FetchSchemaFn {
-    public MockFetchSchemaFn(SinkType type, String path, Integer qps) {
-      super(type, path, qps);
+    public MockFetchSchemaFn(SinkType type, String path) {
+      super(type, path);
     }
 
     @Override
@@ -105,8 +101,8 @@ public class SchemaLoaderTest {
 
     String validPath = tempFile.getAbsolutePath();
 
-    MockFetchSchemaFn mockFn = new MockFetchSchemaFn(SinkType.MYSQL, validPath, 1);
-    SchemaLoader loader = new SchemaLoader(SinkType.MYSQL, validPath, 1, mockFn);
+    MockFetchSchemaFn mockFn = new MockFetchSchemaFn(SinkType.MYSQL, validPath);
+    SchemaLoader loader = new SchemaLoader(SinkType.MYSQL, validPath, mockFn);
 
     // Act
     PCollectionView<DataGeneratorSchema> schemaView = pipeline.apply(loader);
