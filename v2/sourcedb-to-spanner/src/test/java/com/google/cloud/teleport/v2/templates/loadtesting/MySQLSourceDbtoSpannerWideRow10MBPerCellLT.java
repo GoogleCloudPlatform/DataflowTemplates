@@ -31,8 +31,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 @Ignore("Disabling flaky LT b/446480465")
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
-  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-16";
+  private static final String LAUNCHER_MACHINE_TYPE = "n1-standard-8";
   private static final String FETCH_SIZE = "4000";
 
   @Test
