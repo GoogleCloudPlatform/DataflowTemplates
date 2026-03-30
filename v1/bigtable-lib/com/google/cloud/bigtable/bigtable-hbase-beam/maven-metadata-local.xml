@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.google.cloud.bigtable</groupId>
+  <artifactId>bigtable-hbase-beam</artifactId>
+  <versioning>
+    <versions>
+      <version>2.16.2-custom</version>
+    </versions>
+    <lastUpdated>20260327180710</lastUpdated>
+  </versioning>
+</metadata>
