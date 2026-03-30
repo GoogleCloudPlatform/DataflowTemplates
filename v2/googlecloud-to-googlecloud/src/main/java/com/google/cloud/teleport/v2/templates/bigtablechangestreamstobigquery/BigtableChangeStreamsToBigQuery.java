@@ -36,6 +36,8 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ProtoDecoder;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import java.util.ArrayList;
@@ -182,6 +184,38 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
 
+    ProtoDecoder protoDecoder = null;
+    boolean hasProtoSchema = !StringUtils.isBlank(options.getProtoSchemaPath());
+    boolean hasProtoMessage = !StringUtils.isBlank(options.getFullProtoMessageName());
+    boolean hasProtoColumnFamily = !StringUtils.isBlank(options.getProtoColumnFamily());
+    boolean hasProtoColumn = !StringUtils.isBlank(options.getProtoColumn());
+
+    if (hasProtoSchema || hasProtoMessage || hasProtoColumnFamily || hasProtoColumn) {
+      if (!hasProtoSchema || !hasProtoMessage || !hasProtoColumnFamily || !hasProtoColumn) {
+        throw new IllegalArgumentException(
+            "When using protobuf decoding, all of protoSchemaPath, fullProtoMessageName, "
+                + "protoColumnFamily, and protoColumn must be specified.");
+      }
+      protoDecoder =
+          new ProtoDecoder(
+              options.getProtoSchemaPath(),
+              options.getFullProtoMessageName(),
+              options.getProtoColumnFamily(),
+              options.getProtoColumn(),
+              options.getPreserveProtoFieldNames());
+      LOG.info(
+          "Proto decoding enabled for {}.{} using message type {}",
+          options.getProtoColumnFamily(),
+          options.getProtoColumn(),
+          options.getFullProtoMessageName());
+    }
+
+    ValueTransformerRegistry transformerRegistry =
+        ValueTransformerRegistry.parse(options.getColumnTransforms());
+    if (transformerRegistry != null) {
+      LOG.info("Column transforms enabled: {}", options.getColumnTransforms());
+    }
+
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
@@ -213,7 +247,9 @@ public final class BigtableChangeStreamsToBigQuery {
     PCollection<TableRow> changeStreamMutationToTableRow =
         dataChangeRecord.apply(
             "ChangeStreamMutation To TableRow",
-            ParDo.of(new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery)));
+            ParDo.of(
+                new ChangeStreamMutationToTableRowFn(
+                    sourceInfo, bigQuery, protoDecoder, transformerRegistry)));
 
     Write<TableRow> bigQueryWrite =
         BigQueryIO.<TableRow>write()
@@ -324,10 +360,18 @@ public final class BigtableChangeStreamsToBigQuery {
   static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
     private final BigtableSource sourceInfo;
     private final BigQueryUtils bigQuery;
+    private final ProtoDecoder protoDecoder;
+    private final ValueTransformerRegistry transformerRegistry;
 
-    ChangeStreamMutationToTableRowFn(BigtableSource source, BigQueryUtils bigQuery) {
+    ChangeStreamMutationToTableRowFn(
+        BigtableSource source,
+        BigQueryUtils bigQuery,
+        ProtoDecoder protoDecoder,
+        ValueTransformerRegistry transformerRegistry) {
       this.sourceInfo = source;
       this.bigQuery = bigQuery;
+      this.protoDecoder = protoDecoder;
+      this.transformerRegistry = transformerRegistry;
     }
 
     @ProcessElement
@@ -339,7 +383,7 @@ public final class BigtableChangeStreamsToBigQuery {
         Mod mod = null;
         switch (modType) {
           case SET_CELL:
-            mod = new Mod(sourceInfo, input, (SetCell) entry);
+            mod = new Mod(sourceInfo, input, (SetCell) entry, protoDecoder, transformerRegistry);
             break;
           case DELETE_CELLS:
             mod = new Mod(sourceInfo, input, (DeleteCells) entry);
