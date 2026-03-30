@@ -53,6 +53,9 @@ jobs:
           repository: apache/beam-starter-java-provider
           path: beam-starter-java-provider
 
+      - name: Remove default github maven configuration
+        run: rm ~/.m2/settings.xml
+
       - name: Build Beam Expansion Service
         working-directory: beam
         run: ./gradlew -Ppublishing :sdks:java:io:expansion-service:PublishToMavenLocal -x test
