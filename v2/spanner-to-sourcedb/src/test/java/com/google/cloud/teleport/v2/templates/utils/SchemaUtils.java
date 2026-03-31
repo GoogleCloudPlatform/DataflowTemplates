@@ -162,67 +162,31 @@ public final class SchemaUtils {
               }
               break;
             case SPANNER_TYPE_PG_INT8:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgInt8())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgInt8().endColumn();
-              }
+              tableBuilder.column(colName).pgInt8().endColumn();
               break;
             case SPANNER_TYPE_PG_FLOAT4:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgFloat4())).endColumn();
-              } else {
-                tableBuilder.column(colName).type(Type.pgFloat4()).endColumn();
-              }
+              tableBuilder.column(colName).type(Type.pgFloat4()).endColumn();
               break;
             case SPANNER_TYPE_PG_FLOAT8:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgFloat8())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgFloat8().endColumn();
-              }
+              tableBuilder.column(colName).pgFloat8().endColumn();
               break;
             case SPANNER_TYPE_PG_BOOL:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgBool())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgBool().endColumn();
-              }
+              tableBuilder.column(colName).pgBool().endColumn();
               break;
             case SPANNER_TYPE_PG_BYTEA:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgBytea())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgBytea().max().endColumn();
-              }
+              tableBuilder.column(colName).pgBytea().max().endColumn();
               break;
             case SPANNER_TYPE_PG_TIMESTAMPTZ:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgTimestamptz())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgTimestamptz().endColumn();
-              }
+              tableBuilder.column(colName).pgTimestamptz().endColumn();
               break;
             case SPANNER_TYPE_PG_DATE:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgDate())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgDate().endColumn();
-              }
+              tableBuilder.column(colName).pgDate().endColumn();
               break;
             case SPANNER_TYPE_PG_NUMERIC:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgNumeric())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgNumeric().endColumn();
-              }
+              tableBuilder.column(colName).pgNumeric().endColumn();
               break;
             case SPANNER_TYPE_PG_JSONB:
-              if (Boolean.TRUE.equals(isArray)) {
-                tableBuilder.column(colName).type(Type.pgArray(Type.pgJsonb())).endColumn();
-              } else {
-                tableBuilder.column(colName).pgJsonb().endColumn();
-              }
+              tableBuilder.column(colName).pgJsonb().endColumn();
               break;
             default:
               throw new IllegalArgumentException(

@@ -26,17 +26,8 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.common.io.Resources;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -95,7 +86,7 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
     loadSQLFileResource(jdbcResourceManager, POSTGRES_SCHEMA_FILE_RESOURCE);
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
-    createPGShardConfig(gcsResourceManager, jdbcResourceManager);
+    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
 
     pubsubResourceManager = setUpPubSubResourceManager();
     SubscriptionName subscriptionName =
@@ -147,52 +138,6 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
     assertThatResult(result).meetsConditions();
 
     assertRowInPostgreSQL();
-  }
-
-  private void createPGShardConfig(GcsResourceManager gcs, PostgresResourceManager jdbc)
-      throws IOException {
-    Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
-    shard.setUser(jdbc.getUsername());
-    shard.setHost(jdbc.getHost());
-    shard.setPassword(jdbc.getPassword());
-    shard.setPort(String.valueOf(jdbc.getPort()));
-    shard.setDbName(jdbc.getDatabaseName());
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri");
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    gcsResourceManager.createArtifact("input/shard.json", ja.toString());
-  }
-
-  protected void loadSQLFileResource(
-      PostgresResourceManager jdbcResourceManager, String resourcePath) throws Exception {
-    String sql =
-        String.join(
-            " ",
-            Resources.readLines(
-                Resources.getResource(resourcePath), java.nio.charset.StandardCharsets.UTF_8));
-    try {
-      Connection connection =
-          DriverManager.getConnection(
-              jdbcResourceManager.getUri(),
-              jdbcResourceManager.getUsername(),
-              jdbcResourceManager.getPassword());
-
-      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
-      String[] statements = sql.split(";");
-
-      Statement statement = connection.createStatement();
-      for (String stmt : statements) {
-        if (!stmt.trim().isEmpty()) {
-          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
-            statement.executeUpdate(stmt);
-          }
-        }
-      }
-    } catch (Exception e) {
-      throw new Exception("Failed to load SQL into database", e);
-    }
   }
 
   private void writeRowsInSpanner(Map<String, List<Value>> spannerTableData) {

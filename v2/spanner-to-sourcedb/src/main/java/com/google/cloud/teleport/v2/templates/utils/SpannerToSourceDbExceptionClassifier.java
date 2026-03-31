@@ -77,15 +77,6 @@ public class SpannerToSourceDbExceptionClassifier {
       // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
       // error codes 1053,1161 and 1159 can be retried
       return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof java.sql.SQLException e) {
-      String sqlState = e.getSQLState();
-      if (sqlState != null) {
-        if (sqlState.startsWith("42") // Class 42: Syntax Error or Access Rule Violation
-            || sqlState.startsWith("22") // Class 22: Data Exception
-            || sqlState.startsWith("23")) { // Class 23: Integrity Constraint Violation
-          return Constants.PERMANENT_ERROR_TAG;
-        }
-      }
     }
 
     if (permanentSpannerErrorCodes.contains(exception.getErrorCode())) {

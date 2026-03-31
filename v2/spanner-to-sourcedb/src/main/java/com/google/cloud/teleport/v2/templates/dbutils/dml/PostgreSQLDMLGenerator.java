@@ -293,11 +293,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       case "timestamp without time zone":
       case "timestamp with time zone":
       case "timestamptz":
-        // For postgres, we can use the timestamptz string directly or cast it.
-        // E.g., '2023-01-01T12:00:00Z'
         response = getQuotedEscapedString(colValue, spannerColType) + "::timestamptz";
-        // Optionally applying timezone offset if necessary via AT TIME ZONE, but if the
-        // string has a Z, Postgres handles it.
         break;
       case "bytea":
       case "binary":
@@ -314,7 +310,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
     // PostgreSQL defaults to standard conforming strings, so backslash is just a
-    // backslash, except in E'' strings.
+    // backslash.
     // For standard string literals '', we just need to escape the single quote as
     // ''
     return cleanedNullBytes;
