@@ -37,11 +37,20 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
   private final SourceDatabaseType sourceType = SourceDatabaseType.POSTGRESQL;
 
   // Schema name is 'public' by default for PostgreSQL, unless specified otherwise
-  private final String schemaSearchPath = "public";
+  private final String schemaSearchPath;
 
   public PostgreSQLInformationSchemaScanner(Connection connection, String databaseName) {
     this.connection = connection;
     this.databaseName = databaseName;
+    this.schemaSearchPath = "public";
+  }
+
+  public PostgreSQLInformationSchemaScanner(
+      Connection connection, String databaseName, String schemaSearchPath) {
+    this.connection = connection;
+    this.databaseName = databaseName;
+    this.schemaSearchPath =
+        (schemaSearchPath != null && !schemaSearchPath.isBlank()) ? schemaSearchPath : "public";
   }
 
   @Override

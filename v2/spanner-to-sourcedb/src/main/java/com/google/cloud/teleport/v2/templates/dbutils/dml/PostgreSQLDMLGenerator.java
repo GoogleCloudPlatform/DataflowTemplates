@@ -27,20 +27,15 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Creates DML statements for PostgreSQL. */
 public class PostgreSQLDMLGenerator implements IDMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(PostgreSQLDMLGenerator.class);
 
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
@@ -94,14 +89,15 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     }
 
     Map<String, String> pkcolumnNameValues =
-        getPkColumnValues(
+        DMLGeneratorUtils.getPkColumnValues(
             schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            PostgreSQLDMLGenerator::getMappedColumnValue);
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -192,179 +188,18 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
-        getColumnValues(
+        DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            PostgreSQLDMLGenerator::getMappedColumnValue);
     columnNameValues.putAll(pkcolumnNameValues);
     return getUpsertStatement(
         sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
-  }
-
-  private static Map<String, String> getColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-    for (SourceColumn sourceColDef : sourceTable.columns()) {
-      String colName = sourceColDef.name();
-      if (sourcePKs.contains(colName)) {
-        continue; // we only need non-primary keys
-      }
-      if (sourceColDef.isGenerated()) {
-        continue;
-      }
-      if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customTransformationResponse.get(colName).toString());
-        continue;
-      }
-      String spannerColumnName = "";
-      try {
-        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      Column spannerColDef = spannerTable.column(spannerColumnName);
-      if (spannerColDef == null) {
-        continue;
-      }
-      String columnValue = "";
-      String actualColName = spannerColDef.name();
-      if (keyValuesJson.has(actualColName)) {
-        if (keyValuesJson.isNull(actualColName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(actualColName)) {
-        if (newValuesJson.isNull(actualColName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        continue;
-      }
-
-      response.put(colName, columnValue);
-    }
-
-    return response;
-  }
-
-  private static Map<String, String> getPkColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-
-    boolean doesGeneratedColumnExist = false;
-
-    for (int i = 0; i < sourcePKs.size(); i++) {
-      String sourceColName = sourcePKs.get(i);
-      SourceColumn sourceColDef = sourceTable.column(sourceColName);
-      if (sourceColDef == null) {
-        LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
-        return null;
-      }
-
-      if (sourceColDef.isGenerated()) {
-        doesGeneratedColumnExist = true;
-        continue;
-      }
-
-      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-        continue;
-      }
-
-      String spannerColName = "";
-      try {
-        spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      if (spannerColName == null) {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
-      }
-      Column spannerColDef = spannerTable.column(spannerColName);
-      if (spannerColDef == null) {
-        LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
-      }
-      String columnValue = "";
-      String actualColName = spannerColDef.name();
-      if (keyValuesJson.has(actualColName)) {
-        if (keyValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(actualColName)) {
-        if (newValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        LOG.warn("The column {} was not found in input record", actualColName);
-        return null;
-      }
-
-      response.put(sourceColName, columnValue);
-    }
-
-    if (doesGeneratedColumnExist) {
-      Map<String, String> generatedColumnValues =
-          getColumnValues(
-              schemaMapper,
-              spannerTable,
-              sourceTable,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset,
-              customTransformationResponse);
-      response.putAll(generatedColumnValues);
-    }
-
-    return response;
   }
 
   private static String getMappedColumnValue(
@@ -446,6 +281,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       case "char":
       case "text":
       case "character varying":
+      case "character":
       case "json":
       case "jsonb":
       case "date":

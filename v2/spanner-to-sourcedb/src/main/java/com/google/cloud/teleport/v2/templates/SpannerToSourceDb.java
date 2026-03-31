@@ -981,7 +981,9 @@ public class SpannerToSourceDb {
       } else if (options.getSourceType().equals(Constants.SOURCE_POSTGRESQL)) {
         Connection connection =
             createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://");
-        scanner = new PostgreSQLInformationSchemaScanner(connection, shards.get(0).getDbName());
+        scanner =
+            new PostgreSQLInformationSchemaScanner(
+                connection, shards.get(0).getDbName(), shards.get(0).getNamespace());
         sourceSchema = scanner.scan();
         connection.close();
       } else {

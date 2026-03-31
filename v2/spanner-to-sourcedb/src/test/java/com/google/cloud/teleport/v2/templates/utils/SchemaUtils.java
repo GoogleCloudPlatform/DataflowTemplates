@@ -71,6 +71,20 @@ public final class SchemaUtils {
   private static final String SPANNER_TYPE_NUMERIC = "NUMERIC";
   private static final String SPANNER_TYPE_JSON = "JSON";
 
+  // Defines constants for PG dialect Spanner data types found in the session
+  // file.
+  private static final String SPANNER_TYPE_PG_VARCHAR = "PG_VARCHAR";
+  private static final String SPANNER_TYPE_PG_TEXT = "PG_TEXT";
+  private static final String SPANNER_TYPE_PG_INT8 = "PG_INT8";
+  private static final String SPANNER_TYPE_PG_FLOAT4 = "PG_FLOAT4";
+  private static final String SPANNER_TYPE_PG_FLOAT8 = "PG_FLOAT8";
+  private static final String SPANNER_TYPE_PG_BOOL = "PG_BOOL";
+  private static final String SPANNER_TYPE_PG_BYTEA = "PG_BYTEA";
+  private static final String SPANNER_TYPE_PG_TIMESTAMPTZ = "PG_TIMESTAMPTZ";
+  private static final String SPANNER_TYPE_PG_DATE = "PG_DATE";
+  private static final String SPANNER_TYPE_PG_NUMERIC = "PG_NUMERIC";
+  private static final String SPANNER_TYPE_PG_JSONB = "PG_JSONB";
+
   /**
    * Builds a Spanner {@link Ddl} object from a HarbourBridge session file.
    *
@@ -132,6 +146,83 @@ public final class SchemaUtils {
               break;
             case SPANNER_TYPE_JSON:
               tableBuilder.column(colName).json().endColumn();
+              break;
+            case SPANNER_TYPE_PG_VARCHAR:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgVarchar())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgVarchar().max().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_TEXT:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgText())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgText().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_INT8:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgInt8())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgInt8().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_FLOAT4:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgFloat4())).endColumn();
+              } else {
+                tableBuilder.column(colName).type(Type.pgFloat4()).endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_FLOAT8:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgFloat8())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgFloat8().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_BOOL:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgBool())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgBool().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_BYTEA:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgBytea())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgBytea().max().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_TIMESTAMPTZ:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgTimestamptz())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgTimestamptz().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_DATE:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgDate())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgDate().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_NUMERIC:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgNumeric())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgNumeric().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_JSONB:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgJsonb())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgJsonb().endColumn();
+              }
               break;
             default:
               throw new IllegalArgumentException(

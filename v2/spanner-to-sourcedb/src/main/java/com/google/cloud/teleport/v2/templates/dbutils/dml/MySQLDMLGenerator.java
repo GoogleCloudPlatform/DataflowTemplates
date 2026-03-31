@@ -27,20 +27,14 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
 public class MySQLDMLGenerator implements IDMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
@@ -93,14 +87,15 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
 
     Map<String, String> pkcolumnNameValues =
-        getPkColumnValues(
+        DMLGeneratorUtils.getPkColumnValues(
             schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            MySQLDMLGenerator::getMappedColumnValue);
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -188,209 +183,17 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
-        getColumnValues(
+        DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            MySQLDMLGenerator::getMappedColumnValue);
     columnNameValues.putAll(pkcolumnNameValues);
     return getUpsertStatement(sourceTable.name(), columnNameValues);
-  }
-
-  private static Map<String, String> getColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-
-    /*
-    Get all non-primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - continue to next,
-      as the column will be stored with default/null values
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - continue to next,
-      as the column will be stored with default/null values
-    */
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-    for (SourceColumn sourceColDef : sourceTable.columns()) {
-      String colName = sourceColDef.name();
-      if (sourcePKs.contains(colName)) {
-        continue; // we only need non-primary keys
-      }
-      if (sourceColDef.isGenerated()) {
-        continue;
-      }
-      if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customTransformationResponse.get(colName).toString());
-        continue;
-      }
-      String spannerColumnName = "";
-      try {
-        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      Column spannerColDef = spannerTable.column(spannerColumnName);
-      if (spannerColDef == null) {
-        continue;
-      }
-      String columnValue = "";
-      if (keyValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColumnName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColumnName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        continue;
-      }
-
-      response.put(colName, columnValue);
-    }
-
-    return response;
-  }
-
-  private static Map<String, String> getPkColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-    /*
-    Get all primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - return null
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - return null
-    */
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-
-    boolean doesGeneratedColumnExist = false;
-
-    for (int i = 0; i < sourcePKs.size(); i++) {
-      String sourceColName = sourcePKs.get(i);
-      SourceColumn sourceColDef = sourceTable.column(sourceColName);
-      if (sourceColDef == null) {
-        LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
-        return null;
-      }
-
-      if (sourceColDef.isGenerated()) {
-        doesGeneratedColumnExist = true;
-        continue;
-      }
-
-      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-        continue;
-      }
-
-      String spannerColName = "";
-      try {
-        spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      if (spannerColName == null) {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
-      }
-      Column spannerColDef = spannerTable.column(spannerColName);
-      if (spannerColDef == null) {
-        LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
-      }
-      String columnValue = "";
-      if (keyValuesJson.has(spannerColName)) {
-        // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        LOG.warn("The column {} was not found in input record", spannerColName);
-        return null;
-      }
-
-      response.put(sourceColName, columnValue);
-    }
-
-    if (doesGeneratedColumnExist) {
-      // Generated column expression between source DB and spanner can have
-      // differences. Hence, values of generated column cannot be used from the change
-      // stream. If Primary key is generated column, then the DML statement need to
-      // have the respective dependent column values. Since we cannot identify the
-      // dependent columns, we are adding all the non-generated columns to the
-      // response.
-      Map<String, String> generatedColumnValues =
-          getColumnValues(
-              schemaMapper,
-              spannerTable,
-              sourceTable,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset,
-              customTransformationResponse);
-      response.putAll(generatedColumnValues);
-    }
-
-    return response;
   }
 
   private static String getMappedColumnValue(
