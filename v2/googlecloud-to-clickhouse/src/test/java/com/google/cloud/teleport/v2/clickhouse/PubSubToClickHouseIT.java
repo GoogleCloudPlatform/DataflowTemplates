@@ -58,18 +58,29 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
   private static final int BAD_MESSAGES_COUNT = 3;
 
   private PubsubResourceManager pubsubResourceManager;
-  private ClickHouseResourceManager clickHouseResourceManager;
+  private static ClickHouseResourceManager clickHouseResourceManager;
+
+  @BeforeClass
+  public static void setupClass() {
+    clickHouseResourceManager =
+        ClickHouseResourceManager.builder(PubSubToClickHouseIT.class.getSimpleName().toLowerCase())
+            .build();
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    ResourceManagerUtils.cleanResources(clickHouseResourceManager);
+  }
 
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
-    clickHouseResourceManager = ClickHouseResourceManager.builder(testId).build();
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(pubsubResourceManager, clickHouseResourceManager);
+    ResourceManagerUtils.cleanResources(pubsubResourceManager);
   }
 
   /**
