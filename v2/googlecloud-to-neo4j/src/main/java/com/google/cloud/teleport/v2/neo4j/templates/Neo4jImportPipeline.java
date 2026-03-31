@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import static org.neo4j.importer.v1.targets.TargetType.QUERY;
+
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
@@ -155,7 +157,7 @@ public class Neo4jImportPipeline {
   }
 
   PCollection<Row> querySourceRows(Pipeline pipeline, SourceContext source, Target target) {
-    if (target.getTargetType() == org.neo4j.importer.v1.targets.TargetType.QUERY) {
+    if (target.getTargetType() == QUERY) {
       return source.getOrCreateRows(pipeline);
     }
     var sourceProvider = source.provider();
