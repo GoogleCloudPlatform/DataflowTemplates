@@ -39,7 +39,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **maxShardConnections**: This will come from shard file eventually. Defaults to: 10000.
 * **deadLetterQueueDirectory**: The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to 500.
-* **runMode**: This is the run mode type, whether regular or with retryDLQ.Default is regular. retryDLQ is used to retry the severe DLQ records only.
+* **runMode**: This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to 10.
 * **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql.
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
