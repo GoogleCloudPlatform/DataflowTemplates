@@ -105,8 +105,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseDeadLetterTable", dlqTableName)
                 .addParameter("batchRowCount", "1"));
     assertThatPipeline(info).isRunning();
@@ -173,8 +173,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("deadLetterTopic", dlqTopic.toString())
                 .addParameter("batchRowCount", "1"));
     assertThatPipeline(info).isRunning();
@@ -252,8 +252,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseDeadLetterTable", dlqTableName)
                 .addParameter("deadLetterTopic", dlqTopic.toString())
                 .addParameter("batchRowCount", "1"));
@@ -333,8 +333,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseDeadLetterTable", dlqTableName)
                 .addParameter("batchRowCount", "1"));
     assertThatPipeline(info).isRunning();
@@ -393,8 +393,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseDeadLetterTable", dlqTableName)
                 .addParameter("batchRowCount", "1"));
     assertThatPipeline(info).isRunning();
@@ -456,8 +456,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
                 .addParameter("clickHouseUrl", getClickHouseHttpUrl())
                 .addParameter("clickHouseDatabase", "default")
                 .addParameter("clickHouseTable", tableName)
-                .addParameter("clickHouseUsername", "default")
-                .addParameter("clickHousePassword", "")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseDeadLetterTable", dlqTableName)
                 .addParameter("windowSeconds", "10"));
     assertThatPipeline(info).isRunning();
@@ -491,9 +491,9 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
 
   /**
    * Derives the ClickHouse HTTP URL from the JDBC connection string exposed by the resource
-   * manager. The JDBC format is {@code jdbc:clickhouse://HOST:PORT/default}; the template requires
-   * {@code http://HOST:PORT}. Would need to be updated once we move the Resource Manager to use the
-   * New ClickHouse Java V2 client
+   * manager. The JDBC format is {@code jdbc:clickhouse://HOST:PORT/default?user=...&password=...};
+   * the template requires {@code http://HOST:PORT}. Credentials are passed separately via
+   * {@code --clickHouseUsername} and {@code --clickHousePassword} parameters.
    */
   private String getClickHouseHttpUrl() {
     String jdbcUrl = clickHouseResourceManager.getJdbcConnectionString();
