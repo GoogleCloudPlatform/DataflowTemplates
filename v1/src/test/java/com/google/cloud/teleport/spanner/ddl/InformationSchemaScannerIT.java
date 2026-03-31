@@ -857,8 +857,7 @@ public class InformationSchemaScannerIT {
                 + " `log_id`                                INT64 NOT NULL,"
                 + " `message`                               STRING(MAX),"
                 + " ) PRIMARY KEY (`id` ASC, `log_id` ASC), INTERLEAVE IN PARENT `Users`",
-            " CREATE INDEX `d_log_message_idx` ON `Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `Users`"
-            );
+            " CREATE INDEX `d_log_message_idx` ON `Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `Users`");
 
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
