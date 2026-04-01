@@ -851,7 +851,13 @@ public class InformationSchemaScannerIT {
             " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
                 + " `Users`(`last_name` ASC) STORING (`first_name`)",
             " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC) WHERE age IS NOT NULL",
-            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
+            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)",
+            " CREATE TABLE `Logs` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `log_id`                                INT64 NOT NULL,"
+                + " `message`                               STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC, `log_id` ASC), INTERLEAVE IN PARENT `Users`",
+            " CREATE INDEX `d_log_message_idx` ON `Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `Users`");
 
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
