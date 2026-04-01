@@ -293,6 +293,107 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
   }
 
   @Test
+  public void testImportCsvSpannerWriteFailures() throws IOException {
+    // Arrange
+    gcsClient.createArtifact(
+        "input/singers1.csv",
+        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n"
+            + "2,Jane,Doe,TRUE,5.0,-1.0,2023-02-01,2023-01-01T17:22:00\n");
+
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add(
+        "CREATE TABLE Singers (\n"
+            + "  SingerId      INT64 NOT NULL,\n"
+            + "  FirstName     STRING(1024),\n"
+            + "  LastName      STRING(1024),\n"
+            + "  Active        BOOL,\n"
+            + "  Rating        FLOAT32,\n"
+            + "  Score         FLOAT64,\n"
+            + "  BirthDate     DATE,\n"
+            + "  LastModified  TIMESTAMP,\n"
+            + "  CONSTRAINT ValidScore CHECK(Score > 0)\n" // causes second row to fail
+            + ") PRIMARY KEY (SingerId)");
+    googleSqlResourceManager.executeDdlStatements(statements);
+
+    String manifestJson =
+        "{\n"
+            + "  \"tables\": [\n"
+            + "    {\n"
+            + "      \"table_name\": \"Singers\",\n"
+            + "      \"file_patterns\": [\n"
+            + "        \""
+            + getGcsPath("input")
+            + "/*.csv\"\n"
+            + "      ],\n"
+            + "      \"columns\": [\n"
+            + "        {\"column_name\": \"SingerId\", \"type_name\": \"INT64\"},\n"
+            + "        {\"column_name\": \"FirstName\", \"type_name\": \"STRING\"},\n"
+            + "        {\"column_name\": \"LastName\", \"type_name\": \"STRING\"},\n"
+            + "        {\"column_name\": \"Active\", \"type_name\": \"BOOL\"},\n"
+            + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
+            + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
+            + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "      ]\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
+            .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("columnDelimiter", ",")
+            .addParameter("fieldQualifier", "\"")
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    ImmutableList<Struct> structs =
+        googleSqlResourceManager.readTableRecords(
+            "Singers",
+            List.of(
+                "SingerId",
+                "FirstName",
+                "LastName",
+                "Active",
+                "Rating",
+                "Score",
+                "BirthDate",
+                "LastModified"));
+    assertThat(structs).hasSize(1);
+    assertThatStructs(structs)
+        .hasRecordsUnordered(
+            List.of(
+                createRecordMap(
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "4.0",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z")));
+
+    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
+    assertThat(artifacts).hasSize(1);
+    assertThatArtifacts(artifacts).hasContent("SingerId=2");
+  }
+
+  @Test
   public void testImportCsvToPostgres() throws IOException {
     // Arrange
     gcsClient.createArtifact(
