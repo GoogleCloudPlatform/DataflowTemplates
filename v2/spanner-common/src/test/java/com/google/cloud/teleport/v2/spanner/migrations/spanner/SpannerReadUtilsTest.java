@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.spanner;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,7 +24,6 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -96,29 +95,47 @@ public class SpannerReadUtilsTest {
   public void testGenerateReadSQLAllTypesPostgres() {
     // 1. Setup PostgreSQL DDL with all supported PG types
     Ddl pgDdl =
-            Ddl.builder(com.google.cloud.spanner.Dialect.POSTGRESQL)
-                    .createTable(SHADOW_TABLE)
-                    .column("bool_field").pgBool().endColumn()
-                    .column("int_field").pgInt8().endColumn()
-                    .column("float_field").pgFloat8().endColumn()
-                    .column("numeric_field").pgNumeric().endColumn()
-                    .column("text_field").pgText().endColumn()
-                    .column("bytea_field").pgBytea().endColumn()
-                    .column("timestamptz_field").pgTimestamptz().endColumn()
-                    .column("date_field").pgDate().endColumn()
-                    .column("version").pgInt8().endColumn()
-                    .primaryKey()
-                    .asc("bool_field")
-                    .asc("int_field")
-                    .asc("float_field")
-                    .asc("numeric_field")
-                    .asc("text_field")
-                    .asc("bytea_field")
-                    .asc("timestamptz_field")
-                    .asc("date_field")
-                    .end()
-                    .endTable()
-                    .build();
+        Ddl.builder(com.google.cloud.spanner.Dialect.POSTGRESQL)
+            .createTable(SHADOW_TABLE)
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .column("text_field")
+            .pgText()
+            .endColumn()
+            .column("bytea_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamptz_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .column("version")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("bool_field")
+            .asc("int_field")
+            .asc("float_field")
+            .asc("numeric_field")
+            .asc("text_field")
+            .asc("bytea_field")
+            .asc("timestamptz_field")
+            .asc("date_field")
+            .end()
+            .endTable()
+            .build();
 
     // 2. Define test values
     boolean boolValue = true;
@@ -131,28 +148,30 @@ public class SpannerReadUtilsTest {
     Date dateValue = Date.fromYearMonthDay(2024, 1, 1);
 
     Key primaryKey =
-            Key.of(
-                    boolValue,
-                    intValue,
-                    floatValue,
-                    numericValue,
-                    textValue,
-                    bytesValue,
-                    timestampValue,
-                    dateValue);
+        Key.of(
+            boolValue,
+            intValue,
+            floatValue,
+            numericValue,
+            textValue,
+            bytesValue,
+            timestampValue,
+            dateValue);
 
     // 3. Generate the Statement
     Statement stmt =
-            SpannerReadUtils.generateReadSQLWithExclusiveLock(
-                    SHADOW_TABLE, READ_COLUMNS, primaryKey, pgDdl);
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
+            SHADOW_TABLE, READ_COLUMNS, primaryKey, pgDdl);
 
     // 4. Verify SQL Syntax for PostgreSQL
     String expectedSql =
-            "/*@ LOCK_SCANNED_RANGES=exclusive */ SELECT bool_field, string_field, version "
-                    + "FROM \"" + SHADOW_TABLE + "\" WHERE "
-                    + "\"bool_field\"=$1 AND \"int_field\"=$2 AND \"float_field\"=$3 AND "
-                    + "\"numeric_field\"=$4 AND \"text_field\"=$5 AND \"bytea_field\"=$6 AND "
-                    + "\"timestamptz_field\"=$7 AND \"date_field\"=$8";
+        "/*@ LOCK_SCANNED_RANGES=exclusive */ SELECT bool_field, string_field, version "
+            + "FROM \""
+            + SHADOW_TABLE
+            + "\" WHERE "
+            + "\"bool_field\"=$1 AND \"int_field\"=$2 AND \"float_field\"=$3 AND "
+            + "\"numeric_field\"=$4 AND \"text_field\"=$5 AND \"bytea_field\"=$6 AND "
+            + "\"timestamptz_field\"=$7 AND \"date_field\"=$8";
 
     assertEquals(expectedSql, stmt.getSql());
 
@@ -167,5 +186,53 @@ public class SpannerReadUtilsTest {
     assertEquals(Value.bytes(bytesValue), params.get("p6"));
     assertEquals(Value.timestamp(timestampValue), params.get("p7"));
     assertEquals(Value.date(dateValue), params.get("p8"));
+  }
+
+  @Test
+  public void testGenerateShadowTableReadSQL_AllTypes() {
+    boolean boolValue = true;
+    long int64Value = 123L;
+    double float64Value = 123.45;
+    BigDecimal numericValue = new BigDecimal("123.456");
+    String stringValue = "test_string";
+    ByteArray bytesValue = ByteArray.copyFrom("test_bytes");
+    Timestamp timestampValue = Timestamp.ofTimeMicroseconds(1234567);
+    Date dateValue = Date.fromYearMonthDay(2024, 1, 1);
+
+    Key primaryKey =
+        Key.of(
+            boolValue, // BOOL
+            int64Value, // INT64
+            float64Value, // FLOAT64
+            numericValue, // NUMERIC
+            stringValue, // STRING
+            bytesValue, // BYTES
+            timestampValue, // TIMESTAMP
+            dateValue // DATE
+            );
+
+    Statement stmt =
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
+            SHADOW_TABLE, READ_COLUMNS, primaryKey, ddl);
+
+    String expectedSql =
+        "@{LOCK_SCANNED_RANGES=exclusive} SELECT bool_field, string_field, version "
+            + "FROM shadow_test_table WHERE bool_field=@bool_field AND int64_field=@int64_field AND "
+            + "float64_field=@float64_field AND numeric_field=@numeric_field AND "
+            + "string_field=@string_field AND bytes_field=@bytes_field AND "
+            + "timestamp_field=@timestamp_field AND date_field=@date_field";
+
+    assertEquals(expectedSql, stmt.getSql());
+
+    Map<String, Value> params = stmt.getParameters();
+
+    assertEquals(Value.bool(boolValue), params.get("bool_field"));
+    assertEquals(Value.int64(int64Value), params.get("int64_field"));
+    assertEquals(Value.float64(float64Value), params.get("float64_field"));
+    assertEquals(Value.numeric(numericValue), params.get("numeric_field"));
+    assertEquals(Value.string(stringValue), params.get("string_field"));
+    assertEquals(Value.bytes(bytesValue), params.get("bytes_field"));
+    assertEquals(Value.timestamp(timestampValue), params.get("timestamp_field"));
+    assertEquals(Value.date(dateValue), params.get("date_field"));
   }
 }
