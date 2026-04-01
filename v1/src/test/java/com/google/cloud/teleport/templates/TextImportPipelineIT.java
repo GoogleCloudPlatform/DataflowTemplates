@@ -294,7 +294,6 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
   @Test
   public void testImportCsvSpannerWriteFailures() throws IOException {
-    // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
         "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n"
@@ -353,13 +352,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
             .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
-    // Act
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
-    // Assert
     assertThatResult(result).isLaunchFinished();
 
     ImmutableList<Struct> structs =
