@@ -126,6 +126,30 @@ public final class SpannerResourceManager implements ResourceManager {
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
+                  com.google.api.gax.retrying.RetrySettings commitRetrySettings =
+                      optionsBuilder
+                          .getSpannerStubSettingsBuilder()
+                          .commitSettings()
+                          .getRetrySettings()
+                          .toBuilder()
+                          .setTotalTimeoutDuration(java.time.Duration.ofMinutes(5))
+                          .build();
+                  optionsBuilder
+                      .getSpannerStubSettingsBuilder()
+                      .commitSettings()
+                      .setRetrySettings(commitRetrySettings);
+                  com.google.api.gax.retrying.RetrySettings executeSqlRetrySettings =
+                      optionsBuilder
+                          .getSpannerStubSettingsBuilder()
+                          .executeSqlSettings()
+                          .getRetrySettings()
+                          .toBuilder()
+                          .setTotalTimeoutDuration(java.time.Duration.ofMinutes(5))
+                          .build();
+                  optionsBuilder
+                      .getSpannerStubSettingsBuilder()
+                      .executeSqlSettings()
+                      .setRetrySettings(executeSqlRetrySettings);
                   return optionsBuilder.build().getService();
                 })
             .get());
