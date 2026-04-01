@@ -37,20 +37,13 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
   private final SourceDatabaseType sourceType = SourceDatabaseType.POSTGRESQL;
 
   // Schema name is 'public' by default for PostgreSQL, unless specified otherwise
-  private final String schemaSearchPath;
-
-  public PostgreSQLInformationSchemaScanner(Connection connection, String databaseName) {
-    this.connection = connection;
-    this.databaseName = databaseName;
-    this.schemaSearchPath = "public";
-  }
+  private final String schema;
 
   public PostgreSQLInformationSchemaScanner(
-      Connection connection, String databaseName, String schemaSearchPath) {
+      Connection connection, String databaseName, String schema) {
     this.connection = connection;
     this.databaseName = databaseName;
-    this.schemaSearchPath =
-        (schemaSearchPath != null && !schemaSearchPath.isBlank()) ? schemaSearchPath : "public";
+    this.schema = (schema != null && !schema.isBlank()) ? schema : "public";
   }
 
   @Override
@@ -114,7 +107,7 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
             + "FROM information_schema.tables "
             + "WHERE table_schema = '%s' "
             + "AND table_type = 'BASE TABLE'",
-        schemaSearchPath);
+        schema);
   }
 
   private List<SourceColumn> scanColumns(String tableName, String schema) throws SQLException {
@@ -127,7 +120,7 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = '%s' AND table_name = '%s' "
                 + "ORDER BY ordinal_position",
-            schemaSearchPath, tableName);
+            this.schema, tableName);
 
     try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {
@@ -180,7 +173,7 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
                 + "WHERE tc.table_schema = '%s' AND tc.table_name = '%s' "
                 + "AND tc.constraint_type = 'PRIMARY KEY' "
                 + "ORDER BY kcu.ordinal_position",
-            schemaSearchPath, tableName);
+            this.schema, tableName);
 
     try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {
@@ -213,7 +206,7 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
                 + "  AND t.relname = '%s' "
                 + "  AND ix.indisprimary = false "
                 + "ORDER BY t.relname, i.relname, a.attnum",
-            schemaSearchPath, tableName);
+            this.schema, tableName);
 
     try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {
@@ -268,7 +261,7 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
                 + "WHERE tc.constraint_type = 'FOREIGN KEY' "
                 + "  AND tc.table_schema = '%s' AND tc.table_name = '%s' "
                 + "ORDER BY tc.constraint_name, kcu.ordinal_position",
-            schemaSearchPath, tableName);
+            this.schema, tableName);
 
     try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {

@@ -940,7 +940,14 @@ public class SpannerToSourceDb {
       Shard shard, String driverClassName, String jdbcUrlPrefix) {
     try {
       String sourceConnectionUrl =
-          jdbcUrlPrefix + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+          new StringBuilder()
+              .append(jdbcUrlPrefix)
+              .append(shard.getHost())
+              .append(":")
+              .append(shard.getPort())
+              .append("/")
+              .append(shard.getDbName())
+              .toString();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());

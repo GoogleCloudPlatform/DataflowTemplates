@@ -21,11 +21,14 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,15 +43,12 @@ public class SpannerReadUtils {
     boolean isPostgres = ddl.dialect() == Dialect.POSTGRESQL;
     String whereClause;
     if (isPostgres) {
-      StringBuilder whereBuilder = new StringBuilder();
-      for (int i = 0; i < ddl.table(tableName).primaryKeys().size(); i++) {
-        String colName = ddl.table(tableName).primaryKeys().get(i).name();
-        if (i > 0) {
-          whereBuilder.append(" AND ");
-        }
-        whereBuilder.append("\"").append(colName).append("\"=$").append(i + 1);
+      List<String> conditions = new ArrayList<>();
+      List<IndexColumn> pks = ddl.table(tableName).primaryKeys();
+      for (int i = 0; i < pks.size(); i++) {
+        conditions.add(quoteIdentifier(pks.get(i).name(), ddl.dialect()) + "=$" + (i + 1));
       }
-      whereClause = whereBuilder.toString();
+      whereClause = String.join(" AND ", conditions);
     } else {
       whereClause =
           String.join(
@@ -63,7 +63,7 @@ public class SpannerReadUtils {
             + "SELECT "
             + columnNames
             + " FROM "
-            + (isPostgres ? "\"" + tableName + "\"" : tableName)
+            + quoteIdentifier(tableName, ddl.dialect())
             + " WHERE "
             + whereClause;
 
@@ -98,8 +98,10 @@ public class SpannerReadUtils {
           stmtBuilder.bind(bindName).to((String) value);
           break;
         case NUMERIC:
-        case PG_NUMERIC:
           stmtBuilder.bind(bindName).to((BigDecimal) value);
+          break;
+        case PG_NUMERIC:
+          stmtBuilder.bind(bindName).to(Value.pgNumeric(value.toString()));
           break;
         case BYTES:
         case PG_BYTEA:
@@ -120,5 +122,9 @@ public class SpannerReadUtils {
       i++;
     }
     return stmtBuilder.build();
+  }
+
+  private static String quoteIdentifier(String name, Dialect dialect) {
+    return (dialect == Dialect.POSTGRESQL) ? "\"" + name + "\"" : name;
   }
 }
