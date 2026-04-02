@@ -221,6 +221,7 @@ import datetime
 import json
 import logging
 import re
+import string
 import time
 
 import apache_beam as beam
@@ -399,33 +400,114 @@ class _ThresholdAlert(beam.DoFn):
       yield result
 
 
+# Fields available for --message_format templates.
+_ANOMALY_FIELDS = frozenset({
+    'value', 'score', 'label', 'threshold', 'model_id', 'info',
+    'key', 'window_start', 'window_end',
+})
+
+
+def _validate_message_format(format_str, metadata):
+  """Validate that all placeholders in format_str are resolvable.
+
+  Raises ValueError at pipeline construction if the format string
+  references a field that is neither a known anomaly field nor a key
+  in the user-provided metadata.
+  """
+  referenced = {
+      fname for _, fname, _, _ in string.Formatter().parse(format_str)
+      if fname is not None}
+  unknown = referenced - _ANOMALY_FIELDS - set(metadata or {})
+  if unknown:
+    raise ValueError(
+        f'message_format references unknown fields: {sorted(unknown)}. '
+        f'Available anomaly fields: {sorted(_ANOMALY_FIELDS)}. '
+        f'Available metadata keys: {sorted(metadata or {})}.')
+
+
+def _build_anomaly_fields(element):
+  """Extract template fields from an anomaly result element.
+
+  Returns (fields_dict, key, result) where fields_dict contains all
+  _ANOMALY_FIELDS with None values coerced to empty strings or 'null'.
+  """
+  key, result = _unpack_result(element)
+  prediction = result.predictions[0]
+  example = result.example
+
+  ws = example.window_start
+  we = example.window_end
+  if isinstance(ws, (int, float)):
+    ws = datetime.datetime.fromtimestamp(
+        ws, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    we = datetime.datetime.fromtimestamp(
+        we, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+  else:
+    ws = ws.to_rfc3339()
+    we = we.to_rfc3339()
+
+  fields = {
+      'value': example.value,
+      'score': prediction.score if prediction.score is not None else 'null',
+      'label': prediction.label,
+      'threshold': (prediction.threshold
+                    if prediction.threshold is not None else 'null'),
+      'model_id': prediction.model_id or '',
+      'info': prediction.info or '',
+      'key': str(key) if key is not None else '',
+      'window_start': ws,
+      'window_end': we,
+  }
+  return fields, key, result
+
+
 class _FormatAnomalyAsJson(beam.DoFn):
-  """Converts anomaly results (label == 1) to JSON byte strings for Pub/Sub."""
+  """Converts anomaly results (label == 1) to byte strings for Pub/Sub.
+
+  Supports two modes:
+
+  1. **Default** (no ``message_format``): emits a JSON object with
+     ``event_description``, ``agent_id``, and optionally ``key``.
+
+  2. **Custom format** (``message_format`` provided): evaluates the
+     Python format string with anomaly fields and user metadata, then
+     emits the result as UTF-8 bytes. The output does not need to be
+     JSON — it can be any string the downstream consumer expects.
+
+  Args:
+    message_format: Optional Python format string. Available fields:
+        ``{value}``, ``{score}``, ``{label}``, ``{threshold}``,
+        ``{model_id}``, ``{info}``, ``{key}``, ``{window_start}``,
+        ``{window_end}``, plus any keys from ``message_metadata``.
+    message_metadata: Optional dict of static key-value pairs that
+        are available as additional format fields.
+  """
+
+  def __init__(self, message_format=None, message_metadata=None):
+    self._message_format = message_format
+    self._message_metadata = message_metadata or {}
+
   def process(self, element):
-    key, result = _unpack_result(element)
+    fields, key, result = _build_anomaly_fields(element)
     prediction = result.predictions[0]
     if prediction.label != 1:
       return
 
-    example = result.example
-    ws = datetime.datetime.fromtimestamp(
-        example.window_start, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
-    we = datetime.datetime.fromtimestamp(
-        example.window_end, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
-
-    payload = {
-        'event_description': (
-            f'Anomaly detected value={example.value}'
-            f' score={prediction.score}'
-            f' in window={ws}-{we}'),
-        'agent_id': prediction.model_id,
-    }
-    if key is not None:
-      payload['key'] = str(key)
-
-    yield json.dumps(payload).encode('utf-8')
+    if self._message_format is not None:
+      merged = dict(self._message_metadata)
+      merged.update(fields)
+      yield self._message_format.format(**merged).encode('utf-8')
+    else:
+      payload = {
+          'event_description': (
+              f'Anomaly detected value={fields["value"]}'
+              f' score={fields["score"]}'
+              f' in window={fields["window_start"]}-{fields["window_end"]}'),
+          'agent_id': fields['model_id'],
+      }
+      if key is not None:
+        payload['key'] = str(key)
+      yield json.dumps(payload).encode('utf-8')
 
 
 _SINK_SCHEMA = {
@@ -527,6 +609,22 @@ class AnomalyMonitorOptions(PipelineOptions):
         default='false',
         help='Log all anomaly detection results (normal, outlier, warmup) '
         'at WARNING level. Default: false.')
+    parser.add_argument(
+        '--message_format',
+        default=None,
+        help='Python format string for Pub/Sub anomaly messages. '
+        'Available fields: {value}, {score}, {label}, {threshold}, '
+        '{model_id}, {info}, {key}, {window_start}, {window_end}, '
+        'plus any keys from --message_metadata. '
+        'If unset, a default JSON payload is used. '
+        'Example: \'{"alert": "{key}: {value}", "job_id": "{job_id}"}\'')
+    parser.add_argument(
+        '--message_metadata',
+        default=None,
+        help='JSON object of static key-value pairs available as '
+        'additional fields in --message_format. '
+        'Example: \'{"job_id": "pipeline-123", "env": "prod"}\'.'
+        ' Anomaly fields take precedence on key collision.')
     parser.add_argument(
         '--sink_table',
         default=None,
@@ -1016,9 +1114,28 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   # Publish anomalies (label == 1) to Pub/Sub.
   topic_path = _validate_topic_path(options.topic)
 
+  message_metadata = None
+  if options.message_metadata:
+    try:
+      message_metadata = json.loads(options.message_metadata)
+    except json.JSONDecodeError as e:
+      raise ValueError(
+          f'--message_metadata must be valid JSON: {e}') from e
+    if not isinstance(message_metadata, dict):
+      raise ValueError(
+          '--message_metadata must be a JSON object (dict), '
+          f'got {type(message_metadata).__name__}')
+
+  message_format = options.message_format
+  if message_format is not None:
+    _validate_message_format(message_format, message_metadata)
+
   _ = (
       anomalies
-      | 'FormatAnomalies' >> beam.ParDo(_FormatAnomalyAsJson())
+      | 'FormatAnomalies' >> beam.ParDo(
+          _FormatAnomalyAsJson(
+              message_format=message_format,
+              message_metadata=message_metadata))
       | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
 
   # Write all results to a BigQuery sink table (if configured).

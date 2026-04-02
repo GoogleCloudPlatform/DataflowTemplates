@@ -167,4 +167,29 @@ public interface BigQueryAnomalyDetection {
           "Number of shards for sharded or hotkey_fanout strategies. "
               + "Ignored for none and precombine. Default: 400.")
   Integer getFanout();
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      name = "message_format",
+      description = "Pub/Sub Message Format",
+      helpText =
+          "Python format string for Pub/Sub anomaly messages. "
+              + "Available fields: {value}, {score}, {label}, {threshold}, "
+              + "{model_id}, {info}, {key}, {window_start}, {window_end}, "
+              + "plus any keys from message_metadata. "
+              + "If unset, a default JSON payload is used.")
+  String getMessageFormat();
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      name = "message_metadata",
+      description = "Pub/Sub Message Metadata",
+      helpText =
+          "JSON object of static key-value pairs available as additional "
+              + "fields in message_format. "
+              + "Example: {\"job_id\": \"pipeline-123\", \"env\": \"prod\"}. "
+              + "Anomaly fields take precedence on key collision.")
+  String getMessageMetadata();
 }
