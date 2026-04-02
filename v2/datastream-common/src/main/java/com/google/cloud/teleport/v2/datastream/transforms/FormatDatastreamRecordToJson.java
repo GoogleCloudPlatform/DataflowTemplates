@@ -149,8 +149,13 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_schema", getMetadataDatabase(record));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
-    } else if (sourceType.equals("postgresql") || sourceType.equals("sqlserver")) {
-      // PostgreSQL / SQL Server Specific Metadata
+    } else if (sourceType.equals("postgresql")) {
+      // PostgreSQL Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+    } else if (sourceType.equals("sqlserver")) {
+      // SQL Server Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
