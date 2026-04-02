@@ -20,8 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -373,8 +371,6 @@ public final class MySQLDMLGeneratorTest {
                 FileSystems.matchNewResource(
                     "src/test/resources/bufferInputAllDatatypes.json", false)));
     String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
-
-    ObjectWriter ow = new ObjectMapper().writer();
     TrimmedShardedDataChangeRecord chrec =
         new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
@@ -444,6 +440,76 @@ public final class MySQLDMLGeneratorTest {
     /* assertTrue(
     sql.contains(
         "timestamp_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
+    assertTrue(sql.contains("`float_column` = 4.2"));
+    assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`bigint_column` = 4444"));
+    assertTrue(sql.contains("`time_column` = '10:10:10'"));
+    assertTrue(sql.contains("`tinytext_column` = '<tinytext_column>'"));
+    assertTrue(sql.contains("`set_column` = '1,2'"));
+    assertTrue(sql.contains("`longblob_column` = FROM_BASE64('YWJsb25nYmxvYmM=')"));
+    assertTrue(sql.contains("`mediumtext_column` = '<mediumtext_column>'"));
+    assertTrue(sql.contains("`year_column` = '2023'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('YWJiaWdj')"));
+    assertTrue(sql.contains("`decimal_column` = 444.222"));
+    assertTrue(sql.contains("`bool_column` = false"));
+    assertTrue(sql.contains("`char_column` = '<char_c'"));
+    assertTrue(sql.contains("`date_column` = '2023-05-18'"));
+    assertTrue(sql.contains("`double_column` = 42.42"));
+  }
+
+  @Test
+  public void pgDialectAllDatatypesDML() throws Exception {
+    String sessionFile = "src/test/resources/pgDialectMySQLSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(
+                FileSystems.matchNewResource(
+                    "src/test/resources/bufferInputAllDatatypes.json", false)));
+    String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    TrimmedShardedDataChangeRecord chrec =
+        new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create()
+            .fromJson(record, TrimmedShardedDataChangeRecord.class);
+
+    String tableName = chrec.getTableName();
+    String modType = chrec.getModType().name();
+    String keysJsonStr = chrec.getMod().getKeysJson();
+    String newValueJsonStr = chrec.getMod().getNewValuesJson();
+    JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+    JSONObject keyValuesJson = new JSONObject(keysJsonStr);
+
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`mediumint_column` = 333"));
+    assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
+    boolean datetimeFlag =
+        sql.contains(
+            "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
+    assertTrue(datetimeFlag);
+    assertTrue(sql.contains("`enum_column` = '1'"));
+    assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
+    assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
+    assertTrue(sql.contains("`text_column` = 'aaaaaddd'"));
+    assertTrue(sql.contains("`tinyint_column` = 1"));
+    boolean timestampFlag =
+        sql.contains(
+            "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
+    assertTrue(timestampFlag);
     assertTrue(sql.contains("`float_column` = 4.2"));
     assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
     assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
