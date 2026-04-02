@@ -222,6 +222,7 @@ import json
 import logging
 import re
 import time
+from typing import Any
 
 import apache_beam as beam
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
@@ -333,12 +334,8 @@ class _LogAnomalyResult(beam.DoFn):
     else:
       tag = 'WARMUP'
 
-    ws = datetime.datetime.fromtimestamp(
-        example.window_start, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
-    we = datetime.datetime.fromtimestamp(
-        example.window_end, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
+    ws = example.window_start.to_rfc3339()
+    we = example.window_end.to_rfc3339()
     window_str = f'{ws}-{we}'
 
     if key is not None:
@@ -408,12 +405,8 @@ class _FormatAnomalyAsJson(beam.DoFn):
       return
 
     example = result.example
-    ws = datetime.datetime.fromtimestamp(
-        example.window_start, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
-    we = datetime.datetime.fromtimestamp(
-        example.window_end, tz=datetime.timezone.utc).strftime(
-            '%Y-%m-%dT%H:%M:%S.%fZ')
+    ws = example.window_start.to_rfc3339()
+    we = example.window_end.to_rfc3339()
 
     payload = {
         'event_description': (
@@ -448,10 +441,8 @@ class _FormatResultForBQ(beam.DoFn):
     example = result.example
 
     row = {
-        'window_start': datetime.datetime.fromtimestamp(
-            example.window_start, tz=datetime.timezone.utc).isoformat(),
-        'window_end': datetime.datetime.fromtimestamp(
-            example.window_end, tz=datetime.timezone.utc).isoformat(),
+        'window_start': example.window_start.to_rfc3339(),
+        'window_end': example.window_end.to_rfc3339(),
         'value': float(example.value),
         'score': float(prediction.score) if prediction.score is not None
         else None,
@@ -1013,12 +1004,73 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   # Rewindow into GlobalWindows so the anomaly detector sees the full
   # stream of window results as a time series, not isolated per-window.
   from apache_beam.transforms.window import GlobalWindows
-  global_metrics = metrics | 'Rewindow' >> beam.WindowInto(GlobalWindows())
+  global_metrics = metrics | 'Rewindow' >> beam.WindowInto(
+      GlobalWindows())
+
+  # For sliding windows, prepend the window offset to the key so that
+  # each offset is detected independently. This ensures that stateful
+  # detectors (ZScore, IQR, RobustZScore) only see values from
+  # the same non-overlapping sub-series. For example, size=60 period=30
+  # produces offsets 0 and 30 — key "K" becomes ("K", 0) and ("K", 30).
+  # Fixed windows have only one offset (0), so no change needed.
+  # Threshold is stateless, so no offset keying needed.
+  _sliding_offset_applied = False
+  is_sliding = (metric_spec.aggregation.window.type.value == 'sliding')
+  if is_sliding and not isinstance(detector, _ThresholdAlert):
+    window_size = metric_spec.aggregation.window.size_seconds
+    slide_period = metric_spec.aggregation.window.period_seconds
+    n_offsets = window_size // slide_period
+    _LOGGER.info(
+        'Sliding window detected (size=%ds, period=%ds, %d offsets). '
+        'Adding offset key for independent per-offset detection.',
+        window_size, slide_period, n_offsets)
+    _sliding_offset_applied = True
+
+    def _add_offset_key(element, _ws=window_size):
+      if isinstance(element, tuple) and len(element) == 2:
+        key, row = element
+        offset = round(float(row.window_start % _ws), 3)
+        return ((key, offset), row)
+      else:
+        row = element
+        offset = round(float(row.window_start % _ws), 3)
+        return (offset, row)
+
+    global_metrics = (
+        global_metrics | 'AddOffsetKey' >> beam.Map(_add_offset_key))
 
   if isinstance(detector, _ThresholdAlert):
     anomalies = global_metrics | 'DetectAnomalies' >> beam.ParDo(detector)
   else:
+    # Add type hint for keyed input so AnomalyDetection handles it correctly.
+    if _sliding_offset_applied or bool(metric_spec.aggregation.group_by):
+      global_metrics = (
+          global_metrics
+          | 'TypeHintMetrics' >> beam.Map(lambda x: x).with_output_types(
+              beam.typehints.Tuple[Any, beam.Row]))
     anomalies = global_metrics | 'DetectAnomalies' >> AnomalyDetection(detector)
+
+  # Strip the offset from the key if we added it for sliding windows,
+  # so downstream sinks see the original key.
+  # - With group_by: key is (original_key, offset) → restore to (original_key, result)
+  # - Without group_by: key is just offset (float) → strip entirely to plain result
+  if _sliding_offset_applied:
+    has_group_by = bool(metric_spec.aggregation.group_by)
+
+    def _strip_offset_key(element, _has_group_by=has_group_by):
+      if not isinstance(element, tuple) or len(element) != 2:
+        return element
+      key, result = element
+      if _has_group_by and isinstance(key, tuple) and len(key) == 2:
+        original_key = key[0]
+        return (original_key, result)
+      elif not _has_group_by:
+        # Key is just the offset (float) — strip it entirely.
+        return result
+      return element
+
+    anomalies = (
+        anomalies | 'StripOffsetKey' >> beam.Map(_strip_offset_key))
 
   if options.log_all_results.lower() == 'true':
     _ = anomalies | 'LogResults' >> beam.ParDo(_LogAnomalyResult())
@@ -1068,6 +1120,9 @@ def run(argv=None):
   _preflight_checks(monitor_options, metric_spec)
 
   options.view_as(SetupOptions).save_main_session = True
+
+  from apache_beam.options.pipeline_options import StandardOptions
+  options.view_as(StandardOptions).streaming = True
 
   with beam.Pipeline(options=options) as p:
     build_pipeline(p, monitor_options, metric_spec, detector)
