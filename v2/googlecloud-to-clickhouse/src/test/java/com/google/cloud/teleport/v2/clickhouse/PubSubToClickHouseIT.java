@@ -42,7 +42,9 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -503,8 +505,8 @@ public class PubSubToClickHouseIT extends TemplateTestBase {
   /**
    * Derives the ClickHouse HTTP URL from the JDBC connection string exposed by the resource
    * manager. The JDBC format is {@code jdbc:clickhouse://HOST:PORT/default?user=...&password=...};
-   * the template requires {@code http://HOST:PORT}. Credentials are passed separately via
-   * {@code --clickHouseUsername} and {@code --clickHousePassword} parameters.
+   * the template requires {@code http://HOST:PORT}. Credentials are passed separately via {@code
+   * --clickHouseUsername} and {@code --clickHousePassword} parameters.
    */
   private String getClickHouseHttpUrl() {
     String jdbcUrl = clickHouseResourceManager.getJdbcConnectionString();
