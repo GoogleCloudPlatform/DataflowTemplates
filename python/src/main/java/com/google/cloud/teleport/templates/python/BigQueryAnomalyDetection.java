@@ -63,9 +63,10 @@ public interface BigQueryAnomalyDetection {
       description = "Detector Specification (JSON)",
       helpText =
           "JSON string defining the anomaly detector. "
-              + "Example: {\"type\":\"ZScore\"} or "
-              + "{\"type\":\"ZScore\",\"config\":{\"threshold_criterion\":{\"type\":\"FixedThreshold\","
-              + "\"config\":{\"cutoff\":10}}}}")
+              + "Statistical: {\"type\":\"ZScore\"}, {\"type\":\"IQR\"}, {\"type\":\"RobustZScore\"}. "
+              + "Threshold: {\"type\":\"Threshold\",\"expression\":\"value >= 100\"}. "
+              + "RelativeChange: {\"type\":\"RelativeChange\",\"direction\":\"decrease\","
+              + "\"threshold_pct\":20,\"lookback_windows\":1}.")
   String getDetectorSpec();
 
   @TemplateParameter.Text(
