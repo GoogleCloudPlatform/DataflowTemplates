@@ -147,19 +147,8 @@ public interface BigQueryAnomalyDetection {
       regexes = {"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"})
   String getSinkTable();
 
-  @TemplateParameter.Integer(
-      order = 13,
-      optional = true,
-      name = "decompress_shards",
-      description = "Decompress Shards",
-      helpText =
-          "Number of shards for CDC Arrow batch decompression fan-out. "
-              + "Spreads decompression CPU across workers. "
-              + "0 disables fan-out (decode inline). Default: 400.")
-  Integer getDecompressShards();
-
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       optional = true,
       name = "fanout_strategy",
       description = "Fanout Strategy",
@@ -170,7 +159,7 @@ public interface BigQueryAnomalyDetection {
   String getFanoutStrategy();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 14,
       optional = true,
       name = "fanout",
       description = "Fanout Shards",
