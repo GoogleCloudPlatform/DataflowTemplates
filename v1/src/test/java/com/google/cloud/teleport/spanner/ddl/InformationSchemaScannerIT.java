@@ -690,6 +690,71 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void pgSimpleUdf() throws Exception {
+    String namedSchemaDef = "CREATE SCHEMA s1";
+    String udfDef1 = "CREATE FUNCTION s1.foo() RETURNS bigint RETURN (1)";
+    String udfDef2 =
+        "CREATE FUNCTION s1.default_values("
+            + "A text, "
+            + "B text DEFAULT NULL, "
+            + "C text DEFAULT 'NULL', "
+            + "D text DEFAULT '') "
+            + "RETURNS text RETURN (CONCAT(A, '::', B, '::', C, '::', D))";
+
+    SPANNER_SERVER.createPgDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2));
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.schema("s1"), notNullValue());
+
+    assertThat(ddl.udfs(), hasSize(2));
+    Udf udf1 = ddl.udf("s1.foo");
+    assertThat(udf1, notNullValue());
+    assertThat(ddl.udf("S1.FOO"), sameInstance(udf1));
+
+    Udf udf2 = ddl.udf("s1.default_values");
+    assertThat(udf2, notNullValue());
+    assertThat(ddl.udf("S1.default_values"), sameInstance(udf2));
+
+    assertThat(udf1.name(), equalTo("s1.foo"));
+    assertThat(udf1.type(), equalTo("bigint"));
+    assertThat(udf1.definition(), equalTo("1"));
+    assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+
+    assertThat(udf2.name(), equalTo("s1.default_values"));
+    assertThat(udf2.type(), equalTo("text"));
+    assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+    assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+    assertThat(
+        udf2.parameters(),
+        hasItems(
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("A")
+                .type("text")
+                .defaultExpression(null)
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("B")
+                .type("text")
+                .defaultExpression("NULL")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("C")
+                .type("text")
+                .defaultExpression("'NULL'")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("D")
+                .type("text")
+                .defaultExpression("''")
+                .autoBuild()));
+  }
+
+  @Test
   public void interleavedIn() throws Exception {
     List<String> statements =
         Arrays.asList(
