@@ -22,6 +22,7 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateNewId
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateDatabaseId;
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.auth.Credentials;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
@@ -126,7 +127,7 @@ public final class SpannerResourceManager implements ResourceManager {
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
-                  com.google.api.gax.retrying.RetrySettings commitRetrySettings =
+                  RetrySettings commitRetrySettings =
                       optionsBuilder
                           .getSpannerStubSettingsBuilder()
                           .commitSettings()
@@ -138,7 +139,7 @@ public final class SpannerResourceManager implements ResourceManager {
                       .getSpannerStubSettingsBuilder()
                       .commitSettings()
                       .setRetrySettings(commitRetrySettings);
-                  com.google.api.gax.retrying.RetrySettings executeSqlRetrySettings =
+                  RetrySettings executeSqlRetrySettings =
                       optionsBuilder
                           .getSpannerStubSettingsBuilder()
                           .executeSqlSettings()
