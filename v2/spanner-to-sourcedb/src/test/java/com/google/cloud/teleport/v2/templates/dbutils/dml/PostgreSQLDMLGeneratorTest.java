@@ -1,0 +1,464 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.dbutils.dml;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.GsonBuilder;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+@RunWith(JUnit4.class)
+public final class PostgreSQLDMLGeneratorTest {
+
+  @Test
+  public void tableAndAllColumnNameTypesMatch() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "INSERT";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("\"FirstName\" = EXCLUDED.\"FirstName\""));
+    assertTrue(sql.contains("\"LastName\" = EXCLUDED.\"LastName\""));
+    assertTrue(sql.contains("ON CONFLICT (\"SingerId\") DO UPDATE SET"));
+  }
+
+  @Test
+  public void deleteMultiplePKColumns() {
+    String sessionFile = "src/test/resources/MultiColmPKSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"LastName\":null}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\",\"FirstName\":\"kk\"}");
+    String modType = "DELETE";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("\"FirstName\" = 'kk'"));
+    assertTrue(sql.contains("\"SingerId\" = 999"));
+    assertTrue(sql.contains("DELETE FROM \"Singers\" WHERE"));
+  }
+
+  @Test
+  public void primaryKeyNotFoundInJson() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SomeRandomName\":\"999\"}");
+    String modType = "INSERT";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            postgreSQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+  }
+
+  @Test
+  public void primaryKeyNotPresentInSourceSchema() {
+    String sessionFile = "src/test/resources/sourceNoPkSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "INSERT";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            postgreSQLDMLGenerator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+  }
+
+  @Test
+  public void allDatatypesDML() throws Exception {
+    String sessionFile = "src/test/resources/pgAllDatatypesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(
+                FileSystems.matchNewResource(
+                    "src/test/resources/bufferInputAllDatatypes.json", false)));
+    String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
+
+    ObjectWriter ow = new ObjectMapper().writer();
+    TrimmedShardedDataChangeRecord chrec =
+        new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create()
+            .fromJson(record, TrimmedShardedDataChangeRecord.class);
+
+    String tableName = chrec.getTableName();
+    String modType = chrec.getModType().name();
+    String keysJsonStr = chrec.getMod().getKeysJson();
+    String newValueJsonStr = chrec.getMod().getNewValuesJson();
+    JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+    JSONObject keyValuesJson = new JSONObject(keysJsonStr);
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("333"));
+    assertTrue(sql.contains("'\\x616263'"));
+    assertTrue(sql.contains("'2023-05-18T12:01:13.088397258Z'::timestamptz"));
+    assertTrue(sql.contains("'1'"));
+    assertTrue(sql.contains("'<longtext_column>'"));
+    assertTrue(sql.contains("'\\x6162636c61726765'"));
+    assertTrue(sql.contains("'aaaaaddd'"));
+    assertTrue(sql.contains("1"));
+    assertTrue(sql.contains("4.2"));
+    assertTrue(sql.contains("4444"));
+    assertTrue(sql.contains("'10:10:10'"));
+    assertTrue(sql.contains("'<tinytext_column>'"));
+    assertTrue(sql.contains("'1,2'"));
+    assertTrue(sql.contains("'\\x61626c6f6e67626c6f6263'"));
+    assertTrue(sql.contains("'<mediumtext_column>'"));
+    assertTrue(sql.contains("2023"));
+    assertTrue(sql.contains("'\\x616262696763'"));
+    assertTrue(sql.contains("444.222"));
+    assertTrue(sql.contains("false"));
+    assertTrue(sql.contains("'<char_c'"));
+    assertTrue(sql.contains("'2023-05-18'"));
+    assertTrue(sql.contains("42.42"));
+    assertTrue(sql.contains("22"));
+    assertTrue(sql.contains("\"mediumint_column\" = EXCLUDED.\"mediumint_column\""));
+    assertTrue(sql.contains("\"tinyblob_column\" = EXCLUDED.\"tinyblob_column\""));
+    assertTrue(sql.contains("\"datetime_column\" = EXCLUDED.\"datetime_column\""));
+    assertTrue(sql.contains("\"float_column\" = EXCLUDED.\"float_column\""));
+    assertTrue(sql.contains("\"varbinary_column\" = EXCLUDED.\"varbinary_column\""));
+    assertTrue(sql.contains("\"binary_column\" = EXCLUDED.\"binary_column\""));
+    assertTrue(sql.contains("\"bigint_column\" = EXCLUDED.\"bigint_column\""));
+    assertTrue(sql.contains("\"time_column\" = EXCLUDED.\"time_column\""));
+    assertTrue(sql.contains("\"tinytext_column\" = EXCLUDED.\"tinytext_column\""));
+    assertTrue(sql.contains("\"set_column\" = EXCLUDED.\"set_column\""));
+    assertTrue(sql.contains("\"longblob_column\" = EXCLUDED.\"longblob_column\""));
+    assertTrue(sql.contains("\"mediumtext_column\" = EXCLUDED.\"mediumtext_column\""));
+    assertTrue(sql.contains("\"year_column\" = EXCLUDED.\"year_column\""));
+    assertTrue(sql.contains("\"blob_column\" = EXCLUDED.\"blob_column\""));
+    assertTrue(sql.contains("\"decimal_column\" = EXCLUDED.\"decimal_column\""));
+    assertTrue(sql.contains("\"bool_column\" = EXCLUDED.\"bool_column\""));
+    assertTrue(sql.contains("\"char_column\" = EXCLUDED.\"char_column\""));
+  }
+
+  @Test
+  public void pgDialectAllDatatypesDML() throws Exception {
+    String sessionFile = "src/test/resources/pgDialectPostgresSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(
+                FileSystems.matchNewResource(
+                    "src/test/resources/bufferInputAllDatatypes.json", false)));
+    String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
+
+    TrimmedShardedDataChangeRecord chrec =
+        new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create()
+            .fromJson(record, TrimmedShardedDataChangeRecord.class);
+
+    String tableName = chrec.getTableName();
+    String modType = chrec.getModType().name();
+    String keysJsonStr = chrec.getMod().getKeysJson();
+    String newValueJsonStr = chrec.getMod().getNewValuesJson();
+    JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+    JSONObject keyValuesJson = new JSONObject(keysJsonStr);
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("333"));
+    assertTrue(sql.contains("'\\x616263'"));
+    assertTrue(sql.contains("'2023-05-18T12:01:13.088397258Z'::timestamptz"));
+    assertTrue(sql.contains("'1'"));
+    assertTrue(sql.contains("'<longtext_column>'"));
+    assertTrue(sql.contains("'\\x6162636c61726765'"));
+    assertTrue(sql.contains("'aaaaaddd'"));
+    assertTrue(sql.contains("1"));
+    assertTrue(sql.contains("4.2"));
+    assertTrue(sql.contains("4444"));
+    assertTrue(sql.contains("'10:10:10'"));
+    assertTrue(sql.contains("'<tinytext_column>'"));
+    assertTrue(sql.contains("'1,2'"));
+    assertTrue(sql.contains("'\\x61626c6f6e67626c6f6263'"));
+    assertTrue(sql.contains("'<mediumtext_column>'"));
+    assertTrue(sql.contains("2023"));
+    assertTrue(sql.contains("'\\x616262696763'"));
+    assertTrue(sql.contains("444.222"));
+    assertTrue(sql.contains("false"));
+    assertTrue(sql.contains("'<char_c'"));
+    assertTrue(sql.contains("'2023-05-18'"));
+    assertTrue(sql.contains("42.42"));
+    assertTrue(sql.contains("22"));
+    assertTrue(sql.contains("\"mediumint_column\" = EXCLUDED.\"mediumint_column\""));
+    assertTrue(sql.contains("\"tinyblob_column\" = EXCLUDED.\"tinyblob_column\""));
+    assertTrue(sql.contains("\"datetime_column\" = EXCLUDED.\"datetime_column\""));
+    assertTrue(sql.contains("\"float_column\" = EXCLUDED.\"float_column\""));
+    assertTrue(sql.contains("\"varbinary_column\" = EXCLUDED.\"varbinary_column\""));
+    assertTrue(sql.contains("\"binary_column\" = EXCLUDED.\"binary_column\""));
+    assertTrue(sql.contains("\"bigint_column\" = EXCLUDED.\"bigint_column\""));
+    assertTrue(sql.contains("\"time_column\" = EXCLUDED.\"time_column\""));
+    assertTrue(sql.contains("\"tinytext_column\" = EXCLUDED.\"tinytext_column\""));
+    assertTrue(sql.contains("\"set_column\" = EXCLUDED.\"set_column\""));
+    assertTrue(sql.contains("\"longblob_column\" = EXCLUDED.\"longblob_column\""));
+    assertTrue(sql.contains("\"mediumtext_column\" = EXCLUDED.\"mediumtext_column\""));
+    assertTrue(sql.contains("\"year_column\" = EXCLUDED.\"year_column\""));
+    assertTrue(sql.contains("\"blob_column\" = EXCLUDED.\"blob_column\""));
+    assertTrue(sql.contains("\"decimal_column\" = EXCLUDED.\"decimal_column\""));
+    assertTrue(sql.contains("\"bool_column\" = EXCLUDED.\"bool_column\""));
+    assertTrue(sql.contains("\"char_column\" = EXCLUDED.\"char_column\""));
+  }
+
+  @Test
+  public void testNullValiationsRequest() {
+    PostgreSQLDMLGenerator generator = new PostgreSQLDMLGenerator();
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(null));
+
+    // Request with null mapper
+    Ddl ddl = Ddl.builder().build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .databaseName("test")
+            .build();
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "T", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(null)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper("src/test/resources/allMatchSession.json", ddl);
+
+    // Request with null ddl
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "T", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(null)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+
+    // Request with null source schema
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "T", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(null)
+                    .build()));
+  }
+
+  @Test
+  public void testUnsupportedModType() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    PostgreSQLDMLGenerator generator = new PostgreSQLDMLGenerator();
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "REPLACE",
+                        "Singers",
+                        new JSONObject("{\"FirstName\":\"a\"}"),
+                        new JSONObject("{\"SingerId\":\"1\"}"),
+                        "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+  }
+
+  @Test
+  public void testConvertBase64ToHexEdgeCases() {
+    // Empty string
+    assertEquals("''", PostgreSQLDMLGenerator.convertBase64ToHex(""));
+    // null string
+    assertNull(PostgreSQLDMLGenerator.convertBase64ToHex(null));
+    // Valid Base64 "hello" -> 68656c6c6f
+    assertEquals("'\\x68656c6c6f'", PostgreSQLDMLGenerator.convertBase64ToHex("aGVsbG8="));
+
+    // Invalid base64
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PostgreSQLDMLGenerator.convertBase64ToHex("invalid-base64!"));
+  }
+
+  @Test
+  public void testNonByteaDecodeBranch() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    try {
+      java.lang.reflect.Method method =
+          PostgreSQLDMLGenerator.class.getDeclaredMethod(
+              "getMappedColumnValue",
+              com.google.cloud.teleport.v2.spanner.ddl.Column.class,
+              com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.class,
+              org.json.JSONObject.class,
+              String.class);
+      method.setAccessible(true);
+
+      // Mocking Spanner Column
+      com.google.cloud.teleport.v2.spanner.ddl.Column spannerCol =
+          mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+      when(spannerCol.name()).thenReturn("c");
+      when(spannerCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.bytes());
+
+      // Mocking SourceColumn
+      com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceCol =
+          mock(com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.class);
+      when(sourceCol.name()).thenReturn("c");
+      when(sourceCol.type()).thenReturn("text");
+
+      JSONObject json = new JSONObject("{\"c\":\"YWJj\"}");
+
+      String res = (String) method.invoke(null, spannerCol, sourceCol, json, "+00:00");
+      assertTrue(res.contains("decode('YWJj', 'base64')"));
+
+      // Test string escape
+      com.google.cloud.teleport.v2.spanner.ddl.Column spannerStrCol =
+          mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+      when(spannerStrCol.name()).thenReturn("s");
+      when(spannerStrCol.type())
+          .thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.string());
+
+      com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceStrCol =
+          mock(com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.class);
+      when(sourceStrCol.type()).thenReturn("text");
+
+      JSONObject jsonStr = new JSONObject("{\"s\":\"it\\'s a string\"}");
+
+      String resStr = (String) method.invoke(null, spannerStrCol, sourceStrCol, jsonStr, "+00:00");
+      assertEquals("'it''s a string'", resStr);
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+}

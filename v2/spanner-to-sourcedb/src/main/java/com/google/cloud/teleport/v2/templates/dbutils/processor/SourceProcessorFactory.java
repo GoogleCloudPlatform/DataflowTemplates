@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.PostgreSQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import java.util.HashMap;
@@ -46,7 +47,9 @@ public class SourceProcessorFactory {
           Constants.SOURCE_MYSQL,
           "com.mysql.cj.jdbc.Driver", // MySQL JDBC Driver
           Constants.SOURCE_CASSANDRA,
-          "com.datastax.oss.driver.api.core.CqlSession" // Cassandra Session Class
+          "com.datastax.oss.driver.api.core.CqlSession", // Cassandra Session Class
+          Constants.SOURCE_POSTGRESQL,
+          "org.postgresql.Driver" // PostgreSQL JDBC Driver
           );
 
   private static Map<String, Function<Shard, String>> connectionUrl = new HashMap<>();
@@ -54,14 +57,25 @@ public class SourceProcessorFactory {
   static {
     dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
     dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
+    dmlGeneratorMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLDMLGenerator());
 
     connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
     connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
+    connectionHelperMap.put(Constants.SOURCE_POSTGRESQL, new JdbcConnectionHelper());
 
     connectionUrl.put(
         Constants.SOURCE_MYSQL,
         shard ->
             "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName());
+    connectionUrl.put(
+        Constants.SOURCE_POSTGRESQL,
+        shard ->
+            "jdbc:postgresql://"
+                + shard.getHost()
+                + ":"
+                + shard.getPort()
+                + "/"
+                + shard.getDbName());
     connectionUrl.put(
         Constants.SOURCE_CASSANDRA,
         shard -> {
@@ -86,8 +100,17 @@ public class SourceProcessorFactory {
                       null,
                       maxConnections,
                       driverMap.get(Constants.SOURCE_MYSQL),
-                      "SET SESSION net_read_timeout=1200" // To avoid timeouts at the network layer
-                      ),
+                      "SET SESSION net_read_timeout=1200", // To avoid timeouts at the network layer
+                      "jdbc:mysql://"),
+              Constants.SOURCE_POSTGRESQL,
+              (shards, maxConnections) ->
+                  new ConnectionHelperRequest(
+                      shards,
+                      null,
+                      maxConnections,
+                      driverMap.get(Constants.SOURCE_POSTGRESQL),
+                      null,
+                      "jdbc:postgresql://"),
               Constants.SOURCE_CASSANDRA,
               (shards, maxConnections) ->
                   new ConnectionHelperRequest(
@@ -95,8 +118,8 @@ public class SourceProcessorFactory {
                       null,
                       maxConnections,
                       driverMap.get(Constants.SOURCE_CASSANDRA),
-                      null // No specific initialization query for Cassandra
-                      ));
+                      null, // No specific initialization query for Cassandra
+                      null));
 
   // for unit testing purposes
   public static void setConnectionHelperMap(Map<String, IConnectionHelper> connectionHelper) {
@@ -169,10 +192,12 @@ public class SourceProcessorFactory {
     Map<String, IDao> sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       String connectionUrl = urlGenerator.apply(shard);
-      IDao sqlDao =
-          source.equals(Constants.SOURCE_MYSQL)
-              ? new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source))
-              : new CassandraDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
+      IDao sqlDao;
+      if (source.equals(Constants.SOURCE_MYSQL) || source.equals(Constants.SOURCE_POSTGRESQL)) {
+        sqlDao = new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
+      } else {
+        sqlDao = new CassandraDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
+      }
       sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
     }
     return sourceDaoMap;

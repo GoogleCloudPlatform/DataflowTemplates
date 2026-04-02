@@ -76,6 +76,7 @@ public class Constants {
 
   public static final String SOURCE_MYSQL = "mysql";
   public static final String SOURCE_CASSANDRA = "cassandra";
+  public static final String SOURCE_POSTGRESQL = "postgresql";
 
   // Message written to the file for filtered records
   public static final String FILTERED_TAG_MESSAGE =

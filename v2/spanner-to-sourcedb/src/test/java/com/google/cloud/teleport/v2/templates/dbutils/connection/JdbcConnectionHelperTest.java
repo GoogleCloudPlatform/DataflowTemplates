@@ -107,6 +107,7 @@ public class JdbcConnectionHelperTest {
     when(mockRequest.getDriver()).thenReturn("com.mysql.cj.jdbc.Driver");
     when(mockRequest.getMaxConnections()).thenReturn(10);
     when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
+    when(mockRequest.getJdbcUrlPrefix()).thenReturn("jdbc:mysql://");
 
     try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(
