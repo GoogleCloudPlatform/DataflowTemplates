@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.ads.googleads.v19.errors.GoogleAdsError;
+import com.google.ads.googleads.v23.errors.GoogleAdsError;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.Message;
