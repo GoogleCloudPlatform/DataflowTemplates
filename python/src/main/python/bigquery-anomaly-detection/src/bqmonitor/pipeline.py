@@ -534,13 +534,6 @@ class AnomalyMonitorOptions(PipelineOptions):
         'Format: project:dataset.table. If unset, results are not written '
         'to BigQuery.')
     parser.add_argument(
-        '--decompress_shards',
-        type=int,
-        default=1200,
-        help='Number of shards for CDC Arrow batch decompression fan-out. '
-        'Spreads decompression CPU across workers. '
-        '0 disables fan-out (decode inline). Default: 1200.')
-    parser.add_argument(
         '--fanout_strategy',
         default='sharded',
         choices=['sharded', 'hotkey_fanout', 'none', 'precombine'],
@@ -996,10 +989,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
       buffer_sec=options.buffer_sec,
       columns=columns,
       change_type_column=change_type_col,
-      change_timestamp_column=change_ts_col,
-      decompress_shards=(
-          options.decompress_shards if options.decompress_shards > 0
-          else None))
+      change_timestamp_column=change_ts_col)
   if stop_time is not None:
     cdc_kwargs['stop_time'] = stop_time
   if options.temp_dataset:
