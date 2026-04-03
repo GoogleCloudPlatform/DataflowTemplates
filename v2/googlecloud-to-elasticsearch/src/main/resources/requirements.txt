@@ -25,7 +25,6 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=python/__build__/default_yaml_requirements.txt python/default_base_yaml_requirements.txt
 #
---index-url https://us-python.pkg.dev/artifact-foundry-prod/ah-3p-staging-python/simple/
 
 aiofiles==25.1.0 \
     --hash=sha256:a8d728f0a29de45dc521f18f07297428d56992a742f0cd2701ba86e44d23d5b2 \
