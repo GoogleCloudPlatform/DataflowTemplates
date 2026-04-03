@@ -38,6 +38,7 @@ from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _ThresholdAlert
 from bqmonitor.pipeline import _unpack_result
 from apache_beam.utils.timestamp import Timestamp
+from bqmonitor.pipeline import _validate_message_format
 
 
 class ParseTableRefTest(unittest.TestCase):
@@ -534,6 +535,95 @@ class AggregationPipelineTest(unittest.TestCase):
     self._assert_aggregation(
         'MEAN', self._expected_list(self.EXPECTED_SLIDING_KEYED, 'MEAN'),
         window_type='sliding', group_by=['key'], fanout_strategy=fanout)
+
+
+class ValidateMessageFormatTest(unittest.TestCase):
+  """Tests for _validate_message_format."""
+
+  def test_valid_anomaly_fields(self):
+    _validate_message_format(
+        '{value} {score} {key} {window_start}', None)
+
+  def test_valid_with_metadata(self):
+    _validate_message_format(
+        '{value} {job_id}', {'job_id': 'abc'})
+
+  def test_unknown_field_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _validate_message_format('{value} {bogus}', None)
+    self.assertIn('bogus', str(ctx.exception))
+
+  def test_unknown_field_with_metadata(self):
+    with self.assertRaises(ValueError):
+      _validate_message_format('{job_id} {nope}', {'job_id': 'x'})
+
+  def test_all_fields_valid(self):
+    fmt = ('{value} {score} {label} {threshold} {model_id} '
+           '{info} {key} {window_start} {window_end}')
+    _validate_message_format(fmt, None)
+
+  def test_no_placeholders(self):
+    _validate_message_format('static message', None)
+
+
+class FormatAnomalyCustomFormatTest(unittest.TestCase):
+  """Tests for _FormatAnomalyAsJson with custom message_format."""
+
+  def _make_result(self, label, value=42.0, score=5.0, model_id='TestModel'):
+    row = beam.Row(value=value, window_start=Timestamp(1000), window_end=Timestamp(1001))
+    prediction = AnomalyPrediction(
+        model_id=model_id, score=score, label=label)
+    return AnomalyResult(example=row, predictions=[prediction])
+
+  def test_custom_format(self):
+    dofn = _FormatAnomalyAsJson(
+        message_format='alert: value={value} score={score}')
+    results = list(dofn.process(self._make_result(label=1, value=99.0,
+                                                  score=4.5)))
+    self.assertEqual(len(results), 1)
+    self.assertEqual(results[0], b'alert: value=99.0 score=4.5')
+
+  def test_custom_format_with_metadata(self):
+    dofn = _FormatAnomalyAsJson(
+        message_format='{{"alert": "{key}", "job": "{job_id}"}}',
+        message_metadata={'job_id': 'pipeline-123'})
+    results = list(dofn.process(('sensor_1', self._make_result(label=1))))
+    payload = json.loads(results[0])
+    self.assertEqual(payload['alert'], 'sensor_1')
+    self.assertEqual(payload['job'], 'pipeline-123')
+
+  def test_custom_format_non_outlier_suppressed(self):
+    dofn = _FormatAnomalyAsJson(message_format='alert: {value}')
+    results = list(dofn.process(self._make_result(label=0)))
+    self.assertEqual(len(results), 0)
+
+  def test_metadata_does_not_override_anomaly_fields(self):
+    dofn = _FormatAnomalyAsJson(
+        message_format='v={value}',
+        message_metadata={'value': 'SHOULD_NOT_APPEAR'})
+    results = list(dofn.process(self._make_result(label=1, value=77.0)))
+    self.assertEqual(results[0], b'v=77.0')
+
+  def test_none_score_renders_as_null(self):
+    row = beam.Row(value=10.0, window_start=Timestamp(0), window_end=Timestamp(1))
+    prediction = AnomalyPrediction(
+        model_id='Test', score=None, label=1)
+    result = AnomalyResult(example=row, predictions=[prediction])
+    dofn = _FormatAnomalyAsJson(message_format='s={score}')
+    results = list(dofn.process(result))
+    self.assertEqual(results[0], b's=null')
+
+  def test_unkeyed_key_renders_empty(self):
+    dofn = _FormatAnomalyAsJson(message_format='k=[{key}]')
+    results = list(dofn.process(self._make_result(label=1)))
+    self.assertEqual(results[0], b'k=[]')
+
+  def test_metadata_only_fields(self):
+    dofn = _FormatAnomalyAsJson(
+        message_format='{env}-{team}',
+        message_metadata={'env': 'prod', 'team': 'oncall'})
+    results = list(dofn.process(self._make_result(label=1)))
+    self.assertEqual(results[0], b'prod-oncall')
 
 
 if __name__ == '__main__':
