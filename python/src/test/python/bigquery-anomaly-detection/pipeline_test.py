@@ -25,13 +25,19 @@ logging.basicConfig(level=logging.INFO)
 import apache_beam as beam
 from apache_beam.ml.anomaly.base import AnomalyPrediction
 from apache_beam.ml.anomaly.base import AnomalyResult
+from apache_beam.testing.util import assert_that
+from apache_beam.testing.util import equal_to
+from apache_beam.transforms.window import TimestampedValue
 
+from parameterized import parameterized, param
+from bqmonitor.metric import ComputeMetric, FanoutStrategy, MetricSpec
 from bqmonitor.pipeline import _FormatAnomalyAsJson
 from bqmonitor.pipeline import _FormatResultForBQ
 from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _ThresholdAlert
 from bqmonitor.pipeline import _unpack_result
+from apache_beam.utils.timestamp import Timestamp
 from bqmonitor.pipeline import _validate_message_format
 
 
@@ -135,7 +141,7 @@ class ThresholdAlertTest(unittest.TestCase):
   """Tests for _ThresholdAlert DoFn."""
 
   def _make_row(self, value):
-    return beam.Row(value=value, window_start=0.0, window_end=1.0)
+    return beam.Row(value=value, window_start=Timestamp(0), window_end=Timestamp(1))
 
   def _run_dofn(self, expression, element):
     dofn = _ThresholdAlert(expression)
@@ -193,7 +199,7 @@ class FormatAnomalyAsJsonTest(unittest.TestCase):
   """Tests for _FormatAnomalyAsJson DoFn."""
 
   def _make_result(self, label, value=42.0, score=5.0, model_id='TestModel'):
-    row = beam.Row(value=value, window_start=1000.0, window_end=1001.0)
+    row = beam.Row(value=value, window_start=Timestamp(1000), window_end=Timestamp(1001))
     prediction = AnomalyPrediction(
         model_id=model_id, score=score, label=label)
     return AnomalyResult(example=row, predictions=[prediction])
@@ -237,7 +243,7 @@ class FormatResultForBQTest(unittest.TestCase):
   """Tests for _FormatResultForBQ DoFn."""
 
   def _make_result(self, label, value=42.0, score=5.0):
-    row = beam.Row(value=value, window_start=1000.0, window_end=1001.0)
+    row = beam.Row(value=value, window_start=Timestamp(1000), window_end=Timestamp(1001))
     prediction = AnomalyPrediction(
         model_id='TestModel', score=score, label=label)
     return AnomalyResult(example=row, predictions=[prediction])
@@ -275,13 +281,260 @@ class FormatResultForBQTest(unittest.TestCase):
     self.assertEqual(outputs[0]['key'], 'campaign_search')
 
   def test_none_score(self):
-    row = beam.Row(value=10.0, window_start=0.0, window_end=1.0)
+    row = beam.Row(value=10.0, window_start=Timestamp(0), window_end=Timestamp(1))
     prediction = AnomalyPrediction(
         model_id='Test', score=None, label=0)
     result = AnomalyResult(example=row, predictions=[prediction])
     dofn = _FormatResultForBQ()
     outputs = list(dofn.process(result))
     self.assertIsNone(outputs[0]['score'])
+
+
+# ---------------------------------------------------------------------------
+# Aggregation pipeline integration tests
+# ---------------------------------------------------------------------------
+
+
+class AggregationPipelineTest(unittest.TestCase):
+  """Tests that ComputeMetric + ZScore pipeline produces correct aggregations.
+
+  For each (agg_type, window_type, keyed) combination, we feed deterministic
+  data through the pipeline and verify the sink output values match hand-
+  computed expected aggregations.
+  """
+
+  # 10 rows across 3 seconds, 2 keys
+  RAW_DATA = [
+      # second 0: key=a values=[10, 20], key=b values=[30]
+      {'ts': 0.1, 'key': 'a', 'value': 10.0},
+      {'ts': 0.5, 'key': 'a', 'value': 20.0},
+      {'ts': 0.8, 'key': 'b', 'value': 30.0},
+      # second 1: key=a values=[40], key=b values=[50, 60]
+      {'ts': 1.2, 'key': 'a', 'value': 40.0},
+      {'ts': 1.4, 'key': 'b', 'value': 50.0},
+      {'ts': 1.9, 'key': 'b', 'value': 60.0},
+      # second 2: key=a values=[70, 80], key=b values=[90]
+      {'ts': 2.1, 'key': 'a', 'value': 70.0},
+      {'ts': 2.5, 'key': 'a', 'value': 80.0},
+      {'ts': 2.7, 'key': 'b', 'value': 90.0},
+  ]
+
+  # Expected aggregations per 1-second fixed window (unkeyed)
+  # window_start is a Timestamp
+  EXPECTED_FIXED_UNKEYED = {
+      # window [0,1): values 10,20,30
+      Timestamp(0): {'SUM': 60.0, 'COUNT': 3, 'MIN': 10.0, 'MAX': 30.0, 'MEAN': 20.0},
+      # window [1,2): values 40,50,60
+      Timestamp(1): {'SUM': 150.0, 'COUNT': 3, 'MIN': 40.0, 'MAX': 60.0, 'MEAN': 50.0},
+      # window [2,3): values 70,80,90
+      Timestamp(2): {'SUM': 240.0, 'COUNT': 3, 'MIN': 70.0, 'MAX': 90.0, 'MEAN': 80.0},
+  }
+
+  # Expected aggregations per 1-second fixed window (keyed by 'key')
+  EXPECTED_FIXED_KEYED = {
+      (Timestamp(0), 'a'): {'SUM': 30.0, 'COUNT': 2, 'MIN': 10.0, 'MAX': 20.0, 'MEAN': 15.0},
+      (Timestamp(0), 'b'): {'SUM': 30.0, 'COUNT': 1, 'MIN': 30.0, 'MAX': 30.0, 'MEAN': 30.0},
+      (Timestamp(1), 'a'): {'SUM': 40.0, 'COUNT': 1, 'MIN': 40.0, 'MAX': 40.0, 'MEAN': 40.0},
+      (Timestamp(1), 'b'): {'SUM': 110.0, 'COUNT': 2, 'MIN': 50.0, 'MAX': 60.0, 'MEAN': 55.0},
+      (Timestamp(2), 'a'): {'SUM': 150.0, 'COUNT': 2, 'MIN': 70.0, 'MAX': 80.0, 'MEAN': 75.0},
+      (Timestamp(2), 'b'): {'SUM': 90.0, 'COUNT': 1, 'MIN': 90.0, 'MAX': 90.0, 'MEAN': 90.0},
+  }
+
+  # Expected sliding windows (size=1, period=0.5) — unkeyed
+  # [0.0, 1.0): ts 0.1,0.5,0.8 → values 10,20,30
+  # [0.5, 1.5): ts 0.5,0.8,1.2,1.4 → values 20,30,40,50
+  # [1.0, 2.0): ts 1.2,1.4,1.9 → values 40,50,60
+  # [1.5, 2.5): ts 1.9,2.1 → values 60,70
+  # [2.0, 3.0): ts 2.1,2.5,2.7 → values 70,80,90
+  EXPECTED_SLIDING_UNKEYED = {
+      Timestamp.of(-0.5): {'SUM': 10.0, 'COUNT': 1, 'MIN': 10.0, 'MAX': 10.0},
+      Timestamp(0): {'SUM': 60.0, 'COUNT': 3, 'MIN': 10.0, 'MAX': 30.0},
+      Timestamp.of(0.5): {'SUM': 140.0, 'COUNT': 4, 'MIN': 20.0, 'MAX': 50.0},
+      Timestamp(1): {'SUM': 150.0, 'COUNT': 3, 'MIN': 40.0, 'MAX': 60.0},
+      Timestamp.of(1.5): {'SUM': 130.0, 'COUNT': 2, 'MIN': 60.0, 'MAX': 70.0},
+      Timestamp(2): {'SUM': 240.0, 'COUNT': 3, 'MIN': 70.0, 'MAX': 90.0},
+      Timestamp.of(2.5): {'SUM': 170.0, 'COUNT': 2, 'MIN': 80.0, 'MAX': 90.0},
+  }
+
+  # Expected sliding windows (size=1, period=0.5) — keyed by 'key'
+  EXPECTED_SLIDING_KEYED = {
+      (Timestamp.of(-0.5), 'a'): {'SUM': 10.0, 'COUNT': 1, 'MIN': 10.0, 'MAX': 10.0, 'MEAN': 10.0},
+      (Timestamp(0), 'a'): {'SUM': 30.0, 'COUNT': 2, 'MIN': 10.0, 'MAX': 20.0, 'MEAN': 15.0},
+      (Timestamp(0), 'b'): {'SUM': 30.0, 'COUNT': 1, 'MIN': 30.0, 'MAX': 30.0, 'MEAN': 30.0},
+      (Timestamp.of(0.5), 'a'): {'SUM': 60.0, 'COUNT': 2, 'MIN': 20.0, 'MAX': 40.0, 'MEAN': 30.0},
+      (Timestamp.of(0.5), 'b'): {'SUM': 80.0, 'COUNT': 2, 'MIN': 30.0, 'MAX': 50.0, 'MEAN': 40.0},
+      (Timestamp(1), 'a'): {'SUM': 40.0, 'COUNT': 1, 'MIN': 40.0, 'MAX': 40.0, 'MEAN': 40.0},
+      (Timestamp(1), 'b'): {'SUM': 110.0, 'COUNT': 2, 'MIN': 50.0, 'MAX': 60.0, 'MEAN': 55.0},
+      (Timestamp.of(1.5), 'a'): {'SUM': 70.0, 'COUNT': 1, 'MIN': 70.0, 'MAX': 70.0, 'MEAN': 70.0},
+      (Timestamp.of(1.5), 'b'): {'SUM': 60.0, 'COUNT': 1, 'MIN': 60.0, 'MAX': 60.0, 'MEAN': 60.0},
+      (Timestamp(2), 'a'): {'SUM': 150.0, 'COUNT': 2, 'MIN': 70.0, 'MAX': 80.0, 'MEAN': 75.0},
+      (Timestamp(2), 'b'): {'SUM': 90.0, 'COUNT': 1, 'MIN': 90.0, 'MAX': 90.0, 'MEAN': 90.0},
+      (Timestamp.of(2.5), 'a'): {'SUM': 80.0, 'COUNT': 1, 'MIN': 80.0, 'MAX': 80.0, 'MEAN': 80.0},
+      (Timestamp.of(2.5), 'b'): {'SUM': 90.0, 'COUNT': 1, 'MIN': 90.0, 'MAX': 90.0, 'MEAN': 90.0},
+  }
+
+  def _make_metric_spec(self, agg, window_type='fixed', group_by=None):
+    """Create a MetricSpec for the given aggregation and window type."""
+    window = {'type': window_type, 'size_seconds': 1}
+    if window_type == 'sliding':
+      window['period_seconds'] = 0.5
+    spec = {
+        'aggregation': {
+            'window': window,
+            'measures': [{'field': 'value', 'agg': agg, 'alias': 'total'}],
+        }
+    }
+    if group_by:
+      spec['aggregation']['group_by'] = group_by
+    return MetricSpec.from_dict(spec)
+
+  _FANOUT_STRATEGIES_NO_HOTKEY = [
+      param(fanout='none'),
+      param(fanout='sharded'),
+      param(fanout='precombine'),
+  ]
+
+  def _assert_aggregation(self, agg, expected, window_type='fixed',
+                          group_by=None, fanout_strategy='none'):
+    """Run ComputeMetric and assert output matches expected values."""
+    metric_spec = self._make_metric_spec(agg, window_type, group_by)
+    elements = [
+        TimestampedValue(row, row['ts'])
+        for row in self.RAW_DATA
+    ]
+
+    with beam.Pipeline() as p:
+      metrics = (
+          p
+          | beam.Create(elements)
+          | 'ComputeMetric' >> ComputeMetric(
+              metric_spec,
+              fanout_strategy=FanoutStrategy(fanout_strategy),
+              fanout=4)
+      )
+
+      def extract(element):
+        if isinstance(element, tuple) and len(element) == 2:
+          key_tuple, row = element
+          key_str = (key_tuple[0] if len(key_tuple) == 1
+                     else str(key_tuple))
+          return ((row.window_start, key_str), row.value)
+        else:
+          return (element.window_start, element.value)
+
+      extracted = metrics | 'Extract' >> beam.Map(extract)
+      assert_that(extracted, equal_to(expected))
+
+  def _expected_list(self, expected_dict, agg):
+    """Convert expected dict to list of (key, value) for equal_to."""
+    return [(k, v[agg]) for k, v in expected_dict.items()]
+
+  _FANOUT_STRATEGIES = [
+      param(fanout='none'),
+      param(fanout='sharded'),
+      param(fanout='hotkey_fanout'),
+      param(fanout='precombine'),
+  ]
+
+  # --- Fixed window, unkeyed ---
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_sum_fixed_unkeyed(self, fanout):
+    self._assert_aggregation('SUM', self._expected_list(
+        self.EXPECTED_FIXED_UNKEYED, 'SUM'), fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_count_fixed_unkeyed(self, fanout):
+    self._assert_aggregation('COUNT', self._expected_list(
+        self.EXPECTED_FIXED_UNKEYED, 'COUNT'), fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_min_fixed_unkeyed(self, fanout):
+    self._assert_aggregation('MIN', self._expected_list(
+        self.EXPECTED_FIXED_UNKEYED, 'MIN'), fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_max_fixed_unkeyed(self, fanout):
+    self._assert_aggregation('MAX', self._expected_list(
+        self.EXPECTED_FIXED_UNKEYED, 'MAX'), fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_mean_fixed_unkeyed(self, fanout):
+    self._assert_aggregation('MEAN', self._expected_list(
+        self.EXPECTED_FIXED_UNKEYED, 'MEAN'), fanout_strategy=fanout)
+
+  # --- Fixed window, keyed ---
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_sum_fixed_keyed(self, fanout):
+    self._assert_aggregation('SUM', self._expected_list(
+        self.EXPECTED_FIXED_KEYED, 'SUM'), group_by=['key'],
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_count_fixed_keyed(self, fanout):
+    self._assert_aggregation('COUNT', self._expected_list(
+        self.EXPECTED_FIXED_KEYED, 'COUNT'), group_by=['key'],
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_min_fixed_keyed(self, fanout):
+    self._assert_aggregation('MIN', self._expected_list(
+        self.EXPECTED_FIXED_KEYED, 'MIN'), group_by=['key'],
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_max_fixed_keyed(self, fanout):
+    self._assert_aggregation('MAX', self._expected_list(
+        self.EXPECTED_FIXED_KEYED, 'MAX'), group_by=['key'],
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES)
+  def test_mean_fixed_keyed(self, fanout):
+    self._assert_aggregation('MEAN', self._expected_list(
+        self.EXPECTED_FIXED_KEYED, 'MEAN'), group_by=['key'],
+        fanout_strategy=fanout)
+
+  # --- Sliding window, unkeyed ---
+  # hotkey_fanout excluded: https://github.com/apache/beam/issues/20528
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_sum_sliding_unkeyed(self, fanout):
+    self._assert_aggregation('SUM', self._expected_list(
+        self.EXPECTED_SLIDING_UNKEYED, 'SUM'), window_type='sliding',
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_count_sliding_unkeyed(self, fanout):
+    self._assert_aggregation('COUNT', self._expected_list(
+        self.EXPECTED_SLIDING_UNKEYED, 'COUNT'), window_type='sliding',
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_min_sliding_unkeyed(self, fanout):
+    self._assert_aggregation('MIN', self._expected_list(
+        self.EXPECTED_SLIDING_UNKEYED, 'MIN'), window_type='sliding',
+        fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_max_sliding_unkeyed(self, fanout):
+    self._assert_aggregation('MAX', self._expected_list(
+        self.EXPECTED_SLIDING_UNKEYED, 'MAX'), window_type='sliding',
+        fanout_strategy=fanout)
+
+  # --- Sliding window, keyed ---
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_sum_sliding_keyed(self, fanout):
+    self._assert_aggregation(
+        'SUM', self._expected_list(self.EXPECTED_SLIDING_KEYED, 'SUM'),
+        window_type='sliding', group_by=['key'], fanout_strategy=fanout)
+
+  @parameterized.expand(_FANOUT_STRATEGIES_NO_HOTKEY)
+  def test_mean_sliding_keyed(self, fanout):
+    self._assert_aggregation(
+        'MEAN', self._expected_list(self.EXPECTED_SLIDING_KEYED, 'MEAN'),
+        window_type='sliding', group_by=['key'], fanout_strategy=fanout)
 
 
 class ValidateMessageFormatTest(unittest.TestCase):
@@ -317,7 +570,7 @@ class FormatAnomalyCustomFormatTest(unittest.TestCase):
   """Tests for _FormatAnomalyAsJson with custom message_format."""
 
   def _make_result(self, label, value=42.0, score=5.0, model_id='TestModel'):
-    row = beam.Row(value=value, window_start=1000.0, window_end=1001.0)
+    row = beam.Row(value=value, window_start=Timestamp(1000), window_end=Timestamp(1001))
     prediction = AnomalyPrediction(
         model_id=model_id, score=score, label=label)
     return AnomalyResult(example=row, predictions=[prediction])
@@ -352,7 +605,7 @@ class FormatAnomalyCustomFormatTest(unittest.TestCase):
     self.assertEqual(results[0], b'v=77.0')
 
   def test_none_score_renders_as_null(self):
-    row = beam.Row(value=10.0, window_start=0.0, window_end=1.0)
+    row = beam.Row(value=10.0, window_start=Timestamp(0), window_end=Timestamp(1))
     prediction = AnomalyPrediction(
         model_id='Test', score=None, label=1)
     result = AnomalyResult(example=row, predictions=[prediction])

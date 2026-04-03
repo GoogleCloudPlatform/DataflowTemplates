@@ -140,8 +140,8 @@ class WindowSpec:
       FIXED).
   """
   type: WindowType = WindowType.FIXED
-  size_seconds: int = 3600
-  period_seconds: Optional[int] = None
+  size_seconds: float = 3600
+  period_seconds: Optional[float] = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -565,8 +565,8 @@ class _ApplyMetricExpr(beam.DoFn):
 
     row = beam.Row(
         value=value,
-        window_start=float(window.start),
-        window_end=float(window.end))
+        window_start=window.start,
+        window_end=window.end)
 
     if self._is_keyed:
       yield (key, row)
