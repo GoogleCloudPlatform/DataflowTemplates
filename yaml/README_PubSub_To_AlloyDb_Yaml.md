@@ -1,15 +1,12 @@
 
-PubSub to BigTable (YAML) template
+PubSub to AlloyDb (YAML) template
 ---
-The PubSub to BigTable template is a streaming pipeline which ingests data from a
+The PubSub to AlloyDb template is a streaming pipeline which ingests data from a
 PubSub topic, executes a user-defined mapping, and writes the resulting records
-to BigTable. Any errors which occur in the transformation of the data are written
+to AlloyDb. Any errors which occur in the transformation of the data are written
 to a separate Pub/Sub topic.
 
 
-:memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable)
-on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=PubSub_To_BigTable_Yaml).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
@@ -23,9 +20,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
 * **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.
 * **fields**: The output fields to compute, each mapping to the expression or callable that creates them.
-* **projectId**: The Google Cloud project ID of the BigTable instance.
-* **instanceId**: The BigTable instance ID.
-* **tableId**: BigTable table ID to write the output to.
+* **url**: The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE For example, `jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE`.
+* **username**: Username for AlloyDb authentication For example, `postgres`.
+* **password**: Password for AlloyDb authentication For example, `your-password`.
+* **table**: The name of the table where records will be written For example, `my_table`.
+* **query**: SQL query used to insert records into the JDBC sink. For example, `INSERT INTO table_name (col1, col2) VALUES (?, ?)`.
 * **outputDeadLetterPubSubTopic**: Pub/Sub error topic for failed transformation messages. For example, `projects/your-project-id/topics/your-error-topic-name`.
 
 ### Optional parameters
@@ -38,6 +37,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **errorHandling**: This option specifies whether and where to output error rows.
 * **subscription**: Pub/Sub subscription to read the input from. Exactly one of subscription or topic must be provided. Use this when you want to read from an existing subscription without creating a new one. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **windowing**: Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing.
+* **connectionProperties**: Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10 For example, `sslmode=require;connectTimeout=10`.
+* **network**: The VPC network where AlloyDB is located. For example, `default`.
+* **subnetwork**: The subnetwork for Dataflow workers. Required for custom VPCs. For example, `regions/us-central1/subnetworks/my-subnet`.
+* **batchSize**: Number of records to batch before writing to the database For example, `100`.
+* **autoSharding**: If true, enables using a dynamically determined number of shards to write. For example, `True`. Defaults to: false.
 
 
 
@@ -54,7 +58,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToBigTableYaml.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToAlloyDbYaml.java)
 
 ### Templates Plugin
 
@@ -96,7 +100,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
--DtemplateName="PubSub_To_BigTable_Yaml" \
+-DtemplateName="PubSub_To_AlloyDb_Yaml" \
 -f yaml
 ```
 
@@ -107,7 +111,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_BigTable_Yaml
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_AlloyDb_Yaml
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -127,16 +131,18 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_BigTable_Yaml"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_AlloyDb_Yaml"
 
 ### Required
 export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export PROJECT_ID=<projectId>
-export INSTANCE_ID=<instanceId>
-export TABLE_ID=<tableId>
+export URL=<url>
+export USERNAME=<username>
+export PASSWORD=<password>
+export TABLE=<table>
+export QUERY=<query>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
@@ -148,8 +154,13 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
 export WINDOWING=<windowing>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export NETWORK=<network>
+export SUBNETWORK=<subnetwork>
+export BATCH_SIZE=<batchSize>
+export AUTO_SHARDING=false
 
-gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
+gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -164,10 +175,17 @@ gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --parameters "subscription=$SUBSCRIPTION" \
   --parameters "language=$LANGUAGE" \
   --parameters "fields=$FIELDS" \
-  --parameters "projectId=$PROJECT_ID" \
-  --parameters "instanceId=$INSTANCE_ID" \
-  --parameters "tableId=$TABLE_ID" \
   --parameters "windowing=$WINDOWING" \
+  --parameters "url=$URL" \
+  --parameters "username=$USERNAME" \
+  --parameters "password=$PASSWORD" \
+  --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "network=$NETWORK" \
+  --parameters "subnetwork=$SUBNETWORK" \
+  --parameters "table=$TABLE" \
+  --parameters "query=$QUERY" \
+  --parameters "batchSize=$BATCH_SIZE" \
+  --parameters "autoSharding=$AUTO_SHARDING" \
   --parameters "outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC"
 ```
 
@@ -191,9 +209,11 @@ export FORMAT=<format>
 export SCHEMA=<schema>
 export LANGUAGE=<language>
 export FIELDS=<fields>
-export PROJECT_ID=<projectId>
-export INSTANCE_ID=<instanceId>
-export TABLE_ID=<tableId>
+export URL=<url>
+export USERNAME=<username>
+export PASSWORD=<password>
+export TABLE=<table>
+export QUERY=<query>
 export OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC=<outputDeadLetterPubSubTopic>
 
 ### Optional
@@ -205,15 +225,20 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
 export WINDOWING=<windowing>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export NETWORK=<network>
+export SUBNETWORK=<subnetwork>
+export BATCH_SIZE=<batchSize>
+export AUTO_SHARDING=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="pubsub-to-bigtable-yaml-job" \
--DtemplateName="PubSub_To_BigTable_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,language=$LANGUAGE,fields=$FIELDS,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,tableId=$TABLE_ID,windowing=$WINDOWING,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
+-DjobName="pubsub-to-alloydb-yaml-job" \
+-DtemplateName="PubSub_To_AlloyDb_Yaml" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,language=$LANGUAGE,fields=$FIELDS,windowing=$WINDOWING,url=$URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,network=$NETWORK,subnetwork=$SUBNETWORK,table=$TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,outputDeadLetterPubSubTopic=$OUTPUT_DEAD_LETTER_PUB_SUB_TOPIC" \
 -f yaml
 ```
 
@@ -231,7 +256,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/yaml/terraform/PubSub_To_BigTable_Yaml
+cd v2/yaml/terraform/PubSub_To_AlloyDb_Yaml
 terraform init
 terraform apply
 ```
@@ -251,20 +276,22 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
+resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_BigTable_Yaml"
-  name              = "pubsub-to-bigtable-yaml"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_AlloyDb_Yaml"
+  name              = "pubsub-to-alloydb-yaml"
   region            = var.region
   parameters        = {
     format = "<format>"
     schema = "<schema>"
     language = "<language>"
     fields = "<fields>"
-    projectId = "<projectId>"
-    instanceId = "<instanceId>"
-    tableId = "<tableId>"
+    url = "<url>"
+    username = "<username>"
+    password = "<password>"
+    table = "<table>"
+    query = "<query>"
     outputDeadLetterPubSubTopic = "<outputDeadLetterPubSubTopic>"
     # topic = "<topic>"
     # attributes = "<attributes>"
@@ -274,6 +301,11 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     # errorHandling = "<errorHandling>"
     # subscription = "<subscription>"
     # windowing = "<windowing>"
+    # connectionProperties = "<connectionProperties>"
+    # network = "<network>"
+    # subnetwork = "<subnetwork>"
+    # batchSize = "<batchSize>"
+    # autoSharding = "false"
   }
 }
 ```

@@ -1,0 +1,78 @@
+options:
+  - name: "alloydb_common_options"
+    parameters:
+      - order: 1
+        name: "url"
+        description: "JDBC connection URL for AlloyDb"
+        help: "The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE"
+        example: "jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE"
+        required: true
+        type: text
+      - order: 2
+        name: "username"
+        description: "AlloyDb database username"
+        help: "Username for AlloyDb authentication"
+        example: "postgres"
+        required: true
+        type: text
+      - order: 3
+        name: "password"
+        description: "AlloyDb database password"
+        help: "Password for AlloyDb authentication"
+        example: "your-password"
+        required: true
+        type: password
+      - order: 4
+        name: "connectionProperties"
+        description: "Connection properties for AlloyDb"
+        help: "Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10"
+        example: "sslmode=require;connectTimeout=10"
+        required: false
+        type: text
+      - order: 5
+        name: "network"
+        description: "VPC Network name"
+        help: "The VPC network where AlloyDB is located."
+        example: "default"
+        required: false
+        type: text
+      - order: 6
+        name: "subnetwork"
+        description: "Subnetwork name"
+        help: "The subnetwork for Dataflow workers. Required for custom VPCs."
+        example: "regions/us-central1/subnetworks/my-subnet"
+        required: false
+        type: text
+
+  - name: "alloydb_write_options"
+    parameters:
+      - order: 1
+        name: "table"
+        description: "Target table name in AlloyDb"
+        help: "The name of the table where records will be written"
+        example: "my_table"
+        required: true
+        type: text
+      - order: 2
+        name: "query"
+        description: "SQL query for writing records"
+        help: "SQL query used to insert records into the JDBC sink."
+        example: "INSERT INTO table_name (col1, col2) VALUES (?, ?)"
+        required: true
+        type: text
+      - order: 3
+        name: "batchSize"
+        description: "Batch size for write operations"
+        help: "Number of records to batch before writing to the database"
+        example: 100
+        required: false
+        type: integer
+      - order: 4
+        name: "autoSharding"
+        description: "Enable autosharding for parallel writes"
+        help: "If true, enables using a dynamically determined number of shards to write."
+        example: true
+        required: false
+        default: false
+        type: boolean
+

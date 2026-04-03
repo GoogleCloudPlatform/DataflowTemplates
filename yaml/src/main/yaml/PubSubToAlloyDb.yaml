@@ -1,25 +1,24 @@
 template:
 
-  name: "PubSub_To_BigTable_Yaml"
+  name: "PubSub_To_AlloyDb_Yaml"
   category: "STREAMING"
   type: "YAML"
-  display_name: "PubSub to BigTable (YAML)"
+  display_name: "PubSub to AlloyDb (YAML)"
   description: >
-    The PubSub to BigTable template is a streaming pipeline which ingests
+    The PubSub to AlloyDb template is a streaming pipeline which ingests
     data from a PubSub topic, executes a user-defined mapping, and
-    writes the resulting records to BigTable. Any errors which occur in the
+    writes the resulting records to AlloyDb. Any errors which occur in the
     transformation of the data are written to a separate Pub/Sub topic.
   flex_container_name: "pipeline-yaml"
-  yamlTemplateFile: "PubSubToBigTable.yaml"
+  yamlTemplateFile: "PubSubToAlloyDb.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt"}
-  documentation: >
-    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable
+    {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/alloydb_options.yaml", "options/maptofields_options.yaml", "options/windowinto_options.yaml"}
+  documentation: ""
   contactInformation: "https://cloud.google.com/support"
   requirements: {
     "Either the input Pub/Sub topic or subscription must exist.",
-    "The mapToField Pub/Sub error topic must exist.",
-    "The output BigTable table must exist."
+    "The mapToFields Pub/Sub error topic must exist.",
+    "The output AlloyDb instance must exist."
   }
   streaming: true
   hidden: false
@@ -28,14 +27,15 @@ template:
     - "pubsub_options"
     - "maptofields_options"
     - "windowinto_options"
-    - "bigtable_options"
+    - "alloydb_options"
 
   parameters:
     - pubsub_common_options
     - pubsub_read_options
     - maptofields_common_options
-    - bigtable_common_options
     - windowinto_common_options
+    - alloydb_common_options
+    - alloydb_write_options
 
     - name: "outputDeadLetterPubSubTopic"
       description: "Pub/Sub transformation error topic"
@@ -61,7 +61,7 @@ pipeline:
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
     - type: MapToFields
-      name: ConvertStringsToBytes
+      name: TransformData
       input: ReadMessages
       config:
         language: {{ language }}
@@ -70,19 +70,24 @@ pipeline:
           output: errors
     - type: WindowInto
       name: WindowInto
-      input: ConvertStringsToBytes
+      input: TransformData
       config:
         windowing: {{ windowing }}
-    - type: WriteToBigTable
-      name: WriteGoodMessagesToBigTable
+    - type: WriteToPostgres
+      name: WriteGoodMessagesToAlloyDb
       input: WindowInto
       config:
-        project: {{ projectId }}
-        instance: {{ instanceId }}
-        table: {{ tableId }}
+        url: "{{ url }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        table: "{{ table }}"
+        query: "{{ query }}"
+        batch_size: {{ batchSize }}
+        auto_sharding: {{ autoSharding }}
+        connection_properties: {{ connectionProperties }}
     - type: WriteToPubSub
       name: WriteTransformationErrorsToDeadLetterQueue
-      input: ConvertStringsToBytes.errors
+      input: TransformData.errors
       config:
         topic: {{ outputDeadLetterPubSubTopic }}
         format: {{ format }}
@@ -91,3 +96,6 @@ pipeline:
 
 options:
   streaming: true
+  use_public_ips: false
+  network: {{ network }}
+  subnetwork: {{ subnetwork }}
