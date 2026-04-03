@@ -70,8 +70,8 @@ aggregation
     "aggregation": {
       "window": {
         "type": "fixed" | "sliding",
-        "size_seconds": <int>,           # window size in seconds
-        "period_seconds": <int>          # slide period (required for sliding)
+        "size_seconds": <number>,        # window size in seconds
+        "period_seconds": <number>       # slide period (required for sliding)
       },
       "group_by": ["field1", "field2"],  # optional, omit for global agg
       "measures": [
@@ -217,18 +217,20 @@ Derived field + ratio + custom threshold::
     --detector_spec='{"type":"ZScore","config":{"threshold_criterion":{"type":"FixedThreshold","config":{"cutoff":10}}}}'
 """
 
-import datetime
 import json
 import logging
 import re
 import time
+from dataclasses import dataclass
 from typing import Any
+from typing import Optional
 
 import apache_beam as beam
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.gcp.pubsub import WriteToPubSub
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
+from apache_beam.utils.timestamp import Duration
 
 from bqmonitor.metric import ComputeMetric
 from bqmonitor.metric import FanoutStrategy
@@ -248,6 +250,17 @@ from apache_beam.ml.anomaly.detectors import robust_zscore  # noqa: F401
 _LOGGER = logging.getLogger(__name__)
 
 _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore')
+
+
+@dataclass(frozen=True)
+class OffsetKey:
+  """Key that pairs an optional grouping key with a window offset.
+
+  Used to route each sliding-window offset to an independent detector state.
+  Fixed windows always get offset=0.
+  """
+  key: Optional[tuple]
+  offset: int  # window_start micros mod window_size micros
 
 # Matches project:dataset.table or project.dataset.table
 _TABLE_RE = re.compile(
@@ -1007,67 +1020,43 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   global_metrics = metrics | 'Rewindow' >> beam.WindowInto(
       GlobalWindows())
 
-  # For sliding windows, prepend the window offset to the key so that
-  # each offset is detected independently. This ensures that stateful
-  # detectors (ZScore, IQR, RobustZScore) only see values from
-  # the same non-overlapping sub-series. For example, size=60 period=30
-  # produces offsets 0 and 30 — key "K" becomes ("K", 0) and ("K", 30).
-  # Fixed windows have only one offset (0), so no change needed.
-  # Threshold is stateless, so no offset keying needed.
-  _sliding_offset_applied = False
-  is_sliding = (metric_spec.aggregation.window.type.value == 'sliding')
-  if is_sliding and not isinstance(detector, _ThresholdAlert):
-    window_size = metric_spec.aggregation.window.size_seconds
-    slide_period = metric_spec.aggregation.window.period_seconds
-    n_offsets = window_size // slide_period
-    _LOGGER.info(
-        'Sliding window detected (size=%ds, period=%ds, %d offsets). '
-        'Adding offset key for independent per-offset detection.',
-        window_size, slide_period, n_offsets)
-    _sliding_offset_applied = True
+  # Wrap every element's key in an OffsetKey so that stateful detectors
+  # (ZScore, IQR, RobustZScore) route each sliding-window offset to
+  # independent state. For example, size=60 period=30 produces offsets
+  # 0 and 30 — key "K" becomes OffsetKey("K", 0) and OffsetKey("K", 30).
+  # Fixed windows always get offset=0.
+  _window_duration = Duration(metric_spec.aggregation.window.size_seconds)
+  has_group_by = bool(metric_spec.aggregation.group_by)
 
-    def _add_offset_key(element, _ws=window_size):
-      if isinstance(element, tuple) and len(element) == 2:
-        key, row = element
-        offset = round(float(row.window_start % _ws), 3)
-        return ((key, offset), row)
-      else:
-        row = element
-        offset = round(float(row.window_start % _ws), 3)
-        return (offset, row)
+  def _add_offset_key(element, _wd=_window_duration, _keyed=has_group_by):
+    if _keyed:
+      key, row = element
+    else:
+      key, row = None, element
+    offset = (row.window_start % _wd).micros
+    return (OffsetKey(key=key, offset=offset), row)
 
+  if not isinstance(detector, _ThresholdAlert):
     global_metrics = (
         global_metrics | 'AddOffsetKey' >> beam.Map(_add_offset_key))
 
   if isinstance(detector, _ThresholdAlert):
     anomalies = global_metrics | 'DetectAnomalies' >> beam.ParDo(detector)
   else:
-    # Add type hint for keyed input so AnomalyDetection handles it correctly.
-    if _sliding_offset_applied or bool(metric_spec.aggregation.group_by):
-      global_metrics = (
-          global_metrics
-          | 'TypeHintMetrics' >> beam.Map(lambda x: x).with_output_types(
-              beam.typehints.Tuple[Any, beam.Row]))
+    global_metrics = (
+        global_metrics
+        | 'TypeHintMetrics' >> beam.Map(lambda x: x).with_output_types(
+            beam.typehints.Tuple[Any, beam.Row]))
     anomalies = global_metrics | 'DetectAnomalies' >> AnomalyDetection(detector)
 
-  # Strip the offset from the key if we added it for sliding windows,
-  # so downstream sinks see the original key.
-  # - With group_by: key is (original_key, offset) → restore to (original_key, result)
-  # - Without group_by: key is just offset (float) → strip entirely to plain result
-  if _sliding_offset_applied:
-    has_group_by = bool(metric_spec.aggregation.group_by)
+  # Strip OffsetKey back to the original key (or no key) for downstream.
+  if not isinstance(detector, _ThresholdAlert):
 
-    def _strip_offset_key(element, _has_group_by=has_group_by):
-      if not isinstance(element, tuple) or len(element) != 2:
-        return element
-      key, result = element
-      if _has_group_by and isinstance(key, tuple) and len(key) == 2:
-        original_key = key[0]
-        return (original_key, result)
-      elif not _has_group_by:
-        # Key is just the offset (float) — strip it entirely.
-        return result
-      return element
+    def _strip_offset_key(element, _keyed=has_group_by):
+      offset_key, result = element
+      if _keyed:
+        return (offset_key.key, result)
+      return result
 
     anomalies = (
         anomalies | 'StripOffsetKey' >> beam.Map(_strip_offset_key))
