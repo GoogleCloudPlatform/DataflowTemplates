@@ -41,7 +41,7 @@
     <junit.jupiter.version>6.0.1</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.14.1</commons-csv.version>
-    <kafka.clients.version>1.0.0</kafka.clients.version>
+    <kafka.clients.version>4.2.0</kafka.clients.version>
     <threetenbp.version>1.7.2</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.0.0</tensorflow.version>
@@ -1170,5 +1170,4 @@
       </build>
     </profile>
   </profiles>
-
 </project>

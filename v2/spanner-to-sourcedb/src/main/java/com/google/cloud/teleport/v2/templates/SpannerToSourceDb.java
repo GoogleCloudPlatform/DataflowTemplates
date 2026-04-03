@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -75,8 +78,6 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
@@ -369,12 +370,15 @@ public class SpannerToSourceDb {
     @TemplateParameter.Enum(
         order = 23,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
+        enumOptions = {
+          @TemplateEnumOption(RUN_MODE_REGULAR),
+          @TemplateEnumOption(RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(RUN_MODE_RETRY_ALL_DLQ)
+        },
         helpText =
-            "This is the run mode type, whether regular or with retryDLQ.Default is regular."
-                + " retryDLQ is used to retry the severe DLQ records only.")
-    @Default.String("regular")
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
+    @Default.String(RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -544,7 +548,8 @@ public class SpannerToSourceDb {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    options.setStreaming(true);
+    boolean isRetryDLQMode = RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
+    options.setStreaming(!isRetryDLQMode);
 
     run(options);
   }
@@ -556,7 +561,7 @@ public class SpannerToSourceDb {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
-
+    long startTime = System.currentTimeMillis();
     Pipeline pipeline = Pipeline.create(options);
     pipeline
         .getOptions()
@@ -658,7 +663,7 @@ public class SpannerToSourceDb {
       }
     }
 
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
@@ -685,9 +690,31 @@ public class SpannerToSourceDb {
                               "/tmp_skip/",
                               "/" + options.getSkipDirectoryName())))));
     } else {
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      if (isRegularMode) {
+        reconsumedElements =
+            dlqManager.getReconsumerDataTransform(
+                pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      } else { // retryDLQ or retryAllDLQ mode
+        PCollection<String> oneShotRecords =
+            pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
+
+        if (RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
+          reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
+        } else {
+          // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
+          PCollection<String> continuousRecords =
+              pipeline.apply(
+                  "Read retry from Continuous",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+
+          PCollection<String> allRecords =
+              PCollectionList.of(continuousRecords)
+                  .and(oneShotRecords)
+                  .apply("Flatten DLQ Records", Flatten.pCollections());
+
+          reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+        }
+      }
     }
 
     PCollection<FailsafeElement<String, String>> dlqJsonStrRecords =
@@ -917,16 +944,7 @@ public class SpannerToSourceDb {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-    } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
-      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
-    }
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
   private static Connection createJdbcConnection(Shard shard) {
