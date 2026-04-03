@@ -147,19 +147,8 @@ public interface BigQueryAnomalyDetection {
       regexes = {"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"})
   String getSinkTable();
 
-  @TemplateParameter.Integer(
-      order = 13,
-      optional = true,
-      name = "decompress_shards",
-      description = "Decompress Shards",
-      helpText =
-          "Number of shards for CDC Arrow batch decompression fan-out. "
-              + "Spreads decompression CPU across workers. "
-              + "0 disables fan-out (decode inline). Default: 400.")
-  Integer getDecompressShards();
-
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       optional = true,
       name = "fanout_strategy",
       description = "Fanout Strategy",
@@ -170,7 +159,7 @@ public interface BigQueryAnomalyDetection {
   String getFanoutStrategy();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 14,
       optional = true,
       name = "fanout",
       description = "Fanout Shards",
@@ -178,4 +167,29 @@ public interface BigQueryAnomalyDetection {
           "Number of shards for sharded or hotkey_fanout strategies. "
               + "Ignored for none and precombine. Default: 400.")
   Integer getFanout();
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      name = "message_format",
+      description = "Pub/Sub Message Format",
+      helpText =
+          "Python format string for Pub/Sub anomaly messages. "
+              + "Available fields: {value}, {score}, {label}, {threshold}, "
+              + "{model_id}, {info}, {key}, {window_start}, {window_end}, "
+              + "plus any keys from message_metadata. "
+              + "If unset, a default JSON payload is used.")
+  String getMessageFormat();
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      name = "message_metadata",
+      description = "Pub/Sub Message Metadata",
+      helpText =
+          "JSON object of static key-value pairs available as additional "
+              + "fields in message_format. "
+              + "Example: {\"job_id\": \"pipeline-123\", \"env\": \"prod\"}. "
+              + "Anomaly fields take precedence on key collision.")
+  String getMessageMetadata();
 }

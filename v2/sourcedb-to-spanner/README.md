@@ -90,9 +90,12 @@ gcloud dataflow flex-template run ${JOB_NAME} \
         --additional-experiments=disable_runner_v2
 ```
 #### Replaying DLQ entries.
-Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
-To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job either:
-1.  In `retryDLQ` mode to retry errors in the severe bucket which are retried infinitely, unless they are successfully migrated to Spanner in which case they are deleted from the dlq directory.
+Any errors transforming a source row or failures writing to Spanner are written to the `dlq/severe/` path within your `outputDirectory`. It is recommended to retry these DLQ entries before applying any change capture (if any).
+
+To retry the DLQs, you can run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in one of two retry modes depending on your pipeline state:
+
+*   **`retryDLQ`**: Use this mode if you plan to run the live migration (`regular` mode) concurrently AND use the exact same DLQ directory used in the SourceDbToSpanner (bulk) job. The live migration pipeline will handle the transient errors in the `retry` bucket, while this `retryDLQ` mode safely and exclusively processes the `severe` bucket errors.
+*   **`retryAllDLQ`**: Use this mode if you are only running a bulk run or if the regular Cloud_Datastream_to_Spanner pipeline is stopped. `retryAllDLQ` consumes errors from both the `retry` and `severe` buckets. **WARNING:** Do NOT run `retryAllDLQ` concurrently with an active regular Cloud_Datastream_to_Spanner pipeline as they will conflict.
 
 Sample Command:
 ```bash
@@ -118,7 +121,7 @@ instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePat
 deadLetterQueueDirectory=<outputDirectory/dlq>,dlqMaxRetryCount=<maxRetryCount>,runMode="regular"
 ```
 
-Note: For parameter deadLetterQueueDirectory, the value should be whatever was passed in `outputDirectory` parameter in Bulk migration before followed by `/dlq` for example, if outputDirectory=`gs://test-bucket/output` was passed for the bulk migration, then deadLetterQueueDirectory should be `gs://test-bucket/output/dlq`
+Note: For parameter `deadLetterQueueDirectory`, the value should be whatever was passed in `outputDirectory` parameter in Bulk migration before followed by `/dlq` for example, if outputDirectory=`gs://test-bucket/output` was passed for the bulk migration, then deadLetterQueueDirectory should be `gs://test-bucket/output/dlq`
 
 For DLQ Replay for Cassandra source, set the `datastreamSourceType` as `mysql`.
 
@@ -127,3 +130,11 @@ To check if all DLQ entries have been applied to spanner, you could count the DL
 ```bash
 gcloud storage ls <outputDirectory>/dlq/severe/**.json | wc -l
 ```
+
+#### End State Monitoring
+
+`retryDLQ` operates batch pipeline and will automatically consume all isolated DLQ files in the `severe` bucket natively and self-terminate with a status of `SUCCEEDED` when it completes.
+
+However, because the continuous reader watches the `retry/` directory indefinitely in `regular` and `retryAllDLQ` modes, the job graph will remain RUNNING indefinitely for those modes. To know when all errors have finished their retry cycles:
+* **Dataflow Counters and Throughput Graph Check:** Flatlined counters (e.g., successful events, elementsReconsumedFromDeadLetterQueue, Event retries_COUNT) staying fixed for several minutes indicate there is no throughput in flight.
+* **GCS Bucket Check:** When the `retry/` folder sits completely empty for a cooldown period (e.g., 5 minutes), it is safe to stop the job.

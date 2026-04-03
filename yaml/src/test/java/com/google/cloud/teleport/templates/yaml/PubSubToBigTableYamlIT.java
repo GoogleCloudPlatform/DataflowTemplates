@@ -69,7 +69,9 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     bigtableResourceManager =
-        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider)
+            .maybeUseStaticInstance()
+            .build();
   }
 
   @After

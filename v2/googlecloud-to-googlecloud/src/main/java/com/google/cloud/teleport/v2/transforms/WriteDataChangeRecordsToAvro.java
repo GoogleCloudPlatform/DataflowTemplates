@@ -27,6 +27,8 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +95,7 @@ public class WriteDataChangeRecordsToAvro {
                       new com.google.cloud.teleport.v2.ColumnType(
                           columnType.getName(),
                           mapTypeCodeToAvro(columnType.getType()),
+                          extractArrayElementType(columnType.getType()),
                           columnType.isPrimaryKey(),
                           columnType.getOrdinalPosition()))
               .collect(Collectors.toList());
@@ -213,31 +216,67 @@ public class WriteDataChangeRecordsToAvro {
   }
 
   private static com.google.cloud.teleport.v2.TypeCode mapTypeCodeToAvro(TypeCode typeCode) {
-    switch (typeCode.getCode()) {
-      case "{\"code\":\"BOOL\"}":
-        return com.google.cloud.teleport.v2.TypeCode.BOOL;
-      case "{\"code\":\"INT64\"}":
-        return com.google.cloud.teleport.v2.TypeCode.INT64;
-      case "{\"code\":\"FLOAT64\"}":
-        return com.google.cloud.teleport.v2.TypeCode.FLOAT64;
-      case "{\"code\":\"TIMESTAMP\"}":
-        return com.google.cloud.teleport.v2.TypeCode.TIMESTAMP;
-      case "{\"code\":\"DATE\"}":
-        return com.google.cloud.teleport.v2.TypeCode.DATE;
-      case "{\"code\":\"STRING\"}":
-        return com.google.cloud.teleport.v2.TypeCode.STRING;
-      case "{\"code\":\"BYTES\"}":
-        return com.google.cloud.teleport.v2.TypeCode.BYTES;
-      case "{\"code\":\"ARRAY\"}":
-        return com.google.cloud.teleport.v2.TypeCode.ARRAY;
-      case "{\"code\":\"STRUCT\"}":
-        return com.google.cloud.teleport.v2.TypeCode.STRUCT;
-      case "{\"code\":\"NUMERIC\"}":
-        return com.google.cloud.teleport.v2.TypeCode.NUMERIC;
-      case "{\"code\":\"JSON\"}":
-        return com.google.cloud.teleport.v2.TypeCode.JSON;
-      default:
-        return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    if (typeCode == null || typeCode.getCode() == null) {
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
     }
+    return mapTypeCodeToAvro(typeCode.getCode());
+  }
+
+  private static com.google.cloud.teleport.v2.TypeCode mapTypeCodeToAvro(String typeCodeJson) {
+    if (typeCodeJson == null || typeCodeJson.isEmpty()) {
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    }
+    try {
+      JSONObject json = new JSONObject(typeCodeJson);
+      String code = json.optString("code");
+      if (code == null || code.isEmpty()) {
+        return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+      }
+      switch (code) {
+        case "BOOL":
+          return com.google.cloud.teleport.v2.TypeCode.BOOL;
+        case "INT64":
+          return com.google.cloud.teleport.v2.TypeCode.INT64;
+        case "FLOAT64":
+          return com.google.cloud.teleport.v2.TypeCode.FLOAT64;
+        case "TIMESTAMP":
+          return com.google.cloud.teleport.v2.TypeCode.TIMESTAMP;
+        case "DATE":
+          return com.google.cloud.teleport.v2.TypeCode.DATE;
+        case "STRING":
+          return com.google.cloud.teleport.v2.TypeCode.STRING;
+        case "BYTES":
+          return com.google.cloud.teleport.v2.TypeCode.BYTES;
+        case "ARRAY":
+          return com.google.cloud.teleport.v2.TypeCode.ARRAY;
+        case "STRUCT":
+          return com.google.cloud.teleport.v2.TypeCode.STRUCT;
+        case "NUMERIC":
+          return com.google.cloud.teleport.v2.TypeCode.NUMERIC;
+        case "JSON":
+          return com.google.cloud.teleport.v2.TypeCode.JSON;
+        default:
+          return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+      }
+    } catch (JSONException e) {
+      LOG.warn("Failed to parse type code JSON: " + typeCodeJson, e);
+      return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
+    }
+  }
+
+  private static com.google.cloud.teleport.v2.TypeCode extractArrayElementType(TypeCode typeCode) {
+    if (typeCode == null || typeCode.getCode() == null) {
+      return null;
+    }
+    try {
+      JSONObject json = new JSONObject(typeCode.getCode());
+      if (json.has("array_element_type")) {
+        JSONObject elementJson = json.getJSONObject("array_element_type");
+        return mapTypeCodeToAvro(elementJson.toString()); // Recursively map
+      }
+    } catch (JSONException e) {
+      LOG.warn("Failed to parse type code JSON for array element type: " + typeCode.getCode(), e);
+    }
+    return null;
   }
 }

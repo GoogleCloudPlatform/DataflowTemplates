@@ -689,6 +689,72 @@ public class DdlTest {
   }
 
   @Test
+  public void testIndexWithInterleaveAndFilter() {
+    Index.Builder builder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("user_index")
+            .table("User")
+            .unique()
+            .interleaveIn("Users")
+            .filter("`first_name` IS NOT NULL AND `last_name` IS NOT NULL");
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE UNIQUE INDEX `user_index` ON `User`(`first_name` ASC,"
+                + " `last_name` DESC) STORING (`full_name`) WHERE `first_name` IS"
+                + " NOT NULL AND `last_name` IS NOT NULL, INTERLEAVE IN `Users`"));
+  }
+
+  @Test
+  public void testpgIndexWithInterleaveAndFilter() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("user_index")
+            .table("User")
+            .unique()
+            .interleaveIn("Users")
+            .filter("\"first_name\" IS NOT NULL AND \"last_name\" IS NOT NULL");
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE UNIQUE INDEX \"user_index\" ON \"User\"(\"first_name\" ASC,"
+                + " \"last_name\" DESC) INCLUDE (\"full_name\") INTERLEAVE IN \"Users\" WHERE \"first_name\" IS"
+                + " NOT NULL AND \"last_name\" IS NOT NULL"));
+  }
+
+  @Test
   public void testSearchIndex() {
     Index.Builder builder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL)
