@@ -23,6 +23,8 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Range.BoundType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ProtoDecoder;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
@@ -48,6 +50,8 @@ public final class Mod implements Serializable {
   private static final long serialVersionUID = 8703757194338184299L;
 
   private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
+
+  public static final String TRANSFORMED_VALUE = "TRANSFORMED_VALUE";
 
   private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
       ThreadLocal.withInitial(ObjectMapper::new);
@@ -76,6 +80,38 @@ public final class Mod implements Serializable {
     Map<String, Object> propertiesMap = Maps.newHashMap();
     setCommonProperties(propertiesMap, source, mutation);
     setSpecificProperties(propertiesMap, setCell);
+    this.changeJson = convertPropertiesToJson(propertiesMap);
+  }
+
+  public Mod(
+      BigtableSource source,
+      ChangeStreamMutation mutation,
+      SetCell setCell,
+      ProtoDecoder protoDecoder,
+      ValueTransformerRegistry transformerRegistry) {
+    this(mutation.getCommitTimestamp(), ModType.SET_CELL);
+
+    Map<String, Object> propertiesMap = Maps.newHashMap();
+    setCommonProperties(propertiesMap, source, mutation);
+    setSpecificProperties(propertiesMap, setCell);
+
+    if (protoDecoder != null || transformerRegistry != null) {
+      String qualifierStr = setCell.getQualifier().toStringUtf8();
+      byte[] valueBytes = setCell.getValue().toByteArray();
+      String transformed = null;
+
+      if (protoDecoder != null && protoDecoder.matches(setCell.getFamilyName(), qualifierStr)) {
+        transformed = protoDecoder.decode(valueBytes);
+      }
+      if (transformed == null && transformerRegistry != null) {
+        transformed =
+            transformerRegistry.transform(setCell.getFamilyName(), qualifierStr, valueBytes);
+      }
+      if (transformed != null) {
+        propertiesMap.put(TRANSFORMED_VALUE, transformed);
+      }
+    }
+
     this.changeJson = convertPropertiesToJson(propertiesMap);
   }
 

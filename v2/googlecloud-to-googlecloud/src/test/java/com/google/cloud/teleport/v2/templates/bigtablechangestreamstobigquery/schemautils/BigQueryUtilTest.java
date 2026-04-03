@@ -31,6 +31,14 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos.DescriptorProto;
+import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.DescriptorValidationException;
+import com.google.protobuf.Descriptors.FileDescriptor;
+import com.google.protobuf.DynamicMessage;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -311,6 +319,222 @@ public class BigQueryUtilTest {
   }
 
   @Test
+  public void testSetCellWithProtoDecodedValue() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    // Build a simple proto descriptor programmatically
+    Descriptor descriptor = buildSimpleMessageDescriptor();
+
+    // Create a ProtoDecoder targeting the test column family and column
+    ProtoDecoder protoDecoder =
+        new ProtoDecoder(
+            descriptor, TestUtil.TEST_GOOD_COLUMN_FAMILY, TestUtil.TEST_GOOD_COLUMN, false);
+
+    // Build a protobuf message matching the descriptor
+    DynamicMessage protoMessage =
+        DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("user_name"), "test_user")
+            .setField(descriptor.findFieldByName("id"), 42)
+            .build();
+    byte[] protoBytes = protoMessage.toByteArray();
+
+    // Create a SetCell with proto-encoded bytes as the value
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            ByteString.copyFrom(protoBytes));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+
+    // Create Mod with ProtoDecoder - this should inject TRANSFORMED_VALUE into the JSON
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, protoDecoder, null);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    // The VALUE_STRING should contain the proto-decoded JSON, not the base64-decoded raw bytes.
+    // Without preserveFieldNames, JsonFormat.printer() uses camelCase ("userName").
+    String valueString = (String) tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName());
+    Assert.assertNotNull(valueString);
+    Assert.assertTrue(
+        "Expected decoded JSON to contain 'userName' (camelCase), got: " + valueString,
+        valueString.contains("userName"));
+    Assert.assertTrue(
+        "Expected decoded JSON to contain '42', got: " + valueString, valueString.contains("42"));
+  }
+
+  @Test
+  public void testSetCellWithProtoDecodedValuePreserveFieldNames() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    Descriptor descriptor = buildSimpleMessageDescriptor();
+
+    // Create ProtoDecoder with preserveFieldNames=true
+    ProtoDecoder protoDecoder =
+        new ProtoDecoder(
+            descriptor, TestUtil.TEST_GOOD_COLUMN_FAMILY, TestUtil.TEST_GOOD_COLUMN, true);
+
+    DynamicMessage protoMessage =
+        DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("user_name"), "alice")
+            .setField(descriptor.findFieldByName("id"), 7)
+            .build();
+    byte[] protoBytes = protoMessage.toByteArray();
+
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            ByteString.copyFrom(protoBytes));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, protoDecoder, null);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    String valueString = (String) tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName());
+    Assert.assertNotNull(valueString);
+    // With preserveFieldNames, the JSON should use the original proto field name "user_name"
+    Assert.assertTrue(
+        "Expected preserved field name 'user_name', got: " + valueString,
+        valueString.contains("user_name"));
+  }
+
+  @Test
+  public void testSetCellWithProtoDecoderNonMatchingColumn() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    Descriptor descriptor = buildSimpleMessageDescriptor();
+
+    // ProtoDecoder targets a different column than the SetCell
+    ProtoDecoder protoDecoder =
+        new ProtoDecoder(descriptor, TestUtil.TEST_GOOD_COLUMN_FAMILY, "other_column", false);
+
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            getBytesString(TestUtil.TEST_GOOD_VALUE));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, protoDecoder, null);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    // Non-matching column: should fall back to standard base64-decoded value
+    Assert.assertEquals(
+        TestUtil.TEST_GOOD_VALUE, tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName()));
+  }
+
+  @Test
+  public void testSetCellWithProtoDecoderInvalidBytes() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    Descriptor descriptor = buildSimpleMessageDescriptor();
+
+    ProtoDecoder protoDecoder =
+        new ProtoDecoder(
+            descriptor, TestUtil.TEST_GOOD_COLUMN_FAMILY, TestUtil.TEST_GOOD_COLUMN, false);
+
+    // Use bytes that are NOT valid protobuf -- ProtoDecoder.decode returns null for invalid bytes,
+    // which means TRANSFORMED_VALUE won't be added to the Mod JSON
+    byte[] invalidBytes = new byte[] {(byte) 0xFF, (byte) 0xFE, (byte) 0xFD};
+
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            ByteString.copyFrom(invalidBytes));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, protoDecoder, null);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    // Invalid proto bytes: decode returns null, so TRANSFORMED_VALUE is not set.
+    // The formatter should fall back to base64-decoded string.
+    Object valueString = tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName());
+    Assert.assertNotNull(valueString);
+    // The value should be the base64-decoded representation of the invalid bytes, not a proto JSON
+    Assert.assertFalse(
+        "Should not contain proto JSON fields", valueString.toString().contains("testUser"));
+  }
+
+  @Test
+  public void testSetCellWithNullProtoDecoder() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            getBytesString(TestUtil.TEST_GOOD_VALUE));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+
+    // Passing null for both transforms should behave identically to the original constructor
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, null, null);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    Assert.assertEquals(
+        TestUtil.TEST_GOOD_VALUE, tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName()));
+  }
+
+  /**
+   * Builds a simple proto descriptor programmatically for testing. The message has two fields:
+   * user_name (string, field 1) and id (int32, field 2).
+   */
+  private Descriptor buildSimpleMessageDescriptor() throws DescriptorValidationException {
+    FileDescriptorProto fileProto =
+        FileDescriptorProto.newBuilder()
+            .setName("test.proto")
+            .setPackage("test")
+            .addMessageType(
+                DescriptorProto.newBuilder()
+                    .setName("SimpleMessage")
+                    .addField(
+                        FieldDescriptorProto.newBuilder()
+                            .setName("user_name")
+                            .setNumber(1)
+                            .setType(FieldDescriptorProto.Type.TYPE_STRING)
+                            .build())
+                    .addField(
+                        FieldDescriptorProto.newBuilder()
+                            .setName("id")
+                            .setNumber(2)
+                            .setType(FieldDescriptorProto.Type.TYPE_INT32)
+                            .build())
+                    .build())
+            .build();
+
+    FileDescriptor fileDescriptor = FileDescriptor.buildFrom(fileProto, new FileDescriptor[] {});
+    return fileDescriptor.findMessageTypeByName("SimpleMessage");
+  }
+
+  private ChangeStreamMutation mockMutation(boolean noRowkey) {
+    ChangeStreamMutation mutation = Mockito.mock(ChangeStreamMutation.class);
+    Mockito.when(mutation.getSourceClusterId()).thenReturn(TestUtil.TEST_CBT_CLUSTER);
+    Mockito.when(mutation.getCommitTimestamp())
+        .thenReturn(getSimpleTimestamp(TestUtil.TEST_COMMIT_TIMESTAMP));
+    Mockito.when(mutation.getRowKey()).thenReturn(noRowkey ? null : getSimpleRowKey());
+    Mockito.when(mutation.getTieBreaker()).thenReturn(TestUtil.TEST_TIEBREAKER);
+    Mockito.when(mutation.getToken()).thenReturn("token");
+    Mockito.when(mutation.getType()).thenReturn(MutationType.USER);
+    return mutation;
+  }
+
+  @Test
   public void testNonDefaultConfigurationDeleteCells() throws Exception {
     BigQueryUtils bigQuery =
         new BigQueryUtils(getNonDefaultSourceInfo(), getNonDefaultDestinationInfo());
@@ -350,6 +574,44 @@ public class BigQueryUtilTest {
     Assert.assertArrayEquals(
         TestUtil.TEST_ROWKEY.getBytes(),
         (byte[]) tableRow.get(ChangelogColumn.ROW_KEY_STRING.getBqColumnName()));
+  }
+
+  @Test
+  public void testSetCellWithBigEndianTimestampTransform() throws Exception {
+    BigQueryUtils bigQuery = new BigQueryUtils(getDefaultSourceInfo(), getDefaultDestinationInfo());
+
+    ValueTransformerRegistry registry =
+        ValueTransformerRegistry.parse(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY
+                + ":"
+                + TestUtil.TEST_GOOD_COLUMN
+                + ":BIG_ENDIAN_UINT64_TIMESTAMP_MS");
+
+    // 1711900800000L = 2024-03-31T16:00:00Z
+    long millis = 1711900800000L;
+    byte[] bytes = ByteBuffer.allocate(8).putLong(millis).array();
+
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            getBytesString(TestUtil.TEST_GOOD_COLUMN),
+            TestUtil.TEST_TIMESTAMP,
+            ByteString.copyFrom(bytes));
+
+    ChangeStreamMutation mutation = mockMutation(false);
+    Mod mod = new Mod(getDefaultSourceInfo(), mutation, setCell, null, registry);
+
+    TableRow tableRow = new TableRow();
+    Assert.assertTrue(bigQuery.setTableRowFields(mod, tableRow));
+
+    String valueString = (String) tableRow.get(ChangelogColumn.VALUE_STRING.getBqColumnName());
+    Assert.assertNotNull(valueString);
+    Assert.assertTrue(
+        "Expected timestamp string containing '2024-03-31', got: " + valueString,
+        valueString.contains("2024-03-31"));
+    Assert.assertTrue(
+        "Expected timestamp string containing '16:00:00', got: " + valueString,
+        valueString.contains("16:00:00"));
   }
 
   private Mod getSetCellModNonUTFChars(BigtableSource source) {
