@@ -22,6 +22,7 @@ import static org.apache.beam.it.common.utils.ResourceManagerUtils.generateNewId
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateDatabaseId;
 import static org.apache.beam.it.gcp.spanner.utils.SpannerResourceManagerUtils.generateInstanceId;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.auth.Credentials;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
@@ -126,6 +127,30 @@ public final class SpannerResourceManager implements ResourceManager {
                   if (builder.credentials != null) {
                     optionsBuilder.setCredentials(builder.credentials);
                   }
+                  RetrySettings commitRetrySettings =
+                      optionsBuilder
+                          .getSpannerStubSettingsBuilder()
+                          .commitSettings()
+                          .getRetrySettings()
+                          .toBuilder()
+                          .setTotalTimeoutDuration(java.time.Duration.ofMinutes(5))
+                          .build();
+                  optionsBuilder
+                      .getSpannerStubSettingsBuilder()
+                      .commitSettings()
+                      .setRetrySettings(commitRetrySettings);
+                  RetrySettings executeSqlRetrySettings =
+                      optionsBuilder
+                          .getSpannerStubSettingsBuilder()
+                          .executeSqlSettings()
+                          .getRetrySettings()
+                          .toBuilder()
+                          .setTotalTimeoutDuration(java.time.Duration.ofMinutes(5))
+                          .build();
+                  optionsBuilder
+                      .getSpannerStubSettingsBuilder()
+                      .executeSqlSettings()
+                      .setRetrySettings(executeSqlRetrySettings);
                   return optionsBuilder.build().getService();
                 })
             .get());
