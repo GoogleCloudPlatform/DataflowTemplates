@@ -28,6 +28,12 @@
             <artifactId>beam-sdks-java-io-clickhouse</artifactId>
         </dependency>
 
+        <!-- Required for ClickHouse Java Client SSL on Dataflow workers -->
+        <dependency>
+            <groupId>org.conscrypt</groupId>
+            <artifactId>conscrypt-openjdk-uber</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
@@ -40,6 +46,13 @@
             <artifactId>beam-it-clickhouse</artifactId>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.9.6</version>
+            <classifier>all</classifier>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
 </project>
