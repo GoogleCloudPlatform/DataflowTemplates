@@ -403,18 +403,26 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
     if (colType.getCode().equals(Type.Code.FLOAT64)
-        || colType.getCode().equals(Type.Code.FLOAT32)) {
+        || colType.getCode().equals(Type.Code.FLOAT32)
+        || colType.getCode().equals(Type.Code.PG_FLOAT4)
+        || colType.getCode().equals(Type.Code.PG_FLOAT8)
+        || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
       // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
-    } else if (colType.getCode().equals(Type.Code.BOOL)) {
+    } else if (colType.getCode().equals(Type.Code.BOOL)
+        || colType.getCode().equals(Type.Code.PG_BOOL)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
-    } else if (colType.getCode().equals(Type.Code.ARRAY)
-        && colType.getArrayElementType().getCode().equals(Type.Code.STRING)) {
+    } else if ((colType.getCode().equals(Type.Code.ARRAY)
+            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+        || (colType.getCode().equals(Type.Code.PG_ARRAY)
+            && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
-    } else if (colType.getCode().equals(Type.Code.BYTES)) {
+    } else if (colType.getCode().equals(Type.Code.BYTES)
+        || colType.getCode().equals(Type.Code.PG_BYTEA)) {
       if (sourceColDef.type().toLowerCase().equals("bit")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
       } else {
@@ -532,7 +540,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static String getQuotedEscapedString(String input, String spannerColType) {
-    if ("BYTES".equals(spannerColType)) {
+    if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
       return input;
     }
     String cleanedString = escapeString(input);

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.spanner;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,7 +24,6 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -90,6 +89,103 @@ public class SpannerReadUtilsTest {
             .end()
             .endTable()
             .build();
+  }
+
+  @Test
+  public void testGenerateReadSQLAllTypesPostgres() {
+    // 1. Setup PostgreSQL DDL with all supported PG types
+    Ddl pgDdl =
+        Ddl.builder(com.google.cloud.spanner.Dialect.POSTGRESQL)
+            .createTable(SHADOW_TABLE)
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .column("text_field")
+            .pgText()
+            .endColumn()
+            .column("bytea_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamptz_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .column("version")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("bool_field")
+            .asc("int_field")
+            .asc("float_field")
+            .asc("numeric_field")
+            .asc("text_field")
+            .asc("bytea_field")
+            .asc("timestamptz_field")
+            .asc("date_field")
+            .end()
+            .endTable()
+            .build();
+
+    // 2. Define test values
+    boolean boolValue = true;
+    long intValue = 123L;
+    double floatValue = 123.45;
+    BigDecimal numericValue = new BigDecimal("123.456");
+    String textValue = "test_string";
+    ByteArray bytesValue = ByteArray.copyFrom("test_bytes");
+    Timestamp timestampValue = Timestamp.ofTimeMicroseconds(1234567);
+    Date dateValue = Date.fromYearMonthDay(2024, 1, 1);
+
+    Key primaryKey =
+        Key.of(
+            boolValue,
+            intValue,
+            floatValue,
+            numericValue,
+            textValue,
+            bytesValue,
+            timestampValue,
+            dateValue);
+
+    // 3. Generate the Statement
+    Statement stmt =
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
+            SHADOW_TABLE, READ_COLUMNS, primaryKey, pgDdl);
+
+    // 4. Verify SQL Syntax for PostgreSQL
+    String expectedSql =
+        "/*@ LOCK_SCANNED_RANGES=exclusive */ SELECT \"bool_field\", \"string_field\", \"version\" "
+            + "FROM \""
+            + SHADOW_TABLE
+            + "\" WHERE "
+            + "\"bool_field\"=$1 AND \"int_field\"=$2 AND \"float_field\"=$3 AND "
+            + "\"numeric_field\"=$4 AND \"text_field\"=$5 AND \"bytea_field\"=$6 AND "
+            + "\"timestamptz_field\"=$7 AND \"date_field\"=$8";
+
+    assertEquals(expectedSql, stmt.getSql());
+
+    // 5. Verify Bindings
+    Map<String, Value> params = stmt.getParameters();
+
+    assertEquals(Value.bool(boolValue), params.get("p1"));
+    assertEquals(Value.int64(intValue), params.get("p2"));
+    assertEquals(Value.float64(floatValue), params.get("p3"));
+    assertEquals(Value.pgNumeric(numericValue.toString()), params.get("p4"));
+    assertEquals(Value.string(textValue), params.get("p5"));
+    assertEquals(Value.bytes(bytesValue), params.get("p6"));
+    assertEquals(Value.timestamp(timestampValue), params.get("p7"));
+    assertEquals(Value.date(dateValue), params.get("p8"));
   }
 
   @Test
