@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.yaml;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.bigtable.BigtableResourceManagerUtils.generateTableId;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -99,7 +100,7 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
 
     LOG.info("Creating Bigtable table...");
-    String tableId = "test_table";
+    String tableId = generateTableId("test_table");
     bigtableResourceManager.createTable(tableId, ImmutableList.of("cf1"));
 
     LOG.info("Creating launch config with yaml pipeline parameters...");
