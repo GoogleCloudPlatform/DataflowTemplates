@@ -236,6 +236,8 @@ from apache_beam.utils.timestamp import Duration
 from bqmonitor.metric import ComputeMetric
 from bqmonitor.metric import FanoutStrategy
 from bqmonitor.metric import MetricSpec
+from bqmonitor.relative_change_detector import _RelativeChangeConfig
+from bqmonitor.relative_change_detector import RelativeChangeDoFn
 from bqmonitor.safe_eval import Expr
 from apache_beam.ml.anomaly.base import AnomalyPrediction
 from apache_beam.ml.anomaly.base import AnomalyResult
@@ -250,7 +252,7 @@ from apache_beam.ml.anomaly.detectors import robust_zscore  # noqa: F401
 
 _LOGGER = logging.getLogger(__name__)
 
-_SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore')
+_SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
 
 
 @dataclass(frozen=True)
@@ -516,6 +518,7 @@ _SINK_SCHEMA = {
         {'name': 'value', 'type': 'FLOAT64', 'mode': 'REQUIRED'},
         {'name': 'score', 'type': 'FLOAT64', 'mode': 'NULLABLE'},
         {'name': 'label', 'type': 'INT64', 'mode': 'REQUIRED'},
+        {'name': 'info', 'type': 'STRING', 'mode': 'NULLABLE'},
         {'name': 'key', 'type': 'STRING', 'mode': 'NULLABLE'},
     ]
 }
@@ -535,6 +538,7 @@ class _FormatResultForBQ(beam.DoFn):
         'score': float(prediction.score) if prediction.score is not None
         else None,
         'label': int(prediction.label),
+        'info': prediction.info if prediction.info else None,
     }
     if key is not None:
       row['key'] = str(key)
@@ -825,6 +829,26 @@ def _parse_detector_spec(json_str):
           "Threshold expression '%s' does not reference 'value'. "
           "It will receive the computed metric value as 'value'.", expr_text)
     return _ThresholdAlert(expr_text)
+
+  if detector_type == 'RelativeChange':
+    config = d.get('config', {})
+    direction = d.get('direction', config.get('direction'))
+    if direction is None:
+      raise ValueError(
+          "RelativeChange detector requires 'direction' "
+          "(one of: increase, decrease, both).")
+    lookback_windows = d.get('lookback_windows',
+                             config.get('lookback_windows'))
+    if lookback_windows is None:
+      raise ValueError(
+          "RelativeChange detector requires 'lookback_windows' "
+          "(number of prior windows to compare against).")
+    return _RelativeChangeConfig(
+        direction=direction,
+        threshold_pct=d.get('threshold_pct',
+                            config.get('threshold_pct', 20.0)),
+        lookback_windows=lookback_windows,
+    )
 
   if detector_type not in _SUPPORTED_DETECTORS:
     raise ValueError(
@@ -1121,7 +1145,16 @@ def build_pipeline(pipeline, options, metric_spec, detector):
     global_metrics = (
         global_metrics | 'AddOffsetKey' >> beam.Map(_add_offset_key))
 
-  if isinstance(detector, _ThresholdAlert):
+  if isinstance(detector, _RelativeChangeConfig):
+    anomalies = (
+        global_metrics
+        | 'DetectAnomalies' >> beam.ParDo(
+            RelativeChangeDoFn(
+                direction=detector.direction,
+                threshold_pct=detector.threshold_pct,
+                lookback_windows=detector.lookback_windows)))
+
+  elif isinstance(detector, _ThresholdAlert):
     anomalies = global_metrics | 'DetectAnomalies' >> beam.ParDo(detector)
   else:
     global_metrics = (
