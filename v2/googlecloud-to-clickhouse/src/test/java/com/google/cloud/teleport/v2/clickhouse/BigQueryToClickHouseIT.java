@@ -109,7 +109,8 @@ public class BigQueryToClickHouseIT extends TemplateTestBase {
                 .addParameter("inputTableSpec", toTableSpecLegacy(table))
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("jdbcUrl", clickHouseResourceManager.getJdbcConnectionString())
-                .addParameter("clickHouseUsername", "default")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseTable", tableName));
     assertThatPipeline(info).isRunning();
 
@@ -154,7 +155,8 @@ public class BigQueryToClickHouseIT extends TemplateTestBase {
                     "query", "SELECT * FROM `" + toTableSpecLegacy(table).replace(':', '.') + "`")
                 .addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_dlq")
                 .addParameter("jdbcUrl", clickHouseResourceManager.getJdbcConnectionString())
-                .addParameter("clickHouseUsername", "default")
+                .addParameter("clickHouseUsername", clickHouseResourceManager.getUsername())
+                .addParameter("clickHousePassword", clickHouseResourceManager.getPassword())
                 .addParameter("clickHouseTable", tableName));
     assertThatPipeline(info).isRunning();
 
