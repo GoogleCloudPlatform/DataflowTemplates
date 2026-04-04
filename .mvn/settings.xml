@@ -12,7 +12,7 @@
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
-            <!-- Also update repo values in plugins/core-plugin/s.m.j.c.g.c.t/plugin/DockerfileGenerator.java-->
+            <!-- Also update repo values in plugins/core-plugin/s.m.j.c.g.c.t/plugin/DockerfileGenerator.java-tset-->
             <repositories>
                 <repository>
                     <id>central</id>
