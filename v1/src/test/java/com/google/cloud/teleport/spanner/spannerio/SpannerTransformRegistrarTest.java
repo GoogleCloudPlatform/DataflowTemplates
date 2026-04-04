@@ -26,6 +26,7 @@ import com.google.cloud.teleport.spanner.spannerio.SpannerTransformRegistrar.Rea
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
@@ -192,12 +193,13 @@ public class SpannerTransformRegistrarTest {
 
   private InsertBuilder.Configuration getBasicWriteConfiguration() {
     InsertBuilder.Configuration configuration = new InsertBuilder.Configuration();
+    ValueProvider<Integer> maxNumberRows = ValueProvider.StaticValueProvider.of(100);
     configuration.setProjectId(SPANNER_PROJECT);
     configuration.setDatabaseId(SPANNER_DATABASE);
     configuration.setInstanceId(SPANNER_INSTANCE);
     configuration.setMaxBatchSizeBytes(100L);
     configuration.setMaxNumberMutations(100L);
-    configuration.setMaxNumberRows(100L);
+    configuration.setMaxNumberRows(maxNumberRows);
     configuration.setGroupingFactor(100L);
     configuration.setHost("spanner-host");
     configuration.setEmulatorHost("spanner-emulator-host");

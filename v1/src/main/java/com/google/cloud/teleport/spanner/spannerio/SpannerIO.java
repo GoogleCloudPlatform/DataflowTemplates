@@ -449,7 +449,8 @@ public class SpannerIO {
   // Max number of mutations to batch together.
   private static final int DEFAULT_MAX_NUM_MUTATIONS = 5000;
   // Max number of mutations to batch together.
-  private static final int DEFAULT_MAX_NUM_ROWS = 500;
+  private static final ValueProvider<Integer> DEFAULT_MAX_NUM_ROWS =
+      ValueProvider.StaticValueProvider.of(500);
   // Multiple of mutation size to use to gather and sort mutations
   private static final int DEFAULT_GROUPING_FACTOR = 1000;
 
@@ -1167,7 +1168,7 @@ public class SpannerIO {
 
     abstract long getMaxNumMutations();
 
-    abstract long getMaxNumRows();
+    abstract ValueProvider<Integer> getMaxNumRows();
 
     abstract FailureMode getFailureMode();
 
@@ -1188,7 +1189,7 @@ public class SpannerIO {
 
       abstract Builder setMaxNumMutations(long maxNumMutations);
 
-      abstract Builder setMaxNumRows(long maxNumRows);
+      abstract Builder setMaxNumRows(ValueProvider<Integer> maxNumRows);
 
       abstract Builder setFailureMode(FailureMode failureMode);
 
@@ -1333,7 +1334,7 @@ public class SpannerIO {
      * Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is
      * 1000
      */
-    public Write withMaxNumRows(long maxNumRows) {
+    public Write withMaxNumRows(ValueProvider<Integer> maxNumRows) {
       return toBuilder().setMaxNumRows(maxNumRows).build();
     }
 
@@ -1477,9 +1478,17 @@ public class SpannerIO {
                 .apply("As PCollectionView", View.asSingleton());
       }
 
-      if (spec.getBatchSizeBytes() <= 1
-          || spec.getMaxNumMutations() <= 1
-          || spec.getMaxNumRows() <= 1) {
+      boolean isBatchingDisabled = false;
+      if (spec.getBatchSizeBytes() <= 1 || spec.getMaxNumMutations() <= 1) {
+        isBatchingDisabled = true;
+      } else {
+        ValueProvider<Integer> maxNumRows = spec.getMaxNumRows();
+        if (maxNumRows.isAccessible() && maxNumRows.get() <= 1) {
+          isBatchingDisabled = true;
+        }
+      }
+
+      if (isBatchingDisabled) {
         LOG.info("Batching of mutationGroups is disabled");
         TypeDescriptor<Iterable<MutationGroup>> descriptor =
             new TypeDescriptor<Iterable<MutationGroup>>() {};
@@ -1961,12 +1970,14 @@ public class SpannerIO {
 
     private final long maxBatchSizeBytes;
     private final long maxBatchNumMutations;
-    private final long maxBatchNumRows;
+    private long maxBatchNumRows;
     private final long maxSortableSizeBytes;
     private final long maxSortableNumMutations;
-    private final long maxSortableNumRows;
+    private long maxSortableNumRows;
     private final PCollectionView<SpannerSchema> schemaView;
     private final ArrayList<MutationGroupContainer> mutationsToSort = new ArrayList<>();
+    private final ValueProvider<Integer> maxNumRows;
+    private final long groupingFactor;
 
     // total size of MutationGroups in mutationsToSort.
     private long sortableSizeBytes = 0;
@@ -1978,23 +1989,25 @@ public class SpannerIO {
     GatherSortCreateBatchesFn(
         long maxBatchSizeBytes,
         long maxNumMutations,
-        long maxNumRows,
+        ValueProvider<Integer> maxNumRows,
         long groupingFactor,
         PCollectionView<SpannerSchema> schemaView) {
       this.maxBatchSizeBytes = maxBatchSizeBytes;
       this.maxBatchNumMutations = maxNumMutations;
-      this.maxBatchNumRows = maxNumRows;
+      this.maxNumRows = maxNumRows;
+      this.groupingFactor = groupingFactor <= 0 ? 1 : groupingFactor;
 
-      if (groupingFactor <= 0) {
-        groupingFactor = 1;
-      }
-
-      this.maxSortableSizeBytes = maxBatchSizeBytes * groupingFactor;
-      this.maxSortableNumMutations = maxNumMutations * groupingFactor;
-      this.maxSortableNumRows = maxNumRows * groupingFactor;
+      this.maxSortableSizeBytes = maxBatchSizeBytes * this.groupingFactor;
+      this.maxSortableNumMutations = maxNumMutations * this.groupingFactor;
       this.schemaView = schemaView;
 
       initSorter();
+    }
+
+    @Setup
+    public void setup() {
+      this.maxBatchNumRows = maxNumRows.get().longValue();
+      this.maxSortableNumRows = maxBatchNumRows * groupingFactor;
     }
 
     private synchronized void initSorter() {
@@ -2189,7 +2202,7 @@ public class SpannerIO {
     private final TupleTag<Iterable<MutationGroup>> unbatchableMutationsTag;
     private final long batchSizeBytes;
     private final long maxNumMutations;
-    private final long maxNumRows;
+    private final ValueProvider<Integer> maxNumRows;
     private final Counter batchableMutationGroupsCounter =
         Metrics.counter(WriteGrouped.class, "batchable_mutation_groups");
     private final Counter unBatchableMutationGroupsCounter =
@@ -2200,7 +2213,7 @@ public class SpannerIO {
         TupleTag<Iterable<MutationGroup>> unbatchableMutationsTag,
         long batchSizeBytes,
         long maxNumMutations,
-        long maxNumRows) {
+        ValueProvider<Integer> maxNumRows) {
       this.schemaView = schemaView;
       this.unbatchableMutationsTag = unbatchableMutationsTag;
       this.batchSizeBytes = batchSizeBytes;
@@ -2217,13 +2230,15 @@ public class SpannerIO {
         unBatchableMutationGroupsCounter.inc();
         return;
       }
-
+      LOG.info("Max num rows: " + maxNumRows);
       SpannerSchema spannerSchema = c.sideInput(schemaView);
       long groupSize = MutationSizeEstimator.sizeOf(mg);
       long groupCells = MutationCellCounter.countOf(spannerSchema, mg);
       long groupRows = Iterables.size(mg);
 
-      if (groupSize >= batchSizeBytes || groupCells >= maxNumMutations || groupRows >= maxNumRows) {
+      if (groupSize >= batchSizeBytes
+          || groupCells >= maxNumMutations
+          || groupRows >= maxNumRows.get()) {
         c.output(unbatchableMutationsTag, Arrays.asList(mg));
         unBatchableMutationGroupsCounter.inc();
       } else {

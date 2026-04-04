@@ -72,6 +72,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.metrics.Lineage;
 import org.apache.beam.sdk.metrics.MetricsEnvironment;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -576,6 +577,7 @@ public class SpannerIOWriteTest implements Serializable {
   public void streamingWritesWithGrouping() throws Exception {
 
     // verify that grouping/sorting occurs when set.
+    ValueProvider<Integer> maxNumRows = ValueProvider.StaticValueProvider.of(2);
     TestStream<Mutation> testStream =
         TestStream.create(SerializableCoder.of(Mutation.class))
             .addElements(
@@ -593,7 +595,7 @@ public class SpannerIOWriteTest implements Serializable {
                 .withSpannerConfig(SPANNER_CONFIG)
                 .withServiceFactory(serviceFactory)
                 .withGroupingFactor(40)
-                .withMaxNumRows(2));
+                .withMaxNumRows(maxNumRows));
     pipeline.run();
 
     // Output should be batches of sorted mutations.
@@ -607,6 +609,7 @@ public class SpannerIOWriteTest implements Serializable {
   public void streamingWritesWithGroupingWithPriority() throws Exception {
 
     // verify that grouping/sorting occurs when set.
+    ValueProvider<Integer> maxNumRows = ValueProvider.StaticValueProvider.of(2);
     TestStream<Mutation> testStream =
         TestStream.create(SerializableCoder.of(Mutation.class))
             .addElements(
@@ -623,7 +626,7 @@ public class SpannerIOWriteTest implements Serializable {
             .withSpannerConfig(SPANNER_CONFIG)
             .withServiceFactory(serviceFactory)
             .withGroupingFactor(40)
-            .withMaxNumRows(2)
+            .withMaxNumRows(maxNumRows)
             .withLowPriority();
     pipeline.apply(testStream).apply(write);
     pipeline.run();
@@ -640,6 +643,7 @@ public class SpannerIOWriteTest implements Serializable {
   public void streamingWritesNoGrouping() throws Exception {
 
     // verify that grouping/sorting does not occur - batches should be created in received order.
+    ValueProvider<Integer> maxNumRows = ValueProvider.StaticValueProvider.of(2);
     TestStream<Mutation> testStream =
         TestStream.create(SerializableCoder.of(Mutation.class))
             .addElements(
@@ -658,7 +662,7 @@ public class SpannerIOWriteTest implements Serializable {
             SpannerIO.write()
                 .withSpannerConfig(SPANNER_CONFIG)
                 .withServiceFactory(serviceFactory)
-                .withMaxNumRows(2));
+                .withMaxNumRows(maxNumRows));
     pipeline.run();
 
     verifyBatches(
@@ -1001,12 +1005,13 @@ public class SpannerIOWriteTest implements Serializable {
 
   @Test
   public void displayDataWrite() throws Exception {
+    ValueProvider<Integer> maxNumRows = ValueProvider.StaticValueProvider.of(789);
     Write write =
         SpannerIO.write()
             .withSpannerConfig(SPANNER_CONFIG)
             .withBatchSizeBytes(123)
             .withMaxNumMutations(456)
-            .withMaxNumRows(789)
+            .withMaxNumRows(maxNumRows)
             .withGroupingFactor(100);
 
     DisplayData data = DisplayData.from(write);
@@ -1029,12 +1034,13 @@ public class SpannerIOWriteTest implements Serializable {
 
   @Test
   public void displayDataWriteGrouped() throws Exception {
+    ValueProvider<Integer> maxNumRows = ValueProvider.StaticValueProvider.of(789);
     SpannerIO.WriteGrouped writeGrouped =
         SpannerIO.write()
             .withSpannerConfig(SPANNER_CONFIG)
             .withBatchSizeBytes(123)
             .withMaxNumMutations(456)
-            .withMaxNumRows(789)
+            .withMaxNumRows(maxNumRows)
             .withGroupingFactor(100)
             .grouped();
 
@@ -1080,7 +1086,8 @@ public class SpannerIOWriteTest implements Serializable {
         };
 
     BatchableMutationFilterFn testFn =
-        new BatchableMutationFilterFn(null, null, 10000000, 3 * CELLS_PER_KEY, 1000);
+        new BatchableMutationFilterFn(
+            null, null, 10000000, 3 * CELLS_PER_KEY, ValueProvider.StaticValueProvider.of(1000));
 
     ProcessContext mockProcessContext = Mockito.mock(ProcessContext.class);
     when(mockProcessContext.sideInput(any())).thenReturn(getSchema());
@@ -1147,7 +1154,8 @@ public class SpannerIOWriteTest implements Serializable {
         com.google.cloud.teleport.spanner.spannerio.MutationSizeEstimator.sizeOf(
             buildUpsertMutation(1L));
     BatchableMutationFilterFn testFn =
-        new BatchableMutationFilterFn(null, null, mutationSize * 3, 1000, 1000);
+        new BatchableMutationFilterFn(
+            null, null, mutationSize * 3, 1000, ValueProvider.StaticValueProvider.of(1000));
 
     DoFn<MutationGroup, MutationGroup>.ProcessContext mockProcessContext =
         Mockito.mock(ProcessContext.class);
@@ -1211,7 +1219,9 @@ public class SpannerIOWriteTest implements Serializable {
           buildMutationGroup(range)
         };
 
-    BatchableMutationFilterFn testFn = new BatchableMutationFilterFn(null, null, 1000, 1000, 3);
+    BatchableMutationFilterFn testFn =
+        new BatchableMutationFilterFn(
+            null, null, 1000, 1000, ValueProvider.StaticValueProvider.of(3));
 
     ProcessContext mockProcessContext = Mockito.mock(ProcessContext.class);
     when(mockProcessContext.sideInput(any())).thenReturn(getSchema());
@@ -1261,7 +1271,8 @@ public class SpannerIOWriteTest implements Serializable {
           buildMutationGroup(buildDeleteMutation(5L, 6L))
         };
 
-    BatchableMutationFilterFn testFn = new BatchableMutationFilterFn(null, null, 0, 0, 0);
+    BatchableMutationFilterFn testFn =
+        new BatchableMutationFilterFn(null, null, 0, 0, ValueProvider.StaticValueProvider.of(0));
 
     ProcessContext mockProcessContext = Mockito.mock(ProcessContext.class);
     when(mockProcessContext.sideInput(any())).thenReturn(getSchema());
@@ -1292,7 +1303,7 @@ public class SpannerIOWriteTest implements Serializable {
         new GatherSortCreateBatchesFn(
             10000000, // batch bytes
             100, // batch up to 35 mutated cells.
-            5, // batch rows
+            ValueProvider.StaticValueProvider.of(5), // batch rows
             100, // groupingFactor
             null);
 
@@ -1365,7 +1376,7 @@ public class SpannerIOWriteTest implements Serializable {
         new GatherSortCreateBatchesFn(
             10000000, // batch bytes
             100, // batch up to 14 mutated cells.
-            2, // batch rows
+            ValueProvider.StaticValueProvider.of(2), // batch rows
             3, // groupingFactor
             null);
 
@@ -1457,7 +1468,7 @@ public class SpannerIOWriteTest implements Serializable {
         new GatherSortCreateBatchesFn(
             10000000, // batch bytes
             3 * CELLS_PER_KEY, // batch up to 21 mutated cells - 3 mutations.
-            100, // batch rows
+            ValueProvider.StaticValueProvider.of(100), // batch rows
             100, // groupingFactor
             null);
 
@@ -1476,7 +1487,7 @@ public class SpannerIOWriteTest implements Serializable {
         new GatherSortCreateBatchesFn(
             mutationSize * 3, // batch bytes = 3 mutations.
             100, // batch cells
-            100, // batch rows
+            ValueProvider.StaticValueProvider.of(100), // batch rows
             100, // groupingFactor
             null);
 
@@ -1491,7 +1502,7 @@ public class SpannerIOWriteTest implements Serializable {
         new GatherSortCreateBatchesFn(
             10000, // batch bytes = 3 mutations.
             100, // batch cells
-            3, // batch rows
+            ValueProvider.StaticValueProvider.of(3), // batch rows
             100, // groupingFactor
             null);
 
