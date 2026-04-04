@@ -18,8 +18,9 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.neo4j.importer.v1.targets.NodeReference;
 
@@ -30,7 +31,8 @@ public class JobSpecMapperTest {
   @Test
   public void parses_valid_json_legacy_spec() {
     var importSpecification =
-        JobSpecMapper.parse(SPEC_PATH + "/valid-json-legacy-spec.json", new OptionsParams());
+        JobSpecMapper.parse(
+            SPEC_PATH + "/valid-json-legacy-spec.json", new OverlayTokens(Map.of()));
 
     var sources = importSpecification.getSources();
     assertThat(sources).hasSize(1);
@@ -95,7 +97,8 @@ public class JobSpecMapperTest {
   @Test
   public void parses_valid_json_import_spec() {
     var importSpecification =
-        JobSpecMapper.parse(SPEC_PATH + "/valid-json-import-spec.json", new OptionsParams());
+        JobSpecMapper.parse(
+            SPEC_PATH + "/valid-json-import-spec.json", new OverlayTokens(Map.of()));
 
     var sources = importSpecification.getSources();
     assertThat(sources).hasSize(2);
@@ -170,7 +173,8 @@ public class JobSpecMapperTest {
   @Test
   public void parses_valid_yaml_import_spec() {
     var importSpecification =
-        JobSpecMapper.parse(SPEC_PATH + "/valid-yaml-import-spec.yaml", new OptionsParams());
+        JobSpecMapper.parse(
+            SPEC_PATH + "/valid-yaml-import-spec.yaml", new OverlayTokens(Map.of()));
 
     var sources = importSpecification.getSources();
     assertThat(sources).hasSize(2);
@@ -256,7 +260,7 @@ public class JobSpecMapperTest {
             + "        \"sources\": [\n"
             + "         ^",
         IllegalArgumentException.class,
-        () -> JobSpecMapper.parse(SPEC_PATH + "/invalid-json.json", new OptionsParams()));
+        () -> JobSpecMapper.parse(SPEC_PATH + "/invalid-json.json", new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -273,7 +277,7 @@ public class JobSpecMapperTest {
             + "        query: \"SELECT field_1, field_2 FROM my. ... \n"
             + "                ^",
         IllegalArgumentException.class,
-        () -> JobSpecMapper.parse(SPEC_PATH + "/invalid-yaml.yaml", new OptionsParams()));
+        () -> JobSpecMapper.parse(SPEC_PATH + "/invalid-yaml.yaml", new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -283,7 +287,8 @@ public class JobSpecMapperTest {
         RuntimeException.class,
         () ->
             JobSpecMapper.parse(
-                SPEC_PATH + "/valid-json-wrong-format-legacy-spec.json", new OptionsParams()));
+                SPEC_PATH + "/valid-json-wrong-format-legacy-spec.json",
+                new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -293,7 +298,8 @@ public class JobSpecMapperTest {
         RuntimeException.class,
         () ->
             JobSpecMapper.parse(
-                SPEC_PATH + "/valid-json-wrong-format-import-spec.json", new OptionsParams()));
+                SPEC_PATH + "/valid-json-wrong-format-import-spec.json",
+                new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -303,6 +309,7 @@ public class JobSpecMapperTest {
         RuntimeException.class,
         () ->
             JobSpecMapper.parse(
-                SPEC_PATH + "/valid-yaml-wrong-format-import-spec.yaml", new OptionsParams()));
+                SPEC_PATH + "/valid-yaml-wrong-format-import-spec.yaml",
+                new OverlayTokens(Map.of())));
   }
 }

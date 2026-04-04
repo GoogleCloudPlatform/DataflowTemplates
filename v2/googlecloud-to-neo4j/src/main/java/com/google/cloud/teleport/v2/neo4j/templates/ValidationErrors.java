@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,18 +13,21 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.actions.preload;
+package com.google.cloud.teleport.v2.neo4j.templates;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import java.util.List;
-import org.neo4j.importer.v1.actions.Action;
 
-/**
- * Interface for running preload Actions. Before the pipeline loads, PCollections are not available.
- */
-public interface PreloadAction {
+class ValidationErrors {
 
-  void configure(Action action, ActionContext context);
-
-  List<String> execute();
+  /** Raises RuntimeExceptions for validation errors. */
+  static void processValidations(String description, List<String> validationMessages) {
+    StringBuilder sb = new StringBuilder();
+    if (!validationMessages.isEmpty()) {
+      for (String msg : validationMessages) {
+        sb.append(msg);
+        sb.append(System.lineSeparator());
+      }
+      throw new RuntimeException(description + " " + sb);
+    }
+  }
 }

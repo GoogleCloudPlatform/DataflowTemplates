@@ -18,7 +18,8 @@ package com.google.cloud.teleport.v2.neo4j.database;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.neo4j.importer.v1.ImportSpecification;
@@ -43,7 +44,7 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
       "single-relationship-target-with-node-key-mapping-overrides.json";
 
   protected static ImportSpecification importSpecificationOf(String specFile) {
-    return JobSpecMapper.parse(SPEC_PATH + specFile, new OptionsParams());
+    return JobSpecMapper.parse(SPEC_PATH + specFile, new OverlayTokens(Map.of()));
   }
 
   protected void assertImportStatementOf(ImportSpecification spec, String expectedCypher) {
