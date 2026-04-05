@@ -35,6 +35,7 @@ import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -102,9 +103,12 @@ public abstract class JdbcIOWrapperConfig {
   public abstract Integer maxPartitions();
 
   /**
-   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
-   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
-   * (innodb_read_ahead_threshold) and the worker memory.
+   * Configures the size of data read in db, per db read call.
+   *
+   * <p>If explicitly set, this value overrides the auto-inferred fetch size.
+   *
+   * <p>If not set (null), the fetch size is auto-calculated based on the worker memory and
+   * estimated row size to optimize for the available resources.
    */
   @Nullable
   public abstract Integer maxFetchSize();
@@ -163,7 +167,8 @@ public abstract class JdbcIOWrapperConfig {
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
    */
   @Nullable
-  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
+  public abstract PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?>
+      additionalOperationsOnRanges();
 
   /**
    * Sets the {@code testOnBorrow} property. This property determines whether or not the pool will
@@ -253,6 +258,14 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
+  /** Worker Memory in Bytes. */
+  @Nullable
+  public abstract Long workerMemoryBytes();
+
+  /** Worker Cores. */
+  @Nullable
+  public abstract Integer workerCores();
+
   public abstract Builder toBuilder();
 
   public static Builder builderWithMySqlDefaults() {
@@ -268,7 +281,6 @@ public abstract class JdbcIOWrapperConfig {
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
         .setWaitOn(null)
-        .setMaxFetchSize(null)
         .setDbParallelizationForReads(null)
         .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
         .setReadWithUniformPartitionsFeatureEnabled(true)
@@ -281,7 +293,9 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMemoryBytes(null)
+        .setWorkerCores(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -312,7 +326,9 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMemoryBytes(null)
+        .setWorkerCores(null);
   }
 
   @AutoValue.Builder
@@ -363,7 +379,7 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder setAdditionalOperationsOnRanges(
-        @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
+        PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?> value);
 
     public abstract Builder setTestOnBorrow(Boolean value);
 
@@ -384,6 +400,10 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxConnections(Long value);
 
     public abstract Builder setSplitStageCountHint(Long value);
+
+    public abstract Builder setWorkerMemoryBytes(Long value);
+
+    public abstract Builder setWorkerCores(Integer value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

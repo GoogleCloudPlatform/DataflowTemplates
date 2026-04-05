@@ -25,12 +25,6 @@
     <artifactId>googlecloud-and-jms</artifactId>
     <modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <!-- ActiveMQ uses JMS 1.1 until 5.17.6 -->
-        <!-- This can only be upgraded after Beam moves to JMS 2.0 -->
-        <activemq.version>5.17.7</activemq.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>

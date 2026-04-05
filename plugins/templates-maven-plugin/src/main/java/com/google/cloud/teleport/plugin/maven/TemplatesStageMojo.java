@@ -612,7 +612,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           ImageSpecMetadata metadata = imageSpec.getMetadata();
           String trackTag = "public-image-latest";
           String dateSuffix =
-              LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
+              LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
           String deprecatedTag = "update-available-" + dateSuffix;
           if (metadata.isHidden()) {
             trackTag = "no-new-use-public-image-latest";
@@ -816,14 +816,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (System.getProperty("skipShade") == null
           || System.getProperty("skipShade").equalsIgnoreCase("false")) {
         List<Element> paths = new ArrayList<>();
-        for (File commandSpecFile : containerStageTracker.getCommandSpecFile(containerName)) {
-          paths.add(
-              element(
-                  "path",
-                  element("from", targetDirectory + "/classes"),
-                  element("includes", commandSpecFile.getName()),
-                  element("into", "/template/" + containerName + "/resources")));
-        }
+        File commandSpecFolder = containerStageTracker.getCommandSpecFolder(containerName);
+        paths.add(
+            element(
+                "path",
+                element("from", commandSpecFolder.getPath()),
+                element("includes", "*" + TemplateSpecsGenerator.COMMAND_SPEC_SUFFIX),
+                element("into", "/template/" + containerName + "/resources")));
 
         elements.add(element("extraDirectories", element("paths", paths.toArray(new Element[0]))));
 
@@ -1008,7 +1007,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       }
 
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-      if (entryPoint.isEmpty()) {
+      if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
         entryPoint = List.of(pythonTemplateLauncherEntryPoint);
       }
 
@@ -1053,23 +1052,31 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String dockerfilePath = dockerfileContainer + "/Dockerfile";
     File dockerfile = new File(dockerfilePath);
     if (!dockerfile.exists()) {
-      List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
-      if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt");
-      }
-      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-      if (entryPoint.isEmpty()) {
-        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
+      List<String> allFilesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
+      if (allFilesToCopy.isEmpty()) {
+        allFilesToCopy = List.of("main.py", "requirements_all.txt");
       }
 
-      // Copy in requirements.txt if present
-      File sourceRequirements = new File(outputClassesDirectory.getPath() + "/requirements.txt");
-      File destRequirements = new File(dockerfileContainer + "/requirements.txt");
-      if (sourceRequirements.exists()) {
-        Files.copy(
-            sourceRequirements.toPath(),
-            destRequirements.toPath(),
-            StandardCopyOption.REPLACE_EXISTING);
+      // Separate flat files from directories
+      List<String> filesToCopy = new ArrayList<>();
+      Set<String> directoriesToCopy = new HashSet<>();
+      for (String f : allFilesToCopy) {
+        File source = new File(dockerfileContainer + "/" + f);
+        if (source.isDirectory()) {
+          directoriesToCopy.add(f);
+        } else {
+          filesToCopy.add(f);
+        }
+      }
+      // Include requirements.txt (worker deps) in COPY if present
+      File workerRequirements = new File(dockerfileContainer + "/requirements.txt");
+      if (workerRequirements.exists() && !filesToCopy.contains("requirements.txt")) {
+        filesToCopy.add("requirements.txt");
+      }
+
+      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
+      if (entryPoint.isEmpty() || (entryPoint.size() == 1 && entryPoint.get(0).isEmpty())) {
+        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
       }
 
       // Generate Dockerfile
@@ -1079,10 +1086,26 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                   definition.getTemplateAnnotation().type(),
                   beamVersion,
                   containerName,
-                  targetDirectory)
+                  outputClassesDirectory)
               .setBasePythonContainerImage(basePythonContainerImage)
               .setFilesToCopy(filesToCopy)
               .setEntryPoint(entryPoint);
+
+      if (!directoriesToCopy.isEmpty()) {
+        dockerfileBuilder.setDirectoriesToCopy(directoriesToCopy);
+      }
+
+      // Configure setup.py support if present
+      File setupFile = new File(dockerfileContainer + "/setup.py");
+      if (setupFile.exists()) {
+        dockerfileBuilder.setSetupFile("setup.py");
+      }
+
+      // If requirements.txt exists, set FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+      // so extra (non-Beam) deps are staged to workers.
+      if (workerRequirements.exists()) {
+        dockerfileBuilder.setWorkerRequirementsFile("requirements.txt");
+      }
 
       // Set Airlock parameters
       if (internalMaven) {
@@ -1607,6 +1630,23 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     Collection<File> getCommandSpecFile(String containerName) {
       return containers.get(containerName).commandSpecFiles.values();
+    }
+
+    /** Get command spec file common folder. */
+    File getCommandSpecFolder(String containerName) {
+      Collection<File> files = containers.get(containerName).commandSpecFiles.values();
+      File commonFolder = null;
+      for (File file : files) {
+        if (commonFolder == null) {
+          commonFolder = file.getParentFile();
+        } else {
+          if (!commonFolder.equals(file.getParentFile())) {
+            throw new IllegalArgumentException(
+                "Command spec needs to be in same folder to be staged within single container layer");
+          }
+        }
+      }
+      return commonFolder;
     }
 
     String getMappingJson(String containerName) {

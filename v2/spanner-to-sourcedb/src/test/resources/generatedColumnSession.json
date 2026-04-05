@@ -1,0 +1,89 @@
+{
+  "SessionName": "GeneratedColumnSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "test_db",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "Singers",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ColDefs": {
+        "c1": {
+          "Name": "SingerId",
+          "T": { "Name": "INT64", "IsArray": false },
+          "NotNull": true,
+          "Id": "c1"
+        },
+        "c2": {
+          "Name": "FirstName",
+          "T": { "Name": "STRING", "IsArray": false },
+          "NotNull": false,
+          "Id": "c2"
+        },
+        "c3": {
+          "Name": "LastName",
+          "T": { "Name": "STRING", "IsArray": false },
+          "NotNull": false,
+          "Id": "c3"
+        },
+        "c4": {
+          "Name": "FullName",
+          "T": { "Name": "STRING", "IsArray": false },
+          "NotNull": false,
+          "Id": "c4"
+        }
+      },
+      "PrimaryKeys": [
+        { "ColId": "c1", "Desc": false, "Order": 1 }
+      ],
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "Singers",
+      "Schema": "test_db",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ColDefs": {
+        "c1": {
+          "Name": "SingerId",
+          "Type": { "Name": "bigint" },
+          "NotNull": true,
+          "Id": "c1"
+        },
+        "c2": {
+          "Name": "FirstName",
+          "Type": { "Name": "varchar" },
+          "Mods": [1024],
+          "NotNull": false,
+          "Id": "c2"
+        },
+        "c3": {
+          "Name": "LastName",
+          "Type": { "Name": "varchar" },
+          "Mods": [1024],
+          "NotNull": false,
+          "Id": "c3"
+        },
+        "c4": {
+          "Name": "FullName",
+          "Type": { "Name": "varchar" },
+          "Mods": [2048],
+          "NotNull": false,
+          "GeneratedColumn": {
+            "IsPresent": true
+          },
+          "Id": "c4"
+        }
+      },
+      "PrimaryKeys": [
+        { "ColId": "c1", "Desc": false, "Order": 1 }
+      ],
+      "Id": "t1"
+    }
+  }
+}

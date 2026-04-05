@@ -47,11 +47,14 @@ public abstract class SourceColumn implements Serializable {
 
   public abstract SourceDatabaseType sourceType();
 
+  public abstract boolean isGenerated();
+
   public static Builder builder(SourceDatabaseType sourceType) {
     return new AutoValue_SourceColumn.Builder()
         .sourceType(sourceType)
         .isNullable(true)
         .isPrimaryKey(false)
+        .isGenerated(false)
         .columnOptions(ImmutableList.of());
   }
 
@@ -67,6 +70,8 @@ public abstract class SourceColumn implements Serializable {
     public abstract Builder isNullable(boolean isNullable);
 
     public abstract Builder isPrimaryKey(boolean isPrimaryKey);
+
+    public abstract Builder isGenerated(boolean isGenerated);
 
     public abstract Builder size(Long size);
 

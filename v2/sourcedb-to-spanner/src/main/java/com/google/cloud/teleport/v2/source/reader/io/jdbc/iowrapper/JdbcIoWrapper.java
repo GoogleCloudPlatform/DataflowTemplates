@@ -24,6 +24,9 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcI
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaDiscovery;
@@ -62,7 +65,8 @@ import org.slf4j.LoggerFactory;
 public final class JdbcIoWrapper implements IoWrapper {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcIoWrapper.class);
 
-  private final ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  private final ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
   private final SourceSchema sourceSchema;
 
@@ -90,8 +94,9 @@ public final class JdbcIoWrapper implements IoWrapper {
         autoInferTableConfigs(config, schemaDiscovery, DataSource.ofJdbc(dataSource));
     SourceSchema sourceSchema =
         getSourceSchema(config, schemaDiscovery, DataSource.ofJdbc(dataSource), tableConfigs);
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
-        buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders =
+            buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
     return new JdbcIoWrapper(tableReaders, sourceSchema);
   }
 
@@ -155,7 +160,8 @@ public final class JdbcIoWrapper implements IoWrapper {
    * @return Read transforms.
    */
   @Override
-  public ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  public ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       getTableReaders() {
     return this.tableReaders;
   }
@@ -170,38 +176,53 @@ public final class JdbcIoWrapper implements IoWrapper {
     return this.sourceSchema;
   }
 
-  static ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       buildTableReaders(
           JdbcIOWrapperConfig config,
           ImmutableList<TableConfig> tableConfigs,
           DataSourceConfiguration dataSourceConfiguration,
           SourceSchema sourceSchema) {
+    if (config.readWithUniformPartitionsFeatureEnabled() && !tableConfigs.isEmpty()) {
+      return getMultiTableReadWithUniformPartitionIO(
+          config,
+          dataSourceConfiguration,
+          sourceSchema.schemaReference(),
+          tableConfigs,
+          sourceSchema);
+    }
     return tableConfigs.stream()
         .map(
             tableConfig -> {
               SourceTableSchema sourceTableSchema =
                   findSourceTableSchema(sourceSchema, tableConfig);
-              return Map.entry(
+              int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
+              SourceTableReference sourceTableReference =
                   SourceTableReference.builder()
                       .setSourceSchemaReference(sourceSchema.schemaReference())
                       .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
                       .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
-                      .build(),
-                  (config.readWithUniformPartitionsFeatureEnabled())
-                      ? getReadWithUniformPartitionIO(
-                          config,
-                          dataSourceConfiguration,
-                          sourceSchema.schemaReference(),
-                          tableConfig,
-                          sourceTableSchema)
-                      : getJdbcIO(
-                          config,
-                          dataSourceConfiguration,
-                          sourceSchema.schemaReference(),
-                          tableConfig,
-                          sourceTableSchema));
+                      .build();
+              return Map.entry(
+                  ImmutableList.of(sourceTableReference),
+                  getJdbcIO(
+                      config,
+                      dataSourceConfiguration,
+                      sourceSchema.schemaReference(),
+                      tableConfig,
+                      sourceTableSchema,
+                      fetchSize));
             })
         .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private static int getFetchSize(
+      JdbcIOWrapperConfig config, TableConfig tableConfig, SourceTableSchema sourceTableSchema) {
+    return FetchSizeCalculator.getFetchSize(
+        tableConfig,
+        sourceTableSchema.estimatedRowSize(),
+        config.workerMemoryBytes(),
+        config.workerCores());
   }
 
   static SourceTableSchema findSourceTableSchema(
@@ -241,6 +262,11 @@ public final class JdbcIoWrapper implements IoWrapper {
                       colEntry ->
                           sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(
                               colEntry.getKey(), colEntry.getValue()));
+              long estimatedRowSize =
+                  config
+                      .dialectAdapter()
+                      .estimateRowSize(tableEntry.getValue(), config.valueMappingsProvider());
+              sourceTableSchemaBuilder.setEstimatedRowSize(estimatedRowSize);
 
               if (tableIndexes.containsKey(tableEntry.getKey())) {
                 sourceTableSchemaBuilder.setPrimaryKeyColumns(
@@ -250,7 +276,6 @@ public final class JdbcIoWrapper implements IoWrapper {
                         .map(SourceColumnIndexInfo::columnName)
                         .collect(ImmutableList.toImmutableList()));
               }
-
               return sourceTableSchemaBuilder.build();
             })
         .forEach(sourceSchemaBuilder::addTableSchema);
@@ -293,6 +318,10 @@ public final class JdbcIoWrapper implements IoWrapper {
     TableConfig.Builder tableConfigBuilder = TableConfig.builder(tableName);
     if (config.maxPartitions() != null && config.maxPartitions() != 0) {
       tableConfigBuilder.setMaxPartitions(config.maxPartitions());
+    }
+    // Set fetch size for the table from global fetch size if configured
+    if (config.maxFetchSize() != null) {
+      tableConfigBuilder.setFetchSize(config.maxFetchSize());
     }
     /*
      * TODO(vardhanvthigle): Add optional support for non-primary indexes.
@@ -427,7 +456,8 @@ public final class JdbcIoWrapper implements IoWrapper {
       DataSourceConfiguration dataSourceConfiguration,
       SourceSchemaReference sourceSchemaReference,
       TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+      SourceTableSchema sourceTableSchema,
+      int fetchSize) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
             .withTable(delimitIdentifier(tableConfig.tableName()))
@@ -442,60 +472,105 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
-    if (config.maxFetchSize() != null) {
-      jdbcIO = jdbcIO.withFetchSize(config.maxFetchSize());
+    if (fetchSize != 0) {
+      jdbcIO = jdbcIO.withFetchSize(fetchSize);
     }
     return jdbcIO;
   }
 
   /**
-   * Private helper to construct {@link ReadWithUniformPartitions} as per the reader configuration.
+   * Private helper to construct {@link ReadWithUniformPartitions} for multiple tables as per the
+   * reader configuration.
    *
    * @param config Configuration.
    * @param dataSourceConfiguration dataSourceConfiguration (which is derived earlier from the
    *     reader configuration)
-   * @param tableConfig discovered table configurations.
-   * @param sourceTableSchema schema of the source table.
-   * @return
+   * @param sourceSchemaReference reference for the source schema.
+   * @param tableConfigs list of discovered table configurations.
+   * @param sourceSchema schema of the source.
+   * @return a map with a single entry where the key is a list of all table references and the value
+   *     is the multi-table reader transform.
    */
-  private static PTransform<PBegin, PCollection<SourceRow>> getReadWithUniformPartitionIO(
-      JdbcIOWrapperConfig config,
-      DataSourceConfiguration dataSourceConfiguration,
-      SourceSchemaReference sourceSchemaReference,
-      TableConfig tableConfig,
-      SourceTableSchema sourceTableSchema) {
+  private static ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      getMultiTableReadWithUniformPartitionIO(
+          JdbcIOWrapperConfig config,
+          DataSourceConfiguration dataSourceConfiguration,
+          SourceSchemaReference sourceSchemaReference,
+          ImmutableList<TableConfig> tableConfigs,
+          SourceSchema sourceSchema) {
 
-    ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+
+    for (TableConfig tableConfig : tableConfigs) {
+      SourceTableSchema sourceTableSchema = findSourceTableSchema(sourceSchema, tableConfig);
+      int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
+      TableIdentifier tableIdentifier =
+          TableIdentifier.builder()
+              .setTableName(delimitIdentifier(tableConfig.tableName()))
+              .build();
+
+      TableSplitSpecification.Builder tableSplitSpecificationBuilder =
+          TableSplitSpecification.builder()
+              .setTableIdentifier(tableIdentifier)
+              .setPartitionColumns(tableConfig.partitionColumns())
+              .setApproxRowCount(tableConfig.approxRowCount());
+      if (tableConfig.maxPartitions() != null) {
+        tableSplitSpecificationBuilder =
+            tableSplitSpecificationBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
+      }
+      if (config.splitStageCountHint() >= 0) {
+        tableSplitSpecificationBuilder =
+            tableSplitSpecificationBuilder.setSplitStagesCount((long) config.splitStageCountHint());
+      }
+      splitSpecsBuilder.add(tableSplitSpecificationBuilder.build());
+
+      TableReadSpecification.Builder<SourceRow> tableReadSpecificationBuilder =
+          TableReadSpecification.<SourceRow>builder()
+              .setFetchSize(fetchSize)
+              .setTableIdentifier(tableIdentifier)
+              .setRowMapper(
+                  new JdbcSourceRowMapper(
+                      config.valueMappingsProvider(),
+                      sourceSchemaReference,
+                      sourceTableSchema,
+                      config.shardID()));
+      if (config.maxFetchSize() != null) {
+        tableReadSpecificationBuilder =
+            tableReadSpecificationBuilder.setFetchSize(config.maxFetchSize());
+      }
+      readSpecsBuilder.put(tableIdentifier, tableReadSpecificationBuilder.build());
+
+      tableReferencesBuilder.add(
+          SourceTableReference.builder()
+              .setSourceSchemaReference(sourceSchemaReference)
+              .setSourceTableName(delimitIdentifier(sourceTableSchema.tableName()))
+              .setSourceTableSchemaUUID(sourceTableSchema.tableSchemaUUID())
+              .build());
+    }
+
+    ReadWithUniformPartitions<SourceRow> readWithUniformPartitions =
         ReadWithUniformPartitions.<SourceRow>builder()
-            .setTableName(delimitIdentifier(tableConfig.tableName()))
-            .setPartitionColumns(tableConfig.partitionColumns())
+            .setTableSplitSpecifications(splitSpecsBuilder.build())
+            .setTableReadSpecifications(readSpecsBuilder.build())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
-            .setApproxTotalRowCount(tableConfig.approxRowCount())
-            .setFetchSize(config.maxFetchSize())
-            .setRowMapper(
-                new JdbcSourceRowMapper(
-                    config.valueMappingsProvider(),
-                    sourceSchemaReference,
-                    sourceTableSchema,
-                    config.shardID()))
             .setWaitOn(config.waitOn())
             .setDbParallelizationForSplitProcess(config.dbParallelizationForSplitProcess())
             .setDbParallelizationForReads(config.dbParallelizationForReads())
-            .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges());
+            .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges())
+            .build();
 
-    if (config.splitStageCountHint() >= 0) {
-      readWithUniformPartitionsBuilder =
-          readWithUniformPartitionsBuilder.setSplitStageCountHint(config.splitStageCountHint());
-    }
+    LOG.info(
+        "Configured Multi-Table ReadWithUniformPartitions {} for tables {} with config {}",
+        readWithUniformPartitions,
+        tableConfigs.stream().map(TableConfig::tableName).collect(Collectors.toList()),
+        config);
 
-    if (tableConfig.maxPartitions() != null) {
-      readWithUniformPartitionsBuilder =
-          readWithUniformPartitionsBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
-    }
-    ReadWithUniformPartitions readWithUniformPartitions = readWithUniformPartitionsBuilder.build();
-    LOG.info("Configured ReadWithUniformPartitions {} for {}", readWithUniformPartitions, config);
-    return readWithUniformPartitions;
+    return ImmutableMap.of(tableReferencesBuilder.build(), readWithUniformPartitions);
   }
 
   /**
@@ -522,7 +597,8 @@ public final class JdbcIoWrapper implements IoWrapper {
    *     Beam classes like {@link JdbcIO}
    */
   private JdbcIoWrapper(
-      ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders,
+      ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+          tableReaders,
       SourceSchema sourceSchema) {
     this.tableReaders = tableReaders;
     this.sourceSchema = sourceSchema;

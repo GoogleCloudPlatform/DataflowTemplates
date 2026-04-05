@@ -26,8 +26,13 @@ events that had encountered errors along with the error reason in text format.
 The errors can be transient or permanent and are stored in appropriate Cloud
 Storage folders in the error queue. The transient errors are retried
 automatically while the permanent errors are not. In case of permanent errors,
-you have the option of making corrections to the change events and moving them to
-the retriable bucket while the template is running.
+you can run the pipeline in one of two retry modes depending on your pipeline
+state. Use `retryDLQ` mode when the regular pipeline is concurrently running and
+pointing to the same DLQ directory. This mode consumes only severe errors while
+the regular mode will consume the retriable errors. Use `retryAllDLQ` mode when
+the regular pipeline is not running or is stopped. The `retryAllDLQ` mode
+consumes errors from both the retry and severe buckets. Do NOT run `retryAllDLQ`
+concurrently with the regular pipeline as they will conflict.
 
 
 :memo: This is a Google-provided template! Please
@@ -64,7 +69,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dataStreamRootUrl**: Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
 * **datastreamSourceType**: This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
 * **roundJsonDecimals**: This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
-* **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
+* **runMode**: This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your live migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.
 * **transformationContextFilePath**: Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
 * **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.

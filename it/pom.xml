@@ -30,7 +30,8 @@
   <properties>
     <awaitility.version>4.3.0</awaitility.version>
     <commons-math3.version>3.6.1</commons-math3.version>
-    <dataflow-api.version>v1b3-rev20250519-2.0.0</dataflow-api.version>
+    <parquet-avro.version>1.15.2</parquet-avro.version>
+    <dataflow-api.version>v1b3-rev20260118-2.0.0</dataflow-api.version>
   </properties>
 
   <dependencies>

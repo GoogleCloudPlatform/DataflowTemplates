@@ -29,7 +29,7 @@ import org.apache.beam.sdk.options.Validation;
         "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubToBigTable.yaml",
-    filesToCopy = {"PubSubToBigTable.yaml", "main.py", "requirements.txt"},
+    filesToCopy = {"main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
     contactInformation = "https://cloud.google.com/support",

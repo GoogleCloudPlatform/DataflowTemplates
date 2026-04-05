@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -187,7 +188,11 @@ public final class StreamingDataGeneratorWriteToKafka {
           KafkaIO.<Void, String>write()
               .withBootstrapServers(getPipelineOptions().getBootstrapServer())
               .withTopic(getPipelineOptions().getKafkaTopic())
-              .withValueSerializer(StringSerializer.class);
+              .withValueSerializer(StringSerializer.class)
+              .withProducerConfigUpdates(
+                  Map.of(
+                      "linger.ms", 100,
+                      "batch.size", 64000));
       if (ManagedKafkaRegex.matcher(getPipelineOptions().getBootstrapServer()).matches()) {
         writeTransform = writeTransform.withGCPApplicationDefaultCredentials();
       }

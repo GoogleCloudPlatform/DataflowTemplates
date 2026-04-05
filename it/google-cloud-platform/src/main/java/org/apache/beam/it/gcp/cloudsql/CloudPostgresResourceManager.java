@@ -17,8 +17,16 @@
  */
 package org.apache.beam.it.gcp.cloudsql;
 
+import com.google.common.annotations.VisibleForTesting;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,19 +47,24 @@ public class CloudPostgresResourceManager extends CloudSqlResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(CloudPostgresResourceManager.class);
 
   private static final String DEFAULT_POSTGRES_USERNAME = "postgres";
+  private static final int REPLICATION_SETUP_LOCK_ID = 12345;
 
   private String pgSchema;
   private boolean createdSchema;
+  private final Set<String> createdReplicationSlots;
+  private final Set<String> createdPublications;
 
-  private CloudPostgresResourceManager(Builder builder) {
+  CloudPostgresResourceManager(Builder builder) {
     super(builder);
     this.pgSchema = builder.schema;
     this.createdSchema = false;
+    this.createdReplicationSlots = Collections.synchronizedSet(new HashSet<>());
+    this.createdPublications = Collections.synchronizedSet(new HashSet<>());
 
     // Set schema set by builder or default to use same name as database
     if (this.pgSchema == null) {
       this.pgSchema = databaseName;
-      LOG.info("Creating Postgres schema {}.", this.pgSchema);
+      LOG.debug("Creating Postgres schema {}.", this.pgSchema);
       runSQLUpdate(String.format("CREATE SCHEMA IF NOT EXISTS %s", this.pgSchema));
       this.createdSchema = true;
     }
@@ -113,27 +126,205 @@ public class CloudPostgresResourceManager extends CloudSqlResourceManager {
 
   @Override
   public void dropDatabase(@NonNull String databaseName) {
-    LOG.info("Dropping database using databaseName '{}'.", databaseName);
+    LOG.debug("Dropping database using databaseName '{}'.", databaseName);
 
     this.createdDatabase = false;
     runSQLUpdate(String.format("DROP DATABASE %s WITH (force)", databaseName));
 
-    LOG.info("Successfully dropped database {}", databaseName);
+    LOG.debug("Successfully dropped database {}", databaseName);
+  }
+
+  /**
+   * Creates a logical replication slot and publication for the given tables.
+   *
+   * @param tableNames List of table names to include in the publication. If empty or null,
+   *     publication is created for all tables.
+   * @return ReplicationInfo containing the names of the created slot and publication.
+   */
+  public ReplicationInfo createLogicalReplication(List<String> tableNames) {
+    synchronized (CloudPostgresResourceManager.class) {
+      // Generate unique names
+      // Postgres max identifier length is 63
+      // Pattern: prefix + "_" + date + "_" + randomUUID (no hyphens)
+      String dateId =
+          DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(java.time.LocalDateTime.now());
+      String uuid = java.util.UUID.randomUUID().toString().replace("-", "");
+
+      String pubPrefix = "pub";
+      String slotPrefix = "slot";
+
+      String publicationName = String.format("%s_%s_%s", pubPrefix, dateId, uuid);
+      String replicationSlotName = String.format("%s_%s_%s", slotPrefix, dateId, uuid);
+
+      // Ensure they are lowercase
+      publicationName = publicationName.toLowerCase();
+      replicationSlotName = replicationSlotName.toLowerCase();
+
+      try (Connection connection = getConnection()) {
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+          statement.execute("SET statement_timeout = '60s'");
+          statement.execute("SET idle_in_transaction_session_timeout = '60s'");
+
+          // Acquire a transaction-level advisory lock to ensure that only one thread/process
+          // can perform replication setup at a time. This is necessary to prevent
+          // "tuple concurrently updated" errors that can occur when multiple concurrent
+          // sessions try to ALTER the same user or create/drop replication slots/publications.
+          // The lock is automatically released when the transaction commits or rolls back.
+          // The statement and idle_in_transaction timeouts ensure that if the JVM running the test
+          // is killed abruptly, the session will be terminated and the lock released eventually.
+          //
+          // We split the setup into 3 separate transactions to avoid the "cannot create logical
+          // replication slot
+          // in transaction that has performed writes" error. Postgres does not allow creating a
+          // replication slot
+          // in a transaction that has already modified the database (e.g., ALTER USER or CREATE
+          // PUBLICATION).
+          LOG.debug(
+              "Acquiring lock {} for replication setup (Alter User)...", REPLICATION_SETUP_LOCK_ID);
+          statement.execute("SELECT pg_advisory_xact_lock(" + REPLICATION_SETUP_LOCK_ID + ")");
+
+          LOG.debug("Granting replication privilege to current user...");
+          statement.execute("ALTER USER CURRENT_USER WITH REPLICATION");
+          connection.commit();
+
+          LOG.debug(
+              "Acquiring lock {} for replication setup (Create Publication)...",
+              REPLICATION_SETUP_LOCK_ID);
+          statement.execute("SELECT pg_advisory_xact_lock(" + REPLICATION_SETUP_LOCK_ID + ")");
+
+          if (tableNames == null || tableNames.isEmpty()) {
+            LOG.debug("Creating publication {} for all tables.", publicationName);
+            statement.execute(
+                String.format("CREATE PUBLICATION %s FOR ALL TABLES", publicationName));
+          } else {
+            LOG.debug("Creating publication {} for tables {}.", publicationName, tableNames);
+            String tables = String.join(", ", tableNames);
+            statement.execute(
+                String.format("CREATE PUBLICATION %s FOR TABLE %s", publicationName, tables));
+          }
+          createdPublications.add(publicationName);
+          connection.commit();
+
+          LOG.debug(
+              "Acquiring lock {} for replication setup (Create Slot)...",
+              REPLICATION_SETUP_LOCK_ID);
+          statement.execute("SELECT pg_advisory_xact_lock(" + REPLICATION_SETUP_LOCK_ID + ")");
+
+          LOG.debug("Creating replication slot {}.", replicationSlotName);
+          statement.execute(
+              String.format(
+                  "SELECT pg_create_logical_replication_slot('%s', 'pgoutput')",
+                  replicationSlotName));
+          createdReplicationSlots.add(replicationSlotName);
+          connection.commit();
+
+          LOG.debug("Successfully created replication resources.");
+        } catch (Exception e) {
+          connection.rollback();
+          throw e;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to create logical replication resources.", e);
+      }
+
+      return new ReplicationInfo(replicationSlotName, publicationName);
+    }
+  }
+
+  /**
+   * Creates a logical replication slot and publication for all tables.
+   *
+   * @return ReplicationInfo containing the names of the created slot and publication.
+   */
+  public ReplicationInfo createLogicalReplication() {
+    return createLogicalReplication(Collections.emptyList());
+  }
+
+  private void dropReplicationSlot(String slotName) {
+    synchronized (CloudPostgresResourceManager.class) {
+      LOG.debug("Dropping replication slot {}.", slotName);
+      try (Connection connection = getConnection()) {
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+          statement.execute("SET statement_timeout = '60s'");
+          statement.execute("SET idle_in_transaction_session_timeout = '60s'");
+
+          // Acquire a transaction-level advisory lock to serialize the dropping of replication
+          // slots.
+          // This prevents concurrency issues when multiple tests or processes attempt to clean up
+          // replication resources simultaneously.
+          // The statement and idle_in_transaction timeouts ensure that if the JVM running the test
+          // is killed abruptly, the session will be terminated and the lock released eventually.
+          LOG.debug(
+              "Acquiring lock {} for dropping replication slot...", REPLICATION_SETUP_LOCK_ID);
+          statement.execute("SELECT pg_advisory_xact_lock(" + REPLICATION_SETUP_LOCK_ID + ")");
+
+          statement.execute(String.format("SELECT pg_drop_replication_slot('%s')", slotName));
+          connection.commit();
+          LOG.debug("Successfully dropped replication slot {}.", slotName);
+        } catch (Exception e) {
+          connection.rollback();
+          throw e;
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to drop replication slot {}.", slotName, e);
+      }
+    }
+  }
+
+  private void dropPublication(String publicationName) {
+    synchronized (CloudPostgresResourceManager.class) {
+      LOG.debug("Dropping publication {}.", publicationName);
+      try (Connection connection = getConnection()) {
+        connection.setAutoCommit(false);
+        try (Statement statement = connection.createStatement()) {
+          statement.execute("SET statement_timeout = '60s'");
+          statement.execute("SET idle_in_transaction_session_timeout = '60s'");
+
+          // Acquire a transaction-level advisory lock to serialize the dropping of publications.
+          // This prevents concurrency issues when multiple tests or processes attempt to clean up
+          // replication resources simultaneously.
+          // The statement and idle_in_transaction timeouts ensure that if the JVM running the test
+          // is killed abruptly, the session will be terminated and the lock released eventually.
+          LOG.debug("Acquiring lock {} for dropping publication...", REPLICATION_SETUP_LOCK_ID);
+          statement.execute("SELECT pg_advisory_xact_lock(" + REPLICATION_SETUP_LOCK_ID + ")");
+
+          statement.execute(String.format("DROP PUBLICATION IF EXISTS %s", publicationName));
+          connection.commit();
+          LOG.debug("Successfully dropped publication {}.", publicationName);
+        } catch (Exception e) {
+          connection.rollback();
+          throw e;
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to drop publication {}.", publicationName, e);
+      }
+    }
   }
 
   @Override
   public void cleanupAll() {
+    for (String publication : createdPublications) {
+      dropPublication(publication);
+    }
+    createdPublications.clear();
+
+    for (String slot : createdReplicationSlots) {
+      dropReplicationSlot(slot);
+    }
+    createdReplicationSlots.clear();
     // Cleanup table schema if using a static DB with non-static tables
     if (this.usingCustomDb && this.createdSchema) {
-      LOG.info("Attempting to drop Postgres schema {}.", this.pgSchema);
+      LOG.debug("Attempting to drop Postgres schema {}.", this.pgSchema);
       try {
         runSQLUpdate(String.format("DROP SCHEMA %s CASCADE", this.pgSchema));
-        LOG.info("Postgres schema successfully cleaned up.");
+        LOG.debug("Postgres schema successfully cleaned up.");
       } catch (Exception e) {
         throw new CloudSqlResourceManagerException("Failed to drop Postgres schema.", e);
       }
     } else {
-      LOG.info("Not dropping pre-configured Postgres schema {}.", this.pgSchema);
+      LOG.debug("Not dropping pre-configured Postgres schema {}.", this.pgSchema);
     }
     super.cleanupAll();
   }
@@ -177,5 +368,29 @@ public class CloudPostgresResourceManager extends CloudSqlResourceManager {
     public @NonNull CloudPostgresResourceManager build() {
       return new CloudPostgresResourceManager(this);
     }
+  }
+
+  /** Record to hold replication slot and publication names. */
+  public static class ReplicationInfo {
+    private final String replicationSlotName;
+    private final String publicationName;
+
+    public ReplicationInfo(String replicationSlotName, String publicationName) {
+      this.replicationSlotName = replicationSlotName;
+      this.publicationName = publicationName;
+    }
+
+    public String getReplicationSlotName() {
+      return replicationSlotName;
+    }
+
+    public String getPublicationName() {
+      return publicationName;
+    }
+  }
+
+  @VisibleForTesting
+  Connection getConnection() throws java.sql.SQLException {
+    return DriverManager.getConnection(getUri(), getUsername(), getPassword());
   }
 }

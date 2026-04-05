@@ -375,6 +375,7 @@ public class InformationSchemaScannerTest {
             + "CREATE INDEX `PRIMARY_KEY` ON `singer`()\n"
             + "CREATE INDEX `index1` ON `singer`() STORING (`singerName`)\n"
             + "\n"
+            + "\n"
             + "CREATE TABLE `album` (\n"
             + "\t`singerId`                              INT64 NOT NULL,\n"
             + "\t`albumId`                               INT64 NOT NULL,\n"
@@ -385,8 +386,13 @@ public class InformationSchemaScannerTest {
             + ") PRIMARY KEY (`albumId` DESC),\n"
             + "INTERLEAVE IN PARENT `singer` ON DELETE CASCADE\n"
             + "CREATE INDEX `PRIMARY_KEY` ON `album`()\n"
+            + "\n"
             + "ALTER TABLE `album` ADD CONSTRAINT `fk1` FOREIGN KEY (`singerId`) REFERENCES `singer` (`singerId`)";
     assertEquals(expectedDdl, ddl.prettyPrint());
+    assertEquals(2, ddl.table("singer").indexes().size());
+    assertEquals("PRIMARY_KEY", ddl.table("singer").indexes().get(0).name());
+    assertEquals("index1", ddl.table("singer").indexes().get(1).name());
+    assertEquals(1, ddl.table("album").indexes().size());
   }
 
   @Test
@@ -411,6 +417,7 @@ public class InformationSchemaScannerTest {
             + ")\n"
             + "CREATE UNIQUE INDEX \"index1\" ON \"singer\"() INCLUDE (\"singerName\")\n"
             + "\n"
+            + "\n"
             + "CREATE TABLE \"album\" (\n"
             + "\t\"singerId\"                              bigint NOT NULL,\n"
             + "\t\"albumId\"                               bigint NOT NULL,\n"
@@ -424,6 +431,8 @@ public class InformationSchemaScannerTest {
             + "\n"
             + "ALTER TABLE \"album\" ADD CONSTRAINT \"fk1\" FOREIGN KEY (\"singerId\") REFERENCES \"singer\" (\"singerId\")";
     assertEquals(expectedDdl, ddl.prettyPrint());
+    assertEquals(1, ddl.table("singer").indexes().size());
+    assertEquals("index1", ddl.table("singer").indexes().get(0).name());
   }
 
   @Test(expected = IllegalArgumentException.class)

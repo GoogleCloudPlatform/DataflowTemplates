@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -27,7 +28,8 @@ import org.apache.beam.sdk.values.PCollection;
 public interface IoWrapper {
 
   /** Get a list of reader transforms. */
-  ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> getTableReaders();
+  ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+      getTableReaders();
 
   /** Discover source schema. */
   SourceSchema discoverTableSchema();

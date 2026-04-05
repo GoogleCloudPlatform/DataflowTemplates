@@ -38,6 +38,10 @@ public class TemplateSpecsGenerator {
   /** Gson helper to pretty-print metadata/specs. */
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
+  public static final String IMAGE_SPEC_SUFFIX = "-spec-generated-metadata.json";
+  public static final String METADATA_SUFFIX = "-generated-metadata.json";
+  public static final String COMMAND_SPEC_SUFFIX = "-generated-command-spec.json";
+
   /**
    * Scan the classloader for all Template classes, and then builds spec + saves the metadata for
    * every Template.
@@ -77,8 +81,7 @@ public class TemplateSpecsGenerator {
       targetDirectory.mkdirs();
     }
 
-    File file =
-        new File(targetDirectory, templateDash.toLowerCase() + "-spec-generated-metadata.json");
+    File file = new File(targetDirectory, templateDash.toLowerCase() + IMAGE_SPEC_SUFFIX);
     LOG.info("Saving image spec " + file.getAbsolutePath());
 
     // The serialized image spec should match com.google.api.services.dataflow.model.ContainerSpec
@@ -120,7 +123,7 @@ public class TemplateSpecsGenerator {
     }
 
     String imageName = templateDash.toLowerCase();
-    File file = new File(targetDirectory, imageName + "-generated-metadata.json");
+    File file = new File(targetDirectory, imageName + METADATA_SUFFIX);
     LOG.info("Saving image spec metadata " + file.getAbsolutePath());
 
     try (FileWriter writer = new FileWriter(file)) {
@@ -142,8 +145,7 @@ public class TemplateSpecsGenerator {
       targetDirectory.mkdirs();
     }
 
-    File file =
-        new File(targetDirectory, templateDash.toLowerCase() + "-generated-command-spec.json");
+    File file = new File(targetDirectory, templateDash.toLowerCase() + COMMAND_SPEC_SUFFIX);
     LOG.info("Saving command spec " + file.getAbsolutePath());
 
     try (FileWriter writer = new FileWriter(file)) {

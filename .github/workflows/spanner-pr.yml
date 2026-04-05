@@ -35,6 +35,7 @@ on:
       - '.github/workflows/spanner-pr.yml'
       - 'v2/datastream-to-spanner/**'
       - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+      - 'v2/gcs-spanner-dv/**'
       - 'v2/gcs-to-sourcedb/**'
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
@@ -122,7 +123,7 @@ jobs:
         ./cicd/run-unit-tests \
         --modules-to-build="SPANNER"
     - name: Upload Unit Tests Report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
       with:
         name: surefire-unit-test-results
@@ -132,7 +133,7 @@ jobs:
             **/surefire-reports/html/**
         retention-days: 1
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5.5.2
+      uses: codecov/codecov-action@v6.0.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
@@ -163,7 +164,7 @@ jobs:
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16"
     - name: Upload Smoke Tests Report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
       with:
         name: surefire-smoke-test-results
@@ -203,7 +204,7 @@ jobs:
         --it-cloud-proxy-host="10.128.0.16" \
         --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Integration Tests Report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
       with:
         name: surefire-integration-test-results
@@ -213,7 +214,7 @@ jobs:
           **/surefire-reports/html/**
         retention-days: 10
     - name: Integration Test report on GitHub
-      uses: dorny/test-reporter@v2
+      uses: dorny/test-reporter@v3
       if: always()
       with:
         name: Integration Test report on GitHub

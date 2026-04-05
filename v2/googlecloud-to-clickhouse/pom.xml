@@ -50,8 +50,8 @@
             <groupId>com.clickhouse</groupId>
             <artifactId>clickhouse-jdbc</artifactId>
             <version>0.9.6</version>
-            <classifier>all</classifier>
             <scope>test</scope>
+            <classifier>all</classifier>
         </dependency>
     </dependencies>
 

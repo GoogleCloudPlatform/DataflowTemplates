@@ -26,6 +26,7 @@
                   "NUMERIC", "JSON"]
               }
             },
+            { "name" : "arrayElementType", "type" : ["null", "com.google.cloud.teleport.v2.TypeCode"], "default" : null },
             { "name" : "isPrimaryKey", "type" : "boolean"},
             { "name" : "ordinalPosition", "type" : "long"}
           ]
