@@ -34,6 +34,15 @@ public class UdfParameterTest {
   }
 
   @Test
+  public void testBasicPgUdfParameter() {
+    UdfParameter udfParameter =
+        UdfParameter.builder().functionSpecificName("s1.foo").name("p1").type("TEXT")
+            .dialect(Dialect.POSTGRESQL).autoBuild();
+
+    assertThat(udfParameter.toString(), equalToCompressingWhiteSpace("\"p1\" TEXT"));
+  }
+
+  @Test
   public void testUdfParameterWithAllOptions() {
     UdfParameter udfParameter =
         UdfParameter.builder()
