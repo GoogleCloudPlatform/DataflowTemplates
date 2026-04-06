@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
       "pythonExternalTextTransformGcsPath",
       "pythonExternalTextTransformFunctionName"
     },
-    flexContainerName = "bigquery-to-clickhouse",
+    flexContainerName = "googlecloud-to-clickhouse",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-clickhouse",
     contactInformation = "https://cloud.google.com/support",
