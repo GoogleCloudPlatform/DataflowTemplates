@@ -42,11 +42,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
                 Campaign.newBuilder()
                     .setId(1234567890L)
                     .setName("foo")
-<<<<<<< HEAD
                     .setStartDateTime("1970-01-01 12:00:00")
-=======
-                    .setStartDateTime("1970-01-01")
->>>>>>> 31c927cc8 (update googleads template to v23)
                     .setStatus(CampaignStatus.ENABLED))
             .build();
 
@@ -56,11 +52,7 @@ public class GoogleAdsRowToReportRowJsonFnTest {
             .apply(ParDo.of(new GoogleAdsRowToReportRowJsonFn(query)));
 
     String expected =
-<<<<<<< HEAD
         "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date_time\":\"1970-01-01 12:00:00\",\"campaign_status\":\"ENABLED\"}";
-=======
-        "{\"campaign_id\":1234567890,\"campaign_name\":\"foo\",\"campaign_start_date_time\":\"1970-01-01\",\"campaign_status\":\"ENABLED\"}";
->>>>>>> 31c927cc8 (update googleads template to v23)
     PAssert.that(actual).containsInAnyOrder(expected);
     pipeline.run();
   }

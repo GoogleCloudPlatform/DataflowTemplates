@@ -29,11 +29,7 @@
     <artifactId>google-ads-to-googlecloud</artifactId>
 
     <properties>
-<<<<<<< HEAD
         <google-ads.version>42.1.0</google-ads.version>
-=======
-        <google-ads.version>42.0.0</google-ads.version>
->>>>>>> 31c927cc8 (update googleads template to v23)
     </properties>
 
     <dependencies>
