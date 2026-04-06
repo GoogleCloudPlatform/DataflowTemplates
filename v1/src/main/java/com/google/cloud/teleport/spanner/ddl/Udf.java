@@ -79,6 +79,21 @@ public abstract class Udf implements Serializable {
 
   public abstract ImmutableList<String> options();
 
+  /**
+   * Generates the CREATE FUNCTION SQL statement, adapting to Google Standard SQL (GSQL) and
+   * PostgreSQL (PG) dialects.
+   *
+   * Noteable dialect differences:
+   * - GSQL uses 'AS (definition)' for the body, PG uses 'RETURN definition'.
+   * - GSQL adds 'SQL' before 'SECURITY <rights>'.
+   * - PG supports volatility keywords (IMMUTABLE, STABLE, VOLATILE) for determinism.
+   *
+   * E.g., GSQL: CREATE FUNCTION func(x INT64) RETURNS INT64 SQL SECURITY INVOKER AS (x * 2)
+   * E.g., PG:  CREATE FUNCTION func(x integer) RETURNS integer SECURITY INVOKER IMMUTABLE RETURN x * 2
+   *
+   * @param appendable The Appendable to write the SQL to.
+   * @throws IOException if an I/O error occurs.
+   */
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append("CREATE FUNCTION ").append(quoteIdentifier(name(), dialect()));
     appendable.append("(");
