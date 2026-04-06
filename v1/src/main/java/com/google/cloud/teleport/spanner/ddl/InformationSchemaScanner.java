@@ -1112,14 +1112,14 @@ public class InformationSchemaScanner {
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name ="
                 + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position");
       case POSTGRESQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name ="
                 + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position");
       default:
@@ -1130,6 +1130,13 @@ public class InformationSchemaScanner {
   private boolean isUdfSupported() {
     Statement preconditionStatement;
     switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        preconditionStatement =
+            Statement.of(
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c"
+                    + " WHERE c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'PARAMETERS'"
+                    + " AND c.COLUMN_NAME = 'PARAMETER_DEFAULT'");
+        break;
       case POSTGRESQL:
         preconditionStatement =
             Statement.of(
@@ -1138,7 +1145,7 @@ public class InformationSchemaScanner {
                     + " AND c.COLUMN_NAME = 'spanner_determinism'");
         break;
       default:
-        return true;
+        return false;
     }
     try (ResultSet resultSet = context.executeQuery(preconditionStatement)) {
       // Returns a single row with a 1 if the information schema can export all function properties
