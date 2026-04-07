@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
@@ -45,6 +46,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccess
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchemaScanner;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
@@ -397,7 +399,11 @@ public class SpannerToSourceDb {
         order = 25,
         optional = true,
         description = "Source database type, ex: mysql",
-        enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("cassandra")},
+        enumOptions = {
+          @TemplateEnumOption("mysql"),
+          @TemplateEnumOption("cassandra"),
+          @TemplateEnumOption("postgresql")
+        },
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
     String getSourceType();
@@ -639,7 +645,8 @@ public class SpannerToSourceDb {
 
     List<Shard> shards;
     String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
+        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
       shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
@@ -947,19 +954,27 @@ public class SpannerToSourceDb {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
-  private static Connection createJdbcConnection(Shard shard) {
+  private static Connection createJdbcConnection(
+      Shard shard, String driverClassName, String jdbcUrlPrefix) {
     try {
       String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+          new StringBuilder()
+              .append(jdbcUrlPrefix)
+              .append(shard.getHost())
+              .append(":")
+              .append(shard.getPort())
+              .append("/")
+              .append(shard.getDbName())
+              .toString();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());
       config.setPassword(shard.getPassword());
-      config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+      config.setDriverClassName(driverClassName);
       HikariDataSource ds = new HikariDataSource(config);
       return ds.getConnection();
     } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering mysql schema: {}", e);
+      LOG.error("Sql error while discovering jdbc schema: {}", e);
       throw new RuntimeException(e);
     }
   }
@@ -983,8 +998,17 @@ public class SpannerToSourceDb {
     SourceSchema sourceSchema = null;
     try {
       if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-        Connection connection = createJdbcConnection(shards.get(0));
+        Connection connection =
+            createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
         scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
+        sourceSchema = scanner.scan();
+        connection.close();
+      } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
+        Connection connection =
+            createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://");
+        scanner =
+            new PostgreSQLInformationSchemaScanner(
+                connection, shards.get(0).getDbName(), shards.get(0).getNamespace());
         sourceSchema = scanner.scan();
         connection.close();
       } else {
