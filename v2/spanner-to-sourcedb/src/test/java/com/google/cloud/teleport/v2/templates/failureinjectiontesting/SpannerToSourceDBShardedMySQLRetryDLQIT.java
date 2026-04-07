@@ -40,12 +40,12 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,22 +56,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for reverse replication from Spanner to MySQL using the retryDLQ mode in a
- * sharded schema setup.
+ * Integration test for reverse replication from Spanner to MySQL using the retryDLQ mode for
+ * sharded clusters.
  *
  * <p>Objective: Verify that the retryDLQ batch job correctly processes and retries severe Dead
  * Letter Queue (DLQ) events alongside an actively running streaming pipeline (that processes retry/
- * errors) in a sharded setup.
- *
- * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
- * and foreign key violations via the regular pipeline. - Processing severe errors introduced by
- * custom transformation failures via the retryDLQ pipeline. - Retrying fixed items successfully in
- * both retry/ and severe/ buckets logically distributed across multiple shards. - Ensuring
- * non-fixable items remain correctly logged under their respective error buckets. - Validating
- * schema complexities between Source and Spanner, including mismatched primary keys, added,
- * deleted, and renamed columns, as well as all datatypes. - Validating that row events are
- * correctly dynamically routed to the appropriate logical shards via the migration_shard_id
- * natively extracted from the Spanner DB and configured via the active session file.
+ * errors). Validates that rows dynamically route to the correct shards via migration_shard_id
+ * native extraction configured via the session file.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -146,9 +137,9 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
             new HashMap<>() {
               {
                 put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-                // keeping retryCount high and retryMinutes low so it retries continuously
-                put("dlqMaxRetryCount", "500");
-                put("dlqRetryMinutes", "1");
+                // keeping retryCount high so it retries continuously and stays in the retry/ bucket
+                // till end of this test
+                put("dlqMaxRetryCount", "1000");
               }
             };
         jobInfo =
@@ -190,6 +181,13 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
     jdbcResourceManagerShardB.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
+    // Insert test data into Spanner. This will generate:
+    // - 2 severe errors (for id=999 and id=888) due to the custom transformation throwing exception
+    // in "bad" mode.
+    // - 1 retryable error (for order101) due to missing parent customer (FK violation: Customer 3
+    // does not exist).
+    // - 1 retryable error (for customer1) due to check constraint violation (CreditLimit is 500,
+    // must be > 1000).
     insertDataInSpanner();
     LOG.info("Data inserted into Spanner successfully");
 
@@ -200,12 +198,24 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                ChainedConditionCheck.builder(
-                        List.of(
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                                .setMinEvents(2)
-                                .build()))
-                    .build());
+                DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                    .setMinEvents(2)
+                    .build()
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "Orders")
+                            .setMinRows(1) // id = 102
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "AllDataTypes")
+                            .setMinRows(1) // id = 1
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "Customers")
+                            .setMinRows(1) // id = 2
+                            .setMaxRows(1)
+                            .build()));
     assertThatResult(dlqWaitResult).meetsConditions();
 
     // Verify the MySQL database to ensure failing rows were NOT migrated, while success cases were.
@@ -264,28 +274,34 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    // Apply partial fixes in MySQL to simulate user intervention.
+    LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
     jdbcResourceManagerShardA.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
     // Wait for the retryDLQ batch job to complete automatically
+    LOG.info("Waiting for the retryDLQ job to complete automatically");
     PipelineOperator.Result retryJobResult =
         pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(15)));
     assertThatResult(retryJobResult).isLaunchFinished();
 
-    // Verify that severe bucket has exactly 1 entry after retryDLQ job completes.
-    PipelineOperator.Result dlqRetryWaitResult =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(retryJobInfo, Duration.ofMinutes(5)),
-                ChainedConditionCheck.builder(
-                        List.of(
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                                .setMinEvents(1)
-                                .setMaxEvents(1)
-                                .build()))
-                    .build());
-    assertThatResult(dlqRetryWaitResult).meetsConditions();
+    LOG.info("Verifying that severe bucket has exactly 1 entry after retryDLQ job completes");
+    // The severe bucket should now have exactly 1 entry (for id=888).
+    // The other entry (id=999) was fixed because the retry job was launched with
+    // custom transformation mode="semi-fixed", which allows id=999 to pass but still fails id=888.
+    // The retry bucket will also have 1 entry (Orders 101 FK violation was fixed by inserting
+    // parent row)
+    // But we don't assert that here, as DLQPubSubConsumer repeatedly deletes and rewrites the
+    // retry/ bucket which would result in flakiness
+    // Remaining rows:
+    // - Customers 1 remains in retry because the check constraint violation was not fixed.
+    // - AllDataTypes 888 remains in severe because mode='semi-fixed' only fixes row 999, not 888.
+
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
 
     // Verify target MySQL database for both the fixed rows and for the absence of non-fixed errors
     LOG.info("Verifying final target MySQL database contents across shards");
@@ -293,6 +309,8 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
     shardACustomersRows = jdbcResourceManagerShardA.runSQLQuery("SELECT CustomerId FROM Customers");
     shardACustomersIds =
         shardACustomersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
+    // id=1 should NOT exist on Shard A (check constraint violation wasn't fixed: CreditLimit was
+    // 500 but must be > 1000)
     assertTrue("id=1 should NOT exist on Shard A", !shardACustomersIds.contains(1));
     assertTrue("id=3 should exist on Shard A", shardACustomersIds.contains(3));
 
@@ -312,7 +330,8 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
         shardBOrdersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
     assertTrue("id=102 should exist on Shard B", shardBOrdersIds.contains(102));
 
-    shardAAllDataTypesRows = jdbcResourceManagerShardA.runSQLQuery("SELECT id FROM AllDataTypes");
+    shardAAllDataTypesRows =
+        jdbcResourceManagerShardA.runSQLQuery("SELECT id, varchar_col FROM AllDataTypes");
     shardAAllDataTypesIds =
         shardAAllDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
     assertTrue("id=1 should exist on Shard A", shardAAllDataTypesIds.contains(1));
@@ -325,21 +344,8 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
     assertTrue("id=888 should NOT exist on Shard B", !shardBAllDataTypesIds.contains(888));
 
     // Cancel the regular streaming job as the final step.
+    LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
     pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
-
-    // Wait for the regular pipeline to be cancelled (up to 5 minutes)
-    boolean cancelled = false;
-    for (int i = 0; i < 30; i++) {
-      PipelineLauncher.JobState status =
-          pipelineLauncher.getJobStatus(PROJECT, REGION, jobInfo.jobId());
-      if (status == PipelineLauncher.JobState.CANCELLED
-          || status == PipelineLauncher.JobState.DRAINED) {
-        cancelled = true;
-        break;
-      }
-      Thread.sleep(10000);
-    }
-    assertTrue("Job did not cancel in time", cancelled);
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {

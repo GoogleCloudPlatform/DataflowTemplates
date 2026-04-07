@@ -25,8 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Custom transformation class used for failure injection testing in Spanner to Source reverse
- * replication.
+ * Custom transformation class used for DLQ testing in Spanner to Source reverse replication.
  *
  * <p>Overview: This transformer injects severe transformation errors to test the pipeline's Dead
  * Letter Queue (DLQ) processing and error handling.

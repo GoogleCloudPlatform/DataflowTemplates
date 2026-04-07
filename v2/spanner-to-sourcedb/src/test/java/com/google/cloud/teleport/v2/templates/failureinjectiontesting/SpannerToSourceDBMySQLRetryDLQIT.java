@@ -36,12 +36,12 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,16 +58,22 @@ import org.slf4j.LoggerFactory;
  * Letter Queue (DLQ) events alongside an actively running streaming pipeline (that processes retry/
  * errors).
  *
- * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
- * and foreign key violations via the regular pipeline. - Processing severe errors introduced by
- * custom transformation failures via the retryDLQ pipeline. - Retrying fixed items successfully in
- * both retry/ and severe/ buckets: e.g. fixing a foreign key violation by inserting a missing
- * parent row, and using a corrected transformation file. - Ensuring non-fixable items remain
- * correctly logged under their respective error buckets. - Validating schema complexities between
- * Source and Spanner, including mismatched primary keys, added, deleted, and renamed columns, as
- * well as all datatypes. - Utilizing the schema overrides file to reconcile schema differences. -
- * Utilizing the active dlqPubSubConsumer flow to continuously receive and process streaming DLQ
- * retries.
+ * <p>Edge cases covered in this test include:
+ *
+ * <ul>
+ *   <li>Handling retriable errors such as check constraint and foreign key violations via the
+ *       regular pipeline.
+ *   <li>Processing severe errors introduced by custom transformation failures via the retryDLQ
+ *       pipeline.
+ *   <li>Retrying fixed items successfully in both retry/ and severe/ buckets: e.g. fixing a foreign
+ *       key violation by inserting a missing parent row, and using a corrected transformation file.
+ *   <li>Ensuring non-fixable items remain correctly logged under their respective error buckets.
+ *   <li>Validating schema complexities between Source and Spanner, including mismatched primary
+ *       keys, added, deleted, and renamed columns, as well as all datatypes.
+ *   <li>Utilizing the schema overrides file to reconcile schema differences.
+ *   <li>Utilizing the active dlqPubSubConsumer flow to continuously receive and process streaming
+ *       DLQ retries.
+ * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -136,9 +142,9 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
                 put(
                     "schemaOverridesFilePath",
                     getGcsPath("input/overrides.json", gcsResourceManager));
-                // keeping retryCount high and retryMinutes low so it retries continuously
-                put("dlqMaxRetryCount", "500");
-                put("dlqRetryMinutes", "1");
+                // keeping retryCount high so it retries continuously and stays in the retry/ bucket
+                // till end of this test
+                put("dlqMaxRetryCount", "1000");
               }
             };
         jobInfo =
@@ -179,6 +185,13 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
+    // Insert test data into Spanner. This will generate:
+    // - 2 severe errors (for id=999 and id=888) due to the custom transformation throwing exception
+    // in "bad" mode.
+    // - 1 retryable error (for order101) due to missing parent customer (FK violation: Customer 3
+    // does not exist).
+    // - 1 retryable error (for customer1) due to check constraint violation (CreditLimit is 500,
+    // must be > 1000).
     insertDataInSpanner();
 
     // Wait for DLQ events to appear in the severe bucket. The retry bucket should not be
@@ -188,12 +201,24 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                ChainedConditionCheck.builder(
-                        List.of(
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                                .setMinEvents(2)
-                                .build()))
-                    .build());
+                DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                    .setMinEvents(2)
+                    .build()
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
+                            .setMinRows(1) // id = 102
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManager, "AllDataTypes")
+                            .setMinRows(1) // id = 1
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManager, "Customers")
+                            .setMinRows(1) // id = 2
+                            .setMaxRows(1)
+                            .build()));
     assertThatResult(dlqWaitResult).meetsConditions();
 
     // Verify the MySQL database to ensure failing rows were NOT migrated, while success cases were.
@@ -256,18 +281,23 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
     assertThatResult(retryJobResult).isLaunchFinished();
 
     LOG.info("Verifying that severe bucket has exactly 1 entry after retryDLQ job completes");
-    PipelineOperator.Result dlqRetryWaitResult =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(retryJobInfo, Duration.ofMinutes(5)),
-                ChainedConditionCheck.builder(
-                        List.of(
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                                .setMinEvents(1)
-                                .setMaxEvents(1)
-                                .build()))
-                    .build());
-    assertThatResult(dlqRetryWaitResult).meetsConditions();
+    // The severe bucket should now have exactly 1 entry (for id=888).
+    // The other entry (id=999) was fixed because the retry job was launched with
+    // custom transformation mode="semi-fixed", which allows id=999 to pass but still fails id=888.
+    // The retry bucket will also have 1 entry (Orders 101 FK violation was fixed by inserting
+    // parent row)
+    // But we don't assert that here, as DLQPubSubConsumer repeatedly deletes and rewrites the
+    // retry/ bucket which would result in flakiness
+    // Remaining rows:
+    // - Customers 1 remains in retry because the check constraint violation was not fixed.
+    // - AllDataTypes 888 remains in severe because mode='semi-fixed' only fixes row 999, not 888.
+
+    assertTrue(
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .get());
 
     // Verify target MySQL database for both the fixed rows and for the absence of non-fixed errors
     LOG.info("Verifying final target MySQL database contents");
@@ -275,6 +305,8 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
     customersRows = jdbcResourceManager.runSQLQuery("SELECT CustomerId FROM Customers");
     customersIds =
         customersRows.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
+    // id=1 should NOT exist (check constraint violation wasn't fixed: CreditLimit was 500 but must
+    // be > 1000)
     assertTrue("id=1 should NOT exist", !customersIds.contains(1));
     assertTrue("id=2 should exist", customersIds.contains(2));
     assertTrue("id=3 should exist", customersIds.contains(3));
@@ -284,31 +316,27 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
     assertTrue("id=101 should exist", ordersIds.contains(101));
     assertTrue("id=102 should exist", ordersIds.contains(102));
 
-    allDataTypesRows = jdbcResourceManager.runSQLQuery("SELECT id FROM AllDataTypes");
+    allDataTypesRows = jdbcResourceManager.runSQLQuery("SELECT * FROM AllDataTypes");
     allDataTypesIds =
         allDataTypesRows.stream().map(r -> getIntValueCaseInsensitive(r, "id")).toList();
     assertTrue("id=1 should exist", allDataTypesIds.contains(1));
     assertTrue("id=999 should exist", allDataTypesIds.contains(999));
     assertTrue("id=888 should NOT exist", !allDataTypesIds.contains(888));
 
+    // Assert contents of AllDataTypes rows to ensure data integrity
+    Map<String, Object> row999 =
+        allDataTypesRows.stream()
+            .filter(r -> getIntValueCaseInsensitive(r, "id") == 999)
+            .findFirst()
+            .orElse(null);
+    assertTrue("Row with id=999 should be found", row999 != null);
+
+    Map<String, Object> expectedRow999 = createExpectedRow999();
+    assertRowMatchesExpected(row999, expectedRow999);
+
     // Cancel the regular streaming job as the final step.
     LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
     pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
-
-    // Wait for the regular pipeline to be cancelled (up to 5 minutes)
-    boolean cancelled = false;
-    for (int i = 0; i < 30; i++) {
-      PipelineLauncher.JobState status =
-          pipelineLauncher.getJobStatus(PROJECT, REGION, jobInfo.jobId());
-      if (status == PipelineLauncher.JobState.CANCELLED
-          || status == PipelineLauncher.JobState.DRAINED) {
-        cancelled = true;
-        break;
-      }
-      Thread.sleep(10000);
-    }
-    assertTrue("Job did not cancel in time", cancelled);
-    LOG.info("Regular pipeline stopped successfully");
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {
@@ -374,15 +402,95 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
     com.google.cloud.spanner.Mutation allTypes999 =
         com.google.cloud.spanner.Mutation.newInsertOrUpdateBuilder("AllDataTypes")
             .set("id")
-            .to(999) // Bad transformer fails on purpose, semi-fixed transformer doesn't
-            .set("boolean_col")
-            .to(false)
+            .to(999)
             .set("varchar_col")
             .to("test999")
+            .set("tinyint_col")
+            .to(9)
+            .set("tinyint_unsigned_col")
+            .to(9)
+            .set("text_col")
+            .to("text999")
+            .set("date_col")
+            .to(com.google.cloud.Date.parseDate("2023-01-09"))
+            .set("smallint_col")
+            .to(99)
+            .set("smallint_unsigned_col")
+            .to(99)
+            .set("mediumint_col")
+            .to(999)
+            .set("mediumint_unsigned_col")
+            .to(999)
+            .set("bigint_col")
+            .to(9999L)
+            .set("bigint_unsigned_col")
+            .to(new java.math.BigDecimal("9999"))
+            .set("float_col")
+            .to(9.9f)
+            .set("double_col")
+            .to(99.9d)
+            .set("decimal_col")
+            .to(new java.math.BigDecimal("99.9"))
+            .set("datetime_col")
+            .to(com.google.cloud.Timestamp.parseTimestamp("2023-01-09T12:00:00Z"))
+            .set("time_col")
+            .to("12:00:09")
+            .set("year_col")
+            .to("2023")
+            .set("char_col")
+            .to("c")
+            .set("tinyblob_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("blob9".getBytes())))
+            .set("tinytext_col")
+            .to("tinytext9")
+            .set("blob_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("blob9".getBytes())))
+            .set("mediumblob_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("mediumblob9".getBytes())))
+            .set("mediumtext_col")
+            .to("mediumtext9")
+            .set("test_json_col")
+            .to(com.google.cloud.spanner.Value.json("{\"k\":\"v9\"}"))
+            .set("longblob_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("longblob9".getBytes())))
+            .set("longtext_col")
+            .to("longtext9")
+            .set("enum_col")
+            .to("1")
+            .set("bool_col")
+            .to(true)
+            .set("binary_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("bin".getBytes())))
+            .set("varbinary_col")
+            .to(
+                com.google.cloud.ByteArray.fromBase64(
+                    java.util.Base64.getEncoder().encodeToString("varbin".getBytes())))
+            .set("bit_col")
+            .to(com.google.cloud.ByteArray.copyFrom(new byte[] {(byte) 1}))
             .set("bit8_col")
-            .to(22)
+            .to(255)
             .set("bit1_col")
+            .to(true)
+            .set("boolean_col")
             .to(false)
+            .set("int_col")
+            .to(9999)
+            .set("integer_unsigned_col")
+            .to(9999)
+            .set("timestamp_col")
+            .to(com.google.cloud.Timestamp.parseTimestamp("2023-01-09T12:00:00Z"))
+            .set("set_col")
+            .to("v1")
             .build();
     com.google.cloud.spanner.Mutation allTypes888 =
         com.google.cloud.spanner.Mutation.newInsertOrUpdateBuilder("AllDataTypes")
@@ -408,5 +516,105 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
       return "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
     }
     return "v2/spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar";
+  }
+
+  private Map<String, Object> createExpectedRow999() {
+    Map<String, Object> row = new java.util.HashMap<>();
+    row.put("id", 999);
+    row.put("varchar_col", "test999");
+    row.put("tinyint_col", 9);
+    row.put("text_col", "text999");
+    row.put("date_col", "2023-01-09"); // Expected as String
+    row.put("smallint_col", 99);
+    row.put("mediumint_col", 999);
+    row.put("bigint_col", 9999L);
+    row.put("decimal_col", new java.math.BigDecimal("99.9"));
+    row.put("float_col", 9.9f);
+    row.put("double_col", 99.9d);
+    row.put("char_col", "c");
+    row.put("tinytext_col", "tinytext9");
+    row.put("mediumtext_col", "mediumtext9");
+    row.put("longtext_col", "longtext9");
+    row.put("enum_col", "1");
+    row.put("bool_col", true);
+    row.put("boolean_col", false);
+    row.put("int_col", 9999);
+    row.put("set_col", "v1");
+    row.put("tinyblob_col", "blob9".getBytes());
+    row.put("blob_col", "blob9".getBytes());
+    row.put("mediumblob_col", "mediumblob9".getBytes());
+    row.put("longblob_col", "longblob9".getBytes());
+    row.put(
+        "binary_col",
+        java.util.Arrays.copyOf("bin".getBytes(), 255)); // BINARY(255) is right-padded with zeros
+    row.put("varbinary_col", "varbin".getBytes());
+    row.put("bit_col", new byte[] {0, 0, 0, 0, 0, 0, 0, 1}); // BIT(64) returns 8 bytes
+    row.put("bit8_col", 255); // BIT(8) expected as Integer 255
+    row.put("bit1_col", true);
+    row.put("tinyint_unsigned_col", 9);
+    row.put("smallint_unsigned_col", 99);
+    row.put("mediumint_unsigned_col", 999);
+    row.put("bigint_unsigned_col", 9999L);
+    row.put("integer_unsigned_col", 9999);
+    row.put(
+        "datetime_col",
+        "2023-01-09 12:00:00"); // Expected as String, handles missing seconds in actual
+    row.put("time_col", "12:00:09");
+    row.put("year_col", "2023"); // Expected as String, handles Date return in actual
+    row.put("test_json_col", "{\"k\":\"v9\"}"); // JSON expected as String
+    row.put("timestamp_col", "2023-01-09 12:00:00");
+
+    return row;
+  }
+
+  private void assertRowMatchesExpected(
+      Map<String, Object> actualRow, Map<String, Object> expectedRow) {
+    expectedRow.forEach(
+        (key, expectedValue) -> {
+          Object actualValue = actualRow.get(key);
+
+          LOG.info("Field '{}': expectedValue={}, actualValue={}", key, expectedValue, actualValue);
+
+          if (expectedValue == null) {
+            assertTrue("Field " + key + " should be null", actualValue == null);
+          } else if (expectedValue instanceof byte[] && actualValue instanceof byte[]) {
+            assertTrue(
+                "Field " + key + " mismatch",
+                java.util.Arrays.equals((byte[]) expectedValue, (byte[]) actualValue));
+          } else if (expectedValue instanceof Number
+              && actualValue instanceof byte[]
+              && ((byte[]) actualValue).length == 1) {
+            assertTrue(
+                "Field " + key + " mismatch",
+                ((Number) expectedValue).intValue() == (((byte[]) actualValue)[0] & 0xFF));
+          } else if (expectedValue instanceof Number && actualValue instanceof Number) {
+            assertTrue(
+                "Field " + key + " mismatch",
+                Math.abs(
+                        ((Number) expectedValue).doubleValue()
+                            - ((Number) actualValue).doubleValue())
+                    < 0.001);
+          } else {
+            String exp = expectedValue.toString().replace(" ", "").replace("T", "");
+            String act =
+                actualValue != null ? actualValue.toString().replace(" ", "").replace("T", "") : "";
+            if (act.endsWith(".0")) {
+              act = act.substring(0, act.length() - 2);
+            }
+
+            boolean isDatePrefix =
+                act.length() > exp.length()
+                    && act.startsWith(exp)
+                    && act.charAt(exp.length()) == '-';
+            boolean isTimePrefix =
+                exp.length() > act.length()
+                    && exp.startsWith(act)
+                    && exp.charAt(act.length()) == ':';
+
+            assertTrue(
+                "Field " + key + " mismatch: expected " + exp + " but got " + act,
+                exp.equals(act) || isDatePrefix || isTimePrefix);
+          }
+        });
   }
 }

@@ -39,7 +39,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -56,21 +55,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for reverse replication from Spanner to MySQL using the retryAllDLQ mode in a
- * sharded schema setup.
+ * Integration test for reverse replication from Spanner to MySQL using the retryAllDLQ mode.
  *
  * <p>Objective: Verify that the retryAllDLQ batch job correctly processes and retries ALL Dead
- * Letter Queue (DLQ) events when the main pipeline is stopped in a sharded setup.
- *
- * <p>Edge cases covered in this test include: - Handling retriable errors such as check constraint
- * and foreign key violations via the retryAllDLQ pipeline. - Processing severe errors introduced by
- * custom transformation failures via the retryAllDLQ pipeline. - Retrying fixed items successfully
- * in both retry/ and severe/ buckets logically distributed across multiple shards. - Ensuring
- * non-fixable items remain correctly logged under their respective error buckets. - Validating
- * schema complexities between Source and Spanner, including mismatched primary keys, added,
- * deleted, and renamed columns, as well as all datatypes. - Utilizing the static DLQ file-based
- * consumer (instead of the Pub/Sub consumer flow). - Validating that row events are correctly
- * dynamically routed to the appropriate custom logical shards using a Custom Shard ID Fetcher.
+ * Letter Queue (DLQ) events when the main pipeline is stopped inside a sharded topology using
+ * custom shard logic.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -83,9 +72,8 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
       "SpannerToSourceDBShardedMySQLRetryAllDLQIT/spanner-schema.sql";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDBShardedMySQLRetryAllDLQIT/mysql-schema.sql";
-  private static final String SESSION_FILE_RESOURCE =
-      "SpannerToSourceDBShardedMySQLRetryAllDLQIT/session.json";
-
+  private static final String OVERRIDES_FILE_RESOURCE =
+      "SpannerToSourceDBShardedMySQLRetryAllDLQIT/overrides.json";
   private static final HashSet<SpannerToSourceDBShardedMySQLRetryAllDLQIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -121,9 +109,9 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
         // Use generic multi-shard logic instead of base IT helper
         createAndUploadShardConfigToGcsMulti();
 
-        // Upload session file instead of overrides
+        // Upload overrides file
         gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+            "input/overrides.json", Resources.getResource(OVERRIDES_FILE_RESOURCE).getPath());
 
         CustomTransformation customTransformation =
             CustomTransformation.builder(
@@ -136,7 +124,9 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
         Map<String, String> jobParameters =
             new HashMap<>() {
               {
-                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+                put(
+                    "schemaOverridesFilePath",
+                    getGcsPath("input/overrides.json", gcsResourceManager));
                 put("dlqMaxRetryCount", "20");
                 put("dlqRetryMinutes", "60");
               }
@@ -173,13 +163,22 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
 
   @Test
   public void testSpannerToSrcDBRetryAllDLQ() throws Exception {
+    LOG.info("Starting testSpannerToSrcDBRetryAllDLQ for sharded execution");
     assertThatPipeline(jobInfo).isRunning();
 
-    // Insert parent rows directly into MySQL to prevent out-of-order Dataflow failures.
+    // 1. Insert parent rows directly into MySQL.
+    LOG.info("Inserting parent rows directly into MySQL");
     // customer2 routes to ShardB (2%2==0)
     jdbcResourceManagerShardB.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (2, 'Customer 2', 1500, 'Silver')");
 
+    // 2. Insert test data into the source Spanner database. This will generate:
+    // - 2 severe errors (for id=999 and id=888) due to the custom transformation throwing exception
+    // in "bad" mode.
+    // - 1 retryable error (for order101) due to missing parent customer (FK violation: Customer 3
+    // does not exist).
+    // - 1 retryable error (for customer1) due to check constraint violation (CreditLimit is 500,
+    // must be > 1000).
     insertDataInSpanner();
     LOG.info("Data inserted into Spanner successfully");
 
@@ -188,44 +187,52 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
     // - Customers: 1
     // - Orders: 1
     // - AllDataTypes: 2
+    LOG.info("Waiting for DLQ events to appear in retry and severe buckets");
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                ChainedConditionCheck.builder(
-                        List.of(
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
-                                .setMinEvents(2)
-                                .build(),
-                            DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                                .setMinEvents(2)
-                                .build()))
-                    .build());
+                DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+                    .setMinEvents(2)
+                    .build()
+                    .and(
+                        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                            .setMinEvents(2)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "Orders")
+                            .setMinRows(1) // id = 102
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardA, "AllDataTypes")
+                            .setMinRows(1) // id = 1
+                            .setMaxRows(1)
+                            .build())
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManagerShardB, "Customers")
+                            .setMinRows(1) // id = 2
+                            .setMaxRows(1)
+                            .build()));
     assertThatResult(dlqWaitResult).meetsConditions();
+    LOG.info("DLQ events appeared in corresponding buckets");
 
-    pipelineLauncher.cancelJob(PROJECT, REGION, jobInfo.jobId());
+    // 4. Stop the regular pipeline.
+    LOG.info("Stopping the regular pipeline: {}", jobInfo.jobId());
+    pipelineOperator().cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(15)));
+    LOG.info("Regular pipeline stopped successfully");
 
-    boolean cancelled = false;
-    for (int i = 0; i < 30; i++) {
-      PipelineLauncher.JobState status =
-          pipelineLauncher.getJobStatus(PROJECT, REGION, jobInfo.jobId());
-      if (status == PipelineLauncher.JobState.CANCELLED
-          || status == PipelineLauncher.JobState.DRAINED) {
-        cancelled = true;
-        break;
-      }
-      Thread.sleep(10000);
-    }
-    assertTrue("Job did not cancel in time", cancelled);
-
-    // Apply partial fixes in MySQL to simulate user intervention correcting data before DLQ retry.
+    // 5. Apply partial fixes to simulate user intervention correcting data before DLQ retry.
+    LOG.info("Applying partial fixes in MySQL (inserting missing parent row for Orders)");
     jdbcResourceManagerShardA.runSQLUpdate(
         "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LegacyRegion) VALUES (3, 'Parent Customer A', 2000, 'Gold')");
 
-    // Launch a new Dataflow job in retryAllDLQ mode to process the DLQ items offline.
+    // 6. Launch a new Dataflow job in retryAllDLQ mode.
+    LOG.info("Launching retryAllDLQ job with schema overrides to process DLQ");
     Map<String, String> retryParams = new HashMap<>();
     retryParams.put("runMode", "retryAllDLQ");
-    retryParams.put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+    retryParams.put(
+        "schemaOverridesFilePath", getGcsPath("input/overrides.json", gcsResourceManager));
     retryParams.put("dlqMaxRetryCount", "20");
     retryParams.put("dlqRetryMinutes", "60");
 
@@ -245,21 +252,31 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                 .build(),
             MYSQL_SOURCE_TYPE,
             retryParams);
+    LOG.info("RetryAllDLQ job launched: {}", retryJobInfo.jobId());
 
     assertThatPipeline(retryJobInfo).isRunning();
 
+    // 7. Wait for the retry job to process events and ensure they reach the DLQ correctly BEFORE
+    // cancelling.
+    // The buckets should now have exactly 1 entry each (for Customers 1 in retry and id=888 in
+    // severe).
+    // The other entries were fixed:
+    // - Orders 101 FK violation fixed by inserting missing parent row on Shard A.
+    // - AllDataTypes 999 severe error fixed by updating custom transformation to mode="semi-fixed".
+    // Remaining rows:
+    // - Customers 1 remains in retry because the check constraint violation was not fixed.
+    // - AllDataTypes 888 remains in severe because mode='semi-fixed' only fixes row 999, not 888.
+    LOG.info("Waiting for DLQ events to appear in retry and severe buckets after retry");
     ConditionCheck dlqConditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
-                        .setMinEvents(1)
-                        .setMaxEvents(1)
-                        .build(),
-                    DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                        .setMinEvents(1)
-                        .setMaxEvents(1)
-                        .build()))
-            .build();
+        DlqEventsCountCheck.builder(gcsResourceManager, "dlq/retry/")
+            .setMinEvents(1)
+            .setMaxEvents(1)
+            .build()
+            .and(
+                DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
+                    .setMinEvents(1)
+                    .setMaxEvents(1)
+                    .build());
 
     PipelineOperator.Result retryResult =
         pipelineOperator()
@@ -267,6 +284,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
                 createConfig(retryJobInfo, Duration.ofMinutes(15)), dlqConditionCheck);
 
     assertThatResult(retryResult).meetsConditions();
+    LOG.info("Retry job completed processing successfully");
 
     // 8. Verify target MySQL database has the correct updated state.
     LOG.info("Verifying MySQL data across logical shards");
@@ -335,7 +353,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
     List<Integer> shardBCustIds =
         shardBCust.stream().map(r -> getIntValueCaseInsensitive(r, "CustomerId")).toList();
 
-    // 1(mod2!=0) -> ShardA (failed check constraint)
+    // 1(mod2!=0) -> ShardA (failed check constraint: CreditLimit was 500 but must be > 1000)
     assertTrue("id=1 should NOT exist on Shard A", !shardACustIds.contains(1));
     // 3(mod2!=0) -> ShardA
     assertTrue("id=3 should exist on Shard A", shardACustIds.contains(3));
