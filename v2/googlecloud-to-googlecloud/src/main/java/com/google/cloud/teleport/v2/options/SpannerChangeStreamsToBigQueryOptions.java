@@ -248,12 +248,13 @@ public interface SpannerChangeStreamsToBigQueryOptions
 
   void setDisableDlqRetries(Boolean value);
 
- @TemplateParameter.Text(
+  @TemplateParameter.Text(
       order = 20,
       optional = true,
       groupName = "Source",
-      description = "Colon separated list of change streams TVF names to query and union",
-      helpText = "Colon separated list of change streams TVF names to query and union. Note that using colon instead of comma because gcloud does not allow comma in the parameter value.")
+      description =
+          "Semicolon-separated list of Spanner Change Stream TVF names to query and union.",
+      helpText = "Semicolon-separated list of Spanner Change Stream TVF names to query and union.")
   @Default.String("")
   String getSpannerChangeStreamTvfNameList();
 

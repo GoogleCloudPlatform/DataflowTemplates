@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -159,7 +160,10 @@ public class SpannerChangeStreamsToPubSub {
     String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
     List<String> tvfNameList = null;
     if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
-      tvfNameList = Arrays.asList(tvfNameListString.split(":"));
+      tvfNameList =
+          Arrays.stream(tvfNameListString.split(";"))
+              .filter(name -> !name.trim().isEmpty())
+              .collect(Collectors.toList());
     }
 
     final RpcPriority rpcPriority = options.getRpcPriority();
