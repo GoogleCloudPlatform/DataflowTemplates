@@ -200,7 +200,6 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply(
                   "Text files as mutations. Depth: " + depth,
                   new TextTableFilesAsMutations(ddlView, tableColumnsView, depth));
-      LOG.info("Max num rows before SpannerIO.write: {}", maxNumRows);
       SpannerWriteResult result =
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))

@@ -1332,7 +1332,7 @@ public class SpannerIO {
 
     /**
      * Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is
-     * 1000
+     * 500
      */
     public Write withMaxNumRows(ValueProvider<Integer> maxNumRows) {
       return toBuilder().setMaxNumRows(maxNumRows).build();
@@ -2230,7 +2230,7 @@ public class SpannerIO {
         unBatchableMutationGroupsCounter.inc();
         return;
       }
-      LOG.info("Max num rows: " + maxNumRows);
+
       SpannerSchema spannerSchema = c.sideInput(schemaView);
       long groupSize = MutationSizeEstimator.sizeOf(mg);
       long groupCells = MutationCellCounter.countOf(spannerSchema, mg);
