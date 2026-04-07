@@ -186,4 +186,15 @@ public interface SpannerChangeStreamsToGcsOptions
   RpcPriority getRpcPriority();
 
   void setRpcPriority(RpcPriority rpcPriority);
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      groupName = "Source",
+      description = "Colon separated list of change streams TVF names to query and union",
+      helpText = "Colon separated list of change streams TVF names to query and union. Note that using colon instead of comma because gcloud does not allow comma in the parameter value.")
+  @Default.String("")
+  String getSpannerChangeStreamTvfNameList();
+
+  void setSpannerChangeStreamTvfNameList(String value);
 }

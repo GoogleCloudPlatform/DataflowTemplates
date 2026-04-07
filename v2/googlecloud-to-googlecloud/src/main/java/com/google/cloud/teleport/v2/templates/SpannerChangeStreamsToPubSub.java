@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -155,6 +156,12 @@ public class SpannerChangeStreamsToPubSub {
             ? null
             : options.getSpannerMetadataTableName();
 
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    List<String> tvfNameList = null;
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      tvfNameList = Arrays.asList(tvfNameListString.split(":"));
+    }
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
@@ -187,7 +194,8 @@ public class SpannerChangeStreamsToPubSub {
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName))
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList))
         .apply(
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()

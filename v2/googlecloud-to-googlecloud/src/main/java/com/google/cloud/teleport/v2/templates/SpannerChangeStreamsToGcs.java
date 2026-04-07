@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -137,6 +138,12 @@ public class SpannerChangeStreamsToGcs {
             ? null
             : options.getSpannerMetadataTableName();
 
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    List<String> tvfNameList = null;
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      tvfNameList = Arrays.asList(tvfNameListString.split(":"));
+    }
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
@@ -162,7 +169,8 @@ public class SpannerChangeStreamsToGcs {
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName))
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
