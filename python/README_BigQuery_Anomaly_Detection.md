@@ -31,9 +31,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **temp_dataset**: BigQuery dataset for temp tables. If unset, auto-created.
 * **log_all_results**: Log all anomaly detection results (normal, outlier, warmup) at WARNING level. Default: false.
 * **sink_table**: BigQuery table to write all anomaly detection results to. Format: project:dataset.table. If unset, results are not written to BigQuery.
-* **decompress_shards**: Number of shards for CDC Arrow batch decompression fan-out. Spreads decompression CPU across workers. 0 disables fan-out (decode inline). Default: 400.
 * **fanout_strategy**: Parallelism strategy for metric aggregation: sharded, hotkey_fanout, precombine, or none. Default: sharded.
 * **fanout**: Number of shards for sharded or hotkey_fanout strategies. Ignored for none and precombine. Default: 400.
+* **message_format**: Python format string for Pub/Sub anomaly messages. Available fields: {value}, {score}, {label}, {threshold}, {model_id}, {info}, {key}, {window_start}, {window_end}, plus any keys from message_metadata. If unset, a default JSON payload is used.
+* **message_metadata**: JSON object of static key-value pairs available as additional fields in message_format. Example: {"job_id": "pipeline-123", "env": "prod"}. Anomaly fields take precedence on key collision.
 
 
 
@@ -140,9 +141,10 @@ export DURATION_SEC=<duration_sec>
 export TEMP_DATASET=<temp_dataset>
 export LOG_ALL_RESULTS=<log_all_results>
 export SINK_TABLE=<sink_table>
-export DECOMPRESS_SHARDS=<decompress_shards>
 export FANOUT_STRATEGY=<fanout_strategy>
 export FANOUT=<fanout>
+export MESSAGE_FORMAT=<message_format>
+export MESSAGE_METADATA=<message_metadata>
 
 gcloud dataflow flex-template run "bigquery-anomaly-detection-job" \
   --project "$PROJECT" \
@@ -160,9 +162,10 @@ gcloud dataflow flex-template run "bigquery-anomaly-detection-job" \
   --parameters "temp_dataset=$TEMP_DATASET" \
   --parameters "log_all_results=$LOG_ALL_RESULTS" \
   --parameters "sink_table=$SINK_TABLE" \
-  --parameters "decompress_shards=$DECOMPRESS_SHARDS" \
   --parameters "fanout_strategy=$FANOUT_STRATEGY" \
-  --parameters "fanout=$FANOUT"
+  --parameters "fanout=$FANOUT" \
+  --parameters "message_format=$MESSAGE_FORMAT" \
+  --parameters "message_metadata=$MESSAGE_METADATA"
 ```
 
 For more information about the command, please check:
@@ -195,9 +198,10 @@ export DURATION_SEC=<duration_sec>
 export TEMP_DATASET=<temp_dataset>
 export LOG_ALL_RESULTS=<log_all_results>
 export SINK_TABLE=<sink_table>
-export DECOMPRESS_SHARDS=<decompress_shards>
 export FANOUT_STRATEGY=<fanout_strategy>
 export FANOUT=<fanout>
+export MESSAGE_FORMAT=<message_format>
+export MESSAGE_METADATA=<message_metadata>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -206,7 +210,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-anomaly-detection-job" \
 -DtemplateName="BigQuery_Anomaly_Detection" \
--Dparameters="table=$TABLE,metric_spec=$METRIC_SPEC,detector_spec=$DETECTOR_SPEC,topic=$TOPIC,poll_interval_sec=$POLL_INTERVAL_SEC,change_function=$CHANGE_FUNCTION,buffer_sec=$BUFFER_SEC,start_offset_sec=$START_OFFSET_SEC,duration_sec=$DURATION_SEC,temp_dataset=$TEMP_DATASET,log_all_results=$LOG_ALL_RESULTS,sink_table=$SINK_TABLE,decompress_shards=$DECOMPRESS_SHARDS,fanout_strategy=$FANOUT_STRATEGY,fanout=$FANOUT" \
+-Dparameters="table=$TABLE,metric_spec=$METRIC_SPEC,detector_spec=$DETECTOR_SPEC,topic=$TOPIC,poll_interval_sec=$POLL_INTERVAL_SEC,change_function=$CHANGE_FUNCTION,buffer_sec=$BUFFER_SEC,start_offset_sec=$START_OFFSET_SEC,duration_sec=$DURATION_SEC,temp_dataset=$TEMP_DATASET,log_all_results=$LOG_ALL_RESULTS,sink_table=$SINK_TABLE,fanout_strategy=$FANOUT_STRATEGY,fanout=$FANOUT,message_format=$MESSAGE_FORMAT,message_metadata=$MESSAGE_METADATA" \
 -f python
 ```
 
@@ -263,9 +267,10 @@ resource "google_dataflow_flex_template_job" "bigquery_anomaly_detection" {
     # temp_dataset = "<temp_dataset>"
     # log_all_results = "<log_all_results>"
     # sink_table = "<sink_table>"
-    # decompress_shards = "<decompress_shards>"
     # fanout_strategy = "<fanout_strategy>"
     # fanout = "<fanout>"
+    # message_format = "<message_format>"
+    # message_metadata = "<message_metadata>"
   }
 }
 ```
