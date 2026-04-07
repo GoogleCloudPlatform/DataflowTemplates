@@ -239,4 +239,15 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   String getOutputMessageMetadata();
 
   void setOutputMessageMetadata(String value);
+
+  @TemplateParameter.Boolean(
+      order = 19,
+      optional = true,
+      description = "Use Spanner Emulator Host",
+      helpText =
+          "Whether to use the Spanner host configured in getSpannerHost() as the Emulator host. Defaults to: false")
+  @Default.Boolean(false)
+  Boolean getUseSpannerEmulatorHost();
+
+  void setUseSpannerEmulatorHost(Boolean value);
 }
