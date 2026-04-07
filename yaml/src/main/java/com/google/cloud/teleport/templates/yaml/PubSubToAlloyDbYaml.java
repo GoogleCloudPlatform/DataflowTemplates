@@ -18,7 +18,6 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -268,7 +267,6 @@ public interface PubSubToAlloyDbYaml {
       description = "Enable autosharding for parallel writes",
       helpText = "If true, enables using a dynamically determined number of shards to write.",
       example = "True")
-  @Default.Boolean(false)
   Boolean getAutoSharding();
 
   @TemplateParameter.Text(
