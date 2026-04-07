@@ -122,16 +122,27 @@ public class CdcEmbeddedConnectorIT extends TemplateTestBase {
     Path path = tmpFolder.newFile("connector.properties").toPath();
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append("databaseName=" + testName + System.lineSeparator());
-    stringBuilder.append("databaseUsername=" + mySQLResourceManager.getUsername() + System.lineSeparator());
-    stringBuilder.append("databasePassword=" + mySQLResourceManager.getPassword() + System.lineSeparator());
-    stringBuilder.append("databaseAddress=" + mySQLResourceManager.getHost() + System.lineSeparator());
-    stringBuilder.append("databasePort=" + parseJdbcPort(mySQLResourceManager.getUri()) + System.lineSeparator());
+    stringBuilder.append(
+        "databaseUsername=" + mySQLResourceManager.getUsername() + System.lineSeparator());
+    stringBuilder.append(
+        "databasePassword=" + mySQLResourceManager.getPassword() + System.lineSeparator());
+    stringBuilder.append(
+        "databaseAddress=" + mySQLResourceManager.getHost() + System.lineSeparator());
+    stringBuilder.append(
+        "databasePort=" + parseJdbcPort(mySQLResourceManager.getUri()) + System.lineSeparator());
     stringBuilder.append("gcpProject=" + PROJECT + System.lineSeparator());
     stringBuilder.append("gcpPubsubTopicPrefix=" + topicName + System.lineSeparator());
     stringBuilder.append("singleTopicMode=true" + System.lineSeparator());
     stringBuilder.append("inMemoryOffsetStorage=true" + System.lineSeparator());
     stringBuilder.append("debezium.offset.flush.interval.ms=300" + System.lineSeparator());
-    stringBuilder.append("whitelistedTables=" + testName + "." + mySQLResourceManager.getDatabaseName() + "." + TABLE_NAME + System.lineSeparator());
+    stringBuilder.append(
+        "whitelistedTables="
+            + testName
+            + "."
+            + mySQLResourceManager.getDatabaseName()
+            + "."
+            + TABLE_NAME
+            + System.lineSeparator());
 
     Files.write(path, stringBuilder.toString().getBytes());
 
@@ -184,9 +195,9 @@ public class CdcEmbeddedConnectorIT extends TemplateTestBase {
 
     // Stop connector
     try {
-        dataSender.stop();
+      dataSender.stop();
     } catch (Exception e) {
-        LOG.warn("Error stopping data sender", e);
+      LOG.warn("Error stopping data sender", e);
     }
   }
 
