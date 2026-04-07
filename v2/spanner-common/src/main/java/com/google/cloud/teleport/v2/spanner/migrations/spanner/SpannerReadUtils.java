@@ -82,57 +82,98 @@ public class SpannerReadUtils {
       Type keyColType = table.column(colName).type();
 
       String bindName = isPostgres ? "p" + (i + 1) : colName;
-      bindValue(stmtBuilder, bindName, keyColType, value);
+      if (isPostgres) {
+        bindPgValue(stmtBuilder, bindName, keyColType, value);
+      } else {
+        bindGoogleSqlValue(stmtBuilder, bindName, keyColType, value);
+      }
 
       i++;
     }
     return stmtBuilder.build();
   }
 
-  private static void bindValue(
+  private static void bindGoogleSqlValue(
       Statement.Builder stmtBuilder, String bindName, Type type, Object value) {
     // TODO: Handle json type as PKs.
     switch (type.getCode()) {
       case BOOL:
-      case PG_BOOL:
         stmtBuilder.bind(bindName).to((Boolean) value);
         break;
       case INT64:
-      case PG_INT8:
         stmtBuilder.bind(bindName).to((Long) value);
         break;
       case FLOAT64:
-      case PG_FLOAT8:
         stmtBuilder.bind(bindName).to((Double) value);
         break;
+      case FLOAT32:
+        stmtBuilder.bind(bindName).to((Float) value);
+        break;
       case STRING:
-      case PG_VARCHAR:
-      case PG_TEXT:
       case JSON:
-      case PG_JSONB:
         stmtBuilder.bind(bindName).to((String) value);
         break;
       case NUMERIC:
         stmtBuilder.bind(bindName).to((BigDecimal) value);
         break;
-      case PG_NUMERIC:
-        stmtBuilder.bind(bindName).to(Value.pgNumeric(value.toString()));
-        break;
       case BYTES:
-      case PG_BYTEA:
         stmtBuilder.bind(bindName).to((ByteArray) value);
         break;
       case TIMESTAMP:
-      case PG_COMMIT_TIMESTAMP:
-      case PG_TIMESTAMPTZ:
+        /* Spanner TIMESTAMP type stores data in UTC. The com.google.cloud.Timestamp object
+         * represents a point in time in UTC. Timezone information is not stored in Spanner
+         * and is not retained by the Timestamp object itself, but the instant in time is safe.
+         */
         stmtBuilder.bind(bindName).to((Timestamp) value);
         break;
       case DATE:
+        stmtBuilder.bind(bindName).to((Date) value);
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported Google SQL type: " + type);
+    }
+  }
+
+  private static void bindPgValue(
+      Statement.Builder stmtBuilder, String bindName, Type type, Object value) {
+    // TODO: Handle json type as PKs.
+    switch (type.getCode()) {
+      case PG_BOOL:
+        stmtBuilder.bind(bindName).to((Boolean) value);
+        break;
+      case PG_INT8:
+        stmtBuilder.bind(bindName).to((Long) value);
+        break;
+      case PG_FLOAT8:
+        stmtBuilder.bind(bindName).to((Double) value);
+        break;
+      case PG_FLOAT4:
+        stmtBuilder.bind(bindName).to((Float) value);
+        break;
+      case PG_VARCHAR:
+      case PG_TEXT:
+      case PG_JSONB:
+        stmtBuilder.bind(bindName).to((String) value);
+        break;
+      case PG_NUMERIC:
+        stmtBuilder.bind(bindName).to(Value.pgNumeric(value.toString()));
+        break;
+      case PG_BYTEA:
+        stmtBuilder.bind(bindName).to((ByteArray) value);
+        break;
+      case PG_COMMIT_TIMESTAMP:
+      case PG_TIMESTAMPTZ:
+        /* Spanner TIMESTAMP type stores data in UTC. The com.google.cloud.Timestamp object
+         * represents a point in time in UTC. Timezone information is not stored in Spanner
+         * and is not retained by the Timestamp object itself, but the instant in time is safe.
+         */
+        stmtBuilder.bind(bindName).to((Timestamp) value);
+        break;
       case PG_DATE:
         stmtBuilder.bind(bindName).to((Date) value);
         break;
       default:
-        throw new IllegalArgumentException("Unsupported type: " + type);
+        throw new IllegalArgumentException("Unsupported PG type: " + type);
     }
   }
 
