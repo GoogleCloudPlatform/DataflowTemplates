@@ -73,6 +73,5 @@ options:
         help: "If true, enables using a dynamically determined number of shards to write."
         example: true
         required: false
-        default: false
         type: boolean
 
