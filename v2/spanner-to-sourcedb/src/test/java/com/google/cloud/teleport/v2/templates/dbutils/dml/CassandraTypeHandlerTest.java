@@ -25,6 +25,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.datastax.oss.driver.api.core.data.CqlDuration;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -37,6 +38,7 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -90,6 +92,87 @@ public class CassandraTypeHandlerTest {
         getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
     assertEquals("test_value", castResult);
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForPgDialect() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(TEST_TABLE)
+            .column("col_varchar")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("col_text")
+            .pgText()
+            .endColumn()
+            .column("col_bytea")
+            .pgBytea()
+            .endColumn()
+            .endTable()
+            .build();
+
+    Table spannerTable = ddl.table(TEST_TABLE);
+
+    // Test PG_VARCHAR
+    {
+      Column spannerCol = spannerTable.column("col_varchar");
+      SourceColumn sourceCol =
+          SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+              .name("col_varchar")
+              .type("varchar")
+              .build();
+
+      JSONObject valuesJson = new JSONObject();
+      valuesJson.put("col_varchar", "test_value");
+
+      PreparedStatementValueObject result =
+          getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+
+      Object castResult =
+          CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+      assertEquals("test_value", castResult);
+    }
+
+    // Test PG_TEXT
+    {
+      Column spannerCol = spannerTable.column("col_text");
+      SourceColumn sourceCol =
+          SourceColumn.builder(SourceDatabaseType.CASSANDRA).name("col_text").type("text").build();
+
+      JSONObject valuesJson = new JSONObject();
+      valuesJson.put("col_text", "test_value");
+
+      PreparedStatementValueObject result =
+          getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+
+      Object castResult =
+          CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+      assertEquals("test_value", castResult);
+    }
+
+    // Test PG_BYTEA
+    {
+      Column spannerCol = spannerTable.column("col_bytea");
+      SourceColumn sourceCol =
+          SourceColumn.builder(SourceDatabaseType.CASSANDRA).name("col_bytea").type("blob").build();
+
+      JSONObject valuesJson = new JSONObject();
+      String testValue = "test_value";
+
+      byte[] testBytes = testValue.getBytes(StandardCharsets.UTF_8);
+      String base64Encoded = java.util.Base64.getEncoder().encodeToString(testBytes);
+      valuesJson.put("col_bytea", base64Encoded);
+
+      PreparedStatementValueObject result =
+          getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+
+      Object castResult =
+          CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+
+      assertTrue("Result should be an instance of ByteBuffer", castResult instanceof ByteBuffer);
+      assertEquals(ByteBuffer.wrap(testBytes), castResult);
+    }
   }
 
   @Test
