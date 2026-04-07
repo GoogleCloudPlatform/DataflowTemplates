@@ -29,4 +29,5 @@ CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
     tinyblob_column BYTES(MAX),
     tinytext_column STRING(MAX),
     json_column JSON,
+    -- does not contain dropped_column
 ) PRIMARY KEY (varchar_column);
