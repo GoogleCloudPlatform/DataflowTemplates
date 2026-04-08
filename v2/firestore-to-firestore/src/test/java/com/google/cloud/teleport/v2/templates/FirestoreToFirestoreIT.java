@@ -94,7 +94,10 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
       firestoreAdminResourceManager.createDatabase(
           DEFAULT_DATABASE, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     } catch (FirestoreAdminResourceManagerException e) {
-      if (e.getCause() instanceof AlreadyExistsException) {
+      Throwable cause = e.getCause();
+      if (cause instanceof AlreadyExistsException
+          || (cause instanceof java.util.concurrent.ExecutionException
+              && cause.getCause() instanceof AlreadyExistsException)) {
         System.out.println("Default database already exists: Skipping");
       } else {
         throw e;
