@@ -89,7 +89,7 @@ public class FirestoreToFirestore {
         groupName = "Source",
         order = 2,
         description = "Source Database ID",
-        helpText = "The source database to read from. Use '(default)' for the default database.",
+        helpText = "The source database to read from. Use an empty string for the default database.",
         example = "my-database")
     String getSourceDatabaseId();
 
@@ -130,7 +130,7 @@ public class FirestoreToFirestore {
         order = 5,
         description = "Destination Database ID",
         helpText =
-            "The destination database to write to. Use '(default)' for the default database.",
+            "The destination database to write to. Use an empty string for the default database.",
         example = "my-database")
     String getDestinationDatabaseId();
 
@@ -261,11 +261,11 @@ public class FirestoreToFirestore {
       throw new IllegalArgumentException("sourceProjectId must be provided");
     }
     String sourceDatabaseId = options.getSourceDatabaseId();
-    if (sourceDatabaseId == null || sourceDatabaseId.isEmpty()) {
+    if (sourceDatabaseId == null) {
       throw new IllegalArgumentException("sourceDatabaseId must be provided");
     }
     String destinationDatabaseId = options.getDestinationDatabaseId();
-    if (destinationDatabaseId == null || destinationDatabaseId.isEmpty()) {
+    if (destinationDatabaseId == null) {
       throw new IllegalArgumentException("destinationDatabaseId must be provided");
     }
   }
