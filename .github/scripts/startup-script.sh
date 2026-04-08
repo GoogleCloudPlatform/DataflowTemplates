@@ -35,7 +35,7 @@ sudo apt install jq -y
 
 # install maven
 pushd /opt/
-MAVEN_VER=3.9.9
+MAVEN_VER=3.9.14
 sudo wget https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VER}/apache-maven-${MAVEN_VER}-bin.tar.gz
 sudo tar -xvzf apache-maven-${MAVEN_VER}-bin.tar.gz apache-maven-${MAVEN_VER}
 sudo rm -f /opt/apache-maven-${MAVEN_VER}-bin.tar.gz
