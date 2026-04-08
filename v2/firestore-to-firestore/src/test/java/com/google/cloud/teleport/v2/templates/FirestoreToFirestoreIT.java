@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.Blob;
 import com.google.cloud.firestore.DocumentReference;
@@ -47,6 +48,7 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
+import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManagerException;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -70,8 +72,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
   private FirestoreResourceManager sourceFirestoreResourceManager;
-
   private FirestoreResourceManager destinationFirestoreResourceManager;
+
   private Random random;
   private String sourceDatabaseId;
   private String destinationDatabaseId;
@@ -88,8 +90,16 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setRegion(REGION)
             .setCredentials(TestProperties.googleCredentials())
             .build();
-    firestoreAdminResourceManager.createDatabase(
-        DEFAULT_DATABASE, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+    try {
+      firestoreAdminResourceManager.createDatabase(
+          DEFAULT_DATABASE, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+    } catch (FirestoreAdminResourceManagerException e) {
+      if (e.getCause() instanceof AlreadyExistsException) {
+        System.out.println("Default database already exists: Skipping");
+      } else {
+        throw e;
+      }
+    }
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
@@ -283,7 +293,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   @Test
   public void testFirestoreToFirestore_writesToDefaultDatabase() throws IOException {
-    String collectionId = "toDefault-" + randomString(6).toLowerCase();
+    String collectionId = "toDefault-" + randomString(16).toLowerCase();
     int numDocuments = 5;
     Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
 
@@ -322,7 +332,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   @Test
   public void testFirestoreToFirestore_copiesFromDefaultDatabase() throws IOException {
-    String collectionId = "fromDefault-" + randomString(6).toLowerCase();
+    String collectionId = "fromDefault-" + randomString(16).toLowerCase();
     int numDocuments = 5;
     Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
 
