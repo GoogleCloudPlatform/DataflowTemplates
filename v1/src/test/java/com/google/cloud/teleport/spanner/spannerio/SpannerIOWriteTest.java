@@ -1337,6 +1337,7 @@ public class SpannerIOWriteTest implements Serializable {
         };
 
     // Process all elements as one bundle.
+    testFn.setup();
     for (MutationGroup m : mutationGroups) {
       when(mockProcessContext.element()).thenReturn(m);
       // outputReceiver should not be called until end of bundle.
@@ -1414,6 +1415,7 @@ public class SpannerIOWriteTest implements Serializable {
         };
 
     // Process all elements as one bundle.
+    testFn.setup();
     for (MutationGroup m : mutationGroups) {
       when(mockProcessContext.element()).thenReturn(m);
       testFn.processElement(mockProcessContext, mockOutputReceiver);
@@ -1535,6 +1537,7 @@ public class SpannerIOWriteTest implements Serializable {
             buildMutationGroup(buildUpsertMutation(2L)));
 
     // Process elements.
+    testFn.setup();
     for (MutationGroup m : mutationGroups) {
       when(mockProcessContext.element()).thenReturn(m);
       testFn.processElement(mockProcessContext, null);
