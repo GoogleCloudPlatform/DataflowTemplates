@@ -42,10 +42,12 @@ public class PostgreSQLInformationSchemaScannerTest {
   @Mock private ResultSet mockColumnsResultSet;
   @Mock private ResultSet mockPrimaryKeysResultSet;
   @Mock private ResultSet mockForeignKeysResultSet;
+  @Mock private ResultSet mockIndexesResultSet;
   @Mock private PreparedStatement mockTablesPstmt;
   @Mock private PreparedStatement mockColumnsPstmt;
   @Mock private PreparedStatement mockPksPstmt;
   @Mock private PreparedStatement mockFksPstmt;
+  @Mock private PreparedStatement mockIndexesPstmt;
 
   @Before
   public void setUp() throws SQLException {
@@ -58,7 +60,8 @@ public class PostgreSQLInformationSchemaScannerTest {
   public void testScanSuccessful() throws SQLException {
     // Setup consecutive returns for prepareStatement
     when(mockConnection.prepareStatement(anyString()))
-        .thenReturn(mockTablesPstmt, mockColumnsPstmt, mockPksPstmt);
+        .thenReturn(
+            mockTablesPstmt, mockColumnsPstmt, mockPksPstmt, mockIndexesPstmt, mockFksPstmt);
 
     // 1. Mock Tables
     when(mockTablesPstmt.executeQuery()).thenReturn(mockTablesResultSet);
@@ -82,6 +85,21 @@ public class PostgreSQLInformationSchemaScannerTest {
     when(mockPksPstmt.executeQuery()).thenReturn(mockPrimaryKeysResultSet);
     when(mockPrimaryKeysResultSet.next()).thenReturn(true, false);
     when(mockPrimaryKeysResultSet.getString("column_name")).thenReturn("col1");
+
+    // 4. Mock Indexes
+    when(mockIndexesPstmt.executeQuery()).thenReturn(mockIndexesResultSet);
+    when(mockIndexesResultSet.next()).thenReturn(true, false);
+    when(mockIndexesResultSet.getString("index_name")).thenReturn("idx1");
+    when(mockIndexesResultSet.getString("column_name")).thenReturn("col2");
+    when(mockIndexesResultSet.getBoolean("is_unique")).thenReturn(true);
+
+    // 5. Mock Foreign Keys
+    when(mockFksPstmt.executeQuery()).thenReturn(mockForeignKeysResultSet);
+    when(mockForeignKeysResultSet.next()).thenReturn(true, false);
+    when(mockForeignKeysResultSet.getString("CONSTRAINT_NAME")).thenReturn("fk1");
+    when(mockForeignKeysResultSet.getString("COLUMN_NAME")).thenReturn("col3");
+    when(mockForeignKeysResultSet.getString("REFERENCED_TABLE_NAME")).thenReturn("table2");
+    when(mockForeignKeysResultSet.getString("REF_COLUMN_NAME")).thenReturn("col_ref");
 
     PostgreSQLInformationSchemaScanner scanner =
         new PostgreSQLInformationSchemaScanner(mockConnection, "test_db", "public");
@@ -122,10 +140,24 @@ public class PostgreSQLInformationSchemaScannerTest {
     assertEquals("col1", table1.primaryKeyColumns().get(0));
 
     // Check Indexes
-    assertEquals(0, table1.indexes().size());
+    assertEquals(1, table1.indexes().size());
+    SourceIndex idx1 = table1.indexes().get(0);
+    assertEquals("idx1", idx1.name());
+    assertEquals("table1", idx1.tableName());
+    assertTrue(idx1.isUnique());
+    assertEquals(1, idx1.columns().size());
+    assertEquals("col2", idx1.columns().get(0));
 
     // Check Foreign Keys
-    assertEquals(0, table1.foreignKeys().size());
+    assertEquals(1, table1.foreignKeys().size());
+    SourceForeignKey fk1 = table1.foreignKeys().get(0);
+    assertEquals("fk1", fk1.name());
+    assertEquals("table1", fk1.tableName());
+    assertEquals("table2", fk1.referencedTable());
+    assertEquals(1, fk1.keyColumns().size());
+    assertEquals("col3", fk1.keyColumns().get(0));
+    assertEquals(1, fk1.referencedColumns().size());
+    assertEquals("col_ref", fk1.referencedColumns().get(0));
   }
 
   @Test

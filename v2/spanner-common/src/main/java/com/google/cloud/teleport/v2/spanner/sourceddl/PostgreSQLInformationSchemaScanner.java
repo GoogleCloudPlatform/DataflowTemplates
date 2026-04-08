@@ -91,8 +91,11 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
     List<String> primaryKeys = scanPrimaryKeys(tableName, schema);
     tableBuilder.primaryKeyColumns(com.google.common.collect.ImmutableList.copyOf(primaryKeys));
 
-    tableBuilder.indexes(com.google.common.collect.ImmutableList.of());
-    tableBuilder.foreignKeys(com.google.common.collect.ImmutableList.of());
+    List<SourceIndex> indexes = scanIndexes(tableName, schema);
+    tableBuilder.indexes(com.google.common.collect.ImmutableList.copyOf(indexes));
+
+    List<SourceForeignKey> foreignKeys = scanForeignKeys(tableName, schema);
+    tableBuilder.foreignKeys(com.google.common.collect.ImmutableList.copyOf(foreignKeys));
 
     return tableBuilder.build();
   }
@@ -178,5 +181,114 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
       }
     }
     return primaryKeys;
+  }
+
+  private List<SourceIndex> scanIndexes(String tableName, String schema) throws SQLException {
+    Map<String, SourceIndex.Builder> indexBuilders = new java.util.HashMap<>();
+    Map<String, List<String>> indexColsMap = new java.util.HashMap<>();
+
+    String query =
+        "SELECT irel.relname AS index_name, a.attname AS column_name, "
+            + "i.indisunique AS is_unique "
+            + "FROM pg_index AS i "
+            + "JOIN pg_class AS trel ON trel.oid = i.indrelid "
+            + "JOIN pg_namespace AS tnsp ON trel.relnamespace = tnsp.oid "
+            + "JOIN pg_class AS irel ON irel.oid = i.indexrelid "
+            + "CROSS JOIN LATERAL UNNEST (i.indkey) WITH ordinality AS c (colnum, ordinality) "
+            + "JOIN pg_attribute AS a ON trel.oid = a.attrelid AND a.attnum = c.colnum "
+            + "WHERE tnsp.nspname= ? AND trel.relname= ? AND i.indisprimary = false "
+            + "GROUP BY tnsp.nspname, trel.relname, irel.relname, a.attname, array_position(i.indkey, a.attnum), i.indisunique "
+            + "ORDER BY irel.relname, array_position(i.indkey, a.attnum);";
+
+    try (PreparedStatement stmt = connection.prepareStatement(query)) {
+      stmt.setString(1, schema);
+      stmt.setString(2, tableName);
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String indexName = rs.getString("index_name");
+          String columnName = rs.getString("column_name");
+          boolean isUnique = rs.getBoolean("is_unique");
+
+          if (!indexBuilders.containsKey(indexName)) {
+            indexBuilders.put(
+                indexName,
+                SourceIndex.builder().name(indexName).tableName(tableName).isUnique(isUnique));
+            indexColsMap.put(indexName, new ArrayList<>());
+          }
+          indexColsMap.get(indexName).add(columnName);
+        }
+      }
+    }
+
+    List<SourceIndex> indexes = new ArrayList<>();
+    for (Map.Entry<String, SourceIndex.Builder> entry : indexBuilders.entrySet()) {
+      indexes.add(
+          entry
+              .getValue()
+              .columns(
+                  com.google.common.collect.ImmutableList.copyOf(indexColsMap.get(entry.getKey())))
+              .build());
+    }
+    return indexes;
+  }
+
+  private List<SourceForeignKey> scanForeignKeys(String tableName, String schema)
+      throws SQLException {
+    Map<String, SourceForeignKey.Builder> fkBuilders = new java.util.HashMap<>();
+    Map<String, List<String>> keyColsMap = new java.util.HashMap<>();
+    Map<String, List<String>> refColsMap = new java.util.HashMap<>();
+
+    String query =
+        "SELECT "
+            + "ccu.table_name AS \"REFERENCED_TABLE_NAME\", "
+            + "kcu.column_name AS \"COLUMN_NAME\", "
+            + "ccu.column_name AS \"REF_COLUMN_NAME\", "
+            + "rc.constraint_name AS \"CONSTRAINT_NAME\" "
+            + "FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc "
+            + "INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu "
+            + "ON rc.constraint_name = kcu.constraint_name AND rc.constraint_schema = kcu.constraint_schema "
+            + "INNER JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu "
+            + "ON rc.constraint_name = ccu.constraint_name AND rc.constraint_schema = ccu.constraint_schema "
+            + "WHERE rc.constraint_schema = ? AND kcu.table_name = ?;";
+
+    try (PreparedStatement stmt = connection.prepareStatement(query)) {
+      stmt.setString(1, schema);
+      stmt.setString(2, tableName);
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String constraintName = rs.getString("CONSTRAINT_NAME");
+          String columnName = rs.getString("COLUMN_NAME");
+          String referencedTable = rs.getString("REFERENCED_TABLE_NAME");
+          String referencedColumn = rs.getString("REF_COLUMN_NAME");
+
+          if (!fkBuilders.containsKey(constraintName)) {
+            fkBuilders.put(
+                constraintName,
+                SourceForeignKey.builder()
+                    .name(constraintName)
+                    .tableName(tableName)
+                    .referencedTable(referencedTable));
+            keyColsMap.put(constraintName, new ArrayList<>());
+            refColsMap.put(constraintName, new ArrayList<>());
+          }
+
+          keyColsMap.get(constraintName).add(columnName);
+          refColsMap.get(constraintName).add(referencedColumn);
+        }
+      }
+    }
+
+    List<SourceForeignKey> foreignKeys = new ArrayList<>();
+    for (Map.Entry<String, SourceForeignKey.Builder> entry : fkBuilders.entrySet()) {
+      String fkName = entry.getKey();
+      foreignKeys.add(
+          entry
+              .getValue()
+              .keyColumns(com.google.common.collect.ImmutableList.copyOf(keyColsMap.get(fkName)))
+              .referencedColumns(
+                  com.google.common.collect.ImmutableList.copyOf(refColsMap.get(fkName)))
+              .build());
+    }
+    return foreignKeys;
   }
 }

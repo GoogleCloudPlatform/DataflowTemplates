@@ -130,8 +130,9 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
+      String sqlValue = (colValue == null) ? "NULL" : colValue;
       allColumns.append("\"").append(colName).append("\"");
-      allValues.append(colValue);
+      allValues.append(sqlValue);
 
       // Add comma if not the last item in this loop
       if (index + 1 < allColumnNameValues.size()) {

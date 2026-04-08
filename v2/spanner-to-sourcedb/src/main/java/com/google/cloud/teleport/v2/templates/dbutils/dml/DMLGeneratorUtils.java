@@ -106,7 +106,7 @@ public class DMLGeneratorUtils {
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
         if (keyValuesJson.isNull(actualColName)) {
-          response.put(colName, "NULL");
+          response.put(colName, null);
           continue;
         }
         columnValue =
@@ -114,7 +114,7 @@ public class DMLGeneratorUtils {
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
-          response.put(colName, "NULL");
+          response.put(colName, null);
           continue;
         }
         columnValue =
@@ -190,7 +190,7 @@ public class DMLGeneratorUtils {
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
         if (keyValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, "NULL");
+          response.put(sourceColName, null);
           continue;
         }
         columnValue =
@@ -198,7 +198,7 @@ public class DMLGeneratorUtils {
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, "NULL");
+          response.put(sourceColName, null);
           continue;
         }
         columnValue =

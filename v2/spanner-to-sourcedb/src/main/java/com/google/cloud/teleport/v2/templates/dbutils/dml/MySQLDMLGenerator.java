@@ -129,9 +129,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
+      String sqlValue = (colValue == null) ? "NULL" : colValue;
       allColumns += "`" + colName + "`";
-      allValues += colValue;
-      updateValues += " `" + colName + "` = " + colValue;
+      allValues += sqlValue;
+      updateValues += " `" + colName + "` = " + sqlValue;
 
       // Add comma if not the last item in this loop
       if (index + 1 < allColumnNameValues.size()) {
