@@ -176,7 +176,6 @@ public class SchemaUtilsTest {
   public void testDAGConstructionInterleaving() {
     // InterleavedParent -> Child (interleaved)
     // OtherParent (1 QPS) -> Child (FK)
-    // Interleaving should take precedence.
 
     DataGeneratorTable interleavedParent =
         DataGeneratorTable.builder()

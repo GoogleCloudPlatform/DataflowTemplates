@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that selects a table for each tick based on weighted probability. The weight
- * for a table is (table QPS + QPS of its children). The denominator is the total QPS across all
- * tables.
+ * for a table is (table insertQPS + insertQPS of its descendants). The denominator is the total
+ * insertQPS across all tables.
  */
 public class SelectTable extends PTransform<PCollection<Long>, PCollection<DataGeneratorTable>> {
 
@@ -55,7 +55,7 @@ public class SelectTable extends PTransform<PCollection<Long>, PCollection<DataG
     private final PCollectionView<DataGeneratorSchema> schemaView;
 
     // Cache for table weights: Key = Cumulative Probability (0.0 to 1.0), Value =
-    // Table Name
+    // DataGeneratorTable
     private transient NavigableMap<Double, DataGeneratorTable> tableSelectionMap;
 
     public SelectTableFn(PCollectionView<DataGeneratorSchema> schemaView) {
