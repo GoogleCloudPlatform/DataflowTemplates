@@ -20,11 +20,13 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,26 @@ public class DMLGeneratorUtils {
         SourceColumn sourceColDef,
         JSONObject valuesJson,
         String sourceDbTimezoneOffset);
+  }
+
+  public static String convertBase64ToRawHex(String base64EncodedString) {
+    if (base64EncodedString == null) {
+      return null;
+    }
+    if (StringUtils.isEmpty(base64EncodedString)) {
+      return "";
+    }
+    try {
+      byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
+      StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
+      for (byte b : decodedBytes) {
+        hexStringBuilder.append(String.format("%02x", b & 0xFF));
+      }
+      return hexStringBuilder.toString();
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Invalid Base64 encoded string provided: " + e.getMessage(), e);
+    }
   }
 
   public static Map<String, String> getColumnValues(

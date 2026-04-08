@@ -26,7 +26,6 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Base64;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -251,35 +250,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
    */
   @VisibleForTesting
   protected static String convertBase64ToHex(String base64EncodedString) {
-    if (base64EncodedString == null) {
+    String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
+    if (rawHex == null) {
       return null;
     }
-    if (StringUtils.isEmpty(base64EncodedString)) {
-      return "x''";
-    }
-
-    try {
-      // 1. Decode the Base64 string into bytes
-      byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
-
-      // 2. Convert the bytes to a hexadecimal string
-      StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
-      for (byte b : decodedBytes) {
-        // Use Integer.toHexString to get the hex representation of each byte.
-        // & 0xFF ensures that the byte is treated as an unsigned value
-        // (otherwise, negative bytes would get a longer hex string like "ffffffxx").
-        // We then format it to always be two characters, padding with '0' if necessary.
-        hexStringBuilder.append(String.format("%02x", b & 0xFF));
-      }
-
-      // 3. Prefix with x' and suffix with '
-      return "x'" + hexStringBuilder.toString() + "'";
-
-    } catch (IllegalArgumentException e) {
-      // Re-throw or wrap the exception if Base64 decoding fails.
-      throw new IllegalArgumentException(
-          "Invalid Base64 encoded string provided: " + e.getMessage(), e);
-    }
+    return rawHex.isEmpty() ? "x''" : "x'" + rawHex + "'";
   }
 
   private static String getColumnValueByType(

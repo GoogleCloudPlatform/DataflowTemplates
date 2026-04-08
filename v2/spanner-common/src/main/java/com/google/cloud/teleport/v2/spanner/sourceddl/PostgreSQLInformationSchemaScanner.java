@@ -36,13 +36,13 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
   private final String databaseName;
   private final SourceDatabaseType sourceType = SourceDatabaseType.POSTGRESQL;
 
-  // Schema name is 'public' by default for PostgreSQL, unless specified otherwise
   private final String schema;
 
   public PostgreSQLInformationSchemaScanner(
       Connection connection, String databaseName, String schema) {
     this.connection = connection;
     this.databaseName = databaseName;
+    // Schema name is 'public' by default for PostgreSQL, unless specified otherwise
     this.schema = (schema != null && !schema.isBlank()) ? schema : "public";
   }
 
@@ -85,21 +85,14 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
     SourceTable.Builder tableBuilder =
         SourceTable.builder(sourceType).name(tableName).schema(schema);
 
-    // Scan columns
     List<SourceColumn> columns = scanColumns(tableName, schema);
     tableBuilder.columns(com.google.common.collect.ImmutableList.copyOf(columns));
 
-    // Scan primary keys
     List<String> primaryKeys = scanPrimaryKeys(tableName, schema);
     tableBuilder.primaryKeyColumns(com.google.common.collect.ImmutableList.copyOf(primaryKeys));
 
-    // Scan indexes
-    List<SourceIndex> indexes = scanIndexes(tableName, schema);
-    tableBuilder.indexes(com.google.common.collect.ImmutableList.copyOf(indexes));
-
-    // Scan foreign keys
-    List<SourceForeignKey> foreignKeys = scanForeignKeys(tableName, schema);
-    tableBuilder.foreignKeys(com.google.common.collect.ImmutableList.copyOf(foreignKeys));
+    tableBuilder.indexes(com.google.common.collect.ImmutableList.of());
+    tableBuilder.foreignKeys(com.google.common.collect.ImmutableList.of());
 
     return tableBuilder.build();
   }
@@ -107,22 +100,33 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
   private List<SourceColumn> scanColumns(String tableName, String schema) throws SQLException {
     List<SourceColumn> columns = new ArrayList<>();
     String query =
-        "SELECT column_name, data_type, character_maximum_length, "
-            + "numeric_precision, numeric_scale, is_nullable, is_generated "
-            + "FROM information_schema.columns "
-            + "WHERE table_schema = ? AND table_name = ? "
-            + "ORDER BY ordinal_position";
+        "SELECT c.column_name, c.data_type, e.data_type AS element_type, c.character_maximum_length, "
+            + "c.numeric_precision, c.numeric_scale, c.is_nullable, c.is_generated "
+            + "FROM information_schema.columns c "
+            + "LEFT JOIN information_schema.element_types e "
+            + "  ON ((c.table_catalog, c.table_schema, c.table_name, 'TABLE', c.dtd_identifier) "
+            + "      = (e.object_catalog, e.object_schema, e.object_name, e.object_type, e.collection_type_identifier)) "
+            + "WHERE c.table_schema = ? AND c.table_name = ? "
+            + "ORDER BY c.ordinal_position";
 
     try (PreparedStatement stmt = connection.prepareStatement(query)) {
       stmt.setString(1, schema);
       stmt.setString(2, tableName);
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
+          String dataType = rs.getString("data_type");
+          String elementType = rs.getString("element_type");
+
           SourceColumn.Builder columnBuilder =
               SourceColumn.builder(sourceType)
                   .name(rs.getString("column_name"))
-                  .type(rs.getString("data_type"))
                   .isNullable("YES".equals(rs.getString("is_nullable")));
+
+          if ("ARRAY".equals(dataType) && elementType != null) {
+            columnBuilder.type(elementType + "[]");
+          } else {
+            columnBuilder.type(dataType);
+          }
 
           columnBuilder.isPrimaryKey(false);
 
@@ -174,122 +178,5 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
       }
     }
     return primaryKeys;
-  }
-
-  private List<SourceIndex> scanIndexes(String tableName, String schema) throws SQLException {
-    Map<String, SourceIndex.Builder> indexBuilders = new java.util.HashMap<>();
-    Map<String, List<String>> indexColumns = new java.util.HashMap<>();
-
-    String query =
-        "SELECT i.relname AS index_name, "
-            + "a.attname AS column_name, "
-            + "ix.indisunique AS is_unique, "
-            + "ix.indisprimary AS is_primary "
-            + "FROM pg_class t, pg_class i, pg_index ix, pg_attribute a, pg_namespace n "
-            + "WHERE t.oid = ix.indrelid "
-            + "  AND i.oid = ix.indexrelid "
-            + "  AND a.attrelid = t.oid "
-            + "  AND a.attnum = ANY(ix.indkey) "
-            + "  AND t.relnamespace = n.oid "
-            + "  AND n.nspname = ? "
-            + "  AND t.relkind = 'r' "
-            + "  AND t.relname = ? "
-            + "  AND ix.indisprimary = false "
-            + "ORDER BY t.relname, i.relname, a.attnum";
-
-    try (PreparedStatement stmt = connection.prepareStatement(query)) {
-      stmt.setString(1, schema);
-      stmt.setString(2, tableName);
-      try (ResultSet rs = stmt.executeQuery()) {
-        while (rs.next()) {
-          String indexName = rs.getString("index_name");
-          String columnName = rs.getString("column_name");
-          boolean isUnique = rs.getBoolean("is_unique");
-
-          indexBuilders.computeIfAbsent(
-              indexName,
-              k ->
-                  SourceIndex.builder()
-                      .name(k)
-                      .tableName(tableName)
-                      .isUnique(isUnique)
-                      .isPrimary(false));
-
-          indexColumns.computeIfAbsent(indexName, k -> new ArrayList<>()).add(columnName);
-        }
-      }
-    }
-
-    List<SourceIndex> indexes = new ArrayList<>();
-    for (Map.Entry<String, SourceIndex.Builder> entry : indexBuilders.entrySet()) {
-      indexes.add(
-          entry
-              .getValue()
-              .columns(
-                  com.google.common.collect.ImmutableList.copyOf(indexColumns.get(entry.getKey())))
-              .build());
-    }
-    return indexes;
-  }
-
-  private List<SourceForeignKey> scanForeignKeys(String tableName, String schema)
-      throws SQLException {
-    Map<String, SourceForeignKey.Builder> fkBuilders = new java.util.HashMap<>();
-    Map<String, List<String>> keyColsMap = new java.util.HashMap<>();
-    Map<String, List<String>> refColsMap = new java.util.HashMap<>();
-
-    String query =
-        "SELECT tc.constraint_name, tc.table_name, kcu.column_name, "
-            + "ccu.table_name AS referenced_table_name, ccu.column_name AS referenced_column_name "
-            + "FROM information_schema.table_constraints AS tc "
-            + "JOIN information_schema.key_column_usage AS kcu "
-            + "  ON tc.constraint_name = kcu.constraint_name "
-            + "  AND tc.table_schema = kcu.table_schema "
-            + "JOIN information_schema.constraint_column_usage AS ccu "
-            + "  ON ccu.constraint_name = tc.constraint_name "
-            + "  AND ccu.table_schema = tc.table_schema "
-            + "WHERE tc.constraint_type = 'FOREIGN KEY' "
-            + "  AND tc.table_schema = ? AND tc.table_name = ? "
-            + "ORDER BY tc.constraint_name, kcu.ordinal_position";
-
-    try (PreparedStatement stmt = connection.prepareStatement(query)) {
-      stmt.setString(1, schema);
-      stmt.setString(2, tableName);
-      try (ResultSet rs = stmt.executeQuery()) {
-        while (rs.next()) {
-          String constraintName = rs.getString("constraint_name");
-          String columnName = rs.getString("column_name");
-          String referencedTable = rs.getString("referenced_table_name");
-          String referencedColumn = rs.getString("referenced_column_name");
-
-          if (!fkBuilders.containsKey(constraintName)) {
-            fkBuilders.put(
-                constraintName,
-                SourceForeignKey.builder()
-                    .name(constraintName)
-                    .tableName(tableName)
-                    .referencedTable(referencedTable));
-            keyColsMap.put(constraintName, new ArrayList<>());
-            refColsMap.put(constraintName, new ArrayList<>());
-          }
-
-          keyColsMap.get(constraintName).add(columnName);
-          refColsMap.get(constraintName).add(referencedColumn);
-        }
-      }
-    }
-
-    List<SourceForeignKey> foreignKeys = new ArrayList<>();
-    for (Map.Entry<String, SourceForeignKey.Builder> entry : fkBuilders.entrySet()) {
-      String fkName = entry.getKey();
-      foreignKeys.add(
-          entry
-              .getValue()
-              .keyColumns(com.google.common.collect.ImmutableList.copyOf(keyColsMap.get(fkName)))
-              .referencedColumns(
-                  com.google.common.collect.ImmutableList.copyOf(refColsMap.get(fkName)))
-              .build());
-    }
-    return foreignKeys;
   }
 }

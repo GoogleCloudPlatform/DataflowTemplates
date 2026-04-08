@@ -26,7 +26,6 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -259,30 +258,18 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
 
   @VisibleForTesting
   protected static String convertBase64ToHex(String base64EncodedString) {
-    if (base64EncodedString == null) {
+    String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
+    if (rawHex == null) {
       return null;
     }
-    if (StringUtils.isEmpty(base64EncodedString)) {
-      return "''";
-    }
-
-    try {
-      byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
-      StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
-      for (byte b : decodedBytes) {
-        hexStringBuilder.append(String.format("%02x", b & 0xFF));
-      }
-      return "'\\x" + hexStringBuilder.toString() + "'";
-
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(
-          "Invalid Base64 encoded string provided: " + e.getMessage(), e);
-    }
+    return rawHex.isEmpty() ? "''" : "'\\x" + rawHex + "'";
   }
 
   private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
+    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid PostgreSQL
+    // array literals.
     switch (columnType) {
       case "varchar":
       case "char":
