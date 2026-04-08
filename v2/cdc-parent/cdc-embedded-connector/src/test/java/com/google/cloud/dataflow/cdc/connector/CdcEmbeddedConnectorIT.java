@@ -19,7 +19,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.Credentials;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
@@ -42,6 +41,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -55,7 +55,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link App} embedded connector. */
-@Category(TemplateIntegrationTest.class)
+@Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
 public class CdcEmbeddedConnectorIT extends TemplateTestBase {
 
