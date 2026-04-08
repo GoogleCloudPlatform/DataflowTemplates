@@ -65,6 +65,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private static final String REGION = TestProperties.region();
   private static final String SUB_COLLECTION_GROUP_ID = "subCol";
   private static final String SUB_SUB_COLLECTION_GROUP_ID = "subSubCol";
+  private static final String DEFAULT_DATABASE = "(default)";
 
   private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
@@ -87,6 +88,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setRegion(REGION)
             .setCredentials(TestProperties.googleCredentials())
             .build();
+    firestoreAdminResourceManager.createDatabase(
+        DEFAULT_DATABASE, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
@@ -275,6 +278,83 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
           assertValuesEqual(expectedValue, actualValue);
         }
       }
+    }
+  }
+
+  @Test
+  public void testFirestoreToFirestore_writesToDefaultDatabase() throws IOException {
+    String collectionId = "toDefault-" + randomString(6).toLowerCase();
+    int numDocuments = 5;
+    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+
+    // Write to non-default source
+    sourceFirestoreResourceManager.write(collectionId, inputData);
+
+    // Set destination to empty string for default database
+    String originalDestination = destinationDatabaseId;
+    destinationDatabaseId = "";
+
+    FirestoreResourceManager defaultFirestoreResourceManager = null;
+    try {
+      LaunchInfo info = launchPipeline(/* testName= */ "writeToDefault", collectionId);
+      assertThatPipeline(info).isRunning();
+
+      Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
+      assertThatResult(result).isLaunchFinished();
+
+      // Verify in default database
+      defaultFirestoreResourceManager =
+          FirestoreResourceManager.builder(testName)
+              .setProject(PROJECT)
+              .setDatabase(DEFAULT_DATABASE)
+              .setCredentials(TestProperties.googleCredentials())
+              .build();
+      
+      List<QueryDocumentSnapshot> documents = defaultFirestoreResourceManager.read(collectionId);
+      assertThat(documents).hasSize(numDocuments);
+    } finally {
+      destinationDatabaseId = originalDestination;
+      if (defaultFirestoreResourceManager != null) {
+        ResourceManagerUtils.cleanResources(defaultFirestoreResourceManager);
+      }
+    }
+  }
+
+  @Test
+  public void testFirestoreToFirestore_copiesFromDefaultDatabase() throws IOException {
+    String collectionId = "fromDefault-" + randomString(6).toLowerCase();
+    int numDocuments = 5;
+    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+
+    FirestoreResourceManager defaultFirestoreResourceManager =
+        FirestoreResourceManager.builder(testName)
+            .setProject(PROJECT)
+            .setDatabase(DEFAULT_DATABASE)
+            .setCredentials(TestProperties.googleCredentials())
+            .build();
+    
+    try {
+      defaultFirestoreResourceManager.write(collectionId, inputData);
+
+      // Set source to empty string for default database
+      String originalSource = sourceDatabaseId;
+      sourceDatabaseId = "";
+
+      try {
+        LaunchInfo info = launchPipeline(/* testName= */ "copyFromDefault", collectionId);
+        assertThatPipeline(info).isRunning();
+
+        Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
+        assertThatResult(result).isLaunchFinished();
+
+        // Verify in non-default destination
+        List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+        assertThat(documents).hasSize(numDocuments);
+      } finally {
+        sourceDatabaseId = originalSource;
+      }
+    } finally {
+      ResourceManagerUtils.cleanResources(defaultFirestoreResourceManager);
     }
   }
 
