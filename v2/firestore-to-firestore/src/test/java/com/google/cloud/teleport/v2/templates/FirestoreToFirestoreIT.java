@@ -309,7 +309,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
               .setDatabase(DEFAULT_DATABASE)
               .setCredentials(TestProperties.googleCredentials())
               .build();
-      
+
       List<QueryDocumentSnapshot> documents = defaultFirestoreResourceManager.read(collectionId);
       assertThat(documents).hasSize(numDocuments);
     } finally {
@@ -332,7 +332,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setDatabase(DEFAULT_DATABASE)
             .setCredentials(TestProperties.googleCredentials())
             .build();
-    
+
     try {
       defaultFirestoreResourceManager.write(collectionId, inputData);
 
@@ -344,11 +344,13 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         LaunchInfo info = launchPipeline(/* testName= */ "copyFromDefault", collectionId);
         assertThatPipeline(info).isRunning();
 
-        Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
+        Result result =
+            pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
         assertThatResult(result).isLaunchFinished();
 
         // Verify in non-default destination
-        List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
+        List<QueryDocumentSnapshot> documents =
+            destinationFirestoreResourceManager.read(collectionId);
         assertThat(documents).hasSize(numDocuments);
       } finally {
         sourceDatabaseId = originalSource;
