@@ -89,7 +89,8 @@ public class FirestoreToFirestore {
         groupName = "Source",
         order = 2,
         description = "Source Database ID",
-        helpText = "The source database to read from. Use an empty string for the default database.",
+        helpText =
+            "The source database to read from. Use an empty string for the default database.",
         example = "my-database")
     String getSourceDatabaseId();
 
