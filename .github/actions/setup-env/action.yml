@@ -70,19 +70,6 @@ runs:
       with:
         cache-key: ${{ inputs.java-cache-key }}
         java-version: ${{ inputs.java-version }}
-    - name: Get Maven Version
-      id: get-version
-      shell: bash
-      run: |
-        VERSION=$(grep "<maven.version>" plugins/templates-maven-plugin/pom.xml | head -n 1 | sed -e 's/.*<maven.version>\(.*\)<\/maven.version>.*/\1/')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-    - name: Install Maven
-      shell: bash
-      run: |
-        VERSION=${{ steps.get-version.outputs.version }}
-        wget https://archive.apache.org/dist/maven/maven-3/$VERSION/binaries/apache-maven-$VERSION-bin.tar.gz
-        tar -xzf apache-maven-$VERSION-bin.tar.gz
-        echo "$GITHUB_WORKSPACE/apache-maven-$VERSION/bin" >> $GITHUB_PATH
     - name: Setup Python
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
       with:
