@@ -66,6 +66,8 @@ public abstract class DataGeneratorTable implements Serializable {
   @Nullable
   public abstract ImmutableList<String> childTables();
 
+  public abstract Builder toBuilder();
+
   public static Builder builder() {
     return new AutoValue_DataGeneratorTable.Builder();
   }
