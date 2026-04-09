@@ -31,5 +31,6 @@ public class DatabaseOptionAllowlist {
           "version_retention_period",
           "opt_in_dataplacement_preview",
           "default_sequence_kind",
-          "default_time_zone");
+          "default_time_zone",
+          "score_version");
 }
