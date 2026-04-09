@@ -67,6 +67,7 @@ public class FirestoreToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FirestoreToFirestore.class);
   private static final int DEFAULT_MAX_NUM_WORKERS = 500;
+  private static final String DEFAULT_DATABASE_ID = "(default)";
 
   /**
    * Options supported by the pipeline.
@@ -90,7 +91,7 @@ public class FirestoreToFirestore {
         order = 2,
         description = "Source Database ID",
         helpText =
-            "The source database to read from. Use an empty string for the default database.",
+            "The source database to read from. Use '(default)' or an empty string for the default database.",
         example = "my-database")
     String getSourceDatabaseId();
 
@@ -131,7 +132,7 @@ public class FirestoreToFirestore {
         order = 5,
         description = "Destination Database ID",
         helpText =
-            "The destination database to write to. Use an empty string for the default database.",
+            "The destination database to write to. Use '(default)' or an empty string for the default database.",
         example = "my-database")
     String getDestinationDatabaseId();
 
@@ -151,6 +152,10 @@ public class FirestoreToFirestore {
     void setReadTime(String readTime);
   }
 
+  private static String normalizeDatabaseId(String databaseId) {
+    return DEFAULT_DATABASE_ID.equals(databaseId) ? "" : databaseId;
+  }
+
   public static void main(String[] args) {
     try {
       UncaughtExceptionLogger.register();
@@ -165,13 +170,13 @@ public class FirestoreToFirestore {
       LOG.info("Pipeline created.");
 
       String sourceProjectId = options.getSourceProjectId();
-      String sourceDatabaseId = options.getSourceDatabaseId();
+      String sourceDatabaseId = normalizeDatabaseId(options.getSourceDatabaseId());
 
       String destinationProjectId =
           options.getDestinationProjectId().isEmpty()
               ? sourceProjectId
               : options.getDestinationProjectId();
-      String destinationDatabaseId = options.getDestinationDatabaseId();
+      String destinationDatabaseId = normalizeDatabaseId(options.getDestinationDatabaseId());
 
       int maxNumWorkers =
           options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
