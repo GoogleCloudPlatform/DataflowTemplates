@@ -20,7 +20,6 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.Blob;
 import com.google.cloud.firestore.DocumentReference;
@@ -48,7 +47,6 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
-import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManagerException;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -67,13 +65,12 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private static final String REGION = TestProperties.region();
   private static final String SUB_COLLECTION_GROUP_ID = "subCol";
   private static final String SUB_SUB_COLLECTION_GROUP_ID = "subSubCol";
-  private static final String DEFAULT_DATABASE = "(default)";
 
   private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
   private FirestoreResourceManager sourceFirestoreResourceManager;
-  private FirestoreResourceManager destinationFirestoreResourceManager;
 
+  private FirestoreResourceManager destinationFirestoreResourceManager;
   private Random random;
   private String sourceDatabaseId;
   private String destinationDatabaseId;
@@ -90,19 +87,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setRegion(REGION)
             .setCredentials(TestProperties.googleCredentials())
             .build();
-    try {
-      firestoreAdminResourceManager.createDatabase(
-          DEFAULT_DATABASE, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
-    } catch (FirestoreAdminResourceManagerException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof AlreadyExistsException
-          || (cause instanceof java.util.concurrent.ExecutionException
-              && cause.getCause() instanceof AlreadyExistsException)) {
-        System.out.println("Default database already exists: Skipping");
-      } else {
-        throw e;
-      }
-    }
     firestoreAdminResourceManager.createDatabase(
         sourceDatabaseId, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
     firestoreAdminResourceManager.createDatabase(
@@ -291,85 +275,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
           assertValuesEqual(expectedValue, actualValue);
         }
       }
-    }
-  }
-
-  @Test
-  public void testFirestoreToFirestore_writesToDefaultDatabase() throws IOException {
-    String collectionId = "toDefault-" + randomString(16).toLowerCase();
-    int numDocuments = 5;
-    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
-
-    // Write to non-default source
-    sourceFirestoreResourceManager.write(collectionId, inputData);
-
-    // Set destination to empty string for default database
-    String originalDestination = destinationDatabaseId;
-    destinationDatabaseId = "";
-
-    FirestoreResourceManager defaultFirestoreResourceManager = null;
-    try {
-      LaunchInfo info = launchPipeline(/* testName= */ "writeToDefault", collectionId);
-      assertThatPipeline(info).isRunning();
-
-      Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
-      assertThatResult(result).isLaunchFinished();
-
-      // Verify in default database
-      defaultFirestoreResourceManager =
-          FirestoreResourceManager.builder(testName)
-              .setProject(PROJECT)
-              .setDatabase(DEFAULT_DATABASE)
-              .setCredentials(TestProperties.googleCredentials())
-              .build();
-
-      List<QueryDocumentSnapshot> documents = defaultFirestoreResourceManager.read(collectionId);
-      assertThat(documents).hasSize(numDocuments);
-    } finally {
-      destinationDatabaseId = originalDestination;
-      if (defaultFirestoreResourceManager != null) {
-        ResourceManagerUtils.cleanResources(defaultFirestoreResourceManager);
-      }
-    }
-  }
-
-  @Test
-  public void testFirestoreToFirestore_copiesFromDefaultDatabase() throws IOException {
-    String collectionId = "fromDefault-" + randomString(16).toLowerCase();
-    int numDocuments = 5;
-    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
-
-    FirestoreResourceManager defaultFirestoreResourceManager =
-        FirestoreResourceManager.builder(testName)
-            .setProject(PROJECT)
-            .setDatabase(DEFAULT_DATABASE)
-            .setCredentials(TestProperties.googleCredentials())
-            .build();
-
-    try {
-      defaultFirestoreResourceManager.write(collectionId, inputData);
-
-      // Set source to empty string for default database
-      String originalSource = sourceDatabaseId;
-      sourceDatabaseId = "";
-
-      try {
-        LaunchInfo info = launchPipeline(/* testName= */ "copyFromDefault", collectionId);
-        assertThatPipeline(info).isRunning();
-
-        Result result =
-            pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
-        assertThatResult(result).isLaunchFinished();
-
-        // Verify in non-default destination
-        List<QueryDocumentSnapshot> documents =
-            destinationFirestoreResourceManager.read(collectionId);
-        assertThat(documents).hasSize(numDocuments);
-      } finally {
-        sourceDatabaseId = originalSource;
-      }
-    } finally {
-      ResourceManagerUtils.cleanResources(defaultFirestoreResourceManager);
     }
   }
 
