@@ -76,7 +76,7 @@ jobs:
           dependency_template = '''    <dependency>
                   <groupId>org.apache.beam</groupId>
                   <artifactId>@JAR_NAME@</artifactId>
-                  <version>2.73.0-SNAPSHOT</version>
+                  <version>2.74.0-SNAPSHOT</version>
               </dependency>'''
           
           dependency = dependency_template.replace('@JAR_NAME@', jar_name)
