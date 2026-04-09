@@ -238,18 +238,40 @@ public class PostgreSQLInformationSchemaScanner implements SourceSchemaScanner {
     Map<String, List<String>> keyColsMap = new java.util.HashMap<>();
     Map<String, List<String>> refColsMap = new java.util.HashMap<>();
 
+    // Query to scan foreign keys using PostgreSQL system catalogs.
+    // We use pg_constraint instead of INFORMATION_SCHEMA because INFORMATION_SCHEMA
+    // does not provide a way to correctly map columns in multi-column foreign keys.
     String query =
-        "SELECT "
-            + "ccu.table_name AS \"REFERENCED_TABLE_NAME\", "
-            + "kcu.column_name AS \"COLUMN_NAME\", "
-            + "ccu.column_name AS \"REF_COLUMN_NAME\", "
-            + "rc.constraint_name AS \"CONSTRAINT_NAME\" "
-            + "FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc "
-            + "INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu "
-            + "ON rc.constraint_name = kcu.constraint_name AND rc.constraint_schema = kcu.constraint_schema "
-            + "INNER JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu "
-            + "ON rc.constraint_name = ccu.constraint_name AND rc.constraint_schema = ccu.constraint_schema "
-            + "WHERE rc.constraint_schema = ? AND kcu.table_name = ?;";
+        """
+    SELECT
+        c.conname AS "CONSTRAINT_NAME",      -- The name of the foreign key constraint
+        a.attname AS "COLUMN_NAME",        -- The name of the column in the source table
+        confrel.relname AS "REFERENCED_TABLE_NAME", -- The table being pointed to
+        af.attname AS "REF_COLUMN_NAME"    -- The name of the column in the target table
+    FROM
+        pg_constraint c
+    -- Get the schema (namespace) of the constraint
+    JOIN pg_namespace n ON n.oid = c.connamespace
+    -- Get the table the constraint belongs to
+    JOIN pg_class r ON r.oid = c.conrelid
+    -- Get the referenced (foreign) table
+    JOIN pg_class confrel ON confrel.oid = c.confrelid
+    -- Parallel unnest conkey (col IDs) and confkey (target col IDs)
+    -- to maintain their 1-to-1 mapping and the original column order (ord)
+    CROSS JOIN LATERAL UNNEST(c.conkey, c.confkey) WITH ORDINALITY AS u(concol, confcol, ord)
+    -- Join with pg_attribute to get the column name using the ID from UNNEST
+    JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = u.concol
+    -- Join with pg_attribute to get the referenced column name using the ID from UNNEST
+    JOIN pg_attribute af ON af.attrelid = c.confrelid AND af.attnum = u.confcol
+    WHERE
+        c.contype = 'f'      -- 'f' stands for Foreign Key constraint
+        AND n.nspname = ?    -- Filter by schema name
+        AND r.relname = ?    -- Filter by table name
+    -- Ensure composite keys are processed in the same order they were defined
+    ORDER BY
+        c.conname,
+        u.ord;
+    """;
 
     try (PreparedStatement stmt = connection.prepareStatement(query)) {
       stmt.setString(1, schema);

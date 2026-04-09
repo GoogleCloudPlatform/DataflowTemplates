@@ -72,7 +72,7 @@ public class PostgreSQLInformationSchemaScannerTest {
     // 2. Mock Columns
     when(mockColumnsPstmt.executeQuery()).thenReturn(mockColumnsResultSet);
     when(mockColumnsResultSet.next()).thenReturn(true, true, true, false); // 3 columns
-    when(mockColumnsResultSet.getString("column_name")).thenReturn("col1", "col2", "col3");
+    when(mockColumnsResultSet.getString("column_name")).thenReturn("col2", "col1", "col3");
     when(mockColumnsResultSet.getString("data_type")).thenReturn("varchar", "numeric", "ARRAY");
     when(mockColumnsResultSet.getString("element_type")).thenReturn(null, null, "varchar");
     when(mockColumnsResultSet.getString("is_nullable")).thenReturn("NO", "YES", "YES");
@@ -88,18 +88,19 @@ public class PostgreSQLInformationSchemaScannerTest {
 
     // 4. Mock Indexes
     when(mockIndexesPstmt.executeQuery()).thenReturn(mockIndexesResultSet);
-    when(mockIndexesResultSet.next()).thenReturn(true, false);
-    when(mockIndexesResultSet.getString("index_name")).thenReturn("idx1");
-    when(mockIndexesResultSet.getString("column_name")).thenReturn("col2");
-    when(mockIndexesResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockIndexesResultSet.next()).thenReturn(true, true, false);
+    when(mockIndexesResultSet.getString("index_name")).thenReturn("idx1", "idx1");
+    when(mockIndexesResultSet.getString("column_name")).thenReturn("col2", "col1");
+    when(mockIndexesResultSet.getBoolean("is_unique")).thenReturn(true, true);
 
     // 5. Mock Foreign Keys
     when(mockFksPstmt.executeQuery()).thenReturn(mockForeignKeysResultSet);
-    when(mockForeignKeysResultSet.next()).thenReturn(true, false);
-    when(mockForeignKeysResultSet.getString("CONSTRAINT_NAME")).thenReturn("fk1");
-    when(mockForeignKeysResultSet.getString("COLUMN_NAME")).thenReturn("col3");
-    when(mockForeignKeysResultSet.getString("REFERENCED_TABLE_NAME")).thenReturn("table2");
-    when(mockForeignKeysResultSet.getString("REF_COLUMN_NAME")).thenReturn("col_ref");
+    when(mockForeignKeysResultSet.next()).thenReturn(true, true, false);
+    when(mockForeignKeysResultSet.getString("CONSTRAINT_NAME")).thenReturn("fk1", "fk1");
+    when(mockForeignKeysResultSet.getString("COLUMN_NAME")).thenReturn("col2", "col1");
+    when(mockForeignKeysResultSet.getString("REFERENCED_TABLE_NAME"))
+        .thenReturn("table2", "table2");
+    when(mockForeignKeysResultSet.getString("REF_COLUMN_NAME")).thenReturn("ref2", "ref1");
 
     PostgreSQLInformationSchemaScanner scanner =
         new PostgreSQLInformationSchemaScanner(mockConnection, "test_db", "public");
@@ -115,14 +116,14 @@ public class PostgreSQLInformationSchemaScannerTest {
     // Check Columns
     assertEquals(3, table1.columns().size());
     SourceColumn col1 = table1.columns().get(0);
-    assertEquals("col1", col1.name());
+    assertEquals("col2", col1.name());
     assertEquals("varchar", col1.type());
     assertEquals(255L, (long) col1.size());
     assertFalse(col1.isNullable());
     assertFalse(col1.isGenerated());
 
     SourceColumn col2 = table1.columns().get(1);
-    assertEquals("col2", col2.name());
+    assertEquals("col1", col2.name());
     assertEquals("numeric", col2.type());
     assertEquals(10, (int) col2.precision());
     assertEquals(2, (int) col2.scale());
@@ -145,8 +146,9 @@ public class PostgreSQLInformationSchemaScannerTest {
     assertEquals("idx1", idx1.name());
     assertEquals("table1", idx1.tableName());
     assertTrue(idx1.isUnique());
-    assertEquals(1, idx1.columns().size());
+    assertEquals(2, idx1.columns().size());
     assertEquals("col2", idx1.columns().get(0));
+    assertEquals("col1", idx1.columns().get(1));
 
     // Check Foreign Keys
     assertEquals(1, table1.foreignKeys().size());
@@ -154,10 +156,12 @@ public class PostgreSQLInformationSchemaScannerTest {
     assertEquals("fk1", fk1.name());
     assertEquals("table1", fk1.tableName());
     assertEquals("table2", fk1.referencedTable());
-    assertEquals(1, fk1.keyColumns().size());
-    assertEquals("col3", fk1.keyColumns().get(0));
-    assertEquals(1, fk1.referencedColumns().size());
-    assertEquals("col_ref", fk1.referencedColumns().get(0));
+    assertEquals(2, fk1.keyColumns().size());
+    assertEquals("col2", fk1.keyColumns().get(0));
+    assertEquals("col1", fk1.keyColumns().get(1));
+    assertEquals(2, fk1.referencedColumns().size());
+    assertEquals("ref2", fk1.referencedColumns().get(0));
+    assertEquals("ref1", fk1.referencedColumns().get(1));
   }
 
   @Test
