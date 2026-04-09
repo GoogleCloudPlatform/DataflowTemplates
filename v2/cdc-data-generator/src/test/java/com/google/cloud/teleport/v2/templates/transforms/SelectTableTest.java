@@ -16,18 +16,20 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
+import com.google.cloud.teleport.v2.templates.dofn.SelectTableFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
-import com.google.cloud.teleport.v2.templates.transforms.SelectTable.SelectTableFn;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.util.NavigableMap;
+import java.util.List;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.util.Pair;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -99,44 +101,26 @@ public class SelectTableTest {
     // Build DAG to populate childTables and isRoot
     DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
 
-    NavigableMap<Double, DataGeneratorTable> map = SelectTableFn.buildSelectionMap(dagSchema);
+    EnumeratedDistribution<DataGeneratorTable> distribution =
+        SelectTableFn.buildDistribution(dagSchema);
 
-    assertEquals(2, map.size());
+    assertNotNull(distribution);
+    List<Pair<DataGeneratorTable, Double>> pmf = distribution.getPmf();
+    assertEquals(2, pmf.size());
 
-    // Let's verify sum is 1.0 (approx)
-    assertEquals(1.0, map.lastKey(), 0.0001);
+    double probA = 0;
+    double probC = 0;
 
-    boolean foundA = false;
-    boolean foundC = false;
-
-    for (DataGeneratorTable t : map.values()) {
-      if (t.name().equals("A")) {
-        foundA = true;
-      }
-      if (t.name().equals("C")) {
-        foundC = true;
+    for (Pair<DataGeneratorTable, Double> pair : pmf) {
+      if (pair.getKey().name().equals("A")) {
+        probA = pair.getValue();
+      } else if (pair.getKey().name().equals("C")) {
+        probC = pair.getValue();
       }
     }
 
-    assertTrue("Should contain A", foundA);
-    assertTrue("Should contain C", foundC);
-
-    // Verify weights roughly
-    // keys are cumulative.
-    Double[] keys = map.keySet().toArray(new Double[0]);
-    double firstProb = keys[0];
-
-    // Intended Logic (Root + Children QPS):
-    // Root A (10 QPS) has Child B (100 QPS) -> Weight A = 110
-    // Root C (50 QPS) -> Weight C = 50
-    // Total Weight = 160.
-    // Prob A = 110/160 = 0.6875
-    // Prob C = 50/160 = 0.3125
-
-    DataGeneratorTable firstTable = map.get(keys[0]);
-    double expectedFirstProb = firstTable.name().equals("A") ? 110.0 / 160.0 : 50.0 / 160.0;
-
-    assertEquals(expectedFirstProb, firstProb, 0.0001);
+    assertEquals(110.0 / 160.0, probA, 0.0001);
+    assertEquals(50.0 / 160.0, probC, 0.0001);
   }
 
   @Test
