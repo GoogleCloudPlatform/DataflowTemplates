@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -26,15 +26,17 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
-/** Creates DML statements. */
-public class MySQLDMLGenerator implements IDMLGenerator {
+/** Creates DML statements for PostgreSQL. */
+public class PostgreSQLDMLGenerator implements IDMLGenerator {
 
+  @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
       throw new InvalidDMLGenerationException(
@@ -94,7 +96,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            MySQLDMLGenerator::getMappedColumnValue);
+            PostgreSQLDMLGenerator::getMappedColumnValue);
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -118,11 +120,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName, Map<String, String> allColumnNameValues) {
+      String tableName, Map<String, String> allColumnNameValues, List<String> primaryKeys) {
 
-    String allColumns = "";
-    String allValues = "";
-    String updateValues = "";
+    StringBuilder allColumns = new StringBuilder();
+    StringBuilder allValues = new StringBuilder();
 
     int index = 0;
 
@@ -130,29 +131,39 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       String sqlValue = (colValue == null) ? "NULL" : colValue;
-      allColumns += "`" + colName + "`";
-      allValues += sqlValue;
-      updateValues += " `" + colName + "` = " + sqlValue;
+      allColumns.append("\"").append(colName).append("\"");
+      allValues.append(sqlValue);
 
       // Add comma if not the last item in this loop
       if (index + 1 < allColumnNameValues.size()) {
-        allColumns += ",";
-        allValues += ",";
-        updateValues += ",";
+        allColumns.append(",");
+        allValues.append(",");
       }
       index++;
     }
+
+    String conflictCols =
+        primaryKeys.stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
+    String updateValues =
+        allColumnNameValues.keySet().stream()
+            .filter(k -> !primaryKeys.contains(k))
+            .map(k -> "\"" + k + "\" = EXCLUDED.\"" + k + "\"")
+            .collect(Collectors.joining(","));
+
     String returnVal =
-        "INSERT INTO `"
+        "INSERT INTO \""
             + tableName
-            + "`("
-            + allColumns
-            + ")"
-            + " VALUES ("
-            + allValues
-            + ") "
-            + "ON DUPLICATE KEY UPDATE "
-            + updateValues;
+            + "\" ("
+            + allColumns.toString()
+            + ") VALUES ("
+            + allValues.toString()
+            + ")";
+
+    if (updateValues.isEmpty()) {
+      returnVal += " ON CONFLICT (" + conflictCols + ") DO NOTHING";
+    } else {
+      returnVal += " ON CONFLICT (" + conflictCols + ") DO UPDATE SET " + updateValues;
+    }
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -166,13 +177,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      deleteValues += " `" + colName + "` = " + colValue;
+      deleteValues += " \"" + colName + "\" = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
         deleteValues += " AND ";
       }
       index++;
     }
-    String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
+    String returnVal = "DELETE FROM \"" + tableName + "\" WHERE " + deleteValues;
 
     return new DMLGeneratorResponse(returnVal);
   }
@@ -191,12 +202,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            MySQLDMLGenerator::getMappedColumnValue);
+            PostgreSQLDMLGenerator::getMappedColumnValue);
     columnNameValues.putAll(pkcolumnNameValues);
-    return getUpsertStatement(sourceTable.name(), columnNameValues);
+    return getUpsertStatement(
+        sourceTable.name(), columnNameValues, sourceTable.primaryKeyColumns());
   }
 
-  private static String getMappedColumnValue(
+  @VisibleForTesting
+  static String getMappedColumnValue(
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,
@@ -210,100 +223,77 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         || colType.getCode().equals(Type.Code.PG_FLOAT4)
         || colType.getCode().equals(Type.Code.PG_FLOAT8)
         || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
-      // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if (colType.getCode().equals(Type.Code.BOOL)
         || colType.getCode().equals(Type.Code.PG_BOOL)) {
-      colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
+      colInputValue = String.valueOf(valuesJson.getBoolean(colName));
     } else if ((colType.getCode().equals(Type.Code.ARRAY)
             && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
         || (colType.getCode().equals(Type.Code.PG_ARRAY)
             && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
                 || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
+
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
     } else if (colType.getCode().equals(Type.Code.BYTES)
         || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-      if (sourceColDef.type().toLowerCase().equals("bit")) {
+      if (sourceColDef.type().toLowerCase().equals("bytea")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
       } else {
-        colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
+        // Postgres decode: decode('base64string', 'base64')
+        colInputValue = "decode('" + valuesJson.getString(colName) + "', 'base64')";
       }
     } else {
       colInputValue = valuesJson.getString(colName);
     }
     String response =
         getColumnValueByType(
-            sourceColDef.type(), colInputValue, sourceDbTimezoneOffset, colType.toString());
+            sourceColDef.type().toLowerCase(),
+            colInputValue,
+            sourceDbTimezoneOffset,
+            colType.toString());
     return response;
   }
 
-  /**
-   * Decodes a Base64 encoded string and formats the resulting bytes into a hexadecimal string
-   * prefixed with 'x'.
-   *
-   * @param base64EncodedString The Base64 encoded string to decode.
-   * @return A string in the format x'&lt;hex representation of the bytes$gt;', or x'' if the input
-   *     is null or empty after decoding.
-   * @throws IllegalArgumentException If the input string is not a valid Base64 encoding.
-   */
   @VisibleForTesting
   protected static String convertBase64ToHex(String base64EncodedString) {
     String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
     if (rawHex == null) {
       return null;
     }
-    return rawHex.isEmpty() ? "x''" : "x'" + rawHex + "'";
+    return rawHex.isEmpty() ? "''" : "'\\x" + rawHex + "'";
   }
 
   private static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
-    String cleanedNullBytes = "";
-    String decodedString = "";
+    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid PostgreSQL
+    // array literals.
     switch (columnType) {
       case "varchar":
       case "char":
       case "text":
-      case "tinytext":
-      case "mediumtext":
-      case "longtext":
-      case "enum":
+      case "character varying":
+      case "character":
+      case "json":
+      case "jsonb":
       case "date":
       case "time":
-      case "year":
-      case "set":
-      case "json":
-      case "geometry":
-      case "geometrycollection":
-      case "point":
-      case "multipoint":
-      case "linestring":
-      case "multilinestring":
-      case "polygon":
-      case "multipolygon":
-      case "tinyblob":
-      case "mediumblob":
-      case "blob":
-      case "longblob":
+      case "uuid":
         response = getQuotedEscapedString(colValue, spannerColType);
         break;
       case "timestamp":
-      case "datetime":
-        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
-        response =
-            " CONVERT_TZ("
-                + getQuotedEscapedString(colValue, spannerColType)
-                + ",'+00:00','"
-                + sourceDbTimezoneOffset
-                + "')";
-
+      case "timestamp without time zone":
+      case "timestamp with time zone":
+      case "timestamptz":
+        response = getQuotedEscapedString(colValue, spannerColType) + "::timestamptz";
         break;
+      case "bytea":
       case "binary":
       case "varbinary":
-        response = getBinaryString(colValue, spannerColType);
+        response = colValue; // Handled in getMappedColumnValue via decode() or convertBase64ToHex()
         break;
       default:
         response = colValue;
@@ -314,7 +304,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
+    // PostgreSQL defaults to standard conforming strings, so backslash is just a
+    // backslash.
+    // For standard string literals '', we just need to escape the single quote as
+    // ''
     return cleanedNullBytes;
   }
 
@@ -323,12 +316,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return input;
     }
     String cleanedString = escapeString(input);
-    String response = "\'" + cleanedString + "\'";
-    return response;
-  }
-
-  private static String getBinaryString(String input, String spannerColType) {
-    String response = "BINARY(" + getQuotedEscapedString(input, spannerColType) + ")";
+    String response = "'" + cleanedString + "'";
     return response;
   }
 }

@@ -38,6 +38,7 @@ public class ConnectionHelperRequest {
   private int maxConnections;
   private String driver;
   private String connectionInitQuery;
+  private String jdbcUrlPrefix;
 
   public List<Shard> getShards() {
     return shards;
@@ -59,16 +60,22 @@ public class ConnectionHelperRequest {
     return connectionInitQuery;
   }
 
+  public String getJdbcUrlPrefix() {
+    return jdbcUrlPrefix;
+  }
+
   public ConnectionHelperRequest(
       List<Shard> shards,
       String properties,
       int maxConnections,
       String driver,
-      String connectionInitQuery) {
+      String connectionInitQuery,
+      String jdbcUrlPrefix) {
     this.shards = shards;
     this.properties = properties;
     this.maxConnections = maxConnections;
     this.driver = driver;
     this.connectionInitQuery = connectionInitQuery;
+    this.jdbcUrlPrefix = jdbcUrlPrefix;
   }
 }
