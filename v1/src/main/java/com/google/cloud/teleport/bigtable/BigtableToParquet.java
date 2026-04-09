@@ -163,8 +163,7 @@ public class BigtableToParquet {
         helpText =
             "The minimum number of rows to buffer before checking if the page size threshold is reached. "
                 + "With large rows, the default (100) can cause excessive memory use; set a lower value "
-                + "(for example, 1) to flush pages more frequently. Defaults to: `100`.")
-    @Default.Integer(100)
+                + "(for example, 1) to flush pages more frequently. The default is 100.")
     ValueProvider<Integer> getMinRowCountForPageSizeCheck();
 
     @SuppressWarnings("unused")
@@ -210,11 +209,9 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
-    ParquetIO.Sink parquetSink = ParquetIO.sink(BigtableRow.getClassSchema());
-    ValueProvider<Integer> minRowCountOpt = options.getMinRowCountForPageSizeCheck();
-    if (minRowCountOpt.isAccessible() && minRowCountOpt.get() != null) {
-      parquetSink = parquetSink.withMinRowCountForPageSizeCheck(minRowCountOpt.get());
-    }
+    ParquetIO.Sink parquetSink =
+        ParquetIO.sink(BigtableRow.getClassSchema())
+            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
     FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
             .via(parquetSink)
