@@ -91,7 +91,8 @@ public class FirestoreToFirestore {
         order = 2,
         description = "Source Database ID",
         helpText =
-            "The source database to read from. Use '(default)' or an empty string for the default database.",
+            "The source database to read from. Use '(default)' or an empty string for the default"
+                + " database.",
         example = "my-database")
     String getSourceDatabaseId();
 
@@ -132,7 +133,8 @@ public class FirestoreToFirestore {
         order = 5,
         description = "Destination Database ID",
         helpText =
-            "The destination database to write to. Use '(default)' or an empty string for the default database.",
+            "The destination database to write to. Use '(default)' or an empty string for the"
+                + " default database.",
         example = "my-database")
     String getDestinationDatabaseId();
 
