@@ -92,14 +92,17 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private final ValueProvider<String> importManifest;
   private final ValueProvider<String> invalidOutputPath;
+  private final ValueProvider<Integer> maxNumRows;
 
   public TextImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importManifest,
-      ValueProvider<String> invalidOutputPath) {
+      ValueProvider<String> invalidOutputPath,
+      ValueProvider<Integer> maxNumRows) {
     this.spannerConfig = spannerConfig;
     this.importManifest = importManifest;
     this.invalidOutputPath = invalidOutputPath;
+    this.maxNumRows = maxNumRows;
   }
 
   @Override
@@ -197,7 +200,6 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply(
                   "Text files as mutations. Depth: " + depth,
                   new TextTableFilesAsMutations(ddlView, tableColumnsView, depth));
-
       SpannerWriteResult result =
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
@@ -210,7 +212,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       .withMaxNumMutations(10000)
                       .withGroupingFactor(100)
                       .withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES)
-                      .withDialectView(dialectView));
+                      .withDialectView(dialectView)
+                      .withMaxNumRows(maxNumRows));
       previousComputation = result.getOutput();
 
       result
