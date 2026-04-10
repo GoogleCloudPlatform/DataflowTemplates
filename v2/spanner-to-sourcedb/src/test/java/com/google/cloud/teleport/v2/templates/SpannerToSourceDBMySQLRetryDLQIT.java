@@ -297,6 +297,22 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
             .build()
             .get());
 
+    // Wait for fixed rows to appear in MySQL (Orders 101 via regular pipeline, AllDataTypes 999 via
+    // retry job)
+    LOG.info("Waiting for fixed rows to appear in MySQL");
+    PipelineOperator.Result finalWaitResult =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
+                    .setMinRows(2) // id = 102 and 101
+                    .build()
+                    .and(
+                        JDBCRowsCheck.builder(jdbcResourceManager, "AllDataTypes")
+                            .setMinRows(2) // id = 1 and 999
+                            .build()));
+    assertThatResult(finalWaitResult).meetsConditions();
+
     // Verify target MySQL database for both the fixed rows and for the absence of non-fixed errors
     LOG.info("Verifying final target MySQL database contents");
 

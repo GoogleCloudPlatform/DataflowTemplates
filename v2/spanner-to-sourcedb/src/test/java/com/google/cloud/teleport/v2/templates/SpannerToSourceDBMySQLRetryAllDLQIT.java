@@ -284,6 +284,14 @@ public class SpannerToSourceDBMySQLRetryAllDLQIT extends SpannerToSourceDbITBase
                 DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
                     .setMinEvents(1)
                     .setMaxEvents(1)
+                    .build())
+            .and(
+                JDBCRowsCheck.builder(jdbcResourceManager, "Orders")
+                    .setMinRows(2) // id = 102 and 101
+                    .build())
+            .and(
+                JDBCRowsCheck.builder(jdbcResourceManager, "AllDataTypes")
+                    .setMinRows(2) // id = 1 and 999
                     .build());
 
     PipelineOperator.Result retryResult =
