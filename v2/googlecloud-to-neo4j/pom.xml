@@ -27,7 +27,6 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <neo4j-java-driver.version>5.27.0</neo4j-java-driver.version>
     <jackson.version>2.21.0</jackson.version>
   </properties>
 
@@ -40,8 +39,8 @@
       </dependency>
       <dependency>
         <groupId>org.neo4j.driver</groupId>
-        <artifactId>neo4j-java-driver</artifactId>
-        <version>${neo4j-java-driver.version}</version>
+        <artifactId>neo4j-driver</artifactId>
+        <version>${neo4j-driver.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
