@@ -43,7 +43,6 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
-import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
@@ -166,7 +165,7 @@ public class Neo4jConnectionTest {
         .thenReturn(
             new InternalRecord(
                 List.of("version", "edition"),
-                new Value[] {Values.value(version), Values.value(edition)}));
+                List.of(Values.value(version), Values.value(edition))));
 
     when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
   }
@@ -211,6 +210,6 @@ public class Neo4jConnectionTest {
         .thenReturn(
             new InternalRecord(
                 List.of("versions[0]", "edition"),
-                new Value[] {Values.value(version), Values.value(edition)}));
+                List.of(Values.value(version), Values.value(edition))));
   }
 }
