@@ -903,4 +903,3 @@ public abstract class TemplateTestBase {
     return System.getProperty("privateConnectivity", "datastream-connect-2");
   }
 }
-
