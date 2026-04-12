@@ -45,22 +45,46 @@ logging.basicConfig(level=logging.INFO)
 
 class ConfigTest(unittest.TestCase):
 
-  def test_valid_config(self):
+  def test_valid_config_pct_only(self):
     cfg = _RelativeChangeConfig(
         direction='decrease', threshold_pct=20.0, lookback_windows=1)
     self.assertEqual(cfg.direction, 'decrease')
     self.assertEqual(cfg.threshold_pct, 20.0)
+    self.assertIsNone(cfg.absolute_threshold)
     self.assertEqual(cfg.lookback_windows, 1)
+
+  def test_valid_config_absolute_only(self):
+    cfg = _RelativeChangeConfig(
+        direction='increase', absolute_threshold=1.0, lookback_windows=1)
+    self.assertIsNone(cfg.threshold_pct)
+    self.assertEqual(cfg.absolute_threshold, 1.0)
+
+  def test_valid_config_both_thresholds(self):
+    cfg = _RelativeChangeConfig(
+        direction='both', threshold_pct=20.0,
+        absolute_threshold=5.0, lookback_windows=1)
+    self.assertEqual(cfg.threshold_pct, 20.0)
+    self.assertEqual(cfg.absolute_threshold, 5.0)
 
   def test_invalid_direction(self):
     with self.assertRaises(ValueError):
       _RelativeChangeConfig(
           direction='sideways', threshold_pct=20.0, lookback_windows=1)
 
-  def test_negative_threshold(self):
+  def test_no_threshold_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _RelativeChangeConfig(direction='decrease', lookback_windows=1)
+    self.assertIn('threshold_pct', str(ctx.exception))
+
+  def test_negative_pct_threshold(self):
     with self.assertRaises(ValueError):
       _RelativeChangeConfig(
           direction='decrease', threshold_pct=-5, lookback_windows=1)
+
+  def test_negative_absolute_threshold(self):
+    with self.assertRaises(ValueError):
+      _RelativeChangeConfig(
+          direction='decrease', absolute_threshold=-1.0, lookback_windows=1)
 
   def test_zero_lookback(self):
     with self.assertRaises(ValueError):
@@ -164,38 +188,94 @@ class ComputePctChangeTest(unittest.TestCase):
 
 
 class CheckAlertTest(unittest.TestCase):
+  """Tests for _check_alert(current, baseline, pct_change, pct_valid,
+     direction, threshold_pct, absolute_threshold)."""
 
-  def test_decrease_alert(self):
-    self.assertTrue(_check_alert(-25.0, 'decrease', 20.0))
+  def _call(self, current, baseline, direction,
+            threshold_pct=None, absolute_threshold=None):
+    pct_change, pct_valid = _compute_pct_change(current, baseline)
+    return _check_alert(current, baseline, pct_change, pct_valid,
+                        direction, threshold_pct, absolute_threshold)
 
-  def test_decrease_no_alert(self):
-    self.assertFalse(_check_alert(-10.0, 'decrease', 20.0))
+  # -- Percentage-only alerts --
+
+  def test_decrease_pct_alert(self):
+    # 75 from 100 = -25% < -20%
+    self.assertTrue(self._call(75, 100, 'decrease', threshold_pct=20.0))
+
+  def test_decrease_pct_no_alert(self):
+    # 90 from 100 = -10%, below threshold
+    self.assertFalse(self._call(90, 100, 'decrease', threshold_pct=20.0))
 
   def test_decrease_ignores_increase(self):
-    self.assertFalse(_check_alert(50.0, 'decrease', 20.0))
+    # 150 from 100 = +50%, not a decrease
+    self.assertFalse(self._call(150, 100, 'decrease', threshold_pct=20.0))
 
-  def test_increase_alert(self):
-    self.assertTrue(_check_alert(25.0, 'increase', 20.0))
-
-  def test_increase_no_alert(self):
-    self.assertFalse(_check_alert(10.0, 'increase', 20.0))
+  def test_increase_pct_alert(self):
+    self.assertTrue(self._call(125, 100, 'increase', threshold_pct=20.0))
 
   def test_increase_ignores_decrease(self):
-    self.assertFalse(_check_alert(-50.0, 'increase', 20.0))
+    self.assertFalse(self._call(50, 100, 'increase', threshold_pct=20.0))
 
-  def test_both_alert_decrease(self):
-    self.assertTrue(_check_alert(-25.0, 'both', 20.0))
+  def test_both_pct_alert_decrease(self):
+    self.assertTrue(self._call(75, 100, 'both', threshold_pct=20.0))
 
-  def test_both_alert_increase(self):
-    self.assertTrue(_check_alert(25.0, 'both', 20.0))
+  def test_both_pct_alert_increase(self):
+    self.assertTrue(self._call(125, 100, 'both', threshold_pct=20.0))
 
-  def test_both_no_alert(self):
-    self.assertFalse(_check_alert(10.0, 'both', 20.0))
+  def test_exact_pct_threshold(self):
+    # 80 from 100 = -20%, meets -20% threshold
+    self.assertTrue(self._call(80, 100, 'decrease', threshold_pct=20.0))
+    self.assertTrue(self._call(120, 100, 'increase', threshold_pct=20.0))
 
-  def test_exact_threshold(self):
-    self.assertTrue(_check_alert(-20.0, 'decrease', 20.0))
-    self.assertTrue(_check_alert(20.0, 'increase', 20.0))
-    self.assertTrue(_check_alert(20.0, 'both', 20.0))
+  # -- Absolute-only alerts --
+
+  def test_decrease_abs_alert(self):
+    # 0.5 from 2.0 = delta -1.5, meets abs threshold 1.0
+    self.assertTrue(self._call(0.5, 2.0, 'decrease', absolute_threshold=1.0))
+
+  def test_decrease_abs_no_alert(self):
+    # 1.5 from 2.0 = delta -0.5, below 1.0
+    self.assertFalse(self._call(1.5, 2.0, 'decrease', absolute_threshold=1.0))
+
+  def test_increase_abs_alert(self):
+    self.assertTrue(self._call(3.0, 2.0, 'increase', absolute_threshold=1.0))
+
+  def test_both_abs_alert(self):
+    self.assertTrue(self._call(3.5, 2.0, 'both', absolute_threshold=1.0))
+    self.assertTrue(self._call(0.5, 2.0, 'both', absolute_threshold=1.0))
+
+  # -- Combined: either threshold triggers --
+
+  def test_either_triggers_pct_only(self):
+    # pct hits (-25%) but abs below threshold (delta=-25 from 100)
+    self.assertTrue(self._call(75, 100, 'decrease',
+                               threshold_pct=20.0, absolute_threshold=50.0))
+
+  def test_either_triggers_abs_only(self):
+    # pct below threshold (-5%) but abs hits (delta=-5 from 100)
+    self.assertTrue(self._call(95, 100, 'decrease',
+                               threshold_pct=20.0, absolute_threshold=5.0))
+
+  def test_either_no_trigger(self):
+    # Both below
+    self.assertFalse(self._call(99, 100, 'decrease',
+                                threshold_pct=20.0, absolute_threshold=5.0))
+
+  # -- Zero baseline: pct is inf but absolute still works --
+
+  def test_zero_baseline_abs_triggers(self):
+    # baseline=0, current=2.0 → delta=2.0, abs threshold=1.0 triggers
+    self.assertTrue(self._call(2.0, 0, 'increase', absolute_threshold=1.0))
+
+  def test_zero_baseline_pct_with_inf_still_triggers(self):
+    # baseline=0 → pct=inf, inf >= 20% → alert
+    self.assertTrue(self._call(2.0, 0, 'increase', threshold_pct=20.0))
+
+  def test_zero_baseline_zero_current_no_alert(self):
+    # baseline=0, current=0 → pct invalid, delta=0 → no alert
+    self.assertFalse(self._call(0, 0, 'increase',
+                                threshold_pct=20.0, absolute_threshold=1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +450,49 @@ class RelativeChangeDoFnTest(unittest.TestCase):
     self._run(rows, _check_labels([-2, 0, 1, 0, 1]),
               direction='decrease', threshold_pct=20.0, lookback_windows=1)
 
+  def test_absolute_threshold_only(self):
+    """Alert on absolute delta with no pct threshold."""
+    # baseline=0, current=2.0 → delta=+2.0, abs threshold=1.0 → alert
+    rows = [
+        (1, _make_row(0.0, 1)),
+        (2, _make_row(2.0, 2)),
+    ]
+    self._run(rows, _check_labels([-2, 1]),
+              direction='increase', absolute_threshold=1.0,
+              lookback_windows=1)
+
+  def test_absolute_below_threshold(self):
+    """No alert when absolute delta is below threshold."""
+    rows = [
+        (1, _make_row(2.0, 1)),
+        (2, _make_row(2.5, 2)),  # delta=+0.5, below 1.0
+    ]
+    self._run(rows, _check_labels([-2, 0]),
+              direction='increase', absolute_threshold=1.0,
+              lookback_windows=1)
+
+  def test_either_threshold_triggers_abs(self):
+    """Alert fires from absolute threshold even when pct doesn't hit."""
+    # baseline=100, current=95 → pct=-5% (below 20%) but delta=-5 (meets 5)
+    rows = [
+        (1, _make_row(100.0, 1)),
+        (2, _make_row(95.0, 2)),
+    ]
+    self._run(rows, _check_labels([-2, 1]),
+              direction='decrease', threshold_pct=20.0,
+              absolute_threshold=5.0, lookback_windows=1)
+
+  def test_either_threshold_triggers_pct(self):
+    """Alert fires from pct threshold even when absolute doesn't hit."""
+    # baseline=2, current=1 → pct=-50% (meets 20%) but delta=-1 (below 5)
+    rows = [
+        (1, _make_row(2.0, 1)),
+        (2, _make_row(1.0, 2)),
+    ]
+    self._run(rows, _check_labels([-2, 1]),
+              direction='decrease', threshold_pct=20.0,
+              absolute_threshold=5.0, lookback_windows=1)
+
 
 # ---------------------------------------------------------------------------
 # Parse spec integration tests
@@ -388,13 +511,36 @@ class ParseSpecTest(unittest.TestCase):
           '{"type":"RelativeChange","direction":"decrease"}')
     self.assertIn('lookback_windows', str(ctx.exception))
 
-  def test_full_config(self):
+  def test_raises_without_threshold(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_detector_spec(
+          '{"type":"RelativeChange","direction":"decrease",'
+          '"lookback_windows":1}')
+    self.assertIn('threshold_pct', str(ctx.exception))
+
+  def test_full_config_pct(self):
     cfg = _parse_detector_spec(
         '{"type":"RelativeChange","direction":"increase",'
         '"threshold_pct":50,"lookback_windows":3}')
     self.assertEqual(cfg.direction, 'increase')
     self.assertEqual(cfg.threshold_pct, 50.0)
+    self.assertIsNone(cfg.absolute_threshold)
     self.assertEqual(cfg.lookback_windows, 3)
+
+  def test_full_config_absolute(self):
+    cfg = _parse_detector_spec(
+        '{"type":"RelativeChange","direction":"increase",'
+        '"absolute_threshold":1.0,"lookback_windows":3}')
+    self.assertIsNone(cfg.threshold_pct)
+    self.assertEqual(cfg.absolute_threshold, 1.0)
+
+  def test_full_config_both_thresholds(self):
+    cfg = _parse_detector_spec(
+        '{"type":"RelativeChange","direction":"increase",'
+        '"threshold_pct":500,"absolute_threshold":1.0,'
+        '"lookback_windows":3}')
+    self.assertEqual(cfg.threshold_pct, 500.0)
+    self.assertEqual(cfg.absolute_threshold, 1.0)
 
   def test_config_nested(self):
     cfg = _parse_detector_spec(
@@ -407,7 +553,8 @@ class ParseSpecTest(unittest.TestCase):
   def test_top_level_overrides_config(self):
     cfg = _parse_detector_spec(
         '{"type":"RelativeChange","direction":"increase",'
-        '"lookback_windows":1,"config":{"direction":"decrease"}}')
+        '"threshold_pct":50,"lookback_windows":1,'
+        '"config":{"direction":"decrease"}}')
     self.assertEqual(cfg.direction, 'increase')
 
   def test_in_supported_detectors(self):

@@ -843,11 +843,19 @@ def _parse_detector_spec(json_str):
       raise ValueError(
           "RelativeChange detector requires 'lookback_windows' "
           "(number of prior windows to compare against).")
+    threshold_pct = d.get('threshold_pct',
+                          config.get('threshold_pct'))
+    absolute_threshold = d.get('absolute_threshold',
+                               config.get('absolute_threshold'))
+    if threshold_pct is None and absolute_threshold is None:
+      raise ValueError(
+          "RelativeChange detector requires at least one of "
+          "'threshold_pct' or 'absolute_threshold'.")
     return RelativeChangeConfig(
         direction=direction,
-        threshold_pct=d.get('threshold_pct',
-                            config.get('threshold_pct', 20.0)),
         lookback_windows=lookback_windows,
+        threshold_pct=threshold_pct,
+        absolute_threshold=absolute_threshold,
     )
 
   if detector_type not in _SUPPORTED_DETECTORS:
@@ -1152,6 +1160,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
             RelativeChangeDoFn(
                 direction=detector.direction,
                 threshold_pct=detector.threshold_pct,
+                absolute_threshold=detector.absolute_threshold,
                 lookback_windows=detector.lookback_windows)))
 
   elif isinstance(detector, _ThresholdAlert):
