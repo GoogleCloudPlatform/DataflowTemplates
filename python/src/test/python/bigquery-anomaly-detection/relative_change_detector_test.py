@@ -171,9 +171,9 @@ class ComputePctChangeTest(unittest.TestCase):
     self.assertAlmostEqual(pct, 0.0)
 
   def test_zero_baseline_nonzero_current(self):
-    pct, valid = _compute_pct_change(50, 0)
-    self.assertTrue(valid)
-    self.assertEqual(pct, float('inf'))
+    # baseline=0 → pct is mathematically undefined, marked invalid.
+    _, valid = _compute_pct_change(50, 0)
+    self.assertFalse(valid)
 
   def test_zero_both(self):
     pct, valid = _compute_pct_change(0, 0)
@@ -262,15 +262,16 @@ class CheckAlertTest(unittest.TestCase):
     self.assertFalse(self._call(99, 100, 'decrease',
                                 threshold_pct=20.0, absolute_threshold=5.0))
 
-  # -- Zero baseline: pct is inf but absolute still works --
+  # -- Zero baseline: pct is invalid, only absolute fires --
 
   def test_zero_baseline_abs_triggers(self):
     # baseline=0, current=2.0 → delta=2.0, abs threshold=1.0 triggers
     self.assertTrue(self._call(2.0, 0, 'increase', absolute_threshold=1.0))
 
-  def test_zero_baseline_pct_with_inf_still_triggers(self):
-    # baseline=0 → pct=inf, inf >= 20% → alert
-    self.assertTrue(self._call(2.0, 0, 'increase', threshold_pct=20.0))
+  def test_zero_baseline_pct_does_not_trigger(self):
+    # baseline=0 → pct is mathematically undefined, no pct alert.
+    # Use absolute_threshold if you want to alert on changes from zero.
+    self.assertFalse(self._call(2.0, 0, 'increase', threshold_pct=20.0))
 
   def test_zero_baseline_zero_current_no_alert(self):
     # baseline=0, current=0 → pct invalid, delta=0 → no alert
@@ -420,14 +421,28 @@ class RelativeChangeDoFnTest(unittest.TestCase):
                   [(-2, None), (-2, None), (-2, None), (1, -30.0)]),
               direction='decrease', threshold_pct=20.0, lookback_windows=3)
 
-  def test_zero_baseline(self):
-    """Zero baseline with nonzero current triggers alert."""
+  def test_zero_baseline_pct_only_no_alert(self):
+    """Zero baseline with pct-only threshold does not alert.
+
+    pct change is mathematically undefined when baseline is 0.
+    Users must use absolute_threshold to alert on changes from zero.
+    """
     rows = [
         (1, _make_row(0.0, 1)),
         (2, _make_row(50.0, 2)),
     ]
-    self._run(rows, _check_labels_and_scores([(-2, None), (1, None)]),
+    self._run(rows, _check_labels([-2, 0]),
               direction='increase', threshold_pct=20.0, lookback_windows=1)
+
+  def test_zero_baseline_absolute_triggers(self):
+    """Zero baseline with absolute_threshold triggers alert."""
+    rows = [
+        (1, _make_row(0.0, 1)),
+        (2, _make_row(50.0, 2)),
+    ]
+    self._run(rows, _check_labels([-2, 1]),
+              direction='increase', absolute_threshold=1.0,
+              lookback_windows=1)
 
   def test_zero_to_zero(self):
     """Zero to zero is not an alert."""

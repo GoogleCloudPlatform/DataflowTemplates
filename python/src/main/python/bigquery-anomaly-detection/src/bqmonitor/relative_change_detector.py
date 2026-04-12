@@ -149,10 +149,11 @@ def _compute_pct_change(current, baseline):
   """Compute percentage change from baseline to current.
 
   Returns (pct_change, is_valid) where is_valid is False when
-  baseline is zero (division undefined).
+  baseline is zero (pct change is mathematically undefined).
+  When baseline is zero, use ``absolute_threshold`` to alert.
   """
   if baseline == 0:
-    return (float('inf') if current != 0 else 0.0, current != 0)
+    return (0.0, False)
   return ((current - baseline) / abs(baseline) * 100.0, True)
 
 
