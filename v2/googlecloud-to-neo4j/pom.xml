@@ -71,7 +71,7 @@
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-cypher-dsl-schema-name-support</artifactId>
-      <version>2025.2.5</version>
+      <version>2025.2.6</version>
     </dependency>
 
     <!-- Test dependencies -->
