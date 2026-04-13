@@ -68,7 +68,7 @@ public final class JdbcIoWrapper implements IoWrapper {
   private final ImmutableMap<
           ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
-  private final SourceSchema sourceSchema;
+  private final ImmutableList<SourceSchema> sourceSchema;
 
   private static final Logger logger = LoggerFactory.getLogger(JdbcIoWrapper.class);
 
@@ -97,7 +97,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
         tableReaders =
             buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
-    return new JdbcIoWrapper(tableReaders, sourceSchema);
+    return new JdbcIoWrapper(tableReaders, ImmutableList.of(sourceSchema));
   }
 
   /**
@@ -172,7 +172,7 @@ public final class JdbcIoWrapper implements IoWrapper {
    * @return SourceSchema.
    */
   @Override
-  public SourceSchema discoverTableSchema() {
+  public ImmutableList<SourceSchema> discoverTableSchema() {
     return this.sourceSchema;
   }
 
@@ -599,7 +599,7 @@ public final class JdbcIoWrapper implements IoWrapper {
   private JdbcIoWrapper(
       ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
           tableReaders,
-      SourceSchema sourceSchema) {
+      ImmutableList<SourceSchema> sourceSchema) {
     this.tableReaders = tableReaders;
     this.sourceSchema = sourceSchema;
   }
