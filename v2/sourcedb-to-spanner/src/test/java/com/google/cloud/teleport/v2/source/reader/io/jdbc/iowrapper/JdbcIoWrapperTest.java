@@ -119,7 +119,7 @@ public class JdbcIoWrapperTest {
                 .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
                 .setDialectAdapter(mockDialectAdapter)
                 .build());
-    SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema();
+    SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema().get(0);
     assertThat(sourceSchema.schemaReference()).isEqualTo(testSourceSchemaReference);
     assertThat(sourceSchema.tableSchemas().size()).isEqualTo(1);
     SourceTableSchema tableSchema = sourceSchema.tableSchemas().get(0);
@@ -171,7 +171,7 @@ public class JdbcIoWrapperTest {
                 .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
                 .setDialectAdapter(mockDialectAdapter)
                 .build());
-    SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema();
+    SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema().get(0);
     assertThat(sourceSchema.schemaReference()).isEqualTo(testSourceSchemaReference);
     assertThat(sourceSchema.tableSchemas().size()).isEqualTo(1);
     SourceTableSchema tableSchema = sourceSchema.tableSchemas().get(0);
@@ -707,5 +707,10 @@ public class JdbcIoWrapperTest {
   public void testIdentifierEscaping() {
     assertThat(JdbcIoWrapper.delimitIdentifier("key")).isEqualTo("\"key\"");
     assertThat(JdbcIoWrapper.delimitIdentifier("ke\"y")).isEqualTo("\"ke\"\"y\"");
+  }
+
+  @Test
+  public void testIdGeneration() {
+    assertThat(JdbcIOWrapperConfig.generateId()).isNotEqualTo(JdbcIOWrapperConfig.generateId());
   }
 }
