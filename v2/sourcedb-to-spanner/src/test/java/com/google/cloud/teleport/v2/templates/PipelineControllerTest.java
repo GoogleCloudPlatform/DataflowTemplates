@@ -394,7 +394,9 @@ public class PipelineControllerTest {
     sourceDbToSpannerOptions.setUsername(testUser);
     sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
-    mockedStaticJdbcIoWrapper.when(() -> JdbcIoWrapper.of(any())).thenReturn(mockJdbcIoWrapper);
+    mockedStaticJdbcIoWrapper
+        .when(() -> JdbcIoWrapper.of((JdbcIOWrapperConfig) any()))
+        .thenReturn(mockJdbcIoWrapper);
 
     Shard shard =
         new Shard("shard1", "localhost", "3306", "user", "password", null, null, null, null);
