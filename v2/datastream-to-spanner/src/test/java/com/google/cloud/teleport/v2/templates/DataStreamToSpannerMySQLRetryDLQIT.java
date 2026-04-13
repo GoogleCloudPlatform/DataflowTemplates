@@ -51,9 +51,24 @@ import org.slf4j.LoggerFactory;
 /**
  * Integration test for live replication from MySQL to Spanner using the retryDLQ mode.
  *
- * <p>Objective: Verify that the retryDLQ batch job correctly processes and retries severe Dead
+ * <p>Objective: Verify that the retryDLQ batch job correctly processes and retries severe/ Dead
  * Letter Queue (DLQ) events alongside an actively running streaming pipeline (that processes retry/
  * errors).
+ *
+ * <p>Edge cases covered in this test include:
+ *
+ * <ul>
+ *   <li>Handling retriable errors such as foreign key violations via the regular pipeline.
+ *   <li>Processing severe errors introduced by custom transformation failures and check constraints
+ *       via the retryDLQ pipeline.
+ *   <li>Retrying fixed items successfully in both retry/ and severe/ buckets: e.g. fixing a foreign
+ *       key violation by inserting a missing parent row, and using a corrected transformation file.
+ *   <li>Ensuring non-fixable items remain correctly logged under their respective error buckets.
+ *   <li>Validating schema complexities between Source and Spanner, including mismatched primary
+ *       keys, added, deleted, and renamed columns, as well as all datatypes.
+ *   <li>Utilizing the schema overrides file to reconcile schema differences.
+ *   <li>Utilizing the DLQ Pub/Sub consumer.
+ * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
@@ -173,7 +188,8 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
     LOG.info("Starting testDataStreamToSpannerRetryDLQ");
     assertThatPipeline(jobInfo).isRunning();
 
-    // 1. Insert parent rows directly into Spanner.
+    // 1. Insert parent rows directly into Spanner. This prevents out-of-order Dataflow failures
+    //    since Dataflow processes asynchronously and might process child rows before parent rows.
     LOG.info("Inserting parent rows directly into Spanner");
     spannerResourceManager.write(
         List.of(
@@ -200,7 +216,7 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
     LOG.info("Data inserted into MySQL successfully");
 
     // 3. Wait for DLQ events to appear in severe bucket.
-    // We ignore the retry bucket because it is continuously consumed by PubSub.
+    // We ignore the retry/ bucket because it is continuously consumed by PubSub.
     LOG.info("Waiting for DLQ events to appear in severe bucket");
     PipelineOperator.Result dlqWaitResult =
         pipelineOperator()
@@ -282,7 +298,8 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
 
     assertThatPipeline(retryJobInfo).isRunning();
 
-    // 5. Apply partial fixes in Spanner (inserting missing parent row for Orders to fix FK).
+    // 5. Apply partial fixes to simulate user intervention correcting data before DLQ retry.
+    // Insert parent for Orders to fix the foreign key violation.
     LOG.info("Applying partial fixes in Spanner (inserting missing parent row for Orders)");
     spannerResourceManager.write(
         List.of(
@@ -303,6 +320,7 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
         pipelineOperator().waitUntilDone(createConfig(retryJobInfo, Duration.ofMinutes(15)));
     assertThatResult(retryJobResult).isLaunchFinished();
 
+    LOG.info("Verifying that severe bucket has exactly 1 entry after retryDLQ job completes");
     // 7. Verify that DLQ buckets after retryDLQ job completes.
     // The buckets should now have exactly 1 entry each (for Order 103 in retry and Customer 1 in
     // severe).
@@ -319,31 +337,43 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
             .build()
             .get());
 
-    // 8. Verify target Spanner database contents.
+    // Wait for fixed rows to appear in Spanner (Orders 101 via regular pipeline, AllDataTypes 999
+    // via retry job)
+    LOG.info("Waiting for fixed rows to appear in Spanner");
+    PipelineOperator.Result finalWaitResult =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                SpannerRowsCheck.builder(spannerResourceManager, "Orders")
+                    .setMinRows(2) // id = 102 and 101
+                    .build()
+                    .and(
+                        SpannerRowsCheck.builder(spannerResourceManager, "AllDataTypes")
+                            .setMinRows(2) // id = 1 and 999
+                            .build()));
+    assertThatResult(finalWaitResult).meetsConditions();
+
+    // 8. Verify target Spanner database has the correct updated state for error rows
+    // We won't assert on rows that were migrated by the regular pipeline as those were already
+    // validated
     LOG.info("Verifying target Spanner database contents");
 
     // AllDataTypes:
-    // id=1 should exist
     // id=999 should exist (fixed by mode=good)
-    assertTrue("id=1 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 1));
     assertTrue(
         "id=999 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 999));
 
     // Customers:
-    // id=2 should exist (seeded in Spanner)
     // id=3 should exist (inserted as a partial fix)
     // id=1 should NOT exist (check constraint violation wasn't fixed)
-    assertTrue("id=2 should exist in Customers", rowExistsInSpanner("Customers", "CustomerId", 2));
     assertTrue("id=3 should exist in Customers", rowExistsInSpanner("Customers", "CustomerId", 3));
     assertTrue(
         "id=1 should NOT exist in Customers", !rowExistsInSpanner("Customers", "CustomerId", 1));
 
     // Orders:
     // id=101 should exist (FK issue fixed by inserting parent Customer 3)
-    // id=102 should exist (parent Customer 2 was seeded originally)
     // id=103 should NOT exist (Customer 4 doesn't exist)
     assertTrue("id=101 should exist in Orders", rowExistsInSpanner("Orders", "OrderId", 101));
-    assertTrue("id=102 should exist in Orders", rowExistsInSpanner("Orders", "OrderId", 102));
     assertTrue("id=103 should NOT exist in Orders", !rowExistsInSpanner("Orders", "OrderId", 103));
 
     // Cancel the regular streaming job as the final step.
@@ -365,11 +395,11 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
   private void insertDataInMySQL() {
     // Insert into Customers
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LoyaltyTier) VALUES (1, 'Customer 1', 500, 'Bronze')"); // Fails check constraint on Spanner
+        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LoyaltyTier) VALUES (1, 'Customer 1', 500, 'Bronze')"); // Fails check constraint on Spanner (CreditLimit <= 1000)
 
     // Insert into Orders
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (3, 101, 1000, 'Website')"); // Fails FK on Spanner initially, fixed by seeding Customer 3
+        "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (3, 101, 1000, 'Website')"); // Fails FK on Spanner initially, later fixed by seeding Customer 3
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (2, 102, 1000, 'AppStore')"); // Succeeds (Customer 2 seeded in Spanner)
     jdbcResourceManager.runSQLUpdate(
@@ -380,7 +410,9 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (1, 'test1')");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (999, 'test999')"); // Fails in 'bad'
-    // mode
+    // mode (custom
+    // transformation
+    // error)
   }
 
   private String getCustomShardJarPath() {

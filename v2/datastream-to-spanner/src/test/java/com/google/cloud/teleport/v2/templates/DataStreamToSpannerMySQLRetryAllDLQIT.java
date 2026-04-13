@@ -57,10 +57,9 @@ import org.slf4j.LoggerFactory;
  * <p>Edge cases covered in this test include:
  *
  * <ul>
- *   <li>Handling retriable errors such as check constraint and foreign key violations via the
- *       retryAllDLQ pipeline.
- *   <li>Processing severe errors introduced by custom transformation failures via the retryAllDLQ
- *       pipeline.
+ *   <li>Handling retriable errors such as foreign key violations via the retryAllDLQ pipeline.
+ *   <li>Processing severe errors introduced by custom transformation failures and check constraints
+ *       via the retryAllDLQ pipeline.
  *   <li>Retrying fixed items successfully in both retry/ and severe/ buckets: e.g. fixing a foreign
  *       key violation by inserting a missing parent row, and using a corrected transformation file.
  *   <li>Ensuring non-fixable items remain correctly logged under their respective error buckets.
@@ -245,6 +244,25 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
     assertThatResult(dlqWaitResult).meetsConditions();
     LOG.info("DLQ events successfully generated in corresponding buckets");
 
+    // Verify the Spanner database to ensure failing rows were NOT migrated, while success cases
+    // were.
+    LOG.info("Verifying Spanner state before retry job runs");
+    assertTrue("id=1 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 1));
+    assertTrue(
+        "id=999 should NOT exist yet in AllDataTypes",
+        !rowExistsInSpanner("AllDataTypes", "id", 999));
+
+    assertTrue("id=2 should exist in Customers", rowExistsInSpanner("Customers", "CustomerId", 2));
+    assertTrue(
+        "id=1 should NOT exist yet in Customers",
+        !rowExistsInSpanner("Customers", "CustomerId", 1));
+
+    assertTrue("id=102 should exist in Orders", rowExistsInSpanner("Orders", "OrderId", 102));
+    assertTrue(
+        "id=101 should NOT exist yet in Orders", !rowExistsInSpanner("Orders", "OrderId", 101));
+    assertTrue(
+        "id=103 should NOT exist yet in Orders", !rowExistsInSpanner("Orders", "OrderId", 103));
+
     // 4. Stop the regular pipeline. The retry pipeline must run independently.
     pipelineOperator().cancelJobAndFinish(createConfig(jobInfo, Duration.ofMinutes(15)));
     LOG.info("Regular pipeline stopped successfully");
@@ -321,7 +339,12 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
                 DlqEventsCountCheck.builder(gcsResourceManager, GCS_PATH_PREFIX + "/dlq/severe/")
                     .setMinEvents(1)
                     .setMaxEvents(1)
-                    .build());
+                    .build())
+            .and(
+                SpannerRowsCheck.builder(spannerResourceManager, "AllDataTypes")
+                    .setMinRows(2)
+                    .build())
+            .and(SpannerRowsCheck.builder(spannerResourceManager, "Orders").setMinRows(2).build());
 
     PipelineOperator.Result retryResult =
         pipelineOperator()
@@ -331,32 +354,27 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
     assertThatResult(retryResult).meetsConditions();
     LOG.info("Retry job completed processing successfully");
 
-    // 8. Verify target Spanner database has the correct updated state.
+    // 8. Verify target Spanner database has the correct updated state for error rows
+    // We won't assert on rows that were migrated by the regular pipeline as those were already
+    // validated
     LOG.info("Verifying target Spanner database contents");
 
     // AllDataTypes:
-    // id=1 should exist
     // id=999 should exist (fixed)
-
-    assertTrue("id=1 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 1));
     assertTrue(
         "id=999 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 999));
 
     // Customers:
-    // id=2 should exist (seeded in Spanner)
     // id=3 should exist (inserted as a partial fix)
     // id=1 should NOT exist (check constraint violation wasn't fixed)
-    assertTrue("id=2 should exist in Customers", rowExistsInSpanner("Customers", "CustomerId", 2));
     assertTrue("id=3 should exist in Customers", rowExistsInSpanner("Customers", "CustomerId", 3));
     assertTrue(
         "id=1 should NOT exist in Customers", !rowExistsInSpanner("Customers", "CustomerId", 1));
 
     // Orders:
     // id=101 should exist (FK issue fixed by inserting parent Customer 3)
-    // id=102 should exist (parent Customer 2 was seeded originally)
     // id=103 should NOT exist (Customer 4 doesn't exist)
     assertTrue("id=101 should exist in Orders", rowExistsInSpanner("Orders", "OrderId", 101));
-    assertTrue("id=102 should exist in Orders", rowExistsInSpanner("Orders", "OrderId", 102));
     assertTrue("id=103 should NOT exist in Orders", !rowExistsInSpanner("Orders", "OrderId", 103));
 
     LOG.info("Verified target Spanner database contents successfully");
@@ -376,11 +394,11 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
   private void insertDataInMySQL() {
     // Insert into Customers
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LoyaltyTier) VALUES (1, 'Customer 1', 500, 'Bronze')"); // Fails check constraint on Spanner
+        "INSERT INTO Customers (CustomerId, CustomerName, CreditLimit, LoyaltyTier) VALUES (1, 'Customer 1', 500, 'Bronze')"); // Fails check constraint on Spanner (CreditLimit <= 1000)
 
     // Insert into Orders
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (3, 101, 1000, 'Website')"); // Fails FK on Spanner initially, fixed by seeding Customer 3
+        "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (3, 101, 1000, 'Website')"); // Fails FK on Spanner initially, later fixed by seeding Customer 3
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO Orders (CustomerId, OrderId, OrderValue, OrderSource) VALUES (2, 102, 1000, 'AppStore')"); // Succeeds (Customer 2 seeded in Spanner)
     jdbcResourceManager.runSQLUpdate(
@@ -391,7 +409,9 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (1, 'test1')");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (999, 'test999')"); // Fails in 'bad'
-    // mode
+    // mode (custom
+    // transformation
+    // error)
   }
 
   private String getCustomShardJarPath() {
