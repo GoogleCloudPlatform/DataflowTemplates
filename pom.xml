@@ -94,7 +94,7 @@
     <surefire.version>3.5.5</surefire.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <truth.version>1.4.5</truth.version>
-    <netty.version>4.1.132.Final</netty.version>
+    <netty.version>4.2.12.Final</netty.version>
     <zookeeper.version>3.8.6</zookeeper.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
