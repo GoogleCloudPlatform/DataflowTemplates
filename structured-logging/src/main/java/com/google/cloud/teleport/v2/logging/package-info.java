@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for general-purpose testing utilities. */
+/** Package for general-purpose logging utilities. */
 package com.google.cloud.teleport.v2.logging;
