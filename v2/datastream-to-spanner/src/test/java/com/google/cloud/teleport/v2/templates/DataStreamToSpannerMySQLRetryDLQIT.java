@@ -23,7 +23,9 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +40,7 @@ import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -360,8 +363,14 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
 
     // AllDataTypes:
     // id=999 should exist (fixed by mode=good)
-    assertTrue(
-        "id=999 should exist in AllDataTypes", rowExistsInSpanner("AllDataTypes", "id", 999));
+    LOG.info("Verifying all datatypes for id=999");
+    List<com.google.cloud.spanner.Struct> rows =
+        spannerResourceManager.runQuery("SELECT * FROM AllDataTypes WHERE id = 999");
+
+    Map<String, Object> expectedRow = createExpectedRowFor999();
+
+    SpannerAsserts.assertThatStructs(rows)
+        .hasRecordsUnorderedCaseInsensitiveColumns(List.of(expectedRow));
 
     // Customers:
     // id=3 should exist (inserted as a partial fix)
@@ -409,10 +418,80 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (1, 'test1')");
     jdbcResourceManager.runSQLUpdate(
-        "INSERT INTO AllDataTypes (id, varchar_col) VALUES (999, 'test999')"); // Fails in 'bad'
-    // mode (custom
-    // transformation
-    // error)
+        "INSERT INTO AllDataTypes (id, varchar_col, tinyint_col, tinyint_unsigned_col, text_col, date_col, "
+            + "smallint_col, smallint_unsigned_col, mediumint_col, mediumint_unsigned_col, "
+            + "bigint_col, bigint_unsigned_col, float_col, double_col, decimal_col, "
+            + "datetime_col, time_col, year_col, char_col, tinyblob_col, tinytext_col, "
+            + "blob_col, mediumblob_col, mediumtext_col, test_json_col, longblob_col, "
+            + "longtext_col, enum_col, bool_col, binary_col, varbinary_col, bit_col, "
+            + "bit8_col, bit1_col, boolean_col, int_col, integer_unsigned_col, timestamp_col, set_col) "
+            + "VALUES (999, 'test999', 1, 1, 'text999', '2023-01-01', 11, 11, 101, 101, 1001, 1001, 2.5, 3.5, 11.5, "
+            + "'2023-01-01 12:00:00', '12:00:01', 2024, 'c1', 'blob1', 'tinytext1', 'blob1', 'mediumblob1', 'mediumtext1', "
+            + "'{\"k\": \"v1\"}', 'longblob1', 'longtext1', '1', 1, x'7835383030000000000000000000000000000000', 'varbin1', "
+            + "b'0111111111111111111111111111111111111111111111111111111111111111', b'11111111', 1, 1, 1001, 1001, "
+            + "'2023-01-01 12:00:00', 'v1')"); // Fails in 'bad' mode (custom transformation error)
+  }
+
+  private Map<String, Object> createExpectedRowFor999() {
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 999L);
+    row.put("varchar_col", "test999");
+    row.put("tinyint_col", 1L);
+    row.put("tinyint_unsigned_col", 1L);
+    row.put("text_col", "text999");
+    row.put("date_col", "2023-01-01");
+    row.put("smallint_col", 11L);
+    row.put("smallint_unsigned_col", 11L);
+    row.put("mediumint_col", 101L);
+    row.put("mediumint_unsigned_col", 101L);
+    row.put("bigint_col", 1001L);
+    row.put("bigint_unsigned_col", new BigDecimal("1001"));
+    row.put("float_col", 2.5d);
+    row.put("double_col", 3.5d);
+    row.put("decimal_col", new BigDecimal("11.5"));
+    row.put("datetime_col", "2023-01-01T12:00:00Z");
+    row.put("time_col", "12:00:01");
+    row.put("year_col", "2024");
+    row.put("char_col", "c1");
+
+    String b64blob = Base64.getEncoder().encodeToString("blob1".getBytes());
+    row.put("tinyblob_col", b64blob);
+    row.put("blob_col", b64blob);
+    row.put("mediumblob_col", Base64.getEncoder().encodeToString("mediumblob1".getBytes()));
+    row.put("tinytext_col", "tinytext1");
+    row.put("mediumtext_col", "mediumtext1");
+    row.put("test_json_col", "{\"k\":\"v1\"}");
+    row.put("longblob_col", Base64.getEncoder().encodeToString("longblob1".getBytes()));
+    row.put("longtext_col", "longtext1");
+    row.put("enum_col", "1");
+    row.put("bool_col", true);
+
+    byte[] binaryBytes = hexStringToByteArray("7835383030000000000000000000000000000000");
+    byte[] paddedBytes = new byte[255];
+    System.arraycopy(binaryBytes, 0, paddedBytes, 0, binaryBytes.length);
+    row.put("binary_col", Base64.getEncoder().encodeToString(paddedBytes));
+
+    row.put("varbinary_col", Base64.getEncoder().encodeToString("varbin1".getBytes()));
+    row.put("bit_col", "f/////////8=");
+    row.put("bit8_col", "255");
+    row.put("bit1_col", true);
+    row.put("boolean_col", true);
+    row.put("int_col", 1001L);
+    row.put("integer_unsigned_col", 1001L);
+    row.put("timestamp_col", "2023-01-01T12:00:00Z");
+    row.put("set_col", "v1");
+
+    return row;
+  }
+
+  private static byte[] hexStringToByteArray(String s) {
+    int len = s.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+      data[i / 2] =
+          (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
+    }
+    return data;
   }
 
   private String getCustomShardJarPath() {
