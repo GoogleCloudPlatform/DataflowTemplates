@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
+import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
@@ -31,6 +32,7 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -42,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Config;
@@ -570,5 +573,135 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
           "Caught exception when trying to add a new column to bigquery changelog table. \n"
               + e.toString());
     }
+  }
+
+  @Test
+  public void testSpannerChangeStreamsToBigQueryGoogleSqlUuid() throws IOException {
+    String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE %s ("
+                + "  Id INT64 NOT NULL,"
+                + "  GsqlUuid UUID,"
+                + "  GsqlUuidArray ARRAY<UUID>"
+                + ") PRIMARY KEY(Id)",
+            spannerTable);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+    String cdcTable = spannerTable + "_changelog";
+
+    String createChangeStreamStatement =
+        String.format("CREATE CHANGE STREAM %s_stream FOR %s", testName, spannerTable);
+    spannerResourceManager.executeDdlStatement(createChangeStreamStatement);
+    bigQueryResourceManager.createDataset(REGION);
+
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter(
+                        "spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter("spannerChangeStreamName", testName + "_stream")
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("rpcPriority", "HIGH")
+                    .addParameter("dlqRetryMinutes", "3")));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    // Insert UUID data
+    int key1 = nextValue();
+    String uuid1 = UUID.randomUUID().toString();
+    List<String> uuidArray1 = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    Mutation insert1 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key1)
+            .set("GsqlUuid")
+            .to(uuid1)
+            .set("GsqlUuidArray")
+            .toStringArray(uuidArray1)
+            .build();
+
+    int key2 = nextValue();
+    String uuid2 = UUID.randomUUID().toString();
+    List<String> uuidArray2WithNulls = new ArrayList<>();
+    uuidArray2WithNulls.add(UUID.randomUUID().toString());
+    uuidArray2WithNulls.add(null);
+    Mutation insert2 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key2)
+            .set("GsqlUuid")
+            .to(uuid2)
+            .set("GsqlUuidArray")
+            .toStringArray(uuidArray2WithNulls)
+            .build();
+
+    int key3 = nextValue();
+    Mutation insert3 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key3)
+            .set("GsqlUuid")
+            .to(Value.string(null)) // Explicitly type the null
+            .set("GsqlUuidArray")
+            .toStringArray(null)
+            .build();
+
+    spannerResourceManager.write(List.of(insert1, insert2, insert3));
+
+    // Verify schema in BigQuery
+    // We need to wait for the first record to be written to BQ to ensure the table is created.
+    String schemaQuery = queryCdcTable(cdcTable, key1);
+    waitForQueryToReturnRows(schemaQuery, 1, false);
+
+    Table bqTable = bigQueryResourceManager.getTableIfExists(cdcTable);
+    Schema bqSchema = bqTable.getDefinition().getSchema();
+    Field gsqlUuidField = bqSchema.getFields().get("GsqlUuid");
+    assertEquals(LegacySQLTypeName.STRING, gsqlUuidField.getType());
+    assertEquals(Field.Mode.NULLABLE, gsqlUuidField.getMode());
+
+    Field gsqlUuidArrayField = bqSchema.getFields().get("GsqlUuidArray");
+    assertEquals(LegacySQLTypeName.STRING, gsqlUuidArrayField.getType());
+    assertEquals(Field.Mode.REPEATED, gsqlUuidArrayField.getMode());
+
+    // Wait and Query BigQuery for all keys
+    String query1 = queryCdcTable(cdcTable, key1);
+    TableResult result1 = bigQueryResourceManager.runQuery(query1);
+    assertEquals(1, result1.getTotalRows());
+    FieldValueList row1 = result1.iterateAll().iterator().next();
+    assertEquals(uuid1, row1.get("GsqlUuid").getStringValue());
+    List<String> actualUuidArray1 =
+        row1.get("GsqlUuidArray").getRepeatedValue().stream()
+            .map(FieldValue::getStringValue)
+            .collect(Collectors.toList());
+    assertEquals(uuidArray1, actualUuidArray1);
+
+    String query2 = queryCdcTable(cdcTable, key2);
+    waitForQueryToReturnRows(query2, 1, false);
+    TableResult result2 = bigQueryResourceManager.runQuery(query2);
+    assertEquals(1, result2.getTotalRows());
+    FieldValueList row2 = result2.iterateAll().iterator().next();
+    assertEquals(uuid2, row2.get("GsqlUuid").getStringValue());
+    List<String> actualUuidArray2 =
+        row2.get("GsqlUuidArray").getRepeatedValue().stream()
+            .map(FieldValue::getStringValue)
+            .collect(Collectors.toList());
+    assertEquals(List.of(uuidArray2WithNulls.get(0)), actualUuidArray2); // Nulls are skipped
+
+    String query3 = queryCdcTable(cdcTable, key3);
+    waitForQueryToReturnRows(query3, 1, true); // Cancel pipeline after this
+    TableResult result3 = bigQueryResourceManager.runQuery(query3);
+    assertEquals(1, result3.getTotalRows());
+    FieldValueList row3 = result3.iterateAll().iterator().next();
+    assertTrue(row3.get("GsqlUuid").isNull());
+    assertTrue(
+        row3.get("GsqlUuidArray").isNull()
+            || row3.get("GsqlUuidArray").getRepeatedValue().isEmpty());
   }
 }
