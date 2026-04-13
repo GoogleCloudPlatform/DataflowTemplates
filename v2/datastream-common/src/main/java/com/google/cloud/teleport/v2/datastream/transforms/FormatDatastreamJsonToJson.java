@@ -99,7 +99,9 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("sqlserver")) {
-      outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
+      // SQL Server Specific Metadata
+      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
       // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
