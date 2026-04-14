@@ -571,6 +571,33 @@ public void testBacklog(){
 }
 ```
 
+## Set up Test Infrastructure (Spanner)
+
+If your integration tests target **Spanner**, you need to provision the required
+Google Cloud infrastructure before running the tests. Terraform scripts for this
+are provided in [`test-infra/terraform/spanner/`](../test-infra/terraform/spanner/).
+
+This is the recommended path for **vendors and PSOs** who are setting up a fresh
+test environment. See the [README](../test-infra/terraform/spanner/README.md) in
+that directory for full usage instructions. In short:
+
+```shell
+cd test-infra/terraform/spanner
+terraform init
+terraform apply -var="project=<YOUR_PROJECT_ID>"
+```
+
+After running your tests, tear down the infrastructure with:
+
+```shell
+terraform destroy -var="project=<YOUR_PROJECT_ID>"
+```
+
+You can also use the pre-existing cleanup scripts in `test-infra/` alongside
+Terraform for any residual resource cleanup.
+
+---
+
 ## Run the Test
 For manually running a load test execute the following commands on the CLI use the following commands,
 
