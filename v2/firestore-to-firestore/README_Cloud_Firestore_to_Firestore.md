@@ -21,8 +21,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
-* **sourceDatabaseId**: The source database to read from. Use '(default)' for the default database. For example, `my-database`.
-* **destinationDatabaseId**: The destination database to write to. Use '(default)' for the default database. For example, `my-database`.
+* **sourceDatabaseId**: The source database to read from. Use '(default)' or an empty string for the default database. For example, `my-database`.
+* **destinationDatabaseId**: The destination database to write to. Use '(default)' or an empty string for the default database. For example, `my-database`.
 
 ### Optional parameters
 
