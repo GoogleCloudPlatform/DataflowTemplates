@@ -19,6 +19,9 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.datastream.v1.DestinationConfig;
+import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
@@ -154,15 +157,15 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
                         List.of("Customers", "Orders", "AllDataTypes")))
                 .build();
 
-        var sourceConfigA =
+        SourceConfig sourceConfigA =
             datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile-shardA", mySQLSourceA);
-        var destinationConfigA =
+        DestinationConfig destinationConfigA =
             datastreamResourceManager.buildGCSDestinationConfig(
                 "gcs-profile-shardA",
                 gcsResourceManager.getBucket(),
                 gcsPrefix,
                 DestinationOutputFormat.AVRO_FILE_FORMAT);
-        var streamA =
+        Stream streamA =
             datastreamResourceManager.createStream(
                 "stream-shardA", sourceConfigA, destinationConfigA);
         datastreamResourceManager.startStream(streamA);
@@ -180,15 +183,15 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
                         List.of("Customers", "Orders", "AllDataTypes")))
                 .build();
 
-        var sourceConfigB =
+        SourceConfig sourceConfigB =
             datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile-shardB", mySQLSourceB);
-        var destinationConfigB =
+        DestinationConfig destinationConfigB =
             datastreamResourceManager.buildGCSDestinationConfig(
                 "gcs-profile-shardB",
                 gcsResourceManager.getBucket(),
                 gcsPrefix,
                 DestinationOutputFormat.AVRO_FILE_FORMAT);
-        var streamB =
+        Stream streamB =
             datastreamResourceManager.createStream(
                 "stream-shardB", sourceConfigB, destinationConfigB);
         datastreamResourceManager.startStream(streamB);
@@ -211,8 +214,7 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
         Map<String, String> jobParameters = new HashMap<>();
         jobParameters.put(
             "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
-        jobParameters.put(
-            "transformationClassName", "com.custom.SpannerToSourceDbRetryTransformation");
+        jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
         jobParameters.put("transformationCustomParameters", "mode=bad");
         jobParameters.put(
             "dlqMaxRetryCount", "1000"); // High retry count to keep items in retry/ bucket
@@ -355,8 +357,7 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
     retryJobParameters.put("runMode", "retryDLQ");
     retryJobParameters.put(
         "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
-    retryJobParameters.put(
-        "transformationClassName", "com.custom.SpannerToSourceDbRetryTransformation");
+    retryJobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
     retryJobParameters.put(
         "transformationCustomParameters", "mode=good"); // Fixes the transformer error
     retryJobParameters.put(

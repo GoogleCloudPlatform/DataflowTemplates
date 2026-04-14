@@ -134,8 +134,7 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
             "schemaOverridesFilePath", getGcsPath("input/overrides.json", gcsResourceManager));
         jobParameters.put(
             "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
-        jobParameters.put(
-            "transformationClassName", "com.custom.SpannerToSourceDbRetryTransformation");
+        jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
         jobParameters.put("transformationCustomParameters", "mode=bad");
         jobParameters.put(
             "dlqMaxRetryCount", "1000"); // High retry count to keep items in retry/ bucket
@@ -274,8 +273,7 @@ public class DataStreamToSpannerMySQLRetryDLQIT extends DataStreamToSpannerITBas
         "schemaOverridesFilePath", getGcsPath("input/overrides.json", gcsResourceManager));
     retryJobParameters.put(
         "transformationJarPath", getGcsPath("input/customShard.jar", gcsResourceManager));
-    retryJobParameters.put(
-        "transformationClassName", "com.custom.SpannerToSourceDbRetryTransformation");
+    retryJobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
     retryJobParameters.put(
         "transformationCustomParameters", "mode=good"); // Fixes the transformer error
     retryJobParameters.put(

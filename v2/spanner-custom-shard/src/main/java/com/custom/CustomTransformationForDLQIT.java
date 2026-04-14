@@ -40,10 +40,9 @@ import org.slf4j.LoggerFactory;
  * <p>For the Orders table, it translates the OrderSource column into a custom LegacyOrderSystem
  * column to validate standard data transformation operations.
  */
-public class SpannerToSourceDbRetryTransformation implements ISpannerMigrationTransformer {
+public class CustomTransformationForDLQIT implements ISpannerMigrationTransformer {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToSourceDbRetryTransformation.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationForDLQIT.class);
 
   private String mode = "bad";
 
