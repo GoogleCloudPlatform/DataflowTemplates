@@ -18,7 +18,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **table**: BigQuery table to monitor. Format: project:dataset.table.
 * **metric_spec**: JSON string defining the metric computation. Example: {"aggregation":{"window":{"type":"fixed","size_seconds":3600},"measures":[{"field":"amount","agg":"SUM","alias":"total"}]}}.
-* **detector_spec**: JSON string defining the anomaly detector. Example: {"type":"ZScore"} or {"type":"ZScore","config":{"threshold_criterion":{"type":"FixedThreshold","config":{"cutoff":10}}}}.
+* **detector_spec**: JSON string defining the anomaly detector. Statistical: {"type":"ZScore"}, {"type":"IQR"}, {"type":"RobustZScore"}. Threshold: {"type":"Threshold","expression":"value >= 100"}. RelativeChange: {"type":"RelativeChange","direction":"decrease","threshold_pct":20,"lookback_windows":1}.
 * **topic**: Pub/Sub topic for anomaly results. Full path: projects/<project>/topics/<topic>.
 
 ### Optional parameters
