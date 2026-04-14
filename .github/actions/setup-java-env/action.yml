@@ -14,7 +14,7 @@
 
 # Sets up the cache for Java dependencies. If a specific key is given, then the
 # key is used to resolve or else resolving the first entry that matches the prefix
-# without the key. Otherwise, today's date and yetserday's date (both in UTC) will be
+# without the key. Otherwise, today's date and yesterday's date (both in UTC) will be
 # tried before going to the first match without any date.
 
 name: 'Setup Java Environment'
