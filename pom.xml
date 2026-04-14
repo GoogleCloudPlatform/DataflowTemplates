@@ -77,7 +77,7 @@
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
+    <hbase.client.version>2.6.5-hadoop3</hbase.client.version>
     <jackson.version>2.21.2</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
