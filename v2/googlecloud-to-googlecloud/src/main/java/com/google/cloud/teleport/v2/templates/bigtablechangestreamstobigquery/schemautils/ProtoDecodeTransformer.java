@@ -39,6 +39,7 @@ public class ProtoDecodeTransformer implements ValueTransformer {
   private final String fullMessageName;
   private final boolean preserveFieldNames;
 
+  private volatile boolean initialized = false;
   private transient Descriptor descriptor;
   private transient JsonFormat.Printer printer;
 
@@ -49,8 +50,14 @@ public class ProtoDecodeTransformer implements ValueTransformer {
     this.preserveFieldNames = preserveFieldNames;
   }
 
-  private synchronized void ensureInitialized() {
-    if (descriptor == null) {
+  private void ensureInitialized() {
+    if (initialized) {
+      return;
+    }
+    synchronized (this) {
+      if (initialized) {
+        return;
+      }
       descriptor = SchemaUtils.getProtoDomain(protoSchemaPath).getDescriptor(fullMessageName);
       if (descriptor == null) {
         throw new IllegalArgumentException(
@@ -58,6 +65,7 @@ public class ProtoDecodeTransformer implements ValueTransformer {
       }
       JsonFormat.Printer basePrinter = JsonFormat.printer();
       printer = preserveFieldNames ? basePrinter.preservingProtoFieldNames() : basePrinter;
+      initialized = true;
     }
   }
 
@@ -69,6 +77,7 @@ public class ProtoDecodeTransformer implements ValueTransformer {
     this.descriptor = descriptor;
     JsonFormat.Printer basePrinter = JsonFormat.printer();
     this.printer = preserveFieldNames ? basePrinter.preservingProtoFieldNames() : basePrinter;
+    this.initialized = true;
   }
 
   /**

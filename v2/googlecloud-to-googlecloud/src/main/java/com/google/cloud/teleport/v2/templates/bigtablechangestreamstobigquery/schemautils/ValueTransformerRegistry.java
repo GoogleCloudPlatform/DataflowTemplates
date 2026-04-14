@@ -42,21 +42,29 @@ public class ValueTransformerRegistry implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  /** Map from "family:column" to the associated transformer. */
-  private final Map<String, ValueTransformer> transformers;
+  /** Two-level map: family -> column -> transformer. */
+  private final Map<String, Map<String, ValueTransformer>> transformers;
 
-  private ValueTransformerRegistry(Map<String, ValueTransformer> transformers) {
+  private ValueTransformerRegistry(Map<String, Map<String, ValueTransformer>> transformers) {
     this.transformers = transformers;
   }
 
   /**
-   * Creates a registry from a pre-built map. Package-private for testing.
+   * Creates a registry from a flat map keyed by "family:column". Package-private for testing.
    *
-   * @param transformers map from "family:column" to transformer
-   * @return a registry backed by the given map
+   * @param flat map from "family:column" to transformer
+   * @return a registry backed by the converted two-level map
    */
-  static ValueTransformerRegistry of(Map<String, ValueTransformer> transformers) {
-    return new ValueTransformerRegistry(new HashMap<>(transformers));
+  static ValueTransformerRegistry of(Map<String, ValueTransformer> flat) {
+    Map<String, Map<String, ValueTransformer>> twoLevel = new HashMap<>();
+    flat.forEach(
+        (key, transformer) -> {
+          int colon = key.indexOf(':');
+          String family = key.substring(0, colon);
+          String column = key.substring(colon + 1);
+          twoLevel.computeIfAbsent(family, k -> new HashMap<>()).put(column, transformer);
+        });
+    return new ValueTransformerRegistry(twoLevel);
   }
 
   /**
@@ -65,7 +73,8 @@ public class ValueTransformerRegistry implements Serializable {
    */
   @Nullable
   public ValueTransformer getTransformer(String columnFamily, String columnQualifier) {
-    return transformers.get(columnFamily + ":" + columnQualifier);
+    Map<String, ValueTransformer> familyMap = transformers.get(columnFamily);
+    return familyMap != null ? familyMap.get(columnQualifier) : null;
   }
 
   /**
@@ -97,7 +106,7 @@ public class ValueTransformerRegistry implements Serializable {
    */
   public static ValueTransformerRegistry parse(
       @Nullable String config, @Nullable String protoSchemaPath, boolean preserveProtoFieldNames) {
-    Map<String, ValueTransformer> transformers = new HashMap<>();
+    Map<String, Map<String, ValueTransformer>> transformers = new HashMap<>();
 
     if (config == null || config.trim().isEmpty()) {
       return new ValueTransformerRegistry(transformers);
@@ -125,11 +134,10 @@ public class ValueTransformerRegistry implements Serializable {
       String column = trimmed.substring(firstColon + 1, lastColon);
       String type = trimmed.substring(lastColon + 1);
 
-      String key = family + ":" + column;
       ValueTransformer transformer =
           transformerCache.computeIfAbsent(
               type, t -> createTransformer(t, protoSchemaPath, preserveProtoFieldNames));
-      transformers.put(key, transformer);
+      transformers.computeIfAbsent(family, k -> new HashMap<>()).put(column, transformer);
     }
 
     return new ValueTransformerRegistry(transformers);

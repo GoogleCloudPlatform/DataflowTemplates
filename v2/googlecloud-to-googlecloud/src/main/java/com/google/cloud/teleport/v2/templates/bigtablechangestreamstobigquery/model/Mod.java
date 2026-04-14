@@ -75,12 +75,7 @@ public final class Mod implements Serializable {
   }
 
   public Mod(BigtableSource source, ChangeStreamMutation mutation, SetCell setCell) {
-    this(mutation.getCommitTimestamp(), ModType.SET_CELL);
-
-    Map<String, Object> propertiesMap = Maps.newHashMap();
-    setCommonProperties(propertiesMap, source, mutation);
-    setSpecificProperties(propertiesMap, setCell);
-    this.changeJson = convertPropertiesToJson(propertiesMap);
+    this(source, mutation, setCell, null);
   }
 
   public Mod(
