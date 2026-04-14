@@ -23,7 +23,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Range.BoundType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ProtoDecoder;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformer;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.Maps;
@@ -87,7 +87,6 @@ public final class Mod implements Serializable {
       BigtableSource source,
       ChangeStreamMutation mutation,
       SetCell setCell,
-      ProtoDecoder protoDecoder,
       ValueTransformerRegistry transformerRegistry) {
     this(mutation.getCommitTimestamp(), ModType.SET_CELL);
 
@@ -95,20 +94,16 @@ public final class Mod implements Serializable {
     setCommonProperties(propertiesMap, source, mutation);
     setSpecificProperties(propertiesMap, setCell);
 
-    if (protoDecoder != null || transformerRegistry != null) {
+    if (transformerRegistry != null) {
       String qualifierStr = setCell.getQualifier().toStringUtf8();
-      byte[] valueBytes = setCell.getValue().toByteArray();
-      String transformed = null;
-
-      if (protoDecoder != null && protoDecoder.matches(setCell.getFamilyName(), qualifierStr)) {
-        transformed = protoDecoder.decode(valueBytes);
-      }
-      if (transformed == null && transformerRegistry != null) {
-        transformed =
-            transformerRegistry.transform(setCell.getFamilyName(), qualifierStr, valueBytes);
-      }
-      if (transformed != null) {
-        propertiesMap.put(TRANSFORMED_VALUE, transformed);
+      ValueTransformer transformer =
+          transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
+      if (transformer != null) {
+        byte[] valueBytes = setCell.getValue().toByteArray();
+        String transformed = transformer.transform(valueBytes);
+        if (transformed != null) {
+          propertiesMap.put(TRANSFORMED_VALUE, transformed);
+        }
       }
     }
 

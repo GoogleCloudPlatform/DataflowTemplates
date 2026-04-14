@@ -18,98 +18,145 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.s
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
+import javax.annotation.Nullable;
 
 /**
- * Registry that maps column family:column qualifier pairs to {@link ValueTransformer} instances.
+ * Registry that maps column family/qualifier pairs to {@link ValueTransformer} instances.
  *
- * <p>Parses a comma-separated configuration string with format: {@code
- * column_family:column:TRANSFORM_TYPE}
+ * <p>The configuration string is a comma-separated list of entries with the format:
  *
- * <p>Supported transform types:
+ * <pre>column_family:column_qualifier:TRANSFORM_TYPE</pre>
+ *
+ * <p>Supported TRANSFORM_TYPE values:
  *
  * <ul>
- *   <li>{@code BIG_ENDIAN_UINT64_TIMESTAMP_MS} - 8-byte big-endian uint64 Unix milliseconds
+ *   <li>{@code BIG_ENDIAN_TIMESTAMP} - interprets 8-byte big-endian values as Unix epoch millis
+ *   <li>{@code PROTO_DECODE(package.MessageName)} - decodes protobuf-encoded values to JSON
+ *       (requires {@code protoSchemaPath})
  * </ul>
+ *
+ * <p><b>Note:</b> Column qualifiers containing commas are not supported since comma is used as the
+ * entry delimiter.
  */
 public class ValueTransformerRegistry implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  private final Map<String, Map<String, ValueTransformer>> transformersByFamily;
+  /** Map from "family:column" to the associated transformer. */
+  private final Map<String, ValueTransformer> transformers;
 
-  private ValueTransformerRegistry(
-      Map<String, Map<String, ValueTransformer>> transformersByFamily) {
-    this.transformersByFamily = transformersByFamily;
+  private ValueTransformerRegistry(Map<String, ValueTransformer> transformers) {
+    this.transformers = transformers;
   }
 
   /**
-   * Parses a comma-separated transform configuration string.
+   * Creates a registry from a pre-built map. Package-private for testing.
    *
-   * @param config format: "family:column:TYPE,family2:column2:TYPE2"
-   * @return a new registry, or null if config is null or empty
-   * @throws IllegalArgumentException if the config format is invalid or a transform type is unknown
+   * @param transformers map from "family:column" to transformer
+   * @return a registry backed by the given map
    */
-  public static ValueTransformerRegistry parse(String config) {
-    if (StringUtils.isBlank(config)) {
-      return null;
+  static ValueTransformerRegistry of(Map<String, ValueTransformer> transformers) {
+    return new ValueTransformerRegistry(new HashMap<>(transformers));
+  }
+
+  /**
+   * Returns the transformer for the given column family and qualifier, or null if none is
+   * registered.
+   */
+  @Nullable
+  public ValueTransformer getTransformer(String columnFamily, String columnQualifier) {
+    return transformers.get(columnFamily + ":" + columnQualifier);
+  }
+
+  /**
+   * Parses a column transforms configuration string without proto support.
+   *
+   * @param config comma-separated list of {@code column_family:column:TRANSFORM_TYPE} entries, or
+   *     null/empty for no transforms
+   * @return a registry with the configured transformers
+   */
+  public static ValueTransformerRegistry parse(@Nullable String config) {
+    return parse(config, null, false);
+  }
+
+  /**
+   * Parses a column transforms configuration string.
+   *
+   * <p>The format is a comma-separated list of entries:
+   *
+   * <pre>column_family:column_qualifier:TRANSFORM_TYPE</pre>
+   *
+   * <p><b>Note:</b> Column qualifiers containing commas are not supported since comma is used as
+   * the entry delimiter.
+   *
+   * @param config comma-separated list of {@code column_family:column:TRANSFORM_TYPE} entries, or
+   *     null/empty for no transforms
+   * @param protoSchemaPath GCS path to the proto schema file, required for PROTO_DECODE transforms
+   * @param preserveProtoFieldNames whether to preserve proto field names in JSON output
+   * @return a registry with the configured transformers
+   */
+  public static ValueTransformerRegistry parse(
+      @Nullable String config, @Nullable String protoSchemaPath, boolean preserveProtoFieldNames) {
+    Map<String, ValueTransformer> transformers = new HashMap<>();
+
+    if (config == null || config.trim().isEmpty()) {
+      return new ValueTransformerRegistry(transformers);
     }
 
-    Map<String, Map<String, ValueTransformer>> transformersByFamily = new HashMap<>();
-    for (String entry : config.split(",")) {
+    // Cache so that identical type strings share transformer instances.
+    Map<String, ValueTransformer> transformerCache = new HashMap<>();
+
+    String[] entries = config.split(",");
+    for (String entry : entries) {
       String trimmed = entry.trim();
       if (trimmed.isEmpty()) {
         continue;
       }
-      String[] parts = trimmed.split(":");
-      if (parts.length != 3) {
+
+      int firstColon = trimmed.indexOf(':');
+      int lastColon = trimmed.lastIndexOf(':');
+      if (firstColon == -1 || firstColon == lastColon) {
         throw new IllegalArgumentException(
             "Invalid columnTransforms entry '"
                 + trimmed
                 + "'. Expected format: column_family:column:TRANSFORM_TYPE");
       }
-      String family = parts[0];
-      String column = parts[1];
-      String type = parts[2];
+      String family = trimmed.substring(0, firstColon);
+      String column = trimmed.substring(firstColon + 1, lastColon);
+      String type = trimmed.substring(lastColon + 1);
 
-      ValueTransformer transformer = createTransformer(type);
-      transformersByFamily.computeIfAbsent(family, k -> new HashMap<>()).put(column, transformer);
+      String key = family + ":" + column;
+      ValueTransformer transformer =
+          transformerCache.computeIfAbsent(
+              type, t -> createTransformer(t, protoSchemaPath, preserveProtoFieldNames));
+      transformers.put(key, transformer);
     }
-    return new ValueTransformerRegistry(transformersByFamily);
+
+    return new ValueTransformerRegistry(transformers);
   }
 
-  /**
-   * Transforms a cell value if a transformer is registered for the given column.
-   *
-   * @return the transformed string, or null if no transformer matches or transformation fails
-   */
-  public String transform(String family, String column, byte[] bytes) {
-    Map<String, ValueTransformer> familyMap = transformersByFamily.get(family);
-    if (familyMap == null) {
-      return null;
+  private static ValueTransformer createTransformer(
+      String type, @Nullable String protoSchemaPath, boolean preserveProtoFieldNames) {
+    if ("BIG_ENDIAN_TIMESTAMP".equals(type)) {
+      return new BigEndianTimestampTransformer();
     }
-    ValueTransformer transformer = familyMap.get(column);
-    if (transformer == null) {
-      return null;
-    }
-    return transformer.transform(bytes);
-  }
 
-  /** Returns true if a transformer is registered for the given column. */
-  public boolean hasTransformer(String family, String column) {
-    Map<String, ValueTransformer> familyMap = transformersByFamily.get(family);
-    return familyMap != null && familyMap.containsKey(column);
-  }
-
-  private static ValueTransformer createTransformer(String type) {
-    switch (type) {
-      case "BIG_ENDIAN_UINT64_TIMESTAMP_MS":
-        return new BigEndianTimestampTransformer();
-      default:
+    if (type.startsWith("PROTO_DECODE(") && type.endsWith(")")) {
+      String messageName = type.substring("PROTO_DECODE(".length(), type.length() - 1);
+      if (messageName.isEmpty()) {
         throw new IllegalArgumentException(
-            "Unknown transform type '"
-                + type
-                + "'. Supported types: BIG_ENDIAN_UINT64_TIMESTAMP_MS");
+            "PROTO_DECODE requires a message name, e.g. PROTO_DECODE(package.MessageName)");
+      }
+      if (protoSchemaPath == null || protoSchemaPath.isEmpty()) {
+        throw new IllegalArgumentException(
+            "PROTO_DECODE transform requires protoSchemaPath to be set");
+      }
+      return new ProtoDecodeTransformer(protoSchemaPath, messageName, preserveProtoFieldNames);
     }
+
+    throw new IllegalArgumentException(
+        "Unknown TRANSFORM_TYPE '"
+            + type
+            + "'. Supported types: BIG_ENDIAN_TIMESTAMP, PROTO_DECODE(package.MessageName)");
   }
 }

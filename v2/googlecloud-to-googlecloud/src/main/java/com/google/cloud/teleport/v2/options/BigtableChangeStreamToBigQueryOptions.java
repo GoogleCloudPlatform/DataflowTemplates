@@ -150,62 +150,86 @@ public interface BigtableChangeStreamToBigQueryOptions
 
   void setDlqDirectory(String value);
 
-  @TemplateParameter.GcsReadFile(
+  @TemplateParameter.Text(
       order = 11,
+      optional = true,
+      description = "Column value transforms",
+      helpText =
+          "A comma-separated list of column value transforms. Each entry has the format "
+              + "column_family:column_qualifier:TRANSFORM_TYPE. Supported TRANSFORM_TYPE values: "
+              + "BIG_ENDIAN_TIMESTAMP (interprets 8-byte big-endian values as Unix epoch millis), "
+              + "PROTO_DECODE(package.MessageName) (decodes protobuf-encoded values to JSON; "
+              + "requires protoSchemaPath). For complex transformations, consider using a "
+              + "JavaScript UDF. Note that column qualifiers containing commas are not supported "
+              + "since comma is used as the entry delimiter.")
+  @Default.String("")
+  String getColumnTransforms();
+
+  void setColumnTransforms(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 12,
       optional = true,
       description = "Cloud Storage path to the proto schema file",
       helpText =
           "The Cloud Storage location of the self-contained proto schema file. "
               + "For example, gs://path/to/my/file.pb. This file can be generated with the "
               + "--descriptor_set_out flag of the protoc command. The --include_imports flag "
-              + "guarantees that the file is self-contained. When set along with "
-              + "fullProtoMessageName, the pipeline decodes matching cell values as protobuf "
-              + "messages and writes them as JSON to BigQuery.")
+              + "guarantees that the file is self-contained. Required when using "
+              + "PROTO_DECODE() in columnTransforms. For legacy compatibility, when set along "
+              + "with fullProtoMessageName, protoColumnFamily, and protoColumn, the pipeline "
+              + "automatically generates a columnTransforms entry. Prefer using "
+              + "columnTransforms with PROTO_DECODE() directly for multi-column proto decoding.")
   @Default.String("")
   String getProtoSchemaPath();
 
   void setProtoSchemaPath(String value);
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       optional = true,
       regexes = {"^.+([a-zA-Z][a-zA-Z0-9_]+\\.?)+[a-zA-Z0-9_]$"},
       description = "Full proto message name",
       helpText =
           "The full proto message name. For example, package.name.MessageName, "
               + "where package.name is the value provided for the package statement "
-              + "and not the java_package statement.")
+              + "and not the java_package statement. Used with the legacy proto options. "
+              + "Prefer using columnTransforms with PROTO_DECODE() for new configurations.")
   @Default.String("")
   String getFullProtoMessageName();
 
   void setFullProtoMessageName(String value);
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       optional = true,
       description = "Column family containing proto values",
       helpText =
           "The Bigtable column family containing protobuf-encoded values to decode. "
-              + "Required when protoSchemaPath is set.")
+              + "Used with the legacy proto options. Together with protoColumn, this defines "
+              + "the proto-mapped column. Prefer using columnTransforms with PROTO_DECODE() "
+              + "for multi-column proto decoding.")
   @Default.String("")
   String getProtoColumnFamily();
 
   void setProtoColumnFamily(String value);
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       optional = true,
       description = "Column qualifier containing proto values",
       helpText =
           "The Bigtable column qualifier containing protobuf-encoded values to decode. "
-              + "Required when protoSchemaPath is set.")
+              + "Used with the legacy proto options. Together with protoColumnFamily, this "
+              + "defines the proto-mapped column. Prefer using columnTransforms with "
+              + "PROTO_DECODE() for multi-column proto decoding.")
   @Default.String("")
   String getProtoColumn();
 
   void setProtoColumn(String value);
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 16,
       optional = true,
       description = "Preserve proto field names in JSON output",
       helpText =
@@ -215,19 +239,4 @@ public interface BigtableChangeStreamToBigQueryOptions
   Boolean getPreserveProtoFieldNames();
 
   void setPreserveProtoFieldNames(Boolean value);
-
-  @TemplateParameter.Text(
-      order = 16,
-      optional = true,
-      description = "Column value transforms",
-      helpText =
-          "A comma-separated list of column value transformations in the format "
-              + "column_family:column:TRANSFORM_TYPE. Matched cell values are transformed "
-              + "before writing to BigQuery. Supported types: BIG_ENDIAN_UINT64_TIMESTAMP_MS "
-              + "(8-byte big-endian unsigned 64-bit integer as Unix epoch milliseconds, "
-              + "converted to a timestamp string).")
-  @Default.String("")
-  String getColumnTransforms();
-
-  void setColumnTransforms(String value);
 }

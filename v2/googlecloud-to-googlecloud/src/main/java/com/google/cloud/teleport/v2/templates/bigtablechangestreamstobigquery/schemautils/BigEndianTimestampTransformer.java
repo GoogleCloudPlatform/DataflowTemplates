@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,7 +43,7 @@ public class BigEndianTimestampTransformer implements ValueTransformer {
       return null;
     }
     try {
-      long millis = ByteBuffer.wrap(bytes).getLong();
+      long millis = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).getLong();
       return FORMATTER.format(Instant.ofEpochMilli(millis));
     } catch (Exception e) {
       LOG.warn("Failed to decode big-endian timestamp: {}", e.getMessage());
