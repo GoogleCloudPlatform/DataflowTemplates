@@ -124,6 +124,11 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     testThresholdDetectorImpl();
   }
 
+  @Test
+  public void testRelativeChangeDetector() throws IOException, InterruptedException {
+    testRelativeChangeDetectorImpl();
+  }
+
   // -------------------------------------------------------------------------
   // Test implementations
   // -------------------------------------------------------------------------
@@ -518,6 +523,186 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
     verifySinkTable(sinkTableName, 2, null /* no keys expected */);
   }
 
+  /**
+   * Tests the RelativeChange detector with a stable baseline followed by a sudden drop.
+   *
+   * <p>Inserts rows with a stable SUM (~1000 per 1-second window) for enough windows to pass warmup
+   * (lookback_windows=3), then drops the rate to produce a ~80% decrease. Verifies the pipeline
+   * detects the decrease and publishes an anomaly to Pub/Sub, and that the info field contains
+   * baseline/current/pct_change metadata.
+   */
+  private void testRelativeChangeDetectorImpl() throws IOException, InterruptedException {
+    // --- Arrange ---
+
+    String tableName = "relative_change_test";
+    String sinkTableName = "relative_change_results";
+
+    Schema schema =
+        Schema.of(
+            Field.of("ts", StandardSQLTypeName.TIMESTAMP),
+            Field.of("value", StandardSQLTypeName.FLOAT64));
+    bigQueryResourceManager.createDataset(REGION);
+    bigQueryResourceManager.createTable(tableName, schema);
+
+    TopicName outputTopic = pubsubResourceManager.createTopic("relchange-output");
+    SubscriptionName outputSubscription =
+        pubsubResourceManager.createSubscription(outputTopic, "relchange-output-sub");
+
+    // 1-second fixed windows, SUM of value.
+    // RelativeChange with lookback_windows=3: compares current against mean of last 3 windows.
+    // threshold_pct=50: alert on >= 50% decrease.
+    String metricSpec =
+        "{\"aggregation\":{\"window\":{\"type\":\"fixed\","
+            + "\"size_seconds\":"
+            + WINDOW_SIZE_SEC
+            + "},\"measures\":[{\"field\":\"value\","
+            + "\"agg\":\"SUM\",\"alias\":\"total\"}]}}";
+    String detectorSpec =
+        "{\"type\":\"RelativeChange\",\"direction\":\"decrease\","
+            + "\"threshold_pct\":50,\"lookback_windows\":3}";
+
+    String tableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            tableName);
+
+    String sinkTableRef =
+        String.format(
+            "%s:%s.%s",
+            bigQueryResourceManager.getProjectId(),
+            bigQueryResourceManager.getDatasetId(),
+            sinkTableName);
+
+    // --- Act ---
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("table", tableRef)
+            .addParameter("metric_spec", metricSpec)
+            .addParameter("detector_spec", detectorSpec)
+            .addParameter("topic", outputTopic.toString())
+            .addParameter("poll_interval_sec", "15")
+            .addParameter("start_offset_sec", "300")
+            .addParameter("duration_sec", "600")
+            .addParameter("log_all_results", "true")
+            .addParameter("sink_table", sinkTableRef);
+
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    // Insert stable baseline: 100 rows/sec × value=10.0 → SUM ≈ 1000 per window.
+    // Need enough windows for warmup (3) plus stable baseline for the mean.
+    // 120 batches (2 min) gives plenty of stable history.
+    int baselineBatches = 120;
+    LOG.info(
+        "Inserting {} batches of {} rows every {}ms (value=10.0, SUM≈1000/window)",
+        baselineBatches,
+        ROWS_PER_BATCH,
+        BATCH_INTERVAL_MS);
+    Random rng = new Random(42);
+    int totalRows = 0;
+    for (int batch = 0; batch < baselineBatches; batch++) {
+      List<RowToInsert> rows = new ArrayList<>();
+      Instant batchTs = Instant.now();
+      for (int i = 0; i < ROWS_PER_BATCH; i++) {
+        double frac = (double) i / ROWS_PER_BATCH;
+        Instant rowTs = batchTs.plusMillis((long) (frac * 1000));
+        double value = 10.0 + rng.nextGaussian() * 0.5;
+        rows.add(RowToInsert.of(ImmutableMap.of("ts", rowTs.toString(), "value", value)));
+      }
+      bigQueryResourceManager.write(tableName, rows);
+      totalRows += ROWS_PER_BATCH;
+      if (batch < baselineBatches - 1) {
+        TimeUnit.MILLISECONDS.sleep(BATCH_INTERVAL_MS);
+      }
+      if ((batch + 1) % 60 == 0) {
+        LOG.info("Inserted batch {}/{} ({} rows so far)", batch + 1, baselineBatches, totalRows);
+      }
+    }
+    LOG.info("Inserted {} baseline rows total", totalRows);
+
+    TimeUnit.SECONDS.sleep(2);
+
+    // Insert drop: 5 batches with value=2.0 → SUM ≈ 200/window (80% decrease from ~1000).
+    int dropBatches = 5;
+    LOG.info(
+        "Inserting {} drop batches ({} rows each, value=2.0, SUM≈200/window)",
+        dropBatches,
+        ROWS_PER_BATCH);
+    for (int batch = 0; batch < dropBatches; batch++) {
+      List<RowToInsert> rows = new ArrayList<>();
+      Instant batchTs = Instant.now();
+      for (int i = 0; i < ROWS_PER_BATCH; i++) {
+        double frac = (double) i / ROWS_PER_BATCH;
+        Instant rowTs = batchTs.plusMillis((long) (frac * 1000));
+        rows.add(RowToInsert.of(ImmutableMap.of("ts", rowTs.toString(), "value", 2.0)));
+      }
+      bigQueryResourceManager.write(tableName, rows);
+      totalRows += ROWS_PER_BATCH;
+      if (batch < dropBatches - 1) {
+        TimeUnit.MILLISECONDS.sleep(BATCH_INTERVAL_MS);
+      }
+    }
+    LOG.info("Inserted {} drop rows ({} total)", dropBatches * ROWS_PER_BATCH, totalRows);
+
+    // --- Assert ---
+
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, outputSubscription)
+            .setMinMessages(1)
+            .build();
+
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
+    assertThatResult(result).meetsConditions();
+
+    List<ReceivedMessage> messages = pubsubCheck.getReceivedMessageList();
+    assertThat(messages).isNotEmpty();
+
+    String messageData = messages.get(0).getMessage().getData().toStringUtf8();
+    LOG.info("Received RelativeChange anomaly message: {}", messageData);
+    JSONObject payload = new JSONObject(messageData);
+
+    assertThat(payload.getString("event_description")).contains("Anomaly detected");
+    assertThat(payload.getString("agent_id")).isEqualTo("RelativeChange");
+
+    // --- Verify BQ sink table ---
+    verifySinkTable(sinkTableName, WINDOW_SIZE_SEC, null /* unkeyed */);
+
+    // Verify that scored rows contain baseline/pct_change info.
+    verifyRelativeChangeInfo(sinkTableName);
+  }
+
+  /**
+   * Verifies that scored (non-warmup) rows in the RelativeChange sink table have info fields
+   * containing baseline, current, and pct_change metadata.
+   */
+  private void verifyRelativeChangeInfo(String sinkTableName) {
+    TableResult tableResult = bigQueryResourceManager.readTable(sinkTableName);
+    List<Map<String, Object>> rows = BigQueryAsserts.tableResultToRecords(tableResult);
+
+    int scoredWithInfo = 0;
+    for (Map<String, Object> row : rows) {
+      int label = ((Number) row.get("label")).intValue();
+      if (label == -2) {
+        continue; // warmup rows don't have baseline info
+      }
+      Object info = row.get("info");
+      if (info != null) {
+        String infoStr = info.toString();
+        assertThat(infoStr).contains("baseline=");
+        assertThat(infoStr).contains("current=");
+        assertThat(infoStr).contains("pct_change=");
+        scoredWithInfo++;
+      }
+    }
+    assertThat(scoredWithInfo).isGreaterThan(0);
+    LOG.info(
+        "RelativeChange info verification passed: {} scored rows with baseline info",
+        scoredWithInfo);
+  }
+
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
@@ -546,6 +731,7 @@ public final class BigQueryAnomalyDetectionIT extends TemplateTestBase {
       assertThat(row).containsKey("window_end");
       assertThat(row).containsKey("value");
       assertThat(row).containsKey("label");
+      assertThat(row).containsKey("info");
 
       // Window timestamps parse as valid ISO-8601 UTC.
       String windowStart = row.get("window_start").toString();

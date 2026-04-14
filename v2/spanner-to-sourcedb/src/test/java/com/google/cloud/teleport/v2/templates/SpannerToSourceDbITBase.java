@@ -133,15 +133,27 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManager)
       throws IOException {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost(jdbcResourceManager.getHost());
     shard.setPassword(jdbcResourceManager.getPassword());
-    shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
-    shard.setDbName(jdbcResourceManager.getDatabaseName());
+    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager) {
+      org.apache.beam.it.jdbc.PostgresResourceManager pgRm =
+          (org.apache.beam.it.jdbc.PostgresResourceManager) jdbcResourceManager;
+      shard.setHost(pgRm.getHost());
+      shard.setPort(String.valueOf(pgRm.getPort()));
+      shard.setDbName(pgRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.MySQLResourceManager) {
+      org.apache.beam.it.jdbc.MySQLResourceManager mySqlRm =
+          (org.apache.beam.it.jdbc.MySQLResourceManager) jdbcResourceManager;
+      shard.setHost(mySqlRm.getHost());
+      shard.setPort(String.valueOf(mySqlRm.getPort()));
+      shard.setDbName(mySqlRm.getDatabaseName());
+    } else {
+      throw new IllegalArgumentException("Unsupported JDBC resource manager type");
+    }
     JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();
@@ -230,12 +242,15 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put(
                 "sourceShardsFilePath",
                 getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                    (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                            && !Objects.equals(
+                                sourceType,
+                                com.google.cloud.teleport.v2.templates.constants.Constants
+                                    .SOURCE_POSTGRESQL))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
@@ -244,6 +259,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("workerMachineType", "n2-standard-4");
           }
         };
+
+    if (subscriptionName != null) {
+      params.put("dlqGcsPubSubSubscription", subscriptionName);
+    }
+
     if (jobParameters != null) {
       params.putAll(jobParameters);
     }
@@ -264,6 +284,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       params.put(
           "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        params.put("transformationCustomParameters", customTransformation.customParameters());
+      }
     }
 
     // Construct template
@@ -278,6 +301,36 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
+  }
+
+  protected void loadSQLFileResource(JDBCResourceManager jdbcResourceManager, String resourcePath)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(resourcePath), java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      java.sql.Connection connection =
+          java.sql.DriverManager.getConnection(
+              jdbcResourceManager.getUri(),
+              jdbcResourceManager.getUsername(),
+              jdbcResourceManager.getPassword());
+
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+      String[] statements = sql.split(";");
+
+      java.sql.Statement statement = connection.createStatement();
+      for (String stmt : statements) {
+        if (!stmt.trim().isEmpty()) {
+          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new Exception("Failed to load SQL into database", e);
+    }
   }
 
   protected void createMySQLSchema(MySQLResourceManager jdbcResourceManager, String mySqlSchemaFile)
