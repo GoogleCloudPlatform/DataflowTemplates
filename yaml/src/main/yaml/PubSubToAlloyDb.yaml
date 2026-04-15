@@ -96,6 +96,5 @@ pipeline:
 
 options:
   streaming: true
-  use_public_ips: false
   network: {{ network }}
   subnetwork: {{ subnetwork }}
