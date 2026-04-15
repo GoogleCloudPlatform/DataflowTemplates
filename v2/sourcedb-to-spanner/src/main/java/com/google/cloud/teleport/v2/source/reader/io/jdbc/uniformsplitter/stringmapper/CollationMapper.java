@@ -287,8 +287,8 @@ public abstract class CollationMapper implements Serializable {
   /**
    * Build a {@link CollationMapper} from a MySQL result set that returns raw {@code WEIGHT_STRING}
    * sort-key bytes (columns {@code weight_non_trailing}, {@code weight_trailing}, {@code is_empty},
-   * {@code is_space}) produced by the MySQL collation query
-   * ({@link CollationQueryResultType#WEIGHT_BYTES}).
+   * {@code is_space}) produced by the MySQL collation query ({@link
+   * CollationQueryResultType#WEIGHT_BYTES}).
    *
    * <p>All grouping, ranking and equivalent-character resolution is performed here in Java:
    *
@@ -346,9 +346,7 @@ public abstract class CollationMapper implements Serializable {
     TreeMap<String, TreeMap<Integer, Character>> ntGroups = new TreeMap<>(weightKeyOrder);
     for (WeightRow row : rows) {
       if (!row.isEmpty()) {
-        ntGroups
-            .computeIfAbsent(row.weightNt(), k -> new TreeMap<>())
-            .put((int) row.c(), row.c());
+        ntGroups.computeIfAbsent(row.weightNt(), k -> new TreeMap<>()).put((int) row.c(), row.c());
       }
     }
     // Assign dense ranks and resolve equivalent characters (min codepoint per group).
@@ -370,9 +368,7 @@ public abstract class CollationMapper implements Serializable {
     TreeMap<String, TreeMap<Integer, Character>> tGroups = new TreeMap<>(weightKeyOrder);
     for (WeightRow row : rows) {
       if (!row.isEmpty() && !row.isSpace()) {
-        tGroups
-            .computeIfAbsent(row.weightT(), k -> new TreeMap<>())
-            .put((int) row.c(), row.c());
+        tGroups.computeIfAbsent(row.weightT(), k -> new TreeMap<>()).put((int) row.c(), row.c());
       }
     }
     Map<Character, Long> tRank = new HashMap<>();
@@ -410,10 +406,10 @@ public abstract class CollationMapper implements Serializable {
   }
 
   /**
-   * Build a {@link CollationMapper} from a result set that returns pre-computed dense ranks
-   * ({@code codepoint_rank}, {@code codepoint_rank_pad_space}) together with {@code is_empty} and
-   * {@code is_space} (produced by the PostgreSQL collation query,
-   * {@link CollationQueryResultType#WITH_RANKS}).
+   * Build a {@link CollationMapper} from a result set that returns pre-computed dense ranks ({@code
+   * codepoint_rank}, {@code codepoint_rank_pad_space}) together with {@code is_empty} and {@code
+   * is_space} (produced by the PostgreSQL collation query, {@link
+   * CollationQueryResultType#WITH_RANKS}).
    *
    * <p>The equivalent character for each rank group is resolved here in Java as the character with
    * the smallest codepoint value among all characters sharing the same rank, removing the need for
@@ -461,8 +457,7 @@ public abstract class CollationMapper implements Serializable {
     // Phase 3: build CollationOrderRow objects and feed the mapper builder.
     Builder builder = builder(collationReference);
     for (RankRow row : rows) {
-      char equivChar =
-          row.isEmpty() ? row.c() : (char) (int) rankToMinCodepoint.get(row.rank());
+      char equivChar = row.isEmpty() ? row.c() : (char) (int) rankToMinCodepoint.get(row.rank());
       // Space chars are not added to the trailing PAD-SPACE index; use self as placeholder.
       char equivCharPs =
           (row.isEmpty() || row.isSpace())

@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CollationQueryResultType;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -759,15 +758,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   /**
    * Version of MySql.
    *
-   * <p>The collation order query (used for string range splitting) works on both {@link
-   * #DEFAULT} (MySQL 8.0+) and {@link #MYSQL_5_7} using the same SQL file. The file uses
-   * temporary tables and GROUP BY joins instead of window functions (FIRST_VALUE / DENSE_RANK),
-   * which are only available in MySQL 8.0+. This approach is also a performance improvement on
-   * 8.0 because the expensive codepoint cross-join is materialised once rather than being
-   * re-evaluated as a nested subquery inside each window partition.
+   * <p>The collation order query (used for string range splitting) works on both {@link #DEFAULT}
+   * (MySQL 8.0+) and {@link #MYSQL_5_7} using the same SQL file. The file uses temporary tables and
+   * GROUP BY joins instead of window functions (FIRST_VALUE / DENSE_RANK), which are only available
+   * in MySQL 8.0+. This approach is also a performance improvement on 8.0 because the expensive
+   * codepoint cross-join is materialised once rather than being re-evaluated as a nested subquery
+   * inside each window partition.
    *
-   * <p>The count query uses the {@code MAX_EXECUTION_TIME} optimizer hint, which is supported
-   * from MySQL 5.7.8+. For earlier 5.7 patch releases the hint is silently ignored by MySQL.
+   * <p>The count query uses the {@code MAX_EXECUTION_TIME} optimizer hint, which is supported from
+   * MySQL 5.7.8+. For earlier 5.7 patch releases the hint is silently ignored by MySQL.
    */
   public enum MySqlVersion {
     /** MySQL 8.0 and later (default). */

@@ -203,9 +203,9 @@ public abstract class CollationOrderRow {
     public static final String WEIGHT_NON_TRAILING_COL = "weight_non_trailing";
 
     /**
-     * Binary sort key (WEIGHT_STRING output) for the bare character. For PAD SPACE collations
-     * MySQL applies trailing-space stripping inside WEIGHT_STRING, so this reflects the trailing
-     * sort key and is used to build the PAD SPACE index.
+     * Binary sort key (WEIGHT_STRING output) for the bare character. For PAD SPACE collations MySQL
+     * applies trailing-space stripping inside WEIGHT_STRING, so this reflects the trailing sort key
+     * and is used to build the PAD SPACE index.
      */
     public static final String WEIGHT_TRAILING_COL = "weight_trailing";
 
