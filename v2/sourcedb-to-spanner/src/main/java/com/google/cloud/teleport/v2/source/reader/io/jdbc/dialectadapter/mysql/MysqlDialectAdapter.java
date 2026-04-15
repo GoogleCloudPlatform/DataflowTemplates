@@ -468,10 +468,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
       }
     }
-    // For MySql5.7 there is no pad-space column in the INFORMATION_SCHEMA.COLLATIONS table.
-    // In these older versions, non-binary string comparisons (like VARCHAR) always follow
-    // PAD SPACE rules (where trailing spaces are ignored). We default to this behavior
-    // to ensure correct partitioning across both MySQL 5.7 and 8.x.
+    // MySQL 5.7 does not have a PAD_ATTRIBUTE column in INFORMATION_SCHEMA.COLLATIONS.
+    // In 5.7 all non-binary string comparisons follow PAD SPACE rules (trailing spaces ignored).
+    // We default to that behaviour so that partitioning is correct on both 5.7 and 8.x.
     logger.info(
         "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
         InformationSchemaStatsCols.PAD_SPACE_COL);
@@ -512,8 +511,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         padSpace,
         numericScale,
         datetimePrecision);
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
-    // Column.
     String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
     IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
     CollationReference collationReference = null;
@@ -740,9 +737,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
-   * @param dbCollation collation set used by the database for which collation ordering has to be
-   *     found.
-   * @param padSpace pad space used by the database for which collation ordering has to be found.
+   * @param dbCollation collation used by the database for which collation ordering has to be found.
+   * @param padSpace pad space attribute of the collation.
    */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
@@ -761,11 +757,23 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
-   * Having the type allows the implementation do finer distinctions if needed in the future.
+   * Version of MySql.
+   *
+   * <p>The collation order query (used for string range splitting) works on both {@link
+   * #DEFAULT} (MySQL 8.0+) and {@link #MYSQL_5_7} using the same SQL file. The file uses
+   * temporary tables and GROUP BY joins instead of window functions (FIRST_VALUE / DENSE_RANK),
+   * which are only available in MySQL 8.0+. This approach is also a performance improvement on
+   * 8.0 because the expensive codepoint cross-join is materialised once rather than being
+   * re-evaluated as a nested subquery inside each window partition.
+   *
+   * <p>The count query uses the {@code MAX_EXECUTION_TIME} optimizer hint, which is supported
+   * from MySQL 5.7.8+. For earlier 5.7 patch releases the hint is silently ignored by MySQL.
    */
   public enum MySqlVersion {
+    /** MySQL 8.0 and later (default). */
     DEFAULT,
+    /** MySQL 5.7.x. */
+    MYSQL_5_7,
   }
 
   protected static final class InformationSchemaCols {
@@ -796,7 +804,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
     public static final String DATETIME_PRECISION_COL = "cols.DATETIME_PRECISION";
 
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
+    // MySQL 5.7 does not expose PAD_ATTRIBUTE; the adapter defaults to PAD SPACE in that case.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
 
     public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
