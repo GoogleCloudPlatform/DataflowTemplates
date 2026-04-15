@@ -19,17 +19,18 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 
 @AutoValue
 public abstract class ReaderImpl implements Reader, Serializable {
 
-  abstract SourceSchema sourceSchema();
+  abstract ImmutableList<SourceSchema> sourceSchema();
 
   abstract ReaderTransform readerTransform();
 
   public static ReaderImpl of(IoWrapper ioWrapper) {
-    SourceSchema sourceSchema = ioWrapper.discoverTableSchema();
+    ImmutableList<SourceSchema> sourceSchema = ioWrapper.discoverTableSchema();
     ReaderTransform.Builder readerTransformBuilder = ReaderTransform.builder();
     ioWrapper
         .getTableReaders()
@@ -40,7 +41,7 @@ public abstract class ReaderImpl implements Reader, Serializable {
   }
 
   @Override
-  public SourceSchema getSourceSchema() {
+  public ImmutableList<SourceSchema> getSourceSchema() {
     return this.sourceSchema();
   }
 
@@ -49,7 +50,8 @@ public abstract class ReaderImpl implements Reader, Serializable {
     return this.readerTransform();
   }
 
-  static ReaderImpl create(SourceSchema sourceSchema, ReaderTransform readerTransform) {
+  static ReaderImpl create(
+      ImmutableList<SourceSchema> sourceSchema, ReaderTransform readerTransform) {
     return new AutoValue_ReaderImpl(sourceSchema, readerTransform);
   }
 }
