@@ -39,10 +39,10 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,13 +75,13 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
   private static final int BAD_MESSAGES_COUNT = 3;
 
   private PubsubResourceManager pubsubResourceManager;
-  private PostgresResourceManager postgresResourceManager;
+  private CloudPostgresResourceManager postgresResourceManager;
 
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
-    postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    postgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
   }
 
   @After
@@ -134,7 +134,7 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
             .addParameter("format", "JSON")
             .addParameter(
                 "schema",
-                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
+                "{\"type\":\"object\",\"properties\":{\"id\":{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]},\"name\":{\"type\":\"string\"}}}")
             .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
             .addParameter("language", "python")
             .addParameter(
@@ -147,7 +147,11 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
             .addParameter("table", tableName)
-            .addParameter("query", "INSERT INTO " + tableName + " (id, name_upper) VALUES (?, ?)")
+            .addParameter(
+                "query",
+                "INSERT INTO "
+                    + tableName
+                    + " (id, name_upper) VALUES (?, ?) ON CONFLICT (id) DO NOTHING")
             .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString());
 
     /********************************* Act **********************************/
