@@ -102,10 +102,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  FirstName String(1024),"
-                + "  LastName String(1024),"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
 
@@ -136,7 +136,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -146,8 +146,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("spannerChangeStreamName", testName + "_stream")
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("rpcPriority", "HIGH")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -176,10 +175,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  FirstName String(1024),"
-                + "  LastName String(1024),"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
 
@@ -210,7 +209,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -224,8 +223,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("useStorageWriteApiAtLeastOnce", "false")
                     .addParameter("numStorageWriteApiStreams", "1")
                     .addParameter("storageWriteApiTriggeringFrequencySec", "10")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -254,10 +252,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  Float32Col FLOAT32,"
-                + "  Float64Col FLOAT64,"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  Float32Col FLOAT32,\n"
+                + "  Float64Col FLOAT64,\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
 
@@ -275,7 +273,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -285,8 +283,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("spannerChangeStreamName", testName + "_stream")
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("rpcPriority", "HIGH")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -322,10 +319,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  FirstName String(1024),"
-                + "  LastName String(1024),"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
     String cdcTable = spannerTable + "_changelog";
@@ -343,7 +340,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -353,8 +350,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("spannerChangeStreamName", testName + "_stream")
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("rpcPriority", "HIGH")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -381,10 +377,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String cdcTable2 = spannerTable2 + "_changelog";
     String createTableStatement2 =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  FirstName String(1024),"
-                + "  LastName String(1024),"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable2);
     spannerResourceManager.executeDdlStatement(createTableStatement2);
@@ -416,10 +412,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
-            "CREATE TABLE %s ("
-                + "  Id INT64 NOT NULL,"
-                + "  FirstName String(1024),"
-                + "  LastName String(1024),"
+            "CREATE TABLE %s (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  FirstName String(1024),\n"
+                + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
     String cdcTable = spannerTable + "_changelog";
@@ -449,7 +445,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -459,8 +455,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("spannerChangeStreamName", testName + "_stream")
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("rpcPriority", "HIGH")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -581,7 +576,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testSpannerChangeStreamsToBigQuery_GoogleSQL_UUIDs() throws IOException {
+  public void testSpannerChangeStreamsToBigQueryGoogleSqlUuid() throws IOException {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
@@ -604,7 +599,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     launchInfo =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(testName.replace('_', '-'), specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
@@ -614,8 +609,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                     .addParameter("spannerChangeStreamName", testName + "_stream")
                     .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
                     .addParameter("rpcPriority", "HIGH")
-                    .addParameter("dlqRetryMinutes", "3")
-                    .addParameter("usePublicIps", "false")));
+                    .addParameter("dlqRetryMinutes", "3")));
 
     assertThatPipeline(launchInfo).isRunning();
 
