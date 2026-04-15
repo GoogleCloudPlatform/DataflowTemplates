@@ -16,12 +16,10 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper;
 
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_COL;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_COL;
-import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -238,7 +236,10 @@ public class CollationMapperTest {
 
   @Test
   public void testCollationFromDbBasic() throws SQLException {
-
+    // The MySQL adapter now uses CollationQueryResultType.WEIGHT_BYTES: the result set returns
+    // raw WEIGHT_STRING sort-key bytes rather than pre-computed ranks and equivalent chars.
+    // Java (CollationMapper.fromResultSetWithWeights) does all grouping, ranking and
+    // equivalent-character resolution.
     CollationReference testCollationReference =
         CollationReference.builder()
             .setDbCharacterSet("testCharSet")
@@ -252,10 +253,10 @@ public class CollationMapperTest {
     when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
     when(mockResultSet.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    when(mockResultSet.getString(EQUIVALENT_CHARSET_CHAR_COL)).thenReturn("a");
-    when(mockResultSet.getLong(CODEPOINT_RANK_COL)).thenReturn(0L);
-    when(mockResultSet.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL)).thenReturn("a");
-    when(mockResultSet.getLong(CODEPOINT_RANK_PAD_SPACE_COL)).thenReturn(0L);
+    // weight bytes: a single non-zero byte so the character is ordered at rank 0.
+    byte[] weightBytes = new byte[] {0x01, 0x00};
+    when(mockResultSet.getBytes(WEIGHT_NON_TRAILING_COL)).thenReturn(weightBytes);
+    when(mockResultSet.getBytes(WEIGHT_TRAILING_COL)).thenReturn(weightBytes);
     when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
     when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
 
@@ -343,12 +344,6 @@ public class CollationMapperTest {
 
   @Test
   public void testUtf8Mb40900AiCi() throws SQLException, IOException {
-
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.execute(any())).thenReturn(false);
-    when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
-    when(mockStatement.getUpdateCount()).thenReturn(0);
-    when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     CollationReference collationReference =
         CollationReference.builder()
             .setDbCharacterSet("utf8mb4")
@@ -359,8 +354,7 @@ public class CollationMapperTest {
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv", mockResultSet);
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -396,11 +390,6 @@ public class CollationMapperTest {
 
   @Test
   public void testUtf8Mb40900AsCs() throws SQLException, IOException {
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.execute(any())).thenReturn(false);
-    when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
-    when(mockStatement.getUpdateCount()).thenReturn(0);
-    when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     CollationReference collationReference =
         CollationReference.builder()
             .setDbCharacterSet("utf8mb4")
@@ -411,8 +400,7 @@ public class CollationMapperTest {
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-as-cs.tsv", mockResultSet);
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -435,11 +423,6 @@ public class CollationMapperTest {
 
   @Test
   public void testUtf8Mb4UnicodeCi() throws SQLException, IOException {
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.execute(any())).thenReturn(false);
-    when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
-    when(mockStatement.getUpdateCount()).thenReturn(0);
-    when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     CollationReference collationReference =
         CollationReference.builder()
             .setDbCharacterSet("utf8mb4")
@@ -450,8 +433,7 @@ public class CollationMapperTest {
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-unicode-ci.tsv", mockResultSet);
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
