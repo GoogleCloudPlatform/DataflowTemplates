@@ -231,6 +231,24 @@ public class ExportPipeline {
     ValueProvider<Boolean> getDataBoostEnabled();
 
     void setDataBoostEnabled(ValueProvider<Boolean> value);
+
+    /** Checksum algorithm to use. */
+    enum ChecksumAlgorithm {
+      MD5,
+      CRC32C
+    }
+
+    @TemplateParameter.Enum(
+        order = 14,
+        groupName = "Source",
+        enumOptions = {@TemplateEnumOption("MD5"), @TemplateEnumOption("CRC32C")},
+        optional = true,
+        description = "Checksum algorithm",
+        helpText =
+            "The checksum algorithm to use for the exported files. Possible values are MD5 and CRC32C. The default value is MD5.")
+    ValueProvider<ChecksumAlgorithm> getChecksumAlgorithm();
+
+    void setChecksumAlgorithm(ValueProvider<ChecksumAlgorithm> value);
   }
 
   /**
@@ -274,7 +292,8 @@ public class ExportPipeline {
                 options.getTableNames(),
                 options.getShouldExportRelatedTables(),
                 options.getShouldExportTimestampAsLogicalType(),
-                options.getAvroTempDirectory()));
+                options.getAvroTempDirectory(),
+                options.getChecksumAlgorithm()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&

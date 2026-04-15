@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Combine;
@@ -111,7 +112,12 @@ public class ExportTransformTest {
     PCollection<KV<String, String>> tableManifests =
         pipeline
             .apply("Create", Create.of(tablesAndFiles))
-            .apply("Build table manifest", ParDo.of(new BuildTableManifests()));
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5))));
 
     PAssert.that(tableManifests)
         .containsInAnyOrder(KV.of("table1", manifest1), KV.of("table2", manifest2));
@@ -127,7 +133,12 @@ public class ExportTransformTest {
     PCollection<KV<String, String>> tableManifests =
         pipeline
             .apply("Create", Create.of(tablesAndFiles))
-            .apply("Build table manifest", ParDo.of(new BuildTableManifests()));
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5))));
     PAssert.that(tableManifests).empty();
     pipeline.run();
   }
@@ -350,5 +361,32 @@ public class ExportTransformTest {
           new SchemaBasedDynamicDestinations(null, null, null, null);
       assertEquals(3, schemaBasedDynamicDestinations.getSideInputs().size());
     }
+  }
+
+  @Test
+  public void buildTableManifestsCrc32c() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+
+    // Create the expected manifest string.
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString()).setCrc32C("AAAAAA==");
+    String manifest1 = JsonFormat.printer().print(builder.build());
+
+    final Map<String, Iterable<String>> tablesAndFiles =
+        ImmutableMap.of("table1", ImmutableList.of(f1.toString()));
+
+    // Execute the transform.
+    PCollection<KV<String, String>> tableManifests =
+        pipeline
+            .apply("Create", Create.of(tablesAndFiles))
+            .apply(
+                "Build table manifest",
+                ParDo.of(
+                    new BuildTableManifests(
+                        ValueProvider.StaticValueProvider.of(
+                            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.CRC32C))));
+
+    PAssert.that(tableManifests).containsInAnyOrder(KV.of("table1", manifest1));
+    pipeline.run();
   }
 }
