@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CollationQueryResultType;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -727,8 +728,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
+   * Get Query that returns order of collation. The query returns one row per valid character with
+   * columns {@code charset_char}, {@code weight_non_trailing}, {@code weight_trailing}, {@code
+   * is_empty}, and {@code is_space}. All grouping, ranking and equivalent-character resolution is
+   * performed in Java by {@link
+   * com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper}.
+   *
+   * <p>The query uses {@code WEIGHT_STRING()} (available since MySQL 5.6) and plain {@code CROSS
+   * JOIN} hex-nibble tables, making it fully compatible with MySQL 5.7+. No window functions, no
+   * {@code SET} variables, and no {@code PREPARE}/{@code EXECUTE} are required.
    *
    * @param dbCharset character set used by the database for which collation ordering has to be
    *     found.
@@ -740,11 +748,16 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
     Map<String, String> tags = new HashMap<>();
-    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");
-    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", "'" + dbCollation + "'");
-    // Queries with size > max_allowed_packet get rejected by
-    // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
+    // The SQL template uses bare tags (no surrounding quotes) because the charset and collation
+    // names appear in USING and COLLATE clauses which do not accept quoted identifiers.
+    tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
+    tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
     return replaceTagsAndSanitize(query, tags);
+  }
+
+  @Override
+  public CollationQueryResultType collationQueryResultType() {
+    return CollationQueryResultType.WEIGHT_BYTES;
   }
 
   /**
