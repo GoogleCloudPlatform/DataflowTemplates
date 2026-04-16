@@ -1205,6 +1205,33 @@ public class SchemaUtilsTest {
   }
 
   @Test
+  public void testSpannerSnapshotRowToBigQueryTableRow_GoogleSQL_UUID_PK() {
+    String pkColName = "Id";
+    String nonPkColName = "Value";
+    String uuidPkVal = "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
+    String stringVal = "TestData";
+
+    TrackedSpannerColumn pkColumn = TrackedSpannerColumn.create(pkColName, Type.uuid(), 1, 1);
+    TrackedSpannerColumn nonPkColumn =
+        TrackedSpannerColumn.create(nonPkColName, Type.string(), 2, -1);
+    List<TrackedSpannerColumn> spannerColumns = ImmutableList.of(pkColumn, nonPkColumn);
+    TableRow tableRow = new TableRow();
+
+    ResultSet resultSet = Mockito.mock(ResultSet.class);
+    when(resultSet.next()).thenReturn(true).thenReturn(false);
+    when(resultSet.isNull(pkColName)).thenReturn(false);
+    when(resultSet.getString(pkColName)).thenReturn(uuidPkVal);
+    when(resultSet.isNull(nonPkColName)).thenReturn(false);
+    when(resultSet.getString(nonPkColName)).thenReturn(stringVal);
+
+    SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
+        resultSet, spannerColumns, tableRow);
+
+    assertThat(tableRow.get(pkColName)).isEqualTo(uuidPkVal);
+    assertThat(tableRow.get(nonPkColName)).isEqualTo(stringVal);
+  }
+
+  @Test
   public void testAddSpannerNonPkColumnsToTableRow_GoogleSQL_ARRAY_UUID() throws Exception {
     String colName = "GsqlUuidArrCol";
     List<String> uuidList =
