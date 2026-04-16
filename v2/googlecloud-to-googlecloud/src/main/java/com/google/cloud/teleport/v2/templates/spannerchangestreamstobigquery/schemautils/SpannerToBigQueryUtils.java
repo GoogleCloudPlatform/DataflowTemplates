@@ -210,17 +210,18 @@ public class SpannerToBigQueryUtils {
     } else if (columnType.equals(Type.array(Type.string()))) {
       return removeNulls(resultSet.getStringList(columnName));
     } else if (columnType.equals(Type.array(Type.uuid()))) {
-      return removeNulls(resultSet.getStringList(columnName));
+      return removeNulls(resultSet.getUuidList(columnName)).stream()
+          .map(Object::toString)
+          .collect(Collectors.toList());
     } else if (columnType.equals(Type.array(Type.timestamp()))) {
       return removeNulls(resultSet.getTimestampList(columnName)).stream()
           .map(e -> e.toString())
           .collect(Collectors.toList());
     } else {
-      if (columnType.equals(Type.uuid())) {
-        return resultSet.getString(columnName);
-      }
       Type.Code columnTypeCode = columnType.getCode();
       switch (columnTypeCode) {
+        case UUID:
+          return resultSet.getUuid(columnName).toString();
         case BOOL:
           return resultSet.getBoolean(columnName);
         case BYTES:

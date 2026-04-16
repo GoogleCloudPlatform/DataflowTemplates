@@ -509,72 +509,6 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     }
   }
 
-  public static int nextValue() {
-    return counter.getAndIncrement();
-  }
-
-  private String queryCdcTable(String cdcTable, int key) {
-    return "SELECT * FROM `"
-        + bigQueryResourceManager.getDatasetId()
-        + "."
-        + cdcTable
-        + "`"
-        + String.format(" WHERE Id = %d", key);
-  }
-
-  @NotNull
-  private Supplier<Boolean> dataShownUp(String query, int minRows) {
-    return () -> {
-      try {
-        return bigQueryResourceManager.runQuery(query).getTotalRows() >= minRows;
-      } catch (Exception e) {
-        if (ExceptionUtils.containsMessage(e, "Not found: Table")) {
-          return false;
-        } else {
-          throw e;
-        }
-      }
-    };
-  }
-
-  private void waitForQueryToReturnRows(String query, int resultsRequired, boolean cancelOnceDone)
-      throws IOException {
-    Config config = createConfig(launchInfo);
-    Result result =
-        cancelOnceDone
-            ? pipelineOperator()
-                .waitForConditionAndCancel(config, dataShownUp(query, resultsRequired))
-            : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
-    assertThatResult(result).meetsConditions();
-  }
-
-  public void addEmptyColumn(String newColumnName, String tableId) {
-    try {
-
-      Table table = bigQueryResourceManager.getTableIfExists(tableId);
-      Schema schema = table.getDefinition().getSchema();
-      FieldList fields = schema.getFields();
-
-      // Create the new field/column
-      Field newField = Field.of(newColumnName, LegacySQLTypeName.STRING);
-
-      // Create a new schema adding the current fields, plus the new one
-      List<Field> fieldList = new ArrayList<Field>();
-      fields.forEach(fieldList::add);
-      fieldList.add(newField);
-      Schema newSchema = Schema.of(fieldList);
-
-      // Update the table with the new schema
-      Table updatedTable =
-          table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build();
-      updatedTable.update();
-    } catch (BigQueryException e) {
-      LOG.info(
-          "Caught exception when trying to add a new column to bigquery changelog table. \n"
-              + e.toString());
-    }
-  }
-
   @Test
   public void testSpannerChangeStreamsToBigQueryGoogleSqlUuid() throws IOException {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
@@ -703,5 +637,173 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     assertTrue(
         row3.get("GsqlUuidArray").isNull()
             || row3.get("GsqlUuidArray").getRepeatedValue().isEmpty());
+  }
+
+  @Test
+  public void testSpannerChangeStreamsToBigQueryUuidPk() throws IOException {
+    String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE %s ("
+                + "  Id UUID NOT NULL,"
+                + "  Value String(1024)"
+                + ") PRIMARY KEY(Id)",
+            spannerTable);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+    String cdcTable = spannerTable + "_changelog";
+
+    String createChangeStreamStatement =
+        String.format("CREATE CHANGE STREAM %s_stream FOR %s", testName, spannerTable);
+    spannerResourceManager.executeDdlStatement(createChangeStreamStatement);
+    bigQueryResourceManager.createDataset(REGION);
+
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter(
+                        "spannerMetadataInstanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("spannerMetadataDatabase", spannerResourceManager.getDatabaseId())
+                    .addParameter("spannerChangeStreamName", testName + "_stream")
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("rpcPriority", "HIGH")
+                    .addParameter("dlqRetryMinutes", "3")));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    // Insert
+    String uuidPk1 = UUID.randomUUID().toString();
+    String value1 = "Value A";
+    Mutation insert1 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(uuidPk1)
+            .set("Value")
+            .to(value1)
+            .build();
+    spannerResourceManager.write(Collections.singletonList(insert1));
+
+    String query1 =
+        "SELECT * FROM `"
+            + bigQueryResourceManager.getDatasetId()
+            + "."
+            + cdcTable
+            + "` WHERE Id = \""
+            + uuidPk1
+            + "\"";
+    waitForQueryToReturnRows(query1, 1, false);
+    TableResult result1 = bigQueryResourceManager.runQuery(query1);
+    assertEquals(1, result1.getTotalRows());
+    FieldValueList row1 = result1.iterateAll().iterator().next();
+    assertEquals(uuidPk1, row1.get("Id").getStringValue());
+    assertEquals(value1, row1.get("Value").getStringValue());
+
+    // Update
+    String value1Updated = "Value B";
+    Mutation update1 =
+        Mutation.newUpdateBuilder(spannerTable)
+            .set("Id")
+            .to(uuidPk1)
+            .set("Value")
+            .to(value1Updated)
+            .build();
+    spannerResourceManager.write(Collections.singletonList(update1));
+    waitForQueryToReturnRows(query1, 2, false); // Expecting a second row for the update
+    TableResult result1Updated =
+        bigQueryResourceManager.runQuery(
+            query1 + " ORDER BY _metadata_spanner_commit_timestamp DESC LIMIT 1");
+    assertEquals(1, result1Updated.getTotalRows());
+    FieldValueList row1Updated = result1Updated.iterateAll().iterator().next();
+    assertEquals(value1Updated, row1Updated.get("Value").getStringValue());
+
+    // Delete
+    Mutation delete1 = Mutation.delete(spannerTable, Key.of(uuidPk1));
+    spannerResourceManager.write(Collections.singletonList(delete1));
+    waitForQueryToReturnRows(query1, 3, false); // Expecting a third row for the delete
+    TableResult result1Deleted =
+        bigQueryResourceManager.runQuery(
+            query1 + " ORDER BY _metadata_spanner_commit_timestamp DESC LIMIT 1");
+    assertEquals(1, result1Deleted.getTotalRows());
+    FieldValueList row1Deleted = result1Deleted.iterateAll().iterator().next();
+    assertTrue(row1Deleted.get("Value").isNull());
+    assertEquals("DELETE", row1Deleted.get("_metadata_spanner_mod_type").getStringValue());
+
+    // Verify BQ Schema
+    Table bqTable = bigQueryResourceManager.getTableIfExists(cdcTable);
+    Schema bqSchema = bqTable.getDefinition().getSchema();
+    Field idField = bqSchema.getFields().get("Id");
+    assertEquals(LegacySQLTypeName.STRING, idField.getType());
+    assertEquals(Field.Mode.NULLABLE, idField.getMode()); // Primary Keys are non-nullable
+  }
+
+  public static int nextValue() {
+    return counter.getAndIncrement();
+  }
+
+  private String queryCdcTable(String cdcTable, int key) {
+    return "SELECT * FROM `"
+        + bigQueryResourceManager.getDatasetId()
+        + "."
+        + cdcTable
+        + "`"
+        + String.format(" WHERE Id = %d", key);
+  }
+
+  @NotNull
+  private Supplier<Boolean> dataShownUp(String query, int minRows) {
+    return () -> {
+      try {
+        return bigQueryResourceManager.runQuery(query).getTotalRows() >= minRows;
+      } catch (Exception e) {
+        if (ExceptionUtils.containsMessage(e, "Not found: Table")) {
+          return false;
+        } else {
+          throw e;
+        }
+      }
+    };
+  }
+
+  private void waitForQueryToReturnRows(String query, int resultsRequired, boolean cancelOnceDone)
+      throws IOException {
+    Config config = createConfig(launchInfo);
+    Result result =
+        cancelOnceDone
+            ? pipelineOperator()
+                .waitForConditionAndCancel(config, dataShownUp(query, resultsRequired))
+            : pipelineOperator().waitForCondition(config, dataShownUp(query, resultsRequired));
+    assertThatResult(result).meetsConditions();
+  }
+
+  public void addEmptyColumn(String newColumnName, String tableId) {
+    try {
+
+      Table table = bigQueryResourceManager.getTableIfExists(tableId);
+      Schema schema = table.getDefinition().getSchema();
+      FieldList fields = schema.getFields();
+
+      // Create the new field/column
+      Field newField = Field.of(newColumnName, LegacySQLTypeName.STRING);
+
+      // Create a new schema adding the current fields, plus the new one
+      List<Field> fieldList = new ArrayList<Field>();
+      fields.forEach(fieldList::add);
+      fieldList.add(newField);
+      Schema newSchema = Schema.of(fieldList);
+
+      // Update the table with the new schema
+      Table updatedTable =
+          table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build();
+      updatedTable.update();
+    } catch (BigQueryException e) {
+      LOG.info(
+          "Caught exception when trying to add a new column to bigquery changelog table. \n"
+              + e.toString());
+    }
   }
 }
