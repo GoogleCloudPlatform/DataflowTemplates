@@ -4,7 +4,7 @@ provider "google" {
   zone    = var.zone
 }
 
-# 1. Spanner Instance
+# Spanner Instance
 resource "google_spanner_instance" "spanner" {
   name             = var.spanner_instance_name
   config           = "regional-${var.region}"
@@ -16,7 +16,7 @@ locals {
   gcs_bucket_name = var.gcs_bucket_name != "" ? var.gcs_bucket_name : "${var.project_id}-it-infra-bucket"
 }
 
-# 2. GCS Bucket
+# GCS Bucket
 resource "google_storage_bucket" "bucket" {
   name                        = local.gcs_bucket_name
   location                    = var.region
@@ -24,20 +24,18 @@ resource "google_storage_bucket" "bucket" {
   uniform_bucket_level_access = true
 }
 
-# --- Network Configuration for Private Service Access and NAT (for Private VMs) ---
+# Network Configuration
 
-# Data source for Ubuntu image
 data "google_compute_image" "ubuntu" {
   family  = "ubuntu-2204-lts"
   project = "ubuntu-os-cloud"
 }
 
-# Get standard network "default"
 data "google_compute_network" "default" {
   name = var.network
 }
 
-# --- Private Services Access (Required for Cloud SQL Private IP) ---
+# Private Services Access (Required for Cloud SQL Private IP)
 resource "google_compute_global_address" "private_ip_alloc" {
   name          = "private-services-ip-allocation"
   purpose       = "VPC_PEERING"
@@ -53,7 +51,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 }
 
 
-# 3. Datastream Private Connectivity
+# Datastream Private Connectivity
 resource "google_datastream_private_connection" "private_conn" {
   display_name          = "datastream-connect-2"
   location              = var.region
@@ -66,7 +64,7 @@ resource "google_datastream_private_connection" "private_conn" {
 }
 
 
-# 4. Cloud SQL PostgreSQL (Private IP)
+# Cloud SQL PostgreSQL (Private IP)
 resource "google_sql_database_instance" "postgres" {
   depends_on          = [google_service_networking_connection.private_vpc_connection]
   deletion_protection = false
@@ -108,9 +106,9 @@ resource "google_sql_user" "postgres" {
 resource "google_sql_database_instance" "mysql" {
   depends_on          = [google_service_networking_connection.private_vpc_connection]
   deletion_protection = false
-  name             = var.mysql_instance_name
-  database_version = "MYSQL_8_0"
-  region           = var.region
+  name                = var.mysql_instance_name
+  database_version    = "MYSQL_8_0"
+  region              = var.region
 
 
 

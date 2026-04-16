@@ -39,29 +39,17 @@ variable "gcs_bucket_name" {
   default     = ""
 }
 
-
-
-
-
-# New variables for hardcoded names
-
-
-
 variable "postgres_instance_name" {
   description = "The name of the PostgreSQL instance"
   type        = string
   default     = "it-infra-pg-db-instance"
 }
 
-
-
 variable "mysql_instance_name" {
   description = "The name of the MySQL instance"
   type        = string
   default     = "it-infra-mysql-db-instance"
 }
-
-
 
 variable "it_infra_vm_name" {
   description = "The name of the consolidated VM for tests and proxy"
