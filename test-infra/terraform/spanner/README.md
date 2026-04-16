@@ -5,19 +5,18 @@ required to run Spanner integration tests for Dataflow Templates.
 
 ## Intended Audience
 
-This setup is intended for **vendors** and **PSOs** who need to stand up a self-contained
+This setup is intended for external contributors who need to stand up a self-contained
 test environment before running the Spanner-related integration tests in the `it/` directory.
 
 ## What Gets Provisioned
-
 The Terraform scripts provision the following resources:
 - **Spanner Instance**: A regional Spanner instance.
 - **GCS Bucket**: Used for staging artifacts (named by `gcs_bucket_name` or defaults to `<project_id>-it-infra-bucket`).
-- **Datastream Private Connectivity**: For private network connection between Datastream and VPC.
+- **Datastream Private Connectivity**: For private network connection between Datastream and VPC. *(Note: The ID `"datastream-connect-2"` is currently hardcoded as integration tests implicitly expect this specific connection name)*.
 - **Cloud SQL Instances**:
-    - PostgreSQL instance (Private IP only)
-    - MySQL instance (Private IP only)
-- **Compute Instance (VM)**: A consolidated VM (`it-infra-vm`) used for running tests and proxying Datastream traffic. It runs Cloud SQL Proxy and initializes environment with Docker, Maven, Git, and OpenJDK.
+    - PostgreSQL instance (Private IP only, `ENTERPRISE_PLUS` edition, `db-perf-optimized-N-16`)
+    - MySQL instance (Private IP only, `db-n1-standard-1`)
+- **Compute Instance (VM)**: A consolidated VM (`it-infra-vm`) used for running tests and proxying Datastream traffic. It runs Cloud SQL Proxy and initializes environment with Docker, Maven, Git, OpenJDK, `gh` (GitHub CLI), and `jq`.
 - **IAM Roles**: Custom role `it_infra_role` with permissions for Dataflow, GCS, and Compute, bound to the default compute service account.
 - **Firewall Rule**: Allows Datastream to access the proxy on ports 3306 and 5432.
 
@@ -39,9 +38,9 @@ The Terraform scripts provision the following resources:
    cd test-infra/terraform/spanner
    ```
 
-3. Initialize Terraform:
+3. **Configure Remote State**: Before initializing, update the `bucket` property in `backend.tf` to an existing GCS bucket in your project for storing Terraform state. Alternatively, you can pass it dynamically during initialization:
    ```shell
-   terraform init
+   terraform init -backend-config="bucket=<YOUR_STATE_BUCKET>"
    ```
 
 4. Review the planned changes:
@@ -70,23 +69,6 @@ The Terraform scripts provision the following resources:
 | `subnetwork` | The subnetwork to use | No | `default` |
 | `spanner_instance_name` | The name of the Spanner instance | No | `it-infra-spanner` |
 | `gcs_bucket_name` | The name of the GCS bucket | No | `""` (defaults to `project_id-it-infra-bucket`) |
-| `datastream_private_connection_id` | The ID of the Datastream private connection | No | `datastream-connect-2` |
-| `github_repo_owner` | The owner of the GitHub repo for the runner | No | `GoogleCloudPlatform` |
-| `github_repo_name` | The name of the GitHub repo for the runner | No | `DataflowTemplates` |
-| `github_token` | The GitHub token for the runner | No | `""` |
-| `gh_runner_version` | The version of the GitHub runner | No | `2.311.0` |
-| `private_ip_range_name` | The name of the reserved IP range for Private Service Access | No | `it-infra-private-ip-range` |
 | `postgres_instance_name` | The name of the PostgreSQL instance | No | `it-infra-pg-db-instance` |
 | `mysql_instance_name` | The name of the MySQL instance | No | `it-infra-mysql-db-instance` |
 | `it_infra_vm_name` | The name of the consolidated VM for tests and proxy | No | `it-infra-vm` |
-
-## Cleanup
-
-After running tests, you can also use the cleanup scripts in `test-infra/` to remove
-any residual Spanner resources:
-
-```shell
-cd test-infra/
-python cleanup_spanner_databases.py --project=<YOUR_PROJECT_ID>
-bash delete_spanner_instances.sh
-```

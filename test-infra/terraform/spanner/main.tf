@@ -1,10 +1,3 @@
-terraform {
-  backend "gcs" {
-    bucket = "it-infra-gcs-bucket"
-    prefix = "terraform/state"
-  }
-}
-
 provider "google" {
   project = var.project_id
   region  = var.region
@@ -44,12 +37,27 @@ data "google_compute_network" "default" {
   name = var.network
 }
 
+# --- Private Services Access (Required for Cloud SQL Private IP) ---
+resource "google_compute_global_address" "private_ip_alloc" {
+  name          = "private-services-ip-allocation"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = data.google_compute_network.default.id
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = data.google_compute_network.default.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_alloc.name]
+}
+
 
 # 3. Datastream Private Connectivity
 resource "google_datastream_private_connection" "private_conn" {
-  display_name          = var.datastream_private_connection_id
+  display_name          = "datastream-connect-2"
   location              = var.region
-  private_connection_id = var.datastream_private_connection_id
+  private_connection_id = "datastream-connect-2"
 
   vpc_peering_config {
     vpc    = data.google_compute_network.default.id
@@ -60,26 +68,31 @@ resource "google_datastream_private_connection" "private_conn" {
 
 # 4. Cloud SQL PostgreSQL (Private IP)
 resource "google_sql_database_instance" "postgres" {
+  depends_on          = [google_service_networking_connection.private_vpc_connection]
   deletion_protection = false
-  name             = var.postgres_instance_name
-  database_version = "POSTGRES_15"
-  region           = var.region
-
-
+  name                = var.postgres_instance_name
+  database_version    = "POSTGRES_15"
+  region              = var.region
 
   settings {
-    tier = "db-custom-1-3840"
+    tier    = "db-perf-optimized-N-16"
+    edition = "ENTERPRISE_PLUS"
     ip_configuration {
       ipv4_enabled    = false
       private_network = data.google_compute_network.default.id
     }
-    database_flags {
-      name  = "max_connections"
-      value = "1000"
-    }
+
     database_flags {
       name  = "cloudsql.logical_decoding"
       value = "on"
+    }
+    database_flags {
+      name  = "max_replication_slots"
+      value = "1000"
+    }
+    database_flags {
+      name  = "max_wal_senders"
+      value = "1000"
     }
   }
 }
@@ -93,6 +106,7 @@ resource "google_sql_user" "postgres" {
 
 # 6. Cloud SQL MySQL (Private IP)
 resource "google_sql_database_instance" "mysql" {
+  depends_on          = [google_service_networking_connection.private_vpc_connection]
   deletion_protection = false
   name             = var.mysql_instance_name
   database_version = "MYSQL_8_0"
@@ -156,13 +170,8 @@ resource "google_compute_instance" "it_infra_vm" {
 
   metadata_startup_script = <<-EOT
     #!/bin/bash
-    # Setting some variables for the provided script
-    export REPO_OWNER="${var.github_repo_owner}"
-    export REPO_NAME="${var.github_repo_name}"
-    export GITHUB_TOKEN="${var.github_token}"
-    export GH_RUNNER_VERSION="${var.gh_runner_version}"
-    export REPO_URL="https://github.com/${var.github_repo_owner}/${var.github_repo_name}"
-    export GITACTIONS_LABELS="self-hosted,it-infra"
+    export DEBIAN_FRONTEND=noninteractive
+    export REPO_URL="https://github.com/GoogleCloudPlatform/DataflowTemplates"
 
     # User provided startup script
     user=runner
