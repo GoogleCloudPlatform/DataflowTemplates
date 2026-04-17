@@ -89,7 +89,11 @@ public class RangeCountDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -103,7 +107,11 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -142,7 +150,11 @@ public class RangeCountDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -156,7 +168,11 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -192,7 +208,11 @@ public class RangeCountDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -206,7 +226,11 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -239,7 +263,11 @@ public class RangeCountDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -253,7 +281,11 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -272,7 +304,11 @@ public class RangeCountDoFnTest {
   public void testRangeCountDoFnMissingTable() throws Exception {
     TableSplitSpecification tableSpec1 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("existingTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("existingTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -294,7 +330,11 @@ public class RangeCountDoFnTest {
 
     Range inputMissingTable =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("missingTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("missingTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -310,8 +350,16 @@ public class RangeCountDoFnTest {
 
   @Test
   public void testIsValidRangeHelperFunction() {
-    TableIdentifier existingTable = TableIdentifier.builder().setTableName("existingTable").build();
-    TableIdentifier missingTable = TableIdentifier.builder().setTableName("missingTable").build();
+    TableIdentifier existingTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("existingTable")
+            .build();
+    TableIdentifier missingTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("missingTable")
+            .build();
 
     ImmutableMap<TableIdentifier, String> countQueries =
         ImmutableMap.of(existingTable, "SELECT COUNT(*) FROM existingTable");
@@ -378,7 +426,11 @@ public class RangeCountDoFnTest {
 
     TableSplitSpecification tableSpec1 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable1")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -392,7 +444,11 @@ public class RangeCountDoFnTest {
             .build();
     TableSplitSpecification tableSpec2 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -442,7 +498,11 @@ public class RangeCountDoFnTest {
 
     Range input1 =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable1")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -451,7 +511,11 @@ public class RangeCountDoFnTest {
             .build();
     Range input2 =
         Range.<Integer>builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
             .setColName("col2")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))

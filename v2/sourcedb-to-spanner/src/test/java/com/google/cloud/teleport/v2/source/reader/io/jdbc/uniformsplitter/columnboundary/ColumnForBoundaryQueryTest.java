@@ -31,7 +31,11 @@ public class ColumnForBoundaryQueryTest {
   public void testColumnForBoundaryQuery() {
     Range parentRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -40,13 +44,21 @@ public class ColumnForBoundaryQueryTest {
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryWithDefaults =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnName("col1")
             .setColumnClass(Integer.class)
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryRange =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnName("col2")
             .setColumnClass(Integer.class)
             .setParentRange(parentRange)

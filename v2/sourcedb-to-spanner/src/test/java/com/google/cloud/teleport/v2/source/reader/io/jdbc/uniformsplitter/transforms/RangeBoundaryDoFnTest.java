@@ -86,7 +86,11 @@ public class RangeBoundaryDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -101,7 +105,11 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col1")
             .setParentRange(null)
@@ -114,7 +122,11 @@ public class RangeBoundaryDoFnTest {
     assertThat(newRange)
         .isEqualTo(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable")
+                        .build())
                 .setStart(0L)
                 .setEnd(42L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
@@ -139,7 +151,11 @@ public class RangeBoundaryDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -154,7 +170,11 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col1")
             .setParentRange(null)
@@ -185,7 +205,11 @@ public class RangeBoundaryDoFnTest {
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -199,7 +223,10 @@ public class RangeBoundaryDoFnTest {
                     .build(),
                 TableSplitSpecification.builder()
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("testTable2").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable2")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
@@ -214,7 +241,11 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col2")
             .setParentRange(null)
@@ -227,7 +258,11 @@ public class RangeBoundaryDoFnTest {
     assertThat(newRange)
         .isEqualTo(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable2")
+                        .build())
                 .setStart(0L)
                 .setEnd(42L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))

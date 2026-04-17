@@ -178,7 +178,11 @@ public class MultiTableReadFnTest {
             StaticValueProvider.of(new TestQueryProvider()),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
-            (el) -> TableIdentifier.builder().setTableName("test").build(),
+            (el) ->
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("test")
+                    .build(),
             true);
 
     readFn.setup();
@@ -225,7 +229,11 @@ public class MultiTableReadFnTest {
               StaticValueProvider.of((el) -> "SELECT * FROM schema1.table1"),
               mock(JdbcIO.PreparedStatementSetter.class),
               ImmutableMap.of(),
-              (el) -> TableIdentifier.builder().setTableName("table1").build(),
+              (el) ->
+                  TableIdentifier.builder()
+                      .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                      .setTableName("table1")
+                      .build(),
               false);
       readFn1.setup();
       readFn1.getConnection("el1");
@@ -239,7 +247,11 @@ public class MultiTableReadFnTest {
               StaticValueProvider.of((el) -> "INVALID QUERY"),
               mock(JdbcIO.PreparedStatementSetter.class),
               ImmutableMap.of(),
-              (el) -> TableIdentifier.builder().setTableName("table1").build(),
+              (el) ->
+                  TableIdentifier.builder()
+                      .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                      .setTableName("table1")
+                      .build(),
               false);
       readFn2.setup();
       readFn2.getConnection("el2");
@@ -271,7 +283,11 @@ public class MultiTableReadFnTest {
     when(mockConnection.getMetaData()).thenReturn(mockMetaData);
     when(mockMetaData.getURL()).thenReturn("jdbc:mysql://localhost:3306/testdb");
 
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
             .setTableIdentifier(tableId)
@@ -320,7 +336,11 @@ public class MultiTableReadFnTest {
     when(mockConnection.getMetaData()).thenReturn(mockMetaData);
     when(mockMetaData.getURL()).thenReturn("jdbc:mysql://localhost:3306/testdb");
 
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
             .setTableIdentifier(tableId)
@@ -362,7 +382,11 @@ public class MultiTableReadFnTest {
     when(mockConnection.getMetaData()).thenReturn(mockMetaData);
     when(mockMetaData.getURL()).thenReturn("jdbc:mysql://localhost:3306/testdb");
 
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
             .setTableIdentifier(tableId)
@@ -406,7 +430,11 @@ public class MultiTableReadFnTest {
             StaticValueProvider.of(el -> "SELECT * FROM test"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
-            el -> TableIdentifier.builder().setTableName("test").build(),
+            el ->
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("test")
+                    .build(),
             false);
 
     readFn.setup();
@@ -441,7 +469,11 @@ public class MultiTableReadFnTest {
             StaticValueProvider.of(el -> "SELECT * FROM test"),
             mock(JdbcIO.PreparedStatementSetter.class),
             ImmutableMap.of(),
-            el -> TableIdentifier.builder().setTableName("test").build(),
+            el ->
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("test")
+                    .build(),
             false);
 
     readFn.setup();
@@ -460,8 +492,16 @@ public class MultiTableReadFnTest {
   public void testProcessElement_throwsOnMissingSpec() throws Exception {
     SerializableFunction<Void, DataSource> mockProvider = mock(SerializableFunction.class);
     JdbcIO.PreparedStatementSetter<String> mockSetter = mock(JdbcIO.PreparedStatementSetter.class);
-    TableIdentifier knownTable = TableIdentifier.builder().setTableName("knownTable").build();
-    TableIdentifier unknownTable = TableIdentifier.builder().setTableName("unknownTable").build();
+    TableIdentifier knownTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("knownTable")
+            .build();
+    TableIdentifier unknownTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("unknownTable")
+            .build();
 
     MultiTableReadFn<String, String> readFn =
         new MultiTableReadFn<>(

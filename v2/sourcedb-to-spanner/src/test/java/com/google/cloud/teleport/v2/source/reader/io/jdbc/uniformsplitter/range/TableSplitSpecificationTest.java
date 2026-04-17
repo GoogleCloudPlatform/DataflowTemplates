@@ -29,7 +29,11 @@ public class TableSplitSpecificationTest {
 
   @Test
   public void testTableSplitSpecificationAutoDerivation() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     PartitionColumn partitionColumn =
         PartitionColumn.builder().setColumnName("id").setColumnClass(Long.class).build();
     ImmutableList<PartitionColumn> partitionColumns = ImmutableList.of(partitionColumn);
@@ -56,7 +60,11 @@ public class TableSplitSpecificationTest {
 
   @Test
   public void testTableSplitSpecificationExplicitValues() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     PartitionColumn partitionColumn =
         PartitionColumn.builder().setColumnName("id").setColumnClass(Long.class).build();
     ImmutableList<PartitionColumn> partitionColumns = ImmutableList.of(partitionColumn);
@@ -102,7 +110,11 @@ public class TableSplitSpecificationTest {
 
   @Test
   public void testTableSplitSpecificationWithInitialRange() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     PartitionColumn col1 =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
     PartitionColumn col2 =
@@ -132,8 +144,16 @@ public class TableSplitSpecificationTest {
 
   @Test
   public void testTableSplitSpecificationWithInitialRangeMismatchTable() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
-    TableIdentifier otherTable = TableIdentifier.builder().setTableName("other_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
+    TableIdentifier otherTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("other_table")
+            .build();
     PartitionColumn col1 =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
 
@@ -161,7 +181,11 @@ public class TableSplitSpecificationTest {
   @Test
   public void testTableSplitSpecificationWithInitialRangeMismatchColumn() {
 
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
 
     PartitionColumn col1 =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
@@ -190,7 +214,11 @@ public class TableSplitSpecificationTest {
   @Test
   public void testTableSplitSpecificationWithInitialRangeChildMismatchColumn() {
 
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
 
     PartitionColumn col1 =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
@@ -232,7 +260,11 @@ public class TableSplitSpecificationTest {
 
   @Test
   public void testTableSplitSpecificationAutoDerivationWithZeroApproxRowCount() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     PartitionColumn partitionColumn =
         PartitionColumn.builder().setColumnName("id").setColumnClass(Long.class).build();
     ImmutableList<PartitionColumn> partitionColumns = ImmutableList.of(partitionColumn);

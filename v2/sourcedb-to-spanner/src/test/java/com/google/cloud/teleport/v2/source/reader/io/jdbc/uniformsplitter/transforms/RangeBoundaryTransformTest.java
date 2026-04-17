@@ -63,7 +63,11 @@ public class RangeBoundaryTransformTest {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -83,13 +87,21 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery firstColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColumnName("col1")
             .setColumnClass(Integer.class)
             .build();
     Range fullCol1Range =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -101,7 +113,11 @@ public class RangeBoundaryTransformTest {
 
     Range unSplitableCol1Range =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -112,7 +128,11 @@ public class RangeBoundaryTransformTest {
             .build();
     ColumnForBoundaryQuery secondColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColumnName("col2")
             .setColumnClass(Integer.class)
             .setParentRange(unSplitableCol1Range)
@@ -120,7 +140,11 @@ public class RangeBoundaryTransformTest {
     Range col2Range =
         unSplitableCol1Range.withChildRange(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("RBT_table1")
+                        .build())
                 .setColName("col2")
                 .setColClass(Integer.class)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -141,7 +165,10 @@ public class RangeBoundaryTransformTest {
                 ImmutableList.of(
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("RBT_table1").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("RBT_table1")
+                                .build())
                         .setPartitionColumns(
                             partitionCols.stream()
                                 .map(
@@ -172,13 +199,21 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery firstColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColumnName("col1")
             .setColumnClass(Integer.class)
             .build();
     Range fullCol1Range =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table1")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -190,14 +225,22 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery secondColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table2")
+                    .build())
             .setColumnName("col1")
             .setColumnClass(Integer.class)
             .setParentRange(null)
             .build();
     Range fullCol3Range =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("RBT_table2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("RBT_table2")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -217,7 +260,10 @@ public class RangeBoundaryTransformTest {
                 ImmutableList.of(
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("RBT_table1").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("RBT_table1")
+                                .build())
                         .setPartitionColumns(
                             partitionCols1.stream()
                                 .map(
@@ -234,7 +280,10 @@ public class RangeBoundaryTransformTest {
                         .build(),
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("RBT_table2").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("RBT_table2")
+                                .build())
                         .setPartitionColumns(
                             partitionCols2.stream()
                                 .map(

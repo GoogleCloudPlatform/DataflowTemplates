@@ -78,7 +78,11 @@ public class MultiTableReadAllTest {
     SerializableFunction<Void, DataSource> mockProvider = mock(SerializableFunction.class);
     JdbcIO.PreparedStatementSetter<String> mockSetter = mock(JdbcIO.PreparedStatementSetter.class);
     JdbcIO.RowMapper<String> mockMapper = mock(JdbcIO.RowMapper.class);
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
             .setTableIdentifier(tableId)
@@ -138,7 +142,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testExpand_withParallelizationAndSchema() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = new StringRowMapper();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
@@ -168,7 +176,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testExpand_withRegisteredSchema() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     JdbcIO.RowMapper<TestRow> mockMapper = new TestRowMapper();
     TableReadSpecification<TestRow> spec =
         TableReadSpecification.<TestRow>builder()
@@ -206,7 +218,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testExpand_coderRegistryException() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     // Use a type that Beam won't have a coder for by default
     JdbcIO.RowMapper<Uncodable> mockMapper = new UncodableRowMapper();
     TableReadSpecification<Uncodable> spec =
@@ -232,7 +248,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testInferCoder_manualCoder() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     MultiTableReadAll<String, String> readAll =
         MultiTableReadAll.<String, String>builder()
             .setTableReadSpecifications(ImmutableMap.of())
@@ -248,7 +268,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testPopulateDisplayData_withHasDisplayData() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = new StringRowMapper();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
@@ -288,7 +312,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testPopulateDisplayData() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = new StringRowMapper();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()
@@ -405,7 +433,11 @@ public class MultiTableReadAllTest {
 
   @Test
   public void testInferCoder() throws CannotProvideCoderException {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = new StringRowMapper();
     TableReadSpecification<String> spec =
         TableReadSpecification.<String>builder()

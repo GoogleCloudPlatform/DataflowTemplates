@@ -311,11 +311,13 @@ public final class JdbcIoWrapper implements IoWrapper {
     return tableConfigsBuilder.build();
   }
 
-  private static TableConfig getTableConfig(
+  @VisibleForTesting
+  protected static TableConfig getTableConfig(
       String tableName,
       JdbcIOWrapperConfig config,
       ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfo) {
-    TableConfig.Builder tableConfigBuilder = TableConfig.builder(tableName);
+    TableConfig.Builder tableConfigBuilder =
+        TableConfig.builder(tableName).setDataSourceId(config.id());
     if (config.maxPartitions() != null && config.maxPartitions() != 0) {
       tableConfigBuilder.setMaxPartitions(config.maxPartitions());
     }
@@ -508,10 +510,7 @@ public final class JdbcIoWrapper implements IoWrapper {
     for (TableConfig tableConfig : tableConfigs) {
       SourceTableSchema sourceTableSchema = findSourceTableSchema(sourceSchema, tableConfig);
       int fetchSize = getFetchSize(config, tableConfig, sourceTableSchema);
-      TableIdentifier tableIdentifier =
-          TableIdentifier.builder()
-              .setTableName(delimitIdentifier(tableConfig.tableName()))
-              .build();
+      TableIdentifier tableIdentifier = getTableIdentifier(tableConfig);
 
       TableSplitSpecification.Builder tableSplitSpecificationBuilder =
           TableSplitSpecification.builder()
@@ -571,6 +570,16 @@ public final class JdbcIoWrapper implements IoWrapper {
         config);
 
     return ImmutableMap.of(tableReferencesBuilder.build(), readWithUniformPartitions);
+  }
+
+  @VisibleForTesting
+  protected static TableIdentifier getTableIdentifier(TableConfig tableConfig) {
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setTableName(delimitIdentifier(tableConfig.tableName()))
+            .setDataSourceId(tableConfig.dataSourceId())
+            .build();
+    return tableIdentifier;
   }
 
   /**
