@@ -239,4 +239,20 @@ public interface BigtableChangeStreamToBigQueryOptions
   Boolean getPreserveProtoFieldNames();
 
   void setPreserveProtoFieldNames(Boolean value);
+
+  @TemplateParameter.Long(
+      order = 17,
+      optional = true,
+      description = "Maximum decoded value size in bytes",
+      helpText =
+          "Maximum allowed size, in bytes, of a value after applying a columnTransforms "
+              + "decoder (e.g. PROTO_DECODE). Values whose decoded output would exceed this "
+              + "threshold are routed to the dead-letter queue with metadata only, and are "
+              + "not written to BigQuery. The default of 10000000 (10 MB) matches BigQuery "
+              + "Storage Write API's maximum row size, ensuring a single predictable error "
+              + "funnel. Increase this if you write to a sink that accepts larger rows.")
+  @Default.Long(10_000_000L)
+  Long getMaxDecodedValueBytes();
+
+  void setMaxDecodedValueBytes(Long value);
 }

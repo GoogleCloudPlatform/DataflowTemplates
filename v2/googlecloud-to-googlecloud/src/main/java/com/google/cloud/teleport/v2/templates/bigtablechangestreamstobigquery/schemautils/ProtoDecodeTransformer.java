@@ -20,6 +20,7 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,6 +96,57 @@ public class ProtoDecodeTransformer implements ValueTransformer {
     } catch (InvalidProtocolBufferException e) {
       LOG.warn("Failed to decode protobuf message for {}: {}", fullMessageName, e.getMessage());
       return null;
+    }
+  }
+
+  /**
+   * Decodes protobuf bytes into a JSON string while enforcing a byte-size bound on the JSON output.
+   *
+   * <p>Behaviour:
+   *
+   * <ul>
+   *   <li>{@code maxBytes <= 0} disables the bound and behaves like {@link #transform(byte[])}.
+   *   <li>A cheap pre-check rejects payloads that cannot possibly fit (raw size * 4/3 &gt;
+   *       maxBytes); those short-circuit to {@link TransformResult.Status#OVERSIZED} without ever
+   *       parsing the proto.
+   *   <li>Otherwise the printer writes into a {@link Utf8BoundedAppendable} that aborts
+   *       mid-serialization once the UTF-8 byte budget is exceeded.
+   *   <li>Malformed proto input yields {@link TransformResult.Status#DECODE_ERROR}.
+   * </ul>
+   *
+   * @param bytes the serialized protobuf message bytes
+   * @param maxBytes the maximum allowed UTF-8 byte size of the JSON output; {@code <= 0} disables
+   *     the bound
+   * @return a {@link TransformResult} describing the outcome
+   */
+  TransformResult transformBounded(byte[] bytes, long maxBytes) {
+    ensureInitialized();
+    long rawBytes = bytes.length;
+
+    if (maxBytes > 0) {
+      // Cheap pre-check: base64-ish pessimistic estimate.
+      long estimated = rawBytes * 4L / 3L;
+      if (estimated > maxBytes) {
+        return TransformResult.oversized(rawBytes, estimated);
+      }
+    }
+
+    try {
+      DynamicMessage message = DynamicMessage.parseFrom(descriptor, bytes);
+      Utf8BoundedAppendable appendable = new Utf8BoundedAppendable(maxBytes);
+      try {
+        printer.appendTo(message, appendable);
+      } catch (OversizedJsonException e) {
+        return TransformResult.oversized(rawBytes, e.bytesSoFar());
+      } catch (IOException e) {
+        // StringBuilder-backed Appendable should not throw IOException.
+        LOG.warn("Unexpected IO error while serializing proto to JSON: {}", e.getMessage());
+        return TransformResult.decodeError(rawBytes);
+      }
+      return TransformResult.success(appendable.toJson(), rawBytes, appendable.byteCount());
+    } catch (InvalidProtocolBufferException e) {
+      LOG.warn("Failed to decode protobuf message for {}: {}", fullMessageName, e.getMessage());
+      return TransformResult.decodeError(rawBytes);
     }
   }
 }

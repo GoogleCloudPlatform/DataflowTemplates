@@ -23,7 +23,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Range.BoundType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformer;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.TransformResult;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.Maps;
@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.threeten.bp.Instant;
@@ -65,6 +66,10 @@ public final class Mod implements Serializable {
   private int commitTimestampNanos;
   private ModType modType;
 
+  // Outcome of applying a value transformer with a decoded-size bound, if any. Not part of the
+  // JSON payload written to BigQuery; used by the pipeline to route oversized rows to the DLQ.
+  @Nullable private transient TransformResult transformResult;
+
   // Constructor for serialization
   private Mod() {}
 
@@ -83,6 +88,15 @@ public final class Mod implements Serializable {
       ChangeStreamMutation mutation,
       SetCell setCell,
       ValueTransformerRegistry transformerRegistry) {
+    this(source, mutation, setCell, transformerRegistry, Long.MAX_VALUE);
+  }
+
+  public Mod(
+      BigtableSource source,
+      ChangeStreamMutation mutation,
+      SetCell setCell,
+      ValueTransformerRegistry transformerRegistry,
+      long maxDecodedValueBytes) {
     this(mutation.getCommitTimestamp(), ModType.SET_CELL);
 
     Map<String, Object> propertiesMap = Maps.newHashMap();
@@ -91,15 +105,17 @@ public final class Mod implements Serializable {
 
     if (transformerRegistry != null) {
       String qualifierStr = setCell.getQualifier().toStringUtf8();
-      ValueTransformer transformer =
-          transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
-      if (transformer != null) {
-        byte[] valueBytes = setCell.getValue().toByteArray();
-        String transformed = transformer.transform(valueBytes);
-        if (transformed != null) {
-          propertiesMap.put(TRANSFORMED_VALUE, transformed);
-        }
+      byte[] valueBytes = setCell.getValue().toByteArray();
+      TransformResult result =
+          transformerRegistry.transformBounded(
+              setCell.getFamilyName(), qualifierStr, valueBytes, maxDecodedValueBytes);
+      this.transformResult = result;
+      if (result.status() == TransformResult.Status.SUCCESS) {
+        propertiesMap.put(TRANSFORMED_VALUE, result.value());
       }
+      // DECODE_ERROR and NO_TRANSFORMER: do not populate TRANSFORMED_VALUE (matches legacy
+      // behavior — raw bytes remain available via VALUE_BYTES).
+      // OVERSIZED: caller inspects transformResult() to route to DLQ instead of BigQuery.
     }
 
     this.changeJson = convertPropertiesToJson(propertiesMap);
@@ -191,6 +207,17 @@ public final class Mod implements Serializable {
   /** The type of operation that caused the modifications within this record. */
   public ModType getModType() {
     return modType;
+  }
+
+  /**
+   * Returns the outcome of the bounded value transformation that produced this Mod, or {@code null}
+   * when no transformer ran (non-SET_CELL mods or SET_CELL built without a registry). The field is
+   * transient and only available on the worker that constructed the Mod; it is used by the pipeline
+   * to detect oversized decodes and route them to the dead-letter queue.
+   */
+  @Nullable
+  public TransformResult transformResult() {
+    return transformResult;
   }
 
   @Override

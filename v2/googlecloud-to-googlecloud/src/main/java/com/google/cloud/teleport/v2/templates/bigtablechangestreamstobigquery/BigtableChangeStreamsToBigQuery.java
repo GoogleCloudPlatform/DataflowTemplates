@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.BigQuery;
@@ -36,11 +38,17 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.BigQueryUtils;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.TransformResult;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -52,12 +60,17 @@ import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO.ExistingPipelineOptions;
+import org.apache.beam.sdk.metrics.Distribution;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -256,11 +269,31 @@ public final class BigtableChangeStreamsToBigQuery {
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
             .apply(Values.create());
 
-    PCollection<TableRow> changeStreamMutationToTableRow =
+    long maxDecodedValueBytes = options.getMaxDecodedValueBytes();
+    PCollectionTuple processed =
         dataChangeRecord.apply(
             "ChangeStreamMutation To TableRow",
             ParDo.of(
-                new ChangeStreamMutationToTableRowFn(sourceInfo, bigQuery, transformerRegistry)));
+                    new ChangeStreamMutationToTableRowFn(
+                        sourceInfo, bigQuery, transformerRegistry, maxDecodedValueBytes))
+                .withOutputTags(
+                    ChangeStreamMutationToTableRowFn.MAIN_OUT,
+                    TupleTagList.of(ChangeStreamMutationToTableRowFn.OVERSIZED_DLQ_OUT)));
+
+    PCollection<TableRow> changeStreamMutationToTableRow =
+        processed.get(ChangeStreamMutationToTableRowFn.MAIN_OUT);
+
+    // Route oversized decoded values to the severe DLQ with metadata only; the cell is not
+    // retried against BigQuery because it would also fail the Storage Write API's row-size limit.
+    processed
+        .get(ChangeStreamMutationToTableRowFn.OVERSIZED_DLQ_OUT)
+        .apply(
+            "Write Oversized Decoded Values To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectory() + "YYYY/MM/dd/HH/mm/")
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
+                .build());
 
     Write<TableRow> bigQueryWrite =
         BigQueryIO.<TableRow>write()
@@ -366,32 +399,66 @@ public final class BigtableChangeStreamsToBigQuery {
 
   /**
    * DoFn that converts a {@link ChangeStreamMutation} to multiple {@link Mod} in serialized JSON
-   * format.
+   * format. SET_CELL mutations whose decoded value exceeds the configured {@code
+   * maxDecodedValueBytes} are emitted to {@link #OVERSIZED_DLQ_OUT} as a metadata-only JSON record
+   * instead of the main {@link TableRow} output.
    */
   static class ChangeStreamMutationToTableRowFn extends DoFn<ChangeStreamMutation, TableRow> {
+
+    /** Main output: successfully built {@link TableRow}s to write to BigQuery. */
+    public static final TupleTag<TableRow> MAIN_OUT = new TupleTag<TableRow>() {};
+
+    /** Side output: one-line JSON records describing oversized decoded values, routed to DLQ. */
+    public static final TupleTag<String> OVERSIZED_DLQ_OUT = new TupleTag<String>() {};
+
+    private static final ThreadLocal<ObjectMapper> DLQ_OBJECT_MAPPER =
+        ThreadLocal.withInitial(ObjectMapper::new);
+    private static final DateTimeFormatter ISO8601_FORMATTER =
+        DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+
     private final BigtableSource sourceInfo;
     private final BigQueryUtils bigQuery;
     private final ValueTransformerRegistry transformerRegistry;
+    private final long maxDecodedValueBytes;
+
+    private final org.apache.beam.sdk.metrics.Counter oversizedDecodesCounter =
+        Metrics.counter(ChangeStreamMutationToTableRowFn.class, "oversizedDecodes");
+    private final Distribution decodedValueBytesDistribution =
+        Metrics.distribution(ChangeStreamMutationToTableRowFn.class, "decodedValueBytes");
 
     ChangeStreamMutationToTableRowFn(
         BigtableSource source,
         BigQueryUtils bigQuery,
-        ValueTransformerRegistry transformerRegistry) {
+        ValueTransformerRegistry transformerRegistry,
+        long maxDecodedValueBytes) {
       this.sourceInfo = source;
       this.bigQuery = bigQuery;
       this.transformerRegistry = transformerRegistry;
+      this.maxDecodedValueBytes = maxDecodedValueBytes;
     }
 
     @ProcessElement
-    public void process(@Element ChangeStreamMutation input, OutputReceiver<TableRow> receiver)
+    public void process(@Element ChangeStreamMutation input, MultiOutputReceiver receiver)
         throws Exception {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
-        Mod mod = null;
+        Mod mod;
         switch (modType) {
           case SET_CELL:
-            mod = new Mod(sourceInfo, input, (SetCell) entry, transformerRegistry);
+            SetCell setCell = (SetCell) entry;
+            mod = new Mod(sourceInfo, input, setCell, transformerRegistry, maxDecodedValueBytes);
+            TransformResult result = mod.transformResult();
+            if (result != null) {
+              if (result.status() == TransformResult.Status.SUCCESS) {
+                decodedValueBytesDistribution.update(result.decodedBytes());
+              } else if (result.status() == TransformResult.Status.OVERSIZED) {
+                oversizedDecodesCounter.inc();
+                String dlqRecord = buildOversizedDlqRecord(input, setCell, result);
+                receiver.get(OVERSIZED_DLQ_OUT).output(dlqRecord);
+                continue;
+              }
+            }
             break;
           case DELETE_CELLS:
             mod = new Mod(sourceInfo, input, (DeleteCells) entry);
@@ -410,9 +477,43 @@ public final class BigtableChangeStreamsToBigQuery {
 
         TableRow tableRow = new TableRow();
         if (bigQuery.setTableRowFields(mod, tableRow)) {
-          receiver.output(tableRow);
+          receiver.get(MAIN_OUT).output(tableRow);
         }
       }
+    }
+
+    private String buildOversizedDlqRecord(
+        ChangeStreamMutation mutation, SetCell setCell, TransformResult result) {
+      Map<String, Object> record = new LinkedHashMap<>();
+      record.put("row_key", mutation.getRowKey().toStringUtf8());
+      record.put("commit_timestamp", formatCommitTimestamp(mutation));
+      record.put("column_family", setCell.getFamilyName());
+      record.put("column", setCell.getQualifier().toStringUtf8());
+      record.put("raw_bytes", result.rawBytes());
+      record.put("estimated_decoded_bytes", result.decodedBytes());
+      record.put("max_bytes", maxDecodedValueBytes);
+      record.put("reason", "decoded_value_exceeds_max_bytes");
+      record.put("source_instance", sourceInfo.getInstanceId());
+      record.put("source_cluster", mutation.getSourceClusterId());
+      record.put("source_table", sourceInfo.getTableId());
+      try {
+        return DLQ_OBJECT_MAPPER.get().writeValueAsString(record);
+      } catch (JsonProcessingException e) {
+        // LinkedHashMap with String / primitive values cannot fail Jackson serialization in
+        // practice; wrap just in case so we never swallow a record silently.
+        throw new RuntimeException("Failed to serialize oversized DLQ record", e);
+      }
+    }
+
+    private static String formatCommitTimestamp(ChangeStreamMutation mutation) {
+      org.threeten.bp.Instant ts = mutation.getCommitTimestamp();
+      if (ts == null) {
+        return null;
+      }
+      return ISO8601_FORMATTER.format(
+          ZonedDateTime.ofInstant(
+              java.time.Instant.ofEpochSecond(ts.getEpochSecond(), ts.getNano()),
+              ZoneId.of("UTC")));
     }
 
     private ModType getModType(Entry entry) {

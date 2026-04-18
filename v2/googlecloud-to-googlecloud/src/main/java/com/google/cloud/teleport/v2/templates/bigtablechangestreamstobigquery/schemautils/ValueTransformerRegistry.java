@@ -78,6 +78,47 @@ public class ValueTransformerRegistry implements Serializable {
   }
 
   /**
+   * Applies the registered transformer for the given column with an upper bound on the decoded
+   * output size. When no transformer is registered for the column, returns {@link
+   * TransformResult.Status#NO_TRANSFORMER} so callers can fall back to the raw cell value.
+   *
+   * <p>For {@link ProtoDecodeTransformer} the call dispatches to {@link
+   * ProtoDecodeTransformer#transformBounded(byte[], long)}, which honours the byte budget both via
+   * a cheap size pre-check and during mid-serialization. For every other transformer type the
+   * unbounded {@link ValueTransformer#transform(byte[])} is invoked; {@code null} returns are
+   * reported as {@link TransformResult.Status#DECODE_ERROR}. Non-proto transformers today produce
+   * tiny outputs (e.g. timestamp strings), so a best-effort size check on their string output is
+   * sufficient.
+   *
+   * @param columnFamily Bigtable column family
+   * @param columnQualifier Bigtable column qualifier (UTF-8 string form)
+   * @param bytes raw cell value bytes
+   * @param maxBytes maximum allowed UTF-8 byte size of the decoded output; {@code <= 0} disables
+   *     the bound
+   * @return a {@link TransformResult} describing the outcome; never null
+   */
+  public TransformResult transformBounded(
+      String columnFamily, String columnQualifier, byte[] bytes, long maxBytes) {
+    ValueTransformer transformer = getTransformer(columnFamily, columnQualifier);
+    if (transformer == null) {
+      return TransformResult.noTransformer();
+    }
+    long rawBytes = bytes.length;
+    if (transformer instanceof ProtoDecodeTransformer) {
+      return ((ProtoDecodeTransformer) transformer).transformBounded(bytes, maxBytes);
+    }
+    String result = transformer.transform(bytes);
+    if (result == null) {
+      return TransformResult.decodeError(rawBytes);
+    }
+    long decodedBytes = (long) result.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    if (maxBytes > 0 && decodedBytes > maxBytes) {
+      return TransformResult.oversized(rawBytes, decodedBytes);
+    }
+    return TransformResult.success(result, rawBytes, decodedBytes);
+  }
+
+  /**
    * Parses a column transforms configuration string without proto support.
    *
    * @param config comma-separated list of {@code column_family:column:TRANSFORM_TYPE} entries, or

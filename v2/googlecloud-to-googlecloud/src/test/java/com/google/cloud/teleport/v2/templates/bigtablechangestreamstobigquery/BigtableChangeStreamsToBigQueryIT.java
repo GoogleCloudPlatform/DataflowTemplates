@@ -639,4 +639,153 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
                   fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
             });
   }
+
+  @Test
+  public void testBigtableChangeStreamsToBigQueryProtoDecodeOversizedRoutesToDlq()
+      throws Exception {
+    String appProfileId = generateAppProfileId();
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+
+    String table = BigtableResourceManagerUtils.generateTableId("proto-oversized");
+    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-proto-oversized");
+    bigtableResourceManager.createTable(table, cdcTableSpec);
+
+    bigtableResourceManager.createAppProfile(
+        appProfileId, true, bigtableResourceManager.getClusterNames());
+    bigQueryResourceManager.createDataset(REGION);
+
+    FileDescriptorProto fileProto =
+        FileDescriptorProto.newBuilder()
+            .setName("test.proto")
+            .setPackage("test")
+            .addMessageType(
+                DescriptorProto.newBuilder()
+                    .setName("SimpleMessage")
+                    .addField(
+                        FieldDescriptorProto.newBuilder()
+                            .setName("user_name")
+                            .setNumber(1)
+                            .setType(FieldDescriptorProto.Type.TYPE_STRING)
+                            .build())
+                    .addField(
+                        FieldDescriptorProto.newBuilder()
+                            .setName("id")
+                            .setNumber(2)
+                            .setType(FieldDescriptorProto.Type.TYPE_INT32)
+                            .build())
+                    .build())
+            .build();
+
+    FileDescriptorSet descriptorSet = FileDescriptorSet.newBuilder().addFile(fileProto).build();
+    gcsClient.createArtifact("proto-schema-oversized.pb", descriptorSet.toByteArray());
+    String protoSchemaGcsPath = getGcsPath("proto-schema-oversized.pb");
+
+    FileDescriptor fileDescriptor = FileDescriptor.buildFrom(fileProto, new FileDescriptor[] {});
+    Descriptor descriptor = fileDescriptor.findMessageTypeByName("SimpleMessage");
+
+    // Small cell — must land in BigQuery.
+    byte[] smallProtoBytes =
+        DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("user_name"), "ok_user")
+            .setField(descriptor.findFieldByName("id"), 1)
+            .build()
+            .toByteArray();
+
+    // Big cell — must be routed to the severe DLQ, not BigQuery. Set user_name to ~50KB so the
+    // decoded JSON comfortably exceeds the 10_000 byte cap configured below.
+    String hugeName = org.apache.commons.lang3.StringUtils.repeat('x', 50_000);
+    byte[] hugeProtoBytes =
+        DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("user_name"), hugeName)
+            .setField(descriptor.findFieldByName("id"), 2)
+            .build()
+            .toByteArray();
+
+    String okRow = UUID.randomUUID().toString();
+    String hugeRow = UUID.randomUUID().toString();
+    String column = "proto_col";
+
+    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
+    launchInfo =
+        launchTemplate(
+            paramsAdder.apply(
+                LaunchConfig.builder(testName, specPath)
+                    .addParameter("bigtableReadTableId", table)
+                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+                    .addParameter("bigQueryChangelogTableName", cdcTable)
+                    .addParameter(
+                        "columnTransforms",
+                        SOURCE_COLUMN_FAMILY + ":" + column + ":PROTO_DECODE(test.SimpleMessage)")
+                    .addParameter("protoSchemaPath", protoSchemaGcsPath)
+                    .addParameter("maxDecodedValueBytes", "10000")
+                    .addParameter("dlqDirectory", getGcsPath("dlq"))));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    bigtableResourceManager.write(
+        RowMutation.create(table, okRow)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFromUtf8(column),
+                ByteString.copyFrom(smallProtoBytes)));
+    bigtableResourceManager.write(
+        RowMutation.create(table, hugeRow)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFromUtf8(column),
+                ByteString.copyFrom(hugeProtoBytes)));
+
+    // The small row should land in BigQuery.
+    String okQuery = newLookForValuesQuery(cdcTable, okRow, column, null);
+    waitForQueryToReturnRows(okQuery, 1, true);
+
+    // The huge row should NOT land in BigQuery.
+    String hugeQuery = newLookForValuesQuery(cdcTable, hugeRow, column, null);
+    TableResult tableResult = bigQueryResourceManager.runQuery(hugeQuery);
+    assertEquals("Oversized row must not reach BigQuery", 0L, tableResult.getTotalRows());
+
+    // The huge row's metadata should appear in the severe DLQ.
+    Storage storage = StorageOptions.newBuilder().setProjectId(PROJECT).build().getService();
+    String filterPrefix =
+        String.join("/", getClass().getSimpleName(), gcsClient.runId(), "dlq", "severe");
+    LOG.info("Looking for oversized DLQ files with prefix: {}", filterPrefix);
+    await("The oversized decoded value was not found in DLQ")
+        .atMost(Duration.ofMinutes(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              Page<Blob> blobs =
+                  storage.list(artifactBucketName, BlobListOption.prefix(filterPrefix));
+              for (Blob blob : blobs.iterateAll()) {
+                if (blob.getName().contains(".temp-beam/")) {
+                  continue;
+                }
+                String content = new String(storage.readAllBytes(blob.getBlobId()));
+                if (content.contains("decoded_value_exceeds_max_bytes")
+                    && content.contains(hugeRow)) {
+                  ObjectMapper om = new ObjectMapper();
+                  for (String line : content.split("\n")) {
+                    if (line.isEmpty()) {
+                      continue;
+                    }
+                    JsonNode record = om.readTree(line);
+                    if (record.has("row_key") && hugeRow.equals(record.get("row_key").asText())) {
+                      assertEquals(
+                          "decoded_value_exceeds_max_bytes", record.get("reason").asText());
+                      assertEquals(10_000L, record.get("max_bytes").asLong());
+                      assertEquals(column, record.get("column").asText());
+                      assertEquals(SOURCE_COLUMN_FAMILY, record.get("column_family").asText());
+                      return true;
+                    }
+                  }
+                }
+              }
+              return false;
+            });
+  }
 }
