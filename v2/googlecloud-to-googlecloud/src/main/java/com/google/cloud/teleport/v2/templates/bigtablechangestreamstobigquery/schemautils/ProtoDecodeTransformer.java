@@ -119,12 +119,14 @@ public class ProtoDecodeTransformer implements ValueTransformer {
    *     the bound
    * @return a {@link TransformResult} describing the outcome
    */
-  TransformResult transformBounded(byte[] bytes, long maxBytes) {
+  @Override
+  public TransformResult transformBounded(byte[] bytes, long maxBytes) {
     ensureInitialized();
     long rawBytes = bytes.length;
 
     if (maxBytes > 0) {
-      // Cheap pre-check: base64-ish pessimistic estimate.
+      // Cheap worst-case proto->JSON inflation estimate; avoids parseFrom on obviously-oversized
+      // inputs.
       long estimated = rawBytes * 4L / 3L;
       if (estimated > maxBytes) {
         return TransformResult.oversized(rawBytes, estimated);

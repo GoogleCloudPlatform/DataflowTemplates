@@ -773,13 +773,19 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
                     if (line.isEmpty()) {
                       continue;
                     }
-                    JsonNode record = om.readTree(line);
-                    if (record.has("row_key") && hugeRow.equals(record.get("row_key").asText())) {
+                    JsonNode envelope = om.readTree(line);
+                    JsonNode message = envelope.get("message");
+                    if (message != null
+                        && message.has("row_key")
+                        && hugeRow.equals(message.get("row_key").asText())) {
                       assertEquals(
-                          "decoded_value_exceeds_max_bytes", record.get("reason").asText());
-                      assertEquals(10_000L, record.get("max_bytes").asLong());
-                      assertEquals(column, record.get("column").asText());
-                      assertEquals(SOURCE_COLUMN_FAMILY, record.get("column_family").asText());
+                          "decoded_value_exceeds_max_bytes", message.get("reason").asText());
+                      assertEquals(10_000L, message.get("max_bytes").asLong());
+                      assertEquals(column, message.get("column").asText());
+                      assertEquals(SOURCE_COLUMN_FAMILY, message.get("column_family").asText());
+                      assertEquals(
+                          "decoded_value_exceeds_max_bytes",
+                          envelope.get("error_message").asText());
                       return true;
                     }
                   }

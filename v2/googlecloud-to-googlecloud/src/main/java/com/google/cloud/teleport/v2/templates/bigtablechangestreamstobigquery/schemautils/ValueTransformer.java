@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils;
 
+import com.google.common.base.Utf8;
 import java.io.Serializable;
 
 /** Transforms a Bigtable cell value from raw bytes to a string representation for BigQuery. */
@@ -27,4 +28,30 @@ public interface ValueTransformer extends Serializable {
    * @return the transformed string, or null if transformation fails
    */
   String transform(byte[] bytes);
+
+  /**
+   * Transforms raw cell value bytes into a string while enforcing an upper bound on the UTF-8 byte
+   * size of the decoded output.
+   *
+   * <p>The default implementation is a post-hoc bound: it calls {@link #transform(byte[])} and
+   * measures the resulting string. Transformers whose output can dwarf available memory (e.g.
+   * {@link ProtoDecodeTransformer}) should override this to abort mid-serialization instead.
+   *
+   * @param bytes the raw cell value bytes
+   * @param maxBytes maximum allowed UTF-8 byte size of the decoded output; {@code <= 0} disables
+   *     the bound
+   * @return a {@link TransformResult} describing the outcome
+   */
+  default TransformResult transformBounded(byte[] bytes, long maxBytes) {
+    long rawBytes = bytes.length;
+    String result = transform(bytes);
+    if (result == null) {
+      return TransformResult.decodeError(rawBytes);
+    }
+    long decodedBytes = Utf8.encodedLength(result);
+    if (maxBytes > 0 && decodedBytes > maxBytes) {
+      return TransformResult.oversized(rawBytes, decodedBytes);
+    }
+    return TransformResult.success(result, rawBytes, decodedBytes);
+  }
 }

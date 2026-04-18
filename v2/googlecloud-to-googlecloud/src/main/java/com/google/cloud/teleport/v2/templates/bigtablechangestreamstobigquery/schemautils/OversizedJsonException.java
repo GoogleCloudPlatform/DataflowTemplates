@@ -35,4 +35,9 @@ final class OversizedJsonException extends RuntimeException {
   long bytesSoFar() {
     return bytesSoFar;
   }
+
+  @Override
+  public synchronized Throwable fillInStackTrace() {
+    return this;
+  }
 }

@@ -99,6 +99,34 @@ public class ValueTransformerRegistryTest {
     assertEquals(TransformResult.Status.OVERSIZED, result.status());
   }
 
+  @Test
+  public void defaultTransformBoundedRunsForCustomTransformer() {
+    // A custom (non-proto) transformer exercising the default ValueTransformer#transformBounded
+    // method: SUCCESS path with exact decoded-byte measurement.
+    ValueTransformer echo = bytes -> "decoded:" + bytes.length;
+    ValueTransformerRegistry registry = ValueTransformerRegistry.of(Map.of("cf:c", echo));
+    byte[] raw = new byte[] {1, 2, 3};
+
+    TransformResult ok = registry.transformBounded("cf", "c", raw, 1_000);
+    assertEquals(TransformResult.Status.SUCCESS, ok.status());
+    assertEquals("decoded:3", ok.value());
+    assertEquals(raw.length, ok.rawBytes());
+    assertEquals("decoded:3".length(), ok.decodedBytes());
+
+    // DECODE_ERROR: transformer returns null.
+    ValueTransformer nullReturner = bytes -> null;
+    ValueTransformerRegistry nullRegistry =
+        ValueTransformerRegistry.of(Map.of("cf:c", nullReturner));
+    TransformResult err = nullRegistry.transformBounded("cf", "c", raw, 1_000);
+    assertEquals(TransformResult.Status.DECODE_ERROR, err.status());
+    assertEquals(raw.length, err.rawBytes());
+
+    // OVERSIZED: decoded string overruns the byte budget.
+    TransformResult over = registry.transformBounded("cf", "c", raw, 3);
+    assertEquals(TransformResult.Status.OVERSIZED, over.status());
+    assertTrue(over.decodedBytes() > 3);
+  }
+
   private Descriptor buildSimpleMessageDescriptor() throws DescriptorValidationException {
     FileDescriptorProto fileProto =
         FileDescriptorProto.newBuilder()

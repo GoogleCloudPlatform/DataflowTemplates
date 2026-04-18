@@ -79,16 +79,10 @@ public class ValueTransformerRegistry implements Serializable {
 
   /**
    * Applies the registered transformer for the given column with an upper bound on the decoded
-   * output size. When no transformer is registered for the column, returns {@link
-   * TransformResult.Status#NO_TRANSFORMER} so callers can fall back to the raw cell value.
-   *
-   * <p>For {@link ProtoDecodeTransformer} the call dispatches to {@link
-   * ProtoDecodeTransformer#transformBounded(byte[], long)}, which honours the byte budget both via
-   * a cheap size pre-check and during mid-serialization. For every other transformer type the
-   * unbounded {@link ValueTransformer#transform(byte[])} is invoked; {@code null} returns are
-   * reported as {@link TransformResult.Status#DECODE_ERROR}. Non-proto transformers today produce
-   * tiny outputs (e.g. timestamp strings), so a best-effort size check on their string output is
-   * sufficient.
+   * output size, delegating the per-transformer bounded semantics to {@link
+   * ValueTransformer#transformBounded(byte[], long)}. Returns {@link
+   * TransformResult.Status#NO_TRANSFORMER} when no transformer is registered so callers can fall
+   * back to the raw cell value.
    *
    * @param columnFamily Bigtable column family
    * @param columnQualifier Bigtable column qualifier (UTF-8 string form)
@@ -100,22 +94,9 @@ public class ValueTransformerRegistry implements Serializable {
   public TransformResult transformBounded(
       String columnFamily, String columnQualifier, byte[] bytes, long maxBytes) {
     ValueTransformer transformer = getTransformer(columnFamily, columnQualifier);
-    if (transformer == null) {
-      return TransformResult.noTransformer();
-    }
-    long rawBytes = bytes.length;
-    if (transformer instanceof ProtoDecodeTransformer) {
-      return ((ProtoDecodeTransformer) transformer).transformBounded(bytes, maxBytes);
-    }
-    String result = transformer.transform(bytes);
-    if (result == null) {
-      return TransformResult.decodeError(rawBytes);
-    }
-    long decodedBytes = (long) result.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-    if (maxBytes > 0 && decodedBytes > maxBytes) {
-      return TransformResult.oversized(rawBytes, decodedBytes);
-    }
-    return TransformResult.success(result, rawBytes, decodedBytes);
+    return transformer == null
+        ? TransformResult.noTransformer()
+        : transformer.transformBounded(bytes, maxBytes);
   }
 
   /**
