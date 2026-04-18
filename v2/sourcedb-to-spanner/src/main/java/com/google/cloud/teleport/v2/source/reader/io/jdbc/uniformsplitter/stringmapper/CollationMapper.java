@@ -198,12 +198,12 @@ public abstract class CollationMapper implements Serializable {
     }
 
     // Base Case that the string just represents single character
-    if (element == BigInteger.ZERO) {
+    if (element.equals(BigInteger.ZERO)) {
       char c = getCharacterFromPosition(element.longValue(), true);
       return String.valueOf(c);
     }
 
-    while (element != BigInteger.ZERO) {
+    while (!element.equals(BigInteger.ZERO)) {
       long charsetSize = getCharsetSize(index == 0);
 
       BigInteger reminder = element.mod(BigInteger.valueOf(charsetSize));

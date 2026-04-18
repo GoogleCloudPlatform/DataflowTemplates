@@ -185,7 +185,9 @@ public abstract class CollationIndex implements Serializable {
                   + "index-type = "
                   + indexType());
         }
-        if (charToIndexCache.get(indexToCharacterCache.get(indexes.get(i))) != indexes.get(i)) {
+        if (!charToIndexCache
+            .get(indexToCharacterCache.get(indexes.get(i)))
+            .equals(indexes.get(i))) {
           throw new IllegalStateException(
               "index not mapping onto itself found at position "
                   + i
