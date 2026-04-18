@@ -78,7 +78,8 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
     if (new java.io.File(postgresDriverLocalPath(basePath)).exists()) {
       gcsClient.uploadArtifact(postgresDriverGCSRelativePath, postgresDriverLocalPath(basePath));
     } else {
-      LOG.warn("Postgres driver not found at {}, skipping upload", postgresDriverLocalPath(basePath));
+      LOG.warn(
+          "Postgres driver not found at {}, skipping upload", postgresDriverLocalPath(basePath));
     }
     if (new java.io.File(oracleDriverLocalPath(basePath)).exists()) {
       gcsClient.uploadArtifact(oracleDriverGCSRelativePath, oracleDriverLocalPath(basePath));
