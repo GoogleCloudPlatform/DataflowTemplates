@@ -58,7 +58,7 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   private static final String MYSQL_VERSION = "8.0.30";
   private static final String POSTGRES_VERSION = "42.6.1";
   private static final String ORACLE_VERSION = "23.9.0.25.07";
-  private static final String MSSQL_VERSION = "13.4.0.jre11";
+  private static final String MSSQL_VERSION = "13.2.1.jre11";
 
   @Before
   public void setUpJDBC() throws IOException {
@@ -70,27 +70,10 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
     String oracleDriverGCSRelativePath = GCS_PREFIX + oracleDriverLocalJar();
     String msSqlDriverGCSRelativePath = GCS_PREFIX + msSqlDriverLocalJar();
 
-    if (new java.io.File(mySqlDriverLocalPath(basePath)).exists()) {
-      gcsClient.uploadArtifact(mySqlDriverGCSRelativePath, mySqlDriverLocalPath(basePath));
-    } else {
-      LOG.warn("MySQL driver not found at {}, skipping upload", mySqlDriverLocalPath(basePath));
-    }
-    if (new java.io.File(postgresDriverLocalPath(basePath)).exists()) {
-      gcsClient.uploadArtifact(postgresDriverGCSRelativePath, postgresDriverLocalPath(basePath));
-    } else {
-      LOG.warn(
-          "Postgres driver not found at {}, skipping upload", postgresDriverLocalPath(basePath));
-    }
-    if (new java.io.File(oracleDriverLocalPath(basePath)).exists()) {
-      gcsClient.uploadArtifact(oracleDriverGCSRelativePath, oracleDriverLocalPath(basePath));
-    } else {
-      LOG.warn("Oracle driver not found at {}, skipping upload", oracleDriverLocalPath(basePath));
-    }
-    if (new java.io.File(msSqlDriverLocalPath(basePath)).exists()) {
-      gcsClient.uploadArtifact(msSqlDriverGCSRelativePath, msSqlDriverLocalPath(basePath));
-    } else {
-      LOG.warn("MSSQL driver not found at {}, skipping upload", msSqlDriverLocalPath(basePath));
-    }
+    gcsClient.uploadArtifact(mySqlDriverGCSRelativePath, mySqlDriverLocalPath(basePath));
+    gcsClient.uploadArtifact(postgresDriverGCSRelativePath, postgresDriverLocalPath(basePath));
+    gcsClient.uploadArtifact(oracleDriverGCSRelativePath, oracleDriverLocalPath(basePath));
+    gcsClient.uploadArtifact(msSqlDriverGCSRelativePath, msSqlDriverLocalPath(basePath));
   }
 
   protected String mySqlDriverGCSPath() {
