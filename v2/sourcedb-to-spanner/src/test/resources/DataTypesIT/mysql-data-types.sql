@@ -777,7 +777,7 @@ INSERT INTO `bit_table` (`bit_col`) VALUES (NULL);
 INSERT INTO `bit8_table` (`bit8_col`) VALUES (NULL);
 INSERT INTO `bit1_table` (`bit1_col`) VALUES (NULL);
 INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (NULL);
-INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (NULL);
+INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VAL   zUES (NULL);
 INSERT INTO `bit_to_int64_table` (`bit_to_int64_col`) VALUES (NULL);
 INSERT INTO `blob_table` (`blob_col`) VALUES (NULL);
 INSERT INTO `blob_to_string_table` (`blob_to_string_col`) VALUES (NULL);
