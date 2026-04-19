@@ -46,6 +46,30 @@ SELECT
         ) COLLATE collation_replacement_tag
     ) AS is_space
 FROM (
+    -- 4-byte codepoints: generate only valid UTF-8 sequences to avoid DB crash.
+    SELECT charset_char FROM (
+        SELECT CONVERT(UNHEX(CONCAT('f', n2.n, n3.n, n4.n, n5.n, n6.n, n7.n, n8.n)) USING charset_replacement_tag) AS charset_char
+        FROM
+            (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4') AS n2
+            CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b') AS n3
+            CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b' UNION ALL SELECT 'c' UNION ALL SELECT 'd' UNION ALL SELECT 'e' UNION ALL SELECT 'f') AS n4
+            CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b') AS n5
+            CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b' UNION ALL SELECT 'c' UNION ALL SELECT 'd' UNION ALL SELECT 'e' UNION ALL SELECT 'f') AS n6
+            CROSS JOIN (SELECT '8' AS n UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b') AS n7
+            CROSS JOIN (SELECT '0' AS n UNION ALL SELECT '1' UNION ALL SELECT '2' UNION ALL SELECT '3' UNION ALL SELECT '4' UNION ALL SELECT '5' UNION ALL SELECT '6' UNION ALL SELECT '7' UNION ALL SELECT '8' UNION ALL SELECT '9' UNION ALL SELECT 'a' UNION ALL SELECT 'b' UNION ALL SELECT 'c' UNION ALL SELECT 'd' UNION ALL SELECT 'e' UNION ALL SELECT 'f') AS n8
+        WHERE 
+            (
+                (n2.n = '0' AND CONCAT(n3.n, n4.n) BETWEEN '90' AND 'bf')
+                OR
+                (n2.n BETWEEN '1' AND '3' AND CONCAT(n3.n, n4.n) BETWEEN '80' AND 'bf')
+                OR
+                (n2.n = '4' AND CONCAT(n3.n, n4.n) BETWEEN '80' AND '8f')
+            )
+    ) AS dt4
+    WHERE CHAR_LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL
+
+    UNION ALL
+
     -- 3-byte codepoints: cross-join 6 hex nibbles to produce every 3-byte sequence.
     SELECT charset_char FROM (
         SELECT CONVERT(UNHEX(CONCAT(n1.n, n2.n, n3.n, n4.n, n5.n, n6.n)) USING charset_replacement_tag) AS charset_char
