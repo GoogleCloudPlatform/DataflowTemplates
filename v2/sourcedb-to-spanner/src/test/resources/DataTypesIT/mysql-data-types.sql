@@ -5,6 +5,11 @@ CREATE TABLE `varchar_table` (
     `varchar_col` VARCHAR(21000) CHARACTER SET utf8 DEFAULT NULL
 );
 
+CREATE TABLE `varchar_utf8mb4_table` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `varchar_utf8mb4_col` VARCHAR(255) CHARACTER SET utf8mb4 DEFAULT NULL
+);
+
 CREATE TABLE `tinyint_table` (
     `id` INT PRIMARY KEY,
     `tinyint_col` TINYINT DEFAULT NULL
@@ -716,6 +721,8 @@ INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (X'78
 INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (REPEAT(X'FF', 65000));
 INSERT INTO `varchar_table` (`varchar_col`) VALUES ('abc');
 INSERT INTO `varchar_table` (`varchar_col`) VALUES (REPEAT('a', 21000));
+
+INSERT INTO `varchar_utf8mb4_table` (`varchar_utf8mb4_col`) VALUES ('😊');
 INSERT INTO `year_table` (`year_col`) VALUES (2022);
 INSERT INTO `year_table` (`year_col`) VALUES (1901);
 INSERT INTO `year_table` (`year_col`) VALUES (2155);

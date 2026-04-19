@@ -392,6 +392,8 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "varbinary_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put(
         "varchar", createRows("varchar", "abc", repeatString("a", 33) + "...", "NULL"));
+    expectedData.put(
+        "varchar_utf8mb4", createRows("varchar_utf8mb4", "😊"));
     expectedData.put("year", createRows("year", "2022", "1901", "2155", "NULL"));
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(

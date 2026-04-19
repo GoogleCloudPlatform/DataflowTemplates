@@ -366,6 +366,11 @@ CREATE TABLE IF NOT EXISTS varchar_table (
   varchar_col STRING(21000),
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS varchar_utf8mb4_table (
+  id INT64 NOT NULL,
+  varchar_utf8mb4_col STRING(255),
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS year_table (
   id INT64 NOT NULL,
   year_col STRING(MAX),
