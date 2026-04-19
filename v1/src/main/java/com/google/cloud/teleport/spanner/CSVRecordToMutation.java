@@ -96,7 +96,7 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
     writeBuilder = Mutation.newInsertOrUpdateBuilder(table.name());
     try {
       c.output(parseRow(writeBuilder, row, table, tableColumnsMap.get(tableName)));
-    } catch (IllegalArgumentException e) {
+    } catch (Exception e) {
 
       // Send to error tag only if output path is given, otherwise, throw exception.
       if (invalidOutputPath != null && StringUtils.isNotEmpty(invalidOutputPath.get())) {
