@@ -116,7 +116,7 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
 
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "input/customShard.jar", "com.custom.SpannerToSourceDbRetryTransformation")
+                    "input/customShard.jar", "com.custom.CustomTransformationForDLQIT")
                 .setCustomParameters("mode=bad")
                 .build();
 
@@ -264,7 +264,7 @@ public class SpannerToSourceDBShardedMySQLRetryDLQIT extends SpannerToSourceDbIT
             null,
             null,
             CustomTransformation.builder(
-                    "input/customShard.jar", "com.custom.SpannerToSourceDbRetryTransformation")
+                    "input/customShard.jar", "com.custom.CustomTransformationForDLQIT")
                 .setCustomParameters("mode=semi-fixed") // Fixes one of the simulated severe errors
                 .build(),
             MYSQL_SOURCE_TYPE,

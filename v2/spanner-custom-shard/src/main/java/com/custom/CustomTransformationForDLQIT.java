@@ -40,10 +40,9 @@ import org.slf4j.LoggerFactory;
  * <p>For the Orders table, it translates the OrderSource column into a custom LegacyOrderSystem
  * column to validate standard data transformation operations.
  */
-public class SpannerToSourceDbRetryTransformation implements ISpannerMigrationTransformer {
+public class CustomTransformationForDLQIT implements ISpannerMigrationTransformer {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToSourceDbRetryTransformation.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationForDLQIT.class);
 
   private String mode = "bad";
 
@@ -67,7 +66,39 @@ public class SpannerToSourceDbRetryTransformation implements ISpannerMigrationTr
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    return new MigrationTransformationResponse(new HashMap<>(), false);
+    String tableName = request.getTableName();
+    Map<String, Object> requestRow = request.getRequestRow();
+    Map<String, Object> responseRow = new HashMap<>();
+
+    LOG.info("Processing table {} in mode {}", tableName, mode);
+
+    if (tableName.equalsIgnoreCase("AllDataTypes")) {
+      Object idObj = requestRow.get("id");
+      Long id = null;
+      if (idObj instanceof Number) {
+        id = ((Number) idObj).longValue();
+      } else if (idObj instanceof String) {
+        id = Long.parseLong((String) idObj);
+      }
+
+      if (id != null) {
+        if (mode.equalsIgnoreCase("bad")) {
+          if (id == 999) {
+            LOG.info("Crashing on id {} for table {} in mode {}", id, tableName, mode);
+            throw new InvalidTransformationException("Simulated failure for id " + id);
+          }
+        }
+      }
+      return new MigrationTransformationResponse(responseRow, false);
+    } else if (tableName.equalsIgnoreCase("Orders")) {
+      Object orderSourceObj = requestRow.get("OrderSource");
+      String orderSource = (orderSourceObj != null) ? (String) orderSourceObj : "UNKNOWN_SYSTEM";
+      String legacySys = "'" + orderSource + "_v1'";
+      responseRow.put("LegacyOrderSystem", legacySys);
+      return new MigrationTransformationResponse(responseRow, false);
+    }
+
+    return new MigrationTransformationResponse(responseRow, false);
   }
 
   @Override

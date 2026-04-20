@@ -114,7 +114,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "input/customShard.jar", // Use relative path!
-                    "com.custom.SpannerToSourceDbRetryTransformation")
+                    "com.custom.CustomTransformationForDLQIT")
                 .setCustomParameters("mode=bad")
                 .build();
 
@@ -245,7 +245,7 @@ public class SpannerToSourceDBShardedMySQLRetryAllDLQIT extends SpannerToSourceD
             "com.custom.CustomShardIdFetcherForRetryIT",
             null,
             CustomTransformation.builder(
-                    "input/customShard.jar", "com.custom.SpannerToSourceDbRetryTransformation")
+                    "input/customShard.jar", "com.custom.CustomTransformationForDLQIT")
                 .setCustomParameters("mode=semi-fixed")
                 .build(),
             MYSQL_SOURCE_TYPE,
