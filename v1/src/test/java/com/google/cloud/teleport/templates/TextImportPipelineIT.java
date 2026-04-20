@@ -198,11 +198,14 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n" +
+        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n"
+            + "2,Jane,Doe,5,A\n"
+            +
             // Rows with incompatible Datatype values
-            "3,Elvis,Presley,FALSE,xyz,3.99,2020-03-05,2023-01-01T17:24:02\n" + // xyz for FLOAT32 column
+            "3,Elvis,Presley,FALSE,xyz,3.99,2020-03-05,2023-01-01T17:24:02\n"
+            + // xyz for FLOAT32 column
             "4,Jane,Doe,TRUE,4.1,2.1,2021-02-03,abc\n" // abc for TIMESTAMP column
-    );
+        );
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS Singers");
@@ -294,7 +297,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
     assertThat(artifacts).hasSize(3);
     assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
-    assertThatArtifacts(artifacts).hasContent("3,Elvis,Presley,FALSE,xyz,3.99,2020-03-05,2023-01-01T17:24:02");
+    assertThatArtifacts(artifacts)
+        .hasContent("3,Elvis,Presley,FALSE,xyz,3.99,2020-03-05,2023-01-01T17:24:02");
     assertThatArtifacts(artifacts).hasContent("4,Jane,Doe,TRUE,4.1,2.1,2021-02-03,abc");
   }
 
