@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.connection;
 
-
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 
 public interface IConnectionHelper<T> {

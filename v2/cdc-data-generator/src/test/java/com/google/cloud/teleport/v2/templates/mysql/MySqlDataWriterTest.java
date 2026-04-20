@@ -516,17 +516,22 @@ public class MySqlDataWriterTest {
   @Test
   public void testLoadShards_missingPathThrows() {
     MySqlDataWriter w = new MySqlDataWriter(null, mockShardFileReader, mockConnectionHelper);
-    assertThrows(IllegalArgumentException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
 
     MySqlDataWriter w2 = new MySqlDataWriter("", mockShardFileReader, mockConnectionHelper);
-    assertThrows(IllegalArgumentException.class, () -> w2.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> w2.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
   public void testLoadShards_emptyShardFileThrows() {
     when(mockShardFileReader.getOrderedShardDetails(anyString())).thenReturn(ImmutableList.of());
     MySqlDataWriter w = writer();
-    assertThrows(RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+    assertThrows(
+        RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test

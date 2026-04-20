@@ -381,7 +381,7 @@ public class MySqlDataWriter implements DataWriter {
   }
 
   private static java.sql.Date toSqlDate(Object value) {
-   return new java.sql.Date(((ReadableInstant) value).getMillis());
+    return new java.sql.Date(((ReadableInstant) value).getMillis());
   }
 
   private static java.sql.Timestamp toSqlTimestamp(Object value) {
