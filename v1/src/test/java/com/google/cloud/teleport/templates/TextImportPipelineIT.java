@@ -295,7 +295,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "2023-01-01T17:22:00Z")));
 
     List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
-    assertThat(artifacts).hasSize(3);
+    assertThat(artifacts).hasSize(1);
     assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
     assertThatArtifacts(artifacts)
         .hasContent("3,Elvis,Presley,FALSE,xyz,3.99,2020-03-05,2023-01-01T17:24:02");
