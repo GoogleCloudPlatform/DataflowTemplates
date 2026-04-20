@@ -57,7 +57,7 @@ public class GroupCompletionDoFnTest implements Serializable {
     GroupCompletionDoFn fn = new GroupCompletionDoFn(tableReferences);
 
     PCollection<SourceTableReference> output =
-        pipeline.apply(Create.of(KV.of("table1", 100L))).apply(ParDo.of(fn));
+        pipeline.apply(Create.of(KV.of(ref1.sourceTableSchemaUUID(), 100L))).apply(ParDo.of(fn));
 
     PAssert.that(output).containsInAnyOrder(ref1.toBuilder().setRecordCount(100L).build());
     pipeline.run();

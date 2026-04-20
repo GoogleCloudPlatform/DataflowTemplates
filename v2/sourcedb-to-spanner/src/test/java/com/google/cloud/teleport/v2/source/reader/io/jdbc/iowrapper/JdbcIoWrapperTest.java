@@ -21,20 +21,29 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -59,6 +68,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link JdbcIoWrapper}. */
@@ -108,18 +119,21 @@ public class JdbcIoWrapperTest {
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
-            JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                .setSourceSchemaReference(testSourceSchemaReference)
-                .setShardID("test")
-                .setDbAuth(
-                    LocalCredentialsProvider.builder()
-                        .setUserName("testUser")
-                        .setPassword("testPassword")
+            JdbcIoWrapperConfigGroup.builder()
+                .addShardConfig(
+                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                        .setSourceSchemaReference(testSourceSchemaReference)
+                        .setShardID("test")
+                        .setDbAuth(
+                            LocalCredentialsProvider.builder()
+                                .setUserName("testUser")
+                                .setPassword("testPassword")
+                                .build())
+                        .setJdbcDriverJars("")
+                        .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                        .setDialectAdapter(mockDialectAdapter)
                         .build())
-                .setJdbcDriverJars("")
-                .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                .setDialectAdapter(mockDialectAdapter)
                 .build());
     SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema().get(0);
     assertThat(sourceSchema.schemaReference()).isEqualTo(testSourceSchemaReference);
@@ -159,19 +173,23 @@ public class JdbcIoWrapperTest {
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
-            JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                .setSourceSchemaReference(testSourceSchemaReference)
-                .setShardID("test")
-                .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
-                .setDbAuth(
-                    LocalCredentialsProvider.builder()
-                        .setUserName("testUser")
-                        .setPassword("testPassword")
+            JdbcIoWrapperConfigGroup.builder()
+                .addShardConfig(
+                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                        .setSourceSchemaReference(testSourceSchemaReference)
+                        .setShardID("test")
+                        .setTableVsPartitionColumns(
+                            ImmutableMap.of("testTable", ImmutableList.of("ID")))
+                        .setDbAuth(
+                            LocalCredentialsProvider.builder()
+                                .setUserName("testUser")
+                                .setPassword("testPassword")
+                                .build())
+                        .setJdbcDriverJars("")
+                        .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                        .setDialectAdapter(mockDialectAdapter)
                         .build())
-                .setJdbcDriverJars("")
-                .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                .setDialectAdapter(mockDialectAdapter)
                 .build());
     SourceSchema sourceSchema = jdbcIoWrapper.discoverTableSchema().get(0);
     assertThat(sourceSchema.schemaReference()).isEqualTo(testSourceSchemaReference);
@@ -217,18 +235,21 @@ public class JdbcIoWrapperTest {
         SuitableIndexNotFoundException.class,
         () ->
             JdbcIoWrapper.of(
-                JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                    .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                    .setSourceSchemaReference(testSourceSchemaReference)
-                    .setShardID("test")
-                    .setDbAuth(
-                        LocalCredentialsProvider.builder()
-                            .setUserName("testUser")
-                            .setPassword("testPassword")
+                JdbcIoWrapperConfigGroup.builder()
+                    .addShardConfig(
+                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                            .setSourceSchemaReference(testSourceSchemaReference)
+                            .setShardID("test")
+                            .setDbAuth(
+                                LocalCredentialsProvider.builder()
+                                    .setUserName("testUser")
+                                    .setPassword("testPassword")
+                                    .build())
+                            .setJdbcDriverJars("")
+                            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                            .setDialectAdapter(mockDialectAdapter)
                             .build())
-                    .setJdbcDriverJars("")
-                    .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                    .setDialectAdapter(mockDialectAdapter)
                     .build()));
   }
 
@@ -262,36 +283,42 @@ public class JdbcIoWrapperTest {
         SuitableIndexNotFoundException.class,
         () ->
             JdbcIoWrapper.of(
-                JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                    .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                    .setSourceSchemaReference(testSourceSchemaReference)
-                    .setShardID("test")
-                    .setDbAuth(
-                        LocalCredentialsProvider.builder()
-                            .setUserName("testUser")
-                            .setPassword("testPassword")
+                JdbcIoWrapperConfigGroup.builder()
+                    .addShardConfig(
+                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                            .setSourceSchemaReference(testSourceSchemaReference)
+                            .setShardID("test")
+                            .setDbAuth(
+                                LocalCredentialsProvider.builder()
+                                    .setUserName("testUser")
+                                    .setPassword("testPassword")
+                                    .build())
+                            .setJdbcDriverJars("")
+                            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                            .setDialectAdapter(mockDialectAdapter)
                             .build())
-                    .setJdbcDriverJars("")
-                    .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                    .setDialectAdapter(mockDialectAdapter)
                     .build()));
     /* No Numeric Index on table */
     assertThrows(
         SuitableIndexNotFoundException.class,
         () ->
             JdbcIoWrapper.of(
-                JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                    .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                    .setSourceSchemaReference(testSourceSchemaReference)
-                    .setShardID("test")
-                    .setDbAuth(
-                        LocalCredentialsProvider.builder()
-                            .setUserName("testUser")
-                            .setPassword("testPassword")
+                JdbcIoWrapperConfigGroup.builder()
+                    .addShardConfig(
+                        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                            .setSourceSchemaReference(testSourceSchemaReference)
+                            .setShardID("test")
+                            .setDbAuth(
+                                LocalCredentialsProvider.builder()
+                                    .setUserName("testUser")
+                                    .setPassword("testPassword")
+                                    .build())
+                            .setJdbcDriverJars("")
+                            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                            .setDialectAdapter(mockDialectAdapter)
                             .build())
-                    .setJdbcDriverJars("")
-                    .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                    .setDialectAdapter(mockDialectAdapter)
                     .build()));
   }
 
@@ -324,19 +351,22 @@ public class JdbcIoWrapperTest {
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(
-            JdbcIOWrapperConfig.builderWithMySqlDefaults()
-                .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
-                .setSourceSchemaReference(testSourceSchemaReference)
-                .setShardID("test")
-                .setDbAuth(
-                    LocalCredentialsProvider.builder()
-                        .setUserName("testUser")
-                        .setPassword("testPassword")
+            JdbcIoWrapperConfigGroup.builder()
+                .addShardConfig(
+                    JdbcIOWrapperConfig.builderWithMySqlDefaults()
+                        .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+                        .setSourceSchemaReference(testSourceSchemaReference)
+                        .setShardID("test")
+                        .setDbAuth(
+                            LocalCredentialsProvider.builder()
+                                .setUserName("testUser")
+                                .setPassword("testPassword")
+                                .build())
+                        .setJdbcDriverJars("")
+                        .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+                        .setDialectAdapter(mockDialectAdapter)
+                        .setTables(ImmutableList.of("spanner_table"))
                         .build())
-                .setJdbcDriverJars("")
-                .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
-                .setDialectAdapter(mockDialectAdapter)
-                .setTables(ImmutableList.of("spanner_table"))
                 .build());
     ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
         tableReaders = jdbcIoWrapper.getTableReaders();
@@ -417,8 +447,12 @@ public class JdbcIoWrapperTest {
         configWithFeatureEnabled.toBuilder()
             .setReadWithUniformPartitionsFeatureEnabled(false)
             .build();
-    JdbcIoWrapper jdbcIOWrapperWithFeatureEnabled = JdbcIoWrapper.of(configWithFeatureEnabled);
-    JdbcIoWrapper jdbcIOWrapperWithFeatureDisabled = JdbcIoWrapper.of(configWithFeatureDisabled);
+    JdbcIoWrapper jdbcIOWrapperWithFeatureEnabled =
+        JdbcIoWrapper.of(
+            JdbcIoWrapperConfigGroup.builder().addShardConfig(configWithFeatureEnabled).build());
+    JdbcIoWrapper jdbcIOWrapperWithFeatureDisabled =
+        JdbcIoWrapper.of(
+            JdbcIoWrapperConfigGroup.builder().addShardConfig(configWithFeatureDisabled).build());
     assertThat(
             jdbcIOWrapperWithFeatureDisabled.getTableReaders().values().stream().findFirst().get())
         .isInstanceOf(JdbcIO.ReadWithPartitions.class);
@@ -428,11 +462,19 @@ public class JdbcIoWrapperTest {
     // We test that setting the fetch size works for both modes. The more detailed testing of the
     // fetch size getting applied to JdbcIO is covered in {@link ReadWithUniformPartitionTest}
     assertThat(
-            JdbcIoWrapper.of(configWithFeatureEnabled.toBuilder().setMaxFetchSize(42).build())
+            JdbcIoWrapper.of(
+                    JdbcIoWrapperConfigGroup.builder()
+                        .addShardConfig(
+                            configWithFeatureEnabled.toBuilder().setMaxFetchSize(42).build())
+                        .build())
                 .getTableReaders())
         .hasSize(1);
     assertThat(
-            JdbcIoWrapper.of(configWithFeatureDisabled.toBuilder().setMaxFetchSize(42).build())
+            JdbcIoWrapper.of(
+                    JdbcIoWrapperConfigGroup.builder()
+                        .addShardConfig(
+                            configWithFeatureDisabled.toBuilder().setMaxFetchSize(42).build())
+                        .build())
                 .getTableReaders())
         .hasSize(1);
   }
@@ -494,7 +536,8 @@ public class JdbcIoWrapperTest {
             .setTables(ImmutableList.of("table1", "table2"))
             .build();
 
-    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    JdbcIoWrapper jdbcIoWrapper =
+        JdbcIoWrapper.of(JdbcIoWrapperConfigGroup.builder().addShardConfig(config).build());
     ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
         tableReaders = jdbcIoWrapper.getTableReaders();
 
@@ -553,7 +596,8 @@ public class JdbcIoWrapperTest {
             .setDialectAdapter(mockDialectAdapter)
             .build();
 
-    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    JdbcIoWrapper jdbcIoWrapper =
+        JdbcIoWrapper.of(JdbcIoWrapperConfigGroup.builder().addShardConfig(config).build());
     assertThat(jdbcIoWrapper.getTableReaders()).hasSize(1);
   }
 
@@ -600,7 +644,8 @@ public class JdbcIoWrapperTest {
             .setDialectAdapter(mockDialectAdapter)
             .build();
 
-    JdbcIoWrapper jdbcIoWrapper = JdbcIoWrapper.of(config);
+    JdbcIoWrapper jdbcIoWrapper =
+        JdbcIoWrapper.of(JdbcIoWrapperConfigGroup.builder().addShardConfig(config).build());
     assertThat(jdbcIoWrapper.getTableReaders()).hasSize(1);
     assertThat(jdbcIoWrapper.getTableReaders().values().iterator().next())
         .isInstanceOf(JdbcIO.ReadWithPartitions.class);
@@ -773,5 +818,764 @@ public class JdbcIoWrapperTest {
 
     assertThat(tableIdentifier.tableName()).isEqualTo("\"testTable\"");
     assertThat(tableIdentifier.dataSourceId()).isEqualTo("testDataSource");
+  }
+
+  @Test
+  public void testBuildTableReaders() {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    String colName = "ID";
+    SourceColumnType colType = new SourceColumnType("INTEGER", new Long[] {}, null);
+
+    // 1. Legacy Source 1: 0 table configs
+    JdbcIOWrapperConfig legacyConfig1 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://localhost/test")
+            .setDbAuth(
+                LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("com.mysql.cj.jdbc.Driver")
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .setSourceSchemaReference(schemaRef)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery legacyDiscovery1 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(legacyConfig1)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of())
+            .setSourceSchema(SourceSchema.builder().setSchemaReference(schemaRef).build())
+            .build();
+
+    // 2. Legacy Source 2: 1 table config
+    JdbcIOWrapperConfig legacyConfig2 =
+        legacyConfig1.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setShardID("shard2")
+            .build();
+    TableConfig tableConfig2 =
+        TableConfig.builder("t2")
+            .setDataSourceId(legacyConfig2.id())
+            .withPartitionColum(
+                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+            .build();
+    SourceTableSchema tableSchema2 =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t2")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery legacyDiscovery2 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(legacyConfig2)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of(tableConfig2))
+            .setSourceSchema(
+                SourceSchema.builder()
+                    .setSchemaReference(schemaRef)
+                    .addTableSchema(tableSchema2)
+                    .build())
+            .build();
+
+    // 3. Legacy Source 3: 2 table configs
+    JdbcIOWrapperConfig legacyConfig3 =
+        legacyConfig1.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setShardID("shard3")
+            .build();
+    TableConfig tableConfig3a =
+        TableConfig.builder("t3a")
+            .setDataSourceId(legacyConfig3.id())
+            .withPartitionColum(
+                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+            .build();
+    TableConfig tableConfig3b =
+        TableConfig.builder("t3b")
+            .setDataSourceId(legacyConfig3.id())
+            .withPartitionColum(
+                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+            .build();
+    SourceTableSchema tableSchema3a =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t3a")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    SourceTableSchema tableSchema3b =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t3b")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery legacyDiscovery3 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(legacyConfig3)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of(tableConfig3a, tableConfig3b))
+            .setSourceSchema(
+                SourceSchema.builder()
+                    .setSchemaReference(schemaRef)
+                    .addTableSchema(tableSchema3a)
+                    .addTableSchema(tableSchema3b)
+                    .build())
+            .build();
+
+    // 4. Uniform Source 4: 0 table configs
+    JdbcIOWrapperConfig uniformConfig4 =
+        legacyConfig1.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery uniformDiscovery4 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(uniformConfig4)
+            .setDataSourceConfiguration(legacyDiscovery1.dataSourceConfiguration())
+            .setTableConfigs(legacyDiscovery1.tableConfigs())
+            .setSourceSchema(legacyDiscovery1.sourceSchema())
+            .build();
+
+    // 5. Uniform Source 5: 1 table config
+    JdbcIOWrapperConfig uniformConfig5 =
+        uniformConfig4.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setShardID("shard5")
+            .build();
+    TableConfig tableConfig5 =
+        TableConfig.builder("t5").setDataSourceId(uniformConfig5.id()).build();
+    SourceTableSchema tableSchema5 =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t5")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery uniformDiscovery5 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(uniformConfig5)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of(tableConfig5))
+            .setSourceSchema(
+                SourceSchema.builder()
+                    .setSchemaReference(schemaRef)
+                    .addTableSchema(tableSchema5)
+                    .build())
+            .build();
+
+    // 6. Uniform Source 6: 2 table configs
+    JdbcIOWrapperConfig uniformConfig6 =
+        uniformConfig4.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setShardID("shard6")
+            .build();
+    TableConfig tableConfig6a =
+        TableConfig.builder("t6a").setDataSourceId(uniformConfig6.id()).build();
+    TableConfig tableConfig6b =
+        TableConfig.builder("t6b").setDataSourceId(uniformConfig6.id()).build();
+    SourceTableSchema tableSchema6a =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t6a")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    SourceTableSchema tableSchema6b =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t6b")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType(colName, colType)
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery uniformDiscovery6 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(uniformConfig6)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of(tableConfig6a, tableConfig6b))
+            .setSourceSchema(
+                SourceSchema.builder()
+                    .setSchemaReference(schemaRef)
+                    .addTableSchema(tableSchema6a)
+                    .addTableSchema(tableSchema6b)
+                    .build())
+            .build();
+
+    ImmutableList<JdbcIoWrapper.PerSourceDiscovery> discoveries =
+        ImmutableList.of(
+            legacyDiscovery1,
+            legacyDiscovery2,
+            legacyDiscovery3,
+            uniformDiscovery4,
+            uniformDiscovery5,
+            uniformDiscovery6);
+
+    // Act
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReaders = JdbcIoWrapper.buildTableReaders(discoveries);
+
+    // Assert
+    // Legacy: shard2.t2 (1), shard3.t3a (1), shard3.t3b (1) = 3 transforms
+    // Uniform: shard5 (1), shard6 (1) = 2 transforms
+    // Total = 5 entries
+    assertThat(tableReaders).hasSize(5);
+
+    // Verify Legacy readers
+    long legacyCount =
+        tableReaders.values().stream().filter(v -> v instanceof JdbcIO.ReadWithPartitions).count();
+    assertThat(legacyCount).isEqualTo(3);
+
+    // Verify Uniform readers
+    long uniformCount =
+        tableReaders.values().stream().filter(v -> v instanceof ReadWithUniformPartitions).count();
+    assertThat(uniformCount).isEqualTo(2);
+
+    // Verify table names in keys
+    java.util.List<String> allTableNames =
+        tableReaders.keySet().stream()
+            .flatMap(java.util.List::stream)
+            .map(SourceTableReference::sourceTableName)
+            .collect(Collectors.toList());
+    assertThat(allTableNames)
+        .containsExactly("\"t2\"", "\"t3a\"", "\"t3b\"", "\"t5\"", "\"t6a\"", "\"t6b\"");
+  }
+
+  @Test
+  public void testGetPerSourceDiscoveries() throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig shardConfig1 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
+            .setSourceSchemaReference(schemaRef)
+            .setShardID("shard1")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .setTableVsPartitionColumns(ImmutableMap.of("t1", ImmutableList.of("id")))
+            .build();
+    JdbcIOWrapperConfig shardConfig2 =
+        shardConfig1.toBuilder()
+            .setSourceDbURL("jdbc:derby://myhost/memory:db2;create=true")
+            .setShardID("shard2")
+            .build();
+
+    JdbcIoWrapperConfigGroup group =
+        JdbcIoWrapperConfigGroup.builder()
+            .setSourceDbDialect(SQLDialect.MYSQL)
+            .addShardConfig(shardConfig1)
+            .addShardConfig(shardConfig2)
+            .build();
+
+    // Mock discovery for both shards
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("t1"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "t1",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setColumnName("id")
+                        .setIndexType(IndexType.NUMERIC)
+                        .setOrdinalPosition(1)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(10L)
+                        .setIsUnique(true)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "t1", ImmutableMap.of("id", new SourceColumnType("INT", new Long[] {}, null))));
+
+    ImmutableList<JdbcIoWrapper.PerSourceDiscovery> discoveries =
+        JdbcIoWrapper.getPerSourceDiscoveries(group);
+
+    assertThat(discoveries).hasSize(2);
+    // Note: parallelStream order is not guaranteed.
+    // We check containment to be safe.
+    assertThat(discoveries.stream().map(d -> d.config().shardID()).collect(Collectors.toList()))
+        .containsAnyIn(ImmutableList.of("shard1", "shard2"));
+    assertThat(discoveries.stream().map(d -> d.config().shardID()).collect(Collectors.toList()))
+        .containsNoDuplicates();
+  }
+
+  @Test
+  public void testGetPerSourceDiscoveries_Fails() throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig shardConfig1 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
+            .setSourceSchemaReference(schemaRef)
+            .setShardID("shard1")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapperConfigGroup group =
+        JdbcIoWrapperConfigGroup.builder()
+            .setSourceDbDialect(SQLDialect.MYSQL)
+            .addShardConfig(shardConfig1)
+            .build();
+
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenThrow(new RuntimeException("Test Exception"));
+
+    assertThrows(RuntimeException.class, () -> JdbcIoWrapper.getPerSourceDiscoveries(group));
+  }
+
+  @Test
+  public void testGetPerSourceDiscovery_LogsWarning_WhenCloseFails() throws Exception {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig shardConfig1 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
+            .setSourceSchemaReference(schemaRef)
+            .setShardID("shard1")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapperConfigGroup group =
+        JdbcIoWrapperConfigGroup.builder()
+            .setSourceDbDialect(SQLDialect.MYSQL)
+            .addShardConfig(shardConfig1)
+            .build();
+
+    // Mock successful discovery so it reaches the finally block
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("t1"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "t1",
+                ImmutableList.of(
+                    SourceColumnIndexInfo.builder()
+                        .setIndexType(IndexType.NUMERIC)
+                        .setIndexName("PRIMARY")
+                        .setIsPrimary(true)
+                        .setCardinality(42L)
+                        .setColumnName("ID")
+                        .setIsUnique(true)
+                        .setOrdinalPosition(1)
+                        .build())));
+    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(
+            ImmutableMap.of(
+                "t1", ImmutableMap.of("ID", new SourceColumnType("INTEGER", new Long[] {}, null))));
+
+    try (MockedConstruction<BasicDataSource> mocked =
+        mockConstruction(
+            BasicDataSource.class,
+            (mock, context) -> {
+              doThrow(new SQLException("Close Failure")).when(mock).close();
+            })) {
+      // Act
+      ImmutableList<JdbcIoWrapper.PerSourceDiscovery> result =
+          JdbcIoWrapper.getPerSourceDiscoveries(group);
+
+      // Assert
+      assertThat(result).hasSize(1);
+      // The SQLException is caught and logged, so it shouldn't propagate.
+    }
+  }
+
+  @Test
+  public void testGetPerSourceDiscovery_SuitableIndexNotFoundException()
+      throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig shardConfig =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:db1;create=true")
+            .setSourceSchemaReference(schemaRef)
+            .setShardID("shard1")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapperConfigGroup group =
+        JdbcIoWrapperConfigGroup.builder()
+            .setSourceDbDialect(SQLDialect.MYSQL)
+            .addShardConfig(shardConfig)
+            .build();
+
+    // Force SuitableIndexNotFoundException during autoInferTableConfigs
+    when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
+        .thenReturn(ImmutableList.of("t1"));
+    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+        .thenReturn(ImmutableMap.of()); // Empty indexes triggers exception
+
+    assertThrows(
+        SuitableIndexNotFoundException.class, () -> JdbcIoWrapper.getPerSourceDiscoveries(group));
+  }
+
+  /**
+   * Tests that {@link JdbcIoWrapper#getPerSourceDiscoveries} handles InterruptedException during
+   * parallel discovery.
+   */
+  @Test
+  public void testGetPerSourceDiscovery_InterruptedException() throws Exception {
+    JdbcIoWrapperConfigGroup mockGroup = Mockito.mock(JdbcIoWrapperConfigGroup.class);
+    JdbcIOWrapperConfig mockConfig = Mockito.mock(JdbcIOWrapperConfig.class);
+    when(mockGroup.shardConfigs()).thenReturn(ImmutableList.of(mockConfig));
+
+    try (org.mockito.MockedStatic<java.util.concurrent.Executors> mockedExecutors =
+        Mockito.mockStatic(java.util.concurrent.Executors.class)) {
+      java.util.concurrent.ExecutorService mockExecutor =
+          Mockito.mock(java.util.concurrent.ExecutorService.class);
+      mockedExecutors
+          .when(() -> java.util.concurrent.Executors.newFixedThreadPool(Mockito.anyInt()))
+          .thenReturn(mockExecutor);
+
+      java.util.concurrent.Future<JdbcIoWrapper.PerSourceDiscovery> mockFuture =
+          Mockito.mock(java.util.concurrent.Future.class);
+      when(mockFuture.get()).thenThrow(new InterruptedException("Interrupted"));
+      when(mockExecutor.submit(any(java.util.concurrent.Callable.class))).thenReturn(mockFuture);
+
+      assertThrows(
+          SchemaDiscoveryException.class, () -> JdbcIoWrapper.getPerSourceDiscoveries(mockGroup));
+    }
+  }
+
+  @Test
+  public void testAccumulateSpecs() {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://localhost/test")
+            .setDbAuth(
+                LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("com.mysql.cj.jdbc.Driver")
+            .setSourceSchemaReference(schemaRef)
+            .setMaxPartitions(10)
+            .setSplitStageCountHint(5L)
+            .setMaxFetchSize(42)
+            .build();
+
+    SourceColumnType colType = new SourceColumnType("INTEGER", new Long[] {}, null);
+    SourceTableSchema tableSchema1 =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t1")
+            .setTableSchemaUUID("uuid1")
+            .setEstimatedRowSize(100L)
+            .addSourceColumnNameToSourceColumnType("ID", colType)
+            .build();
+    TableConfig tableConfig1 =
+        TableConfig.builder("t1")
+            .setDataSourceId(config.id())
+            .setApproxRowCount(1000L)
+            .setMaxPartitions(10)
+            .withPartitionColum(
+                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+            .build();
+
+    SourceTableSchema tableSchema2 =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName("t2")
+            .setTableSchemaUUID("uuid2")
+            .setEstimatedRowSize(200L)
+            .addSourceColumnNameToSourceColumnType("ID", colType)
+            .build();
+    TableConfig tableConfig2 =
+        TableConfig.builder("t2").setDataSourceId(config.id()).setApproxRowCount(2000L).build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of(tableConfig1, tableConfig2))
+            .setSourceSchema(
+                SourceSchema.builder()
+                    .setSchemaReference(schemaRef)
+                    .addTableSchema(tableSchema1)
+                    .addTableSchema(tableSchema2)
+                    .build())
+            .build();
+
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+
+    JdbcIoWrapper.accumulateSpecs(
+        discovery, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+
+    ImmutableList<SourceTableReference> tableRefs = tableReferencesBuilder.build();
+    ImmutableList<TableSplitSpecification> splitSpecs = splitSpecsBuilder.build();
+    ImmutableMap<TableIdentifier, TableReadSpecification<SourceRow>> readSpecs =
+        readSpecsBuilder.build();
+
+    assertThat(tableRefs).hasSize(2);
+    assertThat(tableRefs.get(0).sourceTableName()).isEqualTo("\"t1\"");
+    assertThat(tableRefs.get(0).sourceTableSchemaUUID()).isEqualTo("uuid1");
+    assertThat(tableRefs.get(1).sourceTableName()).isEqualTo("\"t2\"");
+    assertThat(tableRefs.get(1).sourceTableSchemaUUID()).isEqualTo("uuid2");
+
+    assertThat(splitSpecs).hasSize(2);
+    assertThat(splitSpecs.get(0).tableIdentifier().tableName()).isEqualTo("\"t1\"");
+    assertThat(splitSpecs.get(0).approxRowCount()).isEqualTo(1000L);
+    assertThat(splitSpecs.get(0).maxPartitionsHint()).isEqualTo(10L);
+    assertThat(splitSpecs.get(0).splitStagesCount()).isEqualTo(5L);
+
+    assertThat(readSpecs).hasSize(2);
+    TableIdentifier id1 =
+        TableIdentifier.builder().setTableName("\"t1\"").setDataSourceId(config.id()).build();
+    assertThat(readSpecs.get(id1).fetchSize()).isEqualTo(42);
+  }
+
+  @Test
+  public void testAccumulateSpecs_Empty() {
+    SourceSchemaReference schemaRef =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://localhost/test")
+            .setDbAuth(
+                LocalCredentialsProvider.builder().setUserName("user").setPassword("pass").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("com.mysql.cj.jdbc.Driver")
+            .setSourceSchemaReference(schemaRef)
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("driver", "url"))
+            .setTableConfigs(ImmutableList.of())
+            .setSourceSchema(SourceSchema.builder().setSchemaReference(schemaRef).build())
+            .build();
+
+    ImmutableList.Builder<SourceTableReference> tableReferencesBuilder = ImmutableList.builder();
+    ImmutableList.Builder<TableSplitSpecification> splitSpecsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<TableIdentifier, TableReadSpecification<SourceRow>> readSpecsBuilder =
+        ImmutableMap.builder();
+
+    JdbcIoWrapper.accumulateSpecs(
+        discovery, tableReferencesBuilder, splitSpecsBuilder, readSpecsBuilder);
+
+    assertThat(tableReferencesBuilder.build()).isEmpty();
+    assertThat(splitSpecsBuilder.build()).isEmpty();
+    assertThat(readSpecsBuilder.build()).isEmpty();
+  }
+
+  /**
+   * Tests that {@link JdbcIoWrapper#accumulateSpecs} does not generate split specifications when
+   * the uniform partitions feature is disabled.
+   */
+  @Test
+  public void testGetDataSourceProvider() {
+    JdbcIOWrapperConfig config1 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host1/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
+            .build();
+    JdbcIOWrapperConfig config2 =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host2/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db2").build())
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery1 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config1)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(ImmutableList.of())
+            .setSourceSchema(
+                SourceSchema.builder().setSchemaReference(config1.sourceSchemaReference()).build())
+            .build();
+    JdbcIoWrapper.PerSourceDiscovery discovery2 =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config2)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u2"))
+            .setTableConfigs(ImmutableList.of())
+            .setSourceSchema(
+                SourceSchema.builder().setSchemaReference(config2.sourceSchemaReference()).build())
+            .build();
+
+    DataSourceProvider provider =
+        JdbcIoWrapper.getDataSourceProvider(ImmutableList.of(discovery1, discovery2));
+
+    assertThat(provider.getDataSourceIds()).containsExactly(config1.id(), config2.id());
+  }
+
+  @Test
+  public void testGetDataSourceProvider_Empty() {
+    DataSourceProvider provider = JdbcIoWrapper.getDataSourceProvider(ImmutableList.of());
+    assertThat(provider.getDataSourceIds()).isEmpty();
+  }
+
+  @Test
+  public void testGetMultiTableReadWithUniformPartitionIO_Empty() {
+    assertThat(JdbcIoWrapper.getMultiTableReadWithUniformPartitionIO(ImmutableList.of())).isEmpty();
+  }
+
+  @Test
+  public void testGetMultiTableReadWithUniformPartitionIO_FeatureDisabled() {
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host1/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(
+                ImmutableList.of(TableConfig.builder("table1").setDataSourceId("ds1").build()))
+            .setSourceSchema(
+                SourceSchema.builder().setSchemaReference(config.sourceSchemaReference()).build())
+            .build();
+
+    assertThat(JdbcIoWrapper.getMultiTableReadWithUniformPartitionIO(ImmutableList.of(discovery)))
+        .isEmpty();
+  }
+
+  @Test
+  public void testGetMultiTableReadWithUniformPartitionIO_EmptyTableConfigs() {
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host1/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(ImmutableList.of())
+            .setSourceSchema(
+                SourceSchema.builder().setSchemaReference(config.sourceSchemaReference()).build())
+            .build();
+
+    assertThat(JdbcIoWrapper.getMultiTableReadWithUniformPartitionIO(ImmutableList.of(discovery)))
+        .isEmpty();
+  }
+
+  @Test
+  public void testGetMultiTableReadWithUniformPartitionIO_Success() {
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host1/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    String tableName = "table1";
+    TableConfig tableConfig = TableConfig.builder(tableName).setDataSourceId("ds1").build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder()
+            .setSchemaReference(config.sourceSchemaReference())
+            .addTableSchema(
+                SourceTableSchema.builder(SQLDialect.MYSQL)
+                    .setTableName(tableName)
+                    .setTableSchemaUUID("uuid")
+                    .setEstimatedRowSize(100L)
+                    .addSourceColumnNameToSourceColumnType(
+                        "col1", new SourceColumnType("INTEGER", new Long[] {}, null))
+                    .build())
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discovery =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(config)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(ImmutableList.of(tableConfig))
+            .setSourceSchema(sourceSchema)
+            .build();
+
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        result = JdbcIoWrapper.getMultiTableReadWithUniformPartitionIO(ImmutableList.of(discovery));
+
+    assertThat(result).hasSize(1);
+    assertThat(result.values().iterator().next()).isInstanceOf(ReadWithUniformPartitions.class);
+  }
+
+  @Test
+  public void testGetMultiTableReadWithUniformPartitionIO_Mix() {
+    JdbcIOWrapperConfig configUniform =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:mysql://host1/test")
+            .setDbAuth(LocalCredentialsProvider.builder().setUserName("u").setPassword("p").build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("c")
+            .setSourceSchemaReference(JdbcSchemaReference.builder().setDbName("db1").build())
+            .setReadWithUniformPartitionsFeatureEnabled(true)
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+
+    JdbcIOWrapperConfig configLegacy =
+        configUniform.toBuilder()
+            .setId(JdbcIOWrapperConfig.generateId())
+            .setSourceDbURL("jdbc:mysql://host2/test")
+            .setReadWithUniformPartitionsFeatureEnabled(false)
+            .build();
+
+    String tableName = "table1";
+    TableConfig tableConfig = TableConfig.builder(tableName).setDataSourceId("ds1").build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder()
+            .setSchemaReference(configUniform.sourceSchemaReference())
+            .addTableSchema(
+                SourceTableSchema.builder(SQLDialect.MYSQL)
+                    .setTableName(tableName)
+                    .setTableSchemaUUID("uuid")
+                    .setEstimatedRowSize(100L)
+                    .addSourceColumnNameToSourceColumnType(
+                        "col1", new SourceColumnType("INTEGER", new Long[] {}, null))
+                    .build())
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discoveryUniform =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(configUniform)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(ImmutableList.of(tableConfig))
+            .setSourceSchema(sourceSchema)
+            .build();
+
+    JdbcIoWrapper.PerSourceDiscovery discoveryLegacy =
+        JdbcIoWrapper.PerSourceDiscovery.builder()
+            .setConfig(configLegacy)
+            .setDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create("c", "u1"))
+            .setTableConfigs(ImmutableList.of(tableConfig))
+            .setSourceSchema(sourceSchema)
+            .build();
+
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        result =
+            JdbcIoWrapper.getMultiTableReadWithUniformPartitionIO(
+                ImmutableList.of(discoveryUniform, discoveryLegacy));
+
+    assertThat(result).hasSize(1);
+    ImmutableList<SourceTableReference> tableRefs = result.keySet().iterator().next();
+    assertThat(tableRefs).hasSize(1);
+    assertThat(tableRefs.get(0).sourceTableName()).isEqualTo("\"table1\"");
   }
 }

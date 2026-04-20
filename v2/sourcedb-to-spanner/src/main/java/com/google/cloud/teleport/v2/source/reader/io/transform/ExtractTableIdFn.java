@@ -23,13 +23,9 @@ import org.apache.beam.sdk.transforms.DoFn;
  * DoFn to extract the table name from a {@link SourceRow} and delimit it to match the format used
  * in {@link SourceTableReference}.
  */
-class ExtractTableNameFn extends DoFn<SourceRow, String> {
+class ExtractTableIdFn extends DoFn<SourceRow, String> {
   @ProcessElement
   public void processElement(@Element SourceRow row, OutputReceiver<String> out) {
-    out.output(delimitIdentifier(row.tableName()));
-  }
-
-  private String delimitIdentifier(String identifier) {
-    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
+    out.output(row.tableSchemaUUID());
   }
 }

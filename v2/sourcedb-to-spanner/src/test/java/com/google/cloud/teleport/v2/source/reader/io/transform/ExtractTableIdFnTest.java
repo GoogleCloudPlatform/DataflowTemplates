@@ -31,9 +31,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test class for {@link ExtractTableNameFn}. */
+/** Test class for {@link ExtractTableIdFn}. */
 @RunWith(JUnit4.class)
-public class ExtractTableNameFnTest implements Serializable {
+public class ExtractTableIdFnTest implements Serializable {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
@@ -48,9 +48,9 @@ public class ExtractTableNameFnTest implements Serializable {
             .build();
 
     PCollection<String> output =
-        pipeline.apply(Create.of(row)).apply(ParDo.of(new ExtractTableNameFn()));
+        pipeline.apply(Create.of(row)).apply(ParDo.of(new ExtractTableIdFn()));
 
-    PAssert.that(output).containsInAnyOrder("\"table1\"");
+    PAssert.that(output).containsInAnyOrder(tableSchema.tableSchemaUUID());
     pipeline.run();
   }
 
@@ -66,10 +66,10 @@ public class ExtractTableNameFnTest implements Serializable {
             .build();
 
     PCollection<String> output =
-        pipeline.apply(Create.of(row)).apply(ParDo.of(new ExtractTableNameFn()));
+        pipeline.apply(Create.of(row)).apply(ParDo.of(new ExtractTableIdFn()));
 
-    // Delimit logic: table"with"quotes -> "table""with""quotes"
-    PAssert.that(output).containsInAnyOrder("\"table\"\"with\"\"quotes\"");
+    // tableSchemaUUID is unique and stable
+    PAssert.that(output).containsInAnyOrder(tableSchema.tableSchemaUUID());
     pipeline.run();
   }
 }
