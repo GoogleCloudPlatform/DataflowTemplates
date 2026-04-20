@@ -1,3 +1,4 @@
+betterproto==2.0.0b6
 apache-beam[gcp]==2.73.0rc1
 torch
 transformers
