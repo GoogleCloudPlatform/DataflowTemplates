@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.models;
+package com.google.cloud.teleport.v2.spanner.migrations.connection;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.List;

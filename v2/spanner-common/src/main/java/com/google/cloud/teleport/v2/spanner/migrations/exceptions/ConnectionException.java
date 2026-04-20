@@ -13,15 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dbutils.connection;
+package com.google.cloud.teleport.v2.spanner.migrations.exceptions;
 
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
-import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+/** Exception when connecting to the source database. */
+public class ConnectionException extends Exception {
+  public ConnectionException(Exception e) {
+    super(e);
+  }
 
-public interface IConnectionHelper<T> {
-  void init(ConnectionHelperRequest connectionHelperRequest);
+  public ConnectionException(String message) {
+    super(message);
+  }
 
-  T getConnection(String connectionRequestKey) throws ConnectionException;
-
-  boolean isConnectionPoolInitialized();
+  public ConnectionException(String message, Exception e) {
+    super(message, e);
+  }
 }

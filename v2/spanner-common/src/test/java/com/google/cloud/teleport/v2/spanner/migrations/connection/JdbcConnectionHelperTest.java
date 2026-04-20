@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dbutils.connection;
+package com.google.cloud.teleport.v2.spanner.migrations.connection;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -26,8 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
-import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
@@ -50,8 +49,6 @@ public class JdbcConnectionHelperTest {
   @Mock private HikariDataSource mockDataSource;
 
   @Mock private Connection mockConnection;
-
-  @Mock private HikariConfig mockHikariConfig;
 
   @Before
   public void setUp() {

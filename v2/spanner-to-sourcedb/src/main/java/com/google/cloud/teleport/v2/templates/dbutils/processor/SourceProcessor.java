@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
