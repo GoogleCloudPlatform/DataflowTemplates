@@ -392,7 +392,6 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "varbinary_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put(
         "varchar", createRows("varchar", "abc", repeatString("a", 33) + "...", "NULL"));
-    expectedData.put("varchar_utf8mb4", createRows("varchar_utf8mb4", "😊"));
     expectedData.put("year", createRows("year", "2022", "1901", "2155", "NULL"));
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
@@ -421,6 +420,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("tiny_blob_pk", createRows("tiny_blob_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("char_pk", createRows("char_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("varchar_pk", createRows("varchar_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("varchar_utf8mb4_pk", createRows("varchar_utf8mb4_pk", "😊"));
     expectedData.put("tiny_text_pk", createRows("tiny_text_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put(
         "date_time_pk",
