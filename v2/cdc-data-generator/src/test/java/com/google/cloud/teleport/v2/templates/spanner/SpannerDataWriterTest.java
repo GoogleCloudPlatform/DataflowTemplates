@@ -485,6 +485,85 @@ public class SpannerDataWriterTest {
   }
 
   @Test
+  public void testRowToMutation_nullValuesForAllTypes() {
+    for (LogicalType type : LogicalType.values()) {
+      DataGeneratorColumn c = col("col", type);
+      Schema.FieldType beamType;
+      switch (type) {
+        case INT64:
+          beamType = Schema.FieldType.INT64;
+          break;
+        case FLOAT64:
+          beamType = Schema.FieldType.DOUBLE;
+          break;
+        case BOOLEAN:
+          beamType = Schema.FieldType.BOOLEAN;
+          break;
+        case BYTES:
+          beamType = Schema.FieldType.BYTES;
+          break;
+        case DATE:
+        case TIMESTAMP:
+          beamType = Schema.FieldType.DATETIME;
+          break;
+        case NUMERIC:
+          beamType = Schema.FieldType.DECIMAL;
+          break;
+        case STRING:
+        case JSON:
+        default:
+          beamType = Schema.FieldType.STRING;
+      }
+
+      Row row = rowFor("col", beamType, null);
+
+      Mutation m =
+          writer().rowToMutation(singleColTable(c), row, SpannerDataWriter.MutationType.INSERT);
+
+      assertThat(m.asMap().get("col").isNull()).isTrue();
+
+      switch (type) {
+        case INT64:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.int64());
+          break;
+        case FLOAT64:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.float64());
+          break;
+        case BOOLEAN:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.bool());
+          break;
+        case BYTES:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.bytes());
+          break;
+        case DATE:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.date());
+          break;
+        case TIMESTAMP:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.timestamp());
+          break;
+        case NUMERIC:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.numeric());
+          break;
+        case STRING:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.string());
+          break;
+        case JSON:
+          assertThat(m.asMap().get("col").getType())
+              .isEqualTo(com.google.cloud.spanner.Type.json());
+          break;
+      }
+    }
+  }
+
+  @Test
   public void testLoadSpannerConfig_readsJsonFile() throws Exception {
     File f = tempFolder.newFile("spanner.json");
     String json = "{\"projectId\":\"p\",\"instanceId\":\"i\",\"databaseId\":\"d\"}";
