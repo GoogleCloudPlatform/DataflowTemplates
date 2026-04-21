@@ -34,7 +34,7 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
@@ -162,8 +162,8 @@ public class DataStreamMongoDBToFirestore {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends StreamingOptions, DataflowPipelineWorkerPoolOptions,
-      JavascriptTextTransformer.JavascriptTextTransformerOptions {
+  public interface Options
+      extends StreamingOptions, DataflowPipelineWorkerPoolOptions, JavascriptTextTransformerOptions {
     @TemplateParameter.Text(
         order = 10,
         optional = true,
