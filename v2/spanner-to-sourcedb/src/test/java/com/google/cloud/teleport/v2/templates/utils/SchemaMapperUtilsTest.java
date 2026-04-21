@@ -24,6 +24,8 @@ import static org.mockito.Mockito.mockConstruction;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -58,7 +60,8 @@ public class SchemaMapperUtilsTest {
   public void testGetSchemaMapper_sessionBasedMapper() {
     try (MockedConstruction<SessionBasedMapper> mocked =
         mockConstruction(SessionBasedMapper.class)) {
-      ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
+      Schema schema = mock(Schema.class);
+      ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper(schema, null, null, null, ddl);
       assertNotNull(mapper);
       assertTrue(mapper instanceof SessionBasedMapper);
       assertTrue(mocked.constructed().size() == 1);
@@ -69,7 +72,8 @@ public class SchemaMapperUtilsTest {
   public void testGetSchemaMapper_fileOverridesBasedMapper() {
     try (MockedConstruction<SchemaFileOverridesBasedMapper> mocked =
         mockConstruction(SchemaFileOverridesBasedMapper.class)) {
-      ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper(null, "some/path", null, null, ddl);
+      SchemaFileOverride override = mock(SchemaFileOverride.class);
+      ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper(null, override, null, null, ddl);
       assertNotNull(mapper);
       assertTrue(mapper instanceof SchemaFileOverridesBasedMapper);
       assertTrue(mocked.constructed().size() == 1);
@@ -90,47 +94,26 @@ public class SchemaMapperUtilsTest {
 
   @Test
   public void testGetSchemaMapper_multipleOverridesThrowsException() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> SchemaMapperUtils.getSchemaMapper("p1", "p2", null, null, ddl));
+    Schema schema = mock(Schema.class);
+    SchemaFileOverride override = mock(SchemaFileOverride.class);
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> SchemaMapperUtils.getSchemaMapper("p1", null, "t1:t2", null, ddl));
+        () -> SchemaMapperUtils.getSchemaMapper(schema, override, null, null, ddl));
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> SchemaMapperUtils.getSchemaMapper("p1", null, null, "c1:c2", ddl));
+        () -> SchemaMapperUtils.getSchemaMapper(schema, null, "t1:t2", null, ddl));
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> SchemaMapperUtils.getSchemaMapper(null, "p2", "t1:t2", null, ddl));
+        () -> SchemaMapperUtils.getSchemaMapper(schema, null, null, "c1:c2", ddl));
+
     assertThrows(
         IllegalArgumentException.class,
-        () -> SchemaMapperUtils.getSchemaMapper(null, "p2", null, "c1:c2", ddl));
-  }
-
-  @Test
-  public void testGetSchemaMapper_caching() {
-    try (MockedConstruction<SessionBasedMapper> mocked =
-        mockConstruction(SessionBasedMapper.class)) {
-      ISchemaMapper mapper1 = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
-      ISchemaMapper mapper2 = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
-
-      assertTrue(mapper1 == mapper2);
-      assertTrue(mocked.constructed().size() == 1);
-    }
-  }
-
-  @Test
-  public void testGetSchemaMapper_noCachingForDifferentArgs() {
-    try (MockedConstruction<SessionBasedMapper> mocked =
-        mockConstruction(SessionBasedMapper.class)) {
-      ISchemaMapper mapper1 = SchemaMapperUtils.getSchemaMapper("path1", null, null, null, ddl);
-      ISchemaMapper mapper2 = SchemaMapperUtils.getSchemaMapper("path2", null, null, null, ddl);
-
-      assertTrue(mapper1 != mapper2);
-      assertTrue(mocked.constructed().size() == 2);
-    }
+        () -> SchemaMapperUtils.getSchemaMapper(null, override, "t1:t2", null, ddl));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SchemaMapperUtils.getSchemaMapper(null, override, null, "c1:c2", ddl));
   }
 }

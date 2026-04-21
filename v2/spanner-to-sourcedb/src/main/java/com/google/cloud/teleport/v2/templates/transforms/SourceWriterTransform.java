@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
@@ -56,10 +58,10 @@ public class SourceWriterTransform
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private final CustomTransformation customTransformation;
-  private final String sessionFilePath;
-  private final String schemaOverridesFilePath;
   private final String tableOverrides;
   private final String columnOverrides;
+  private final Schema schema;
+  private final SchemaFileOverride schemaFileOverride;
 
   public SourceWriterTransform(
       List<Shard> shards,
@@ -73,8 +75,8 @@ public class SourceWriterTransform
       int maxThreadPerDataflowWorker,
       String source,
       CustomTransformation customTransformation,
-      String sessionFilePath,
-      String schemaOverridesFilePath,
+      Schema schema,
+      SchemaFileOverride schemaFileOverride,
       String tableOverrides,
       String columnOverrides) {
 
@@ -89,8 +91,8 @@ public class SourceWriterTransform
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
     this.source = source;
     this.customTransformation = customTransformation;
-    this.sessionFilePath = sessionFilePath;
-    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.schema = schema;
+    this.schemaFileOverride = schemaFileOverride;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
   }
@@ -114,8 +116,8 @@ public class SourceWriterTransform
                         this.customTransformation,
                         this.ddlView,
                         this.shadowTableDdlView,
-                        this.sessionFilePath,
-                        this.schemaOverridesFilePath,
+                        this.schema,
+                        this.schemaFileOverride,
                         this.tableOverrides,
                         this.columnOverrides))
                 .withSideInputs(ddlView, shadowTableDdlView)
