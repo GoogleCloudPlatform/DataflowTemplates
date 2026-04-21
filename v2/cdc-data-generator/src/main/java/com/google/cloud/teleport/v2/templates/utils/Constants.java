@@ -29,4 +29,9 @@ public final class Constants {
 
   // Character used to quote identifiers in MySQL (back-tick).
   public static final String MYSQL_IDENTIFIER_QUOTE = "`";
+
+  // Keys for Spanner sink configuration JSON.
+  public static final String SPANNER_CONFIG_PROJECT_ID_KEY = "projectId";
+  public static final String SPANNER_CONFIG_INSTANCE_ID_KEY = "instanceId";
+  public static final String SPANNER_CONFIG_DATABASE_ID_KEY = "databaseId";
 }
