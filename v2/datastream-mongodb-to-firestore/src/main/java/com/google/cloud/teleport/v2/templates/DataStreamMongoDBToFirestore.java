@@ -34,6 +34,8 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -125,6 +127,8 @@ import org.slf4j.LoggerFactory;
 public class DataStreamMongoDBToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamMongoDBToFirestore.class);
+  private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
+  private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
   public static final Set<String> MAPPER_IGNORE_FIELDS =
@@ -158,7 +162,8 @@ public class DataStreamMongoDBToFirestore {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends StreamingOptions, DataflowPipelineWorkerPoolOptions {
+  public interface Options extends StreamingOptions, DataflowPipelineWorkerPoolOptions,
+      JavascriptTextTransformer.JavascriptTextTransformerOptions {
     @TemplateParameter.Text(
         order = 10,
         optional = true,
@@ -505,6 +510,25 @@ public class DataStreamMongoDBToFirestore {
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
+    // Optional Stage 1.5: Apply Javascript UDF for JSON transformation
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      LOG.info("Applying Javascript UDF for JSON transformation");
+      PCollectionTuple udfResult = jsonRecords.apply(
+          "Run UDF",
+          FailsafeJavascriptUdf.<String>newBuilder()
+              .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+              .setFunctionName(options.getJavascriptTextTransformFunctionName())
+              .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
+              .setSuccessTag(UDF_SUCCESS_TAG)
+              .setFailureTag(UDF_FAILURE_TAG)
+              .build());
+
+      jsonRecords = udfResult.get(UDF_SUCCESS_TAG);
+
+      // Handle failed UDF processing
+      writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
+    }
+
     // Stage 2: Create MongoDbChangeEventContext objects
     LOG.info("Creating MongoDbChangeEventContext objects");
     PCollectionTuple changeEventContexts =
@@ -669,6 +693,27 @@ public class DataStreamMongoDBToFirestore {
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    /*
+     * Optional Stage 1.5: Apply Javascript UDF to transform JSON strings
+     */
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      PCollectionTuple udfResult = jsonRecords.apply(
+          "Run UDF",
+          FailsafeJavascriptUdf.<String>newBuilder()
+              .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+              .setFunctionName(options.getJavascriptTextTransformFunctionName())
+              .setReloadIntervalMinutes(options.getJavascriptTextTransformReloadIntervalMinutes())
+              .setSuccessTag(UDF_SUCCESS_TAG)
+              .setFailureTag(UDF_FAILURE_TAG)
+              .build());
+
+      jsonRecords = udfResult.get(UDF_SUCCESS_TAG);
+
+      // Handle failed UDF processing
+      writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
+    }
+
     LOG.info("Stage 1: Completed ingestion of data from GCS");
 
     /*
