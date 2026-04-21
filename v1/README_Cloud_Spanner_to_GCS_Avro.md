@@ -48,6 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **shouldExportRelatedTables**: Whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter. Defaults to: false.
 * **spannerPriority**: The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.
 * **dataBoostEnabled**: Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When set to `true`, you also need the `spanner.databases.useDataBoost` IAM permission. For more information, see the Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
+* **checksumAlgorithm**: The checksum algorithm to use for the exported files. Possible values are MD5 and CRC32C. The default value is MD5.
 
 
 
@@ -152,6 +153,7 @@ export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
 export DATA_BOOST_ENABLED=false
+export CHECKSUM_ALGORITHM=<checksumAlgorithm>
 
 gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --project "$PROJECT" \
@@ -168,7 +170,8 @@ gcloud dataflow jobs run "cloud-spanner-to-gcs-avro-job" \
   --parameters "tableNames=$TABLE_NAMES" \
   --parameters "shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
-  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED"
+  --parameters "dataBoostEnabled=$DATA_BOOST_ENABLED" \
+  --parameters "checksumAlgorithm=$CHECKSUM_ALGORITHM"
 ```
 
 For more information about the command, please check:
@@ -201,6 +204,7 @@ export TABLE_NAMES=""
 export SHOULD_EXPORT_RELATED_TABLES=false
 export SPANNER_PRIORITY=<spannerPriority>
 export DATA_BOOST_ENABLED=false
+export CHECKSUM_ALGORITHM=<checksumAlgorithm>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -209,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-spanner-to-gcs-avro-job" \
 -DtemplateName="Cloud_Spanner_to_GCS_Avro" \
--Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY,dataBoostEnabled=$DATA_BOOST_ENABLED" \
+-Dparameters="instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,outputDir=$OUTPUT_DIR,avroTempDirectory=$AVRO_TEMP_DIRECTORY,spannerHost=$SPANNER_HOST,snapshotTime=$SNAPSHOT_TIME,spannerProjectId=$SPANNER_PROJECT_ID,shouldExportTimestampAsLogicalType=$SHOULD_EXPORT_TIMESTAMP_AS_LOGICAL_TYPE,tableNames=$TABLE_NAMES,shouldExportRelatedTables=$SHOULD_EXPORT_RELATED_TABLES,spannerPriority=$SPANNER_PRIORITY,dataBoostEnabled=$DATA_BOOST_ENABLED,checksumAlgorithm=$CHECKSUM_ALGORITHM" \
 -f v1
 ```
 
@@ -267,6 +271,7 @@ resource "google_dataflow_job" "cloud_spanner_to_gcs_avro" {
     # shouldExportRelatedTables = "false"
     # spannerPriority = "<spannerPriority>"
     # dataBoostEnabled = "false"
+    # checksumAlgorithm = "<checksumAlgorithm>"
   }
 }
 ```
