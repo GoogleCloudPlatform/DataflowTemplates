@@ -102,25 +102,6 @@ public final class JdbcIoWrapper implements IoWrapper {
    * <p><b>Retries:</b> Individual shard discovery operations are automatically retried with
    * exponential backoff as configured in the {@link JdbcIOWrapperConfig}.
    *
-   * @param config configuration for reading from a JDBC source.
-   * @return JdbcIOWrapper
-   * @throws SuitableIndexNotFoundException if a suitable index is not found to act as the partition
-   *     column. Please refer to {@link JdbcIoWrapper#autoInferTableConfigs(JdbcIOWrapperConfig,
-   *     SchemaDiscovery, DataSource)} for details on situation where this is thrown.
-   */
-  /* Todo remove this function in subsequent PR for multishard graphsize support */
-  public static JdbcIoWrapper of(JdbcIOWrapperConfig config) throws SuitableIndexNotFoundException {
-    PerSourceDiscovery perSourceDiscovery = getPerSourceDiscovery(config);
-    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
-        tableReaders = buildTableReaders(ImmutableList.of(perSourceDiscovery));
-    return new JdbcIoWrapper(tableReaders, ImmutableList.of(perSourceDiscovery.sourceSchema()));
-  }
-
-  /**
-   * Construct a JdbcIOWrapper from the configuration.
-   *
-   * <p>This method performs schema discovery for a single source source.
-   *
    * @param configGroup configurations for reading from a JDBC source.
    * @return JdbcIOWrapper
    * @throws SuitableIndexNotFoundException if a suitable index is not found to act as the partition
