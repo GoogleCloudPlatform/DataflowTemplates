@@ -235,7 +235,9 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo1, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
     // Assert Conditions to check if uploads are successful (not row contents)
     assertThatResult(result).meetsConditions();
 
@@ -323,7 +325,9 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo1, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -378,7 +382,9 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo1, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo1, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();

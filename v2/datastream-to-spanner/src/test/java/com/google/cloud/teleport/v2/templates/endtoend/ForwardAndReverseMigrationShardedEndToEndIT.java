@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase.JOB_START_PROCESSING_WAIT_MINUTES;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -227,7 +228,9 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(fwdJobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 

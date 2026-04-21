@@ -140,7 +140,9 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert conditions
     assertThatResult(result).meetsConditions();
