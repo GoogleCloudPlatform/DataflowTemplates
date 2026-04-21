@@ -120,6 +120,7 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
     LOG.info("Creating AlloyDb (Postgres) table...");
     TopicName publishTopic = topic;
     String tableName = "test_table";
+    String fullTableName = postgresResourceManager.getFullTableName(tableName);
     LinkedHashMap<String, String> columns = new LinkedHashMap<>();
     columns.put("id", "INTEGER");
     columns.put("name_upper", "VARCHAR(64)");
@@ -146,11 +147,11 @@ public final class PubSubToAlloyDbYamlIT extends TemplateTestBase {
             .addParameter("url", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("table", tableName)
+            .addParameter("table", fullTableName)
             .addParameter(
                 "query",
                 "INSERT INTO "
-                    + tableName
+                    + fullTableName
                     + " (id, name_upper) VALUES (?, ?) ON CONFLICT (id) DO NOTHING")
             .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString());
 
