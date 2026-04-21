@@ -29,4 +29,15 @@ public final class Constants {
 
   // Character used to quote identifiers in MySQL (back-tick).
   public static final String MYSQL_IDENTIFIER_QUOTE = "`";
+
+  // Column name used to carry the logical shard id through the pipeline. Prefixed with `_dg_`
+  // so it cannot collide with a user-defined PK column.
+  public static final String SHARD_ID_COLUMN_NAME = "_dg_shard_id";
+
+  // Canonical sink-type strings. Kept as string constants (rather than relying on the enum
+  // name) so that the sink-type comparison in PK generation is independent of the
+  // CdcDataGeneratorOptions.SinkType enum — the generator accepts sinkType either from the
+  // enum (compile-time) or from user config (string), and both sites need to agree.
+  public static final String SINK_TYPE_MYSQL = "MYSQL";
+  public static final String SINK_TYPE_SPANNER = "SPANNER";
 }
