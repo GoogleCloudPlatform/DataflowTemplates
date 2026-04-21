@@ -51,14 +51,20 @@ import org.slf4j.LoggerFactory;
  * JdbcConnectionHelper}, and writes are routed to a specific shard using the {@code shardId}
  * argument of {@link #write(List, DataGeneratorTable, String, String)}.
  *
- * <p>Supported operations are {@link Constants#MUTATION_INSERT}, {@link Constants#MUTATION_UPDATE}
- * and {@link Constants#MUTATION_DELETE}. INSERT and UPDATE are both issued as {@code INSERT ... ON
- * DUPLICATE KEY UPDATE} upserts so that transient retries of a batch are idempotent. DELETE uses
- * {@link DataGeneratorTable#primaryKeys} to construct the {@code WHERE} clause.
+ * <p>Supported operations are {@code MutationType.INSERT}, {@code MutationType.UPDATE} and {@code
+ * MutationType.DELETE}. INSERT and UPDATE are both issued as {@code INSERT ... ON DUPLICATE KEY
+ * UPDATE} upserts so that transient retries of a batch are idempotent. DELETE uses {@link
+ * DataGeneratorTable#primaryKeys} to construct the {@code WHERE} clause.
  */
 public class MySqlDataWriter implements DataWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlDataWriter.class);
+
+  enum MutationType {
+    INSERT,
+    UPDATE,
+    DELETE
+  }
 
   private final String sinkConfigPath;
   private final ShardFileReader shardFileReader;
@@ -81,12 +87,42 @@ public class MySqlDataWriter implements DataWriter {
   }
 
   @Override
-  public void write(
+  public void insert(
+      List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections) {
+    if (table == null) {
+      throw new IllegalArgumentException("DataGeneratorTable must not be null");
+    }
+    executeWrite(
+        rows, table, shardId, maxShardConnections, buildUpsertSql(table), MutationType.INSERT);
+  }
+
+  @Override
+  public void update(
+      List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections) {
+    if (table == null) {
+      throw new IllegalArgumentException("DataGeneratorTable must not be null");
+    }
+    executeWrite(
+        rows, table, shardId, maxShardConnections, buildUpsertSql(table), MutationType.UPDATE);
+  }
+
+  @Override
+  public void delete(
+      List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections) {
+    if (table == null) {
+      throw new IllegalArgumentException("DataGeneratorTable must not be null");
+    }
+    executeWrite(
+        rows, table, shardId, maxShardConnections, buildDeleteSql(table), MutationType.DELETE);
+  }
+
+  private void executeWrite(
       List<Row> rows,
       DataGeneratorTable table,
       String shardId,
-      String operation,
-      int maxShardConnections) {
+      int maxShardConnections,
+      String sql,
+      MutationType operation) {
     if (rows == null || rows.isEmpty()) {
       return;
     }
@@ -107,9 +143,20 @@ public class MySqlDataWriter implements DataWriter {
                 + connectionKey
                 + ")");
       }
-      writeRowsToConnection(connection, rows, table, operation);
+      try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        for (Row row : rows) {
+          setStatementParameters(statement, row, table, operation);
+          statement.addBatch();
+        }
+        statement.executeBatch();
+      }
     } catch (ConnectionException | SQLException e) {
-      LOG.error("Failed to write {} rows to MySQL shard {}", rows.size(), shardId, e);
+      LOG.error(
+          "Failed to execute write (operation: {}) for {} rows on MySQL shard {}",
+          operation,
+          rows.size(),
+          shardId,
+          e);
       throw new RuntimeException("Failed to write to MySQL shard " + shardId, e);
     }
   }
@@ -179,31 +226,6 @@ public class MySqlDataWriter implements DataWriter {
         + (shard.getDbName() == null ? "" : shard.getDbName())
         + "/"
         + shard.getUserName();
-  }
-
-  private void writeRowsToConnection(
-      Connection connection, List<Row> rows, DataGeneratorTable table, String operation)
-      throws SQLException {
-    String sql;
-    if (Constants.MUTATION_DELETE.equalsIgnoreCase(operation)) {
-      sql = buildDeleteSql(table);
-    } else if (Constants.MUTATION_INSERT.equalsIgnoreCase(operation)
-        || Constants.MUTATION_UPDATE.equalsIgnoreCase(operation)
-        || operation == null) {
-      // INSERT and UPDATE both map to INSERT ... ON DUPLICATE KEY UPDATE so that transient retries
-      // of this batch are idempotent: an INSERT that already succeeded becomes a no-op update, and
-      // an UPDATE whose target row does not yet exist becomes an INSERT.
-      sql = buildUpsertSql(table);
-    } else {
-      throw new IllegalArgumentException("Unsupported MySQL operation: " + operation);
-    }
-    try (PreparedStatement statement = connection.prepareStatement(sql)) {
-      for (Row row : rows) {
-        setStatementParameters(statement, row, table, operation);
-        statement.addBatch();
-      }
-      statement.executeBatch();
-    }
   }
 
   /**
@@ -309,9 +331,9 @@ public class MySqlDataWriter implements DataWriter {
 
   @VisibleForTesting
   void setStatementParameters(
-      PreparedStatement statement, Row row, DataGeneratorTable table, String operation)
+      PreparedStatement statement, Row row, DataGeneratorTable table, MutationType operation)
       throws SQLException {
-    if (Constants.MUTATION_DELETE.equalsIgnoreCase(operation)) {
+    if (operation == MutationType.DELETE) {
       int idx = 1;
       for (String pkName : table.primaryKeys()) {
         DataGeneratorColumn pkCol = findColumn(table, pkName);

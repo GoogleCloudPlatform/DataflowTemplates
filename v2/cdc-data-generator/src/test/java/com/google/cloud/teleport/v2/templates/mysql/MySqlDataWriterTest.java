@@ -286,11 +286,10 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_insertRunsUpsertOnFirstShard() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
+    w.insert(
         ImmutableList.of(simpleRow(1L, "a"), simpleRow(2L, "b")),
         simpleTable(),
         "",
-        Constants.MUTATION_INSERT,
         Constants.DEFAULT_JDBC_POOL_SIZE);
 
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
@@ -310,11 +309,10 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_routesToNamedShard() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
+    w.insert(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardB",
-        Constants.MUTATION_INSERT,
         Constants.DEFAULT_JDBC_POOL_SIZE);
 
     verify(mockConnectionHelper).getConnection(MySqlDataWriter.buildConnectionKey(shardB()));
@@ -327,11 +325,10 @@ public class MySqlDataWriterTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                w.write(
+                w.insert(
                     ImmutableList.of(simpleRow(1L, "a")),
                     simpleTable(),
                     "missing",
-                    Constants.MUTATION_INSERT,
                     Constants.DEFAULT_JDBC_POOL_SIZE));
     assertThat(ex).hasMessageThat().contains("missing");
   }
@@ -339,12 +336,7 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_emptyRowsIsNoOp() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
-        ImmutableList.of(),
-        simpleTable(),
-        "shardA",
-        Constants.MUTATION_INSERT,
-        Constants.DEFAULT_JDBC_POOL_SIZE);
+    w.insert(ImmutableList.of(), simpleTable(), "shardA", Constants.DEFAULT_JDBC_POOL_SIZE);
     verifyNoInteractions(mockConnection, mockStatement);
     verify(mockConnectionHelper, never()).init(any());
   }
@@ -352,8 +344,7 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_nullRowsIsNoOp() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
-        null, simpleTable(), "shardA", Constants.MUTATION_INSERT, Constants.DEFAULT_JDBC_POOL_SIZE);
+    w.insert(null, simpleTable(), "shardA", Constants.DEFAULT_JDBC_POOL_SIZE);
     verifyNoInteractions(mockConnection, mockStatement);
   }
 
@@ -363,22 +354,20 @@ public class MySqlDataWriterTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            w.write(
+            w.insert(
                 ImmutableList.of(simpleRow(1L, "a")),
                 null,
                 "shardA",
-                Constants.MUTATION_INSERT,
                 Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
   public void testWrite_updateUsesSameUpsertSqlAsInsert() throws Exception {
     MySqlDataWriter insertWriter = writer();
-    insertWriter.write(
+    insertWriter.insert(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardA",
-        Constants.MUTATION_INSERT,
         Constants.DEFAULT_JDBC_POOL_SIZE);
     ArgumentCaptor<String> insertSql = ArgumentCaptor.forClass(String.class);
     verify(mockConnection).prepareStatement(insertSql.capture());
@@ -388,11 +377,10 @@ public class MySqlDataWriterTest {
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockStatement);
 
     MySqlDataWriter updateWriter = writer();
-    updateWriter.write(
+    updateWriter.update(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardA",
-        Constants.MUTATION_UPDATE,
         Constants.DEFAULT_JDBC_POOL_SIZE);
     ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
     verify(mockConnection).prepareStatement(updateSql.capture());
@@ -406,30 +394,15 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_deleteUsesDeleteSql() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
+    w.delete(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardA",
-        Constants.MUTATION_DELETE,
         Constants.DEFAULT_JDBC_POOL_SIZE);
     ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
     verify(mockConnection).prepareStatement(sql.capture());
     assertThat(sql.getValue()).startsWith("DELETE FROM");
     verify(mockStatement).setLong(1, 1L); // PK value.
-  }
-
-  @Test
-  public void testWrite_unsupportedOperationThrows() {
-    MySqlDataWriter w = writer();
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.write(
-                ImmutableList.of(simpleRow(1L, "a")),
-                simpleTable(),
-                "shardA",
-                "MERGE",
-                Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
@@ -440,11 +413,10 @@ public class MySqlDataWriterTest {
         assertThrows(
             RuntimeException.class,
             () ->
-                w.write(
+                w.insert(
                     ImmutableList.of(simpleRow(1L, "a")),
                     simpleTable(),
                     "shardA",
-                    Constants.MUTATION_INSERT,
                     Constants.DEFAULT_JDBC_POOL_SIZE));
     assertThat(ex).hasMessageThat().contains("No MySQL connection");
   }
@@ -458,11 +430,10 @@ public class MySqlDataWriterTest {
         assertThrows(
             RuntimeException.class,
             () ->
-                w.write(
+                w.insert(
                     ImmutableList.of(simpleRow(1L, "a")),
                     simpleTable(),
                     "shardA",
-                    Constants.MUTATION_INSERT,
                     Constants.DEFAULT_JDBC_POOL_SIZE));
     assertThat(ex).hasMessageThat().contains("Failed to write to MySQL shard shardA");
   }
@@ -470,11 +441,10 @@ public class MySqlDataWriterTest {
   @Test
   public void testWrite_initializesConnectionHelperOnFirstCall() throws Exception {
     MySqlDataWriter w = writer();
-    w.write(
+    w.insert(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardA",
-        Constants.MUTATION_INSERT,
         Constants.DEFAULT_JDBC_POOL_SIZE);
     ArgumentCaptor<ConnectionHelperRequest> req =
         ArgumentCaptor.forClass(ConnectionHelperRequest.class);
@@ -488,12 +458,7 @@ public class MySqlDataWriterTest {
   public void testWrite_initializesConnectionHelperWithCustomPoolSize() throws Exception {
     MySqlDataWriter w = writer();
     int customPoolSize = 42;
-    w.write(
-        ImmutableList.of(simpleRow(1L, "a")),
-        simpleTable(),
-        "shardA",
-        Constants.MUTATION_INSERT,
-        customPoolSize);
+    w.insert(ImmutableList.of(simpleRow(1L, "a")), simpleTable(), "shardA", customPoolSize);
     ArgumentCaptor<ConnectionHelperRequest> req =
         ArgumentCaptor.forClass(ConnectionHelperRequest.class);
     verify(mockConnectionHelper).init(req.capture());
@@ -504,11 +469,10 @@ public class MySqlDataWriterTest {
   public void testWrite_skipsInitIfPoolAlreadyInitialized() throws Exception {
     when(mockConnectionHelper.isConnectionPoolInitialized()).thenReturn(true);
     MySqlDataWriter w = writer();
-    w.write(
+    w.insert(
         ImmutableList.of(simpleRow(1L, "a")),
         simpleTable(),
         "shardA",
-        Constants.MUTATION_INSERT,
         Constants.DEFAULT_JDBC_POOL_SIZE);
     verify(mockConnectionHelper, never()).init(any());
   }
@@ -610,7 +574,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("s", Schema.FieldType.STRING, "hello");
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setString(1, "hello");
   }
 
@@ -620,7 +584,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("j", Schema.FieldType.STRING, "{\"a\":1}");
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setString(1, "{\"a\":1}");
   }
 
@@ -630,7 +594,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("i", Schema.FieldType.INT64, 42L);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setLong(1, 42L);
   }
 
@@ -640,7 +604,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("f", Schema.FieldType.DOUBLE, 3.14);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setDouble(1, 3.14);
   }
 
@@ -650,7 +614,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("b", Schema.FieldType.BOOLEAN, true);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setBoolean(1, true);
   }
 
@@ -661,7 +625,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("bt", Schema.FieldType.BYTES, bytes);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setBytes(1, bytes);
   }
 
@@ -671,7 +635,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("n", Schema.FieldType.DECIMAL, new BigDecimal("1.23"));
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setBigDecimal(1, new BigDecimal("1.23"));
   }
 
@@ -685,7 +649,7 @@ public class MySqlDataWriterTest {
             .build();
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setDate(eq(1), any(java.sql.Date.class));
   }
 
@@ -699,7 +663,7 @@ public class MySqlDataWriterTest {
             .build();
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setTimestamp(eq(1), any(java.sql.Timestamp.class));
   }
 
@@ -709,7 +673,7 @@ public class MySqlDataWriterTest {
     Row row = singleValueRow("s", Schema.FieldType.STRING, null);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+            mockStatement, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setNull(1, Types.VARCHAR);
   }
 
@@ -737,7 +701,9 @@ public class MySqlDataWriterTest {
               : Schema.FieldType.STRING;
       Row row = singleValueRow("c", beamType, null);
       PreparedStatement stmt = mock(PreparedStatement.class);
-      writer().setStatementParameters(stmt, row, singleColumnTable(c), Constants.MUTATION_INSERT);
+      writer()
+          .setStatementParameters(
+              stmt, row, singleColumnTable(c), MySqlDataWriter.MutationType.INSERT);
       verify(stmt).setNull(1, expectedJdbc[i]);
     }
   }
@@ -748,7 +714,7 @@ public class MySqlDataWriterTest {
     // order (id then name) - not the old SET-first-then-WHERE ordering.
     DataGeneratorTable table = simpleTable();
     Row row = simpleRow(42L, "alice");
-    writer().setStatementParameters(mockStatement, row, table, Constants.MUTATION_UPDATE);
+    writer().setStatementParameters(mockStatement, row, table, MySqlDataWriter.MutationType.UPDATE);
 
     verify(mockStatement).setLong(1, 42L);
     verify(mockStatement).setString(2, "alice");
@@ -758,7 +724,7 @@ public class MySqlDataWriterTest {
   public void testSetStatementParameters_insertBindsAllWritableColumns() throws Exception {
     DataGeneratorTable table = simpleTable();
     Row row = simpleRow(42L, "alice");
-    writer().setStatementParameters(mockStatement, row, table, Constants.MUTATION_INSERT);
+    writer().setStatementParameters(mockStatement, row, table, MySqlDataWriter.MutationType.INSERT);
 
     verify(mockStatement).setLong(1, 42L);
     verify(mockStatement).setString(2, "alice");
@@ -768,7 +734,7 @@ public class MySqlDataWriterTest {
   public void testSetStatementParameters_deleteOrdering() throws Exception {
     DataGeneratorTable table = simpleTable();
     Row row = simpleRow(42L, "alice");
-    writer().setStatementParameters(mockStatement, row, table, Constants.MUTATION_DELETE);
+    writer().setStatementParameters(mockStatement, row, table, MySqlDataWriter.MutationType.DELETE);
 
     // For DELETE: only PK columns.
     verify(mockStatement).setLong(1, 42L);
@@ -780,7 +746,9 @@ public class MySqlDataWriterTest {
     // Row has no 'name' field; column 'name' should still bind a typed NULL.
     Schema schema = Schema.builder().addNullableField("id", Schema.FieldType.INT64).build();
     Row row = Row.withSchema(schema).addValues(1L).build();
-    writer().setStatementParameters(mockStatement, row, simpleTable(), Constants.MUTATION_INSERT);
+    writer()
+        .setStatementParameters(
+            mockStatement, row, simpleTable(), MySqlDataWriter.MutationType.INSERT);
     verify(mockStatement).setLong(1, 1L);
     verify(mockStatement).setNull(2, Types.VARCHAR);
   }
@@ -790,8 +758,7 @@ public class MySqlDataWriterTest {
     MySqlDataWriter w = writer();
     List<Row> rows =
         ImmutableList.<Row>builder().addAll(Collections.nCopies(5, simpleRow(1L, "a"))).build();
-    w.write(
-        rows, simpleTable(), "shardA", Constants.MUTATION_INSERT, Constants.DEFAULT_JDBC_POOL_SIZE);
+    w.insert(rows, simpleTable(), "shardA", Constants.DEFAULT_JDBC_POOL_SIZE);
     verify(mockStatement, times(5)).addBatch();
     verify(mockStatement, atLeastOnce()).executeBatch();
   }

@@ -18,11 +18,6 @@ package com.google.cloud.teleport.v2.templates.utils;
 /** Constants shared across the CDC Data Generator template. */
 public final class Constants {
 
-  // Mutation / operation types emitted by the generator and consumed by writers.
-  public static final String MUTATION_INSERT = "INSERT";
-  public static final String MUTATION_UPDATE = "UPDATE";
-  public static final String MUTATION_DELETE = "DELETE";
-
   // Default HikariCP pool size per shard when writing to JDBC sinks.
   public static final int DEFAULT_JDBC_POOL_SIZE = 10;
 

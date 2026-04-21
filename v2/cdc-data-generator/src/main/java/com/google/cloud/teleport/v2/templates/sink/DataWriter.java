@@ -29,25 +29,37 @@ import org.apache.beam.sdk.values.Row;
 public interface DataWriter extends AutoCloseable {
 
   /**
-   * Writes {@code rows} to the sink for the given {@code table}, routing by {@code shardId} and
-   * applying the given {@code operation} (INSERT / UPDATE / DELETE).
+   * Inserts {@code rows} into the sink for the given {@code table}, routing by {@code shardId}.
    *
-   * @param rows rows to write. The caller should group rows by (shard, table, operation) so that a
-   *     single call can use one prepared statement / mutation batch.
+   * @param rows rows to insert. The caller should group rows by (shard, table) so that a single
+   *     call can use one prepared statement / mutation batch.
    * @param table schema metadata for the target table. Must not be {@code null}.
-   * @param shardId logical shard identifier. Ignored by sinks that are not sharded. For MySQL sinks
-   *     this must match a {@code logicalShardId} in the shard configuration.
-   * @param operation one of {@link
-   *     com.google.cloud.teleport.v2.templates.utils.Constants#MUTATION_INSERT}, {@code
-   *     MUTATION_UPDATE}, or {@code MUTATION_DELETE}.
+   * @param shardId logical shard identifier. Ignored by sinks that are not sharded.
    * @param maxShardConnections maximum number of connections per shard.
    */
-  void write(
-      List<Row> rows,
-      DataGeneratorTable table,
-      String shardId,
-      String operation,
-      int maxShardConnections);
+  void insert(List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections);
+
+  /**
+   * Updates {@code rows} in the sink for the given {@code table}, routing by {@code shardId}.
+   *
+   * @param rows rows to update. The caller should group rows by (shard, table) so that a single
+   *     call can use one prepared statement / mutation batch.
+   * @param table schema metadata for the target table. Must not be {@code null}.
+   * @param shardId logical shard identifier. Ignored by sinks that are not sharded.
+   * @param maxShardConnections maximum number of connections per shard.
+   */
+  void update(List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections);
+
+  /**
+   * Deletes {@code rows} from the sink for the given {@code table}, routing by {@code shardId}.
+   *
+   * @param rows rows to delete. The caller should group rows by (shard, table) so that a single
+   *     call can use one prepared statement / mutation batch.
+   * @param table schema metadata for the target table. Must not be {@code null}.
+   * @param shardId logical shard identifier. Ignored by sinks that are not sharded.
+   * @param maxShardConnections maximum number of connections per shard.
+   */
+  void delete(List<Row> rows, DataGeneratorTable table, String shardId, int maxShardConnections);
 
   /**
    * Releases sink-specific resources (Spanner accessor handles, test-owned pools, etc.). The
