@@ -21,9 +21,9 @@ import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 
 public class CassandraSourceSchemaReader {
   /**

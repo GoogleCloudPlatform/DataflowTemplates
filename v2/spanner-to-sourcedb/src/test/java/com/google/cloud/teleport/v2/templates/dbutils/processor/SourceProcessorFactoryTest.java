@@ -18,11 +18,11 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 
+import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
-import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import java.sql.Connection;
 import java.sql.Statement;
 import org.slf4j.Logger;
