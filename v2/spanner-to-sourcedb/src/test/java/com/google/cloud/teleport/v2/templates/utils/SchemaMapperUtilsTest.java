@@ -109,6 +109,7 @@ public class SchemaMapperUtilsTest {
         IllegalArgumentException.class,
         () -> SchemaMapperUtils.getSchemaMapper(null, "p2", null, "c1:c2", ddl));
   }
+
   @Test
   public void testGetSchemaMapper_caching() {
     try (MockedConstruction<SessionBasedMapper> mocked =
