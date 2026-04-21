@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
 import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.AUTHORS_TABLE;
 import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.BOOKS_TABLE;
+import static com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase.JOB_START_PROCESSING_WAIT_MINUTES;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -137,11 +138,9 @@ public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFT
 
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Insert more data before killing the dataflow workers

@@ -150,11 +150,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -221,11 +219,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -285,11 +281,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -349,11 +343,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -383,11 +375,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -417,11 +407,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -451,11 +439,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -485,11 +471,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -518,11 +502,9 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();

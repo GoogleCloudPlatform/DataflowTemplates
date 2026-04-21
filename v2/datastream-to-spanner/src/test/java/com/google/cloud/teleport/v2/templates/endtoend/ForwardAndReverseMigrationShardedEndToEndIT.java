@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase.JOB_START_PROCESSING_WAIT_MINUTES;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -227,11 +228,9 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
 
     PipelineOperator.Result result =
         pipelineOperator()
-            // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is
-            // the time between Job start to when workers start requesting work. Accounting for this
-            // latency in the first condition check after the job start. The subsequent condition
-            // check waits don't need to account for this latency.
-            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(15)), conditionCheck);
+            .waitForCondition(
+                createConfig(fwdJobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 
