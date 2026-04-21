@@ -23,6 +23,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.io.StringReader;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -84,7 +87,21 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
         config.addDataSourceProperty(key, value);
       }
       HikariDataSource ds = new HikariDataSource(config);
+      validateMysqlHikariConnection(ds);
       connectionPoolMap.put(sourceConnectionUrl + "/" + shard.getUserName(), ds);
+    }
+  }
+
+  private void validateMysqlHikariConnection(HikariDataSource ds) {
+    try (Statement stmt = ds.getConnection().createStatement();
+        ResultSet rs = stmt.executeQuery("SELECT @@global.read_only")) {
+
+      if (rs.next() && rs.getBoolean(1)) {
+        // Node is read-only. Close connection and throw exception.
+        throw new SQLException("Connection rejected: MySQL Shard is in read-only mode.");
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
     }
   }
 
