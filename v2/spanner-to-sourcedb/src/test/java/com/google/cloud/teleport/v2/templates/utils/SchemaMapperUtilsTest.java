@@ -109,4 +109,27 @@ public class SchemaMapperUtilsTest {
         IllegalArgumentException.class,
         () -> SchemaMapperUtils.getSchemaMapper(null, "p2", null, "c1:c2", ddl));
   }
+  @Test
+  public void testGetSchemaMapper_caching() {
+    try (MockedConstruction<SessionBasedMapper> mocked =
+        mockConstruction(SessionBasedMapper.class)) {
+      ISchemaMapper mapper1 = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
+      ISchemaMapper mapper2 = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
+
+      assertTrue(mapper1 == mapper2);
+      assertTrue(mocked.constructed().size() == 1);
+    }
+  }
+
+  @Test
+  public void testGetSchemaMapper_noCachingForDifferentArgs() {
+    try (MockedConstruction<SessionBasedMapper> mocked =
+        mockConstruction(SessionBasedMapper.class)) {
+      ISchemaMapper mapper1 = SchemaMapperUtils.getSchemaMapper("path1", null, null, null, ddl);
+      ISchemaMapper mapper2 = SchemaMapperUtils.getSchemaMapper("path2", null, null, null, ddl);
+
+      assertTrue(mapper1 != mapper2);
+      assertTrue(mocked.constructed().size() == 2);
+    }
+  }
 }

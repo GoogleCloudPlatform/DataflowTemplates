@@ -21,8 +21,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SchemaMapperUtils {
+
+  private static final Map<String, ISchemaMapper> mapperCache = new ConcurrentHashMap<>();
 
   public static ISchemaMapper getSchemaMapper(
       String sessionFilePath,
@@ -30,39 +34,51 @@ public class SchemaMapperUtils {
       String tableOverrides,
       String columnOverrides,
       Ddl ddl) {
-    // Check if config types are specified
-    boolean hasSessionFile = sessionFilePath != null && !sessionFilePath.equals("");
-    boolean hasSchemaOverridesFile =
-        schemaOverridesFilePath != null && !schemaOverridesFilePath.equals("");
-    boolean hasStringOverrides =
-        (tableOverrides != null && !tableOverrides.equals(""))
-            || (columnOverrides != null && !columnOverrides.equals(""));
 
-    int overrideTypesCount = 0;
-    if (hasSessionFile) {
-      overrideTypesCount++;
-    }
-    if (hasSchemaOverridesFile) {
-      overrideTypesCount++;
-    }
-    if (hasStringOverrides) {
-      overrideTypesCount++;
-    }
+    String cacheKey =
+        String.format(
+            "%s|%s|%s|%s",
+            sessionFilePath != null ? sessionFilePath : "",
+            schemaOverridesFilePath != null ? schemaOverridesFilePath : "",
+            tableOverrides != null ? tableOverrides : "",
+            columnOverrides != null ? columnOverrides : "");
 
-    if (overrideTypesCount > 1) {
-      throw new IllegalArgumentException(
-          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
-              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
-    }
+    return mapperCache.computeIfAbsent(
+        cacheKey,
+        k -> {
+          // Check if config types are specified
+          boolean hasSessionFile = sessionFilePath != null && !sessionFilePath.equals("");
+          boolean hasSchemaOverridesFile =
+              schemaOverridesFilePath != null && !schemaOverridesFilePath.equals("");
+          boolean hasStringOverrides =
+              (tableOverrides != null && !tableOverrides.equals(""))
+                  || (columnOverrides != null && !columnOverrides.equals(""));
 
-    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (hasSessionFile) {
-      schemaMapper = new SessionBasedMapper(sessionFilePath, ddl);
-    } else if (hasSchemaOverridesFile) {
-      schemaMapper = new SchemaFileOverridesBasedMapper(schemaOverridesFilePath, ddl);
-    } else if (hasStringOverrides) {
-      schemaMapper = new SchemaStringOverridesBasedMapper(tableOverrides, columnOverrides, ddl);
-    }
-    return schemaMapper;
+          int overrideTypesCount = 0;
+          if (hasSessionFile) {
+            overrideTypesCount++;
+          }
+          if (hasSchemaOverridesFile) {
+            overrideTypesCount++;
+          }
+          if (hasStringOverrides) {
+            overrideTypesCount++;
+          }
+
+          if (overrideTypesCount > 1) {
+            throw new IllegalArgumentException(
+                "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
+                    + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+          }
+
+          if (hasSessionFile) {
+            return new SessionBasedMapper(sessionFilePath, ddl);
+          } else if (hasSchemaOverridesFile) {
+            return new SchemaFileOverridesBasedMapper(schemaOverridesFilePath, ddl);
+          } else if (hasStringOverrides) {
+            return new SchemaStringOverridesBasedMapper(tableOverrides, columnOverrides, ddl);
+          }
+          return new IdentityMapper(ddl);
+        });
   }
 }
