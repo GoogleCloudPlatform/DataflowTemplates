@@ -33,6 +33,8 @@ import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
@@ -100,8 +102,9 @@ import org.slf4j.LoggerFactory;
     description = {
       "The Datastream MongoDB to Firestore template is a streaming pipeline that reads <a"
           + " href=\"https://cloud.google.com/datastream/docs\">Datastream</a> events from a Cloud"
-          + " Storage bucket and writes them to a Firestore with MongoDB compatibility database. It is intended for data"
-          + " migration from Datastream sources to Firestore with MongoDB compatibility.\n",
+          + " Storage bucket and writes them to a Firestore with MongoDB compatibility database. It"
+          + " is intended for data migration from Datastream sources to Firestore with MongoDB"
+          + " compatibility.\n",
       "Data consistency is guaranteed only at the end of migration when all data has been written"
           + " to the destination database. To store ordering information for each record written to"
           + " the destination database, this template creates an additional collection (called a"
@@ -125,6 +128,8 @@ import org.slf4j.LoggerFactory;
 public class DataStreamMongoDBToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamMongoDBToFirestore.class);
+  private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
+  private static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
   public static final Set<String> MAPPER_IGNORE_FIELDS =
@@ -158,7 +163,10 @@ public class DataStreamMongoDBToFirestore {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends StreamingOptions, DataflowPipelineWorkerPoolOptions {
+  public interface Options
+      extends StreamingOptions,
+          DataflowPipelineWorkerPoolOptions,
+          JavascriptTextTransformerOptions {
     @TemplateParameter.Text(
         order = 10,
         optional = true,
@@ -174,7 +182,8 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Process backfill events before CDC events",
         helpText =
-            "When true, all backfill events are processed before any CDC events, otherwise the backfill and cdc events are processed together. Default: false")
+            "When true, all backfill events are processed before any CDC events, otherwise the"
+                + " backfill and cdc events are processed together. Default: false")
     @Default.Boolean(false)
     Boolean getProcessBackfillFirst();
 
@@ -185,7 +194,8 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Use shadow tables for backfill events",
         helpText =
-            "When false, backfill events are processed without shadow tables. This only takes effect when processBackfillFirst is set to true. Default: false")
+            "When false, backfill events are processed without shadow tables. This only takes"
+                + " effect when processBackfillFirst is set to true. Default: false")
     @Default.Boolean(false)
     Boolean getUseShadowTablesForBackfill();
 
@@ -243,8 +253,9 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
-                + " use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the"
+                + " name, use the format"
+                + " `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -316,7 +327,8 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to `500`.")
+            "The max number of times temporary errors can be retried through DLQ. Defaults to"
+                + " `500`.")
     @Default.Integer(500)
     Integer getDlqMaxRetryCount();
 
@@ -360,7 +372,8 @@ public class DataStreamMongoDBToFirestore {
         order = 9,
         description = "Database collection filter (optional)",
         helpText =
-            "If specified, only replicate this collection. If not specified, replicate all collections.",
+            "If specified, only replicate this collection. If not specified, replicate all"
+                + " collections.",
         example = "my-collection",
         optional = true)
     String getDatabaseCollection();
@@ -420,7 +433,8 @@ public class DataStreamMongoDBToFirestore {
   public static void run(Options options) {
     try {
       LOG.info(
-          "Starting pipeline execution with options: inputFilePattern={}, fileType={}, databaseName={}",
+          "Starting pipeline execution with options: inputFilePattern={}, fileType={},"
+              + " databaseName={}",
           options.getInputFilePattern(),
           options.getInputFileFormat(),
           options.getDatabaseName());
@@ -430,7 +444,9 @@ public class DataStreamMongoDBToFirestore {
       if (!connectionString.startsWith("mongodb://")
           && !connectionString.startsWith("mongodb+srv://")) {
         LOG.error(
-            "Invalid URL: {}, Must be in pattern of 'mongodb://<host1>:<port1>,<host2>:<port2>/database?options', or 'mongodb+srv://<host>/database?options'",
+            "Invalid URL: {}, Must be in pattern of"
+                + " 'mongodb://<host1>:<port1>,<host2>:<port2>/database?options', or"
+                + " 'mongodb+srv://<host>/database?options'",
             connectionString);
         throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
       }
@@ -504,6 +520,27 @@ public class DataStreamMongoDBToFirestore {
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    // Optional Stage 1.5: Apply Javascript UDF for JSON transformation
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      LOG.info("Applying Javascript UDF for JSON transformation");
+      PCollectionTuple udfResult =
+          jsonRecords.apply(
+              "Run UDF",
+              FailsafeJavascriptUdf.<String>newBuilder()
+                  .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                  .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .setReloadIntervalMinutes(
+                      options.getJavascriptTextTransformReloadIntervalMinutes())
+                  .setSuccessTag(UDF_SUCCESS_TAG)
+                  .setFailureTag(UDF_FAILURE_TAG)
+                  .build());
+
+      jsonRecords = udfResult.get(UDF_SUCCESS_TAG);
+
+      // Handle failed UDF processing
+      writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
+    }
 
     // Stage 2: Create MongoDbChangeEventContext objects
     LOG.info("Creating MongoDbChangeEventContext objects");
@@ -669,6 +706,29 @@ public class DataStreamMongoDBToFirestore {
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    /*
+     * Optional Stage 1.5: Apply Javascript UDF to transform JSON strings
+     */
+    if (!Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      PCollectionTuple udfResult =
+          jsonRecords.apply(
+              "Run UDF",
+              FailsafeJavascriptUdf.<String>newBuilder()
+                  .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                  .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                  .setReloadIntervalMinutes(
+                      options.getJavascriptTextTransformReloadIntervalMinutes())
+                  .setSuccessTag(UDF_SUCCESS_TAG)
+                  .setFailureTag(UDF_FAILURE_TAG)
+                  .build());
+
+      jsonRecords = udfResult.get(UDF_SUCCESS_TAG);
+
+      // Handle failed UDF processing
+      writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
+    }
+
     LOG.info("Stage 1: Completed ingestion of data from GCS");
 
     /*
@@ -848,7 +908,8 @@ public class DataStreamMongoDBToFirestore {
                   .withDirectoryWatchDuration(
                       Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
       LOG.info(
-          "DataStreamIO configured with fileReadConcurrency: {}, directoryWatchDuration: {} minutes",
+          "DataStreamIO configured with fileReadConcurrency: {}, directoryWatchDuration: {}"
+              + " minutes",
           options.getFileReadConcurrency(),
           options.getDirectoryWatchDurationInMinutes());
 

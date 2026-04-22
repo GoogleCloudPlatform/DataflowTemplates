@@ -108,4 +108,28 @@ public final class DataStreamMongoDBToFirestoreTest {
 
     assertThrows(IllegalArgumentException.class, () -> DataStreamMongoDBToFirestore.run(options));
   }
+
+  @Test
+  public void inputArgs_javascriptTextTransformGcsPath() {
+    String[] args = new String[] {"--javascriptTextTransformGcsPath=gs://test-bkt/udf.js"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+    String path = options.getJavascriptTextTransformGcsPath();
+
+    assertEquals(path, "gs://test-bkt/udf.js");
+  }
+
+  @Test
+  public void inputArgs_javascriptTextTransformFunctionName() {
+    String[] args = new String[] {"--javascriptTextTransformFunctionName=myTransform"};
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+    String functionName = options.getJavascriptTextTransformFunctionName();
+
+    assertEquals(functionName, "myTransform");
+  }
 }
