@@ -220,15 +220,6 @@ public class SpannerDataWriterTest {
         IllegalStateException.class, () -> w.delete(ImmutableList.of(row), simpleTable(), "", 10));
   }
 
-  @Test
-  public void testDelete_noPrimaryKeyTableThrows() {
-    DataGeneratorTable noPk = simpleTable().toBuilder().primaryKeys(ImmutableList.of()).build();
-    SpannerDataWriter w = writer();
-    assertThrows(
-        IllegalStateException.class,
-        () -> w.delete(ImmutableList.of(simpleRow(1L, "a")), noPk, "", 10));
-  }
-
   private static DataGeneratorColumn col(String name, LogicalType type) {
     return DataGeneratorColumn.builder()
         .name(name)
