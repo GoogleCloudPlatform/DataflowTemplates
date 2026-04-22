@@ -64,6 +64,8 @@ public class SpannerDataWriterTest {
 
   @Mock private SpannerAccessor mockAccessor;
   @Mock private DatabaseClient mockDatabaseClient;
+  @Mock private com.google.cloud.spanner.DatabaseAdminClient mockDatabaseAdminClient;
+  @Mock private com.google.cloud.spanner.Database mockDatabase;
 
   private SpannerAccessorFactory factory;
 
@@ -77,6 +79,10 @@ public class SpannerDataWriterTest {
   @Before
   public void setUp() {
     when(mockAccessor.getDatabaseClient()).thenReturn(mockDatabaseClient);
+    when(mockAccessor.getDatabaseAdminClient()).thenReturn(mockDatabaseAdminClient);
+    when(mockDatabaseAdminClient.getDatabase(any(), any())).thenReturn(mockDatabase);
+    when(mockDatabase.getDialect())
+        .thenReturn(com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
     factory = config -> mockAccessor;
   }
 
@@ -277,6 +283,62 @@ public class SpannerDataWriterTest {
                 rowFor("j", Schema.FieldType.STRING, "{\"a\":1}"),
                 SpannerDataWriter.MutationType.INSERT);
     assertThat(m.asMap().get("j")).isEqualTo(Value.json("{\"a\":1}"));
+  }
+
+  @Test
+  public void testRowToMutation_jsonValue_pgDialect() {
+    when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
+    DataGeneratorColumn c = col("j", LogicalType.JSON);
+    SpannerDataWriter w = writer();
+    w.ensureInitialized();
+    Mutation m =
+        w.rowToMutation(
+            singleColTable(c),
+            rowFor("j", Schema.FieldType.STRING, "{\"a\":1}"),
+            SpannerDataWriter.MutationType.INSERT);
+    assertThat(m.asMap().get("j")).isEqualTo(Value.pgJsonb("{\"a\":1}"));
+  }
+
+  @Test
+  public void testRowToMutation_jsonNullValue_pgDialect() {
+    when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
+    DataGeneratorColumn c = col("j", LogicalType.JSON);
+    SpannerDataWriter w = writer();
+    w.ensureInitialized();
+    Mutation m =
+        w.rowToMutation(
+            singleColTable(c),
+            rowFor("j", Schema.FieldType.STRING, null),
+            SpannerDataWriter.MutationType.INSERT);
+    assertThat(m.asMap().get("j")).isEqualTo(Value.pgJsonb((String) null));
+  }
+
+  @Test
+  public void testRowToMutation_numericValue_pgDialect() {
+    when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
+    DataGeneratorColumn c = col("n", LogicalType.NUMERIC);
+    SpannerDataWriter w = writer();
+    w.ensureInitialized();
+    Mutation m =
+        w.rowToMutation(
+            singleColTable(c),
+            rowFor("n", Schema.FieldType.DECIMAL, new BigDecimal("1.23")),
+            SpannerDataWriter.MutationType.INSERT);
+    assertThat(m.asMap().get("n")).isEqualTo(Value.pgNumeric("1.23"));
+  }
+
+  @Test
+  public void testRowToMutation_numericNullValue_pgDialect() {
+    when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
+    DataGeneratorColumn c = col("n", LogicalType.NUMERIC);
+    SpannerDataWriter w = writer();
+    w.ensureInitialized();
+    Mutation m =
+        w.rowToMutation(
+            singleColTable(c),
+            rowFor("n", Schema.FieldType.DECIMAL, null),
+            SpannerDataWriter.MutationType.INSERT);
+    assertThat(m.asMap().get("n")).isEqualTo(Value.pgNumeric((String) null));
   }
 
   @Test

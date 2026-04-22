@@ -79,6 +79,7 @@ public class SpannerDataWriter implements DataWriter {
 
   private transient SpannerConfig spannerConfig;
   private transient SpannerAccessor spannerAccessor;
+  private transient com.google.cloud.spanner.Dialect dialect;
 
   public SpannerDataWriter(String sinkConfigPath) {
     this(sinkConfigPath, SpannerAccessor::getOrCreate);
@@ -150,6 +151,14 @@ public class SpannerDataWriter implements DataWriter {
     if (spannerAccessor == null) {
       spannerAccessor = accessorFactory.getOrCreate(spannerConfig);
     }
+    if (dialect == null) {
+      dialect =
+          spannerAccessor
+              .getDatabaseAdminClient()
+              .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
+              .getDialect();
+      LOG.info("Detected Spanner database dialect: {}", dialect);
+    }
   }
 
   private SpannerConfig loadSpannerConfig() {
@@ -185,8 +194,10 @@ public class SpannerDataWriter implements DataWriter {
     if (operation == MutationType.DELETE) {
       return rowToDeleteMutation(table, row);
     }
-    // INSERT and UPDATE are both translated to INSERT_OR_UPDATE so that transient retries of
-    // writeAtLeastOnce do not fail when the row already exists (for INSERT) or no longer exists
+    // INSERT and UPDATE are both translated to INSERT_OR_UPDATE so that transient
+    // retries of
+    // writeAtLeastOnce do not fail when the row already exists (for INSERT) or no
+    // longer exists
     // (for UPDATE). DELETE is handled above.
     Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(table.name());
     for (DataGeneratorColumn col : table.columns()) {
@@ -201,10 +212,6 @@ public class SpannerDataWriter implements DataWriter {
 
   private Mutation rowToDeleteMutation(DataGeneratorTable table, Row row) {
     List<String> pks = table.primaryKeys();
-    if (pks == null || pks.isEmpty()) {
-      throw new IllegalStateException(
-          "Table " + table.name() + " has no primary key; cannot build DELETE mutation.");
-    }
     Key.Builder keyBuilder = Key.newBuilder();
     for (String pkName : pks) {
       Object val = fetchFromRow(row, pkName);
@@ -261,12 +268,13 @@ public class SpannerDataWriter implements DataWriter {
     }
   }
 
-  private static void setColumnValue(
+  private void setColumnValue(
       Mutation.WriteBuilder builder, DataGeneratorColumn column, Object value) {
     String name = column.name();
     LogicalType type = column.logicalType();
     if (value == null) {
-      // Emit an explicit typed null so Spanner doesn't complain about missing non-null columns
+      // Emit an explicit typed null so Spanner doesn't complain about missing
+      // non-null columns
       // being skipped on UPDATE mutations.
       setNull(builder, name, type);
       return;
@@ -276,7 +284,11 @@ public class SpannerDataWriter implements DataWriter {
         builder.set(name).to(value.toString());
         break;
       case JSON:
-        builder.set(name).to(Value.json(value.toString()));
+        if (dialect == com.google.cloud.spanner.Dialect.POSTGRESQL) {
+          builder.set(name).to(Value.pgJsonb(value.toString()));
+        } else {
+          builder.set(name).to(Value.json(value.toString()));
+        }
         break;
       case INT64:
         builder.set(name).to(((Number) value).longValue());
@@ -285,12 +297,16 @@ public class SpannerDataWriter implements DataWriter {
         builder.set(name).to(((Number) value).doubleValue());
         break;
       case NUMERIC:
-        builder
-            .set(name)
-            .to(
-                value instanceof BigDecimal
-                    ? (BigDecimal) value
-                    : new BigDecimal(value.toString()));
+        if (dialect == com.google.cloud.spanner.Dialect.POSTGRESQL) {
+          builder.set(name).to(Value.pgNumeric(value.toString()));
+        } else {
+          builder
+              .set(name)
+              .to(
+                  value instanceof BigDecimal
+                      ? (BigDecimal) value
+                      : new BigDecimal(value.toString()));
+        }
         break;
       case BOOLEAN:
         builder.set(name).to((Boolean) value);
@@ -309,13 +325,17 @@ public class SpannerDataWriter implements DataWriter {
     }
   }
 
-  private static void setNull(Mutation.WriteBuilder builder, String name, LogicalType type) {
+  private void setNull(Mutation.WriteBuilder builder, String name, LogicalType type) {
     switch (type) {
       case STRING:
         builder.set(name).to((String) null);
         break;
       case JSON:
-        builder.set(name).to(Value.json((String) null));
+        if (dialect == com.google.cloud.spanner.Dialect.POSTGRESQL) {
+          builder.set(name).to(Value.pgJsonb((String) null));
+        } else {
+          builder.set(name).to(Value.json((String) null));
+        }
         break;
       case INT64:
         builder.set(name).to((Long) null);
@@ -324,7 +344,11 @@ public class SpannerDataWriter implements DataWriter {
         builder.set(name).to((Double) null);
         break;
       case NUMERIC:
-        builder.set(name).to((BigDecimal) null);
+        if (dialect == com.google.cloud.spanner.Dialect.POSTGRESQL) {
+          builder.set(name).to(Value.pgNumeric((String) null));
+        } else {
+          builder.set(name).to((BigDecimal) null);
+        }
         break;
       case BOOLEAN:
         builder.set(name).to((Boolean) null);
