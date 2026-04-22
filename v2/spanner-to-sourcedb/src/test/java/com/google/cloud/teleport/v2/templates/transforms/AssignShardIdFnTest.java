@@ -469,7 +469,7 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SessionFileReader.read(SESSION_FILE_PATH),
+            SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH),
             null,
             "",
             "");
@@ -515,7 +515,7 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SessionFileReader.read(SESSION_FILE_PATH),
+            SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH),
             null,
             "",
             "");
@@ -904,7 +904,7 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL,
             null,
-            "",
+            null,
             "",
             "");
 
@@ -1039,7 +1039,7 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL,
             null,
-            "",
+            null,
             "",
             "");
 
