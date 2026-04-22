@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.neo4j.importer.v1.targets.Target;
 
-public class TargetSequence implements Serializable {
+public class StepSequence implements Serializable {
 
   private final Map<String, Integer> targetSequences = new HashMap<>();
   private final AtomicInteger nextNumber = new AtomicInteger(0);

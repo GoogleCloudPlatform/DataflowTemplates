@@ -64,7 +64,7 @@ public class BeamUtils {
         fields.add(defaultFieldSchema(field));
         continue;
       }
-      switch (propertyType) {
+      switch (propertyType.getName()) {
         case BOOLEAN:
           schemaField = Schema.Field.nullable(field, FieldType.BOOLEAN);
           break;

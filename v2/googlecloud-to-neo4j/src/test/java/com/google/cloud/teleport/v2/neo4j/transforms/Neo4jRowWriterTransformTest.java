@@ -20,31 +20,28 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
-import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
-import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
-import org.neo4j.importer.v1.targets.Targets;
 import org.neo4j.importer.v1.targets.WriteMode;
 
 public class Neo4jRowWriterTransformTest {
 
   @Test
   public void sends_transaction_metadata_for_schema_init() {
-    var connection = mock(Neo4jConnection.class);
+    var connection = mock(Neo4jConnection.class, withSettings().serializable());
     when(connection.capabilities()).thenReturn(new Neo4jCapabilities("5.20", "enterprise"));
     var header = List.of("placeholder-field1", "placeholder-field2");
     var properties = List.of(new PropertyMapping("placeholder-field1", "prop1", null));
@@ -71,21 +68,15 @@ public class Neo4jRowWriterTransformTest {
             List.of("Placeholder"),
             properties,
             schema);
-    var spec =
-        new ImportSpecification(
-            "test-version",
-            null,
-            List.of(
-                new InlineTextSource(
-                    "a-source",
-                    List.of(List.of("placeholder", "for"), List.of("inline", "data")),
-                    header)),
-            new Targets(List.of(target), null, null),
-            null);
-    var transform =
-        new Neo4jRowWriterTransform(spec, new TargetSequence(), target, () -> connection);
-
-    TestPipeline.create().apply(Create.empty(BeamUtils.textToBeamSchema(header))).apply(transform);
+    var source =
+        new InlineTextSource(
+            "a-source", List.of(List.of("placeholder", "for"), List.of("inline", "data")), header);
+    var initSchemaFn =
+        new Neo4jInitSchemaFn(
+            target, ReportedSourceType.reportedSourceTypeOf(source), () -> connection);
+    @SuppressWarnings("unchecked")
+    DoFn<Integer, Integer>.ProcessContext context = mock(DoFn.ProcessContext.class);
+    initSchemaFn.processElement(context);
 
     var expectedTxMetadata =
         Map.of(
