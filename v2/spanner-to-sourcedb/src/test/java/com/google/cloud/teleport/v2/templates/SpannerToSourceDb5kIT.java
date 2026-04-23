@@ -17,12 +17,15 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,7 +33,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -47,7 +52,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Integration test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL
- * execution.
+ * execution and data verification.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -55,6 +60,7 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kIT.class);
+  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(15);
 
   private SpannerResourceManager spannerResourceManager;
   private SpannerResourceManager spannerMetadataResourceManager;
@@ -82,6 +88,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void testLargeSchemaLaunch() throws Exception {
     gcsResourceManager.uploadArtifact(
         "input/large_session.json",
@@ -106,7 +113,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
     LOG.info("Executing Spanner DDLs in parallel batches...");
     int batchSize = 100;
-    ExecutorService ddlExecutor = Executors.newFixedThreadPool(3);
+    ExecutorService ddlExecutor = Executors.newFixedThreadPool(10);
     for (int i = 0; i < spannerDdls.size(); i += batchSize) {
       int end = Math.min(spannerDdls.size(), i + batchSize);
       List<String> batch = spannerDdls.subList(i, end);
@@ -129,10 +136,17 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
     LOG.info("Creating 5000 tables in MySQL...");
-    for (int i = 1; i <= 5000; i++) {
-      String mySqlDdl =
-          String.format("CREATE TABLE table_%d (id VARCHAR(20) NOT NULL PRIMARY KEY)", i);
-      jdbcResourceManager.runSQLUpdate(mySqlDdl);
+    try (java.sql.Connection connection =
+            java.sql.DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        java.sql.Statement statement = connection.createStatement()) {
+      for (int i = 1; i <= 5000; i++) {
+        String mySqlDdl =
+            String.format("CREATE TABLE table_%d (id VARCHAR(20) NOT NULL PRIMARY KEY)", i);
+        statement.executeUpdate(mySqlDdl);
+      }
     }
 
     LOG.info("Launching Dataflow job...");
@@ -155,5 +169,46 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
             jobParameters);
 
     assertThatPipeline(jobInfo).isRunning();
+
+    LOG.info("Writing rows to Spanner...");
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 1; i <= 5000; i++) {
+      mutations.add(
+          Mutation.newInsertOrUpdateBuilder("table_" + i).set("id").to(String.valueOf(i)).build());
+    }
+    spannerResourceManager.write(mutations);
+
+    LOG.info("Waiting for changes to propagate to MySQL...");
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                () -> {
+                  AtomicInteger matchedTables = new AtomicInteger(0);
+                  ExecutorService checkExecutor = Executors.newFixedThreadPool(50);
+                  for (int i = 1; i <= 5000; i++) {
+                    String tableName = "table_" + i;
+                    checkExecutor.submit(
+                        () -> {
+                          try {
+                            if (jdbcResourceManager.getRowCount(tableName) == 1) {
+                              matchedTables.incrementAndGet();
+                            }
+                          } catch (Exception ignored) {
+                          }
+                        });
+                  }
+                  checkExecutor.shutdown();
+                  try {
+                    checkExecutor.awaitTermination(10, TimeUnit.SECONDS);
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.error("Interrupted while waiting for table checks", e);
+                    return false;
+                  }
+                  LOG.info("Matched tables: {}/5000", matchedTables.get());
+                  return matchedTables.get() == 5000;
+                });
+    assertThatResult(result).meetsConditions();
   }
 }
