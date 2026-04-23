@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +35,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import com.google.common.io.Resources;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -46,7 +46,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL execution.
+ * Integration test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL
+ * execution.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -83,11 +84,11 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
   @Test
   public void testLargeSchemaLaunch() throws Exception {
     gcsResourceManager.uploadArtifact(
-        "input/large_session.json", 
+        "input/large_session.json",
         Resources.getResource("SpannerToSourceDb5kIT/large_session.json").getPath());
 
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
-    
+
     SubscriptionName subscriptionName =
         createPubsubResources(
             getClass().getSimpleName(),
@@ -126,17 +127,18 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
     LOG.info("Creating change stream in Spanner...");
     spannerResourceManager.executeDdlStatement(
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
-        
+
     LOG.info("Creating 5000 tables in MySQL...");
     for (int i = 1; i <= 5000; i++) {
-      String mySqlDdl = String.format(
-          "CREATE TABLE table_%d (id VARCHAR(20) NOT NULL PRIMARY KEY)", i);
+      String mySqlDdl =
+          String.format("CREATE TABLE table_%d (id VARCHAR(20) NOT NULL PRIMARY KEY)", i);
       jdbcResourceManager.runSQLUpdate(mySqlDdl);
     }
 
     LOG.info("Launching Dataflow job...");
     Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put("sessionFilePath", getGcsPath("input/large_session.json", gcsResourceManager));
+    jobParameters.put(
+        "sessionFilePath", getGcsPath("input/large_session.json", gcsResourceManager));
 
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
