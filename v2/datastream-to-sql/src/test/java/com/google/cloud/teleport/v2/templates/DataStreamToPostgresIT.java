@@ -172,9 +172,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .setAllowedTables(
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
             .build();
-    String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     String gcsPrefixForNotification =
         getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
+    String gcsPrefix = gcsPrefixForNotification;
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("postgres-profile", jdbcSource);
     DestinationConfig destinationConfig =
