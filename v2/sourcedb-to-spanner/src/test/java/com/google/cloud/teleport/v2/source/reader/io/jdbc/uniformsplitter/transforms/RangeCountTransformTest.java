@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
@@ -45,6 +46,9 @@ public class RangeCountTransformTest {
   SerializableFunction<Void, DataSource> dataSourceProviderFn =
       ignored -> TransformTestUtils.DATA_SOURCE;
 
+  SerializableFunction<Void, DataSource> dataSourceProviderFnShard2 =
+      ignored -> TransformTestUtils.DATA_SOURCE_SHARD_2;
+
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
 
   @BeforeClass
@@ -54,11 +58,112 @@ public class RangeCountTransformTest {
     System.setProperty("derby.locks.waitTimeout", "2");
     System.setProperty("derby.stream.error.file", "build/derby.log");
     TransformTestUtils.createDerbyTable(tableName);
+    TransformTestUtils.createDerbyTable("RCT_multi_shard1");
+    TransformTestUtils.createDerbyTableShard2("RCT_multi_shard2");
   }
 
   @AfterClass
   public static void exitDerby() throws SQLException {
     TransformTestUtils.dropDerbyTable(tableName);
+    TransformTestUtils.dropDerbyTable("RCT_multi_shard1");
+    try (java.sql.Connection connection = TransformTestUtils.getConnectionShard2()) {
+      java.sql.Statement statement = connection.createStatement();
+      statement.executeUpdate("drop table RCT_multi_shard2");
+    }
+  }
+
+  @Test
+  public void testRangeCountTransform_multiShard() throws Exception {
+    String shard1Id = "shard1";
+    String shard2Id = "shard2";
+    String table1Name = "RCT_multi_shard1";
+    String table2Name = "RCT_multi_shard2";
+
+    Range range1 =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId(shard1Id)
+                    .setTableName(table1Name)
+                    .build())
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(10)
+            .setEnd(40)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    Range range2 =
+        Range.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId(shard2Id)
+                    .setTableName(table2Name)
+                    .build())
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(10)
+            .setEnd(40)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    RangeCountTransform transform =
+        RangeCountTransform.builder()
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setTableSplitSpecifications(
+                ImmutableList.of(
+                    TableSplitSpecification.builder()
+                        .setTableIdentifier(
+                            TableIdentifier.builder()
+                                .setDataSourceId(shard1Id)
+                                .setTableName(table1Name)
+                                .build())
+                        .setPartitionColumns(
+                            ImmutableList.of(
+                                PartitionColumn.builder()
+                                    .setColumnName("col1")
+                                    .setColumnClass(Integer.class)
+                                    .build()))
+                        .setApproxRowCount(100L)
+                        .setMaxPartitionsHint(10L)
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build(),
+                    TableSplitSpecification.builder()
+                        .setTableIdentifier(
+                            TableIdentifier.builder()
+                                .setDataSourceId(shard2Id)
+                                .setTableName(table2Name)
+                                .build())
+                        .setPartitionColumns(
+                            ImmutableList.of(
+                                PartitionColumn.builder()
+                                    .setColumnName("col1")
+                                    .setColumnClass(Integer.class)
+                                    .build()))
+                        .setApproxRowCount(100L)
+                        .setMaxPartitionsHint(10L)
+                        .setInitialSplitHeight(5L)
+                        .setSplitStagesCount(1L)
+                        .build()))
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource(shard1Id, dataSourceProviderFn)
+                    .addDataSource(shard2Id, dataSourceProviderFnShard2)
+                    .build())
+            .setTimeoutMillis(42L)
+            .build();
+
+    PCollection<Range> output = testPipeline.apply(Create.of(range1, range2)).apply(transform);
+
+    // Both tables have 6 rows in TransformTestUtils
+    PAssert.that(output).containsInAnyOrder(range1.withCount(6L, null), range2.withCount(6L, null));
+
+    testPipeline.run().waitUntilFinish();
   }
 
   @Test
@@ -133,7 +238,10 @@ public class RangeCountTransformTest {
                         .setInitialSplitHeight(5L)
                         .setSplitStagesCount(1L)
                         .build()))
-            .setDataSourceProviderFn(dataSourceProviderFn)
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build())
             .setTimeoutMillis(42L)
             .build();
     PCollection<Range> output = input.apply(rangeCountTransform);

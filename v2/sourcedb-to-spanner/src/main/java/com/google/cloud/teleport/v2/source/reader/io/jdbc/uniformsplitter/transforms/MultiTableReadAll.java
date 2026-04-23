@@ -20,6 +20,8 @@ import static org.apache.beam.sdk.util.Preconditions.checkArgumentNotNull;
 import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableReadSpecification;
 import com.google.common.annotations.VisibleForTesting;
@@ -83,7 +85,7 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
   private static final boolean DEFAULT_DISABLE_AUTO_COMMIT = true;
 
   @Pure
-  protected abstract @Nullable SerializableFunction<Void, DataSource> getDataSourceProviderFn();
+  protected abstract @Nullable DataSourceProvider getDataSourceProvider();
 
   @Pure
   protected abstract @Nullable ValueProvider<QueryProvider> getQueryProvider();
@@ -121,8 +123,8 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
 
   @AutoValue.Builder
   abstract static class Builder<ParameterT, OutputT> {
-    abstract Builder<ParameterT, OutputT> setDataSourceProviderFn(
-        SerializableFunction<Void, DataSource> dataSourceProviderFn);
+    abstract Builder<ParameterT, OutputT> setDataSourceProvider(
+        DataSourceProvider dataSourceProvider);
 
     abstract Builder<ParameterT, OutputT> setQueryProvider(ValueProvider<QueryProvider> query);
 
@@ -151,8 +153,8 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
    * @return a new transform instance with the data source configured.
    */
   public MultiTableReadAll<ParameterT, OutputT> withDataSourceConfiguration(
-      DataSourceConfiguration config) {
-    return withDataSourceProviderFn(DataSourceProviderFromDataSourceConfiguration.of(config));
+      String id, DataSourceConfiguration config) {
+    return withDataSourceProviderFn(id, DataSourceProviderFromDataSourceConfiguration.of(config));
   }
 
   /**
@@ -162,13 +164,34 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
    * @return a new transform instance.
    */
   public MultiTableReadAll<ParameterT, OutputT> withDataSourceProviderFn(
-      SerializableFunction<Void, DataSource> dataSourceProviderFn) {
-    if (getDataSourceProviderFn() != null) {
+      String id, SerializableFunction<Void, DataSource> dataSourceProviderFn) {
+    if (getDataSourceProvider() != null) {
       throw new IllegalArgumentException(
           "A dataSourceConfiguration or dataSourceProviderFn has "
               + "already been provided, and does not need to be provided again.");
     }
-    return toBuilder().setDataSourceProviderFn(dataSourceProviderFn).build();
+    return withDataSourceProvider(
+        DataSourceProviderImpl.builder().addDataSource(id, dataSourceProviderFn).build());
+  }
+
+  /**
+   * Configures a provider function for the data source.
+   *
+   * @param dataSourceProvider the data source provider function.
+   * @return a new transform instance.
+   */
+  public MultiTableReadAll<ParameterT, OutputT> withDataSourceProvider(
+      DataSourceProvider dataSourceProvider) {
+    if (dataSourceProvider == null) {
+      throw new IllegalArgumentException(
+          "DataSource can not be null "
+              + "already been provided, and does not need to be provided again.");
+    }
+    if (getDataSourceProvider() != null) {
+      throw new IllegalArgumentException(
+          "A dataSource has " + "already been provided, and does not need to be provided again.");
+    }
+    return toBuilder().setDataSourceProvider(dataSourceProvider).build();
   }
 
   /**
@@ -322,7 +345,7 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
             .apply(
                 ParDo.of(
                     new MultiTableReadFn<>(
-                        checkStateNotNull(getDataSourceProviderFn()),
+                        checkStateNotNull(getDataSourceProvider()),
                         checkStateNotNull(getQueryProvider()),
                         checkStateNotNull(getParameterSetter()),
                         getTableReadSpecifications(),
@@ -371,8 +394,8 @@ public abstract class MultiTableReadAll<ParameterT, OutputT>
     if (getCoder() != null) {
       builder.add(DisplayData.item("coder", getCoder().getClass().getName()));
     }
-    if (getDataSourceProviderFn() instanceof HasDisplayData) {
-      ((HasDisplayData) getDataSourceProviderFn()).populateDisplayData(builder);
+    if (getDataSourceProvider() instanceof HasDisplayData) {
+      ((HasDisplayData) getDataSourceProvider()).populateDisplayData(builder);
     }
   }
 

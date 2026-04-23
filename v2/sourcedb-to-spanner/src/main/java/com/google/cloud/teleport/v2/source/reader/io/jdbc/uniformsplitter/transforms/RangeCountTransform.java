@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
@@ -27,7 +28,6 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
 /** PTransform to wrap {@link RangeCountDoFn}. */
@@ -36,7 +36,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
     implements Serializable {
 
   /** Provider for {@link DataSource}. */
-  abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
+  abstract DataSourceProvider dataSourceProvider();
 
   /**
    * Implementations of {@link UniformSplitterDBAdapter} to get queries as per the dialect of the
@@ -59,7 +59,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
     SingleOutput<Range, Range> parDo =
         ParDo.of(
             new RangeCountDoFn(
-                dataSourceProviderFn(), timeoutMillis(), dbAdapter(), tableSplitSpecifications()));
+                dataSourceProvider(), timeoutMillis(), dbAdapter(), tableSplitSpecifications()));
 
     if (boundaryTypeMapper() != null) {
       parDo = parDo.withSideInputs(boundaryTypeMapper().getCollationMapperView());
@@ -74,7 +74,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setDataSourceProviderFn(SerializableFunction<Void, DataSource> value);
+    public abstract Builder setDataSourceProvider(DataSourceProvider value);
 
     public abstract Builder setDbAdapter(UniformSplitterDBAdapter value);
 

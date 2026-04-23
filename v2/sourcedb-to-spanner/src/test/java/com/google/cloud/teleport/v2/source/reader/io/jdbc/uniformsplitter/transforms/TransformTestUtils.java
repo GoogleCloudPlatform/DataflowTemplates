@@ -28,13 +28,29 @@ class TransformTestUtils {
   static final DataSourceConfiguration DATA_SOURCE_CONFIGURATION =
       DataSourceConfiguration.create(
           "org.apache.derby.jdbc.EmbeddedDriver", "jdbc:derby:memory:testDB;create=true");
+  static final DataSourceConfiguration DATA_SOURCE_CONFIGURATION_SHARD_2 =
+      DataSourceConfiguration.create(
+          "org.apache.derby.jdbc.EmbeddedDriver", "jdbc:derby:memory:testDB2;create=true");
   static final DataSource DATA_SOURCE = DATA_SOURCE_CONFIGURATION.buildDatasource();
+  static final DataSource DATA_SOURCE_SHARD_2 = DATA_SOURCE_CONFIGURATION_SHARD_2.buildDatasource();
 
   private TransformTestUtils() {}
 
   static void createDerbyTable(String tableName) throws SQLException {
     try (java.sql.Connection connection = getConnection()) {
-      Statement stmtCreateTable = connection.createStatement();
+      createTableForConnection(tableName, connection);
+    }
+  }
+
+  static void createDerbyTableShard2(String tableName) throws SQLException {
+    try (java.sql.Connection connection = getConnectionShard2()) {
+      createTableForConnection(tableName, connection);
+    }
+  }
+
+  private static void createTableForConnection(String tableName, Connection connection)
+      throws SQLException {
+    try (Statement stmtCreateTable = connection.createStatement()) {
       String createTableSQL =
           "CREATE TABLE "
               + tableName
@@ -111,5 +127,9 @@ class TransformTestUtils {
 
   static Connection getConnection() throws SQLException {
     return DATA_SOURCE.getConnection();
+  }
+
+  static Connection getConnectionShard2() throws SQLException {
+    return DATA_SOURCE_SHARD_2.getConnection();
   }
 }

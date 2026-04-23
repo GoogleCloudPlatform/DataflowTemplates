@@ -31,6 +31,7 @@ import static org.mockito.Mockito.withSettings;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.sql.Connection;
@@ -39,7 +40,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,8 +52,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 /** Test class for {@link CollationMapperDoFn}. */
 @RunWith(MockitoJUnitRunner.class)
 public class CollationMapperDoFnTest {
-  SerializableFunction<Void, DataSource> mockDataSourceProviderFn =
-      Mockito.mock(SerializableFunction.class, withSettings().serializable());
+  DataSourceProvider mockDataSourceProvider =
+      Mockito.mock(DataSourceProvider.class, withSettings().serializable());
   DataSource mockDataSource = Mockito.mock(DataSource.class, withSettings().serializable());
 
   Connection mockConnection = Mockito.mock(Connection.class, withSettings().serializable());
@@ -68,7 +68,7 @@ public class CollationMapperDoFnTest {
   @Test
   public void testCollationMapperDoFnBasic() throws Exception {
 
-    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
+    when(mockDataSourceProvider.getDataSource(any())).thenReturn(mockDataSource);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
@@ -96,9 +96,10 @@ public class CollationMapperDoFnTest {
 
     CollationMapperDoFn collationMapperDoFn =
         new CollationMapperDoFn(
-            mockDataSourceProviderFn, new MysqlDialectAdapter(MySqlVersion.DEFAULT));
-    collationMapperDoFn.setup();
-    collationMapperDoFn.processElement(testCollationReference, mockOut);
+            mockDataSourceProvider, new MysqlDialectAdapter(MySqlVersion.DEFAULT));
+    collationMapperDoFn.startBundle();
+    collationMapperDoFn.processElement(
+        KV.of("b1a1ec3b-195d-4755-b04b-02bc64dc4458", testCollationReference), mockOut);
     verify(mockOut).output(collationMapperCaptor.capture());
     KV<CollationReference, CollationMapper> mapperKV = collationMapperCaptor.getValue();
     assertThat(mapperKV.getKey()).isEqualTo(testCollationReference);
@@ -110,7 +111,7 @@ public class CollationMapperDoFnTest {
   @Test
   public void testCollationMapperDoFnException() throws Exception {
 
-    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
+    when(mockDataSourceProvider.getDataSource(any())).thenReturn(mockDataSource);
     when(mockDataSource.getConnection())
         .thenThrow(new SQLException("test"))
         .thenReturn(mockConnection);
@@ -125,13 +126,17 @@ public class CollationMapperDoFnTest {
 
     CollationMapperDoFn collationMapperDoFn =
         new CollationMapperDoFn(
-            mockDataSourceProviderFn, new MysqlDialectAdapter(MySqlVersion.DEFAULT));
-    collationMapperDoFn.setup();
+            mockDataSourceProvider, new MysqlDialectAdapter(MySqlVersion.DEFAULT));
+    collationMapperDoFn.startBundle();
     assertThrows(
         SQLException.class,
-        () -> collationMapperDoFn.processElement(testCollationReference, mockOut));
+        () ->
+            collationMapperDoFn.processElement(
+                KV.of("b1a1ec3b-195d-4755-b04b-02bc64dc4458", testCollationReference), mockOut));
     assertThrows(
         SQLException.class,
-        () -> collationMapperDoFn.processElement(testCollationReference, mockOut));
+        () ->
+            collationMapperDoFn.processElement(
+                KV.of("b1a1ec3b-195d-4755-b04b-02bc64dc4458", testCollationReference), mockOut));
   }
 }
