@@ -147,7 +147,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     String schema = cloudSqlSourceResourceManager.getDatabaseName();
 
     CloudPostgresResourceManager.ReplicationInfo replicationInfo =
-        cloudSqlSourceResourceManager.createLogicalReplication(List.of(cloudSqlSourceResourceManager.getFullTableName(sourceTableName)));
+        cloudSqlSourceResourceManager.createLogicalReplication(
+            List.of(cloudSqlSourceResourceManager.getFullTableName(sourceTableName)));
     this.replicationSlot = replicationInfo.getReplicationSlotName();
     String publication = replicationInfo.getPublicationName();
 
