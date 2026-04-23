@@ -143,18 +143,14 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void runTest(String sourceTableName) throws IOException {
-    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String user = cloudSqlSourceResourceManager.getUsername();
     String schema = cloudSqlSourceResourceManager.getDatabaseName();
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("ALTER USER %s WITH REPLICATION;", user));
 
-    // Try to create the replication slot, with retry logic if slots are full
-    createReplicationSlotWithRetry(this.replicationSlot);
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, sourceTableName));
+    CloudPostgresResourceManager.ReplicationInfo replicationInfo =
+        cloudSqlSourceResourceManager.createLogicalReplication(List.of(cloudSqlSourceResourceManager.getFullTableName(sourceTableName)));
+    this.replicationSlot = replicationInfo.getReplicationSlotName();
+    String publication = replicationInfo.getPublicationName();
+
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
     cloudSqlSourceResourceManager.runSQLUpdate(
