@@ -34,7 +34,7 @@ dataflow_params = {
     # Optional end timestamp for replication
     end_timestamp = "2024-10-31T23:59:59Z"
     # Optional prefix for shadow tables
-    shadow_table_prefix = "shadow_"
+    shadow_table_prefix = "rev_shadow_"
     # Optional path to a local session file
     local_session_file_path = "/path/to/session/file"
     # Optional filtration mode
