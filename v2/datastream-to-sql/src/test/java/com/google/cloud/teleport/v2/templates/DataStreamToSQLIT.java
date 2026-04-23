@@ -116,8 +116,8 @@ public class DataStreamToSQLIT extends TemplateTestBase {
                 .setPassword(password)
                 .build();
 
-    gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
-    dlqGcsPrefix = getGcsPath(testName + "/dlq/").replace("gs://" + artifactBucketName, "");
+    gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
+    dlqGcsPrefix = getGcsPath(testName + "/dlq/").replace("gs://" + artifactBucketName + "/", "");
   }
 
   @After
@@ -448,8 +448,8 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
     SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "it-sub");
 
-    gcsClient.createNotification(topic.toString(), gcsPrefix.substring(1));
-    gcsClient.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
+    gcsClient.createNotification(topic.toString(), gcsPrefix);
+    gcsClient.createNotification(dlqTopic.toString(), dlqGcsPrefix);
 
     return subscription;
   }
