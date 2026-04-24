@@ -17,3 +17,9 @@ CREATE TABLE Float32Table (
                               Key STRING(MAX) NOT NULL,
                               Float32Value FLOAT32,
 ) PRIMARY KEY(Key);
+
+DROP TABLE IF EXISTS CustomDictionary;
+CREATE TABLE CustomDictionary (
+    Key STRING(MAX) NOT NULL,
+    Value ARRAY<STRING(MAX)> NOT NULL,
+) PRIMARY KEY(Key ASC), OPTIONS (fulltext_dictionary_table=true);

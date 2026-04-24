@@ -43,3 +43,10 @@ DROP SEARCH INDEX IF EXISTS `%PREFIX%_SequenceIndex`;
 CREATE SEARCH INDEX `%PREFIX%_SearchIndex`
  ON `%PREFIX%_Singers`(`MyTokens`)
  OPTIONS (sort_order_sharding=TRUE);
+
+DROP TABLE IF EXISTS `%PREFIX%_CustomDictionary`;
+CREATE TABLE `%PREFIX%_CustomDictionary` (
+    `Key` STRING(MAX) NOT NULL,
+    `Value` ARRAY<STRING(MAX)> NOT NULL,
+) PRIMARY KEY(`Key` ASC), OPTIONS (fulltext_dictionary_table=true);
+

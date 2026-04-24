@@ -50,6 +50,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_TABLE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
@@ -687,6 +688,8 @@ public class AvroSchemaToDdlConverter {
     table.foreignKeys(getNumberedPropsWithPrefix(schema, SPANNER_FOREIGN_KEY));
 
     table.checkConstraints(getNumberedPropsWithPrefix(schema, SPANNER_CHECK_CONSTRAINT));
+
+    table.tableOptions(getNumberedPropsWithPrefix(schema, SPANNER_TABLE_OPTION));
 
     // Table parent options.
     String spannerParent = schema.getProp(SPANNER_PARENT);

@@ -1031,6 +1031,65 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void tableWithOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"CustomDictionary\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ "
+            + "    { \"name\" : \"Key\",\"type\" : \"string\",\"sqlType\" : \"STRING(MAX)\" },"
+            + "    { \"name\" : \"Value\",\"type\" : {\"type\":\"array\",\"items\":\"string\"},\"sqlType\" : \"ARRAY<STRING(MAX)>\" }"
+            + " ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerPrimaryKey_0\" : \"`Key` ASC\","
+            + "  \"spannerTableOption_0\": \"fulltext_dictionary_table=true\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `CustomDictionary` ("
+                + " `Key`                                    STRING(MAX) NOT NULL,"
+                + " `Value`                                  ARRAY<STRING(MAX)> NOT NULL,"
+                + " ) PRIMARY KEY (`Key` ASC),\nOPTIONS (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
+  public void pgTableWithOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"CustomDictionary\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ "
+            + "    { \"name\" : \"Key\",\"type\" : \"string\",\"sqlType\" : \"character varying\" },"
+            + "    { \"name\" : \"Value\",\"type\" : {\"type\":\"array\",\"items\":\"string\"},\"sqlType\" : \"character varying[]\" }"
+            + " ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerPrimaryKey_0\" : \"\\\"Key\\\" ASC\","
+            + "  \"spannerTableOption_0\": \"fulltext_dictionary_table=true\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"CustomDictionary\" ("
+                + " \"Key\"                                    character varying NOT NULL,"
+                + " \"Value\"                                  character varying[] NOT NULL,"
+                + " PRIMARY KEY (\"Key\")"
+                + " ) WITH (fulltext_dictionary_table=true)"));
+  }
+
+  @Test
   public void changeStreams() {
     String avroString1 =
         "{"
