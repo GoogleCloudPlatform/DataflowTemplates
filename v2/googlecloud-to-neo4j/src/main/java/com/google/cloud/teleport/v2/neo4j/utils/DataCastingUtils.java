@@ -143,7 +143,7 @@ public class DataCastingUtils {
                 case NanosDuration.IDENTIFIER:
                   castVals.add(asDuration(objVal));
                   break;
-                case org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER:
+                case "beam:logical_type:date:v1":
                   castVals.add(asDate(objVal));
                   break;
                 case org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER:
