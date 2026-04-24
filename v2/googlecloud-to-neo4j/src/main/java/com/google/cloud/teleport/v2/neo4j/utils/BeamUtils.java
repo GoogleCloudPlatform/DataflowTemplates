@@ -64,84 +64,36 @@ public class BeamUtils {
         fields.add(defaultFieldSchema(field));
         continue;
       }
-      switch (propertyType) {
-        case BOOLEAN:
-          schemaField = Schema.Field.nullable(field, FieldType.BOOLEAN);
-          break;
-        case BOOLEAN_ARRAY:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.array(FieldType.BOOLEAN));
-          break;
-        case BYTE_ARRAY:
-          schemaField = Schema.Field.nullable(field, FieldType.BYTES);
-          break;
-        case DATE:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.logicalType(new Date()));
-          break;
-        case DATE_ARRAY:
-          schemaField =
-              Schema.Field.nullable(
-                  field, Schema.FieldType.array(Schema.FieldType.logicalType(new Date())));
-          break;
-        case DURATION:
-          schemaField =
-              Schema.Field.nullable(field, Schema.FieldType.logicalType(new NanosDuration()));
-          break;
-        case DURATION_ARRAY:
-          schemaField =
-              Schema.Field.nullable(
-                  field, Schema.FieldType.array(Schema.FieldType.logicalType(new NanosDuration())));
-          break;
-        case FLOAT:
-          schemaField = Schema.Field.nullable(field, FieldType.DOUBLE);
-          break;
-        case FLOAT_ARRAY:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.array(FieldType.DOUBLE));
-          break;
-        case INTEGER:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.INT64);
-          break;
-        case INTEGER_ARRAY:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.array(FieldType.INT64));
-          break;
-        case LOCAL_DATETIME:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.logicalType(new DateTime()));
-          break;
-        case LOCAL_DATETIME_ARRAY:
-          schemaField =
-              Schema.Field.nullable(
-                  field, Schema.FieldType.array(Schema.FieldType.logicalType(new DateTime())));
-          break;
-        case LOCAL_TIME:
-        case ZONED_TIME:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.logicalType(new Time()));
-          break;
-        case LOCAL_TIME_ARRAY:
-        case ZONED_TIME_ARRAY:
-          schemaField =
-              Schema.Field.nullable(
-                  field, Schema.FieldType.array(Schema.FieldType.logicalType(new Time())));
-          break;
-        case POINT:
-        case STRING:
-          schemaField = Schema.Field.nullable(field, FieldType.STRING);
-          break;
-        case POINT_ARRAY:
-        case STRING_ARRAY:
-          schemaField = Schema.Field.nullable(field, Schema.FieldType.array(FieldType.STRING));
-          break;
-        case ZONED_DATETIME:
-          schemaField =
-              Schema.Field.nullable(field, Schema.FieldType.logicalType(new IsoDateTime()));
-          break;
-        case ZONED_DATETIME_ARRAY:
-          schemaField =
-              Schema.Field.nullable(
-                  field, Schema.FieldType.array(Schema.FieldType.logicalType(new IsoDateTime())));
-          break;
-        default:
-          throw new IllegalArgumentException(
-              String.format("Unsupported property type: %s", propertyType));
-      }
+      schemaField =
+          switch (propertyType.getName()) {
+            case BOOLEAN -> Field.nullable(field, FieldType.BOOLEAN);
+            case BOOLEAN_ARRAY -> Field.nullable(field, FieldType.array(FieldType.BOOLEAN));
+            case BYTE_ARRAY -> Field.nullable(field, FieldType.BYTES);
+            case DATE -> Field.nullable(field, FieldType.logicalType(new Date()));
+            case DATE_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.logicalType(new Date())));
+            case DURATION -> Field.nullable(field, FieldType.logicalType(new NanosDuration()));
+            case DURATION_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.logicalType(new NanosDuration())));
+            case FLOAT -> Field.nullable(field, FieldType.DOUBLE);
+            case FLOAT_ARRAY -> Field.nullable(field, FieldType.array(FieldType.DOUBLE));
+            case INTEGER -> Field.nullable(field, FieldType.INT64);
+            case INTEGER_ARRAY -> Field.nullable(field, FieldType.array(FieldType.INT64));
+            case LOCAL_DATETIME -> Field.nullable(field, FieldType.logicalType(new DateTime()));
+            case LOCAL_DATETIME_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.logicalType(new DateTime())));
+            case LOCAL_TIME, ZONED_TIME -> Field.nullable(field, FieldType.logicalType(new Time()));
+            case LOCAL_TIME_ARRAY, ZONED_TIME_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.logicalType(new Time())));
+            case POINT, STRING -> Field.nullable(field, FieldType.STRING);
+            case POINT_ARRAY, STRING_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.STRING));
+            case ZONED_DATETIME -> Field.nullable(field, FieldType.logicalType(new IsoDateTime()));
+            case ZONED_DATETIME_ARRAY -> Field.nullable(
+                field, FieldType.array(FieldType.logicalType(new IsoDateTime())));
+            default -> throw new IllegalArgumentException(
+                String.format("Unsupported property type: %s", propertyType));
+          };
       fields.add(schemaField);
     }
     return new Schema(fields);
