@@ -17,7 +17,6 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
 import org.junit.Test;
@@ -165,12 +164,17 @@ public class InformationSchemaScannerTest {
         equalToCompressingWhiteSpace(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name ="
                 + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position"));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
+    assertThat(
+        postgresSQLInfoScanner.listFunctionParametersSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position"));
   }
 }
