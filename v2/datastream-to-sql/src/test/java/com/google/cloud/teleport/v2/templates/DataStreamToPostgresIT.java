@@ -203,6 +203,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .addParameter("inputFileFormat", "json")
             .addParameter("streamName", stream.getName())
             .addParameter("databaseType", "postgres")
+            .addParameter("datastreamSourceType", "postgresql")
             .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
             .addParameter("schemaMap", schemaMap)
             .addParameter("databaseHost", cloudSqlDestinationResourceManager.getHost())
