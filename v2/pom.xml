@@ -697,6 +697,7 @@
         <module>azure-eventhub-to-pubsub</module>
         <module>bigtable-changestreams-to-hbase</module>
         <module>bigtable-common</module>
+        <module>bigtable-to-parquet</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
