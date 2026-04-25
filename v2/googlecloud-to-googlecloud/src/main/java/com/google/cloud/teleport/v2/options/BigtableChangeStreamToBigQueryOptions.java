@@ -149,4 +149,110 @@ public interface BigtableChangeStreamToBigQueryOptions
   String getDlqDirectory();
 
   void setDlqDirectory(String value);
+
+  @TemplateParameter.Text(
+      order = 11,
+      optional = true,
+      description = "Column value transforms",
+      helpText =
+          "A comma-separated list of column value transforms. Each entry has the format "
+              + "column_family:column_qualifier:TRANSFORM_TYPE. Supported TRANSFORM_TYPE values: "
+              + "BIG_ENDIAN_TIMESTAMP (interprets 8-byte big-endian values as Unix epoch millis), "
+              + "PROTO_DECODE(package.MessageName) (decodes protobuf-encoded values to JSON; "
+              + "requires protoSchemaPath). For complex transformations, consider using a "
+              + "JavaScript UDF. Note that column qualifiers containing commas are not supported "
+              + "since comma is used as the entry delimiter.")
+  @Default.String("")
+  String getColumnTransforms();
+
+  void setColumnTransforms(String value);
+
+  @TemplateParameter.GcsReadFile(
+      order = 12,
+      optional = true,
+      description = "Cloud Storage path to the proto schema file",
+      helpText =
+          "The Cloud Storage location of the self-contained proto schema file. "
+              + "For example, gs://path/to/my/file.pb. This file can be generated with the "
+              + "--descriptor_set_out flag of the protoc command. The --include_imports flag "
+              + "guarantees that the file is self-contained. Required when using "
+              + "PROTO_DECODE() in columnTransforms. For legacy compatibility, when set along "
+              + "with fullProtoMessageName, protoColumnFamily, and protoColumn, the pipeline "
+              + "automatically generates a columnTransforms entry. Prefer using "
+              + "columnTransforms with PROTO_DECODE() directly for multi-column proto decoding.")
+  @Default.String("")
+  String getProtoSchemaPath();
+
+  void setProtoSchemaPath(String value);
+
+  @TemplateParameter.Text(
+      order = 13,
+      optional = true,
+      regexes = {"^.+([a-zA-Z][a-zA-Z0-9_]+\\.?)+[a-zA-Z0-9_]$"},
+      description = "Full proto message name",
+      helpText =
+          "The full proto message name. For example, package.name.MessageName, "
+              + "where package.name is the value provided for the package statement "
+              + "and not the java_package statement. Used with the legacy proto options. "
+              + "Prefer using columnTransforms with PROTO_DECODE() for new configurations.")
+  @Default.String("")
+  String getFullProtoMessageName();
+
+  void setFullProtoMessageName(String value);
+
+  @TemplateParameter.Text(
+      order = 14,
+      optional = true,
+      description = "Column family containing proto values",
+      helpText =
+          "The Bigtable column family containing protobuf-encoded values to decode. "
+              + "Used with the legacy proto options. Together with protoColumn, this defines "
+              + "the proto-mapped column. Prefer using columnTransforms with PROTO_DECODE() "
+              + "for multi-column proto decoding.")
+  @Default.String("")
+  String getProtoColumnFamily();
+
+  void setProtoColumnFamily(String value);
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      description = "Column qualifier containing proto values",
+      helpText =
+          "The Bigtable column qualifier containing protobuf-encoded values to decode. "
+              + "Used with the legacy proto options. Together with protoColumnFamily, this "
+              + "defines the proto-mapped column. Prefer using columnTransforms with "
+              + "PROTO_DECODE() for multi-column proto decoding.")
+  @Default.String("")
+  String getProtoColumn();
+
+  void setProtoColumn(String value);
+
+  @TemplateParameter.Boolean(
+      order = 16,
+      optional = true,
+      description = "Preserve proto field names in JSON output",
+      helpText =
+          "When set to true, preserves original proto field names (snake_case) in the "
+              + "JSON output. When set to false, uses lowerCamelCase. Defaults to false.")
+  @Default.Boolean(false)
+  Boolean getPreserveProtoFieldNames();
+
+  void setPreserveProtoFieldNames(Boolean value);
+
+  @TemplateParameter.Long(
+      order = 17,
+      optional = true,
+      description = "Maximum decoded value size in bytes",
+      helpText =
+          "Maximum allowed size, in bytes, of a value after applying a columnTransforms "
+              + "decoder (e.g. PROTO_DECODE). Values whose decoded output would exceed this "
+              + "threshold are routed to the dead-letter queue with metadata only, and are "
+              + "not written to BigQuery. The default of 10000000 (10 MB) matches BigQuery "
+              + "Storage Write API's maximum row size, ensuring a single predictable error "
+              + "funnel. Increase this if you write to a sink that accepts larger rows.")
+  @Default.Long(10_000_000L)
+  Long getMaxDecodedValueBytes();
+
+  void setMaxDecodedValueBytes(Long value);
 }

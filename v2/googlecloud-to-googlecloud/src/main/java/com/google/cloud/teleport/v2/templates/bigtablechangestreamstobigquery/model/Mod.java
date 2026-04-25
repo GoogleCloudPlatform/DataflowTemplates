@@ -23,6 +23,9 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Range.BoundType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.TransformResult;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformer;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.schemautils.ValueTransformerRegistry;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
@@ -33,6 +36,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.threeten.bp.Instant;
@@ -48,6 +52,8 @@ public final class Mod implements Serializable {
   private static final long serialVersionUID = 8703757194338184299L;
 
   private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
+
+  public static final String TRANSFORMED_VALUE = "TRANSFORMED_VALUE";
 
   private static final ThreadLocal<ObjectMapper> OBJECT_MAPPER =
       ThreadLocal.withInitial(ObjectMapper::new);
@@ -71,11 +77,25 @@ public final class Mod implements Serializable {
   }
 
   public Mod(BigtableSource source, ChangeStreamMutation mutation, SetCell setCell) {
+    this(source, mutation, setCell, null);
+  }
+
+  public Mod(
+      BigtableSource source,
+      ChangeStreamMutation mutation,
+      SetCell setCell,
+      @Nullable ValueTransformerRegistry transformerRegistry) {
     this(mutation.getCommitTimestamp(), ModType.SET_CELL);
 
     Map<String, Object> propertiesMap = Maps.newHashMap();
     setCommonProperties(propertiesMap, source, mutation);
     setSpecificProperties(propertiesMap, setCell);
+
+    String transformed = tryTransformForChangeJson(setCell, transformerRegistry, Long.MAX_VALUE);
+    if (transformed != null) {
+      propertiesMap.put(TRANSFORMED_VALUE, transformed);
+    }
+
     this.changeJson = convertPropertiesToJson(propertiesMap);
   }
 
@@ -99,6 +119,72 @@ public final class Mod implements Serializable {
     setCommonProperties(propertiesMap, source, mutation);
     setSpecificProperties(propertiesMap, deleteFamily);
     this.changeJson = convertPropertiesToJson(propertiesMap);
+  }
+
+  /**
+   * Builds a SET_CELL {@link Mod} while enforcing an upper bound on the decoded-value size. The
+   * returned {@link SetCellBuildResult} carries the {@link TransformResult} so the pipeline can
+   * route oversized decodes to the dead-letter queue without the Mod needing to hold transient
+   * state.
+   *
+   * <p>When {@code transformerRegistry} is {@code null} or no transformer is registered for the
+   * column, no decode is attempted and the raw cell bytes are left untouched — in particular the
+   * potentially 100 MB {@link SetCell#getValue()} is not copied via {@code toByteArray()}.
+   */
+  public static SetCellBuildResult buildSetCell(
+      BigtableSource source,
+      ChangeStreamMutation mutation,
+      SetCell setCell,
+      @Nullable ValueTransformerRegistry transformerRegistry,
+      long maxDecodedValueBytes) {
+    TransformResult result;
+    if (transformerRegistry == null) {
+      result = TransformResult.noTransformer();
+    } else {
+      String qualifierStr = setCell.getQualifier().toStringUtf8();
+      ValueTransformer transformer =
+          transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
+      if (transformer == null) {
+        result = TransformResult.noTransformer();
+      } else {
+        byte[] valueBytes = setCell.getValue().toByteArray();
+        result = transformer.transformBounded(valueBytes, maxDecodedValueBytes);
+      }
+    }
+
+    if (result.status() == TransformResult.Status.OVERSIZED) {
+      return new SetCellBuildResult(null, result);
+    }
+
+    Mod mod = new Mod(mutation.getCommitTimestamp(), ModType.SET_CELL);
+    Map<String, Object> propertiesMap = Maps.newHashMap();
+    mod.setCommonProperties(propertiesMap, source, mutation);
+    mod.setSpecificProperties(propertiesMap, setCell);
+    // Preserve legacy behavior: only SUCCESS populates TRANSFORMED_VALUE.
+    if (result.status() == TransformResult.Status.SUCCESS) {
+      propertiesMap.put(TRANSFORMED_VALUE, result.value());
+    }
+    mod.changeJson = mod.convertPropertiesToJson(propertiesMap);
+    return new SetCellBuildResult(mod, result);
+  }
+
+  @Nullable
+  private static String tryTransformForChangeJson(
+      SetCell setCell,
+      @Nullable ValueTransformerRegistry transformerRegistry,
+      long maxDecodedValueBytes) {
+    if (transformerRegistry == null) {
+      return null;
+    }
+    String qualifierStr = setCell.getQualifier().toStringUtf8();
+    ValueTransformer transformer =
+        transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
+    if (transformer == null) {
+      return null;
+    }
+    byte[] valueBytes = setCell.getValue().toByteArray();
+    TransformResult result = transformer.transformBounded(valueBytes, maxDecodedValueBytes);
+    return result.status() == TransformResult.Status.SUCCESS ? result.value() : null;
   }
 
   private void setCommonProperties(
@@ -255,6 +341,27 @@ public final class Mod implements Serializable {
       return OBJECT_MAPPER.get().writeValueAsString(propertiesMap);
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  /** Result of {@link #buildSetCell}: the built {@link Mod} plus the transform outcome. */
+  public static final class SetCellBuildResult {
+    @Nullable private final Mod mod;
+    private final TransformResult transformResult;
+
+    SetCellBuildResult(@Nullable Mod mod, TransformResult transformResult) {
+      this.mod = mod;
+      this.transformResult = transformResult;
+    }
+
+    /** The built {@link Mod}, or {@code null} when the decoded value was {@link OVERSIZED}. */
+    @Nullable
+    public Mod mod() {
+      return mod;
+    }
+
+    public TransformResult transformResult() {
+      return transformResult;
     }
   }
 }
