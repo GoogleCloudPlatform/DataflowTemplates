@@ -68,6 +68,32 @@ public interface UniformSplitterDBAdapter extends Serializable {
   boolean checkForTimeout(SQLException exception);
 
   /**
+   * Describes the shape of the result set returned by {@link #getCollationsOrderQuery}.
+   *
+   * <ul>
+   *   <li>{@link #WEIGHT_BYTES} – the query returns raw {@code WEIGHT_STRING} sort-key bytes for
+   *       each character (columns {@code weight_non_trailing}, {@code weight_trailing}, {@code
+   *       is_empty}, {@code is_space}). Java performs all grouping, ranking and
+   *       equivalent-character resolution. Used by the MySQL adapter.
+   *   <li>{@link #WITH_RANKS} – the query returns pre-computed dense ranks ({@code codepoint_rank},
+   *       {@code codepoint_rank_pad_space}) together with {@code is_empty} and {@code is_space}.
+   *       Java resolves equivalent characters from the rank groups. Used by the PostgreSQL adapter.
+   * </ul>
+   */
+  enum CollationQueryResultType {
+    WEIGHT_BYTES,
+    WITH_RANKS
+  }
+
+  /**
+   * Returns the type of result produced by {@link #getCollationsOrderQuery}. Defaults to {@link
+   * CollationQueryResultType#WITH_RANKS}.
+   */
+  default CollationQueryResultType collationQueryResultType() {
+    return CollationQueryResultType.WITH_RANKS;
+  }
+
+  /**
    * Get a query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.
    *

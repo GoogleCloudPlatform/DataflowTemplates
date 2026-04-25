@@ -22,6 +22,8 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL;
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,6 +88,12 @@ public class CollationMapperDoFnTest {
     when(mockResultSet.getLong(CODEPOINT_RANK_PAD_SPACE_COL)).thenReturn(0L).thenReturn(0L);
     when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false).thenReturn(false);
     when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false).thenReturn(false);
+    when(mockResultSet.getBytes(WEIGHT_NON_TRAILING_COL))
+        .thenReturn(new byte[] {1})
+        .thenReturn(new byte[] {1});
+    when(mockResultSet.getBytes(WEIGHT_TRAILING_COL))
+        .thenReturn(new byte[] {1})
+        .thenReturn(new byte[] {1});
 
     CollationReference testCollationReference =
         CollationReference.builder()

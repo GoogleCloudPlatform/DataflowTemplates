@@ -42,9 +42,9 @@ public class CollationOrderRowTest {
   public void testCollationOrderRowBasic() {
     CollationOrderRow collationOrderRow =
         CollationOrderRow.builder()
-            .setCharsetChar('a')
-            .setEquivalentChar('A')
-            .setEquivalentCharPadSpace('A')
+            .setCharsetChar((int) 'a')
+            .setEquivalentChar((int) 'A')
+            .setEquivalentCharPadSpace((int) 'A')
             .setCodepointRank(1L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -74,9 +74,9 @@ public class CollationOrderRowTest {
     assertThat(collationOrderRow)
         .isEqualTo(
             CollationOrderRow.builder()
-                .setCharsetChar('a')
-                .setEquivalentChar('a')
-                .setEquivalentCharPadSpace('a')
+                .setCharsetChar((int) 'a')
+                .setEquivalentChar((int) 'a')
+                .setEquivalentCharPadSpace((int) 'a')
                 .setCodepointRank(0L)
                 .setCodepointRankPadSpace(0L)
                 .setIsEmpty(false)
