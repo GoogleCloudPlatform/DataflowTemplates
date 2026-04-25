@@ -21,26 +21,32 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
-    name = "PubSub_To_BigTable_Yaml",
+    name = "PubSub_To_AlloyDb_Yaml",
     category = TemplateCategory.STREAMING,
     type = Template.TemplateType.YAML,
-    displayName = "PubSub to BigTable (YAML)",
+    displayName = "PubSub to AlloyDb (YAML)",
     description =
-        "The PubSub to BigTable template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to BigTable. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
+        "The PubSub to AlloyDb template is a streaming pipeline which ingests data from a PubSub topic, executes a user-defined mapping, and writes the resulting records to AlloyDb. Any errors which occur in the transformation of the data are written to a separate Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
-    yamlTemplateFile = "PubSubToBigTable.yaml",
-    filesToCopy = {"main.py", "requirements.txt"},
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable",
+    yamlTemplateFile = "PubSubToAlloyDb.yaml",
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/pubsub_options.yaml",
+      "options/alloydb_options.yaml",
+      "options/maptofields_options.yaml",
+      "options/windowinto_options.yaml"
+    },
+    documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "Either the input Pub/Sub topic or subscription must exist.",
-      "The mapToField Pub/Sub error topic must exist.",
-      "The output BigTable table must exist."
+      "The mapToFields Pub/Sub error topic must exist.",
+      "The output AlloyDb instance must exist."
     },
     streaming = true,
     hidden = false)
-public interface PubSubToBigTableYaml {
+public interface PubSubToAlloyDbYaml {
 
   @TemplateParameter.Text(
       order = 1,
@@ -157,36 +163,6 @@ public interface PubSubToBigTableYaml {
 
   @TemplateParameter.Text(
       order = 12,
-      name = "projectId",
-      optional = false,
-      description = "BigTable project ID",
-      helpText = "The Google Cloud project ID of the BigTable instance.",
-      example = "")
-  @Validation.Required
-  String getProjectId();
-
-  @TemplateParameter.Text(
-      order = 13,
-      name = "instanceId",
-      optional = false,
-      description = "BigTable instance ID",
-      helpText = "The BigTable instance ID.",
-      example = "")
-  @Validation.Required
-  String getInstanceId();
-
-  @TemplateParameter.Text(
-      order = 14,
-      name = "tableId",
-      optional = false,
-      description = "BigTable output table",
-      helpText = "BigTable table ID to write the output to.",
-      example = "")
-  @Validation.Required
-  String getTableId();
-
-  @TemplateParameter.Text(
-      order = 15,
       name = "windowing",
       optional = true,
       description = "Windowing options",
@@ -196,7 +172,105 @@ public interface PubSubToBigTableYaml {
   String getWindowing();
 
   @TemplateParameter.Text(
+      order = 13,
+      name = "url",
+      optional = false,
+      description = "JDBC connection URL for AlloyDb",
+      helpText =
+          "The JDBC URL for connecting to AlloyDb instance. Format: jdbc:postgresql:///db?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>/instances/<INSTANCE>&alloydbIpType=PRIVATE",
+      example =
+          "jdbc:postgresql:///mydatabase?socketFactory=com.google.cloud.alloydb.SocketFactory&alloydbInstanceName=projects/my-project/locations/us-central1/clusters/my-cluster/instances/my-instance&alloydbIpType=PRIVATE")
+  @Validation.Required
+  String getUrl();
+
+  @TemplateParameter.Text(
+      order = 14,
+      name = "username",
+      optional = false,
+      description = "AlloyDb database username",
+      helpText = "Username for AlloyDb authentication",
+      example = "postgres")
+  @Validation.Required
+  String getUsername();
+
+  @TemplateParameter.Password(
+      order = 15,
+      name = "password",
+      optional = false,
+      description = "AlloyDb database password",
+      helpText = "Password for AlloyDb authentication",
+      example = "your-password")
+  @Validation.Required
+  String getPassword();
+
+  @TemplateParameter.Text(
       order = 16,
+      name = "connectionProperties",
+      optional = true,
+      description = "Connection properties for AlloyDb",
+      helpText =
+          "Optional connection properties as key-value pairs. Example: sslmode=require;connectTimeout=10",
+      example = "sslmode=require;connectTimeout=10")
+  String getConnectionProperties();
+
+  @TemplateParameter.Text(
+      order = 17,
+      name = "network",
+      optional = true,
+      description = "VPC Network name",
+      helpText = "The VPC network where AlloyDB is located.",
+      example = "default")
+  String getNetwork();
+
+  @TemplateParameter.Text(
+      order = 18,
+      name = "subnetwork",
+      optional = true,
+      description = "Subnetwork name",
+      helpText = "The subnetwork for Dataflow workers. Required for custom VPCs.",
+      example = "regions/us-central1/subnetworks/my-subnet")
+  String getSubnetwork();
+
+  @TemplateParameter.Text(
+      order = 19,
+      name = "table",
+      optional = false,
+      description = "Target table name in AlloyDb",
+      helpText = "The name of the table where records will be written",
+      example = "my_table")
+  @Validation.Required
+  String getTable();
+
+  @TemplateParameter.Text(
+      order = 20,
+      name = "query",
+      optional = false,
+      description = "SQL query for writing records",
+      helpText = "SQL query used to insert records into the JDBC sink.",
+      example = "INSERT INTO table_name (col1, col2) VALUES (?, ?)")
+  @Validation.Required
+  String getQuery();
+
+  @TemplateParameter.Integer(
+      order = 21,
+      name = "batchSize",
+      optional = true,
+      description = "Batch size for write operations",
+      helpText = "Number of records to batch before writing to the database",
+      example = "100")
+  Integer getBatchSize();
+
+  @TemplateParameter.Boolean(
+      order = 22,
+      name = "autoSharding",
+      optional = true,
+      description = "Enable autosharding for parallel writes",
+      helpText = "If true, enables using a dynamically determined number of shards to write.",
+      example = "True")
+  Boolean getAutoSharding();
+
+  @TemplateParameter.Text(
+      order = 23,
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",
