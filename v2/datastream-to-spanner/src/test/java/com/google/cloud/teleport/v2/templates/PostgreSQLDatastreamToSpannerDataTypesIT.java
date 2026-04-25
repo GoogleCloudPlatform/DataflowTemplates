@@ -165,7 +165,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                .setPrivateConnectivity("datastream-connect-2")
+                .setPrivateConnectivity(getPrivateConnectivity())
                 .build();
         LOG.info("Datastream resource manager created");
 
