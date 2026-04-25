@@ -199,7 +199,6 @@
     <module>datadog</module>
     <module>conditions</module>
     <module>jdbc</module>
-    <module>splunk</module>
     <module>cassandra</module>
     <module>iceberg</module>
   </modules>
