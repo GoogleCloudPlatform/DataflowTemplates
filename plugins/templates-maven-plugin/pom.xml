@@ -36,7 +36,7 @@
   </prerequisites>
 
   <properties>
-    <maven.version>3.9.9</maven.version>
+    <maven.version>3.9.14</maven.version>
     <dataflow.api.version>0.94.0</dataflow.api.version>
     <mojo.executor.version>2.4.1</mojo.executor.version>
     <maven-plugin.version>3.15.1</maven-plugin.version>
