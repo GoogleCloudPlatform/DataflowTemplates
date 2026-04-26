@@ -63,6 +63,27 @@ public class CloudMySQLResourceManager extends CloudSqlResourceManager {
     }
 
     @Override
+    public Builder maybeUseStaticInstance(String host, int port, String userName, String password) {
+      super.maybeUseStaticInstance(host, port, userName, password);
+      return this;
+    }
+
+    public Builder setProjectId(String projectId) {
+      this.projectId = projectId;
+      return this;
+    }
+
+    public Builder setRegion(String region) {
+      this.region = region;
+      return this;
+    }
+
+    public Builder setCredentials(com.google.auth.oauth2.GoogleCredentials credentials) {
+      this.credentials = credentials;
+      return this;
+    }
+
+    @Override
     public @NonNull CloudMySQLResourceManager build() {
       return new CloudMySQLResourceManager(this);
     }

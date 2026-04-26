@@ -115,14 +115,6 @@ public class MySQL5KTablesLT extends SourceDbToSpannerLTBase {
     columns.put("id", "BIGINT UNSIGNED");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
-    // OPTIMIZE MYSQL:
-    // We disable synchronous flushing and binary logging to speed up the creation and
-    // population of 5,000 tables on the source database.
-    try (Connection jdbcConnection = getJdbcConnection(mySQLResourceManager);
-        PreparedStatement pstmt =
-            jdbcConnection.prepareStatement("SET GLOBAL innodb_flush_log_at_trx_commit = 0;")) {
-      pstmt.executeUpdate();
-    }
     try (Connection jdbcConnection = getJdbcConnection(mySQLResourceManager);
         PreparedStatement pstmt = jdbcConnection.prepareStatement("SET GLOBAL sync_binlog = 0;")) {
       pstmt.executeUpdate();
@@ -145,18 +137,6 @@ public class MySQL5KTablesLT extends SourceDbToSpannerLTBase {
       if (i % 500 == 0) {
         LOG.info("Created {} tables so far on Source", i);
       }
-    }
-
-    // Restore MySQL durability settings to ensure a realistic state for the template.
-    try (Connection jdbcConnection = getJdbcConnection(mySQLResourceManager);
-        PreparedStatement pstmt =
-            jdbcConnection.prepareStatement("SET GLOBAL innodb_flush_log_at_trx_commit = 1;")) {
-      pstmt.executeUpdate();
-    }
-
-    try (Connection jdbcConnection = getJdbcConnection(mySQLResourceManager);
-        PreparedStatement pstmt = jdbcConnection.prepareStatement("SET GLOBAL sync_binlog = 1;")) {
-      pstmt.executeUpdate();
     }
 
     // PARALLEL DDL EXECUTION:
