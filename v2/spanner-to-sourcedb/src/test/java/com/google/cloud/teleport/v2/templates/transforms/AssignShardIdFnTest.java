@@ -41,6 +41,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -172,8 +173,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     List<String> columns =
@@ -205,8 +206,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     List<String> columns =
@@ -250,8 +251,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -305,8 +306,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -352,8 +353,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -394,8 +395,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     // The line below actually triggers the loading logic that throws the exception
@@ -468,8 +469,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            ALL_TYPES_SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -514,8 +515,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            ALL_TYPES_SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -569,8 +570,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            ALL_TYPES_SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -609,8 +610,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -655,8 +656,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            ALL_TYPES_SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -710,8 +711,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
 
@@ -768,8 +769,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
@@ -903,7 +904,7 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL,
             null,
-            "",
+            null,
             "",
             "");
 
@@ -1038,7 +1039,7 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL,
             null,
-            "",
+            null,
             "",
             "");
 
@@ -1094,8 +1095,8 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL,
-            SESSION_FILE_PATH,
-            "",
+            SessionFileReader.read(SESSION_FILE_PATH),
+            null,
             "",
             "");
     record.setShard(Constants.SEVERE_ERROR_SHARD_ID);

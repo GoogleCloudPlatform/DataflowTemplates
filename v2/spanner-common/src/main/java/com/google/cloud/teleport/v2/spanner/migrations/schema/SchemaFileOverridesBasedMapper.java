@@ -50,6 +50,17 @@ public class SchemaFileOverridesBasedMapper implements ISchemaMapper, Serializab
     this.ddl = ddl;
   }
 
+  /**
+   * Constructs a new SchemaFileOverridesBasedMapper.
+   *
+   * @param schemaFileOverride The parsed schema overrides object.
+   * @param ddl The DDL representation of the Spanner schema.
+   */
+  public SchemaFileOverridesBasedMapper(SchemaFileOverride schemaFileOverride, Ddl ddl) {
+    this.parser = new SchemaFileOverridesParser(schemaFileOverride);
+    this.ddl = ddl;
+  }
+
   @Override
   public Dialect getDialect() {
     return ddl.dialect();

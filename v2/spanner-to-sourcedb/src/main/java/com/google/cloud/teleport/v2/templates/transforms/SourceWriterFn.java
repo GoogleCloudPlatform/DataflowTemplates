@@ -27,6 +27,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
@@ -106,10 +108,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Ddl> shadowTableDdlView;
 
-  private final String sessionFilePath;
-  private final String schemaOverridesFilePath;
   private final String tableOverrides;
   private final String columnOverrides;
+  private final Schema schema;
+  private final SchemaFileOverride schemaFileOverride;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -123,8 +125,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       CustomTransformation customTransformation,
       PCollectionView<Ddl> ddlView,
       PCollectionView<Ddl> shadowTableDdlView,
-      String sessionFilePath,
-      String schemaOverridesFilePath,
+      Schema schema,
+      SchemaFileOverride schemaFileOverride,
       String tableOverrides,
       String columnOverrides) {
 
@@ -139,8 +141,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.customTransformation = customTransformation;
     this.ddlView = ddlView;
     this.shadowTableDdlView = shadowTableDdlView;
-    this.sessionFilePath = sessionFilePath;
-    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.schema = schema;
+    this.schemaFileOverride = schemaFileOverride;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
   }
@@ -197,7 +199,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     // SchemaMapper depends on Ddl side input, which is only available in processElement.
     ISchemaMapper schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverride, tableOverrides, columnOverrides, ddl);
 
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();

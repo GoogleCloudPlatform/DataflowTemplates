@@ -33,6 +33,14 @@ public class SchemaFileOverridesParser implements ISchemaOverridesParser, Serial
 
   final SchemaFileOverride schemaFileOverride;
 
+  public SchemaFileOverridesParser(SchemaFileOverride schemaFileOverride) {
+    this.schemaFileOverride = schemaFileOverride;
+  }
+
+  public SchemaFileOverride getSchemaFileOverride() {
+    return schemaFileOverride;
+  }
+
   public SchemaFileOverridesParser(String overridesFilePath) {
     try (InputStream stream =
         Channels.newInputStream(

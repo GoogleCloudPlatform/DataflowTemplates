@@ -36,6 +36,9 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -43,6 +46,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFile
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
@@ -774,6 +778,19 @@ public class SpannerToSourceDb {
               spannerMetadataConfig, options.getFailureInjectionParameter());
     }
 
+    Schema schema = null;
+    if (options.getSessionFilePath() != null && !options.getSessionFilePath().isEmpty()) {
+      schema = SessionFileReader.read(options.getSessionFilePath());
+    }
+
+    SchemaFileOverride schemaFileOverride = null;
+    if (options.getSchemaOverridesFilePath() != null
+        && !options.getSchemaOverridesFilePath().isEmpty()) {
+      SchemaFileOverridesParser parser =
+          new SchemaFileOverridesParser(options.getSchemaOverridesFilePath());
+      schemaFileOverride = parser.getSchemaFileOverride();
+    }
+
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -795,13 +812,10 @@ public class SpannerToSourceDb {
                             options.getShardingCustomParameters(),
                             options.getMaxShardConnections() * shards.size(),
                             options.getSourceType(),
-                            options.getSessionFilePath(),
-                            options.getSchemaOverridesFilePath(),
+                            schema,
+                            schemaFileOverride,
                             options.getTableOverrides(),
-                            options
-                                .getColumnOverrides())) // currently assume that all shards accept
-                    // the
-                    // same source type
+                            options.getColumnOverrides()))
                     .withSideInputs(ddlView))
             .setCoder(
                 KvCoder.of(VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
@@ -820,8 +834,8 @@ public class SpannerToSourceDb {
                     connectionPoolSizePerWorker,
                     options.getSourceType(),
                     customTransformation,
-                    options.getSessionFilePath(),
-                    options.getSchemaOverridesFilePath(),
+                    schema,
+                    schemaFileOverride,
                     options.getTableOverrides(),
                     options.getColumnOverrides()));
 

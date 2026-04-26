@@ -250,8 +250,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -284,8 +284,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -317,8 +317,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -355,8 +355,8 @@ public class SourceWriterFnTest {
             customTransformation,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -398,8 +398,8 @@ public class SourceWriterFnTest {
             customTransformation,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -439,8 +439,8 @@ public class SourceWriterFnTest {
             customTransformation,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -478,8 +478,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -514,8 +514,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -548,8 +548,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -583,8 +583,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -618,8 +618,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -654,8 +654,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -690,8 +690,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -726,8 +726,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -762,8 +762,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -798,8 +798,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -836,8 +836,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -868,8 +868,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -898,8 +898,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -934,8 +934,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -970,8 +970,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -1006,8 +1006,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -1048,8 +1048,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -1089,8 +1089,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -1125,8 +1125,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     ObjectMapper mapper = new ObjectMapper();
@@ -1159,8 +1159,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1185,8 +1185,8 @@ public class SourceWriterFnTest {
             null,
             mockDdlView,
             mockShadowTableDdlView,
-            "src/test/resources/sourceWriterUTSession.json",
-            "",
+            testSchema,
+            null,
             "",
             "");
     sourceWriterFn.teardown();

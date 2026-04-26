@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.utils;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -25,15 +27,13 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper
 public class SchemaMapperUtils {
 
   public static ISchemaMapper getSchemaMapper(
-      String sessionFilePath,
-      String schemaOverridesFilePath,
+      Schema schema,
+      SchemaFileOverride schemaFileOverride,
       String tableOverrides,
       String columnOverrides,
       Ddl ddl) {
-    // Check if config types are specified
-    boolean hasSessionFile = sessionFilePath != null && !sessionFilePath.equals("");
-    boolean hasSchemaOverridesFile =
-        schemaOverridesFilePath != null && !schemaOverridesFilePath.equals("");
+    boolean hasSessionFile = schema != null;
+    boolean hasSchemaOverridesFile = schemaFileOverride != null;
     boolean hasStringOverrides =
         (tableOverrides != null && !tableOverrides.equals(""))
             || (columnOverrides != null && !columnOverrides.equals(""));
@@ -51,15 +51,15 @@ public class SchemaMapperUtils {
 
     if (overrideTypesCount > 1) {
       throw new IllegalArgumentException(
-          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
-              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+          "Only one type of schema override can be specified. Please pass only one of: schema, "
+              + "schemaFileOverride, or tableOverrides/columnOverrides.");
     }
 
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
     if (hasSessionFile) {
-      schemaMapper = new SessionBasedMapper(sessionFilePath, ddl);
+      schemaMapper = new SessionBasedMapper(schema, ddl);
     } else if (hasSchemaOverridesFile) {
-      schemaMapper = new SchemaFileOverridesBasedMapper(schemaOverridesFilePath, ddl);
+      schemaMapper = new SchemaFileOverridesBasedMapper(schemaFileOverride, ddl);
     } else if (hasStringOverrides) {
       schemaMapper = new SchemaStringOverridesBasedMapper(tableOverrides, columnOverrides, ddl);
     }

@@ -31,6 +31,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -113,10 +115,10 @@ public class AssignShardIdFn
 
   private final String sourceType;
 
-  private final String sessionFilePath;
-  private final String schemaOverridesFilePath;
   private final String tableOverrides;
   private final String columnOverrides;
+  private final Schema schema;
+  private final SchemaFileOverride schemaFileOverride;
 
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
@@ -130,8 +132,8 @@ public class AssignShardIdFn
       String shardingCustomParameters,
       Long maxConnectionsAcrossAllShards,
       String sourceType,
-      String sessionFilePath,
-      String schemaOverridesFilePath,
+      Schema schema,
+      SchemaFileOverride schemaFileOverride,
       String tableOverrides,
       String columnOverrides) {
     this.spannerConfig = spannerConfig;
@@ -145,8 +147,8 @@ public class AssignShardIdFn
     this.shardingCustomParameters = shardingCustomParameters;
     this.maxConnectionsAcrossAllShards = maxConnectionsAcrossAllShards;
     this.sourceType = sourceType;
-    this.sessionFilePath = sessionFilePath;
-    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.schema = schema;
+    this.schemaFileOverride = schemaFileOverride;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
   }
@@ -208,7 +210,7 @@ public class AssignShardIdFn
 
     schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverride, tableOverrides, columnOverrides, ddl);
 
     shardIdFetcher =
         ShardingLogicImplFetcher.getShardingLogicImpl(
