@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
@@ -32,7 +33,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
@@ -405,7 +405,8 @@ public class GCSToSourceDb {
     return pipeline.run();
   }
 
-  private static void validateMySQLNotReadOnly(Map<String, ProcessingContext> processingContextMap) {
+  private static void validateMySQLNotReadOnly(
+      Map<String, ProcessingContext> processingContextMap) {
     for (ProcessingContext context : processingContextMap.values()) {
       Shard shard = context.getShard();
       String sourceConnectionUrl =
@@ -418,8 +419,7 @@ public class GCSToSourceDb {
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
             if (rs != null && rs.next() && rs.getInt(1) == 1) {
               throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: "
-                      + shard.getLogicalShardId());
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
             }
           }
         }

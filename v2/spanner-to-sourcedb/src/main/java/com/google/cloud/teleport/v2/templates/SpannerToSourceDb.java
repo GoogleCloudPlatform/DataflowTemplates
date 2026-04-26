@@ -1013,8 +1013,7 @@ public class SpannerToSourceDb {
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
             if (rs != null && rs.next() && rs.getInt(1) == 1) {
               throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: "
-                      + shard.getLogicalShardId());
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
             }
           }
         }
