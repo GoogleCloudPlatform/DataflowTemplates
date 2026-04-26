@@ -66,7 +66,10 @@ import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -657,6 +660,11 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
+
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+      validateMySQLNotReadOnly(shards);
+    }
+
     SourceSchema sourceSchema = fetchSourceSchema(options, shards);
     LOG.info("Source schema: {}", sourceSchema);
 
@@ -991,6 +999,32 @@ public class SpannerToSourceDb {
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
     builder.withConfigLoader(configLoader);
     return builder.build();
+  }
+
+  private static void validateMySQLNotReadOnly(List<Shard> shards) {
+    for (Shard shard : shards) {
+      String sourceConnectionUrl =
+          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+      try (Connection conn =
+          DriverManager.getConnection(
+              sourceConnectionUrl, shard.getUserName(), shard.getPassword())) {
+        if (conn != null) {
+          try (Statement stmt = conn.createStatement();
+              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
+            if (rs != null && rs.next() && rs.getInt(1) == 1) {
+              throw new RuntimeException(
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
+            }
+          }
+        }
+      } catch (SQLException e) {
+        LOG.error(
+            "Error checking MySQL read-only status for shard {}: {}",
+            shard.getLogicalShardId(),
+            e.getMessage());
+        throw new RuntimeException("Error checking MySQL read-only status", e);
+      }
+    }
   }
 
   private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
