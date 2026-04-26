@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "job-builder-util-transforms"
+version = "0.1.0"
+description = "Utility transforms for job builder"
+authors = ["Google Cloud Platform"]
+packages = [
+    { include = "copy_files_to_gcs.py" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+apache-beam = {extras = ["gcp", "yaml"], version = "2.72.0"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+yapf = "^0.43.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.yapf]
+indent_width = 2
+continuation_indent_width = 4
+column_limit = 80
+allow_split_before_dict_value = false
+blank_line_before_module_docstring = true
+coalesce_brackets = true
+each_dict_entry_on_separate_line = true
+split_all_top_level_comma_separated_values = true
+split_arguments_when_comma_terminated = true
+split_before_expression_after_opening_paren = true
+split_before_first_argument = true
+split_before_logical_operator = false
+
