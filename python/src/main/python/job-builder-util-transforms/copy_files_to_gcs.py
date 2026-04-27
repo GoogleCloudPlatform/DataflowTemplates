@@ -30,7 +30,8 @@ class CopyFilesToGCSDoFn(DoFn):
   def start_bundle(self):
     """Starts a bundle. Generates a unique bundle-level prefix if a job-level prefix is set."""
     # Generating a random string to be added to the path during bundle startup
-    # so that we do not write duplicate data due to bundle retries by the runner.
+    # so that subquent steps only consider elements from succeessful bundles executions
+    # in case of a bundle retry by the runner.
     if self.job_level_gcs_prefix:
       self.bundle_level_gcs_prefix = self.job_level_gcs_prefix + secrets.token_urlsafe(32) + '/'
     else:
@@ -55,9 +56,9 @@ class CopyFilesToGCSDoFn(DoFn):
 
     file_name = input_file.path.split('/')[-1]
     gcs_file_path = self.bundle_level_gcs_prefix + file_name
-    with FileSystems.open(input_file.path, 'application/octet-stream') as s3_file:
+    with FileSystems.open(input_file.path, 'application/octet-stream') as external_file:
       with FileSystems.create(gcs_file_path, 'application/octet-stream') as gcs_file:
-        shutil.copyfileobj(s3_file, gcs_file, length=CopyFilesToGCSDoFn.COPY_BUFFER_SIZE)
+        shutil.copyfileobj(external_file, gcs_file, length=CopyFilesToGCSDoFn.COPY_BUFFER_SIZE)
 
     yield Row(path=gcs_file_path)
 
@@ -66,6 +67,11 @@ class CopyFilesToGCS(PTransform):
   """A PTransform that copies files to GCS.
   
   It takes a PCollection of objects with a `path` attribute and copies non-GCS files to the specified GCS destination.
+
+  This returns a PCollection of `Row` objects with the new path of the file on GCS, or the original path if it was already on GCS.
+
+  In case of a bundle retry by the runner, this makes sure to only produce elements of successful bundles.
+  Failed bundles may leave temporary files behind that should not be considered as part of the pipeline output.
   """
   def __init__(self, gcs_file_path):
     """Initializes the transform.

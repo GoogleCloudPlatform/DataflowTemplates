@@ -1,15 +1,15 @@
 import unittest
+from unittest.mock import patch
 import os
-import shutil
 import tempfile
 import apache_beam as beam
 from apache_beam import Row
 from apache_beam.testing.test_pipeline import TestPipeline
 from apache_beam.testing.util import assert_that
-from apache_beam.typehints.row_type import RowTypeConstraint
+from apache_beam.testing.util import equal_to
 
 from copy_files_to_gcs import CopyFilesToGCSDoFn
-from copy_files_to_gcs import CopyFilesToGCS as CopyFilesToGCSImpl
+from copy_files_to_gcs import CopyFilesToGCS
 
 class TransformsTest(unittest.TestCase):
 
@@ -55,17 +55,13 @@ class TransformsTest(unittest.TestCase):
         
       dest_prefix = os.path.join(tmp_dir, 'dest') + '/'
       
-      with TestPipeline() as p:
-        input_rows = p | beam.Create([Row(path=src_file)])
-        output = input_rows | CopyFilesToGCSImpl(gcs_file_path=dest_prefix)
-        
-        def check_output(elements):
-          self.assertEqual(len(elements), 1)
-          element = elements[0]
-          self.assertTrue(hasattr(element, 'path'))
-          self.assertTrue(element.path.startswith(dest_prefix))
+      with patch('copy_files_to_gcs.secrets.token_urlsafe', return_value='fixed_token'):
+        with TestPipeline() as p:
+          input_rows = p | beam.Create([Row(path=src_file)])
+          output = input_rows | CopyFilesToGCS(gcs_file_path=dest_prefix)
           
-        assert_that(output, check_output)
+          expected_path = dest_prefix + 'fixed_token/' + 'fixed_token/' + 'src.txt'
+          assert_that(output, equal_to([Row(path=expected_path)]))
 
 if __name__ == '__main__':
   unittest.main()

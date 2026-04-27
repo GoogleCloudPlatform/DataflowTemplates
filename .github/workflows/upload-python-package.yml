@@ -40,6 +40,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
 
+      - name: Install project dependencies
+        working-directory: python/src/main/python/job-builder-util-transforms
+        run: poetry install
+
+      - name: Run Tests
+        working-directory: python/src/main/python/job-builder-util-transforms
+        run: poetry run pytest ../../../test/python/job-builder-util-transforms/
+
       - name: Build Package
         working-directory: python/src/main/python/job-builder-util-transforms
         run: poetry build
