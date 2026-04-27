@@ -35,29 +35,29 @@ import org.apache.beam.sdk.values.Row;
  * <ul>
  *   <li>Keep the {@code transforms/} package free of DoFn implementation details (mirrors the
  *       {@code SelectTable} / {@code SelectTableFn} split elsewhere in this module).
- *   <li>Pin the output coder. Row has no default coder so the output {@code PCollection} needs
- *       an explicit {@link KvCoder} that uses {@link SerializableCoder} for the Row half.
+ *   <li>Pin the output coder. Row has no default coder so the output {@code PCollection} needs an
+ *       explicit {@link KvCoder} that uses {@link SerializableCoder} for the Row half.
  * </ul>
  */
 public class GeneratePrimaryKey
-        extends PTransform<PCollection<DataGeneratorTable>, PCollection<KV<String, Row>>> {
+    extends PTransform<PCollection<DataGeneratorTable>, PCollection<KV<String, Row>>> {
 
-    private final int maxShards;
-    private final String sinkOptionsPath;
-    private final String sinkType;
+  private final int maxShards;
+  private final String sinkOptionsPath;
+  private final String sinkType;
 
-    public GeneratePrimaryKey(int maxShards, String sinkOptionsPath, String sinkType) {
-        this.maxShards = maxShards;
-        this.sinkOptionsPath = sinkOptionsPath;
-        this.sinkType = sinkType;
-    }
+  public GeneratePrimaryKey(int maxShards, String sinkOptionsPath, String sinkType) {
+    this.maxShards = maxShards;
+    this.sinkOptionsPath = sinkOptionsPath;
+    this.sinkType = sinkType;
+  }
 
-    @Override
-    public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
-        return input
-                .apply(
-                        "GeneratePrimaryKeyFn",
-                        ParDo.of(new GeneratePrimaryKeyFn(maxShards, sinkOptionsPath, sinkType)))
-                .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Row.class)));
-    }
+  @Override
+  public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
+    return input
+        .apply(
+            "GeneratePrimaryKeyFn",
+            ParDo.of(new GeneratePrimaryKeyFn(maxShards, sinkOptionsPath, sinkType)))
+        .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Row.class)));
+  }
 }
