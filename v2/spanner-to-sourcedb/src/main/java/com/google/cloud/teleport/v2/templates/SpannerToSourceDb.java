@@ -66,7 +66,6 @@ import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -1003,11 +1002,8 @@ public class SpannerToSourceDb {
 
   private static void validateMySQLNotReadOnly(List<Shard> shards) {
     for (Shard shard : shards) {
-      String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
       try (Connection conn =
-          DriverManager.getConnection(
-              sourceConnectionUrl, shard.getUserName(), shard.getPassword())) {
+          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
         if (conn != null) {
           try (Statement stmt = conn.createStatement();
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {

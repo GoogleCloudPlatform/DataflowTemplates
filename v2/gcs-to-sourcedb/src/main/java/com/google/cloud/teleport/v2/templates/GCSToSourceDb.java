@@ -21,18 +21,12 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.GCSToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.transforms.GcsToSourceStreamer;
 import com.google.cloud.teleport.v2.templates.utils.ProcessingContextGenerator;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.Pipeline;
@@ -377,11 +371,8 @@ public class GCSToSourceDb {
             tableSuffix,
             options.getRunIdentifier(),
             isMetadataDbPostgres);
-    LOG.info("The size of  processing context is : " + processingContextMap.size());
 
-    if ("mysql".equals(options.getSourceType())) {
-      validateMySQLNotReadOnly(processingContextMap);
-    }
+    LOG.info("The size of  processing context is : " + processingContextMap.size());
 
     pipeline
         .apply(
@@ -403,33 +394,5 @@ public class GCSToSourceDb {
                     options.getSpannerProjectId())));
 
     return pipeline.run();
-  }
-
-  private static void validateMySQLNotReadOnly(
-      Map<String, ProcessingContext> processingContextMap) {
-    for (ProcessingContext context : processingContextMap.values()) {
-      Shard shard = context.getShard();
-      String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      try (Connection conn =
-          DriverManager.getConnection(
-              sourceConnectionUrl, shard.getUserName(), shard.getPassword())) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
-            }
-          }
-        }
-      } catch (SQLException e) {
-        LOG.error(
-            "Error checking MySQL read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking MySQL read-only status", e);
-      }
-    }
   }
 }
