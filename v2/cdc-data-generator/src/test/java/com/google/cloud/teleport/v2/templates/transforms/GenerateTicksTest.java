@@ -31,6 +31,7 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -74,17 +75,6 @@ public class GenerateTicksTest {
   }
 
   @Test
-  public void testResolveBaseTickRate_usesInsertQps() {
-    assertEquals(500, GenerateTicks.resolveBaseTickRate(500));
-  }
-
-  @Test
-  public void testResolveBaseTickRate_defaultsToConstantWhenZeroOrNegative() {
-    assertEquals(GenerateTicks.DEFAULT_BASE_TICK_RATE, GenerateTicks.resolveBaseTickRate(0));
-    assertEquals(GenerateTicks.DEFAULT_BASE_TICK_RATE, GenerateTicks.resolveBaseTickRate(-5));
-  }
-
-  @Test
   public void testTotalRootQps_sumsOnlyRootTables() {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
@@ -119,119 +109,38 @@ public class GenerateTicksTest {
 
     PCollection<Long> output =
         pipeline
-            .apply("Input", Create.of(buildSequence(50)))
-            .apply("GenerateTicks", new GenerateTicks(100, schemaView));
+            .apply("Input", Create.of(buildInstantSequence(50)))
+            .apply("GenerateTicks", new GenerateTicks(schemaView));
 
     PAssert.that(output).empty();
     pipeline.run();
   }
 
   @Test
-  public void testScaleTicks_totalQpsEqualsBaseRateEmitsSameCount() {
-    DataGeneratorSchema schema =
-        DataGeneratorSchema.builder().tables(ImmutableMap.of("A", root("A", 100))).build();
-    PCollectionView<DataGeneratorSchema> schemaView =
-        pipeline.apply("MkSchema", Create.of(schema)).apply("AsView", View.asSingleton());
-
-    int inputCount = 100;
-    PCollection<Long> output =
-        pipeline
-            .apply("Input", Create.of(buildSequence(inputCount)))
-            .apply("GenerateTicks", new GenerateTicks(100, schemaView));
-
-    PAssert.thatSingleton(output.apply("Count", org.apache.beam.sdk.transforms.Count.globally()))
-        .isEqualTo((long) inputCount);
-    pipeline.run();
-  }
-
-  @Test
-  public void testScaleTicks_totalQpsExactMultipleOfBaseRate() {
-    DataGeneratorSchema schema =
-        DataGeneratorSchema.builder().tables(ImmutableMap.of("A", root("A", 300))).build();
-    PCollectionView<DataGeneratorSchema> schemaView =
-        pipeline.apply("MkSchema", Create.of(schema)).apply("AsView", View.asSingleton());
-
-    int inputCount = 100;
-    PCollection<Long> output =
-        pipeline
-            .apply("Input", Create.of(buildSequence(inputCount)))
-            .apply("GenerateTicks", new GenerateTicks(100, schemaView));
-
-    PAssert.thatSingleton(output.apply("Count", org.apache.beam.sdk.transforms.Count.globally()))
-        .isEqualTo((long) inputCount * 3);
-    pipeline.run();
-  }
-
-  @Test
-  public void testScaleTicks_totalQpsLessThanBaseRateStaysBelow() {
+  public void testScaleTicks_emitsTotalQpsCopies() {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder().tables(ImmutableMap.of("A", root("A", 10))).build();
     PCollectionView<DataGeneratorSchema> schemaView =
         pipeline.apply("MkSchema", Create.of(schema)).apply("AsView", View.asSingleton());
 
-    int inputCount = 100;
+    int inputCount = 5;
     PCollection<Long> output =
         pipeline
-            .apply("Input", Create.of(buildSequence(inputCount)))
-            .apply("GenerateTicks", new GenerateTicks(100, schemaView));
+            .apply("Input", Create.of(buildInstantSequence(inputCount)))
+            .apply("GenerateTicks", new GenerateTicks(schemaView));
 
-    PAssert.that(output)
-        .satisfies(
-            iter -> {
-              int count = 0;
-              for (Long ignored : iter) {
-                count++;
-              }
-              if (count > inputCount) {
-                throw new AssertionError(
-                    "Probabilistic filter must not emit more than input; got "
-                        + count
-                        + " for "
-                        + inputCount);
-              }
-              return null;
-            });
+    PAssert.thatSingleton(output.apply("Count", org.apache.beam.sdk.transforms.Count.globally()))
+        .isEqualTo((long) inputCount * 10);
     pipeline.run();
   }
 
-  @Test
-  public void testScaleTicks_scaleUpWithRemainder_emitsAtLeastMultiplierCopies() {
-    DataGeneratorSchema schema =
-        DataGeneratorSchema.builder().tables(ImmutableMap.of("A", root("A", 250))).build();
-    PCollectionView<DataGeneratorSchema> schemaView =
-        pipeline.apply("MkSchema", Create.of(schema)).apply("AsView", View.asSingleton());
-
-    final int inputCount = 100;
-    PCollection<Long> output =
-        pipeline
-            .apply("Input", Create.of(buildSequence(inputCount)))
-            .apply("GenerateTicks", new GenerateTicks(100, schemaView));
-
-    PAssert.that(output)
-        .satisfies(
-            iter -> {
-              int count = 0;
-              for (Long ignored : iter) {
-                count++;
-              }
-              int lowerBound = 2 * inputCount;
-              int upperBound = 3 * inputCount;
-              if (count < lowerBound || count > upperBound) {
-                throw new AssertionError(
-                    "Expected output in [" + lowerBound + ", " + upperBound + "] but got " + count);
-              }
-              return null;
-            });
-    pipeline.run();
-  }
-
-  private static List<Long> buildSequence(int count) {
+  private static List<Instant> buildInstantSequence(int count) {
     if (count <= 0) {
       return Collections.emptyList();
     }
-    List<Long> out = new ArrayList<>(count);
+    List<Instant> out = new ArrayList<>(count);
     for (long i = 0; i < count; i++) {
-      out.add(i);
+      out.add(Instant.ofEpochMilli(i));
     }
     return out;
   }

@@ -18,36 +18,26 @@ package com.google.cloud.teleport.v2.templates.dofn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Rescales the input tick stream to match the total target QPS of all root tables in the schema.
  *
- * <p>This DoFn acts as a rate converter between the fixed {@code baseTickRate} (configured at
- * pipeline start) and the dynamic {@code totalQps} (read from the schema side-input). It handles
- * rate conversion in two ways:
- *
- * <ul>
- *   <li>**Rate Reduction** (Total QPS &lt; baseTickRate): Elements are thinned out by emitting each
- *       input with a probability of {@code totalQps / baseTickRate}.
- *   <li>**Rate Amplification** (Total QPS &gt;= baseTickRate): Elements are multiplied. It
- *       deterministically emits {@code totalQps / baseTickRate} copies per input, and
- *       probabilistically emits one more copy to account for the fractional remainder.
- * </ul>
+ * <p>Since the input tick rate is 1 tick per second (driven by PeriodicImpulse), this DoFn simply
+ * outputs {@code totalQps} copies of the timestamp (in milliseconds) for each incoming tick.
  */
-public class ScaleTicksFn extends DoFn<Long, Long> {
+public class ScaleTicksFn extends DoFn<org.joda.time.Instant, Long> {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ScaleTicksFn.class);
   private final PCollectionView<DataGeneratorSchema> schemaView;
-  private final int baseTickRate;
   private transient DataGeneratorSchema cachedSchema;
-
   private transient int cachedTotalQps;
 
-  public ScaleTicksFn(PCollectionView<DataGeneratorSchema> schemaView, int baseTickRate) {
+  public ScaleTicksFn(PCollectionView<DataGeneratorSchema> schemaView) {
     this.schemaView = schemaView;
-    this.baseTickRate = baseTickRate;
   }
 
   @ProcessElement
@@ -59,33 +49,16 @@ public class ScaleTicksFn extends DoFn<Long, Long> {
     if (cachedSchema != schema) {
       cachedTotalQps = totalRootQps(schema);
       cachedSchema = schema;
+      LOG.info("Total QPS resolved to: {}", cachedTotalQps);
     }
 
     if (cachedTotalQps <= 0) {
       return; // Nothing to do — no root tables, or all have zero QPS.
     }
 
-    if (cachedTotalQps < baseTickRate) {
-      double probability = (double) cachedTotalQps / baseTickRate;
-      if (ThreadLocalRandom.current().nextDouble() < probability) {
-        c.output(c.element());
-      }
-      return;
-    }
-
-    // Scale up. Note: multiplier=1/remainder=0 covers the "totalQps == baseTickRate" case, so
-    // we don't need a separate equality branch.
-    int multiplier = cachedTotalQps / baseTickRate;
-    int remainder = cachedTotalQps % baseTickRate;
-
-    for (int i = 0; i < multiplier; i++) {
-      c.output(c.element());
-    }
-    if (remainder > 0) {
-      double probability = (double) remainder / baseTickRate;
-      if (ThreadLocalRandom.current().nextDouble() < probability) {
-        c.output(c.element());
-      }
+    // Since base tick rate is effectively 1 per second, we just output totalQps times
+    for (int i = 0; i < cachedTotalQps; i++) {
+      c.output(c.element().getMillis());
     }
   }
 

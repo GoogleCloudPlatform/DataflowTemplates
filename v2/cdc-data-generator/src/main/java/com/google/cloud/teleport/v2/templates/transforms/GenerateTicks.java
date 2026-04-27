@@ -17,52 +17,30 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.dofn.ScaleTicksFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * {@link PTransform} that takes a fixed-rate baseline tick stream and rescales it dynamically to
- * match the total root-table QPS declared by the schema side input.
- *
- * <p>The driver-side baseline (driven by {@code GenerateSequence.withRate(...)}) must be fixed at
- * pipeline construction time because Beam's source rate is a compile-time constant. The schema,
- * however, is read via a side input to avoid the Dataflow template-launcher construction timeout on
- * large (~5000-table) schemas. This transform performs the rate correction at runtime, so the
- * effective emission rate converges to the schema's total root QPS without requiring the schema to
- * be known at construction time.
- *
- * <p>See {@link ScaleTicksFn} for the scaling logic.
+ * {@link PTransform} that takes a stream of periodic impulses (1 tick per second) and expands each
+ * tick into the total number of root-table QPS declared by the schema side input.
  */
-public class GenerateTicks extends PTransform<PCollection<Long>, PCollection<Long>> {
+public class GenerateTicks
+    extends PTransform<PCollection<org.joda.time.Instant>, PCollection<Long>> {
 
-  @VisibleForTesting static final int DEFAULT_BASE_TICK_RATE = 1000;
-
-  private final int insertQps;
+  private static final Logger LOG = LoggerFactory.getLogger(GenerateTicks.class);
   private final PCollectionView<DataGeneratorSchema> schemaView;
 
-  public GenerateTicks(int insertQps, PCollectionView<DataGeneratorSchema> schemaView) {
-    this.insertQps = insertQps;
+  public GenerateTicks(PCollectionView<DataGeneratorSchema> schemaView) {
     this.schemaView = schemaView;
   }
 
   @Override
-  public PCollection<Long> expand(PCollection<Long> input) {
-    int baseTickRate = resolveBaseTickRate(insertQps);
+  public PCollection<Long> expand(PCollection<org.joda.time.Instant> input) {
     return input.apply(
-        "ScaleTicks",
-        ParDo.of(new ScaleTicksFn(schemaView, baseTickRate)).withSideInputs(schemaView));
-  }
-
-  /**
-   * Chooses the baseline tick rate based on insertQps.
-   *
-   * <p>Priority: {@code insertQps} → {@link #DEFAULT_BASE_TICK_RATE}.
-   */
-  @VisibleForTesting
-  public static int resolveBaseTickRate(int insertQps) {
-    return insertQps > 0 ? insertQps : DEFAULT_BASE_TICK_RATE;
+        "ScaleTicks", ParDo.of(new ScaleTicksFn(schemaView)).withSideInputs(schemaView));
   }
 }
