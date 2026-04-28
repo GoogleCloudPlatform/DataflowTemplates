@@ -110,7 +110,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table))
-            .apply("GeneratePK", new GeneratePrimaryKey(1, null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
 
     PAssert.that(out)
         .satisfies(
@@ -156,17 +156,14 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table, table, table, table, table))
-            .apply("GeneratePK", new GeneratePrimaryKey(4, null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
 
     PAssert.that(out)
         .satisfies(
             iter -> {
               for (KV<String, Row> kv : iter) {
                 String shard = kv.getValue().getString(Constants.SHARD_ID_COLUMN_NAME);
-                assertTrue(
-                    "Shard id should start with 'shard': " + shard, shard.startsWith("shard"));
-                int idx = Integer.parseInt(shard.substring("shard".length()));
-                assertTrue("Shard index should be in [0, 4): " + idx, idx >= 0 && idx < 4);
+                assertEquals("shard0", shard);
               }
               return null;
             });
@@ -194,7 +191,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(table))
-            .apply("GeneratePK", new GeneratePrimaryKey(1, null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
 
     PAssert.that(out).empty();
     pipeline.run();
@@ -239,7 +236,7 @@ public class GeneratePrimaryKeyTest {
     PCollection<KV<String, Row>> out =
         pipeline
             .apply("In", Create.of(t1, t2, t1))
-            .apply("GeneratePK", new GeneratePrimaryKey(1, null, null));
+            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
 
     PAssert.that(out)
         .satisfies(

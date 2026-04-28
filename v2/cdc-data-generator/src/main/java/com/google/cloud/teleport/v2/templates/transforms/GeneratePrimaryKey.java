@@ -42,12 +42,10 @@ import org.apache.beam.sdk.values.Row;
 public class GeneratePrimaryKey
     extends PTransform<PCollection<DataGeneratorTable>, PCollection<KV<String, Row>>> {
 
-  private final int maxShards;
   private final String sinkOptionsPath;
   private final String sinkType;
 
-  public GeneratePrimaryKey(int maxShards, String sinkOptionsPath, String sinkType) {
-    this.maxShards = maxShards;
+  public GeneratePrimaryKey(String sinkOptionsPath, String sinkType) {
     this.sinkOptionsPath = sinkOptionsPath;
     this.sinkType = sinkType;
   }
@@ -56,8 +54,7 @@ public class GeneratePrimaryKey
   public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
     return input
         .apply(
-            "GeneratePrimaryKeyFn",
-            ParDo.of(new GeneratePrimaryKeyFn(maxShards, sinkOptionsPath, sinkType)))
+            "GeneratePrimaryKeyFn", ParDo.of(new GeneratePrimaryKeyFn(sinkOptionsPath, sinkType)))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Row.class)));
   }
 }

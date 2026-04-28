@@ -57,7 +57,6 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
 
   private static final Logger LOG = LoggerFactory.getLogger(GeneratePrimaryKeyFn.class);
 
-  private final int maxShards;
   private final String sinkOptionsPath;
   private final String sinkType;
 
@@ -67,8 +66,7 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
   /** Per-table PK schema cache. Schemas are static per pipeline run so this is write-once. */
   private transient Map<String, Schema> schemaCache;
 
-  public GeneratePrimaryKeyFn(int maxShards, String sinkOptionsPath, String sinkType) {
-    this.maxShards = maxShards;
+  public GeneratePrimaryKeyFn(String sinkOptionsPath, String sinkType) {
     this.sinkOptionsPath = sinkOptionsPath;
     this.sinkType = sinkType;
   }
@@ -166,7 +164,6 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     if (logicalShardIds != null && !logicalShardIds.isEmpty()) {
       return logicalShardIds.get(rng.nextInt(logicalShardIds.size()));
     }
-    int bound = Math.max(1, maxShards);
-    return "shard" + rng.nextInt(bound);
+    return "shard0";
   }
 }
