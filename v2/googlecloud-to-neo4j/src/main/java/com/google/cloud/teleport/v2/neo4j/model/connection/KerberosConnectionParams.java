@@ -28,8 +28,11 @@ class KerberosConnectionParams extends ConnectionParams {
   public KerberosConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
-      @JsonProperty("ticket") String ticket) {
-    super(serverUrl, database);
+      @JsonProperty("ticket") String ticket,
+      @JsonProperty("max_connection_lifetime_millis") Long maxConnectionLifetimeMillis,
+      @JsonProperty("connection_liveness_check_timeout_millis")
+          Long connectionLivenessCheckTimeoutMillis) {
+    super(serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
     this.ticket = ticket;
   }
 

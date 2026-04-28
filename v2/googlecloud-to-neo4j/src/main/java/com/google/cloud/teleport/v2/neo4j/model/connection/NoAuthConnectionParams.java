@@ -24,8 +24,12 @@ class NoAuthConnectionParams extends ConnectionParams {
 
   @JsonCreator
   public NoAuthConnectionParams(
-      @JsonProperty("server_url") String serverUrl, @JsonProperty("database") String database) {
-    super(serverUrl, database);
+      @JsonProperty("server_url") String serverUrl,
+      @JsonProperty("database") String database,
+      @JsonProperty("max_connection_lifetime_millis") Long maxConnectionLifetimeMillis,
+      @JsonProperty("connection_liveness_check_timeout_millis")
+          Long connectionLivenessCheckTimeoutMillis) {
+    super(serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
   }
 
   @Override

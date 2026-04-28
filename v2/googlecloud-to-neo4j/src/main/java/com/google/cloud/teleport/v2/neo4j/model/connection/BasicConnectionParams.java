@@ -31,8 +31,11 @@ class BasicConnectionParams extends ConnectionParams {
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
       @JsonProperty("username") String username,
-      @JsonProperty("pwd") String password) {
-    super(serverUrl, database);
+      @JsonProperty("pwd") String password,
+      @JsonProperty("max_connection_lifetime_millis") Long maxConnectionLifetimeMillis,
+      @JsonProperty("connection_liveness_check_timeout_millis")
+          Long connectionLivenessCheckTimeoutMillis) {
+    super(serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
     this.username = username;
     this.password = password;
   }
