@@ -23,8 +23,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
-import java.util.Date;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.schemas.Schema;
 import org.joda.time.Instant;
 
@@ -40,21 +38,10 @@ public final class DataGeneratorUtils {
   /** Default string length when the column doesn't declare a {@code size}. */
   @VisibleForTesting static final int DEFAULT_STRING_LENGTH = 20;
 
-  /** Cap on string length for synthesised values. Columns wider than this use the cap. */
-  @VisibleForTesting static final int MAX_STRING_LENGTH = 1000;
-
   /** Default precision/scale when the column doesn't declare them. */
   @VisibleForTesting static final int DEFAULT_NUMERIC_PRECISION = 10;
 
   @VisibleForTesting static final int DEFAULT_NUMERIC_SCALE = 2;
-
-  /** INT64 sub-range. Deliberately narrow to avoid accidentally producing negative PKs. */
-  @VisibleForTesting static final long INT64_MIN = 1_000_000_000L;
-
-  @VisibleForTesting static final long INT64_MAX = 2_147_483_647L;
-
-  /** Number of days back from today that random DATE/TIMESTAMP values can fall on. */
-  @VisibleForTesting static final int DATE_RANGE_DAYS = 365 * 2;
 
   private DataGeneratorUtils() {}
 
@@ -73,14 +60,34 @@ public final class DataGeneratorUtils {
       case STRING:
         return faker.lorem().characters(clampStringLength(size));
       case JSON:
-        // Produce valid JSON so downstream JSON-typed columns don't reject the payload. Use
-        // {@code randomNumber()} for uniqueness; the key is fixed because callers typically use
-        // JSON as an opaque blob.
-        return "{\"id\": " + faker.number().randomNumber() + "}";
+        return "{"
+            + "\"id\": "
+            + faker.number().randomNumber()
+            + ", "
+            + "\"name\": \""
+            + faker.name().fullName()
+            + "\", "
+            + "\"isActive\": "
+            + faker.bool().bool()
+            + ", "
+            + "\"score\": "
+            + faker.number().randomDouble(2, 0, 100)
+            + ", "
+            + "\"tags\": [\""
+            + faker.lorem().word()
+            + "\", \""
+            + faker.lorem().word()
+            + "\"], "
+            + "\"address\": {\"city\": \""
+            + faker.address().city()
+            + "\", \"zip\": \""
+            + faker.address().zipCode()
+            + "\"}"
+            + "}";
       case UUID:
         return java.util.UUID.randomUUID().toString();
       case INT64:
-        return faker.number().numberBetween(INT64_MIN, INT64_MAX);
+        return (long) java.util.concurrent.ThreadLocalRandom.current().nextInt();
       case FLOAT64:
         {
           int scale = column.scale() != null ? column.scale() : DEFAULT_NUMERIC_SCALE;
@@ -98,9 +105,12 @@ public final class DataGeneratorUtils {
         return faker.lorem().characters(clampStringLength(size)).getBytes(StandardCharsets.UTF_8);
       case DATE:
         {
-          Date pastDate = faker.date().past(DATE_RANGE_DAYS, TimeUnit.DAYS);
+          long minMillis = -30610224000000L; // Year 1000
+          long maxMillis = 253402300799000L; // Year 9999
+          long randomMillis =
+              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
           Calendar cal = Calendar.getInstance();
-          cal.setTime(pastDate);
+          cal.setTimeInMillis(randomMillis);
           // Zero the time part — DATE is day-granular and TIMESTAMP uses the TIMESTAMP branch.
           cal.set(Calendar.HOUR_OF_DAY, 0);
           cal.set(Calendar.MINUTE, 0);
@@ -109,7 +119,12 @@ public final class DataGeneratorUtils {
           return new Instant(cal.getTimeInMillis());
         }
       case TIMESTAMP:
-        return new Instant(faker.date().past(DATE_RANGE_DAYS, TimeUnit.DAYS).getTime());
+        {
+          long minMillis = -30610224000000L; // Year 1000
+          long maxMillis = 253402300799000L; // Year 9999
+          return new Instant(
+              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
+        }
       default:
         return "unknown";
     }
@@ -169,25 +184,12 @@ public final class DataGeneratorUtils {
     if (sc > prec) {
       sc = prec;
     }
-    int intDigits = prec - sc;
-    // Cap to 18 digits so the randomised upper bound stays within {@code long}.
-    int capIntDigits = Math.min(intDigits, 18);
-    long maxIntPart = 1L;
-    for (int i = 0; i < capIntDigits; i++) {
-      maxIntPart *= 10L;
-    }
-    long intPart = maxIntPart <= 1L ? 0L : faker.number().numberBetween(0L, maxIntPart);
-    BigDecimal value = BigDecimal.valueOf(intPart);
-    if (sc > 0) {
-      int capScaleDigits = Math.min(sc, 18);
-      long maxFrac = 1L;
-      for (int i = 0; i < capScaleDigits; i++) {
-        maxFrac *= 10L;
-      }
-      long fracPart = maxFrac <= 1L ? 0L : faker.number().numberBetween(0L, maxFrac);
-      value = value.add(BigDecimal.valueOf(fracPart, capScaleDigits));
-    }
-    // Normalise the trailing scale so the returned value always reports the declared scale.
+
+    String randomDigits = faker.number().digits(prec);
+    BigDecimal value = new BigDecimal(randomDigits).movePointLeft(sc);
+
+    // Normalise the trailing scale so the returned value always reports the
+    // declared scale.
     return value.setScale(sc, RoundingMode.HALF_UP);
   }
 
@@ -195,12 +197,13 @@ public final class DataGeneratorUtils {
    * Clamp user-supplied string lengths into a safe range. Unset / zero / absurdly-large values all
    * fall back to a reasonable default so Faker doesn't receive a pathological input.
    */
-  private static int clampStringLength(Long size) {
+  @VisibleForTesting
+  static int clampStringLength(Long size) {
     if (size == null || size <= 0) {
       return DEFAULT_STRING_LENGTH;
     }
-    if (size >= MAX_STRING_LENGTH) {
-      return MAX_STRING_LENGTH;
+    if (size > Integer.MAX_VALUE) {
+      return Integer.MAX_VALUE;
     }
     return size.intValue();
   }

@@ -47,11 +47,8 @@ import org.slf4j.LoggerFactory;
  * writers are reused here.
  *
  * <p>Randomness: {@link Faker} is constructed with its default no-arg constructor (which seeds
- * itself from {@code System.nanoTime()} plus a per-instance counter, not from {@code
- * /dev/urandom}), and shard-id selection uses {@link ThreadLocalRandom#current()} to avoid
- * contention under high fan-out. Duplicate-PK errors observed during earlier development were
- * caused by Beam retrying already-applied inserts, not by seed collisions across workers; the sink
- * writers now use upsert semantics, which absorbs retries cleanly.
+ * itself from {@code System.nanoTime()} plus a per-instance counter and shard-id selection uses
+ * {@link ThreadLocalRandom#current()} to avoid contention under high fan-out.
  *
  * <p>Output: {@code KV<tableName, pkRow>} so downstream transforms can shuffle by table while
  * keeping the row schema per-table.
@@ -103,8 +100,10 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     List<DataGeneratorColumn> pkColumns = primaryKeyColumns(table);
 
     if (pkColumns.isEmpty()) {
-      // A table without a PK cannot have a unique row key synthesised for it. This is a
-      // schema-definition problem, so log + skip rather than emit an empty Row (which would
+      // A table without a PK cannot have a unique row key synthesised for it. This is
+      // a
+      // schema-definition problem, so log + skip rather than emit an empty Row (which
+      // would
       // corrupt downstream joins on the PK).
       LOG.warn(
           "Table {} has no primary-key columns, or its PK list references unknown columns — "
@@ -159,9 +158,8 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
   }
 
   /**
-   * Select a shard id for this row. Prefer a configured logical shard id (MySQL with shardFile),
-   * otherwise synthesise a placeholder {@code shard<N>}. Bounded at maxShards >= 1 so {@code
-   * nextInt} never throws.
+   * Select a shard id for this row. Prefer a configured logical shard id, otherwise synthesise a
+   * placeholder {@code shard<N>}. Bounded at maxShards >= 1 so {@code nextInt} never throws.
    */
   private String pickShardId() {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
