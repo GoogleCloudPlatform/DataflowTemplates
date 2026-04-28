@@ -1,0 +1,59 @@
+# ====================================================================================
+# Purpose:
+#   This workflow builds and uploads the job-builder-util-transforms Python package to Google Cloud Storage (GCS).
+#   It is designed to distribute the utility transforms package for use in Dataflow jobs.
+#   The workflow:
+#     1. Sets up Python and installs build dependencies.
+#     2. Builds the Python package (wheel and sdist).
+#     3. Uploads the built artifacts to a specified GCS bucket.
+#
+# How to Run:
+#   This workflow is triggered manually via GitHub Actions `workflow_dispatch`.
+#   Required Inputs:
+#     - bucket_path: The GCS bucket destination (e.g., gs://my-bucket/path).
+# ====================================================================================
+
+name: Build and Upload Python Package for Job Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_path:
+        description: 'GCS bucket path (e.g., gs://my-bucket/path)'
+        required: true
+
+jobs:
+  build-and-upload:
+    runs-on: [self-hosted, release]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Install project dependencies
+        working-directory: python/src/main/python/job-builder-util-transforms
+        run: poetry install
+
+      - name: Run Tests
+        working-directory: python/src/main/python/job-builder-util-transforms
+        run: poetry run pytest ../../../test/python/job-builder-util-transforms/
+
+      - name: Build Package
+        working-directory: python/src/main/python/job-builder-util-transforms
+        run: poetry build
+
+      - name: Upload to GCS
+        env:
+          BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
+        run: |
+          gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/* "$BUCKET_PATH"
