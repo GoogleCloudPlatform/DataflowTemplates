@@ -299,10 +299,9 @@ class SpannerTransactionWriterDoFn
       }
 
     } catch (DroppedTableException e) {
-      // Errors when table exists in source but was dropped during conversion. We do not output any
-      // errors to dlq for this.
-      // Note that this is not loogged to DLQ!!
+      // Errors when table exists in source but was dropped during conversion.
       LOG.error("Table dropped during migration for changeEventMessage {}", msg, e.getMessage());
+      outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.SKIPPED_EVENT_TAG);
       droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
       LOG.error("Invalid Change Exception", e);
