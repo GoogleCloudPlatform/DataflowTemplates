@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.s
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 /**
@@ -30,7 +32,6 @@ import javax.annotation.Nullable;
  * <p>Supported TRANSFORM_TYPE values:
  *
  * <ul>
- *   <li>{@code BIG_ENDIAN_TIMESTAMP} - interprets 8-byte big-endian values as Unix epoch millis
  *   <li>{@code PROTO_DECODE(package.MessageName)} - decodes protobuf-encoded values to JSON
  *       (requires {@code protoSchemaPath})
  * </ul>
@@ -41,6 +42,9 @@ import javax.annotation.Nullable;
 public class ValueTransformerRegistry implements Serializable {
 
   private static final long serialVersionUID = 1L;
+
+  private static final Pattern PROTO_DECODE_PATTERN =
+      Pattern.compile("PROTO_DECODE\\(\\s*(?<messageName>[^\\s)]+)\\s*\\)");
 
   /** Two-level map: family -> column -> transformer. */
   private final Map<String, Map<String, ValueTransformer>> transformers;
@@ -167,15 +171,12 @@ public class ValueTransformerRegistry implements Serializable {
 
   private static ValueTransformer createTransformer(
       String type, @Nullable String protoSchemaPath, boolean preserveProtoFieldNames) {
-    if ("BIG_ENDIAN_TIMESTAMP".equals(type)) {
-      return new BigEndianTimestampTransformer();
-    }
-
-    if (type.startsWith("PROTO_DECODE(") && type.endsWith(")")) {
-      String messageName = type.substring("PROTO_DECODE(".length(), type.length() - 1);
-      if (messageName.isEmpty()) {
+    Matcher matcher = PROTO_DECODE_PATTERN.matcher(type);
+    if (matcher.matches()) {
+      String messageName = matcher.group("messageName");
+      if (messageName == null || messageName.trim().isEmpty()) {
         throw new IllegalArgumentException(
-            "PROTO_DECODE requires a message name, e.g. PROTO_DECODE(package.MessageName)");
+            "PROTO_DECODE requires a non-empty message name, e.g. PROTO_DECODE(package.MessageName)");
       }
       if (protoSchemaPath == null || protoSchemaPath.isEmpty()) {
         throw new IllegalArgumentException(
@@ -184,9 +185,14 @@ public class ValueTransformerRegistry implements Serializable {
       return new ProtoDecodeTransformer(protoSchemaPath, messageName, preserveProtoFieldNames);
     }
 
+    if (type.startsWith("PROTO_DECODE")) {
+      throw new IllegalArgumentException(
+          "Invalid PROTO_DECODE syntax '" + type + "'. Expected PROTO_DECODE(package.MessageName)");
+    }
+
     throw new IllegalArgumentException(
         "Unknown TRANSFORM_TYPE '"
             + type
-            + "'. Supported types: BIG_ENDIAN_TIMESTAMP, PROTO_DECODE(package.MessageName)");
+            + "'. Supported types: PROTO_DECODE(package.MessageName)");
   }
 }

@@ -18,7 +18,12 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.s
 import com.google.common.base.Utf8;
 import java.io.Serializable;
 
-/** Transforms a Bigtable cell value from raw bytes to a string representation for BigQuery. */
+/**
+ * Transforms a Bigtable cell value from raw bytes to a string representation for BigQuery.
+ *
+ * <p>Implementations must be stateless and thread-safe; one instance is shared across all elements
+ * processed by a worker.
+ */
 public interface ValueTransformer extends Serializable {
 
   /**

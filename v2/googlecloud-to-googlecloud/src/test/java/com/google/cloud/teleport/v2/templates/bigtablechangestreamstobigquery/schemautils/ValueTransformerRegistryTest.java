@@ -28,8 +28,6 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.DescriptorValidationException;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.DynamicMessage;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -73,24 +71,6 @@ public class ValueTransformerRegistryTest {
   }
 
   @Test
-  public void bigEndianTimestampDispatchedViaFallback() {
-    ValueTransformerRegistry registry =
-        ValueTransformerRegistry.of(Map.of("cf:ts", new BigEndianTimestampTransformer()));
-
-    byte[] eightBytes =
-        ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(1_700_000_000_000L).array();
-    TransformResult ok = registry.transformBounded("cf", "ts", eightBytes, 1_000);
-    assertEquals(TransformResult.Status.SUCCESS, ok.status());
-    assertNotNull(ok.value());
-    assertEquals(eightBytes.length, ok.rawBytes());
-    assertTrue(ok.decodedBytes() > 0);
-
-    // Non-8-byte input -> transformer returns null -> DECODE_ERROR.
-    TransformResult bad = registry.transformBounded("cf", "ts", new byte[] {1, 2, 3}, 1_000);
-    assertEquals(TransformResult.Status.DECODE_ERROR, bad.status());
-  }
-
-  @Test
   public void missingTransformerReturnsNoTransformer() {
     ValueTransformerRegistry registry = ValueTransformerRegistry.of(Map.of());
     TransformResult result = registry.transformBounded("cf", "missing", new byte[] {1}, 1_000);
@@ -99,15 +79,15 @@ public class ValueTransformerRegistryTest {
   }
 
   @Test
-  public void nonProtoTransformerOutputRespectsMaxBytes() {
-    // BigEndianTimestamp produces a ~26-char timestamp string; with maxBytes=5 it should be
-    // reported as OVERSIZED even though its raw input is small.
-    ValueTransformerRegistry registry =
-        ValueTransformerRegistry.of(Map.of("cf:ts", new BigEndianTimestampTransformer()));
-    byte[] eightBytes =
-        ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(1_700_000_000_000L).array();
-    TransformResult result = registry.transformBounded("cf", "ts", eightBytes, 5);
+  public void customTransformerOutputRespectsMaxBytes() {
+    // A custom (non-proto) transformer that emits a fixed-length 26-character string. The registry
+    // should still detect OVERSIZED through the default ValueTransformer#transformBounded path.
+    String fixedOutput = "fixed-length-output-2024xx";
+    ValueTransformer fixedString = bytes -> fixedOutput;
+    ValueTransformerRegistry registry = ValueTransformerRegistry.of(Map.of("cf:c", fixedString));
+    TransformResult result = registry.transformBounded("cf", "c", new byte[] {1}, 5);
     assertEquals(TransformResult.Status.OVERSIZED, result.status());
+    assertTrue(result.decodedBytes() > 5);
   }
 
   @Test
@@ -121,7 +101,7 @@ public class ValueTransformerRegistryTest {
     TransformResult ok = registry.transformBounded("cf", "c", raw, 1_000);
     assertEquals(TransformResult.Status.SUCCESS, ok.status());
     assertEquals("decoded:3", ok.value());
-    assertEquals(raw.length, ok.rawBytes());
+    assertEquals(raw.length, ok.rawBytesLength());
     assertEquals("decoded:3".length(), ok.decodedBytes());
 
     // DECODE_ERROR: transformer returns null.
@@ -130,7 +110,7 @@ public class ValueTransformerRegistryTest {
         ValueTransformerRegistry.of(Map.of("cf:c", nullReturner));
     TransformResult err = nullRegistry.transformBounded("cf", "c", raw, 1_000);
     assertEquals(TransformResult.Status.DECODE_ERROR, err.status());
-    assertEquals(raw.length, err.rawBytes());
+    assertEquals(raw.length, err.rawBytesLength());
 
     // OVERSIZED: decoded string overruns the byte budget.
     TransformResult over = registry.transformBounded("cf", "c", raw, 3);
@@ -150,8 +130,7 @@ public class ValueTransformerRegistryTest {
 
     assertNotNull(registry.getTransformer("cf", "profile:v1"));
     assertSame(
-        registry.getTransformer("cf", "profile:v1"),
-        registry.getTransformer("cf", "profile:v2"));
+        registry.getTransformer("cf", "profile:v1"), registry.getTransformer("cf", "profile:v2"));
     assertNotNull(registry.getTransformer("cf2", "event"));
     assertNull(registry.getTransformer("cf", "profile"));
     assertNull(registry.getTransformer("cf2", "missing"));

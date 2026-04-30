@@ -159,11 +159,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       helpText =
           "A comma-separated list of column value transforms. Each entry has the format "
               + "column_family:column_qualifier:TRANSFORM_TYPE. Supported TRANSFORM_TYPE values: "
-              + "BIG_ENDIAN_TIMESTAMP (interprets 8-byte big-endian values as Unix epoch millis), "
               + "PROTO_DECODE(package.MessageName) (decodes protobuf-encoded values to JSON; "
-              + "requires protoSchemaPath). For complex transformations, consider using a "
-              + "JavaScript UDF. Note that column qualifiers containing commas are not supported "
-              + "since comma is used as the entry delimiter.")
+              + "requires protoSchemaPath). Note that column qualifiers containing commas are "
+              + "not supported since comma is used as the entry delimiter.")
   @Default.String("")
   String getColumnTransforms();
 

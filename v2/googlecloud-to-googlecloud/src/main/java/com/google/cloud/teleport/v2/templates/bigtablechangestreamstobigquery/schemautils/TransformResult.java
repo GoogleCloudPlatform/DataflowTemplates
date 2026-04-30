@@ -33,27 +33,28 @@ public final class TransformResult {
 
   private final Status status;
   @Nullable private final String value;
-  private final long rawBytes;
+  private final long rawBytesLength;
   // Exact for SUCCESS/OVERSIZED, 0 otherwise.
   private final long decodedBytes;
 
-  private TransformResult(Status status, @Nullable String value, long rawBytes, long decodedBytes) {
+  private TransformResult(
+      Status status, @Nullable String value, long rawBytesLength, long decodedBytes) {
     this.status = status;
     this.value = value;
-    this.rawBytes = rawBytes;
+    this.rawBytesLength = rawBytesLength;
     this.decodedBytes = decodedBytes;
   }
 
-  public static TransformResult success(String value, long rawBytes, long decodedBytes) {
-    return new TransformResult(Status.SUCCESS, value, rawBytes, decodedBytes);
+  public static TransformResult success(String value, long rawBytesLength, long decodedBytes) {
+    return new TransformResult(Status.SUCCESS, value, rawBytesLength, decodedBytes);
   }
 
-  public static TransformResult decodeError(long rawBytes) {
-    return new TransformResult(Status.DECODE_ERROR, null, rawBytes, 0);
+  public static TransformResult decodeError(long rawBytesLength) {
+    return new TransformResult(Status.DECODE_ERROR, null, rawBytesLength, 0);
   }
 
-  public static TransformResult oversized(long rawBytes, long estimatedDecodedBytes) {
-    return new TransformResult(Status.OVERSIZED, null, rawBytes, estimatedDecodedBytes);
+  public static TransformResult oversized(long rawBytesLength, long estimatedDecodedBytes) {
+    return new TransformResult(Status.OVERSIZED, null, rawBytesLength, estimatedDecodedBytes);
   }
 
   public static TransformResult noTransformer() {
@@ -69,8 +70,9 @@ public final class TransformResult {
     return value;
   }
 
-  public long rawBytes() {
-    return rawBytes;
+  /** Length in bytes of the raw input that was transformed (or {@code 0} for NO_TRANSFORMER). */
+  public long rawBytesLength() {
+    return rawBytesLength;
   }
 
   public long decodedBytes() {

@@ -394,11 +394,7 @@ public class BigQueryUtilTest {
 
     Mod.SetCellBuildResult buildResult =
         Mod.buildSetCell(
-            getDefaultSourceInfo(),
-            mockMutation(false),
-            setCell,
-            transformerRegistry,
-            10_000);
+            getDefaultSourceInfo(), mockMutation(false), setCell, transformerRegistry, 10_000);
     Assert.assertEquals(TransformResult.Status.SUCCESS, buildResult.transformResult().status());
 
     JSONObject changeJson = new JSONObject(buildResult.mod().getChangeJson());

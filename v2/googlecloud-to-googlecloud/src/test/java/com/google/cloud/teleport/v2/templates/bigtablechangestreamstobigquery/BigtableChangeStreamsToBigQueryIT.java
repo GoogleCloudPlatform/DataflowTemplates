@@ -47,8 +47,6 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.DynamicMessage;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashSet;
@@ -460,75 +458,6 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testBigtableChangeStreamsToBigQueryColumnTransform() throws Exception {
-    String appProfileId = generateAppProfileId();
-
-    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
-    cdcTableSpec.setCdcEnabled(true);
-    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
-
-    String table = BigtableResourceManagerUtils.generateTableId("col-transform");
-    String cdcTable = BigtableResourceManagerUtils.generateTableId("cdc-col-transform");
-    bigtableResourceManager.createTable(table, cdcTableSpec);
-
-    bigtableResourceManager.createAppProfile(
-        appProfileId, true, bigtableResourceManager.getClusterNames());
-    bigQueryResourceManager.createDataset(REGION);
-
-    String rowkey = UUID.randomUUID().toString();
-    String column = "ts_col";
-
-    // Encode 1704067200000L (2024-01-01T00:00:00Z) as 8-byte big-endian uint64
-    long timestampMillis = 1704067200000L;
-    byte[] timestampBytes = new byte[8];
-    ByteBuffer.wrap(timestampBytes).order(ByteOrder.BIG_ENDIAN).putLong(timestampMillis);
-
-    Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder = Function.identity();
-    launchInfo =
-        launchTemplate(
-            paramsAdder.apply(
-                LaunchConfig.builder(testName, specPath)
-                    .addParameter("bigtableReadTableId", table)
-                    .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-                    .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                    .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
-                    .addParameter("bigQueryChangelogTableName", cdcTable)
-                    .addParameter(
-                        "columnTransforms",
-                        SOURCE_COLUMN_FAMILY + ":" + column + ":BIG_ENDIAN_TIMESTAMP")));
-
-    assertThatPipeline(launchInfo).isRunning();
-
-    RowMutation rowMutation =
-        RowMutation.create(table, rowkey)
-            .setCell(
-                SOURCE_COLUMN_FAMILY,
-                ByteString.copyFromUtf8(column),
-                ByteString.copyFrom(timestampBytes));
-    bigtableResourceManager.write(rowMutation);
-
-    String query = newLookForValuesQuery(cdcTable, rowkey, column, null);
-    waitForQueryToReturnRows(query, 1, true);
-
-    TableResult tableResult = bigQueryResourceManager.runQuery(query);
-    tableResult
-        .iterateAll()
-        .forEach(
-            fvl -> {
-              String value =
-                  fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue();
-              // BigEndianTimestampTransformer formats as "yyyy-MM-dd HH:mm:ss.SSSSSS"
-              assertEquals("2024-01-01 00:00:00.000000", value);
-              assertFalse(fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
-              assertEquals(
-                  table, fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
-              assertEquals(
-                  bigtableResourceManager.getInstanceId(),
-                  fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
-            });
-  }
-
-  @Test
   public void testBigtableChangeStreamsToBigQueryProtoDecodeMultipleColumnsViaTransform()
       throws Exception {
     String appProfileId = generateAppProfileId();
@@ -641,8 +570,8 @@ public final class BigtableChangeStreamsToBigQueryIT extends TemplateTestBase {
     assertProtoDecodedValue(colonColumnQuery, "colon_user", "7", table);
   }
 
-  private void assertProtoDecodedValue(String query, String expectedName, String expectedId, String table)
-      throws IOException {
+  private void assertProtoDecodedValue(
+      String query, String expectedName, String expectedId, String table) throws IOException {
     TableResult tableResult = bigQueryResourceManager.runQuery(query);
     tableResult
         .iterateAll()

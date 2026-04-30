@@ -455,7 +455,7 @@ public final class BigtableChangeStreamsToBigQuery {
                   "Decode error for {}/{}: raw_bytes={}",
                   setCell.getFamilyName(),
                   setCell.getQualifier().toStringUtf8(),
-                  result.rawBytes());
+                  result.rawBytesLength());
             }
             mod = buildResult.mod();
             break;
@@ -490,7 +490,7 @@ public final class BigtableChangeStreamsToBigQuery {
           setCell.getFamilyName(),
           setCell.getQualifier().toStringUtf8(),
           Base64.getEncoder().encodeToString(setCell.getQualifier().toByteArray()),
-          result.rawBytes(),
+          result.rawBytesLength(),
           result.decodedBytes(),
           maxDecodedValueBytes,
           sourceInfo.getInstanceId(),

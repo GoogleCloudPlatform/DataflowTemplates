@@ -123,22 +123,20 @@ public final class Mod implements Serializable {
       SetCell setCell,
       @Nullable ValueTransformerRegistry transformerRegistry,
       long maxDecodedValueBytes) {
-    TransformResult result;
-    if (transformerRegistry == null) {
-      result = TransformResult.noTransformer();
-    } else {
+    TransformResult result = TransformResult.noTransformer();
+    if (transformerRegistry != null) {
       String qualifierStr = setCell.getQualifier().toStringUtf8();
       ValueTransformer transformer =
           transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
-      if (transformer == null) {
-        result = TransformResult.noTransformer();
-      } else if (maxDecodedValueBytes > 0 && setCell.getValue().size() > maxDecodedValueBytes) {
-        // Pre-check raw payload size against the budget without allocating the byte[].
-        long size = setCell.getValue().size();
-        result = TransformResult.oversized(size, size);
-      } else {
-        byte[] valueBytes = setCell.getValue().toByteArray();
-        result = transformer.transformBounded(valueBytes, maxDecodedValueBytes);
+      if (transformer != null) {
+        if (maxDecodedValueBytes > 0 && setCell.getValue().size() > maxDecodedValueBytes) {
+          // Pre-check raw payload size against the budget without allocating the byte[].
+          long size = setCell.getValue().size();
+          result = TransformResult.oversized(size, size);
+        } else {
+          byte[] valueBytes = setCell.getValue().toByteArray();
+          result = transformer.transformBounded(valueBytes, maxDecodedValueBytes);
+        }
       }
     }
 

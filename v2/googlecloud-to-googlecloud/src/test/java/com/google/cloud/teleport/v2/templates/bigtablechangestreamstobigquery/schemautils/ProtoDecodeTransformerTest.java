@@ -51,7 +51,7 @@ public class ProtoDecodeTransformerTest {
     assertEquals(TransformResult.Status.SUCCESS, result.status());
     assertNotNull(result.value());
     assertTrue("expected JSON output, got: " + result.value(), result.value().contains("alice"));
-    assertEquals(protoBytes.length, result.rawBytes());
+    assertEquals(protoBytes.length, result.rawBytesLength());
     assertEquals(result.value().length(), result.decodedBytes());
   }
 
@@ -77,7 +77,7 @@ public class ProtoDecodeTransformerTest {
     TransformResult result = transformer.transformBounded(protoBytes, maxBytes);
     assertEquals(TransformResult.Status.SUCCESS, result.status());
     assertEquals(expectedJson, result.value());
-    assertEquals(protoBytes.length, result.rawBytes());
+    assertEquals(protoBytes.length, result.rawBytesLength());
     assertEquals(maxBytes, result.decodedBytes());
   }
 
@@ -89,7 +89,7 @@ public class ProtoDecodeTransformerTest {
     byte[] fakeBytes = new byte[101];
     TransformResult result = transformer.transformBounded(fakeBytes, 100);
     assertEquals(TransformResult.Status.OVERSIZED, result.status());
-    assertEquals(101L, result.rawBytes());
+    assertEquals(101L, result.rawBytesLength());
     assertEquals(101L, result.decodedBytes());
     assertNull(result.value());
   }
@@ -116,7 +116,7 @@ public class ProtoDecodeTransformerTest {
         "raw size should pass the pre-check and appendTo should overflow during JSON rendering",
         TransformResult.Status.OVERSIZED,
         result.status());
-    assertEquals(protoBytes.length, result.rawBytes());
+    assertEquals(protoBytes.length, result.rawBytesLength());
     assertTrue(result.decodedBytes() > maxBytes);
   }
 
@@ -129,7 +129,7 @@ public class ProtoDecodeTransformerTest {
     byte[] garbage = new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     TransformResult result = transformer.transformBounded(garbage, 10_000);
     assertEquals(TransformResult.Status.DECODE_ERROR, result.status());
-    assertEquals(garbage.length, result.rawBytes());
+    assertEquals(garbage.length, result.rawBytesLength());
     assertNull(result.value());
   }
 
