@@ -18,22 +18,30 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.s
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.DescriptorValidationException;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.DynamicMessage;
+import java.io.File;
+import java.nio.file.Files;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Tests for {@link ProtoDecodeTransformer}, focusing on {@code transformBounded}. */
 @RunWith(JUnit4.class)
 public class ProtoDecodeTransformerTest {
+
+  @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
 
   @Test
   public void transformBoundedSuccessOnSmallMessage() throws Exception {
@@ -148,6 +156,64 @@ public class ProtoDecodeTransformerTest {
     TransformResult result = transformer.transformBounded(protoBytes, 0L);
     assertEquals(TransformResult.Status.SUCCESS, result.status());
     assertNotNull(result.value());
+  }
+
+  @Test
+  public void transformerRejectsNonexistentMessageName() throws Exception {
+    File schemaFile = writeSimpleMessageDescriptorSet();
+    ProtoDecodeTransformer transformer =
+        new ProtoDecodeTransformer(schemaFile.getAbsolutePath(), "test.NotARealMessage", false);
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> transformer.transform(new byte[] {1}));
+    assertTrue(
+        "Expected error to mention message name; got: " + ex.getMessage(),
+        ex.getMessage().contains("test.NotARealMessage"));
+  }
+
+  @Test
+  public void transformerRejectsMalformedDescriptorFile() throws Exception {
+    File schemaFile = tmpDir.newFile("malformed.pb");
+    Files.write(schemaFile.toPath(), new byte[] {(byte) 0xff, 0x00, 0x42, 0x13, 0x37});
+
+    ProtoDecodeTransformer transformer =
+        new ProtoDecodeTransformer(schemaFile.getAbsolutePath(), "test.SimpleMessage", false);
+
+    // SchemaUtils.getProtoDomain wraps invalid descriptor bytes in IllegalArgumentException.
+    assertThrows(IllegalArgumentException.class, () -> transformer.transform(new byte[] {1}));
+  }
+
+  @Test
+  public void transformerRejectsNullOrEmptySchemaPath() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ProtoDecodeTransformer(null, "test.SimpleMessage", false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ProtoDecodeTransformer("", "test.SimpleMessage", false));
+  }
+
+  /** Writes a minimal valid {@link FileDescriptorSet} containing test.SimpleMessage to disk. */
+  private File writeSimpleMessageDescriptorSet() throws Exception {
+    FileDescriptorProto fileProto =
+        FileDescriptorProto.newBuilder()
+            .setName("test.proto")
+            .setPackage("test")
+            .addMessageType(
+                DescriptorProto.newBuilder()
+                    .setName("SimpleMessage")
+                    .addField(
+                        FieldDescriptorProto.newBuilder()
+                            .setName("user_name")
+                            .setNumber(1)
+                            .setType(FieldDescriptorProto.Type.TYPE_STRING)
+                            .build())
+                    .build())
+            .build();
+    FileDescriptorSet set = FileDescriptorSet.newBuilder().addFile(fileProto).build();
+    File schemaFile = tmpDir.newFile("schema.pb");
+    Files.write(schemaFile.toPath(), set.toByteArray());
+    return schemaFile;
   }
 
   /** Builds a simple proto descriptor with two scalar fields: user_name (string) and id (int32). */

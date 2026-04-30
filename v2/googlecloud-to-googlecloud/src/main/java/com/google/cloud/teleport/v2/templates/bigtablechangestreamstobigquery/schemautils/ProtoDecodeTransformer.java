@@ -46,6 +46,12 @@ public class ProtoDecodeTransformer implements ValueTransformer {
 
   public ProtoDecodeTransformer(
       String protoSchemaPath, String fullMessageName, boolean preserveFieldNames) {
+    if (protoSchemaPath == null || protoSchemaPath.isEmpty()) {
+      throw new IllegalArgumentException("protoSchemaPath must be non-null and non-empty");
+    }
+    if (fullMessageName == null || fullMessageName.isEmpty()) {
+      throw new IllegalArgumentException("fullMessageName must be non-null and non-empty");
+    }
     this.protoSchemaPath = protoSchemaPath;
     this.fullMessageName = fullMessageName;
     this.preserveFieldNames = preserveFieldNames;

@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
@@ -134,6 +135,65 @@ public class ValueTransformerRegistryTest {
     assertNotNull(registry.getTransformer("cf2", "event"));
     assertNull(registry.getTransformer("cf", "profile"));
     assertNull(registry.getTransformer("cf2", "missing"));
+  }
+
+  @Test
+  public void parseRejectsEntryWithMissingTransformType() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ValueTransformerRegistry.parse("family:qualifier", "gs://bucket/schema.pb", false));
+    assertTrue(
+        "Expected error to mention the entry; got: " + ex.getMessage(),
+        ex.getMessage().contains("family:qualifier"));
+  }
+
+  @Test
+  public void parseRejectsDoubleCommaProducingEmptyEntry() {
+    // Current implementation skips empty entries gracefully — assert that behavior.
+    ValueTransformerRegistry registry =
+        ValueTransformerRegistry.parse(
+            "cf:a:PROTO_DECODE(test.M),,cf:b:PROTO_DECODE(test.M)", "gs://bucket/schema.pb", false);
+    assertNotNull(registry.getTransformer("cf", "a"));
+    assertNotNull(registry.getTransformer("cf", "b"));
+  }
+
+  @Test
+  public void parseRejectsUnknownTransformType() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ValueTransformerRegistry.parse(
+                    "cf:c:NOT_A_REAL_TRANSFORM", "gs://bucket/schema.pb", false));
+    assertTrue(
+        "Expected error to mention the unknown type; got: " + ex.getMessage(),
+        ex.getMessage().contains("NOT_A_REAL_TRANSFORM"));
+  }
+
+  @Test
+  public void parseRejectsProtoDecodeWithoutMessageName() {
+    String schema = "gs://bucket/schema.pb";
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValueTransformerRegistry.parse("cf:c:PROTO_DECODE()", schema, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValueTransformerRegistry.parse("cf:c:PROTO_DECODE", schema, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValueTransformerRegistry.parse("cf:c:PROTO_DECODE(   )", schema, false));
+  }
+
+  @Test
+  public void parseRejectsProtoDecodeWhenSchemaPathMissing() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValueTransformerRegistry.parse("cf:c:PROTO_DECODE(test.Profile)", null, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValueTransformerRegistry.parse("cf:c:PROTO_DECODE(test.Profile)", "", false));
   }
 
   private Descriptor buildSimpleMessageDescriptor() throws DescriptorValidationException {
