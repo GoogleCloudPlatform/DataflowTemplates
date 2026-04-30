@@ -114,4 +114,166 @@ public class DataGeneratorUtilsTest {
     Object value = DataGeneratorUtils.generateFromExpression(column, faker);
     Assert.assertEquals(12345L, value);
   }
+
+  @Test
+  public void testGenerateValue_String() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("string_col")
+            .logicalType(LogicalType.STRING)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .size(10L)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof String);
+    Assert.assertEquals(10, ((String) value).length());
+  }
+
+  @Test
+  public void testGenerateValue_Json() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("json_col")
+            .logicalType(LogicalType.JSON)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof String);
+    Assert.assertTrue(((String) value).startsWith("{"));
+  }
+
+  @Test
+  public void testGenerateValue_Int64() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("int_col")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof Long);
+  }
+
+  @Test
+  public void testGenerateValue_Boolean() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("bool_col")
+            .logicalType(LogicalType.BOOLEAN)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof Boolean);
+  }
+
+  @Test
+  public void testGenerateValue_Bytes() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("bytes_col")
+            .logicalType(LogicalType.BYTES)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .size(5L)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof byte[]);
+    Assert.assertEquals(5, ((byte[]) value).length);
+  }
+
+  @Test
+  public void testGenerateValue_Timestamp() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("ts_col")
+            .logicalType(LogicalType.TIMESTAMP)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof Instant);
+  }
+
+  @Test
+  public void testGenerateNumeric_Normal() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("num_col")
+            .logicalType(LogicalType.NUMERIC)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .precision(10)
+            .scale(2)
+            .build();
+
+    java.math.BigDecimal value = DataGeneratorUtils.generateNumeric(column, faker);
+    Assert.assertNotNull(value);
+    Assert.assertEquals(2, value.scale());
+  }
+
+  @Test
+  public void testGenerateValue_String_DefaultLength() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("string_col")
+            .logicalType(LogicalType.STRING)
+            .isNullable(false)
+            .isPrimaryKey(false)
+            .isGenerated(false)
+            .build();
+
+    Object value = DataGeneratorUtils.generateValue(column, faker);
+    Assert.assertTrue(value instanceof String);
+    Assert.assertEquals(DataGeneratorUtils.DEFAULT_STRING_LENGTH, ((String) value).length());
+  }
+
+  @Test
+  public void testGenerateFromExpression_LiteralBoolean() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("col")
+            .logicalType(LogicalType.BOOLEAN)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression("true")
+            .build();
+
+    Object value = DataGeneratorUtils.generateFromExpression(column, faker);
+    Assert.assertEquals(true, value);
+  }
+
+  @Test
+  public void testGenerateFromExpression_InvalidBooleanThrows() {
+    DataGeneratorColumn column =
+        DataGeneratorColumn.builder()
+            .name("col")
+            .logicalType(LogicalType.BOOLEAN)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression("maybe")
+            .build();
+
+    Assert.assertThrows(
+        RuntimeException.class,
+        () -> {
+          DataGeneratorUtils.generateFromExpression(column, faker);
+        });
+  }
 }

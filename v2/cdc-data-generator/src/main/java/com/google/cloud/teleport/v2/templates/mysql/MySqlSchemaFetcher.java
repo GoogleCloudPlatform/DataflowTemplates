@@ -174,7 +174,8 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
         .build();
   }
 
-  private DataGeneratorColumn mapSourceColumn(SourceColumn column, java.util.List<String> primaryKeys) {
+  private DataGeneratorColumn mapSourceColumn(
+      SourceColumn column, java.util.List<String> primaryKeys) {
     return DataGeneratorColumn.builder()
         .name(column.name())
         .logicalType(typeMapper.getLogicalType(column.type(), null, column.size()))

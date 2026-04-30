@@ -233,4 +233,190 @@ public class ApplyOverridesFnTest {
     assertEquals(Arrays.asList("col1"), fk.keyColumns());
     assertEquals(Arrays.asList("col2"), fk.referencedColumns());
   }
+
+  @Test
+  public void testProcessElement_FkConflictThrows() {
+    DataGeneratorForeignKey existingFk =
+        DataGeneratorForeignKey.builder()
+            .name("fk1")
+            .referencedTable("table2")
+            .keyColumns(ImmutableList.of("col1"))
+            .referencedColumns(ImmutableList.of("col2"))
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "table1",
+                    DataGeneratorTable.builder()
+                        .name("table1")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of(existingFk))
+                        .uniqueKeys(ImmutableList.of())
+                        .build()))
+            .build();
+
+    SchemaConfig schemaConfig = new SchemaConfig();
+    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
+    SchemaConfig.ForeignKeyConfig conflictingFk = new SchemaConfig.ForeignKeyConfig();
+    conflictingFk.setName("fk1");
+    conflictingFk.setReferencedTable("table3"); // Conflict
+    conflictingFk.setKeyColumns(Arrays.asList("col1"));
+    conflictingFk.setReferencedColumns(Arrays.asList("col2"));
+    tableConfig.setForeignKeys(Arrays.asList(conflictingFk));
+    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+
+    assertThrows(IllegalArgumentException.class, () -> fn.processElement(schema, receiver));
+  }
+
+  @Test
+  public void testProcessElement_FkEquivalentNoOp() {
+    DataGeneratorForeignKey existingFk =
+        DataGeneratorForeignKey.builder()
+            .name("fk1")
+            .referencedTable("table2")
+            .keyColumns(ImmutableList.of("col1"))
+            .referencedColumns(ImmutableList.of("col2"))
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "table1",
+                    DataGeneratorTable.builder()
+                        .name("table1")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of(existingFk))
+                        .uniqueKeys(ImmutableList.of())
+                        .build()))
+            .build();
+
+    SchemaConfig schemaConfig = new SchemaConfig();
+    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
+    SchemaConfig.ForeignKeyConfig equivalentFk = new SchemaConfig.ForeignKeyConfig();
+    equivalentFk.setName("fk1");
+    equivalentFk.setReferencedTable("table2"); // Same
+    equivalentFk.setKeyColumns(Arrays.asList("col1"));
+    equivalentFk.setReferencedColumns(Arrays.asList("col2"));
+    tableConfig.setForeignKeys(Arrays.asList(equivalentFk));
+    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    DataGeneratorTable table = resolvedSchema.tables().get("table1");
+    assertEquals(1, table.foreignKeys().size());
+  }
+
+  @Test
+  public void testProcessElement_UnknownTableOverrideWarns() {
+    DataGeneratorSchema schema = DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
+
+    SchemaConfig schemaConfig = new SchemaConfig();
+    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
+    tableConfig.setInsertQps(500);
+    schemaConfig.setTables(ImmutableMap.of("unknown_table", tableConfig));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    assertTrue(resolvedSchema.tables().isEmpty());
+  }
+
+  @Test
+  public void testProcessElement_WithUpdateAndDeleteQpsOverrides() {
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "table1",
+                    DataGeneratorTable.builder()
+                        .name("table1")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .build()))
+            .build();
+
+    SchemaConfig schemaConfig = new SchemaConfig();
+    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
+    tableConfig.setUpdateQps(20);
+    tableConfig.setDeleteQps(5);
+    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    DataGeneratorTable table = resolvedSchema.tables().get("table1");
+    assertEquals(100L, (long) table.insertQps());
+    assertEquals(20L, (long) table.updateQps());
+    assertEquals(5L, (long) table.deleteQps());
+  }
+
+  @Test
+  public void testApplyColumnOverrides_SkipFalseOnPrimaryKey() {
+    DataGeneratorColumn col =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isPrimaryKey(true)
+            .isGenerated(false)
+            .build();
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "table1",
+                    DataGeneratorTable.builder()
+                        .name("table1")
+                        .columns(ImmutableList.of(col))
+                        .primaryKeys(ImmutableList.of("id"))
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .build()))
+            .build();
+
+    SchemaConfig schemaConfig = new SchemaConfig();
+    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
+    SchemaConfig.ColumnConfig colConfig = new SchemaConfig.ColumnConfig();
+    colConfig.setSkip(false);
+    tableConfig.setColumns(ImmutableMap.of("id", colConfig));
+    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    DataGeneratorTable table = resolvedSchema.tables().get("table1");
+    DataGeneratorColumn updatedCol = table.columns().get(0);
+    assertTrue(!updatedCol.isSkipped());
+  }
 }
