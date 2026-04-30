@@ -22,6 +22,9 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -124,10 +127,22 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
     LOG.info("Creating 5000 tables in MySQL...");
-    for (int i = 1; i <= 5000; i++) {
-      String mySqlDdl =
-          String.format("CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", i);
-      jdbcResourceManager.runSQLUpdate(mySqlDdl);
+    try (Connection conn =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = conn.createStatement()) {
+      int mysqlBatchSize = 100;
+      for (int i = 1; i <= 5000; i++) {
+        String mySqlDdl =
+            String.format("CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", i);
+        stmt.addBatch(mySqlDdl);
+        if (i % mysqlBatchSize == 0) {
+          stmt.executeBatch();
+        }
+      }
+      stmt.executeBatch();
     }
 
     LOG.info("Launching Dataflow job...");
