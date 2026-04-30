@@ -536,8 +536,10 @@ public class DataStreamMongoDBToFirestore {
                   .setFailureTag(UDF_FAILURE_TAG)
                   .build());
 
-      jsonRecords = udfResult.get(UDF_SUCCESS_TAG)
-          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+      jsonRecords =
+          udfResult
+              .get(UDF_SUCCESS_TAG)
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
       // Handle failed UDF processing
       writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
@@ -724,8 +726,10 @@ public class DataStreamMongoDBToFirestore {
                   .setFailureTag(UDF_FAILURE_TAG)
                   .build());
 
-      jsonRecords = udfResult.get(UDF_SUCCESS_TAG)
-          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+      jsonRecords =
+          udfResult
+              .get(UDF_SUCCESS_TAG)
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
       // Handle failed UDF processing
       writeFailedJsonToDlq(options, udfResult, dlqManager, UDF_FAILURE_TAG);
