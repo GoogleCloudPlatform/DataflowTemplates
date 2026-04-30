@@ -59,6 +59,9 @@ public class ProcessChangeEventFn
   public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
       severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
 
+  // Error code 2 corresponds to BadValue/InvalidArgument, which is treated as a permanent error.
+  public static final int INVALID_ARGUMENT = 2;
+
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
     this.targetDatabaseName = databaseName;
@@ -144,7 +147,7 @@ public class ProcessChangeEventFn
         boolean isPermanent = false;
         if (e instanceof MongoWriteException) {
           MongoWriteException mwe = (MongoWriteException) e;
-          if (mwe.getError().getCode() == 2) {
+          if (mwe.getError().getCode() == INVALID_ARGUMENT) {
             isPermanent = true;
           }
         }

@@ -1274,7 +1274,7 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           
           // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting limit)
-          if (error.getCode() == 2) {
+          if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             out.get(severeFailedWriteTag).output(failedElement);
           } else {
             out.get(failedWriteTag).output(failedElement);
@@ -1367,7 +1367,7 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           
           // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting limit)
-          if (error.getCode() == 2) {
+          if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             context.output(severeFailedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
           } else {
             context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
