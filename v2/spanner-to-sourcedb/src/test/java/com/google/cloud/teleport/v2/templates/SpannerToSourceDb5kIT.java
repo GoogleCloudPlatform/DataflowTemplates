@@ -140,9 +140,11 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
         stmt.addBatch(mySqlDdl);
         if (i % mysqlBatchSize == 0) {
           stmt.executeBatch();
+          LOG.info("Created {} tables so far on Source", i);
         }
       }
       stmt.executeBatch();
+      LOG.info("Created 5000 tables on Source");
     }
 
     LOG.info("Launching Dataflow job...");
@@ -163,5 +165,29 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
             jobParameters);
 
     assertThatPipeline(jobInfo).isRunning();
+
+    // 1. Write row in Spanner
+    LOG.info("Writing a row to Spanner...");
+    com.google.cloud.spanner.Mutation m =
+        com.google.cloud.spanner.Mutation.newInsertOrUpdateBuilder("table_1")
+            .set("id")
+            .to(42L)
+            .build();
+    spannerResourceManager.write(m);
+    LOG.info("Successfully wrote a row to Spanner.");
+
+    // 2. Assert the row in MySQL
+    LOG.info("Waiting for row to be replicated to MySQL...");
+    org.apache.beam.it.common.PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, java.time.Duration.ofMinutes(10)),
+                () -> jdbcResourceManager.getRowCount("table_1") == 1);
+    org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult(result).meetsConditions();
+
+    java.util.List<java.util.Map<String, Object>> rows = jdbcResourceManager.readTable("table_1");
+    com.google.common.truth.Truth.assertThat(rows).hasSize(1);
+    com.google.common.truth.Truth.assertThat(rows.get(0).get("id").toString()).isEqualTo("42");
+    LOG.info("Validation successful! Row correctly replicated to MySQL.");
   }
 }
