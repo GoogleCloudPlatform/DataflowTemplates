@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import java.util.function.Consumer;
+
 import static com.mongodb.client.model.Filters.eq;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1136,14 +1138,12 @@ public class DataStreamMongoDBToFirestore {
       }
     }
 
-    private void processBatch(String collectionName, MultiOutputReceiver out) {
-      List<MongoDbChangeEventContext> events = bufferedEvents.get(collectionName);
-      MongoCollection<Document> collection = collectionMap.get(collectionName);
+    private record PreparedBatch(
+        List<WriteModel<Document>> bulkOperations,
+        List<MongoDbChangeEventContext> processedEvents,
+        List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements) {}
 
-      if (events.isEmpty()) {
-        return;
-      }
-
+    private PreparedBatch prepareBatch(List<MongoDbChangeEventContext> events) {
       List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
       List<MongoDbChangeEventContext> processedEvents = new ArrayList<>();
       List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements = new ArrayList<>();
@@ -1168,20 +1168,30 @@ public class DataStreamMongoDBToFirestore {
           }
         }
       }
+      return new PreparedBatch(bulkOperations, processedEvents, failedElements);
+    }
+
+    private void writeBatch(
+        String collectionName,
+        List<MongoDbChangeEventContext> events,
+        MongoCollection<Document> collection,
+        Consumer<MongoDbChangeEventContext> successConsumer,
+        Consumer<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failureConsumer) {
+
+      PreparedBatch preparedBatch = prepareBatch(events);
 
       // Write any failed parse events to the DLQ.
-      for (var failedElement : failedElements) {
-        out.get(failedWriteTag).output(failedElement);
+      for (var failedElement : preparedBatch.failedElements()) {
+        failureConsumer.accept(failedElement);
       }
 
-      if (bulkOperations.isEmpty()) {
+      if (preparedBatch.bulkOperations().isEmpty()) {
         return;
       }
 
       try {
-
         // Execute bulk write
-        BulkWriteResult result = collection.bulkWrite(bulkOperations);
+        BulkWriteResult result = collection.bulkWrite(preparedBatch.bulkOperations());
         LOG.debug(
             "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
             collectionName,
@@ -1189,8 +1199,8 @@ public class DataStreamMongoDBToFirestore {
             result.getDeletedCount());
 
         // Output successful events
-        for (MongoDbChangeEventContext event : processedEvents) {
-          out.get(successfulWriteTag).output(event);
+        for (MongoDbChangeEventContext event : preparedBatch.processedEvents()) {
+          successConsumer.accept(event);
         }
       } catch (Exception e) {
         LOG.error(
@@ -1200,14 +1210,30 @@ public class DataStreamMongoDBToFirestore {
             e);
 
         // On error, output all events as failed
-        for (MongoDbChangeEventContext event : processedEvents) {
+        for (MongoDbChangeEventContext event : preparedBatch.processedEvents()) {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
-          out.get(failedWriteTag).output(failedElement);
+          failureConsumer.accept(failedElement);
         }
       }
+    }
+
+    private void processBatch(String collectionName, MultiOutputReceiver out) {
+      List<MongoDbChangeEventContext> events = bufferedEvents.get(collectionName);
+      MongoCollection<Document> collection = collectionMap.get(collectionName);
+
+      if (events.isEmpty()) {
+        return;
+      }
+
+      writeBatch(
+          collectionName,
+          events,
+          collection,
+          event -> out.get(successfulWriteTag).output(event),
+          failedElement -> out.get(failedWriteTag).output(failedElement));
 
       // Clear the processed batch
       events.clear();
@@ -1221,69 +1247,12 @@ public class DataStreamMongoDBToFirestore {
         return;
       }
 
-      List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
-      List<MongoDbChangeEventContext> processedEvents = new ArrayList<>();
-      List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements = new ArrayList<>();
-
-      for (MongoDbChangeEventContext event : events) {
-        var documentId = event.getDocumentId();
-        var lookupById = eq("_id", documentId);
-        if (event.isDeleteEvent()) {
-          bulkOperations.add(new DeleteOneModel<>(lookupById));
-          processedEvents.add(event);
-        } else {
-          Document doc = event.getDataAsDocument();
-          if (event.hasParseError()) {
-            Exception exception = event.getParseError();
-            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
-            failedElement.setErrorMessage(exception.getMessage());
-            failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
-            failedElements.add(failedElement);
-          } else {
-            bulkOperations.add(new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
-            processedEvents.add(event);
-          }
-        }
-      }
-
-      // Write any failed parse events to the DLQ.
-      for (var failedElement : failedElements) {
-        context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
-      }
-
-      if (bulkOperations.isEmpty()) {
-        return;
-      }
-
-      try {
-        // Execute bulk write
-        BulkWriteResult result = collection.bulkWrite(bulkOperations);
-        LOG.debug(
-            "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
-            collectionName,
-            result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size(),
-            result.getDeletedCount());
-
-        // Output successful events
-        for (MongoDbChangeEventContext event : processedEvents) {
-          context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
-        }
-      } catch (Exception e) {
-        LOG.error(
-            "Error processing backfill batch for collection {}: {}",
-            collectionName,
-            e.getMessage(),
-            e);
-
-        // On error, output all events as failed
-        for (MongoDbChangeEventContext event : processedEvents) {
-          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
-              FailsafeElement.of(event, event);
-          failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
-          context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
-        }
-      }
+      writeBatch(
+          collectionName,
+          events,
+          collection,
+          event -> context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE),
+          failedElement -> context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE));
 
       // Clear the processed batch
       events.clear();
