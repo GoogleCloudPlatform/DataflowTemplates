@@ -1159,7 +1159,7 @@ public class DataStreamMongoDBToFirestore {
           if (event.hasParseError()) {
             Exception exception = event.getParseError();
             FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
-            failedElement.setException(exception);
+            failedElement.setErrorMessage(exception.getMessage());
             failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
             failedElements.add(failedElement);
           } else {
@@ -1236,7 +1236,7 @@ public class DataStreamMongoDBToFirestore {
           if (event.hasParseError()) {
             Exception exception = event.getParseError();
             FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
-            failedElement.setException(exception);
+            failedElement.setErrorMessage(exception.getMessage());
             failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
             failedElements.add(failedElement);
           } else {
