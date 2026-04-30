@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.templates.dofn.ScaleTicksFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
@@ -101,19 +102,17 @@ public class GenerateTicksTest {
   }
 
   @Test
-  public void testScaleTicks_zeroTotalQpsEmitsNothing() {
+  public void testScaleTicks_zeroTotalQpsThrowsException() {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder().tables(ImmutableMap.of("B", child("B", "A", 42))).build();
     PCollectionView<DataGeneratorSchema> schemaView =
         pipeline.apply("MkSchema", Create.of(schema)).apply("AsView", View.asSingleton());
 
-    PCollection<Long> output =
-        pipeline
-            .apply("Input", Create.of(buildInstantSequence(50)))
-            .apply("GenerateTicks", new GenerateTicks(schemaView));
+    pipeline
+        .apply("Input", Create.of(buildInstantSequence(50)))
+        .apply("GenerateTicks", new GenerateTicks(schemaView));
 
-    PAssert.that(output).empty();
-    pipeline.run();
+    assertThrows(RuntimeException.class, () -> pipeline.run());
   }
 
   @Test

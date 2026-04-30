@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * <p>Since the input tick rate is 1 tick per second (driven by PeriodicImpulse), this DoFn simply
  * outputs {@code totalQps} copies of the timestamp (in milliseconds) for each incoming tick.
  */
-public class ScaleTicksFn extends DoFn<org.joda.time.Instant, Long> {
+public class ScaleTicksFn extends DoFn<Instant, Long> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ScaleTicksFn.class);
   private final PCollectionView<DataGeneratorSchema> schemaView;
@@ -53,12 +54,16 @@ public class ScaleTicksFn extends DoFn<org.joda.time.Instant, Long> {
     }
 
     if (cachedTotalQps <= 0) {
-      return; // Nothing to do — no root tables, or all have zero QPS.
+      throw new IllegalStateException(
+          "Total QPS must be greater than zero. Found: "
+              + cachedTotalQps
+              + " . Please verify your config.");
     }
 
     // Since base tick rate is effectively 1 per second, we just output totalQps times
+    Long millis = c.element().getMillis();
     for (int i = 0; i < cachedTotalQps; i++) {
-      c.output(c.element().getMillis());
+      c.output(millis);
     }
   }
 

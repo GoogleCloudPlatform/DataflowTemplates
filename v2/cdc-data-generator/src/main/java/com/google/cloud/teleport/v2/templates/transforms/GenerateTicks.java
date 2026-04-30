@@ -21,8 +21,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.joda.time.Instant;
 
 /**
  * {@link PTransform} that takes a stream of periodic impulses (1 tick per second) and expands each
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
 public class GenerateTicks
     extends PTransform<PCollection<org.joda.time.Instant>, PCollection<Long>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GenerateTicks.class);
   private final PCollectionView<DataGeneratorSchema> schemaView;
 
   public GenerateTicks(PCollectionView<DataGeneratorSchema> schemaView) {
@@ -39,7 +37,7 @@ public class GenerateTicks
   }
 
   @Override
-  public PCollection<Long> expand(PCollection<org.joda.time.Instant> input) {
+  public PCollection<Long> expand(PCollection<Instant> input) {
     return input.apply(
         "ScaleTicks", ParDo.of(new ScaleTicksFn(schemaView)).withSideInputs(schemaView));
   }
