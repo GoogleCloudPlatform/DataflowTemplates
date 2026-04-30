@@ -657,6 +657,7 @@ public class DataStreamMongoDBToFirestore {
             ? ProcessChangeEventFn.failedWriteTag
             : ProcessBackfillEventFn.failedWriteTag);
 
+    // Write severe backfill failures directly to severe DLQ
     if (options.getUseShadowTablesForBackfill()) {
       writeSevereEventsToDlq(
           options,
@@ -697,6 +698,7 @@ public class DataStreamMongoDBToFirestore {
 
     // Handle failed CDC writes with DLQ
     writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    // Write severe CDC failures directly to severe DLQ
     writeSevereEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
 
     // Execute the pipeline
@@ -831,6 +833,7 @@ public class DataStreamMongoDBToFirestore {
     /* Handle failed writes with DLQ */
     LOG.info("Setting up DLQ handling for failed writes");
     writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    // Write severe failures directly to severe DLQ
     writeSevereEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
 
     // Execute the pipeline and return the result.
@@ -1238,7 +1241,7 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write
+        // Execute bulk write with ordered(false) to isolate failed documents
         BulkWriteResult result = collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
             "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
@@ -1256,6 +1259,7 @@ public class DataStreamMongoDBToFirestore {
             collectionName,
             e.getMessage());
 
+        // Identify failed documents and route them to failedWriteTag
         Set<Integer> failedIndices = new HashSet<>();
         for (BulkWriteError error : e.getWriteErrors()) {
           failedIndices.add(error.getIndex());
@@ -1267,7 +1271,7 @@ public class DataStreamMongoDBToFirestore {
           out.get(failedWriteTag).output(failedElement);
         }
 
-        // Output successful events
+        // Output successful events that were not part of the failed indices
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             out.get(successfulWriteTag).output(events.get(i));
@@ -1324,7 +1328,7 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write
+        // Execute bulk write with ordered(false) to isolate failed documents
         BulkWriteResult result = collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
             "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
@@ -1342,6 +1346,7 @@ public class DataStreamMongoDBToFirestore {
             collectionName,
             e.getMessage());
 
+        // Identify failed documents and route them to failedWriteTag
         Set<Integer> failedIndices = new HashSet<>();
         for (BulkWriteError error : e.getWriteErrors()) {
           failedIndices.add(error.getIndex());
@@ -1353,7 +1358,7 @@ public class DataStreamMongoDBToFirestore {
           context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
         }
 
-        // Output successful events
+        // Output successful events that were not part of the failed indices
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             context.output(successfulWriteTag, events.get(i), Instant.now(), GlobalWindow.INSTANCE);

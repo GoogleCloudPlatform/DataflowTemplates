@@ -54,6 +54,7 @@ public class ProcessChangeEventFn
       new TupleTag<>("successfulWrite");
   public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
       failedWriteTag = new TupleTag<>("failedWrite");
+  // Tag for severe failures that should not be retried (e.g. permanent errors or non-transient transaction errors)
   public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
       severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
 
@@ -138,6 +139,7 @@ public class ProcessChangeEventFn
           }
         }
 
+        // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting limit)
         boolean isPermanent = false;
         if (e instanceof MongoWriteException) {
           MongoWriteException mwe = (MongoWriteException) e;
@@ -146,8 +148,10 @@ public class ProcessChangeEventFn
           }
         }
 
+        // Check if the error is transient and safe to retry
         boolean isTransient = isTransientTransactionError(e);
 
+        // If it's a permanent error or not transient, fail fast and route to severe DLQ
         if (isPermanent || !isTransient) {
           LOG.error(
               "Permanent or non-retryable error for document ID: {}: {}",
