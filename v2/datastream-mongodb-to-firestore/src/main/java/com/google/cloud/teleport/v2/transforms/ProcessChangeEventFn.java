@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -53,6 +54,8 @@ public class ProcessChangeEventFn
       new TupleTag<>("successfulWrite");
   public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
       failedWriteTag = new TupleTag<>("failedWrite");
+  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -134,8 +137,31 @@ public class ProcessChangeEventFn
                 abortException);
           }
         }
+
+        boolean isPermanent = false;
+        if (e instanceof MongoWriteException) {
+          MongoWriteException mwe = (MongoWriteException) e;
+          if (mwe.getError().getCode() == 2) {
+            isPermanent = true;
+          }
+        }
+
+        boolean isTransient = isTransientTransactionError(e);
+
+        if (isPermanent || !isTransient) {
+          LOG.error(
+              "Permanent or non-retryable error for document ID: {}: {}",
+              element.getDocumentId(),
+              e.getMessage());
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(element, element);
+          failedElement.setErrorMessage(e.getMessage());
+          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          out.get(severeFailedWriteTag).output(failedElement);
+          break; // Exit the retry loop
+        }
+
         if (retryCount < maxRetries) {
-          // Retry regardless of error types till maxRetries before thrown to dlq.
           LOG.warn(
               "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
               element.getDocumentId(),
