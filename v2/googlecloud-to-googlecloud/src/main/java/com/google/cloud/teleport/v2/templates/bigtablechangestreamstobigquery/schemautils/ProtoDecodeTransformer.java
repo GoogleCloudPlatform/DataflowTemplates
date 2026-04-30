@@ -40,7 +40,7 @@ public class ProtoDecodeTransformer implements ValueTransformer {
   private final String fullMessageName;
   private final boolean preserveFieldNames;
 
-  private volatile boolean initialized = false;
+  private transient volatile boolean initialized = false;
   private transient Descriptor descriptor;
   private transient JsonFormat.Printer printer;
 

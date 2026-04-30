@@ -40,7 +40,7 @@ public final class OversizedValueDlqSanitizer
   static final String REASON = "reason";
   static final String REASON_VALUE = "decoded_value_exceeds_max_bytes";
 
-  private static final ThreadLocal<Gson> GSON = ThreadLocal.withInitial(Gson::new);
+  private static final Gson GSON = new Gson();
 
   public OversizedValueDlqSanitizer() {}
 
@@ -60,7 +60,7 @@ public final class OversizedValueDlqSanitizer
     record.put(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName(), input.sourceInstance());
     record.put(ChangelogColumn.SOURCE_CLUSTER.getBqColumnName(), input.sourceCluster());
     record.put(ChangelogColumn.SOURCE_TABLE.getBqColumnName(), input.sourceTable());
-    return GSON.get().toJson(record);
+    return GSON.toJson(record);
   }
 
   @Override

@@ -132,6 +132,10 @@ public final class Mod implements Serializable {
           transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
       if (transformer == null) {
         result = TransformResult.noTransformer();
+      } else if (maxDecodedValueBytes > 0 && setCell.getValue().size() > maxDecodedValueBytes) {
+        // Pre-check raw payload size against the budget without allocating the byte[].
+        long size = setCell.getValue().size();
+        result = TransformResult.oversized(size, size);
       } else {
         byte[] valueBytes = setCell.getValue().toByteArray();
         result = transformer.transformBounded(valueBytes, maxDecodedValueBytes);

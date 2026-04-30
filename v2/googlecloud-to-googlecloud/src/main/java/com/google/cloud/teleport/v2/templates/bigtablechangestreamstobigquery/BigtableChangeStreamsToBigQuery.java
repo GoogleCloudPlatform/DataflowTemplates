@@ -268,10 +268,7 @@ public final class BigtableChangeStreamsToBigQuery {
             "ChangeStreamMutation To TableRow",
             ParDo.of(
                     new ChangeStreamMutationToTableRowFn(
-                        sourceInfo,
-                        bigQuery,
-                        transformerRegistry,
-                        maxDecodedValueBytes))
+                        sourceInfo, bigQuery, transformerRegistry, maxDecodedValueBytes))
                 .withOutputTags(
                     ChangeStreamMutationToTableRowFn.MAIN_OUT,
                     TupleTagList.of(ChangeStreamMutationToTableRowFn.OVERSIZED_DLQ_OUT)));
@@ -416,6 +413,8 @@ public final class BigtableChangeStreamsToBigQuery {
 
     private final org.apache.beam.sdk.metrics.Counter oversizedDecodesCounter =
         Metrics.counter(ChangeStreamMutationToTableRowFn.class, "oversizedDecodes");
+    private final org.apache.beam.sdk.metrics.Counter decodeErrorsCounter =
+        Metrics.counter(ChangeStreamMutationToTableRowFn.class, "decode_errors");
     private final Distribution decodedValueBytesDistribution =
         Metrics.distribution(ChangeStreamMutationToTableRowFn.class, "decodedValueBytes");
 
@@ -442,11 +441,7 @@ public final class BigtableChangeStreamsToBigQuery {
             SetCell setCell = (SetCell) entry;
             Mod.SetCellBuildResult buildResult =
                 Mod.buildSetCell(
-                    sourceInfo,
-                    input,
-                    setCell,
-                    transformerRegistry,
-                    maxDecodedValueBytes);
+                    sourceInfo, input, setCell, transformerRegistry, maxDecodedValueBytes);
             TransformResult result = buildResult.transformResult();
             if (result.status() == TransformResult.Status.SUCCESS) {
               decodedValueBytesDistribution.update(result.decodedBytes());
@@ -454,6 +449,13 @@ public final class BigtableChangeStreamsToBigQuery {
               oversizedDecodesCounter.inc();
               receiver.get(OVERSIZED_DLQ_OUT).output(toOversizedValue(input, setCell, result));
               continue;
+            } else if (result.status() == TransformResult.Status.DECODE_ERROR) {
+              decodeErrorsCounter.inc();
+              LOG.warn(
+                  "Decode error for {}/{}: raw_bytes={}",
+                  setCell.getFamilyName(),
+                  setCell.getQualifier().toStringUtf8(),
+                  result.rawBytes());
             }
             mod = buildResult.mod();
             break;
