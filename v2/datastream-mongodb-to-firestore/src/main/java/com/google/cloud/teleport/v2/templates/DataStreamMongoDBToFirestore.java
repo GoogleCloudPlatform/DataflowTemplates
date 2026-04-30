@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import java.util.function.Consumer;
-
 import static com.mongodb.client.model.Filters.eq;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,7 +37,6 @@ import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.Failsaf
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
-import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
@@ -60,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -83,7 +81,6 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
-import org.bson.conversions.Bson;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -1141,12 +1138,14 @@ public class DataStreamMongoDBToFirestore {
     private record PreparedBatch(
         List<WriteModel<Document>> bulkOperations,
         List<MongoDbChangeEventContext> processedEvents,
-        List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements) {}
+        List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+            failedElements) {}
 
     private PreparedBatch prepareBatch(List<MongoDbChangeEventContext> events) {
       List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
       List<MongoDbChangeEventContext> processedEvents = new ArrayList<>();
-      List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements = new ArrayList<>();
+      List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements =
+          new ArrayList<>();
 
       for (MongoDbChangeEventContext event : events) {
         var documentId = event.getDocumentId();
@@ -1158,12 +1157,14 @@ public class DataStreamMongoDBToFirestore {
           Document doc = event.getDataAsDocument();
           if (event.hasParseError()) {
             Exception exception = event.getParseError();
-            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+                FailsafeElement.of(event, event);
             failedElement.setErrorMessage(exception.getMessage());
             failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
             failedElements.add(failedElement);
           } else {
-            bulkOperations.add(new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
+            bulkOperations.add(
+                new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
             processedEvents.add(event);
           }
         }
@@ -1176,7 +1177,8 @@ public class DataStreamMongoDBToFirestore {
         List<MongoDbChangeEventContext> events,
         MongoCollection<Document> collection,
         Consumer<MongoDbChangeEventContext> successConsumer,
-        Consumer<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failureConsumer) {
+        Consumer<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+            failureConsumer) {
 
       PreparedBatch preparedBatch = prepareBatch(events);
 
@@ -1252,7 +1254,8 @@ public class DataStreamMongoDBToFirestore {
           events,
           collection,
           event -> context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE),
-          failedElement -> context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE));
+          failedElement ->
+              context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE));
 
       // Clear the processed batch
       events.clear();

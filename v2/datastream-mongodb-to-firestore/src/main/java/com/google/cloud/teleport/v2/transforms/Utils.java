@@ -53,7 +53,9 @@ public final class Utils {
     }
     if (rawDoc == null) {
       throw new IllegalArgumentException(
-          String.format("JSON string does not contain a valid '%s' field or it is null: %s", DATA_COL, jsonString));
+          String.format(
+              "JSON string does not contain a valid '%s' field or it is null: %s",
+              DATA_COL, jsonString));
     }
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
