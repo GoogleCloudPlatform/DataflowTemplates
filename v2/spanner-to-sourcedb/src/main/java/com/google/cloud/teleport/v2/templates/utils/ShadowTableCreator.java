@@ -139,7 +139,7 @@ public class ShadowTableCreator {
                           metadataConfig.getDatabaseId().get(),
                           batch,
                           null);
-                  op.get(5, TimeUnit.MINUTES);
+                  op.get(30, TimeUnit.MINUTES);
                 } catch (Exception e) {
                   throw new RuntimeException("Failed to execute shadow table DDL batch", e);
                 }
