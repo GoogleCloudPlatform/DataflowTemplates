@@ -120,9 +120,13 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorTable mapTable(
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
       com.google.cloud.spanner.Dialect dialect) {
+    java.util.List<String> primaryKeys =
+        table.primaryKeys().stream()
+            .map(com.google.cloud.teleport.v2.spanner.ddl.IndexColumn::name)
+            .collect(java.util.stream.Collectors.toList());
     ImmutableList.Builder<DataGeneratorColumn> columnsBuilder = ImmutableList.builder();
     for (com.google.cloud.teleport.v2.spanner.ddl.Column column : table.columns()) {
-      columnsBuilder.add(mapColumn(column, table, dialect));
+      columnsBuilder.add(mapColumn(column, table, dialect, primaryKeys));
     }
 
     ImmutableList.Builder<DataGeneratorForeignKey> fksBuilder = ImmutableList.builder();
@@ -181,13 +185,15 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorColumn mapColumn(
       com.google.cloud.teleport.v2.spanner.ddl.Column column,
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
-      com.google.cloud.spanner.Dialect dialect) {
+      com.google.cloud.spanner.Dialect dialect,
+      java.util.List<String> primaryKeys) {
 
     return DataGeneratorColumn.builder()
         .name(column.name())
         .logicalType(typeMapper.getLogicalType(column.typeString(), dialect, null))
         .isNullable(!column.notNull())
         .isGenerated(column.isGenerated())
+        .isPrimaryKey(primaryKeys.contains(column.name()))
         .size(column.size() != null ? Long.valueOf(column.size()) : null)
         .precision(null)
         .scale(null)
