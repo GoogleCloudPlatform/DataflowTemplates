@@ -127,7 +127,8 @@ public class ProcessChangeEventFnTest {
     // Mock the MultiOutputReceiver's get() method
     when(mockReceiver.get(ProcessChangeEventFn.successfulWriteTag)).thenReturn(mockSuccessReceiver);
     when(mockReceiver.get(ProcessChangeEventFn.failedWriteTag)).thenReturn(mockFailureReceiver);
-    when(mockReceiver.get(ProcessChangeEventFn.severeFailedWriteTag)).thenReturn(mockSevereFailureReceiver);
+    when(mockReceiver.get(ProcessChangeEventFn.severeFailedWriteTag))
+        .thenReturn(mockSevereFailureReceiver);
   }
 
   @Test
@@ -293,9 +294,12 @@ public class ProcessChangeEventFnTest {
 
   @Test
   public void testProcessElementPermanentError_Code2() {
-    WriteError writeError = new WriteError(2, "At most 20 nested array/entity values are supported.", new org.bson.BsonDocument());
-    MongoWriteException permanentError = new MongoWriteException(writeError, new com.mongodb.ServerAddress());
-    
+    WriteError writeError =
+        new WriteError(
+            2, "At most 20 nested array/entity values are supported.", new org.bson.BsonDocument());
+    MongoWriteException permanentError =
+        new MongoWriteException(writeError, new com.mongodb.ServerAddress());
+
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(permanentError);
 
     processFn.processElement(mockContext, mockReceiver);

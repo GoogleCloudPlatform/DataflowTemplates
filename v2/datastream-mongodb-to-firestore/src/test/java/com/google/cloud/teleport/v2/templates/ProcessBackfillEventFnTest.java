@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
@@ -53,11 +68,16 @@ public class ProcessBackfillEventFnTest {
 
     when(mockClient.getDatabase(DATABASE_NAME)).thenReturn(mockDatabase);
     when(mockDatabase.getCollection(COLLECTION_NAME)).thenReturn(mockCollection);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag)).thenReturn(mockSuccessReceiver);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.failedWriteTag)).thenReturn(mockFailureReceiver);
-    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.severeFailedWriteTag)).thenReturn(mockSevereFailureReceiver);
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag))
+        .thenReturn(mockSuccessReceiver);
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.failedWriteTag))
+        .thenReturn(mockFailureReceiver);
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.severeFailedWriteTag))
+        .thenReturn(mockSevereFailureReceiver);
 
-    fn = new DataStreamMongoDBToFirestore.ProcessBackfillEventFn(mockClient, DATABASE_NAME, BATCH_SIZE);
+    fn =
+        new DataStreamMongoDBToFirestore.ProcessBackfillEventFn(
+            mockClient, DATABASE_NAME, BATCH_SIZE);
     fn.setup();
     fn.startBundle();
   }
@@ -78,16 +98,21 @@ public class ProcessBackfillEventFnTest {
 
     // Process first element
     fn.processElement(mockContext, mockReceiver);
-    
+
     // Process second element, should trigger batch processing
-    com.mongodb.bulk.BulkWriteError error = new com.mongodb.bulk.BulkWriteError(2, "At most 20 nested array/entity values are supported.", new org.bson.BsonDocument(), 1);
-    com.mongodb.MongoBulkWriteException exception = new com.mongodb.MongoBulkWriteException(
-        mock(com.mongodb.bulk.BulkWriteResult.class),
-        Collections.singletonList(error),
-        mock(com.mongodb.bulk.WriteConcernError.class),
-        new com.mongodb.ServerAddress(),
-        Collections.emptySet()
-    );
+    com.mongodb.bulk.BulkWriteError error =
+        new com.mongodb.bulk.BulkWriteError(
+            2,
+            "At most 20 nested array/entity values are supported.",
+            new org.bson.BsonDocument(),
+            1);
+    com.mongodb.MongoBulkWriteException exception =
+        new com.mongodb.MongoBulkWriteException(
+            mock(com.mongodb.bulk.BulkWriteResult.class),
+            Collections.singletonList(error),
+            mock(com.mongodb.bulk.WriteConcernError.class),
+            new com.mongodb.ServerAddress(),
+            Collections.emptySet());
 
     when(mockCollection.bulkWrite(anyList(), any())).thenThrow(exception);
 
@@ -95,13 +120,14 @@ public class ProcessBackfillEventFnTest {
 
     // Verify output
     verify(mockSuccessReceiver, times(1)).output(event1);
-    
+
     ArgumentCaptor<FailsafeElement> failureCaptor = ArgumentCaptor.forClass(FailsafeElement.class);
     verify(mockSevereFailureReceiver, times(1)).output(failureCaptor.capture());
-    
+
     FailsafeElement failedElement = failureCaptor.getValue();
     assertEquals(event2, failedElement.getOriginalPayload());
-    assertEquals("At most 20 nested array/entity values are supported.", failedElement.getErrorMessage());
+    assertEquals(
+        "At most 20 nested array/entity values are supported.", failedElement.getErrorMessage());
   }
 
   @Test
@@ -120,16 +146,17 @@ public class ProcessBackfillEventFnTest {
 
     // Process first element
     fn.processElement(mockContext, mockReceiver);
-    
+
     // Process second element, should trigger batch processing
-    com.mongodb.bulk.BulkWriteError error = new com.mongodb.bulk.BulkWriteError(1, "Some other error", new org.bson.BsonDocument(), 1);
-    com.mongodb.MongoBulkWriteException exception = new com.mongodb.MongoBulkWriteException(
-        mock(com.mongodb.bulk.BulkWriteResult.class),
-        Collections.singletonList(error),
-        mock(com.mongodb.bulk.WriteConcernError.class),
-        new com.mongodb.ServerAddress(),
-        Collections.emptySet()
-    );
+    com.mongodb.bulk.BulkWriteError error =
+        new com.mongodb.bulk.BulkWriteError(1, "Some other error", new org.bson.BsonDocument(), 1);
+    com.mongodb.MongoBulkWriteException exception =
+        new com.mongodb.MongoBulkWriteException(
+            mock(com.mongodb.bulk.BulkWriteResult.class),
+            Collections.singletonList(error),
+            mock(com.mongodb.bulk.WriteConcernError.class),
+            new com.mongodb.ServerAddress(),
+            Collections.emptySet());
 
     when(mockCollection.bulkWrite(anyList(), any())).thenThrow(exception);
 
@@ -137,10 +164,10 @@ public class ProcessBackfillEventFnTest {
 
     // Verify output
     verify(mockSuccessReceiver, times(1)).output(event1);
-    
+
     ArgumentCaptor<FailsafeElement> failureCaptor = ArgumentCaptor.forClass(FailsafeElement.class);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
-    
+
     FailsafeElement failedElement = failureCaptor.getValue();
     assertEquals(event2, failedElement.getOriginalPayload());
     assertEquals("Some other error", failedElement.getErrorMessage());
