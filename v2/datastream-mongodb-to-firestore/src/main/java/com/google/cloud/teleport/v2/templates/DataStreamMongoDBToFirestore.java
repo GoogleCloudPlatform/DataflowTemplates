@@ -40,6 +40,7 @@ import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.bulk.BulkWriteError;
@@ -1270,7 +1271,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(error.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           
           // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting limit)
           if (error.getCode() == 2) {
@@ -1298,7 +1299,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
         }
       }
@@ -1363,7 +1364,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(error.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           
           // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting limit)
           if (error.getCode() == 2) {
@@ -1391,7 +1392,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
         }
       }

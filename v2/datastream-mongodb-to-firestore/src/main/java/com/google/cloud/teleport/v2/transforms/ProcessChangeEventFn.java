@@ -20,6 +20,7 @@ import static com.mongodb.client.model.Filters.eq;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
@@ -160,7 +161,7 @@ public class ProcessChangeEventFn
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(severeFailedWriteTag).output(failedElement);
           break; // Exit the retry loop
         }
@@ -180,7 +181,7 @@ public class ProcessChangeEventFn
             FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
                 FailsafeElement.of(element, element);
             failedElement.setErrorMessage(ie.getMessage());
-            failedElement.setStacktrace(Arrays.deepToString(ie.getStackTrace()));
+            failedElement.setStacktrace(Throwables.getStackTraceAsString(ie));
             out.get(failedWriteTag).output(failedElement);
             break; // Exit the retry loop if interrupted
           }
@@ -195,7 +196,7 @@ public class ProcessChangeEventFn
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
           LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
           break; // Exit the retry loop on non-transient error or max retries
