@@ -37,6 +37,7 @@ public class ProcessBackfillEventFnTest {
   private MultiOutputReceiver mockReceiver;
   private OutputReceiver mockSuccessReceiver;
   private OutputReceiver mockFailureReceiver;
+  private OutputReceiver mockSevereFailureReceiver;
   private DoFn.ProcessContext mockContext;
 
   @Before
@@ -47,12 +48,14 @@ public class ProcessBackfillEventFnTest {
     mockReceiver = mock(MultiOutputReceiver.class);
     mockSuccessReceiver = mock(OutputReceiver.class);
     mockFailureReceiver = mock(OutputReceiver.class);
+    mockSevereFailureReceiver = mock(OutputReceiver.class);
     mockContext = mock(DoFn.ProcessContext.class);
 
     when(mockClient.getDatabase(DATABASE_NAME)).thenReturn(mockDatabase);
     when(mockDatabase.getCollection(COLLECTION_NAME)).thenReturn(mockCollection);
     when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag)).thenReturn(mockSuccessReceiver);
     when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.failedWriteTag)).thenReturn(mockFailureReceiver);
+    when(mockReceiver.get(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.severeFailedWriteTag)).thenReturn(mockSevereFailureReceiver);
 
     fn = new DataStreamMongoDBToFirestore.ProcessBackfillEventFn(mockClient, DATABASE_NAME, BATCH_SIZE);
     fn.setup();
@@ -94,10 +97,52 @@ public class ProcessBackfillEventFnTest {
     verify(mockSuccessReceiver, times(1)).output(event1);
     
     ArgumentCaptor<FailsafeElement> failureCaptor = ArgumentCaptor.forClass(FailsafeElement.class);
-    verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
+    verify(mockSevereFailureReceiver, times(1)).output(failureCaptor.capture());
     
     FailsafeElement failedElement = failureCaptor.getValue();
     assertEquals(event2, failedElement.getOriginalPayload());
     assertEquals("At most 20 nested array/entity values are supported.", failedElement.getErrorMessage());
+  }
+
+  @Test
+  public void testProcessBatch_nonPermanentFailure() {
+    MongoDbChangeEventContext event1 = mock(MongoDbChangeEventContext.class);
+    MongoDbChangeEventContext event2 = mock(MongoDbChangeEventContext.class);
+
+    when(event1.getDataCollection()).thenReturn(COLLECTION_NAME);
+    when(event2.getDataCollection()).thenReturn(COLLECTION_NAME);
+    when(event1.getDocumentId()).thenReturn("id1");
+    when(event2.getDocumentId()).thenReturn("id2");
+    when(event1.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
+    when(event2.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
+
+    when(mockContext.element()).thenReturn(event1).thenReturn(event2);
+
+    // Process first element
+    fn.processElement(mockContext, mockReceiver);
+    
+    // Process second element, should trigger batch processing
+    com.mongodb.bulk.BulkWriteError error = new com.mongodb.bulk.BulkWriteError(1, "Some other error", new org.bson.BsonDocument(), 1);
+    com.mongodb.MongoBulkWriteException exception = new com.mongodb.MongoBulkWriteException(
+        mock(com.mongodb.bulk.BulkWriteResult.class),
+        Collections.singletonList(error),
+        mock(com.mongodb.bulk.WriteConcernError.class),
+        new com.mongodb.ServerAddress(),
+        Collections.emptySet()
+    );
+
+    when(mockCollection.bulkWrite(anyList(), any())).thenThrow(exception);
+
+    fn.processElement(mockContext, mockReceiver);
+
+    // Verify output
+    verify(mockSuccessReceiver, times(1)).output(event1);
+    
+    ArgumentCaptor<FailsafeElement> failureCaptor = ArgumentCaptor.forClass(FailsafeElement.class);
+    verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
+    
+    FailsafeElement failedElement = failureCaptor.getValue();
+    assertEquals(event2, failedElement.getOriginalPayload());
+    assertEquals("Some other error", failedElement.getErrorMessage());
   }
 }
