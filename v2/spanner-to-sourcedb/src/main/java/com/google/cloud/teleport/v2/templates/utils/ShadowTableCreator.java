@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -122,7 +121,8 @@ public class ShadowTableCreator {
     DatabaseAdminClient databaseAdminClient = metadataSpannerAccessor.getDatabaseAdminClient();
 
     int batchSize = 100;
-    java.util.concurrent.ExecutorService ddlExecutor = java.util.concurrent.Executors.newFixedThreadPool(3);
+    java.util.concurrent.ExecutorService ddlExecutor =
+        java.util.concurrent.Executors.newFixedThreadPool(3);
     java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
 
     for (int i = 0; i < createShadowTableStatements.size(); i += batchSize) {
