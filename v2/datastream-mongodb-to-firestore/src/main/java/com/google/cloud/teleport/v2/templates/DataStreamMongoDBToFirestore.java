@@ -1144,27 +1144,41 @@ public class DataStreamMongoDBToFirestore {
         return;
       }
 
-      try {
-        // Create bulk operation
-        List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+      List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+      List<MongoDbChangeEventContext> processedEvents = new ArrayList<>();
+      List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements = new ArrayList<>();
 
-        // Add operations to bulk
-        for (MongoDbChangeEventContext event : events) {
-          Object docId = event.getDocumentId();
-          Bson lookupById = eq("_id", docId);
-
-          if (event.isDeleteEvent()) {
-            // Add delete operation
-            bulkOperations.add(new DeleteOneModel<>(lookupById));
+      for (MongoDbChangeEventContext event : events) {
+        var documentId = event.getDocumentId();
+        var lookupById = eq("_id", documentId);
+        if (event.isDeleteEvent()) {
+          bulkOperations.add(new DeleteOneModel<>(lookupById));
+          processedEvents.add(event);
+        } else {
+          Document doc = event.getDataAsDocument();
+          if (event.hasParseError()) {
+            Exception exception = event.getParseError();
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
+            failedElement.setException(exception);
+            failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
+            failedElements.add(failedElement);
           } else {
-            // Add upsert operation
-            bulkOperations.add(
-                new ReplaceOneModel<>(
-                    lookupById,
-                    Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
-                    new ReplaceOptions().upsert(true)));
+            bulkOperations.add(new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
+            processedEvents.add(event);
           }
         }
+      }
+
+      // Write any failed parse events to the DLQ.
+      for (var failedElement : failedElements) {
+        out.get(failedWriteTag).output(failedElement);
+      }
+
+      if (bulkOperations.isEmpty()) {
+        return;
+      }
+
+      try {
 
         // Execute bulk write
         BulkWriteResult result = collection.bulkWrite(bulkOperations);
@@ -1175,7 +1189,7 @@ public class DataStreamMongoDBToFirestore {
             result.getDeletedCount());
 
         // Output successful events
-        for (MongoDbChangeEventContext event : events) {
+        for (MongoDbChangeEventContext event : processedEvents) {
           out.get(successfulWriteTag).output(event);
         }
       } catch (Exception e) {
@@ -1186,7 +1200,7 @@ public class DataStreamMongoDBToFirestore {
             e);
 
         // On error, output all events as failed
-        for (MongoDbChangeEventContext event : events) {
+        for (MongoDbChangeEventContext event : processedEvents) {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
@@ -1207,28 +1221,41 @@ public class DataStreamMongoDBToFirestore {
         return;
       }
 
-      try {
-        // Create bulk operation
-        List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+      List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+      List<MongoDbChangeEventContext> processedEvents = new ArrayList<>();
+      List<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedElements = new ArrayList<>();
 
-        // Add operations to bulk
-        for (MongoDbChangeEventContext event : events) {
-          Object docId = event.getDocumentId();
-          Bson lookupById = eq("_id", docId);
-
-          if (event.isDeleteEvent()) {
-            // Add delete operation
-            bulkOperations.add(new DeleteOneModel<>(lookupById));
+      for (MongoDbChangeEventContext event : events) {
+        var documentId = event.getDocumentId();
+        var lookupById = eq("_id", documentId);
+        if (event.isDeleteEvent()) {
+          bulkOperations.add(new DeleteOneModel<>(lookupById));
+          processedEvents.add(event);
+        } else {
+          Document doc = event.getDataAsDocument();
+          if (event.hasParseError()) {
+            Exception exception = event.getParseError();
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement = FailsafeElement.of(event, event);
+            failedElement.setException(exception);
+            failedElement.setStacktrace(Arrays.deepToString(exception.getStackTrace()));
+            failedElements.add(failedElement);
           } else {
-            // Add upsert operation
-            bulkOperations.add(
-                new ReplaceOneModel<>(
-                    lookupById,
-                    Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
-                    new ReplaceOptions().upsert(true)));
+            bulkOperations.add(new ReplaceOneModel<>(lookupById, doc, new ReplaceOptions().upsert(true)));
+            processedEvents.add(event);
           }
         }
+      }
 
+      // Write any failed parse events to the DLQ.
+      for (var failedElement : failedElements) {
+        context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+      }
+
+      if (bulkOperations.isEmpty()) {
+        return;
+      }
+
+      try {
         // Execute bulk write
         BulkWriteResult result = collection.bulkWrite(bulkOperations);
         LOG.debug(
@@ -1238,7 +1265,7 @@ public class DataStreamMongoDBToFirestore {
             result.getDeletedCount());
 
         // Output successful events
-        for (MongoDbChangeEventContext event : events) {
+        for (MongoDbChangeEventContext event : processedEvents) {
           context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
         }
       } catch (Exception e) {
@@ -1249,7 +1276,7 @@ public class DataStreamMongoDBToFirestore {
             e);
 
         // On error, output all events as failed
-        for (MongoDbChangeEventContext event : events) {
+        for (MongoDbChangeEventContext event : processedEvents) {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());

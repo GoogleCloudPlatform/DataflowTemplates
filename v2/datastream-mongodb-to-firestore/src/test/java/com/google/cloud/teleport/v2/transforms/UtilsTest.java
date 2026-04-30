@@ -139,4 +139,16 @@ public class UtilsTest {
             .equals(
                 "{\"_id\": 1, \"arrayField\": [\"hello\", 10], \"dateField\": {\"$date\": \"2019-08-11T17:54:14.692Z\"}, \"dateBefore1970\": {\"$date\": {\"$numberLong\": \"-1577923200000\"}}, \"decimal128Field\": {\"$numberDecimal\": \"10.99\"}, \"documentField\": {\"a\": \"hello\"}, \"doubleField\": 10.5, \"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}, \"int32field\": 10, \"int64Field\": 50, \"minKeyField\": {\"$minKey\": 1}, \"maxKeyField\": {\"$maxKey\": 1}, \"regexField\": {\"$regularExpression\": {\"pattern\": \"^H\", \"options\": \"i\"}}, \"timestampField\": {\"$timestamp\": {\"t\": 1565545664, \"i\": 1}}, \"uuid\": {\"$binary\": {\"base64\": \"OyQRAeK7QlWMr0E2xWapYg==\", \"subType\": \"04\"}}}"));
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testJsonToDocument_missingDataField() {
+    String jsonString = "{\"id\": 123, \"name\": \"test\"}";
+    Utils.jsonToDocument(jsonString, 1L);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testJsonToDocument_nullDataField() {
+    String jsonString = "{\"data\": null}";
+    Utils.jsonToDocument(jsonString, 1L);
+  }
 }
