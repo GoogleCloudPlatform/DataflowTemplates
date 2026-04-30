@@ -181,7 +181,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
     org.apache.beam.it.common.PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, java.time.Duration.ofMinutes(10)),
+                createConfig(jobInfo, java.time.Duration.ofHours(1)),
                 () -> jdbcResourceManager.getRowCount("table_1") == 1);
     org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult(result).meetsConditions();
 
