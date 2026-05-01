@@ -75,6 +75,20 @@
             <version>${json.version}</version>
         </dependency>
 
+        <!-- HOCON parsing and deserialization -->
+        <dependency>
+            <groupId>com.jasonclawson</groupId>
+            <artifactId>jackson-dataformat-hocon</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+
+        <!-- Java Faker for data generation -->
+        <dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>

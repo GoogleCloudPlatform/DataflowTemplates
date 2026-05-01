@@ -16,60 +16,57 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
+import com.google.cloud.teleport.v2.templates.dofn.ApplyOverridesFn;
+import com.google.cloud.teleport.v2.templates.dofn.BuildSchemaDagFn;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
-import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher;
-import com.google.common.annotations.VisibleForTesting;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.function.Supplier;
+import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that loads the {@link DataGeneratorSchema} from the sink as a side input.
  */
 public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGeneratorSchema>> {
 
-  protected final SinkType sinkType;
-  protected final String sinkConfigPath;
-  private final FetchSchemaFn customFn;
+  private static final Logger LOG = LoggerFactory.getLogger(SchemaLoader.class);
+  private final SinkType sinkType;
+  private final String sinkOptionsPath;
+  private final Integer insertQps;
+  private final Integer updateQps;
+  private final Integer deleteQps;
+  private final SchemaConfig schemaConfig;
 
-  private static final Map<SinkType, Supplier<SinkSchemaFetcher>> fetcherRegistry =
-      new EnumMap<>(SinkType.class);
-
-  static {
-    fetcherRegistry.put(SinkType.SPANNER, SpannerSchemaFetcher::new);
-    fetcherRegistry.put(SinkType.MYSQL, MySqlSchemaFetcher::new);
-    // Register new sink fetcher implementations here
-  }
-
-  public SchemaLoader(SinkType sinkType, String path) {
-    this(sinkType, path, null);
-  }
-
-  // Internal constructor for testing
-  @VisibleForTesting
-  SchemaLoader(SinkType sinkType, String path, FetchSchemaFn customFn) {
+  public SchemaLoader(
+      SinkType sinkType,
+      String sinkOptionsPath,
+      Integer insertQps,
+      Integer updateQps,
+      Integer deleteQps,
+      SchemaConfig schemaConfig) {
     this.sinkType = sinkType;
-    this.sinkConfigPath = path;
-    this.customFn = customFn;
+    this.sinkOptionsPath = sinkOptionsPath;
+    this.insertQps = insertQps;
+    this.updateQps = updateQps;
+    this.deleteQps = deleteQps;
+    this.schemaConfig = schemaConfig;
   }
 
   @Override
   public PCollectionView<DataGeneratorSchema> expand(PBegin input) {
-
-    FetchSchemaFn fetchFn =
-        (customFn != null) ? customFn : new FetchSchemaFn(sinkType, sinkConfigPath);
     return input
         .apply("CreateSinkType", Create.of(sinkType))
-        .apply("FetchSchema", ParDo.of(fetchFn))
+        .apply("FetchSchemaFromDb", ParDo.of(new FetchSchemaFn(sinkType, sinkOptionsPath)))
+        .apply(
+            "ApplyOverrides",
+            ParDo.of(new ApplyOverridesFn(schemaConfig, insertQps, updateQps, deleteQps)))
+        .apply("BuildSchemaDAG", ParDo.of(new BuildSchemaDagFn()))
         .apply("ViewAsSingleton", View.asSingleton());
   }
 }

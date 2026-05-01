@@ -69,7 +69,12 @@ public abstract class DataGeneratorTable implements Serializable {
   public abstract Builder toBuilder();
 
   public static Builder builder() {
-    return new AutoValue_DataGeneratorTable.Builder();
+    return new AutoValue_DataGeneratorTable.Builder()
+        .isRoot(true)
+        .insertQps(1000)
+        .updateQps(0)
+        .deleteQps(0)
+        .recordsPerTick(1.0);
   }
 
   @AutoValue.Builder
