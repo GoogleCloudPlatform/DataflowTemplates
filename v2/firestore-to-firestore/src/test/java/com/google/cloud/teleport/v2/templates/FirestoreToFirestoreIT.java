@@ -299,8 +299,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     // Act
     LaunchInfo info =
-        launchPipelineWithSourceDatabase(
-            /* testName= */ "copyFromDefault", "", "", "(default)");
+        launchPipelineWithSourceDatabase(/* testName= */ "copyFromDefault", "", "", "(default)");
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
@@ -322,7 +321,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private LaunchInfo launchPipeline(String testName, String collectionGroupIds, String readTime)
       throws IOException {
-    return launchPipelineWithSourceDatabase(testName, collectionGroupIds, readTime, sourceDatabaseId);
+    return launchPipelineWithSourceDatabase(
+        testName, collectionGroupIds, readTime, sourceDatabaseId);
   }
 
   private LaunchInfo launchPipelineWithSourceDatabase(

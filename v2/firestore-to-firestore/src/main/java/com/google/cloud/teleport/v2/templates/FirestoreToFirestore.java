@@ -169,13 +169,15 @@ public class FirestoreToFirestore {
       LOG.info("Pipeline created.");
 
       String sourceProjectId = options.getSourceProjectId();
-      String sourceDatabaseIdForFirestore = normalizeDatabaseIdForFirestore(options.getSourceDatabaseId());
+      String sourceDatabaseIdForFirestore =
+          normalizeDatabaseIdForFirestore(options.getSourceDatabaseId());
 
       String destinationProjectId =
           options.getDestinationProjectId().isEmpty()
               ? sourceProjectId
               : options.getDestinationProjectId();
-      String destinationDatabaseIdForFirestore = normalizeDatabaseIdForFirestore(options.getDestinationDatabaseId());
+      String destinationDatabaseIdForFirestore =
+          normalizeDatabaseIdForFirestore(options.getDestinationDatabaseId());
 
       int maxNumWorkers =
           options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
@@ -238,7 +240,8 @@ public class FirestoreToFirestore {
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
           documents.apply(
-              ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseIdForFirestore)));
+              ParDo.of(
+                  new PrepareWritesFn(destinationProjectId, destinationDatabaseIdForFirestore)));
 
       // 6. Write documents to the destination Firestore database
       writes.apply(
@@ -311,11 +314,11 @@ public class FirestoreToFirestore {
             .collect(Collectors.toList());
     return p.apply("Create Collection Groups", Create.of(collectionGroupIdsList));
   }
-  
+
   /**
    * Normalizes the database ID for use with FirestoreIO methods.
-   * 
-   * The default database ID in the Firestore API is "(default)".
+   *
+   * <p>The default database ID in the Firestore API is "(default)".
    */
   private static String normalizeDatabaseIdForFirestore(String databaseId) {
     if (databaseId.isEmpty() || FIRESTORE_DEFAULT_DATABASE.equals(databaseId)) {
@@ -326,8 +329,8 @@ public class FirestoreToFirestore {
 
   /**
    * Normalizes the database ID for use with DatastoreIO methods.
-   * 
-   * The default database ID in the Datastore API is an empty string.
+   *
+   * <p>The default database ID in the Datastore API is an empty string.
    */
   private static String normalizeDatabaseIdForDatastore(String databaseId) {
     if (databaseId.isEmpty() || FIRESTORE_DEFAULT_DATABASE.equals(databaseId)) {
