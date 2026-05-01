@@ -59,6 +59,8 @@ public class MongoDbChangeEventContext implements Serializable {
   private final Document timestampDoc;
   private boolean isDlqReconsumed;
   private int retryCount;
+  private transient Document parsedDocument;
+  private transient Exception parseError;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -219,6 +221,28 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public String getDataAsJsonString() {
     return jsonStringData;
+  }
+
+  public Document getDataAsDocument() {
+    if (isDeleteEvent) {
+      return null;
+    }
+    if (parsedDocument == null && parseError == null) {
+      try {
+        parsedDocument = Utils.jsonToDocument(getDataAsJsonString(), getDocumentId());
+      } catch (Exception e) {
+        parseError = e;
+      }
+    }
+    return parsedDocument;
+  }
+
+  public boolean hasParseError() {
+    return parseError != null;
+  }
+
+  public Exception getParseError() {
+    return parseError;
   }
 
   public Document getTimestampDoc() {
