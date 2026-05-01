@@ -27,6 +27,9 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
@@ -111,7 +114,10 @@ public class MongoDbTransforms {
           input
               .apply(
                   "AddRandomKey",
-                  WithKeys.of(doc -> String.valueOf(java.util.concurrent.ThreadLocalRandom.current().nextInt(100))))
+                  WithKeys.of(
+                      doc -> String.valueOf(
+                          java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
+              .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Document.class)))
               .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
               .apply(
                   "WriteBatches",
