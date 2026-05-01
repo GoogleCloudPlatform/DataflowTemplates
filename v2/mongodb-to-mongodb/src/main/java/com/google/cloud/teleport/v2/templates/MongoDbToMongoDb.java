@@ -217,6 +217,16 @@ public class MongoDbToMongoDb {
     String getWriteDlqPath();
 
     void setWriteDlqPath(String value);
+
+    @TemplateParameter.Integer(
+        order = 17,
+        optional = true,
+        description = "Max Concurrent Async Writes",
+        helpText = "Maximum number of concurrent asynchronous batch writes per worker.")
+    @Default.Integer(10)
+    Integer getMaxConcurrentAsyncWrites();
+
+    void setMaxConcurrentAsyncWrites(Integer value);
   }
 
   public static void main(String[] args) {
@@ -321,7 +331,8 @@ public class MongoDbToMongoDb {
               .withOrdered(options.getOrdered())
               .withWriteConcern(options.getWriteConcern())
               .withJournal(options.getJournal())
-              .withDlqPath(options.getWriteDlqPath()));
+              .withDlqPath(options.getWriteDlqPath())
+              .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites()));
     }
 
     pipeline.run();

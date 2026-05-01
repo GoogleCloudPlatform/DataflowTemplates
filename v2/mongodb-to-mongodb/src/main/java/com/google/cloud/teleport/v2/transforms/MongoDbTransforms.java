@@ -27,6 +27,11 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -36,6 +41,7 @@ import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -43,6 +49,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
+import org.joda.time.Instant;
 
 /** Transforms for the MongoDB to MongoDB template. */
 public class MongoDbTransforms {
@@ -60,6 +67,7 @@ public class MongoDbTransforms {
     private String writeConcern;
     private Boolean journal;
     private String dlqPath;
+    private Integer maxConcurrentAsyncWrites = 10;
 
     public WriteWithDlq withUri(String uri) {
       this.uri = uri;
@@ -105,6 +113,13 @@ public class MongoDbTransforms {
       return this;
     }
 
+    public WriteWithDlq withMaxConcurrentAsyncWrites(Integer maxConcurrentAsyncWrites) {
+      if (maxConcurrentAsyncWrites != null) {
+        this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
+      }
+      return this;
+    }
+
     @Override
     public PDone expand(PCollection<Document> input) {
       TupleTag<Document> successTag = new TupleTag<Document>() {};
@@ -115,8 +130,9 @@ public class MongoDbTransforms {
               .apply(
                   "AddRandomKey",
                   WithKeys.of(
-                      doc -> String.valueOf(
-                          java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
+                      doc ->
+                          String.valueOf(
+                              java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
               .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Document.class)))
               .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
               .apply(
@@ -125,6 +141,24 @@ public class MongoDbTransforms {
                           new DoFn<KV<String, Iterable<Document>>, Document>() {
                             private transient MongoClient mongoClient;
                             private transient MongoCollection<Document> mongoCollection;
+                            private transient ExecutorService executor;
+                            private transient Semaphore semaphore;
+                            private transient ConcurrentLinkedQueue<CompletableFuture<Void>>
+                                futures;
+                            private transient ConcurrentLinkedQueue<String> failures;
+
+                            @Setup
+                            public void setup() {
+                              executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
+                              semaphore = new Semaphore(maxConcurrentAsyncWrites);
+                            }
+
+                            @Teardown
+                            public void teardown() {
+                              if (executor != null) {
+                                executor.shutdown();
+                              }
+                            }
 
                             @StartBundle
                             public void startBundle() {
@@ -149,10 +183,14 @@ public class MongoDbTransforms {
                               }
 
                               mongoCollection = db.getCollection(collection).withWriteConcern(wc);
+
+                              futures = new ConcurrentLinkedQueue<>();
+                              failures = new ConcurrentLinkedQueue<>();
                             }
 
                             @ProcessElement
-                            public void processElement(ProcessContext c) {
+                            public void processElement(ProcessContext c)
+                                throws InterruptedException {
                               Iterable<Document> docs = c.element().getValue();
                               List<WriteModel<Document>> updates = new ArrayList<>();
                               List<Document> docList = new ArrayList<>();
@@ -170,27 +208,44 @@ public class MongoDbTransforms {
                               }
 
                               if (!updates.isEmpty()) {
-                                try {
-                                  mongoCollection.bulkWrite(
-                                      updates, new BulkWriteOptions().ordered(ordered));
-                                } catch (MongoBulkWriteException e) {
-                                  for (Document doc : docList) {
-                                    c.output(
-                                        failureTag, doc.toJson() + " - Error: " + e.getMessage());
-                                  }
-                                } catch (Exception e) {
-                                  for (Document doc : docList) {
-                                    c.output(
-                                        failureTag, doc.toJson() + " - Error: " + e.getMessage());
-                                  }
-                                }
+                                semaphore.acquire();
+                                CompletableFuture<Void> future =
+                                    CompletableFuture.runAsync(
+                                        () -> {
+                                          try {
+                                            mongoCollection.bulkWrite(
+                                                updates, new BulkWriteOptions().ordered(ordered));
+                                          } catch (MongoBulkWriteException e) {
+                                            for (Document doc : docList) {
+                                              failures.add(
+                                                  doc.toJson() + " - Error: " + e.getMessage());
+                                            }
+                                          } catch (Exception e) {
+                                            for (Document doc : docList) {
+                                              failures.add(
+                                                  doc.toJson() + " - Error: " + e.getMessage());
+                                            }
+                                          } finally {
+                                            semaphore.release();
+                                          }
+                                        },
+                                        executor);
+                                futures.add(future);
                               }
                             }
 
                             @FinishBundle
-                            public void finishBundle() {
+                            public void finishBundle(FinishBundleContext c) {
+                              CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                                  .join();
+
                               if (mongoClient != null) {
                                 mongoClient.close();
+                              }
+
+                              String failure;
+                              while ((failure = failures.poll()) != null) {
+                                c.output(failureTag, failure, Instant.now(), GlobalWindow.INSTANCE);
                               }
                             }
                           })
