@@ -21,6 +21,9 @@ on:
       bucket_path:
         description: 'GCS bucket path (e.g., gs://my-bucket/path)'
         required: true
+      version:
+        description: 'Version number for the package (e.g., 0.1.0)'
+        required: true
 
 jobs:
   build-and-upload:
@@ -55,5 +58,7 @@ jobs:
       - name: Upload to GCS
         env:
           BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/* "$BUCKET_PATH"
+          DATE=$(date +'%Y-%m-%d')
+          gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
