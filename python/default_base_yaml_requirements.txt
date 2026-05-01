@@ -1,2 +1,4 @@
 apache-beam[dataframe,gcp,test,yaml,aws]
 setuptools
+# TODO: Remove following after https://github.com/apache/beam/pull/38348 is released.
+https://storage.googleapis.com/dataflow-templates/extra-python-packages/job_builder_util_transforms-0.1.0.tar.gz
