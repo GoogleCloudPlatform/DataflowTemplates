@@ -109,7 +109,9 @@ public class MongoDbTransforms {
 
       PCollectionTuple writeResults =
           input
-              .apply("AddDummyKey", WithKeys.of(""))
+              .apply(
+                  "AddRandomKey",
+                  WithKeys.of(doc -> String.valueOf(java.util.concurrent.ThreadLocalRandom.current().nextInt(100))))
               .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
               .apply(
                   "WriteBatches",
