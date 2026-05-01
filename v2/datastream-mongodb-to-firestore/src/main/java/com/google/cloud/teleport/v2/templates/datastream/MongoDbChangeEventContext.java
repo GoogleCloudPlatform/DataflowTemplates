@@ -252,13 +252,7 @@ public class MongoDbChangeEventContext implements Serializable {
       // Add other important fields
       jsonNode.put("dataCollection", this.dataCollection);
       jsonNode.put("shadowCollection", this.shadowCollection);
-      if (this.documentId instanceof ObjectId) {
-        ObjectNode objectIdNode = OBJECT_MAPPER.createObjectNode();
-        objectIdNode.put(OID_FIELD_NAME, this.documentId.toString());
-        jsonNode.put("documentId", objectIdNode);
-      } else {
-        jsonNode.putPOJO("documentId", this.documentId);
-      }
+      jsonNode.put("documentId", Utils.documentIdToString(this.documentId));
       jsonNode.put("isDeleteEvent", this.isDeleteEvent);
 
       // Convert timestamp document to JSON
