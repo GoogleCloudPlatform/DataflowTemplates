@@ -50,6 +50,7 @@ import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -288,6 +289,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
   }
 
+  @Ignore("Integration test project has a default database in Datastore mode.")
   @Test
   public void testFirestoreToFirestore_withDefaultSourceDatabase() throws IOException {
     String collectionId = "inputDef-" + randomString(6).toLowerCase();
