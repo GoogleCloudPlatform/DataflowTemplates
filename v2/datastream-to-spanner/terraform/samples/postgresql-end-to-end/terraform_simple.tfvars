@@ -29,6 +29,7 @@ datastream_params = {
 
   }
   private_connectivity_id = "<YOUR_PRIVATE_CONNECTIVITY_ID>"
+  
   # Only one of `private_connectivity_id` or `private_connectivity` block
   # may exist. Use `private_connectivity_id` to specify an existing
   # private connectivity configuration, and the `private_connectivity` to
