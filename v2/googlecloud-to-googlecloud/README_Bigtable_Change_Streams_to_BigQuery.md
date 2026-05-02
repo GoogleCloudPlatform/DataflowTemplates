@@ -33,6 +33,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigQueryChangelogTablePartitionExpirationMs**: Sets the changelog table partition expiration time, in milliseconds. When set to `true`, partitions older than the specified number of milliseconds are deleted. By default, no expiration is set.
 * **bigQueryChangelogTableFieldsToIgnore**: A comma-separated list of the changelog columns that, when specified, aren't created and populated. Use one of the following supported values: `is_gc`, `source_instance`, `source_cluster`, `source_table`, `tiebreaker`, or `big_query_commit_timestamp`. By default, all columns are populated.
 * **dlqDirectory**: The directory to use for the dead-letter queue. Records that fail to be processed are stored in this directory. The default is a directory under the Dataflow job's temp location. In most cases, you can use the default path.
+* **columnTransforms**: A comma-separated list of column value transforms. Each entry has the format column_family:column_qualifier:TRANSFORM_TYPE. Supported TRANSFORM_TYPE values: BIG_ENDIAN_TIMESTAMP (interprets 8-byte big-endian values as Unix epoch millis), PROTO_DECODE(package.MessageName) (decodes protobuf-encoded values to JSON; requires protoSchemaPath). For complex transformations, consider using a JavaScript UDF. Note that column qualifiers containing commas are not supported since comma is used as the entry delimiter. Defaults to empty.
+* **protoSchemaPath**: The Cloud Storage location of the self-contained proto schema file. For example, gs://path/to/my/file.pb. This file can be generated with the --descriptor_set_out flag of the protoc command. The --include_imports flag guarantees that the file is self-contained. Required whenever a PROTO_DECODE() entry is used in columnTransforms. Defaults to empty.
+* **preserveProtoFieldNames**: When set to true, preserves original proto field names (snake_case) in the JSON output. When set to false, uses lowerCamelCase. Defaults to false.
+* **maxDecodedValueBytes**: Maximum allowed UTF-8 byte size of a PROTO_DECODE() result written to the BigQuery `value` column. Larger decoded values are routed to the severe DLQ instead of being written. Defaults to a conservative value below Dataflow Streaming Engine's per-element commit limit and cannot be set above that default.
 * **bigtableChangeStreamMetadataInstanceId**: The Bigtable change streams metadata instance ID. Defaults to empty.
 * **bigtableChangeStreamMetadataTableTableId**: The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
 * **bigtableChangeStreamCharset**: The Bigtable change streams charset name. Defaults to: UTF-8.
@@ -150,6 +154,10 @@ export BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY=""
 export BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS=<bigQueryChangelogTablePartitionExpirationMs>
 export BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE=<bigQueryChangelogTableFieldsToIgnore>
 export DLQ_DIRECTORY=""
+export COLUMN_TRANSFORMS=""
+export PROTO_SCHEMA_PATH=""
+export PRESERVE_PROTO_FIELD_NAMES=false
+export MAX_DECODED_VALUE_BYTES=82837504
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
@@ -175,6 +183,10 @@ gcloud dataflow flex-template run "bigtable-change-streams-to-bigquery-job" \
   --parameters "bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS" \
   --parameters "bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE" \
   --parameters "dlqDirectory=$DLQ_DIRECTORY" \
+  --parameters "columnTransforms=$COLUMN_TRANSFORMS" \
+  --parameters "protoSchemaPath=$PROTO_SCHEMA_PATH" \
+  --parameters "preserveProtoFieldNames=$PRESERVE_PROTO_FIELD_NAMES" \
+  --parameters "maxDecodedValueBytes=$MAX_DECODED_VALUE_BYTES" \
   --parameters "bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID" \
   --parameters "bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID" \
   --parameters "bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE" \
@@ -221,6 +233,10 @@ export BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY=""
 export BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS=<bigQueryChangelogTablePartitionExpirationMs>
 export BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE=<bigQueryChangelogTableFieldsToIgnore>
 export DLQ_DIRECTORY=""
+export COLUMN_TRANSFORMS=""
+export PROTO_SCHEMA_PATH=""
+export PRESERVE_PROTO_FIELD_NAMES=false
+export MAX_DECODED_VALUE_BYTES=82837504
 export BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID=""
 export BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID=""
 export BIGTABLE_CHANGE_STREAM_CHARSET=UTF-8
@@ -239,7 +255,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigtable-change-streams-to-bigquery-job" \
 -DtemplateName="Bigtable_Change_Streams_to_BigQuery" \
--Dparameters="bigQueryDataset=$BIG_QUERY_DATASET,writeRowkeyAsBytes=$WRITE_ROWKEY_AS_BYTES,writeValuesAsBytes=$WRITE_VALUES_AS_BYTES,writeNumericTimestamps=$WRITE_NUMERIC_TIMESTAMPS,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableName=$BIG_QUERY_CHANGELOG_TABLE_NAME,bigQueryChangelogTablePartitionGranularity=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY,bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS,bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE,dlqDirectory=$DLQ_DIRECTORY,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadChangeStreamTimeoutMs=$BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
+-Dparameters="bigQueryDataset=$BIG_QUERY_DATASET,writeRowkeyAsBytes=$WRITE_ROWKEY_AS_BYTES,writeValuesAsBytes=$WRITE_VALUES_AS_BYTES,writeNumericTimestamps=$WRITE_NUMERIC_TIMESTAMPS,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableName=$BIG_QUERY_CHANGELOG_TABLE_NAME,bigQueryChangelogTablePartitionGranularity=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_GRANULARITY,bigQueryChangelogTablePartitionExpirationMs=$BIG_QUERY_CHANGELOG_TABLE_PARTITION_EXPIRATION_MS,bigQueryChangelogTableFieldsToIgnore=$BIG_QUERY_CHANGELOG_TABLE_FIELDS_TO_IGNORE,dlqDirectory=$DLQ_DIRECTORY,columnTransforms=$COLUMN_TRANSFORMS,protoSchemaPath=$PROTO_SCHEMA_PATH,preserveProtoFieldNames=$PRESERVE_PROTO_FIELD_NAMES,maxDecodedValueBytes=$MAX_DECODED_VALUE_BYTES,bigtableChangeStreamMetadataInstanceId=$BIGTABLE_CHANGE_STREAM_METADATA_INSTANCE_ID,bigtableChangeStreamMetadataTableTableId=$BIGTABLE_CHANGE_STREAM_METADATA_TABLE_TABLE_ID,bigtableChangeStreamAppProfile=$BIGTABLE_CHANGE_STREAM_APP_PROFILE,bigtableChangeStreamCharset=$BIGTABLE_CHANGE_STREAM_CHARSET,bigtableChangeStreamStartTimestamp=$BIGTABLE_CHANGE_STREAM_START_TIMESTAMP,bigtableChangeStreamIgnoreColumnFamilies=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMN_FAMILIES,bigtableChangeStreamIgnoreColumns=$BIGTABLE_CHANGE_STREAM_IGNORE_COLUMNS,bigtableChangeStreamName=$BIGTABLE_CHANGE_STREAM_NAME,bigtableChangeStreamResume=$BIGTABLE_CHANGE_STREAM_RESUME,bigtableReadChangeStreamTimeoutMs=$BIGTABLE_READ_CHANGE_STREAM_TIMEOUT_MS,bigtableReadInstanceId=$BIGTABLE_READ_INSTANCE_ID,bigtableReadTableId=$BIGTABLE_READ_TABLE_ID,bigtableReadProjectId=$BIGTABLE_READ_PROJECT_ID" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -297,6 +313,10 @@ resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_bigquer
     # bigQueryChangelogTablePartitionExpirationMs = "<bigQueryChangelogTablePartitionExpirationMs>"
     # bigQueryChangelogTableFieldsToIgnore = "<bigQueryChangelogTableFieldsToIgnore>"
     # dlqDirectory = ""
+    # columnTransforms = ""
+    # protoSchemaPath = ""
+    # preserveProtoFieldNames = "false"
+    # maxDecodedValueBytes = "82837504"
     # bigtableChangeStreamMetadataInstanceId = ""
     # bigtableChangeStreamMetadataTableTableId = ""
     # bigtableChangeStreamCharset = "UTF-8"
