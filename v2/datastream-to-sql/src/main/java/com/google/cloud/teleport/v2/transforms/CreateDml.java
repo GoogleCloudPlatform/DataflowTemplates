@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.utils.DatastreamToMySQLDML;
@@ -43,14 +44,16 @@ public class CreateDml
 
   private static final Logger LOG = LoggerFactory.getLogger(CreateDml.class);
   private static final String WINDOW_DURATION = "1s";
-  private static Integer numThreads = Integer.valueOf(100);
-  private static DataSourceConfiguration dataSourceConfiguration;
-  private static String defaultCasing = "LOWERCASE";
-  private static String columnCasing = "LOWERCASE";
-  private static Map<String, String> schemaMap = new HashMap<String, String>();
-  private static Map<String, String> tableNameMap = new HashMap<String, String>();
-  private static Boolean orderByIncludesIsDeleted = false;
-  private static Integer schemaCacheRefreshMinutes = 1440;
+  private Integer numThreads = Integer.valueOf(100);
+  private DataSourceConfiguration dataSourceConfiguration;
+  private DataStreamClient datastreamClient;
+  private String databaseType;
+  private String defaultCasing = "LOWERCASE";
+  private String columnCasing = "LOWERCASE";
+  private Map<String, String> schemaMap = new HashMap<String, String>();
+  private Map<String, String> tableNameMap = new HashMap<String, String>();
+  private Boolean orderByIncludesIsDeleted = false;
+  private Integer schemaCacheRefreshMinutes = 1440;
 
   // Define the main output tag here if not passed in from outside,
   // but ideally DataStreamToSQL defines it. For now, we'll accept it in expand()
@@ -68,12 +71,12 @@ public class CreateDml
   }
 
   public CreateDml withDefaultCasing(String casing) {
-    CreateDml.defaultCasing = casing;
+    this.defaultCasing = casing;
     return this;
   }
 
   public CreateDml withColumnCasing(String casing) {
-    CreateDml.columnCasing = casing;
+    this.columnCasing = casing;
     return this;
   }
 
@@ -93,14 +96,24 @@ public class CreateDml
   }
 
   public CreateDml withNumThreads(Integer numThreads) {
-    CreateDml.numThreads = numThreads;
+    this.numThreads = numThreads;
     return this;
   }
 
   public CreateDml withSchemaCacheRefreshMinutes(Integer minutes) {
     if (minutes != null) {
-      CreateDml.schemaCacheRefreshMinutes = minutes;
+      this.schemaCacheRefreshMinutes = minutes;
     }
+    return this;
+  }
+
+  public CreateDml withDataStreamClient(DataStreamClient datastreamClient) {
+    this.datastreamClient = datastreamClient;
+    return this;
+  }
+
+  public CreateDml withDatabaseType(String databaseType) {
+    this.databaseType = databaseType;
     return this;
   }
 
@@ -125,7 +138,9 @@ public class CreateDml
         .withSchemaMap(this.schemaMap)
         .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
-        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes);
+        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes)
+        .withDataStreamClient(datastreamClient)
+        .withDatabaseType(databaseType);
   }
 
   @Override
