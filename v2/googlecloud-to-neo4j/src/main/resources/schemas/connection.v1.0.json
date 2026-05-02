@@ -24,6 +24,14 @@
         "basic", "none", "kerberos", "bearer", "custom"
       ],
       "default": "basic"
+    },
+    "max_connection_lifetime_millis": {
+      "description": "Max connection lifetime in milliseconds",
+      "type": "integer"
+    },
+    "connection_liveness_check_timeout_millis": {
+      "description": "Max idle time for pool connections without liveness check upon acquisition",
+      "type": "integer"
     }
   },
   "required": [

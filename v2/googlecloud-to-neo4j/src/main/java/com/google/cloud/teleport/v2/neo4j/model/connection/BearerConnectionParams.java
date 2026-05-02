@@ -28,8 +28,11 @@ class BearerConnectionParams extends ConnectionParams {
   public BearerConnectionParams(
       @JsonProperty("server_url") String serverUrl,
       @JsonProperty("database") String database,
-      @JsonProperty("token") String token) {
-    super(serverUrl, database);
+      @JsonProperty("token") String token,
+      @JsonProperty("max_connection_lifetime_millis") Long maxConnectionLifetimeMillis,
+      @JsonProperty("connection_liveness_check_timeout_millis")
+          Long connectionLivenessCheckTimeoutMillis) {
+    super(serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
     this.token = token;
   }
 

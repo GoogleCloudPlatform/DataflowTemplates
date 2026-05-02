@@ -21,6 +21,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.Config;
@@ -54,6 +55,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
                 settings.asAuthToken(),
                 Config.builder()
                     .withLogging(Logging.slf4j())
+                    .withMaxConnectionLifetime(
+                        maxConnectionLifetimeMillis(settings), TimeUnit.MILLISECONDS)
+                    .withConnectionLivenessCheckTimeout(
+                        connectionLivenessCheckTimeoutMillis(settings), TimeUnit.MILLISECONDS)
                     .withUserAgent(Neo4jTelemetry.userAgent(templateVersion))
                     .build()));
   }
@@ -238,5 +243,21 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
         .withMetadata(
             Neo4jTelemetry.transactionMetadata(Map.of("sink", "neo4j", "step", resetMethod)))
         .build();
+  }
+
+  private static long maxConnectionLifetimeMillis(ConnectionParams settings) {
+    Long maxConnectionLifetimeMillis = settings.getMaxConnectionLifetimeMillis();
+    if (maxConnectionLifetimeMillis == null) {
+      return Config.defaultConfig().maxConnectionLifetimeMillis();
+    }
+    return maxConnectionLifetimeMillis;
+  }
+
+  private static Long connectionLivenessCheckTimeoutMillis(ConnectionParams settings) {
+    Long connectionLivenessCheckTimeoutMillis = settings.getConnectionLivenessCheckTimeoutMillis();
+    if (connectionLivenessCheckTimeoutMillis == null) {
+      return Config.defaultConfig().idleTimeBeforeConnectionTest();
+    }
+    return connectionLivenessCheckTimeoutMillis;
   }
 }

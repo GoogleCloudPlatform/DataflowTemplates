@@ -39,7 +39,8 @@ public class ConnectionParamsTest {
 
     assertThat(connectionParams).isInstanceOf(BasicConnectionParams.class);
     assertThat(connectionParams)
-        .isEqualTo(new BasicConnectionParams("bolt://example.com", null, "neo4j", "password"));
+        .isEqualTo(
+            new BasicConnectionParams("bolt://example.com", null, "neo4j", "password", null, null));
   }
 
   @Test
@@ -47,11 +48,12 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"basic\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"username\": \"neo4j\", \"pwd\": \"password\"}"),
+                "{\"auth_type\": \"basic\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"username\": \"neo4j\", \"pwd\": \"password\", \"max_connection_lifetime_millis\": 42, \"connection_liveness_check_timeout_millis\": 4242}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
-        .isEqualTo(new BasicConnectionParams("bolt://example.com", "db", "neo4j", "password"));
+        .isEqualTo(
+            new BasicConnectionParams("bolt://example.com", "db", "neo4j", "password", 42L, 4242L));
   }
 
   @Test
@@ -62,7 +64,8 @@ public class ConnectionParamsTest {
             ConnectionParams.class);
 
     assertThat(connectionParams).isInstanceOf(NoAuthConnectionParams.class);
-    assertThat(connectionParams).isEqualTo(new NoAuthConnectionParams("bolt://example.com", null));
+    assertThat(connectionParams)
+        .isEqualTo(new NoAuthConnectionParams("bolt://example.com", null, null, null));
   }
 
   @Test
@@ -70,10 +73,11 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"none\", \"server_url\": \"bolt://example.com\", \"database\": \"db\"}"),
+                "{\"auth_type\": \"none\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"max_connection_lifetime_millis\": 42, \"connection_liveness_check_timeout_millis\": 4242}"),
             ConnectionParams.class);
 
-    assertThat(connectionParams).isEqualTo(new NoAuthConnectionParams("bolt://example.com", "db"));
+    assertThat(connectionParams)
+        .isEqualTo(new NoAuthConnectionParams("bolt://example.com", "db", 42L, 4242L));
   }
 
   @Test
@@ -87,7 +91,8 @@ public class ConnectionParamsTest {
     assertThat(connectionParams).isInstanceOf(KerberosConnectionParams.class);
     assertThat(connectionParams)
         .isEqualTo(
-            new KerberosConnectionParams("bolt://example.com", null, "dGhpcyBpcyBhIHRpY2tldA=="));
+            new KerberosConnectionParams(
+                "bolt://example.com", null, "dGhpcyBpcyBhIHRpY2tldA==", null, null));
   }
 
   @Test
@@ -95,12 +100,13 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"kerberos\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"ticket\": \"dGhpcyBpcyBhIHRpY2tldA==\"}"),
+                "{\"auth_type\": \"kerberos\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"ticket\": \"dGhpcyBpcyBhIHRpY2tldA==\", \"max_connection_lifetime_millis\": 42, \"connection_liveness_check_timeout_millis\": 4242}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
         .isEqualTo(
-            new KerberosConnectionParams("bolt://example.com", "db", "dGhpcyBpcyBhIHRpY2tldA=="));
+            new KerberosConnectionParams(
+                "bolt://example.com", "db", "dGhpcyBpcyBhIHRpY2tldA==", 42L, 4242L));
   }
 
   @Test
@@ -113,7 +119,7 @@ public class ConnectionParamsTest {
 
     assertThat(connectionParams).isInstanceOf(BearerConnectionParams.class);
     assertThat(connectionParams)
-        .isEqualTo(new BearerConnectionParams("bolt://example.com", null, "a-token"));
+        .isEqualTo(new BearerConnectionParams("bolt://example.com", null, "a-token", null, null));
   }
 
   @Test
@@ -121,11 +127,11 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"bearer\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"token\": \"a-token\"}"),
+                "{\"auth_type\": \"bearer\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"token\": \"a-token\", \"max_connection_lifetime_millis\": 42, \"connection_liveness_check_timeout_millis\": 4242}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
-        .isEqualTo(new BearerConnectionParams("bolt://example.com", "db", "a-token"));
+        .isEqualTo(new BearerConnectionParams("bolt://example.com", "db", "a-token", 42L, 4242L));
   }
 
   @Test
@@ -146,6 +152,8 @@ public class ConnectionParamsTest {
                 "some-credentials",
                 null,
                 "a-scheme",
+                null,
+                null,
                 null));
   }
 
@@ -154,7 +162,7 @@ public class ConnectionParamsTest {
     ConnectionParams connectionParams =
         Json.map(
             json(
-                "{\"auth_type\": \"custom\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"principal\": \"a-principal\", \"credentials\": \"some-credentials\", \"realm\": \"a-realm\", \"scheme\": \"a-scheme\", \"parameters\": {\"foo\": \"bar\", \"baz\": true}}"),
+                "{\"auth_type\": \"custom\", \"server_url\": \"bolt://example.com\", \"database\": \"db\", \"principal\": \"a-principal\", \"credentials\": \"some-credentials\", \"realm\": \"a-realm\", \"scheme\": \"a-scheme\", \"parameters\": {\"foo\": \"bar\", \"baz\": true}, \"max_connection_lifetime_millis\": 42, \"connection_liveness_check_timeout_millis\": 4242}"),
             ConnectionParams.class);
 
     assertThat(connectionParams)
@@ -166,7 +174,9 @@ public class ConnectionParamsTest {
                 "some-credentials",
                 "a-realm",
                 "a-scheme",
-                Map.of("foo", "bar", "baz", true)));
+                Map.of("foo", "bar", "baz", true),
+                42L,
+                4242L));
   }
 
   @NotNull
