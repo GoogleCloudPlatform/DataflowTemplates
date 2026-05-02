@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -121,17 +120,42 @@ public class ShadowTableCreator {
 
     DatabaseAdminClient databaseAdminClient = metadataSpannerAccessor.getDatabaseAdminClient();
 
-    OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
-        databaseAdminClient.updateDatabaseDdl(
-            metadataConfig.getInstanceId().get(),
-            metadataConfig.getDatabaseId().get(),
-            createShadowTableStatements,
-            null);
+    int batchSize = 100;
+    java.util.concurrent.ExecutorService ddlExecutor =
+        java.util.concurrent.Executors.newFixedThreadPool(3);
+    java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
 
+    for (int i = 0; i < createShadowTableStatements.size(); i += batchSize) {
+      int end = Math.min(createShadowTableStatements.size(), i + batchSize);
+      List<String> batch = createShadowTableStatements.subList(i, end);
+
+      futures.add(
+          ddlExecutor.submit(
+              () -> {
+                try {
+                  OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+                      databaseAdminClient.updateDatabaseDdl(
+                          metadataConfig.getInstanceId().get(),
+                          metadataConfig.getDatabaseId().get(),
+                          batch,
+                          null);
+                  op.get(30, TimeUnit.MINUTES);
+                } catch (Exception e) {
+                  throw new RuntimeException("Failed to execute shadow table DDL batch", e);
+                }
+              }));
+    }
+
+    ddlExecutor.shutdown();
     try {
-      op.get(5, TimeUnit.MINUTES);
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      throw new RuntimeException(e);
+      for (java.util.concurrent.Future<?> future : futures) {
+        future.get();
+      }
+      if (!ddlExecutor.awaitTermination(60, TimeUnit.MINUTES)) {
+        throw new RuntimeException("Shadow table creation timed out after 60 minutes");
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException("Shadow table creation failed", e);
     }
     return;
   }
