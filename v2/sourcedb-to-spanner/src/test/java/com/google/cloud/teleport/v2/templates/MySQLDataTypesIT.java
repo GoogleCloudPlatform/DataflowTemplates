@@ -420,6 +420,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("tiny_blob_pk", createRows("tiny_blob_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("char_pk", createRows("char_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("varchar_pk", createRows("varchar_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("varchar_utf8mb4_pk", createRows("varchar_utf8mb4_pk", "😊"));
     expectedData.put("tiny_text_pk", createRows("tiny_text_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put(
         "date_time_pk",
