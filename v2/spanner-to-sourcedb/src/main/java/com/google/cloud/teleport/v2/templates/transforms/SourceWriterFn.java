@@ -27,9 +27,12 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
@@ -111,6 +114,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String tableOverrides;
   private final String columnOverrides;
 
+  private transient Schema schema;
+  private transient SchemaFileOverridesParser schemaFileOverridesParser;
+
   public SourceWriterFn(
       List<Shard> shards,
       SpannerConfig spannerConfig,
@@ -166,6 +172,16 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.spannerToSourceTransformer = spannerToSourceTransformer;
   }
 
+  // for unit testing purposes
+  public void setSchema(Schema schema) {
+    this.schema = schema;
+  }
+
+  // for unit testing purposes
+  public void setSchemaFileOverridesParser(SchemaFileOverridesParser schemaFileOverridesParser) {
+    this.schemaFileOverridesParser = schemaFileOverridesParser;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() throws UnsupportedSourceException {
@@ -176,6 +192,13 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     spannerDao = new SpannerDao(spannerConfig);
     spannerToSourceTransformer =
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
+
+    if (sessionFilePath != null && !sessionFilePath.isEmpty()) {
+      schema = SessionFileReader.read(sessionFilePath);
+    }
+    if (schemaOverridesFilePath != null && !schemaOverridesFilePath.isEmpty()) {
+      schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFilePath);
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -197,7 +220,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     // SchemaMapper depends on Ddl side input, which is only available in processElement.
     ISchemaMapper schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverridesParser, tableOverrides, columnOverrides, ddl);
 
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();

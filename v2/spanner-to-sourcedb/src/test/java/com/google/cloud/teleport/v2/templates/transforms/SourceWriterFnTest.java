@@ -256,6 +256,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -290,6 +291,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -323,6 +325,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -361,6 +364,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -404,6 +408,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -445,6 +450,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -484,6 +490,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -520,6 +527,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -554,6 +562,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -589,6 +598,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -624,6 +634,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -660,6 +671,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -696,6 +708,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -732,6 +745,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -768,6 +782,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -804,6 +819,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -842,6 +858,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.processElement(processContext);
 
@@ -874,6 +891,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.processElement(processContext);
 
@@ -904,6 +922,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -940,6 +959,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -976,6 +996,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1012,6 +1033,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1054,6 +1076,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1095,6 +1118,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
@@ -1131,6 +1155,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);

@@ -31,6 +31,9 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -118,6 +121,9 @@ public class AssignShardIdFn
   private final String tableOverrides;
   private final String columnOverrides;
 
+  private transient Schema schema;
+  private transient SchemaFileOverridesParser schemaFileOverridesParser;
+
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -161,6 +167,16 @@ public class AssignShardIdFn
     this.mapper = mapper;
   }
 
+  // for unit testing purposes
+  public void setSchema(Schema schema) {
+    this.schema = schema;
+  }
+
+  // for unit testing purposes
+  public void setSchemaFileOverridesParser(SchemaFileOverridesParser schemaFileOverridesParser) {
+    this.schemaFileOverridesParser = schemaFileOverridesParser;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
@@ -187,6 +203,13 @@ public class AssignShardIdFn
         throw e;
       }
     }
+
+    if (sessionFilePath != null && !sessionFilePath.isEmpty()) {
+      schema = SessionFileReader.read(sessionFilePath);
+    }
+    if (schemaOverridesFilePath != null && !schemaOverridesFilePath.isEmpty()) {
+      schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFilePath);
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -208,7 +231,7 @@ public class AssignShardIdFn
 
     schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverridesParser, tableOverrides, columnOverrides, ddl);
 
     shardIdFetcher =
         ShardingLogicImplFetcher.getShardingLogicImpl(
