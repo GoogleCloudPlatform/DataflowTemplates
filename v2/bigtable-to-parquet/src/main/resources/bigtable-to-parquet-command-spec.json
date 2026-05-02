@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigtableToParquet",
+  "classPath": "/template/bigtable-to-parquet/bigtable-to-parquet-conscrypt.jar:/template/bigtable-to-parquet/*:/template/bigtable-to-parquet/libs/*:/template/bigtable-to-parquet/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable_to_parquet\"}"
+  }
+}
