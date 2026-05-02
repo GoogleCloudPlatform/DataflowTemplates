@@ -30,8 +30,15 @@ public final class Constants {
   // Character used to quote identifiers in MySQL (back-tick).
   public static final String MYSQL_IDENTIFIER_QUOTE = "`";
 
+  // Column name used to carry the logical shard id through the pipeline. Prefixed with `_dg_`
+  // so it cannot collide with a user-defined PK column.
+  public static final String SHARD_ID_COLUMN_NAME = "_dg_shard_id";
+
   // Keys for Spanner sink configuration JSON.
   public static final String SPANNER_CONFIG_PROJECT_ID_KEY = "projectId";
   public static final String SPANNER_CONFIG_INSTANCE_ID_KEY = "instanceId";
   public static final String SPANNER_CONFIG_DATABASE_ID_KEY = "databaseId";
+
+  public static final String SINK_TYPE_MYSQL = "MYSQL";
+  public static final String SINK_TYPE_SPANNER = "SPANNER";
 }
