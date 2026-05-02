@@ -50,6 +50,7 @@ import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -71,6 +72,9 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private FirestoreResourceManager sourceFirestoreResourceManager;
 
   private FirestoreResourceManager destinationFirestoreResourceManager;
+
+  private FirestoreResourceManager defaultSourceDatabaseFirestoreResourceManager;
+
   private Random random;
   private String sourceDatabaseId;
   private String destinationDatabaseId;
@@ -110,12 +114,19 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
             .setDatabase(destinationDatabaseId)
             .setCredentials(TestProperties.googleCredentials())
             .build();
+    defaultSourceDatabaseFirestoreResourceManager =
+        FirestoreResourceManager.builder(testName)
+            .setProject(PROJECT)
+            .setDatabase("(default)")
+            .setCredentials(TestProperties.googleCredentials())
+            .build();
   }
 
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(sourceFirestoreResourceManager);
     ResourceManagerUtils.cleanResources(destinationFirestoreResourceManager);
+    ResourceManagerUtils.cleanResources(defaultSourceDatabaseFirestoreResourceManager);
     ResourceManagerUtils.cleanResources(firestoreAdminResourceManager);
   }
 
@@ -278,6 +289,30 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     }
   }
 
+  @Ignore("Integration test project has a default database in Datastore mode.")
+  @Test
+  public void testFirestoreToFirestore_withDefaultSourceDatabase() throws IOException {
+    String collectionId = "inputDef-" + randomString(6).toLowerCase();
+    int numDocuments = 10;
+    Map<String, Map<String, Object>> inputData = generateTestDocuments(numDocuments);
+
+    // Populates data directly into the existing (default) database
+    defaultSourceDatabaseFirestoreResourceManager.write(collectionId, inputData);
+
+    // Act
+    LaunchInfo info =
+        launchPipelineWithSourceDatabase(/* testName= */ "copyFromDefault", "", "", "(default)");
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(20)));
+    assertThatResult(result).isLaunchFinished();
+
+    // Verify it successfully copied to destination database
+    List<QueryDocumentSnapshot> destDocuments =
+        destinationFirestoreResourceManager.read(collectionId);
+    assertThat(destDocuments).hasSize(numDocuments);
+  }
+
   private LaunchInfo launchPipeline(String testName) throws IOException {
     return launchPipeline(testName, /* collectionGroupIds= */ "");
   }
@@ -288,10 +323,17 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private LaunchInfo launchPipeline(String testName, String collectionGroupIds, String readTime)
       throws IOException {
+    return launchPipelineWithSourceDatabase(
+        testName, collectionGroupIds, readTime, sourceDatabaseId);
+  }
+
+  private LaunchInfo launchPipelineWithSourceDatabase(
+      String testName, String collectionGroupIds, String readTime, String inputSourceDatabaseId)
+      throws IOException {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("sourceProjectId", PROJECT)
-            .addParameter("sourceDatabaseId", sourceDatabaseId)
+            .addParameter("sourceDatabaseId", inputSourceDatabaseId)
             .addParameter("destinationProjectId", PROJECT)
             .addParameter("destinationDatabaseId", destinationDatabaseId)
             .addParameter("maxNumWorkers", "10");
