@@ -841,4 +841,8 @@ public abstract class TemplateTestBase {
       LOG.warn("Error during clean up staged template.", e);
     }
   }
+
+  protected String getPrivateConnectivity() {
+    return System.getProperty("privateConnectivity", "datastream-connect-2");
+  }
 }
