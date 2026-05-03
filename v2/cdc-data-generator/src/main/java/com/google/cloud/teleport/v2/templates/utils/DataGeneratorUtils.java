@@ -23,6 +23,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.schemas.Schema;
 import org.joda.time.Instant;
 
@@ -58,7 +60,7 @@ public final class DataGeneratorUtils {
 
     switch (type) {
       case STRING:
-        return faker.lorem().characters(clampStringLength(size));
+        return faker.lorem().characters(limitStringLength(size));
       case JSON:
         return "{"
             + "\"id\": "
@@ -85,9 +87,9 @@ public final class DataGeneratorUtils {
             + "\"}"
             + "}";
       case UUID:
-        return java.util.UUID.randomUUID().toString();
+        return UUID.randomUUID().toString();
       case INT64:
-        return (long) java.util.concurrent.ThreadLocalRandom.current().nextInt();
+        return (long) ThreadLocalRandom.current().nextInt();
       case FLOAT64:
         {
           int scale = column.scale() != null ? column.scale() : DEFAULT_NUMERIC_SCALE;
@@ -102,13 +104,12 @@ public final class DataGeneratorUtils {
       case BOOLEAN:
         return faker.bool().bool();
       case BYTES:
-        return faker.lorem().characters(clampStringLength(size)).getBytes(StandardCharsets.UTF_8);
+        return faker.lorem().characters(limitStringLength(size)).getBytes(StandardCharsets.UTF_8);
       case DATE:
         {
-          long minMillis = -30610224000000L; // Year 1000
-          long maxMillis = 253402300799000L; // Year 9999
-          long randomMillis =
-              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
+          long minMillis = -2208988800000L; // Year 1900
+          long maxMillis = 4133980799000L; // Year 2100
+          long randomMillis = ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
           Calendar cal = Calendar.getInstance();
           cal.setTimeInMillis(randomMillis);
           // Zero the time part — DATE is day-granular and TIMESTAMP uses the TIMESTAMP branch.
@@ -120,10 +121,9 @@ public final class DataGeneratorUtils {
         }
       case TIMESTAMP:
         {
-          long minMillis = -30610224000000L; // Year 1000
-          long maxMillis = 253402300799000L; // Year 9999
-          return new Instant(
-              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
+          long minMillis = -2208988800000L; // Year 1900
+          long maxMillis = 4133980799000L; // Year 2100
+          return new Instant(ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
         }
       default:
         return "unknown";
@@ -194,11 +194,11 @@ public final class DataGeneratorUtils {
   }
 
   /**
-   * Clamp user-supplied string lengths into a safe range. Unset / zero / absurdly-large values all
+   * Limit user-supplied string lengths into a safe range. Unset / zero / absurdly-large values all
    * fall back to a reasonable default so Faker doesn't receive a pathological input.
    */
   @VisibleForTesting
-  static int clampStringLength(Long size) {
+  static int limitStringLength(Long size) {
     if (size == null || size <= 0) {
       return DEFAULT_STRING_LENGTH;
     }

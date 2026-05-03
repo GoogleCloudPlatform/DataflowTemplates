@@ -18,8 +18,12 @@ package com.google.cloud.teleport.v2.templates.utils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.github.javafaker.Faker;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import java.math.BigDecimal;
+import org.apache.beam.sdk.schemas.Schema.FieldType;
+import org.joda.time.Instant;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -28,49 +32,29 @@ import org.junit.runners.JUnit4;
 public class DataGeneratorUtilsTest {
 
   @Test
-  public void testClampStringLength() {
+  public void testLimitStringLength() {
     assertEquals(
-        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.clampStringLength(null));
+        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.limitStringLength(null));
     assertEquals(
-        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.clampStringLength(0L));
+        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.limitStringLength(0L));
     assertEquals(
-        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.clampStringLength(-1L));
-    assertEquals(50, DataGeneratorUtils.clampStringLength(50L));
-    assertEquals(Integer.MAX_VALUE, DataGeneratorUtils.clampStringLength(Long.MAX_VALUE));
+        DataGeneratorUtils.DEFAULT_STRING_LENGTH, DataGeneratorUtils.limitStringLength(-1L));
+    assertEquals(50, DataGeneratorUtils.limitStringLength(50L));
+    assertEquals(Integer.MAX_VALUE, DataGeneratorUtils.limitStringLength(Long.MAX_VALUE));
   }
 
   @Test
   public void testMapToBeamFieldType() {
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.STRING,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.STRING));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.STRING,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.JSON));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.STRING,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.UUID));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.INT64,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.INT64));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.DOUBLE,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.FLOAT64));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.DECIMAL,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.NUMERIC));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.BOOLEAN,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.BOOLEAN));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.BYTES,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.BYTES));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.DATETIME,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.DATE));
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.DATETIME,
-        DataGeneratorUtils.mapToBeamFieldType(LogicalType.TIMESTAMP));
+    assertEquals(FieldType.STRING, DataGeneratorUtils.mapToBeamFieldType(LogicalType.STRING));
+    assertEquals(FieldType.STRING, DataGeneratorUtils.mapToBeamFieldType(LogicalType.JSON));
+    assertEquals(FieldType.STRING, DataGeneratorUtils.mapToBeamFieldType(LogicalType.UUID));
+    assertEquals(FieldType.INT64, DataGeneratorUtils.mapToBeamFieldType(LogicalType.INT64));
+    assertEquals(FieldType.DOUBLE, DataGeneratorUtils.mapToBeamFieldType(LogicalType.FLOAT64));
+    assertEquals(FieldType.DECIMAL, DataGeneratorUtils.mapToBeamFieldType(LogicalType.NUMERIC));
+    assertEquals(FieldType.BOOLEAN, DataGeneratorUtils.mapToBeamFieldType(LogicalType.BOOLEAN));
+    assertEquals(FieldType.BYTES, DataGeneratorUtils.mapToBeamFieldType(LogicalType.BYTES));
+    assertEquals(FieldType.DATETIME, DataGeneratorUtils.mapToBeamFieldType(LogicalType.DATE));
+    assertEquals(FieldType.DATETIME, DataGeneratorUtils.mapToBeamFieldType(LogicalType.TIMESTAMP));
 
     DataGeneratorColumn col =
         DataGeneratorColumn.builder()
@@ -79,14 +63,12 @@ public class DataGeneratorUtilsTest {
             .isNullable(false)
             .isGenerated(false)
             .build();
-    assertEquals(
-        org.apache.beam.sdk.schemas.Schema.FieldType.STRING,
-        DataGeneratorUtils.mapToBeamFieldType(col));
+    assertEquals(FieldType.STRING, DataGeneratorUtils.mapToBeamFieldType(col));
   }
 
   @Test
   public void testGenerateNumeric() {
-    com.github.javafaker.Faker faker = new com.github.javafaker.Faker();
+    Faker faker = new Faker();
 
     // Case 1: Precision and scale specified
     DataGeneratorColumn col1 =
@@ -98,7 +80,7 @@ public class DataGeneratorUtilsTest {
             .precision(5)
             .scale(2)
             .build();
-    java.math.BigDecimal val1 = DataGeneratorUtils.generateNumeric(col1, faker);
+    BigDecimal val1 = DataGeneratorUtils.generateNumeric(col1, faker);
     assertEquals(2, val1.scale());
 
     // Case 2: Null precision (defaults to 10)
@@ -110,7 +92,7 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .scale(2)
             .build();
-    java.math.BigDecimal val2 = DataGeneratorUtils.generateNumeric(col2, faker);
+    BigDecimal val2 = DataGeneratorUtils.generateNumeric(col2, faker);
     assertEquals(2, val2.scale());
 
     // Case 3: Null scale (defaults to 2)
@@ -122,7 +104,7 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .precision(10)
             .build();
-    java.math.BigDecimal val3 = DataGeneratorUtils.generateNumeric(col3, faker);
+    BigDecimal val3 = DataGeneratorUtils.generateNumeric(col3, faker);
     assertEquals(2, val3.scale());
 
     // Case 4: Scale > Precision
@@ -135,13 +117,13 @@ public class DataGeneratorUtilsTest {
             .precision(5)
             .scale(7)
             .build();
-    java.math.BigDecimal val4 = DataGeneratorUtils.generateNumeric(col4, faker);
+    BigDecimal val4 = DataGeneratorUtils.generateNumeric(col4, faker);
     assertEquals(5, val4.scale()); // Scale should be capped at precision
   }
 
   @Test
   public void testGenerateValue() {
-    com.github.javafaker.Faker faker = new com.github.javafaker.Faker();
+    Faker faker = new Faker();
 
     // STRING
     DataGeneratorColumn strCol =
@@ -208,7 +190,7 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .build();
     Object numVal = DataGeneratorUtils.generateValue(numCol, faker);
-    assertTrue(numVal instanceof java.math.BigDecimal);
+    assertTrue(numVal instanceof BigDecimal);
 
     // BOOLEAN
     DataGeneratorColumn boolCol =
@@ -241,7 +223,7 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .build();
     Object dateVal = DataGeneratorUtils.generateValue(dateCol, faker);
-    assertTrue(dateVal instanceof org.joda.time.Instant);
+    assertTrue(dateVal instanceof Instant);
 
     // TIMESTAMP
     DataGeneratorColumn tsCol =
@@ -252,6 +234,6 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .build();
     Object tsVal = DataGeneratorUtils.generateValue(tsCol, faker);
-    assertTrue(tsVal instanceof org.joda.time.Instant);
+    assertTrue(tsVal instanceof Instant);
   }
 }
