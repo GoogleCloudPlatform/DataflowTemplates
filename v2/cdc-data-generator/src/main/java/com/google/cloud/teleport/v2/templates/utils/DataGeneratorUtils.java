@@ -22,8 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
-import java.util.Calendar;
-import org.apache.beam.sdk.schemas.Schema;
+import java.time.LocalDate;
 import org.joda.time.Instant;
 
 /**
@@ -59,157 +58,8 @@ public final class DataGeneratorUtils {
     if (column.fakerExpression() != null && !column.fakerExpression().isEmpty()) {
       return generateFromExpression(column, faker);
     }
-
-    switch (type) {
-      case STRING:
-        return faker.lorem().characters(clampStringLength(size));
-      case JSON:
-        return "{"
-            + "\"id\": "
-            + faker.number().randomNumber()
-            + ", "
-            + "\"name\": \""
-            + faker.name().fullName()
-            + "\", "
-            + "\"isActive\": "
-            + faker.bool().bool()
-            + ", "
-            + "\"score\": "
-            + faker.number().randomDouble(2, 0, 100)
-            + ", "
-            + "\"tags\": [\""
-            + faker.lorem().word()
-            + "\", \""
-            + faker.lorem().word()
-            + "\"], "
-            + "\"address\": {\"city\": \""
-            + faker.address().city()
-            + "\", \"zip\": \""
-            + faker.address().zipCode()
-            + "\"}"
-            + "}";
-
-      case INT64:
-        return (long) java.util.concurrent.ThreadLocalRandom.current().nextInt();
-      case FLOAT64:
-        {
-          int scale = column.scale() != null ? column.scale() : DEFAULT_NUMERIC_SCALE;
-          int precision =
-              column.precision() != null ? column.precision() : DEFAULT_NUMERIC_PRECISION + 5;
-          double maxVal = Math.pow(10, precision - scale) - 1.0 / Math.pow(10, scale);
-          double minVal = -maxVal;
-          return faker.number().randomDouble(scale, (long) minVal, (long) maxVal);
-        }
-      case NUMERIC:
-        return generateNumeric(column, faker);
-      case BOOLEAN:
-        return faker.bool().bool();
-      case BYTES:
-        return faker.lorem().characters(clampStringLength(size)).getBytes(StandardCharsets.UTF_8);
-      case DATE:
-        {
-          long minMillis = -30610224000000L; // Year 1000
-          long maxMillis = 253402300799000L; // Year 9999
-          long randomMillis =
-              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
-          Calendar cal = Calendar.getInstance();
-          cal.setTimeInMillis(randomMillis);
-          // Zero the time part — DATE is day-granular and TIMESTAMP uses the TIMESTAMP branch.
-          cal.set(Calendar.HOUR_OF_DAY, 0);
-          cal.set(Calendar.MINUTE, 0);
-          cal.set(Calendar.SECOND, 0);
-          cal.set(Calendar.MILLISECOND, 0);
-          return new Instant(cal.getTimeInMillis());
-        }
-      case TIMESTAMP:
-        {
-          long minMillis = -30610224000000L; // Year 1000
-          long maxMillis = 253402300799000L; // Year 9999
-          return new Instant(
-              java.util.concurrent.ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
-        }
-
-      default:
-        return "unknown";
-    }
-  }
-
-  /**
-   * Map a logical type to the matching Beam {@link Schema.FieldType}. Used to construct the Row
-   * schema for synthesised values.
-   */
-  public static Schema.FieldType mapToBeamFieldType(LogicalType logicalType) {
-    switch (logicalType) {
-      case STRING:
-      case JSON:
-        return Schema.FieldType.STRING;
-      case INT64:
-        return Schema.FieldType.INT64;
-      case FLOAT64:
-        return Schema.FieldType.DOUBLE;
-      case NUMERIC:
-        return Schema.FieldType.DECIMAL;
-      case BOOLEAN:
-        return Schema.FieldType.BOOLEAN;
-      case BYTES:
-        return Schema.FieldType.BYTES;
-      case DATE:
-      case TIMESTAMP:
-        return Schema.FieldType.DATETIME;
-      default:
-        return Schema.FieldType.STRING;
-    }
-  }
-
-  /** Convenience overload accepting the full column — kept so callers don't branch at callsite. */
-  public static Schema.FieldType mapToBeamFieldType(DataGeneratorColumn column) {
-
-    return mapToBeamFieldType(column.logicalType());
-  }
-
-  /**
-   * Generate a {@link BigDecimal} that fits the column's declared precision and scale. Avoids
-   * {@code new BigDecimal(faker.number().randomNumber())} which returns an unbounded integer value
-   * and overflows most DECIMAL/NUMERIC columns (e.g. {@code DECIMAL(5,2)} tops out at {@code
-   * 999.99}).
-   *
-   * <p>Defaults are precision 10 / scale 2 when the fetcher did not populate them — safe for MySQL
-   * {@code DECIMAL} (default precision is 10) and Spanner {@code NUMERIC} (up to 38 precision, 9
-   * scale).
-   */
-  @VisibleForTesting
-  static BigDecimal generateNumeric(DataGeneratorColumn column, Faker faker) {
-    int prec =
-        (column.precision() != null && column.precision() > 0)
-            ? column.precision()
-            : DEFAULT_NUMERIC_PRECISION;
-    int sc =
-        (column.scale() != null && column.scale() >= 0) ? column.scale() : DEFAULT_NUMERIC_SCALE;
-    if (sc > prec) {
-      sc = prec;
-    }
-
-    String randomDigits = faker.number().digits(prec);
-    BigDecimal value = new BigDecimal(randomDigits).movePointLeft(sc);
-
-    // Normalise the trailing scale so the returned value always reports the
-    // declared scale.
-    return value.setScale(sc, RoundingMode.HALF_UP);
-  }
-
-  /**
-   * Clamp user-supplied string lengths into a safe range. Unset or zero values fall back to a
-   * reasonable default, while values larger than Integer.MAX_VALUE are capped at Integer.MAX_VALUE
-   * so Faker doesn't receive an invalid input.
-   */
-  private static int clampStringLength(Long size) {
-    if (size == null || size <= 0) {
-      return DEFAULT_STRING_LENGTH;
-    }
-    if (size > Integer.MAX_VALUE) {
-      return Integer.MAX_VALUE;
-    }
-    return size.intValue();
+    throw new IllegalArgumentException(
+        "Faker expression is required for column '" + column.name() + "' in this branch.");
   }
 
   /**
@@ -220,9 +70,6 @@ public final class DataGeneratorUtils {
    * typed (e.g. {@code number.numberBetween} returns a long internally but is surfaced as a
    * decimal-string). For columns whose logical type isn't STRING, parsing is the only way to
    * recover the typed value.
-   *
-   * <p>For ENUM and ARRAY logical types we fall back to the random generator — the user-facing
-   * conversion contract for those is fuzzier and the randomised path is type-safe by construction.
    */
   static Object generateFromExpression(DataGeneratorColumn column, Faker faker) {
     String expression = column.fakerExpression();
@@ -258,7 +105,7 @@ public final class DataGeneratorUtils {
           {
             BigDecimal bd = new BigDecimal(raw.trim());
             int sc = (column.scale() != null && column.scale() >= 0) ? column.scale() : 2;
-            return bd.setScale(sc, java.math.RoundingMode.HALF_UP);
+            return bd.setScale(sc, RoundingMode.HALF_UP);
           }
         case BOOLEAN:
           {
@@ -271,7 +118,7 @@ public final class DataGeneratorUtils {
         case BYTES:
           return raw.getBytes(StandardCharsets.UTF_8);
         case DATE:
-          return new Instant(java.time.LocalDate.parse(raw.trim()).toEpochDay() * 86400000L);
+          return new Instant(LocalDate.parse(raw.trim()).toEpochDay() * 86400000L);
         case TIMESTAMP:
           return new Instant(java.time.Instant.parse(raw.trim()).toEpochMilli());
         default:

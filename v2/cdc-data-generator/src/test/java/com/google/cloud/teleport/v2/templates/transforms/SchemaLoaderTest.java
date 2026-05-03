@@ -27,20 +27,14 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Unit tests for {@link SchemaLoader}. */
 @RunWith(JUnit4.class)
 public class SchemaLoaderTest {
-
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-  @Rule public ExpectedException expectedException = ExpectedException.none();
 
   @Test
   public void testFetchSchemaFn_Spanner() throws IOException {
@@ -92,15 +86,6 @@ public class SchemaLoaderTest {
     FetchSchemaFn fn = new FetchSchemaFn(null, "options");
 
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
-
-    // unexpected IO exception for null sink type is not what we want to test, we
-    // want to test createFetcher throwing
-    // But wait, createFetcher is called inside processElement.
-    // We didn't override createFetcher here so it uses the real one which throws
-    // IllegalArgumentException
-    // However, the real one checks for SPANNER and MYSQL. null will throw
-    // "Unsupported sink type: null"
-
     assertThrows(IllegalArgumentException.class, () -> fn.processElement(receiver));
   }
 

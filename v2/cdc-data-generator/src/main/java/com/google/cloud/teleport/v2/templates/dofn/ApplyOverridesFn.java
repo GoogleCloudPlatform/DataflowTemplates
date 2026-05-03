@@ -20,6 +20,8 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -98,13 +100,10 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
       }
     }
 
-    receiver.output(
-        DataGeneratorSchema.builder()
-            .tables(com.google.common.collect.ImmutableMap.copyOf(tableMap))
-            .build());
+    receiver.output(DataGeneratorSchema.builder().tables(ImmutableMap.copyOf(tableMap)).build());
   }
 
-  private com.google.common.collect.ImmutableList<DataGeneratorColumn> applyColumnOverrides(
+  private ImmutableList<DataGeneratorColumn> applyColumnOverrides(
       DataGeneratorTable existingTable, Map<String, SchemaConfig.ColumnConfig> columnsConfig) {
     List<DataGeneratorColumn> updatedColumns = new ArrayList<>();
     for (DataGeneratorColumn col : existingTable.columns()) {
@@ -132,54 +131,54 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
       }
       updatedColumns.add(colBuilder.build());
     }
-    return com.google.common.collect.ImmutableList.copyOf(updatedColumns);
+    return ImmutableList.copyOf(updatedColumns);
   }
 
-  private com.google.common.collect.ImmutableList<DataGeneratorForeignKey> mergeForeignKeys(
-      DataGeneratorTable existingTable, List<SchemaConfig.ForeignKeyConfig> fkList) {
-    LinkedHashMap<String, DataGeneratorForeignKey> byName = new LinkedHashMap<>();
+  private ImmutableList<DataGeneratorForeignKey> mergeForeignKeys(
+      DataGeneratorTable existingTable, List<SchemaConfig.ForeignKeyConfig> fkConfigs) {
+    LinkedHashMap<String, DataGeneratorForeignKey> mergedFksByName = new LinkedHashMap<>();
     for (DataGeneratorForeignKey fk : existingTable.foreignKeys()) {
-      byName.put(fk.name(), fk);
+      mergedFksByName.put(fk.name(), fk);
     }
 
-    for (SchemaConfig.ForeignKeyConfig fkConfig : fkList) {
+    for (SchemaConfig.ForeignKeyConfig fkConfig : fkConfigs) {
       String fkName = fkConfig.getName();
       String referencedTable = fkConfig.getReferencedTable();
-      List<String> keyCols = fkConfig.getKeyColumns();
-      List<String> refCols = fkConfig.getReferencedColumns();
+      List<String> keyColumns = fkConfig.getKeyColumns();
+      List<String> referencedColumns = fkConfig.getReferencedColumns();
 
-      DataGeneratorForeignKey configured =
+      DataGeneratorForeignKey configuredFk =
           DataGeneratorForeignKey.builder()
               .name(fkName)
               .referencedTable(referencedTable)
-              .keyColumns(com.google.common.collect.ImmutableList.copyOf(keyCols))
-              .referencedColumns(com.google.common.collect.ImmutableList.copyOf(refCols))
+              .keyColumns(ImmutableList.copyOf(keyColumns))
+              .referencedColumns(ImmutableList.copyOf(referencedColumns))
               .build();
 
-      DataGeneratorForeignKey discovered = byName.get(fkName);
-      if (discovered != null && !fkEquivalent(discovered, configured)) {
+      DataGeneratorForeignKey discoveredFk = mergedFksByName.get(fkName);
+      if (discoveredFk != null && !fkEquivalent(discoveredFk, configuredFk)) {
         throw new IllegalArgumentException(
             "Foreign key '"
                 + fkName
                 + "' on table '"
                 + existingTable.name()
                 + "' conflicts with the discovered definition. discovered=[refTable="
-                + discovered.referencedTable()
+                + discoveredFk.referencedTable()
                 + ", keyColumns="
-                + discovered.keyColumns()
+                + discoveredFk.keyColumns()
                 + ", referencedColumns="
-                + discovered.referencedColumns()
+                + discoveredFk.referencedColumns()
                 + "], config=[refTable="
-                + configured.referencedTable()
+                + configuredFk.referencedTable()
                 + ", keyColumns="
-                + configured.keyColumns()
+                + configuredFk.keyColumns()
                 + ", referencedColumns="
-                + configured.referencedColumns()
+                + configuredFk.referencedColumns()
                 + "]. Align the config with the source schema or rename the FK.");
       }
-      byName.put(fkName, configured);
+      mergedFksByName.put(fkName, configuredFk);
     }
-    return com.google.common.collect.ImmutableList.copyOf(byName.values());
+    return ImmutableList.copyOf(mergedFksByName.values());
   }
 
   private static boolean fkEquivalent(DataGeneratorForeignKey a, DataGeneratorForeignKey b) {

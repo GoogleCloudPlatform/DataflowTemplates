@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.spanner;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
@@ -30,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
@@ -120,10 +122,8 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorTable mapTable(
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
       com.google.cloud.spanner.Dialect dialect) {
-    java.util.List<String> primaryKeys =
-        table.primaryKeys().stream()
-            .map(com.google.cloud.teleport.v2.spanner.ddl.IndexColumn::name)
-            .collect(java.util.stream.Collectors.toList());
+    List<String> primaryKeys =
+        table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
     ImmutableList.Builder<DataGeneratorColumn> columnsBuilder = ImmutableList.builder();
     for (com.google.cloud.teleport.v2.spanner.ddl.Column column : table.columns()) {
       columnsBuilder.add(mapColumn(column, table, dialect, primaryKeys));
@@ -186,7 +186,7 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
       com.google.cloud.teleport.v2.spanner.ddl.Column column,
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
       com.google.cloud.spanner.Dialect dialect,
-      java.util.List<String> primaryKeys) {
+      List<String> primaryKeys) {
 
     return DataGeneratorColumn.builder()
         .name(column.name())

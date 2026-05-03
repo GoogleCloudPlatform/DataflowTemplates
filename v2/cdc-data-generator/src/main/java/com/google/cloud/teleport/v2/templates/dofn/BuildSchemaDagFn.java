@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dofn;
 
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
+import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,8 +35,8 @@ public class BuildSchemaDagFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
 
     List<String> rootTables =
         processedSchema.tables().values().stream()
-            .filter(com.google.cloud.teleport.v2.templates.model.DataGeneratorTable::isRoot)
-            .map(com.google.cloud.teleport.v2.templates.model.DataGeneratorTable::name)
+            .filter(DataGeneratorTable::isRoot)
+            .map(DataGeneratorTable::name)
             .collect(Collectors.toList());
     LOG.info("Root tables in the job: {}", rootTables);
 
