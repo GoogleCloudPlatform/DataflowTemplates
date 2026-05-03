@@ -104,7 +104,10 @@ public final class DataGeneratorUtils {
         case NUMERIC:
           {
             BigDecimal bd = new BigDecimal(raw.trim());
-            int sc = (column.scale() != null && column.scale() >= 0) ? column.scale() : 2;
+            int sc =
+                (column.scale() != null && column.scale() >= 0)
+                    ? column.scale()
+                    : DEFAULT_NUMERIC_SCALE;
             return bd.setScale(sc, RoundingMode.HALF_UP);
           }
         case BOOLEAN:
