@@ -128,25 +128,63 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
     spannerResourceManager.executeDdlStatement(
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
-    LOG.info("Creating {} tables in MySQL...", NUM_TABLES);
+    // OPTIMIZE MYSQL:
+    // Disable synchronous flushing and binary logging to speed up table creation.
     try (Connection conn =
             DriverManager.getConnection(
                 jdbcResourceManager.getUri(),
                 jdbcResourceManager.getUsername(),
                 jdbcResourceManager.getPassword());
         Statement stmt = conn.createStatement()) {
-      int mysqlBatchSize = 100;
-      for (int i = 1; i <= NUM_TABLES; i++) {
-        String mySqlDdl =
-            String.format("CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", i);
-        stmt.addBatch(mySqlDdl);
-        if (i % mysqlBatchSize == 0) {
-          stmt.executeBatch();
-          LOG.info("Created {} tables so far on Source", i);
-        }
-      }
-      stmt.executeBatch();
-      LOG.info("Created {} tables on Source", NUM_TABLES);
+      stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 0");
+      stmt.execute("SET GLOBAL sync_binlog = 0");
+    } catch (Exception e) {
+      LOG.warn("Failed to set MySQL global optimization flags. Proceeding anyway.", e);
+    }
+
+    LOG.info("Creating {} tables in MySQL in parallel batches...", NUM_TABLES);
+    int mysqlBatchSize = 100;
+    ExecutorService mysqlExecutor = Executors.newFixedThreadPool(5);
+    for (int i = 1; i <= NUM_TABLES; i += mysqlBatchSize) {
+      final int start = i;
+      final int end = Math.min(NUM_TABLES, i + mysqlBatchSize - 1);
+      mysqlExecutor.submit(
+          () -> {
+            try (Connection conn =
+                    DriverManager.getConnection(
+                        jdbcResourceManager.getUri(),
+                        jdbcResourceManager.getUsername(),
+                        jdbcResourceManager.getPassword());
+                Statement stmt = conn.createStatement()) {
+              for (int j = start; j <= end; j++) {
+                String mySqlDdl =
+                    String.format(
+                        "CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", j);
+                stmt.addBatch(mySqlDdl);
+              }
+              stmt.executeBatch();
+            } catch (Exception e) {
+              LOG.error("Failed to execute MySQL DDL batch for tables {}-{}", start, end, e);
+            }
+          });
+    }
+    mysqlExecutor.shutdown();
+    if (!mysqlExecutor.awaitTermination(30, TimeUnit.MINUTES)) {
+      throw new RuntimeException("MySQL table creation timed out");
+    }
+    LOG.info("Created {} tables on Source", NUM_TABLES);
+
+    // Restore MySQL settings
+    try (Connection conn =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = conn.createStatement()) {
+      stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 1");
+      stmt.execute("SET GLOBAL sync_binlog = 1");
+    } catch (Exception e) {
+      LOG.warn("Failed to restore MySQL global flags.", e);
     }
 
     LOG.info("Launching Dataflow job...");
