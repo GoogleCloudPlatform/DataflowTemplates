@@ -58,6 +58,8 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kIT.class);
 
+  private static final int NUM_TABLES = 4999;
+
   private SpannerResourceManager spannerResourceManager;
   private SpannerResourceManager spannerMetadataResourceManager;
   private MySQLResourceManager jdbcResourceManager;
@@ -95,9 +97,9 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
                 .replace("gs://" + gcsResourceManager.getBucket(), ""),
             gcsResourceManager);
 
-    LOG.info("Collecting 5000 Spanner DDL statements...");
+    LOG.info("Collecting {} Spanner DDL statements...", NUM_TABLES);
     List<String> spannerDdls = new ArrayList<>();
-    for (int i = 1; i <= 5000; i++) {
+    for (int i = 1; i <= NUM_TABLES; i++) {
       spannerDdls.add(
           String.format("CREATE TABLE table_%d (id INT64 NOT NULL) PRIMARY KEY(id)", i));
     }
@@ -126,7 +128,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
     spannerResourceManager.executeDdlStatement(
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
-    LOG.info("Creating 5000 tables in MySQL...");
+    LOG.info("Creating {} tables in MySQL...", NUM_TABLES);
     try (Connection conn =
             DriverManager.getConnection(
                 jdbcResourceManager.getUri(),
@@ -134,7 +136,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
                 jdbcResourceManager.getPassword());
         Statement stmt = conn.createStatement()) {
       int mysqlBatchSize = 100;
-      for (int i = 1; i <= 5000; i++) {
+      for (int i = 1; i <= NUM_TABLES; i++) {
         String mySqlDdl =
             String.format("CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", i);
         stmt.addBatch(mySqlDdl);
@@ -144,7 +146,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
         }
       }
       stmt.executeBatch();
-      LOG.info("Created 5000 tables on Source");
+      LOG.info("Created {} tables on Source", NUM_TABLES);
     }
 
     LOG.info("Launching Dataflow job...");
