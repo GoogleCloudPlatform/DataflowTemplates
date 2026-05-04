@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -139,23 +138,5 @@ public class UtilsTest {
             .toJson()
             .equals(
                 "{\"_id\": 1, \"arrayField\": [\"hello\", 10], \"dateField\": {\"$date\": \"2019-08-11T17:54:14.692Z\"}, \"dateBefore1970\": {\"$date\": {\"$numberLong\": \"-1577923200000\"}}, \"decimal128Field\": {\"$numberDecimal\": \"10.99\"}, \"documentField\": {\"a\": \"hello\"}, \"doubleField\": 10.5, \"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}, \"int32field\": 10, \"int64Field\": 50, \"minKeyField\": {\"$minKey\": 1}, \"maxKeyField\": {\"$maxKey\": 1}, \"regexField\": {\"$regularExpression\": {\"pattern\": \"^H\", \"options\": \"i\"}}, \"timestampField\": {\"$timestamp\": {\"t\": 1565545664, \"i\": 1}}, \"uuid\": {\"$binary\": {\"base64\": \"OyQRAeK7QlWMr0E2xWapYg==\", \"subType\": \"04\"}}}"));
-  }
-
-  @Test
-  public void testDocumentIdToString() {
-    assertEquals("test_id", Utils.documentIdToString("test_id"));
-    assertEquals("123", Utils.documentIdToString(123L));
-    assertEquals("123.456", Utils.documentIdToString(123.456));
-    assertEquals("true", Utils.documentIdToString(true));
-    assertEquals("null", Utils.documentIdToString(null));
-
-    org.bson.types.ObjectId objectId = new org.bson.types.ObjectId("645c9a7e7b8b1a0e9c0f8b3a");
-    assertEquals("645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
-
-    org.bson.types.Binary binary = new org.bson.types.Binary(new byte[] {1, 2, 3});
-    assertEquals("AQID", Utils.documentIdToString(binary));
-
-    Document doc = new Document("a", 1).append("b", "test");
-    assertEquals("{\"a\": 1, \"b\": \"test\"}", Utils.documentIdToString(doc));
   }
 }

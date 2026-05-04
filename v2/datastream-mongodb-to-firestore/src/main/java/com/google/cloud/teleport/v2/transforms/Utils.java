@@ -54,18 +54,4 @@ public final class Utils {
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }
-
-  public static String documentIdToString(Object documentId) {
-    if (documentId == null) {
-      return "null";
-    }
-    if (documentId instanceof org.bson.types.Binary) {
-      org.bson.types.Binary binary = (org.bson.types.Binary) documentId;
-      return java.util.Base64.getEncoder().encodeToString(binary.getData());
-    }
-    if (documentId instanceof Document) {
-      return ((Document) documentId).toJson();
-    }
-    return documentId.toString();
-  }
 }

@@ -117,22 +117,18 @@ public class MongoDbChangeEventContext implements Serializable {
     if (changeEvent.has(DatastreamConstants.MONGODB_DOCUMENT_ID)) {
       JsonNode docIdVal =
           OBJECT_MAPPER.readTree(changeEvent.get(DatastreamConstants.MONGODB_DOCUMENT_ID).asText());
-      if (docIdVal.isInt()) {
-        this.documentId = docIdVal.asInt();
-      } else if (docIdVal.isIntegralNumber()) {
+      if (docIdVal.isIntegralNumber()) {
         this.documentId = docIdVal.asLong();
-      } else if (docIdVal.isFloatingPointNumber()) {
-        this.documentId = docIdVal.asDouble();
+        if (this.documentId.equals(0L)) {
+          LOG.error("Unsupported _id value of _id {}.", docIdVal);
+          throw new IllegalArgumentException("Unsupported _id value.");
+        }
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
-      } else if (docIdVal.isObject()) {
-        if (docIdVal.has(OID_FIELD_NAME) && docIdVal.get(OID_FIELD_NAME).isTextual()) {
-          this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
-        } else {
-          // Support for generic Object-typed IDs or other complex BSON types (e.g., Binary)
-          Document wrapper = Document.parse("{ \"val\": " + docIdVal.toString() + " }");
-          this.documentId = wrapper.get("val");
-        }
+      } else if (docIdVal.isObject()
+          && docIdVal.has(OID_FIELD_NAME)
+          && docIdVal.get(OID_FIELD_NAME).isTextual()) {
+        this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
       } else {
         LOG.error("Unsupported _id type of _id {}.", docIdVal);
         throw new IllegalArgumentException("Unsupported _id type.");
@@ -252,7 +248,13 @@ public class MongoDbChangeEventContext implements Serializable {
       // Add other important fields
       jsonNode.put("dataCollection", this.dataCollection);
       jsonNode.put("shadowCollection", this.shadowCollection);
-      jsonNode.put("documentId", Utils.documentIdToString(this.documentId));
+      if (this.documentId instanceof ObjectId) {
+        ObjectNode objectIdNode = OBJECT_MAPPER.createObjectNode();
+        objectIdNode.put(OID_FIELD_NAME, this.documentId.toString());
+        jsonNode.put("documentId", objectIdNode);
+      } else {
+        jsonNode.putPOJO("documentId", this.documentId);
+      }
       jsonNode.put("isDeleteEvent", this.isDeleteEvent);
 
       // Convert timestamp document to JSON
