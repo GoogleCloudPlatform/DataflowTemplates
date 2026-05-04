@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import org.joda.time.DateTimeConstants;
 import org.joda.time.Instant;
 
 /**
@@ -121,11 +122,12 @@ public final class DataGeneratorUtils {
         case BYTES:
           return raw.getBytes(StandardCharsets.UTF_8);
         case DATE:
-          return new Instant(LocalDate.parse(raw.trim()).toEpochDay() * 86400000L);
+          return new Instant(
+              LocalDate.parse(raw.trim()).toEpochDay() * DateTimeConstants.MILLIS_PER_DAY);
         case TIMESTAMP:
           return new Instant(java.time.Instant.parse(raw.trim()).toEpochMilli());
         default:
-          return raw;
+          throw new UnsupportedOperationException("Unsupported logical type: " + type);
       }
     } catch (IllegalArgumentException | java.time.DateTimeException e) {
       throw new RuntimeException(

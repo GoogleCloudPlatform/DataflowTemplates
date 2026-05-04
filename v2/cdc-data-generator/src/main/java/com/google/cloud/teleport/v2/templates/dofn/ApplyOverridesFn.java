@@ -36,9 +36,9 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
   private static final Logger LOG = LoggerFactory.getLogger(ApplyOverridesFn.class);
 
   private final SchemaConfig schemaConfig;
-  private final int defaultInsertQps;
-  private final int defaultUpdateQps;
-  private final int defaultDeleteQps;
+  private final Integer defaultInsertQps;
+  private final Integer defaultUpdateQps;
+  private final Integer defaultDeleteQps;
 
   public ApplyOverridesFn(
       SchemaConfig schemaConfig,
@@ -58,13 +58,17 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
 
     // Step 1: Apply global defaults
     for (DataGeneratorTable table : schema.tables().values()) {
-      tableMap.put(
-          table.name(),
-          table.toBuilder()
-              .insertQps(defaultInsertQps)
-              .updateQps(defaultUpdateQps)
-              .deleteQps(defaultDeleteQps)
-              .build());
+      DataGeneratorTable.Builder tableBuilder = table.toBuilder();
+      if (defaultInsertQps != null) {
+        tableBuilder.insertQps(defaultInsertQps);
+      }
+      if (defaultUpdateQps != null) {
+        tableBuilder.updateQps(defaultUpdateQps);
+      }
+      if (defaultDeleteQps != null) {
+        tableBuilder.deleteQps(defaultDeleteQps);
+      }
+      tableMap.put(table.name(), tableBuilder.build());
     }
 
     // Step 2: Apply overrides
@@ -151,8 +155,12 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
           DataGeneratorForeignKey.builder()
               .name(fkName)
               .referencedTable(referencedTable)
-              .keyColumns(ImmutableList.copyOf(keyColumns))
-              .referencedColumns(ImmutableList.copyOf(referencedColumns))
+              .keyColumns(
+                  keyColumns != null ? ImmutableList.copyOf(keyColumns) : ImmutableList.of())
+              .referencedColumns(
+                  referencedColumns != null
+                      ? ImmutableList.copyOf(referencedColumns)
+                      : ImmutableList.of())
               .build();
 
       DataGeneratorForeignKey discoveredFk = mergedFksByName.get(fkName);
