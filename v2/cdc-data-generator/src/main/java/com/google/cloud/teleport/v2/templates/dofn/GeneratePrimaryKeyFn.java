@@ -24,7 +24,8 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.ArrayList;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +104,7 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
       // schema-definition problem, so log + skip rather than emit an empty Row (which
       // would
       // corrupt downstream joins on the PK).
-      LOG.warn(
+      LOG.error(
           "Table {} has no primary-key columns, or its PK list references unknown columns — "
               + "skipping PK generation.",
           table.name());
@@ -125,25 +126,26 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
   @VisibleForTesting
   public static List<DataGeneratorColumn> primaryKeyColumns(DataGeneratorTable table) {
     if (table.primaryKeys() == null || table.primaryKeys().isEmpty()) {
-      return new ArrayList<>();
+      return ImmutableList.of();
     }
-    Map<String, DataGeneratorColumn> byName = new HashMap<>();
-    for (DataGeneratorColumn col : table.columns()) {
-      byName.put(col.name(), col);
-    }
-    List<DataGeneratorColumn> result = new ArrayList<>(table.primaryKeys().size());
-    for (String pkName : table.primaryKeys()) {
-      DataGeneratorColumn col = byName.get(pkName);
-      if (col != null) {
-        result.add(col);
-      } else {
-        LOG.warn(
-            "PK column {} declared on table {} not present in columns list — dropping.",
-            pkName,
-            table.name());
-      }
-    }
-    return result;
+    ImmutableMap<String, DataGeneratorColumn> byName =
+        table.columns().stream()
+            .collect(ImmutableMap.toImmutableMap(DataGeneratorColumn::name, col -> col));
+
+    return table.primaryKeys().stream()
+        .filter(
+            pkName -> {
+              if (!byName.containsKey(pkName)) {
+                LOG.error(
+                    "PK column {} declared on table {} not present in columns list — dropping.",
+                    pkName,
+                    table.name());
+                return false;
+              }
+              return true;
+            })
+        .map(byName::get)
+        .collect(Collectors.toList());
   }
 
   private Schema buildSchema(List<DataGeneratorColumn> columns) {
