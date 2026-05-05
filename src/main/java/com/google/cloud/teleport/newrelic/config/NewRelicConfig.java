@@ -26,7 +26,13 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * send the processed logs to New Relic.
  */
 public class NewRelicConfig {
-  protected static final String DEFAULT_LOGS_API_URL = "https://log-api.newrelic.com/log/v1";
+  // Region-specific New Relic Logs API endpoints
+  protected static final String LOGS_API_URL_US = "https://log-api.newrelic.com/log/v1";
+  protected static final String LOGS_API_URL_EU = "https://log-api.eu.newrelic.com/log/v1";
+  protected static final String LOGS_API_URL_JP = "https://log-api.jp.newrelic.com/log/v1";
+
+  // Default to US region for backward compatibility
+  protected static final String DEFAULT_LOGS_API_URL = LOGS_API_URL_US;
   protected static final int DEFAULT_BATCH_COUNT = 100;
   protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   protected static final boolean DEFAULT_USE_COMPRESSION = true;
