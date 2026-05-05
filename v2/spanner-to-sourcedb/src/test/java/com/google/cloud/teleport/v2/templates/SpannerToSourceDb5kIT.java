@@ -33,9 +33,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -136,35 +133,34 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
       LOG.warn("Failed to set MySQL global optimization flags. Proceeding anyway.", e);
     }
 
-    LOG.info("Creating {} tables in MySQL in parallel batches...", NUM_TABLES);
-    int mysqlBatchSize = 100;
-    ExecutorService mysqlExecutor = Executors.newFixedThreadPool(5);
-    for (int i = 1; i <= NUM_TABLES; i += mysqlBatchSize) {
-      final int start = i;
-      final int end = Math.min(NUM_TABLES, i + mysqlBatchSize - 1);
-      mysqlExecutor.submit(
-          () -> {
-            try (Connection conn =
-                    DriverManager.getConnection(
-                        jdbcResourceManager.getUri(),
-                        jdbcResourceManager.getUsername(),
-                        jdbcResourceManager.getPassword());
-                Statement stmt = conn.createStatement()) {
-              for (int j = start; j <= end; j++) {
-                String mySqlDdl =
-                    String.format(
-                        "CREATE TABLE table_%d (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)", j);
-                stmt.addBatch(mySqlDdl);
-              }
-              stmt.executeBatch();
-            } catch (Exception e) {
-              LOG.error("Failed to execute MySQL DDL batch for tables {}-{}", start, end, e);
-            }
-          });
+    LOG.info("Creating table_1 in MySQL as master...");
+    try (Connection conn =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = conn.createStatement()) {
+      stmt.execute("CREATE TABLE table_1 (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)");
+    } catch (Exception e) {
+      LOG.error("Failed to create master table table_1 in MySQL", e);
+      throw new RuntimeException(e);
     }
-    mysqlExecutor.shutdown();
-    if (!mysqlExecutor.awaitTermination(30, TimeUnit.MINUTES)) {
-      throw new RuntimeException("MySQL table creation timed out");
+
+    LOG.info("Creating remaining {} tables in MySQL using LIKE...", NUM_TABLES - 1);
+    try (Connection conn =
+            DriverManager.getConnection(
+                jdbcResourceManager.getUri(),
+                jdbcResourceManager.getUsername(),
+                jdbcResourceManager.getPassword());
+        Statement stmt = conn.createStatement()) {
+      for (int j = 2; j <= NUM_TABLES; j++) {
+        String mySqlDdl = String.format("CREATE TABLE table_%d LIKE table_1", j);
+        stmt.addBatch(mySqlDdl);
+      }
+      stmt.executeBatch();
+    } catch (Exception e) {
+      LOG.error("Failed to create tables in MySQL", e);
+      throw new RuntimeException(e);
     }
     LOG.info("Created {} tables on Source", NUM_TABLES);
 

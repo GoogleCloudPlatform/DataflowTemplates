@@ -97,19 +97,24 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     c.output(MAIN_DDL_TAG, mainDdl);
 
     // Fetch shadowTableDdl
-    Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
+    Ddl shadowTableDdl =
+        getInformationSchemaAsDdl(
+            shadowTableSpannerAccessor, shadowTableDialect, "metadata database");
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
   }
 
-  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect) {
+  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect, String dbLabel) {
     BatchClient batchClient = accessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    LOG.info("Scanning information schema...");
+    LOG.info("Scanning information schema for {}...", dbLabel);
     long startTime = System.currentTimeMillis();
     Ddl ddl = scanner.scan();
-    LOG.info("Scanned information schema in {} ms", System.currentTimeMillis() - startTime);
+    LOG.info(
+        "Scanned information schema for {} in {} ms",
+        dbLabel,
+        System.currentTimeMillis() - startTime);
     return ddl;
   }
 }
