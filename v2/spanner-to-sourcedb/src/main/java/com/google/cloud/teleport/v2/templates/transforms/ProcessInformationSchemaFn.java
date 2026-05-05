@@ -72,6 +72,11 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
                 shadowTableSpannerConfig.getInstanceId().get(),
                 shadowTableSpannerConfig.getDatabaseId().get())
             .getDialect();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            spannerConfig, shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix);
+    shadowTableCreator.createShadowTablesInSpanner();
   }
 
   @Teardown
@@ -86,16 +91,7 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-
-    // 1. Create Shadow Tables if needed
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            spannerConfig, shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix);
-
-    // This method internally fetches DDLs and creates tables.
-    shadowTableCreator.createShadowTablesInSpanner();
-
-    // 2. Fetch DDLs
+    // Fetch DDLs
     Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor, dialect);
     Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
 

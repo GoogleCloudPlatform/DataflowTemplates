@@ -33,16 +33,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Helper class to create shadow tables in the metadata database. */
 public class ShadowTableCreator {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ShadowTableCreator.class);
 
   private final SpannerAccessor spannerAccessor;
   private final SpannerAccessor metadataSpannerAccessor;
@@ -110,7 +107,6 @@ public class ShadowTableCreator {
   public void createShadowTablesInSpanner() {
 
     List<String> dataTablesWithoutShadowTables = getDataTablesWithNoShadowTables();
-    LOG.info("Found {} tables that need shadow tables.", dataTablesWithoutShadowTables.size());
 
     Ddl.Builder shadowTableBuilder = Ddl.builder(dialect);
     for (String dataTableName : dataTablesWithoutShadowTables) {
@@ -120,56 +116,22 @@ public class ShadowTableCreator {
     List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
 
     if (createShadowTableStatements.size() == 0) {
-      LOG.info("All shadow tables already exist.");
       return;
     }
 
-    int batchSize = 100;
-
-    LOG.info(
-        "Creating {} shadow tables in batches of {}...",
-        createShadowTableStatements.size(),
-        batchSize);
     DatabaseAdminClient databaseAdminClient = metadataSpannerAccessor.getDatabaseAdminClient();
 
-    java.util.concurrent.ExecutorService ddlExecutor =
-        java.util.concurrent.Executors.newFixedThreadPool(3);
-    java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+        databaseAdminClient.updateDatabaseDdl(
+            metadataConfig.getInstanceId().get(),
+            metadataConfig.getDatabaseId().get(),
+            createShadowTableStatements,
+            null);
 
-    for (int i = 0; i < createShadowTableStatements.size(); i += batchSize) {
-      int start = i;
-      int end = Math.min(createShadowTableStatements.size(), start + batchSize);
-      List<String> batch = createShadowTableStatements.subList(start, end);
-
-      futures.add(
-          ddlExecutor.submit(
-              () -> {
-                LOG.info("Creating shadow tables in batch {} - {}", start, end);
-                try {
-                  OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
-                      databaseAdminClient.updateDatabaseDdl(
-                          metadataConfig.getInstanceId().get(),
-                          metadataConfig.getDatabaseId().get(),
-                          batch,
-                          null);
-                  op.get(30, TimeUnit.MINUTES);
-                  LOG.info("Successfully created shadow tables in batch {} - {}", start, end);
-                } catch (Exception e) {
-                  throw new RuntimeException("Failed to execute shadow table DDL batch", e);
-                }
-              }));
-    }
-
-    ddlExecutor.shutdown();
     try {
-      for (java.util.concurrent.Future<?> future : futures) {
-        future.get();
-      }
-      if (!ddlExecutor.awaitTermination(60, TimeUnit.MINUTES)) {
-        throw new RuntimeException("Shadow table creation timed out after 60 minutes");
-      }
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException("Shadow table creation failed", e);
+      op.get(15, TimeUnit.MINUTES);
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      throw new RuntimeException(e);
     }
     return;
   }
@@ -179,7 +141,7 @@ public class ShadowTableCreator {
    * Note: Shadow tables for interleaved tables are not interleaved to
    * their shadow parent table.
    */
-  Table constructShadowTable(String dataTableName) {
+  public Table constructShadowTable(String dataTableName) {
 
     // Create a new shadow table with the given prefix.
     Table.Builder shadowTableBuilder = Table.builder(dialect);
@@ -238,7 +200,7 @@ public class ShadowTableCreator {
   /*
    * Returns the list of data table names that don't have a corresponding shadow table.
    */
-  List<String> getDataTablesWithNoShadowTables() {
+  public List<String> getDataTablesWithNoShadowTables() {
     // Get the list of shadow tables in the information schema based on the prefix.
     Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfPrimaryDb);
 

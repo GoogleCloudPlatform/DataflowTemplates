@@ -109,8 +109,6 @@ public class ProcessInformationSchemaFnTest {
     ProcessInformationSchemaFn fn =
         new ProcessInformationSchemaFn(spannerConfig, shadowTableSpannerConfig, "shadow_");
 
-    fn.setup();
-
     try (MockedConstruction<ShadowTableCreator> mockedShadowTableCreator =
             mockConstruction(
                 ShadowTableCreator.class,
@@ -123,6 +121,8 @@ public class ProcessInformationSchemaFnTest {
                 (mock, context) -> {
                   when(mock.scan()).thenReturn(ddl);
                 })) {
+
+      fn.setup();
 
       fn.processElement(processContext);
 

@@ -16,8 +16,11 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
@@ -25,6 +28,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -104,25 +109,11 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
           String.format("CREATE TABLE table_%d (id INT64 NOT NULL) PRIMARY KEY(id)", i));
     }
 
-    LOG.info("Executing Spanner DDLs in parallel batches...");
-    int batchSize = 100;
-    ExecutorService ddlExecutor = Executors.newFixedThreadPool(3);
-    for (int i = 0; i < spannerDdls.size(); i += batchSize) {
-      int end = Math.min(spannerDdls.size(), i + batchSize);
-      List<String> batch = spannerDdls.subList(i, end);
-      ddlExecutor.submit(
-          () -> {
-            try {
-              spannerResourceManager.executeDdlStatements(batch);
-            } catch (Exception e) {
-              LOG.error("Failed to execute Spanner DDL batch", e);
-            }
-          });
-    }
-    ddlExecutor.shutdown();
-    if (!ddlExecutor.awaitTermination(60, TimeUnit.MINUTES)) {
-      throw new RuntimeException("Spanner DDL timed out after 60 minutes");
-    }
+    LOG.info("Executing Spanner DDLs...");
+
+    long startTime = System.currentTimeMillis();
+    spannerResourceManager.executeDdlStatements(spannerDdls);
+    LOG.info("Executed Spanner DDLs in {} ms", System.currentTimeMillis() - startTime);
 
     LOG.info("Creating change stream in Spanner...");
     spannerResourceManager.executeDdlStatement(
@@ -208,26 +199,22 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
     // 1. Write row in Spanner
     LOG.info("Writing a row to Spanner...");
-    com.google.cloud.spanner.Mutation m =
-        com.google.cloud.spanner.Mutation.newInsertOrUpdateBuilder("table_1")
-            .set("id")
-            .to(42L)
-            .build();
+    Mutation m = Mutation.newInsertOrUpdateBuilder("table_1").set("id").to(42L).build();
     spannerResourceManager.write(m);
     LOG.info("Successfully wrote a row to Spanner.");
 
     // 2. Assert the row in MySQL
     LOG.info("Waiting for row to be replicated to MySQL...");
-    org.apache.beam.it.common.PipelineOperator.Result result =
+    PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, java.time.Duration.ofHours(1)),
+                createConfig(jobInfo, Duration.ofHours(1)),
                 () -> jdbcResourceManager.getRowCount("table_1") == 1);
-    org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult(result).meetsConditions();
+    assertThatResult(result).meetsConditions();
 
-    java.util.List<java.util.Map<String, Object>> rows = jdbcResourceManager.readTable("table_1");
-    com.google.common.truth.Truth.assertThat(rows).hasSize(1);
-    com.google.common.truth.Truth.assertThat(rows.get(0).get("id").toString()).isEqualTo("42");
+    List<Map<String, Object>> rows = jdbcResourceManager.readTable("table_1");
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).get("id").toString()).isEqualTo("42");
     LOG.info("Validation successful! Row correctly replicated to MySQL.");
   }
 }
