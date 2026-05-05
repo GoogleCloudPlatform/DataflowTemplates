@@ -27,7 +27,10 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.joda.time.Instant;
@@ -121,8 +124,8 @@ public class DataGeneratorUtilsTest {
             .precision(5)
             .scale(7)
             .build();
-    BigDecimal val4 = DataGeneratorUtils.generateNumeric(col4, faker);
-    assertEquals(5, val4.scale()); // Scale should be capped at precision
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> DataGeneratorUtils.generateNumeric(col4, faker));
   }
 
   @Test
@@ -439,5 +442,45 @@ public class DataGeneratorUtilsTest {
             .build();
     Assert.assertThrows(
         RuntimeException.class, () -> DataGeneratorUtils.generateValue(colTs, faker));
+  }
+
+  @Test
+  public void testGenerateValue_OverrideOnNonJsonColumn_ThrowsException() {
+    Map<String, Object> testMap = new HashMap<>();
+    testMap.put("k", "v");
+    DataGeneratorColumn strColWithOverride =
+        DataGeneratorColumn.builder()
+            .name("c")
+            .logicalType(LogicalType.STRING)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression(testMap)
+            .build();
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> DataGeneratorUtils.generateValue(strColWithOverride, faker));
+  }
+
+  @Test
+  public void testResolveJsonTemplateNode_WithNestedListTemplate() throws Exception {
+    List<Object> nestedList = Arrays.asList("#{lorem.word}", 42L);
+    Map<String, Object> schemaMap = new LinkedHashMap<>();
+    schemaMap.put("tags", nestedList);
+
+    DataGeneratorColumn colJson =
+        DataGeneratorColumn.builder()
+            .name("json_list")
+            .logicalType(LogicalType.JSON)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression(schemaMap)
+            .build();
+
+    Object result = DataGeneratorUtils.generateValue(colJson, faker);
+    String jsonStr = (String) result;
+    com.fasterxml.jackson.databind.JsonNode node =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(jsonStr);
+    Assert.assertTrue(node.get("tags").isArray());
+    Assert.assertEquals(42, node.get("tags").get(1).asInt());
   }
 }

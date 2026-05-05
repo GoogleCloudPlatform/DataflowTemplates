@@ -205,7 +205,14 @@ public final class DataGeneratorUtils {
             ? column.scale()
             : Constants.DEFAULT_NUMERIC_SCALE;
     if (sc > prec) {
-      sc = prec;
+      throw new IllegalArgumentException(
+          "Scale "
+              + sc
+              + " cannot be greater than precision "
+              + prec
+              + " for numeric column '"
+              + column.name()
+              + "'.");
     }
 
     String randomDigits = faker.number().digits(prec);
