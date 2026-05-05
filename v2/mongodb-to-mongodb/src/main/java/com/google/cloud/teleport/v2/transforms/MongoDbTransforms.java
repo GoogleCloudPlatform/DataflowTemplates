@@ -35,10 +35,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -146,218 +149,230 @@ public class MongoDbTransforms {
 
     @Override
     public PDone expand(PCollection<Document> input) {
-      TupleTag<Document> successTag = new TupleTag<Document>() {};
-      TupleTag<String> failureTag = new TupleTag<String>() {};
+      TupleTag<Document> successTag = new TupleTag<Document>() {
+      };
+      TupleTag<String> failureTag = new TupleTag<String>() {
+      };
 
-      PCollectionTuple writeResults =
-          input
-              .apply(
-                  "AddRandomKey",
-                  WithKeys.of(
-                      doc ->
-                          String.valueOf(
-                              java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
-              .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Document.class)))
-              .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
-              .apply(
-                  "WriteBatches",
-                  ParDo.of(
-                          new DoFn<KV<String, Iterable<Document>>, Document>() {
-                            private transient MongoClient mongoClient;
-                            private transient MongoCollection<Document> mongoCollection;
-                            private transient ExecutorService executor;
-                            private transient Semaphore semaphore;
-                            private transient ConcurrentLinkedQueue<CompletableFuture<Void>>
-                                futures;
-                            private transient ConcurrentLinkedQueue<String> failures;
+      PCollectionTuple writeResults = input
+          .apply(
+              "AddRandomKey",
+              WithKeys.of(
+                  doc -> String.valueOf(
+                      java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
+          .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Document.class)))
+          .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
+          .apply(
+              "WriteBatches",
+              ParDo.of(
+                  new DoFn<KV<String, Iterable<Document>>, Document>() {
+                    private transient MongoClient mongoClient;
+                    private transient MongoCollection<Document> mongoCollection;
+                    private transient ExecutorService executor;
+                    private transient Semaphore semaphore;
+                    private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
+                    private transient ConcurrentLinkedQueue<String> failures;
+                    private final Counter successfulDocs = Metrics.counter(WriteWithDlq.class,
+                        "successful-documents-written");
 
-                            @Setup
-                            public void setup() {
-                              executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
-                              semaphore = new Semaphore(maxConcurrentAsyncWrites);
-                            }
+                    private transient AtomicLong successfulCount;
 
-                            @Teardown
-                            public void teardown() {
-                              if (executor != null) {
-                                executor.shutdown();
-                              }
-                            }
+                    @Setup
+                    public void setup() {
+                      executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
+                      semaphore = new Semaphore(maxConcurrentAsyncWrites);
+                    }
 
-                            @StartBundle
-                            public void startBundle() {
-                              mongoClient = clientFactory.apply(uri);
-                              MongoDatabase db = mongoClient.getDatabase(database);
+                    @Teardown
+                    public void teardown() {
+                      if (executor != null) {
+                        executor.shutdown();
+                      }
+                    }
 
-                              WriteConcern wc = WriteConcern.ACKNOWLEDGED;
-                              if (writeConcern != null) {
-                                if (writeConcern.equalsIgnoreCase("majority")) {
-                                  wc = WriteConcern.MAJORITY;
-                                } else {
+                    @StartBundle
+                    public void startBundle() {
+                      mongoClient = clientFactory.apply(uri);
+                      MongoDatabase db = mongoClient.getDatabase(database);
+
+                      WriteConcern wc = WriteConcern.ACKNOWLEDGED;
+                      if (writeConcern != null) {
+                        if (writeConcern.equalsIgnoreCase("majority")) {
+                          wc = WriteConcern.MAJORITY;
+                        } else {
+                          try {
+                            int w = Integer.parseInt(writeConcern);
+                            wc = new WriteConcern(w);
+                          } catch (NumberFormatException e) {
+                            // Fallback to default
+                          }
+                        }
+                      }
+                      if (journal != null) {
+                        wc = wc.withJournal(journal);
+                      }
+
+                      mongoCollection = db.getCollection(collection).withWriteConcern(wc);
+
+                      futures = new ConcurrentLinkedQueue<>();
+                      failures = new ConcurrentLinkedQueue<>();
+                      successfulCount = new AtomicLong(0);
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c)
+                        throws InterruptedException {
+                      if (mongoCollection == null) {
+                        mongoCollection = clientFactory.apply(uri).getDatabase(database).getCollection(collection);
+                      }
+                      Iterable<Document> docs = c.element().getValue();
+                      List<WriteModel<Document>> updates = new ArrayList<>();
+                      List<Document> docList = new ArrayList<>();
+
+                      for (Document doc : docs) {
+                        docList.add(doc);
+                        Object id = doc.get("_id");
+                        if (id != null) {
+                          updates.add(
+                              new ReplaceOneModel<>(
+                                  new Document("_id", id),
+                                  doc,
+                                  new ReplaceOptions().upsert(true)));
+                        }
+                      }
+
+                      if (!updates.isEmpty()) {
+                        semaphore.acquire();
+                        CompletableFuture<Void> future = CompletableFuture.runAsync(
+                            () -> {
+                              try {
+                                int attempt = 0;
+                                boolean success = false;
+                                while (attempt < maxRetries && !success) {
                                   try {
-                                    int w = Integer.parseInt(writeConcern);
-                                    wc = new WriteConcern(w);
-                                  } catch (NumberFormatException e) {
-                                    // Fallback to default
-                                  }
-                                }
-                              }
-                              if (journal != null) {
-                                wc = wc.withJournal(journal);
-                              }
+                                    mongoCollection.bulkWrite(
+                                        updates, new BulkWriteOptions().ordered(ordered));
+                                    success = true;
+                                    successfulCount.addAndGet(docList.size());
+                                  } catch (MongoBulkWriteException e) {
 
-                              mongoCollection = db.getCollection(collection).withWriteConcern(wc);
+                                    List<BulkWriteError> writeErrors = e.getWriteErrors();
+                                    boolean hasPermanentError = false;
+                                    for (BulkWriteError error : writeErrors) {
+                                      int code = error.getCode();
+                                      if (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
+                                          || code == ERR_DOCUMENT_VALIDATION_FAILURE
+                                          || code == ERR_KEY_TOO_LONG
+                                          || code == ERR_BAD_VALUE) {
+                                        hasPermanentError = true;
+                                        break;
+                                      }
+                                    }
 
-                              futures = new ConcurrentLinkedQueue<>();
-                              failures = new ConcurrentLinkedQueue<>();
-                            }
-
-                            @ProcessElement
-                            public void processElement(ProcessContext c)
-                                throws InterruptedException {
-                              if (mongoCollection == null) {
-                                mongoCollection = clientFactory.apply(uri).getDatabase(database).getCollection(collection);
-                              }
-                              Iterable<Document> docs = c.element().getValue();
-                              List<WriteModel<Document>> updates = new ArrayList<>();
-                              List<Document> docList = new ArrayList<>();
-
-                              for (Document doc : docs) {
-                                docList.add(doc);
-                                Object id = doc.get("_id");
-                                if (id != null) {
-                                  updates.add(
-                                      new ReplaceOneModel<>(
-                                          new Document("_id", id),
-                                          doc,
-                                          new ReplaceOptions().upsert(true)));
-                                }
-                              }
-
-
-                              if (!updates.isEmpty()) {
-                                semaphore.acquire();
-                                CompletableFuture<Void> future =
-                                    CompletableFuture.runAsync(
-                                        () -> {
-                                          try {
-                                            int attempt = 0;
-                                            boolean success = false;
-                                            while (attempt < maxRetries && !success) {
-                                            try {
-                                              mongoCollection.bulkWrite(
-                                                  updates, new BulkWriteOptions().ordered(ordered));
-                                              success = true;
-                                            } catch (MongoBulkWriteException e) {
-
-                                            List<BulkWriteError> writeErrors = e.getWriteErrors();
-                                            boolean hasPermanentError = false;
+                                    if (hasPermanentError || attempt + 1 >= maxRetries) {
+                                      if (ordered) {
+                                        int firstErrorIndex = docList.size();
+                                        for (BulkWriteError error : writeErrors) {
+                                          firstErrorIndex = Math.min(firstErrorIndex, error.getIndex());
+                                        }
+                                        successfulCount.addAndGet(firstErrorIndex);
+                                        // Add all documents from firstErrorIndex to the end
+                                        // to failures.
+                                        for (int i = firstErrorIndex; i < docList.size(); i++) {
+                                          Document doc = docList.get(i);
+                                          String msg = "Ordered write failed or was not attempted.";
+                                          if (i == firstErrorIndex) {
                                             for (BulkWriteError error : writeErrors) {
-                                              int code = error.getCode();
-                                              if (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
-                                                  || code == ERR_DOCUMENT_VALIDATION_FAILURE
-                                                  || code == ERR_KEY_TOO_LONG
-                                                  || code == ERR_BAD_VALUE) {
-                                                hasPermanentError = true;
+                                              if (error.getIndex() == i) {
+                                                msg = error.getMessage();
                                                 break;
                                               }
                                             }
-
-                                            if (hasPermanentError || attempt + 1 >= maxRetries) {
-                                              if (ordered) {
-                                                int firstErrorIndex = docList.size();
-                                                for (BulkWriteError error : writeErrors) {
-                                                  firstErrorIndex = Math.min(firstErrorIndex, error.getIndex());
-                                                }
-                                                for (int i = firstErrorIndex; i < docList.size(); i++) {
-                                                  Document doc = docList.get(i);
-                                                  String msg = "Ordered write failed or was not attempted.";
-                                                  if (i == firstErrorIndex) {
-                                                    for (BulkWriteError error : writeErrors) {
-                                                      if (error.getIndex() == i) {
-                                                        msg = error.getMessage();
-                                                        break;
-                                                      }
-                                                    }
-                                                  }
-                                                  failures.add(doc.toJson() + " - Error: " + msg);
-                                                }
-                                              } else {
-                                                for (BulkWriteError error : writeErrors) {
-                                                  int index = error.getIndex();
-                                                  if (index >= 0 && index < docList.size()) {
-                                                    Document failedDoc = docList.get(index);
-                                                    failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
-                                                  }
-                                                }
-                                              }
-                                              break;
-                                            }
-
-                                            attempt++;
-                                            long delay = (long) (1000 * Math.pow(2, attempt));
-                                            try {
-                                              Thread.sleep(delay);
-                                            } catch (InterruptedException ie) {
-                                              Thread.currentThread().interrupt();
-                                              break;
-                                            }
-                                          } catch (MongoException e) {
-
-                                            int code = e.getCode();
-                                            boolean isPermanent = (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
-                                                || code == ERR_DOCUMENT_VALIDATION_FAILURE
-                                                || code == ERR_KEY_TOO_LONG
-                                                || code == ERR_BAD_VALUE);
-
-                                            if (isPermanent || attempt + 1 >= maxRetries) {
-                                              for (Document doc : docList) {
-                                                failures.add(doc.toJson() + " - Error: " + e.getMessage());
-                                              }
-                                              break;
-                                            }
-
-                                            attempt++;
-                                            long delay = (long) (1000 * Math.pow(2, attempt));
-                                            try {
-                                              Thread.sleep(delay);
-                                            } catch (InterruptedException ie) {
-                                              Thread.currentThread().interrupt();
-                                              break;
-                                            }
-                                          } catch (Exception e) {
-
-                                            for (Document doc : docList) {
-                                              failures.add(doc.toJson() + " - Error: " + e.getMessage());
-                                            }
-                                            break;
                                           }
+                                          failures.add(doc.toJson() + " - Error: " + msg);
+                                        }
+                                      } else {
+                                        successfulCount.addAndGet(
+                                            docList.size() - writeErrors.size());
+
+                                        for (BulkWriteError error : writeErrors) {
+                                          int index = error.getIndex();
+                                          if (index >= 0 && index < docList.size()) {
+                                            Document failedDoc = docList.get(index);
+                                            failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
                                           }
-                                          } finally {
-                                            semaphore.release();
-                                          }
-                                        },
-                                        executor);
-                                futures.add(future);
-                              }
-                            }
+                                        }
+                                      }
+                                      break;
+                                    }
 
-                            @FinishBundle
-                            public void finishBundle(FinishBundleContext c) {
-                              CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                                  .join();
+                                    attempt++;
+                                    long delay = (long) (1000 * Math.pow(2, attempt));
+                                    try {
+                                      Thread.sleep(delay);
+                                    } catch (InterruptedException ie) {
+                                      Thread.currentThread().interrupt();
+                                      break;
+                                    }
+                                  } catch (MongoException e) {
 
-                              if (mongoClient != null) {
-                                mongoClient.close();
-                              }
+                                    int code = e.getCode();
+                                    boolean isPermanent = (ErrorCategory
+                                        .fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
+                                        || code == ERR_DOCUMENT_VALIDATION_FAILURE
+                                        || code == ERR_KEY_TOO_LONG
+                                        || code == ERR_BAD_VALUE);
 
-                              String failure;
-                              while ((failure = failures.poll()) != null) {
-                                c.output(failureTag, failure, Instant.now(), GlobalWindow.INSTANCE);
+                                    if (isPermanent || attempt + 1 >= maxRetries) {
+                                      for (Document doc : docList) {
+                                        failures.add(doc.toJson() + " - Error: " + e.getMessage());
+                                      }
+                                      break;
+                                    }
+
+                                    attempt++;
+                                    long delay = (long) (1000 * Math.pow(2, attempt));
+                                    try {
+                                      Thread.sleep(delay);
+                                    } catch (InterruptedException ie) {
+                                      Thread.currentThread().interrupt();
+                                      break;
+                                    }
+                                  } catch (Exception e) {
+
+                                    for (Document doc : docList) {
+                                      failures.add(doc.toJson() + " - Error: " + e.getMessage());
+                                    }
+                                    break;
+                                  }
+                                }
+                              } finally {
+                                semaphore.release();
                               }
-                            }
-                          })
-                      .withOutputTags(successTag, TupleTagList.of(failureTag)));
+                            },
+                            executor);
+                        futures.add(future);
+                      }
+                    }
+
+                    @FinishBundle
+                    public void finishBundle(FinishBundleContext c) {
+                      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                          .join();
+
+                      if (mongoClient != null) {
+                        mongoClient.close();
+                      }
+
+                      successfulDocs.inc(successfulCount.get());
+
+                      String failure;
+                      while ((failure = failures.poll()) != null) {
+                        c.output(failureTag, failure, Instant.now(), GlobalWindow.INSTANCE);
+                      }
+                    }
+                  })
+                  .withOutputTags(successTag, TupleTagList.of(failureTag)));
 
       if (dlqPath != null && !dlqPath.isEmpty()) {
         writeResults

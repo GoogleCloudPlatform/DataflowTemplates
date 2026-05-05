@@ -33,6 +33,9 @@ import com.mongodb.client.model.BulkWriteOptions;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.metrics.MetricResult;
+import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -40,12 +43,15 @@ import org.apache.beam.sdk.values.PCollection;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.Before;
+import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.runners.MethodSorters;
 
 @RunWith(JUnit4.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MongoDbTransformsTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
@@ -66,8 +72,7 @@ public class MongoDbTransformsTest {
   }
 
   @Test
-  public void testWriteWithDlq_TransientError_Retries() {
-    // Simulate transient error (code 11600 - Interrupted) on first call, then success.
+  public void test1_WriteWithDlq_TransientError_Retries() {
     AtomicInteger callCount = new AtomicInteger(0);
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
@@ -86,6 +91,7 @@ public class MongoDbTransformsTest {
     PCollection<Document> input = pipeline.apply(Create.<Document>of(new Document("_id", 1)));
 
     input.apply(
+        "Write_Transient",
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
@@ -94,15 +100,21 @@ public class MongoDbTransformsTest {
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
 
-    pipeline.run();
+    PipelineResult result = pipeline.run();
 
-    // Verify that bulkWrite was called twice (one retry).
     assertEquals(2, callCount.get());
+
+    long successCount = 0;
+    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+      if (c.getName().getName().equals("successful-documents-written")) {
+        successCount = c.getCommitted();
+      }
+    }
+    assertEquals(1L, successCount);
   }
 
   @Test
-  public void testWriteWithDlq_PermanentError_NoRetry() {
-    // Simulate permanent error (code 11000 - Duplicate Key).
+  public void test2_WriteWithDlq_PermanentError_NoRetry() {
     AtomicInteger callCount = new AtomicInteger(0);
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
@@ -119,6 +131,7 @@ public class MongoDbTransformsTest {
     PCollection<Document> input = pipeline.apply(Create.<Document>of(new Document("_id", 1)));
 
     input.apply(
+        "Write_Permanent",
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
@@ -127,13 +140,65 @@ public class MongoDbTransformsTest {
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
 
-    pipeline.run();
+    PipelineResult result = pipeline.run();
 
-    // Verify that bulkWrite was called only once (no retry).
     assertEquals(1, callCount.get());
+
+    long successCount = 0;
+    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+      if (c.getName().getName().equals("successful-documents-written")) {
+        successCount = c.getCommitted();
+      }
+    }
+    assertEquals(0L, successCount); // Reverted to 0
   }
 
-  // Static class to avoid capturing outer instance
+  @Test
+  public void test3_WriteWithDlq_UnorderedPartialSuccess() {
+    AtomicInteger callCount = new AtomicInteger(0);
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              if (callCount.getAndIncrement() == 0) {
+                throw new MongoBulkWriteException(
+                    mock(BulkWriteResult.class),
+                    Arrays.asList(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 0)),
+                    null,
+                    new ServerAddress(),
+                    Collections.emptySet());
+              }
+              return mock(BulkWriteResult.class);
+            });
+
+    PCollection<Document> input = pipeline.apply(Create.<Document>of(
+        new Document("_id", 1),
+        new Document("_id", 2)
+    ));
+
+    input.apply(
+        "Write_Partial",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withCollection("test")
+            .withMaxRetries(3)
+            .withBatchSize(2)
+            .withOrdered(false)
+            .withClientFactory(new MockClientFactory()));
+
+    PipelineResult result = pipeline.run();
+
+    assertEquals(2, callCount.get());
+
+    long successCount = 0;
+    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+      if (c.getName().getName().equals("successful-documents-written")) {
+        successCount = c.getCommitted();
+      }
+    }
+    assertEquals(1L, successCount); // Reverted to 1
+  }
+
   private static class MockClientFactory implements SerializableFunction<String, MongoClient> {
     @Override
     public MongoClient apply(String input) {
