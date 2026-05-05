@@ -33,10 +33,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -147,6 +150,9 @@ public class MongoDbTransforms {
                             private transient ConcurrentLinkedQueue<CompletableFuture<Void>>
                                 futures;
                             private transient ConcurrentLinkedQueue<String> failures;
+                            private final Counter successfulDocs =
+                                Metrics.counter(WriteWithDlq.class, "successful-documents-written");
+                            private transient AtomicLong successfulCount;
 
                             @Setup
                             public void setup() {
@@ -187,6 +193,7 @@ public class MongoDbTransforms {
 
                               futures = new ConcurrentLinkedQueue<>();
                               failures = new ConcurrentLinkedQueue<>();
+                              successfulCount = new AtomicLong(0);
                             }
 
                             @ProcessElement
@@ -216,6 +223,7 @@ public class MongoDbTransforms {
                                           try {
                                             mongoCollection.bulkWrite(
                                                 updates, new BulkWriteOptions().ordered(ordered));
+                                            successfulCount.addAndGet(docList.size());
                                           } catch (MongoBulkWriteException e) {
                                             List<BulkWriteError> writeErrors = e.getWriteErrors();
                                             if (ordered) {
@@ -226,6 +234,7 @@ public class MongoDbTransforms {
                                                 firstErrorIndex =
                                                     Math.min(firstErrorIndex, error.getIndex());
                                               }
+                                              successfulCount.addAndGet(firstErrorIndex);
                                               // Add all documents from firstErrorIndex to the end
                                               // to failures.
                                               for (int i = firstErrorIndex;
@@ -245,6 +254,8 @@ public class MongoDbTransforms {
                                                 failures.add(doc.toJson() + " - Error: " + msg);
                                               }
                                             } else {
+                                              successfulCount.addAndGet(
+                                                  docList.size() - writeErrors.size());
                                               // Unordered execution attempts all writes.
                                               // Add only specific failed documents to failures.
                                               for (BulkWriteError error : writeErrors) {
@@ -280,6 +291,8 @@ public class MongoDbTransforms {
                               if (mongoClient != null) {
                                 mongoClient.close();
                               }
+
+                              successfulDocs.inc(successfulCount.get());
 
                               String failure;
                               while ((failure = failures.poll()) != null) {
