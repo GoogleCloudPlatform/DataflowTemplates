@@ -45,59 +45,37 @@ public class ShadowTableCreator {
 
   private static final Logger LOG = LoggerFactory.getLogger(ShadowTableCreator.class);
 
-  private final SpannerAccessor spannerAccessor;
   private final SpannerAccessor metadataSpannerAccessor;
   private final Dialect dialect;
-  private final SpannerConfig spannerConfig;
   private final SpannerConfig metadataConfig;
   private String shadowTablePrefix;
   private Ddl informationSchemaOfPrimaryDb;
   private Ddl informationSchemaOfMetadataDb;
 
-  private enum DatabaseType {
-    PRIMARY,
-    METADATA
-  }
-
   public ShadowTableCreator(
-      SpannerConfig spannerConfig,
       SpannerConfig metadataConfig,
       Dialect dialect,
-      String shadowTablePrefix) {
-    this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    ;
+      String shadowTablePrefix,
+      Ddl informationSchemaOfPrimaryDb) {
     this.metadataSpannerAccessor = SpannerAccessor.getOrCreate(metadataConfig);
     this.dialect = dialect;
-    this.spannerConfig = spannerConfig;
     this.metadataConfig = metadataConfig;
     this.shadowTablePrefix = shadowTablePrefix;
-    setinformationSchema(DatabaseType.PRIMARY);
-    setinformationSchema(DatabaseType.METADATA);
+    this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
+    setInformationSchemaOfMetadataDb();
   }
 
-  private void setinformationSchema(DatabaseType databaseType) {
-    BatchClient batchClient =
-        databaseType.equals(DatabaseType.PRIMARY)
-            ? spannerAccessor.getBatchClient()
-            : metadataSpannerAccessor.getBatchClient();
+  private void setInformationSchemaOfMetadataDb() {
+    BatchClient batchClient = metadataSpannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    LOG.info("Scanning information schema for {} database...", databaseType);
+    LOG.info("Scanning information schema for metadata database...");
     long startTime = System.currentTimeMillis();
-    if (databaseType.equals(DatabaseType.PRIMARY)) {
-      this.informationSchemaOfPrimaryDb = scanner.scan();
-    } else {
-      this.informationSchemaOfMetadataDb = scanner.scan();
-    }
+    this.informationSchemaOfMetadataDb = scanner.scan();
     LOG.info(
-        "Scanned information schema for {} database in {} ms",
-        databaseType,
+        "Scanned information schema for metadata database in {} ms",
         System.currentTimeMillis() - startTime);
-  }
-
-  public Ddl getInformationSchemaOfPrimaryDb() {
-    return informationSchemaOfPrimaryDb;
   }
 
   // for unit testing purposes
@@ -112,9 +90,7 @@ public class ShadowTableCreator {
     this.shadowTablePrefix = shadowTablePrefix;
     this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
     this.informationSchemaOfMetadataDb = informationSchemaOfMetadataDb;
-    this.spannerAccessor = null;
     this.metadataSpannerAccessor = metadataSpannerAccessor;
-    this.spannerConfig = null;
     this.metadataConfig = metadataConfig;
   }
 
