@@ -91,7 +91,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void testLargeSchemaLaunch() throws Exception {
+  public void test5kTables() throws Exception {
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
 
     SubscriptionName subscriptionName =
