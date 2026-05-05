@@ -23,11 +23,9 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.mongodb.FindQuery;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -39,7 +37,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.bson.BsonDocument;
 import org.bson.Document;
 
 /** Dataflow template which copies data from one MongoDB database to another. */
@@ -117,28 +114,8 @@ public class MongoDbToMongoDb {
 
     void setTargetCollection(String value);
 
-    @TemplateParameter.Text(
-        order = 7,
-        groupName = "Source",
-        optional = true,
-        description = "BSON Filter",
-        helpText = "BSON query for server-side filtering.")
-    String getFilter();
-
-    void setFilter(String value);
-
-    @TemplateParameter.Text(
-        order = 8,
-        groupName = "Source",
-        optional = true,
-        description = "Projection",
-        helpText = "Fields to include or exclude.")
-    String getProjection();
-
-    void setProjection(String value);
-
     @TemplateParameter.Boolean(
-        order = 9,
+        order = 7,
         groupName = "Source",
         optional = true,
         description = "Use BucketAuto",
@@ -149,7 +126,7 @@ public class MongoDbToMongoDb {
     void setUseBucketAuto(Boolean value);
 
     @TemplateParameter.Integer(
-        order = 10,
+        order = 8,
         groupName = "Source",
         optional = true,
         description = "Number of Splits",
@@ -159,7 +136,7 @@ public class MongoDbToMongoDb {
     void setNumSplits(Integer value);
 
     @TemplateParameter.Integer(
-        order = 11,
+        order = 9,
         groupName = "Target",
         optional = true,
         description = "Batch Size",
@@ -170,7 +147,7 @@ public class MongoDbToMongoDb {
     void setBatchSize(Integer value);
 
     @TemplateParameter.Boolean(
-        order = 12,
+        order = 10,
         groupName = "Target",
         optional = true,
         description = "Ordered Bulk Write",
@@ -181,27 +158,7 @@ public class MongoDbToMongoDb {
     void setOrdered(Boolean value);
 
     @TemplateParameter.Text(
-        order = 13,
-        groupName = "Target",
-        optional = true,
-        description = "Write Concern",
-        helpText = "Acknowledgment level (e.g., 'w: 1').")
-    String getWriteConcern();
-
-    void setWriteConcern(String value);
-
-    @TemplateParameter.Boolean(
-        order = 14,
-        groupName = "Target",
-        optional = true,
-        description = "Journaling",
-        helpText = "Enable/disable journaling.")
-    Boolean getJournal();
-
-    void setJournal(Boolean value);
-
-    @TemplateParameter.Text(
-        order = 15,
+        order = 11,
         optional = true,
         description = "Process DLQ Path",
         helpText = "Path to store failed events during processing.")
@@ -210,7 +167,7 @@ public class MongoDbToMongoDb {
     void setProcessDlqPath(String value);
 
     @TemplateParameter.Text(
-        order = 16,
+        order = 12,
         optional = true,
         description = "Write DLQ Path",
         helpText = "Path to store failed events during writing.")
@@ -219,7 +176,7 @@ public class MongoDbToMongoDb {
     void setWriteDlqPath(String value);
 
     @TemplateParameter.Integer(
-        order = 17,
+        order = 13,
         optional = true,
         description = "Max Concurrent Async Writes",
         helpText = "Maximum number of concurrent asynchronous batch writes per worker.")
@@ -229,7 +186,7 @@ public class MongoDbToMongoDb {
     void setMaxConcurrentAsyncWrites(Integer value);
 
     @TemplateParameter.Integer(
-        order = 18,
+        order = 14,
         optional = true,
         description = "Max Retries",
         helpText = "Maximum number of retry attempts for transient failures.")
@@ -281,18 +238,6 @@ public class MongoDbToMongoDb {
               .withDatabase(options.getSourceDatabase())
               .withCollection(collection);
 
-      String filterJson = options.getFilter();
-      if (filterJson != null && !filterJson.isEmpty()) {
-        BsonDocument filter = BsonDocument.parse(filterJson);
-        read = read.withQueryFn(FindQuery.create().withFilters(filter));
-      }
-
-      String projectionStr = options.getProjection();
-      if (projectionStr != null && !projectionStr.isEmpty()) {
-        List<String> projection = Arrays.asList(projectionStr.split(","));
-        read = read.withQueryFn(FindQuery.create().withProjection(projection));
-      }
-
       if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
         read = read.withBucketAuto(true);
       }
@@ -342,8 +287,6 @@ public class MongoDbToMongoDb {
               .withCollection(targetCollection)
               .withBatchSize(options.getBatchSize())
               .withOrdered(options.getOrdered())
-              .withWriteConcern(options.getWriteConcern())
-              .withJournal(options.getJournal())
               .withDlqPath(writeDlqPath)
               .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
               .withMaxRetries(options.getMaxRetries()));

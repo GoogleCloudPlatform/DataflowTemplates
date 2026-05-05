@@ -46,8 +46,7 @@ public class MongoDbTransforms {
     private String collection;
     private Integer batchSize = 5000;
     private Boolean ordered = false;
-    private String writeConcern;
-    private Boolean journal;
+
     private String dlqPath;
     private Integer maxConcurrentAsyncWrites = 10;
     private Integer maxRetries = 3;
@@ -79,16 +78,6 @@ public class MongoDbTransforms {
       if (ordered != null) {
         this.ordered = ordered;
       }
-      return this;
-    }
-
-    public WriteWithDlq withWriteConcern(String writeConcern) {
-      this.writeConcern = writeConcern;
-      return this;
-    }
-
-    public WriteWithDlq withJournal(Boolean journal) {
-      this.journal = journal;
       return this;
     }
 
@@ -140,8 +129,6 @@ public class MongoDbTransforms {
                               .withUri(uri)
                               .withDatabase(database)
                               .withCollection(collection)
-                              .withWriteConcern(writeConcern)
-                              .withJournal(journal)
                               .withOrdered(ordered)
                               .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
                               .withMaxRetries(maxRetries)

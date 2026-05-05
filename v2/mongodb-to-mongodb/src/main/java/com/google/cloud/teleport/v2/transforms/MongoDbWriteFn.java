@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.transforms;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
-import com.mongodb.WriteConcern;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -55,8 +54,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   private final String uri;
   private final String database;
   private final String collection;
-  private final String writeConcern;
-  private final Boolean journal;
   private final Boolean ordered;
   private final Integer maxConcurrentAsyncWrites;
   private final Integer maxRetries;
@@ -78,8 +75,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       String uri,
       String database,
       String collection,
-      String writeConcern,
-      Boolean journal,
       Boolean ordered,
       Integer maxConcurrentAsyncWrites,
       Integer maxRetries,
@@ -88,8 +83,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     this.uri = uri;
     this.database = database;
     this.collection = collection;
-    this.writeConcern = writeConcern;
-    this.journal = journal;
     this.ordered = ordered;
     this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
     this.maxRetries = maxRetries;
@@ -105,8 +98,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     private String uri;
     private String database;
     private String collection;
-    private String writeConcern;
-    private Boolean journal;
     private Boolean ordered;
     private Integer maxConcurrentAsyncWrites;
     private Integer maxRetries;
@@ -125,16 +116,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
 
     public Builder withCollection(String collection) {
       this.collection = collection;
-      return this;
-    }
-
-    public Builder withWriteConcern(String writeConcern) {
-      this.writeConcern = writeConcern;
-      return this;
-    }
-
-    public Builder withJournal(Boolean journal) {
-      this.journal = journal;
       return this;
     }
 
@@ -168,8 +149,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
           uri,
           database,
           collection,
-          writeConcern,
-          journal,
           ordered,
           maxConcurrentAsyncWrites,
           maxRetries,
@@ -196,24 +175,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     mongoClient = clientFactory.apply(uri);
     MongoDatabase db = mongoClient.getDatabase(database);
 
-    WriteConcern wc = WriteConcern.ACKNOWLEDGED;
-    if (writeConcern != null) {
-      if (writeConcern.equalsIgnoreCase("majority")) {
-        wc = WriteConcern.MAJORITY;
-      } else {
-        try {
-          int w = Integer.parseInt(writeConcern);
-          wc = new WriteConcern(w);
-        } catch (NumberFormatException e) {
-          // Fallback to default
-        }
-      }
-    }
-    if (journal != null) {
-      wc = wc.withJournal(journal);
-    }
-
-    mongoCollection = db.getCollection(collection).withWriteConcern(wc);
+    mongoCollection = db.getCollection(collection);
 
     futures = new ConcurrentLinkedQueue<>();
     failures = new ConcurrentLinkedQueue<>();
