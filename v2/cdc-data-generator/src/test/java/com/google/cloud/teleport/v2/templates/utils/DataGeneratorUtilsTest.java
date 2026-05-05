@@ -18,11 +18,15 @@ package com.google.cloud.teleport.v2.templates.utils;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.joda.time.Instant;
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,28 +46,28 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .fakerExpression("fixed_value")
             .build();
-    Assert.assertEquals("fixed_value", DataGeneratorUtils.generateFromExpression(colString, faker));
+    Assert.assertEquals("fixed_value", DataGeneratorUtils.generateValue(colString, faker));
 
     DataGeneratorColumn colFaker =
         colString.toBuilder().fakerExpression("#{name.fullName}").build();
-    Object valFaker = DataGeneratorUtils.generateFromExpression(colFaker, faker);
+    Object valFaker = DataGeneratorUtils.generateValue(colFaker, faker);
     Assert.assertTrue(valFaker instanceof String);
     Assert.assertFalse(((String) valFaker).isEmpty());
 
     // JSON
     DataGeneratorColumn colJson =
         colString.toBuilder().logicalType(LogicalType.JSON).fakerExpression("{\"id\": 1}").build();
-    Assert.assertEquals("{\"id\": 1}", DataGeneratorUtils.generateFromExpression(colJson, faker));
+    Assert.assertEquals("{\"id\": 1}", DataGeneratorUtils.generateValue(colJson, faker));
 
     // Int64
     DataGeneratorColumn colInt =
         colString.toBuilder().logicalType(LogicalType.INT64).fakerExpression("12345").build();
-    Assert.assertEquals(12345L, DataGeneratorUtils.generateFromExpression(colInt, faker));
+    Assert.assertEquals(12345L, DataGeneratorUtils.generateValue(colInt, faker));
 
     // Float64
     DataGeneratorColumn colFloat =
         colString.toBuilder().logicalType(LogicalType.FLOAT64).fakerExpression("123.45").build();
-    Assert.assertEquals(123.45, DataGeneratorUtils.generateFromExpression(colFloat, faker));
+    Assert.assertEquals(123.45, DataGeneratorUtils.generateValue(colFloat, faker));
 
     // Numeric
     DataGeneratorColumn colNum =
@@ -72,7 +76,7 @@ public class DataGeneratorUtilsTest {
             .scale(3)
             .fakerExpression("123.456")
             .build();
-    Object valNum = DataGeneratorUtils.generateFromExpression(colNum, faker);
+    Object valNum = DataGeneratorUtils.generateValue(colNum, faker);
     Assert.assertTrue(valNum instanceof BigDecimal);
     Assert.assertEquals(new BigDecimal("123.456").setScale(3), valNum);
 
@@ -84,7 +88,7 @@ public class DataGeneratorUtilsTest {
             .scale(-1)
             .fakerExpression("123.456")
             .build();
-    Object valNumNegScale = DataGeneratorUtils.generateFromExpression(colNumNegScale, faker);
+    Object valNumNegScale = DataGeneratorUtils.generateValue(colNumNegScale, faker);
     Assert.assertTrue(valNumNegScale instanceof BigDecimal);
     Assert.assertEquals(
         new BigDecimal("123.456")
@@ -94,21 +98,21 @@ public class DataGeneratorUtilsTest {
     // Boolean
     DataGeneratorColumn colBoolTrue =
         colString.toBuilder().logicalType(LogicalType.BOOLEAN).fakerExpression("true").build();
-    Assert.assertEquals(true, DataGeneratorUtils.generateFromExpression(colBoolTrue, faker));
+    Assert.assertEquals(true, DataGeneratorUtils.generateValue(colBoolTrue, faker));
     DataGeneratorColumn colBoolFalse = colBoolTrue.toBuilder().fakerExpression("false").build();
-    Assert.assertEquals(false, DataGeneratorUtils.generateFromExpression(colBoolFalse, faker));
+    Assert.assertEquals(false, DataGeneratorUtils.generateValue(colBoolFalse, faker));
 
     // Bytes
     DataGeneratorColumn colBytes =
         colString.toBuilder().logicalType(LogicalType.BYTES).fakerExpression("hello").build();
     Assert.assertArrayEquals(
         "hello".getBytes(java.nio.charset.StandardCharsets.UTF_8),
-        (byte[]) DataGeneratorUtils.generateFromExpression(colBytes, faker));
+        (byte[]) DataGeneratorUtils.generateValue(colBytes, faker));
 
     // Date
     DataGeneratorColumn colDate =
         colString.toBuilder().logicalType(LogicalType.DATE).fakerExpression("2026-04-30").build();
-    Object valDate = DataGeneratorUtils.generateFromExpression(colDate, faker);
+    Object valDate = DataGeneratorUtils.generateValue(colDate, faker);
     Assert.assertTrue(valDate instanceof Instant);
 
     // Timestamp
@@ -117,8 +121,39 @@ public class DataGeneratorUtilsTest {
             .logicalType(LogicalType.TIMESTAMP)
             .fakerExpression("2026-04-30T12:34:56Z")
             .build();
-    Object valTs = DataGeneratorUtils.generateFromExpression(colTs, faker);
+    Object valTs = DataGeneratorUtils.generateValue(colTs, faker);
     Assert.assertTrue(valTs instanceof Instant);
+  }
+
+  @Test
+  public void testGenerateValue_RichNestedJsonOverride() throws Exception {
+    Map<String, Object> inner = new LinkedHashMap<>();
+    inner.put("email", "#{internet.emailAddress}");
+    inner.put("theme", "dark");
+
+    Map<String, Object> schemaMap = new LinkedHashMap<>();
+    schemaMap.put("id", 999L);
+    schemaMap.put("name", "#{name.fullName}");
+    schemaMap.put("prefs", inner);
+
+    DataGeneratorColumn colJson =
+        DataGeneratorColumn.builder()
+            .name("rich_json")
+            .logicalType(LogicalType.JSON)
+            .isNullable(false)
+            .isGenerated(false)
+            .fakerExpression(schemaMap)
+            .build();
+
+    Object result = DataGeneratorUtils.generateValue(colJson, faker);
+    Assert.assertTrue(result instanceof String);
+    String jsonStr = (String) result;
+
+    JsonNode node = new ObjectMapper().readTree(jsonStr);
+    Assert.assertEquals(999, node.get("id").asInt());
+    Assert.assertFalse(node.get("name").asText().isEmpty());
+    Assert.assertEquals("dark", node.get("prefs").get("theme").asText());
+    Assert.assertTrue(node.get("prefs").get("email").asText().contains("@"));
   }
 
   @Test
@@ -135,7 +170,7 @@ public class DataGeneratorUtilsTest {
             .fakerExpression("#{invalid}")
             .build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(col, mockFaker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(col, mockFaker));
 
     // Mock Faker to THROW an exception in faker.expression()
     Faker mockFakerThrow = mock(Faker.class);
@@ -143,8 +178,7 @@ public class DataGeneratorUtilsTest {
         .thenThrow(new RuntimeException("mock fake failure"));
     DataGeneratorColumn colThrow = col.toBuilder().fakerExpression("#{throw}").build();
     Assert.assertThrows(
-        RuntimeException.class,
-        () -> DataGeneratorUtils.generateFromExpression(colThrow, mockFakerThrow));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colThrow, mockFakerThrow));
 
     // Invalid formats for typed columns
 
@@ -152,31 +186,31 @@ public class DataGeneratorUtilsTest {
     DataGeneratorColumn colInt =
         col.toBuilder().logicalType(LogicalType.INT64).fakerExpression("abc").build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colInt, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colInt, faker));
 
     // Invalid Float64
     DataGeneratorColumn colFloat =
         col.toBuilder().logicalType(LogicalType.FLOAT64).fakerExpression("abc").build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colFloat, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colFloat, faker));
 
     // Invalid Numeric
     DataGeneratorColumn colNum =
         col.toBuilder().logicalType(LogicalType.NUMERIC).fakerExpression("abc").build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colNum, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colNum, faker));
 
     // Invalid Boolean
     DataGeneratorColumn colBool =
         col.toBuilder().logicalType(LogicalType.BOOLEAN).fakerExpression("maybe").build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colBool, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colBool, faker));
 
     // Invalid Date
     DataGeneratorColumn colDate =
         col.toBuilder().logicalType(LogicalType.DATE).fakerExpression("2026/04/30").build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colDate, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colDate, faker));
 
     // Invalid Timestamp
     DataGeneratorColumn colTs =
@@ -185,6 +219,6 @@ public class DataGeneratorUtilsTest {
             .fakerExpression("2026-04-30 12:34:56")
             .build();
     Assert.assertThrows(
-        RuntimeException.class, () -> DataGeneratorUtils.generateFromExpression(colTs, faker));
+        RuntimeException.class, () -> DataGeneratorUtils.generateValue(colTs, faker));
   }
 }

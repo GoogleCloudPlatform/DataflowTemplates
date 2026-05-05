@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
@@ -23,6 +24,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.Instant;
 
@@ -53,27 +58,59 @@ public final class DataGeneratorUtils {
    * the same logical type, so the value can be added directly to a {@code Row.Builder}.
    */
   public static Object generateValue(DataGeneratorColumn column, Faker faker) {
-    LogicalType type = column.logicalType();
-    Long size = column.size();
-
-    if (column.fakerExpression() != null && !column.fakerExpression().isEmpty()) {
-      return generateFromExpression(column, faker);
+    if (column.fakerExpression() == null) {
+      throw new IllegalArgumentException(
+          "Faker expression is required for column '" + column.name() + "' in this branch.");
+    }
+    Object override = column.fakerExpression();
+    if (override instanceof String) {
+      return generateFromStringExpression((String) override, column, faker);
+    }
+    if (column.logicalType() == LogicalType.JSON) {
+      try {
+        Object resolvedTree = resolveJsonTemplateNode(override, faker);
+        return new ObjectMapper().writeValueAsString(resolvedTree);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Failed to serialize rich nested JSON override for column " + column.name(), e);
+      }
     }
     throw new IllegalArgumentException(
-        "Faker expression is required for column '" + column.name() + "' in this branch.");
+        "Unsupported rich nested override for non-JSON column '" + column.name() + "'.");
   }
 
-  /**
-   * Evaluates a user-provided Faker expression and converts the resulting String into the column's
-   * logical type.
-   *
-   * <p>{@link Faker#expression(String)} returns a String even when the directive is conceptually
-   * typed (e.g. {@code number.numberBetween} returns a long internally but is surfaced as a
-   * decimal-string). For columns whose logical type isn't STRING, parsing is the only way to
-   * recover the typed value.
-   */
-  static Object generateFromExpression(DataGeneratorColumn column, Faker faker) {
-    String expression = column.fakerExpression();
+  private static Object resolveJsonTemplateNode(Object node, Faker faker) {
+    if (node instanceof Map) {
+      Map<String, Object> srcMap = (Map<String, Object>) node;
+      Map<String, Object> resolvedMap = new LinkedHashMap<>();
+      for (Map.Entry<String, Object> entry : srcMap.entrySet()) {
+        resolvedMap.put(entry.getKey(), resolveJsonTemplateNode(entry.getValue(), faker));
+      }
+      return resolvedMap;
+    }
+
+    if (node instanceof List) {
+      List<Object> srcList = (List<Object>) node;
+      List<Object> resolvedList = new ArrayList<>();
+      for (Object item : srcList) {
+        resolvedList.add(resolveJsonTemplateNode(item, faker));
+      }
+      return resolvedList;
+    }
+
+    if (node instanceof String) {
+      String str = (String) node;
+      if (str.contains("#{")) {
+        return faker.expression(str);
+      }
+      return str;
+    }
+
+    return node;
+  }
+
+  static Object generateFromStringExpression(
+      String expression, DataGeneratorColumn column, Faker faker) {
     if (!expression.startsWith("#{")) {
       return convertToLogicalType(expression, column); // Treat as literal
     }

@@ -55,7 +55,7 @@ public abstract class DataGeneratorColumn implements Serializable {
 
   /** The custom generator for this column (e.g., Faker expression). */
   @Nullable
-  public abstract String fakerExpression();
+  public abstract Object fakerExpression();
 
   public static Builder builder() {
     return new AutoValue_DataGeneratorColumn.Builder().isSkipped(false).isPrimaryKey(false);
@@ -81,7 +81,7 @@ public abstract class DataGeneratorColumn implements Serializable {
 
     public abstract Builder scale(Integer scale);
 
-    public abstract Builder fakerExpression(String fakerExpression);
+    public abstract Builder fakerExpression(Object fakerExpression);
 
     public abstract Builder isPrimaryKey(boolean isPrimaryKey);
 

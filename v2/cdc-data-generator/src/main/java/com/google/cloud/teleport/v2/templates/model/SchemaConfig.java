@@ -81,14 +81,14 @@ public class SchemaConfig implements Serializable {
   }
 
   public static class ColumnConfig implements Serializable {
-    private String fakerExpression;
+    private Object fakerExpression;
     private Boolean skip;
 
-    public String getFakerExpression() {
+    public Object getFakerExpression() {
       return fakerExpression;
     }
 
-    public void setFakerExpression(String fakerExpression) {
+    public void setFakerExpression(Object fakerExpression) {
       this.fakerExpression = fakerExpression;
     }
 
