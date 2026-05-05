@@ -227,6 +227,16 @@ public class MongoDbToMongoDb {
     Integer getMaxConcurrentAsyncWrites();
 
     void setMaxConcurrentAsyncWrites(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 18,
+        optional = true,
+        description = "Max Retries",
+        helpText = "Maximum number of retry attempts for transient failures.")
+    @Default.Integer(3)
+    Integer getMaxRetries();
+
+    void setMaxRetries(Integer value);
   }
 
   public static void main(String[] args) {
@@ -335,7 +345,8 @@ public class MongoDbToMongoDb {
               .withWriteConcern(options.getWriteConcern())
               .withJournal(options.getJournal())
               .withDlqPath(writeDlqPath)
-              .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites()));
+              .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
+              .withMaxRetries(options.getMaxRetries()));
     }
 
     pipeline.run();

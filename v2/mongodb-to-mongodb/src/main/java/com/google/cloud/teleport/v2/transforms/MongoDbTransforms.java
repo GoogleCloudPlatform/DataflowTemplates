@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.MongoClient;
@@ -41,6 +43,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.values.KV;
@@ -54,6 +57,10 @@ import org.joda.time.Instant;
 
 /** Transforms for the MongoDB to MongoDB template. */
 public class MongoDbTransforms {
+
+  private static final int ERR_DOCUMENT_VALIDATION_FAILURE = 121;
+  private static final int ERR_KEY_TOO_LONG = 17280;
+  private static final int ERR_BAD_VALUE = 2;
 
   public static WriteWithDlq writeWithDlq() {
     return new WriteWithDlq();
@@ -69,6 +76,8 @@ public class MongoDbTransforms {
     private Boolean journal;
     private String dlqPath;
     private Integer maxConcurrentAsyncWrites = 10;
+    private Integer maxRetries = 3;
+    private SerializableFunction<String, MongoClient> clientFactory = MongoClients::create;
 
     public WriteWithDlq withUri(String uri) {
       this.uri = uri;
@@ -121,6 +130,20 @@ public class MongoDbTransforms {
       return this;
     }
 
+    public WriteWithDlq withMaxRetries(Integer maxRetries) {
+      if (maxRetries != null) {
+        this.maxRetries = maxRetries;
+      }
+      return this;
+    }
+
+    public WriteWithDlq withClientFactory(SerializableFunction<String, MongoClient> clientFactory) {
+      if (clientFactory != null) {
+        this.clientFactory = clientFactory;
+      }
+      return this;
+    }
+
     @Override
     public PDone expand(PCollection<Document> input) {
       TupleTag<Document> successTag = new TupleTag<Document>() {};
@@ -163,7 +186,7 @@ public class MongoDbTransforms {
 
                             @StartBundle
                             public void startBundle() {
-                              mongoClient = MongoClients.create(uri);
+                              mongoClient = clientFactory.apply(uri);
                               MongoDatabase db = mongoClient.getDatabase(database);
 
                               WriteConcern wc = WriteConcern.ACKNOWLEDGED;
@@ -192,6 +215,9 @@ public class MongoDbTransforms {
                             @ProcessElement
                             public void processElement(ProcessContext c)
                                 throws InterruptedException {
+                              if (mongoCollection == null) {
+                                mongoCollection = clientFactory.apply(uri).getDatabase(database).getCollection(collection);
+                              }
                               Iterable<Document> docs = c.element().getValue();
                               List<WriteModel<Document>> updates = new ArrayList<>();
                               List<Document> docList = new ArrayList<>();
@@ -208,61 +234,105 @@ public class MongoDbTransforms {
                                 }
                               }
 
+
                               if (!updates.isEmpty()) {
                                 semaphore.acquire();
                                 CompletableFuture<Void> future =
                                     CompletableFuture.runAsync(
                                         () -> {
                                           try {
-                                            mongoCollection.bulkWrite(
-                                                updates, new BulkWriteOptions().ordered(ordered));
-                                          } catch (MongoBulkWriteException e) {
+                                            int attempt = 0;
+                                            boolean success = false;
+                                            while (attempt < maxRetries && !success) {
+                                            try {
+                                              mongoCollection.bulkWrite(
+                                                  updates, new BulkWriteOptions().ordered(ordered));
+                                              success = true;
+                                            } catch (MongoBulkWriteException e) {
+
                                             List<BulkWriteError> writeErrors = e.getWriteErrors();
-                                            if (ordered) {
-                                              // Ordered execution stops at first error.
-                                              // Find the minimum index among errors.
-                                              int firstErrorIndex = docList.size();
-                                              for (BulkWriteError error : writeErrors) {
-                                                firstErrorIndex =
-                                                    Math.min(firstErrorIndex, error.getIndex());
+                                            boolean hasPermanentError = false;
+                                            for (BulkWriteError error : writeErrors) {
+                                              int code = error.getCode();
+                                              if (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
+                                                  || code == ERR_DOCUMENT_VALIDATION_FAILURE
+                                                  || code == ERR_KEY_TOO_LONG
+                                                  || code == ERR_BAD_VALUE) {
+                                                hasPermanentError = true;
+                                                break;
                                               }
-                                              // Add all documents from firstErrorIndex to the end
-                                              // to failures.
-                                              for (int i = firstErrorIndex;
-                                                  i < docList.size();
-                                                  i++) {
-                                                Document doc = docList.get(i);
-                                                String msg =
-                                                    "Ordered write failed or was not attempted.";
-                                                if (i == firstErrorIndex) {
-                                                  for (BulkWriteError error : writeErrors) {
-                                                    if (error.getIndex() == i) {
-                                                      msg = error.getMessage();
-                                                      break;
+                                            }
+
+                                            if (hasPermanentError || attempt + 1 >= maxRetries) {
+                                              if (ordered) {
+                                                int firstErrorIndex = docList.size();
+                                                for (BulkWriteError error : writeErrors) {
+                                                  firstErrorIndex = Math.min(firstErrorIndex, error.getIndex());
+                                                }
+                                                for (int i = firstErrorIndex; i < docList.size(); i++) {
+                                                  Document doc = docList.get(i);
+                                                  String msg = "Ordered write failed or was not attempted.";
+                                                  if (i == firstErrorIndex) {
+                                                    for (BulkWriteError error : writeErrors) {
+                                                      if (error.getIndex() == i) {
+                                                        msg = error.getMessage();
+                                                        break;
+                                                      }
                                                     }
                                                   }
+                                                  failures.add(doc.toJson() + " - Error: " + msg);
                                                 }
-                                                failures.add(doc.toJson() + " - Error: " + msg);
-                                              }
-                                            } else {
-                                              // Unordered execution attempts all writes.
-                                              // Add only specific failed documents to failures.
-                                              for (BulkWriteError error : writeErrors) {
-                                                int index = error.getIndex();
-                                                if (index >= 0 && index < docList.size()) {
-                                                  Document failedDoc = docList.get(index);
-                                                  failures.add(
-                                                      failedDoc.toJson()
-                                                          + " - Error: "
-                                                          + error.getMessage());
+                                              } else {
+                                                for (BulkWriteError error : writeErrors) {
+                                                  int index = error.getIndex();
+                                                  if (index >= 0 && index < docList.size()) {
+                                                    Document failedDoc = docList.get(index);
+                                                    failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
+                                                  }
                                                 }
                                               }
+                                              break;
+                                            }
+
+                                            attempt++;
+                                            long delay = (long) (1000 * Math.pow(2, attempt));
+                                            try {
+                                              Thread.sleep(delay);
+                                            } catch (InterruptedException ie) {
+                                              Thread.currentThread().interrupt();
+                                              break;
+                                            }
+                                          } catch (MongoException e) {
+
+                                            int code = e.getCode();
+                                            boolean isPermanent = (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
+                                                || code == ERR_DOCUMENT_VALIDATION_FAILURE
+                                                || code == ERR_KEY_TOO_LONG
+                                                || code == ERR_BAD_VALUE);
+
+                                            if (isPermanent || attempt + 1 >= maxRetries) {
+                                              for (Document doc : docList) {
+                                                failures.add(doc.toJson() + " - Error: " + e.getMessage());
+                                              }
+                                              break;
+                                            }
+
+                                            attempt++;
+                                            long delay = (long) (1000 * Math.pow(2, attempt));
+                                            try {
+                                              Thread.sleep(delay);
+                                            } catch (InterruptedException ie) {
+                                              Thread.currentThread().interrupt();
+                                              break;
                                             }
                                           } catch (Exception e) {
+
                                             for (Document doc : docList) {
-                                              failures.add(
-                                                  doc.toJson() + " - Error: " + e.getMessage());
+                                              failures.add(doc.toJson() + " - Error: " + e.getMessage());
                                             }
+                                            break;
+                                          }
+                                          }
                                           } finally {
                                             semaphore.release();
                                           }
