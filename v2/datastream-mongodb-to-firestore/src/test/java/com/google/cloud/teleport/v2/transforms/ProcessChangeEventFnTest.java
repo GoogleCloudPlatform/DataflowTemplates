@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.mongodb.MongoException;
+import com.mongodb.MongoWriteException;
+import com.mongodb.WriteError;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
@@ -59,6 +61,7 @@ public class ProcessChangeEventFnTest {
   private MultiOutputReceiver mockReceiver;
   private OutputReceiver mockSuccessReceiver;
   private OutputReceiver mockFailureReceiver;
+  private OutputReceiver mockSevereFailureReceiver;
   private MongoClient mockClient;
   private MongoDatabase mockDatabase;
   private ClientSession mockSession;
@@ -79,6 +82,7 @@ public class ProcessChangeEventFnTest {
     mockReceiver = mock(MultiOutputReceiver.class);
     mockSuccessReceiver = mock(OutputReceiver.class);
     mockFailureReceiver = mock(OutputReceiver.class);
+    mockSevereFailureReceiver = mock(OutputReceiver.class);
     mockClient = mock(MongoClient.class);
     mockDatabase = mock(MongoDatabase.class);
     mockSession = mock(ClientSession.class);
@@ -123,6 +127,8 @@ public class ProcessChangeEventFnTest {
     // Mock the MultiOutputReceiver's get() method
     when(mockReceiver.get(ProcessChangeEventFn.successfulWriteTag)).thenReturn(mockSuccessReceiver);
     when(mockReceiver.get(ProcessChangeEventFn.failedWriteTag)).thenReturn(mockFailureReceiver);
+    when(mockReceiver.get(ProcessChangeEventFn.severeFailedWriteTag))
+        .thenReturn(mockSevereFailureReceiver);
   }
 
   @Test
@@ -262,17 +268,18 @@ public class ProcessChangeEventFnTest {
 
     processFn.processElement(mockContext, mockReceiver);
 
-    verify(mockShadowCollection, times(4)).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockShadowCollection, times(2)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
-    verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
+    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockSevereFailureReceiver, times(1)).output(failureCaptor.capture());
     verify(mockSession, never()).commitTransaction();
   }
 
   @Test
   public void testProcessElementTransientError_retryTillMaximum() {
     MongoException randomError = new MongoException("Fake transient error.");
+    randomError.addLabel("TransientTransactionError");
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(randomError);
 
     processFn.processElement(mockContext, mockReceiver);
@@ -282,6 +289,24 @@ public class ProcessChangeEventFnTest {
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
     verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
+    verify(mockSession, never()).commitTransaction();
+  }
+
+  @Test
+  public void testProcessElementPermanentError_Code2() {
+    WriteError writeError =
+        new WriteError(
+            2, "At most 20 nested array/entity values are supported.", new org.bson.BsonDocument());
+    MongoWriteException permanentError =
+        new MongoWriteException(writeError, new com.mongodb.ServerAddress());
+
+    when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(permanentError);
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockShadowCollection, times(1)).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
   }
 }

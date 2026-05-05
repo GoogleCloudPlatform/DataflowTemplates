@@ -40,12 +40,16 @@ import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
+import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
@@ -603,7 +607,8 @@ public class DataStreamMongoDBToFirestore {
                   ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                       .withOutputTags(
                           ProcessChangeEventFn.successfulWriteTag,
-                          TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+                          TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
+                              .and(ProcessChangeEventFn.severeFailedWriteTag)));
     } else {
       // Process backfill without shadow tables
       backfillResult =
@@ -616,7 +621,8 @@ public class DataStreamMongoDBToFirestore {
                               connectionString, options.getDatabaseName(), options.getBatchSize()))
                       .withOutputTags(
                           ProcessBackfillEventFn.successfulWriteTag,
-                          TupleTagList.of(ProcessBackfillEventFn.failedWriteTag)));
+                          TupleTagList.of(ProcessBackfillEventFn.failedWriteTag)
+                              .and(ProcessBackfillEventFn.severeFailedWriteTag)));
     }
 
     // Set coders for backfill results
@@ -636,6 +642,16 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)));
 
+    backfillResult
+        .get(
+            options.getUseShadowTablesForBackfill()
+                ? ProcessChangeEventFn.severeFailedWriteTag
+                : ProcessBackfillEventFn.severeFailedWriteTag)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
+
     // Handle failed backfill writes with DLQ
     writeFailedEventsToDlq(
         options,
@@ -644,6 +660,15 @@ public class DataStreamMongoDBToFirestore {
         options.getUseShadowTablesForBackfill()
             ? ProcessChangeEventFn.failedWriteTag
             : ProcessBackfillEventFn.failedWriteTag);
+
+    // Write severe backfill failures directly to severe DLQ
+    writeSevereEventsToDlq(
+        options,
+        backfillResult,
+        dlqManager,
+        options.getUseShadowTablesForBackfill()
+            ? ProcessChangeEventFn.severeFailedWriteTag
+            : ProcessBackfillEventFn.severeFailedWriteTag);
 
     // Stage 5: Process CDC events
     LOG.info("Processing CDC events");
@@ -655,7 +680,8 @@ public class DataStreamMongoDBToFirestore {
                 ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                     .withOutputTags(
                         ProcessChangeEventFn.successfulWriteTag,
-                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
+                            .and(ProcessChangeEventFn.severeFailedWriteTag)));
 
     // Set coders for CDC results
     cdcResult
@@ -668,8 +694,18 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)));
 
+    cdcResult
+        .get(ProcessChangeEventFn.severeFailedWriteTag)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
+
     // Handle failed CDC writes with DLQ
     writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    // Write severe CDC failures directly to severe DLQ
+    writeSevereEventsToDlq(
+        options, cdcResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
 
     // Execute the pipeline
     LOG.info("Executing pipeline");
@@ -778,7 +814,8 @@ public class DataStreamMongoDBToFirestore {
                 ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
                     .withOutputTags(
                         ProcessChangeEventFn.successfulWriteTag,
-                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)
+                            .and(ProcessChangeEventFn.severeFailedWriteTag)));
 
     /* Set coder for successful writes */
     writeResult
@@ -793,9 +830,19 @@ public class DataStreamMongoDBToFirestore {
                 SerializableCoder.of(MongoDbChangeEventContext.class),
                 SerializableCoder.of(MongoDbChangeEventContext.class)));
 
+    writeResult
+        .get(ProcessChangeEventFn.severeFailedWriteTag)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
+
     /* Handle failed writes with DLQ */
     LOG.info("Setting up DLQ handling for failed writes");
     writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+    // Write severe failures directly to severe DLQ
+    writeSevereEventsToDlq(
+        options, writeResult, dlqManager, ProcessChangeEventFn.severeFailedWriteTag);
 
     // Execute the pipeline and return the result.
     LOG.info("Executing pipeline");
@@ -993,6 +1040,33 @@ public class DataStreamMongoDBToFirestore {
     LOG.info("DLQ setup completed for failed MongoDB event processing");
   }
 
+  private static void writeSevereEventsToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag) {
+    LOG.info("Setting up Severe DLQ for failed MongoDB event processing");
+    results
+        .get(failedTag)
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)))
+        .apply(
+            "DLQ: Write Severe Events Failures to GCS",
+            MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write Severe Events Failures To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(
+                    options.getDeadLetterQueueDirectory() + "/tmp_severe_mongo_event/")
+                .setIncludePaneInfo(true)
+                .build());
+    LOG.info("Severe DLQ setup completed");
+  }
+
   /** DoFn to split events into backfill and CDC streams. */
   public static class SplitBackfillAndCdcEventsFn
       extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
@@ -1050,6 +1124,8 @@ public class DataStreamMongoDBToFirestore {
         new TupleTag<>("backfillSuccessfulWrite");
     public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
         failedWriteTag = new TupleTag<>("backfillFailedWrite");
+    public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+        severeFailedWriteTag = new TupleTag<>("backfillSevereFailedWrite");
 
     private final String connectionString;
     private final String targetDatabaseName;
@@ -1066,23 +1142,34 @@ public class DataStreamMongoDBToFirestore {
       this.batchSize = batchSize;
     }
 
+    @com.google.common.annotations.VisibleForTesting
+    public ProcessBackfillEventFn(
+        com.mongodb.client.MongoClient client, String databaseName, int batchSize) {
+      this.client = client;
+      this.targetDatabaseName = databaseName;
+      this.batchSize = batchSize;
+      this.connectionString = "";
+    }
+
     @Setup
     public void setup() {
       LOG.info("Setting up MongoDB client for backfill processing with batch size: {}", batchSize);
-      MongoClientSettings settings =
-          MongoClientSettings.builder()
-              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
-              .applyToSocketSettings(
-                  builder -> {
-                    // How long the driver will wait to establish a connection
-                    builder.connectTimeout(60, TimeUnit.SECONDS);
-                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
-                  })
-              .applyToClusterSettings(
-                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .uuidRepresentation(UuidRepresentation.STANDARD)
-              .build();
-      client = MongoClients.create(settings);
+      if (client == null) {
+        com.mongodb.MongoClientSettings settings =
+            com.mongodb.MongoClientSettings.builder()
+                .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+                .applyToSocketSettings(
+                    builder -> {
+                      // How long the driver will wait to establish a connection
+                      builder.connectTimeout(60, TimeUnit.SECONDS);
+                      builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
+                    })
+                .applyToClusterSettings(
+                    builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
+                .uuidRepresentation(org.bson.UuidRepresentation.STANDARD)
+                .build();
+        client = com.mongodb.client.MongoClients.create(settings);
+      }
       bufferedEvents = new HashMap<>();
       collectionMap = new HashMap<>();
     }
@@ -1166,8 +1253,9 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write
-        BulkWriteResult result = collection.bulkWrite(bulkOperations);
+        // Execute bulk write with ordered(false) to isolate failed documents
+        BulkWriteResult result =
+            collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
             "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
             collectionName,
@@ -1177,6 +1265,35 @@ public class DataStreamMongoDBToFirestore {
         // Output successful events
         for (MongoDbChangeEventContext event : events) {
           out.get(successfulWriteTag).output(event);
+        }
+      } catch (MongoBulkWriteException e) {
+        LOG.warn(
+            "Bulk write partially failed for collection {}: {}", collectionName, e.getMessage());
+
+        // Identify failed documents and route them to appropriate tag
+        Set<Integer> failedIndices = new HashSet<>();
+        for (BulkWriteError error : e.getWriteErrors()) {
+          failedIndices.add(error.getIndex());
+          MongoDbChangeEventContext event = events.get(error.getIndex());
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(event, event);
+          failedElement.setErrorMessage(error.getMessage());
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
+
+          // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
+          // limit)
+          if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
+            out.get(severeFailedWriteTag).output(failedElement);
+          } else {
+            out.get(failedWriteTag).output(failedElement);
+          }
+        }
+
+        // Output successful events that were not part of the failed indices
+        for (int i = 0; i < events.size(); i++) {
+          if (!failedIndices.contains(i)) {
+            out.get(successfulWriteTag).output(events.get(i));
+          }
         }
       } catch (Exception e) {
         LOG.error(
@@ -1190,7 +1307,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
         }
       }
@@ -1229,8 +1346,9 @@ public class DataStreamMongoDBToFirestore {
           }
         }
 
-        // Execute bulk write
-        BulkWriteResult result = collection.bulkWrite(bulkOperations);
+        // Execute bulk write with ordered(false) to isolate failed documents
+        BulkWriteResult result =
+            collection.bulkWrite(bulkOperations, new BulkWriteOptions().ordered(false));
         LOG.debug(
             "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
             collectionName,
@@ -1240,6 +1358,36 @@ public class DataStreamMongoDBToFirestore {
         // Output successful events
         for (MongoDbChangeEventContext event : events) {
           context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+        }
+      } catch (MongoBulkWriteException e) {
+        LOG.warn(
+            "Bulk write partially failed for collection {}: {}", collectionName, e.getMessage());
+
+        // Identify failed documents and route them to appropriate tag
+        Set<Integer> failedIndices = new HashSet<>();
+        for (BulkWriteError error : e.getWriteErrors()) {
+          failedIndices.add(error.getIndex());
+          MongoDbChangeEventContext event = events.get(error.getIndex());
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(event, event);
+          failedElement.setErrorMessage(error.getMessage());
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
+
+          // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
+          // limit)
+          if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
+            context.output(
+                severeFailedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+          } else {
+            context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+          }
+        }
+
+        // Output successful events that were not part of the failed indices
+        for (int i = 0; i < events.size(); i++) {
+          if (!failedIndices.contains(i)) {
+            context.output(successfulWriteTag, events.get(i), Instant.now(), GlobalWindow.INSTANCE);
+          }
         }
       } catch (Exception e) {
         LOG.error(
@@ -1253,7 +1401,7 @@ public class DataStreamMongoDBToFirestore {
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(event, event);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
         }
       }

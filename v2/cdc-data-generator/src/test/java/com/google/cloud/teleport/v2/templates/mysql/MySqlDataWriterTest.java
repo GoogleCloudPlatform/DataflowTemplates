@@ -688,6 +688,7 @@ public class MySqlDataWriterTest {
       Types.DATE,
       Types.TIMESTAMP,
       Types.NUMERIC,
+      Types.VARCHAR,
       Types.VARCHAR
     };
     LogicalType[] types = LogicalType.values();

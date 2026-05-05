@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
+import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -30,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
@@ -183,14 +185,40 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
       com.google.cloud.teleport.v2.spanner.ddl.Table table,
       com.google.cloud.spanner.Dialect dialect) {
 
+    LogicalType logicalType = typeMapper.getLogicalType(column.typeString(), dialect, null);
+    Long size = null;
+    Integer precision = null;
+    Integer scale = null;
+
+    if (column.size() != null) {
+      if (column.size() == -1) {
+        if (logicalType == LogicalType.STRING) {
+          size = 2621440L;
+        } else if (logicalType == LogicalType.BYTES) {
+          size = 10485760L;
+        }
+      } else {
+        size = Long.valueOf(column.size());
+      }
+    }
+
+    String typeStr = column.typeString().toUpperCase(Locale.ROOT);
+    if (typeStr.contains("BIGNUMERIC")) {
+      precision = 76;
+      scale = 38;
+    } else if (typeStr.contains("NUMERIC") || typeStr.contains("DECIMAL")) {
+      precision = 38;
+      scale = 9;
+    }
+
     return DataGeneratorColumn.builder()
         .name(column.name())
-        .logicalType(typeMapper.getLogicalType(column.typeString(), dialect, null))
+        .logicalType(logicalType)
         .isNullable(!column.notNull())
         .isGenerated(column.isGenerated())
-        .size(column.size() != null ? Long.valueOf(column.size()) : null)
-        .precision(null)
-        .scale(null)
+        .size(size)
+        .precision(precision)
+        .scale(scale)
         .build();
   }
 }
