@@ -40,6 +40,7 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.Before;
@@ -72,7 +73,7 @@ public class MongoDbTransformsTest {
   }
 
   @Test
-  public void test1_WriteWithDlq_TransientError_Retries() {
+  public void writeWithDlq_transientError_retries() {
     AtomicInteger callCount = new AtomicInteger(0);
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
@@ -87,7 +88,6 @@ public class MongoDbTransformsTest {
               }
               return mock(BulkWriteResult.class);
             });
-
     PCollection<Document> input = pipeline.apply(Create.<Document>of(new Document("_id", 1)));
 
     input.apply(
@@ -99,22 +99,14 @@ public class MongoDbTransformsTest {
             .withMaxRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
-
     PipelineResult result = pipeline.run();
 
     assertEquals(2, callCount.get());
-
-    long successCount = 0;
-    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
-      if (c.getName().getName().equals("successful-documents-written")) {
-        successCount = c.getCommitted();
-      }
-    }
-    assertEquals(1L, successCount);
+    assertSuccessCount(result, 1L);
   }
 
   @Test
-  public void test2_WriteWithDlq_PermanentError_NoRetry() {
+  public void writeWithDlq_permanentError_noRetry() {
     AtomicInteger callCount = new AtomicInteger(0);
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
@@ -139,22 +131,14 @@ public class MongoDbTransformsTest {
             .withMaxRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
-
     PipelineResult result = pipeline.run();
 
     assertEquals(1, callCount.get());
-
-    long successCount = 0;
-    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
-      if (c.getName().getName().equals("successful-documents-written")) {
-        successCount = c.getCommitted();
-      }
-    }
-    assertEquals(0L, successCount); // Reverted to 0
+    assertSuccessCount(result, 0L);
   }
 
   @Test
-  public void test3_WriteWithDlq_UnorderedPartialSuccess() {
+  public void writeWithDlq_unordered_partialSuccess() {
     AtomicInteger callCount = new AtomicInteger(0);
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenAnswer(
@@ -185,18 +169,64 @@ public class MongoDbTransformsTest {
             .withBatchSize(2)
             .withOrdered(false)
             .withClientFactory(new MockClientFactory()));
-
     PipelineResult result = pipeline.run();
 
     assertEquals(2, callCount.get());
+    assertSuccessCount(result, 1L);
+  }
 
-    long successCount = 0;
+  @Test
+  public void writeWithDlq_hundredDocuments_success() {
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenReturn(mock(BulkWriteResult.class));
+
+    Document[] docs = new Document[100];
+    for (int i = 0; i < 100; i++) {
+      docs[i] = new Document("_id", i);
+    }
+    PCollection<Document> input = pipeline.apply(Create.of(Arrays.asList(docs)));
+
+    input.apply(
+        "Write_100",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withCollection("test")
+            .withBatchSize(100)
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 100L);
+  }
+
+  @Test
+  public void writeWithDlq_zeroDocuments_successCountZero() {
+    PCollection<Document> input = pipeline.apply(Create.empty(TypeDescriptor.of(Document.class)));
+
+    input.apply(
+        "Write_0",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withCollection("test")
+            .withClientFactory(new MockClientFactory()));
+    PipelineResult result = pipeline.run();
+
+    assertSuccessCount(result, 0L);
+  }
+
+
+  private long getSuccessfulDocumentsCount(PipelineResult result) {
     for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
       if (c.getName().getName().equals("successful-documents-written")) {
-        successCount = c.getCommitted();
+        return c.getCommitted();
       }
     }
-    assertEquals(1L, successCount); // Reverted to 1
+    return 0L;
+  }
+
+  private void assertSuccessCount(PipelineResult result, long expectedCount) {
+    assertEquals(expectedCount, getSuccessfulDocumentsCount(result));
   }
 
   private static class MockClientFactory implements SerializableFunction<String, MongoClient> {
