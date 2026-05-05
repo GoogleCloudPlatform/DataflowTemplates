@@ -309,4 +309,24 @@ public class ProcessChangeEventFnTest {
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
   }
+
+  @Test
+  public void testProcessElementDlqReconsumed() {
+    when(mockFindIterable.first()).thenReturn(null);
+    when(mockElement.getIsDlqReconsumed()).thenReturn(true);
+    UpdateResult mockUpdateResult = mock(UpdateResult.class);
+    when(mockDataCollection.replaceOne(
+            mockSession, LOOKUP_BY_DOC_ID, mockDataDoc, new ReplaceOptions().upsert(true)))
+        .thenReturn(mockUpdateResult);
+    when(mockShadowCollection.replaceOne(
+            mockSession, LOOKUP_BY_DOC_ID, mockShadowDocElement, new ReplaceOptions().upsert(true)))
+        .thenReturn(mockUpdateResult);
+
+    processFn.processElement(mockContext, mockReceiver);
+
+    verify(mockShadowCollection).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockSession).commitTransaction();
+    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockSuccessReceiver, times(1)).output(any());
+  }
 }

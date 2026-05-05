@@ -31,6 +31,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import java.util.concurrent.TimeUnit;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
@@ -62,6 +64,18 @@ public class ProcessChangeEventFn
   // Error code 2 corresponds to BadValue/InvalidArgument, which is treated as a permanent error.
   public static final int INVALID_ARGUMENT = 2;
 
+  private final Counter successfulWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "successfulWrites");
+  private final Counter retriableFailedWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "retriableFailedWrites");
+  private final Counter severeFailedWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrites");
+  private final Counter dlqRetries = Metrics.counter(ProcessChangeEventFn.class, "dlqRetries");
+  private final Counter totalProcessedDocuments =
+      Metrics.counter(ProcessChangeEventFn.class, "totalProcessedDocuments");
+  private final Counter retriedDocuments =
+      Metrics.counter(ProcessChangeEventFn.class, "retriedDocuments");
+
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
     this.targetDatabaseName = databaseName;
@@ -76,6 +90,15 @@ public class ProcessChangeEventFn
   @ProcessElement
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     MongoDbChangeEventContext element = context.element();
+
+    totalProcessedDocuments.inc();
+    if (element.getRetryCount() > 0) {
+      retriedDocuments.inc();
+    }
+    if (element.getIsDlqReconsumed()) {
+      dlqRetries.inc();
+    }
+
     int retryCount = 0;
     Exception lastException = null;
     while (retryCount <= maxRetries) {
@@ -124,6 +147,7 @@ public class ProcessChangeEventFn
         }
         session.commitTransaction();
         out.get(successfulWriteTag).output(element);
+        successfulWrites.inc();
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
@@ -167,18 +191,20 @@ public class ProcessChangeEventFn
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(severeFailedWriteTag).output(failedElement);
+          severeFailedWrites.inc();
           break; // Exit the retry loop
         }
 
+        long backoffMs = retryDelayMs * (1 << retryCount);
         if (retryCount < maxRetries) {
           LOG.warn(
               "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
               element.getDocumentId(),
               retryCount + 1,
-              retryDelayMs * (retryCount + 1),
+              backoffMs,
               e);
           try {
-            TimeUnit.MILLISECONDS.sleep(retryDelayMs * (retryCount + 1));
+            TimeUnit.MILLISECONDS.sleep(backoffMs);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOG.error("Retry sleep interrupted for document ID: {}", element.getDocumentId(), ie);
@@ -187,6 +213,7 @@ public class ProcessChangeEventFn
             failedElement.setErrorMessage(ie.getMessage());
             failedElement.setStacktrace(Throwables.getStackTraceAsString(ie));
             out.get(failedWriteTag).output(failedElement);
+            retriableFailedWrites.inc();
             break; // Exit the retry loop if interrupted
           }
           retryCount++;
@@ -202,6 +229,7 @@ public class ProcessChangeEventFn
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
+          retriableFailedWrites.inc();
           LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
           break; // Exit the retry loop on non-transient error or max retries
         }
