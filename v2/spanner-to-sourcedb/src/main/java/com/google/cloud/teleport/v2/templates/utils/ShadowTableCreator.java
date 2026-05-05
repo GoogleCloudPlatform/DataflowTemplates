@@ -37,9 +37,13 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Helper class to create shadow tables in the metadata database. */
 public class ShadowTableCreator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ShadowTableCreator.class);
 
   private final SpannerAccessor spannerAccessor;
   private final SpannerAccessor metadataSpannerAccessor;
@@ -79,11 +83,21 @@ public class ShadowTableCreator {
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
+    LOG.info("Scanning information schema for {} database...", databaseType);
+    long startTime = System.currentTimeMillis();
     if (databaseType.equals(DatabaseType.PRIMARY)) {
       this.informationSchemaOfPrimaryDb = scanner.scan();
     } else {
       this.informationSchemaOfMetadataDb = scanner.scan();
     }
+    LOG.info(
+        "Scanned information schema for {} database in {} ms",
+        databaseType,
+        System.currentTimeMillis() - startTime);
+  }
+
+  public Ddl getInformationSchemaOfPrimaryDb() {
+    return informationSchemaOfPrimaryDb;
   }
 
   // for unit testing purposes
@@ -116,11 +130,14 @@ public class ShadowTableCreator {
     List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
 
     if (createShadowTableStatements.size() == 0) {
+      LOG.info("No new shadow tables to create.");
       return;
     }
 
     DatabaseAdminClient databaseAdminClient = metadataSpannerAccessor.getDatabaseAdminClient();
 
+    LOG.info("Creating {} shadow tables in Spanner...", createShadowTableStatements.size());
+    long startTime = System.currentTimeMillis();
     OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
         databaseAdminClient.updateDatabaseDdl(
             metadataConfig.getInstanceId().get(),
@@ -130,7 +147,12 @@ public class ShadowTableCreator {
 
     try {
       op.get(15, TimeUnit.MINUTES);
+      LOG.info(
+          "Successfully created {} shadow tables in Spanner in {} ms",
+          createShadowTableStatements.size(),
+          System.currentTimeMillis() - startTime);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      LOG.error("Failed to create shadow tables.", e);
       throw new RuntimeException(e);
     }
     return;

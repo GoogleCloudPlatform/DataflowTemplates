@@ -63,10 +63,11 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kIT.class);
 
-  private static final int NUM_TABLES = 4999;
+  private static final int NUM_TABLES = 5000;
 
   private SpannerResourceManager spannerResourceManager;
   private SpannerResourceManager spannerMetadataResourceManager;
+  private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
   private MySQLResourceManager jdbcResourceManager;
   private GcsResourceManager gcsResourceManager;
   private PubsubResourceManager pubsubResourceManager;
@@ -76,6 +77,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
+    spannerChangeStreamMetadataResourceManager = createSpannerMetadataDatabase();
     jdbcResourceManager = MySQLResourceManager.builder(testName).build();
     pubsubResourceManager = setUpPubSubResourceManager();
   }
@@ -86,6 +88,7 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
         spannerResourceManager,
         jdbcResourceManager,
         spannerMetadataResourceManager,
+        spannerChangeStreamMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
   }
@@ -180,6 +183,8 @@ public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
 
     LOG.info("Launching Dataflow job...");
     Map<String, String> jobParameters = new HashMap<>();
+    jobParameters.put(
+        "changeStreamMetadataDatabase", spannerChangeStreamMetadataResourceManager.getDatabaseId());
 
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(

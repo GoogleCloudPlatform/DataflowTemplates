@@ -114,6 +114,7 @@ public class ProcessInformationSchemaFnTest {
                 ShadowTableCreator.class,
                 (mock, context) -> {
                   doNothing().when(mock).createShadowTablesInSpanner();
+                  when(mock.getInformationSchemaOfPrimaryDb()).thenReturn(ddl);
                 });
         MockedConstruction<InformationSchemaScanner> mockedScanner =
             mockConstruction(
@@ -133,9 +134,9 @@ public class ProcessInformationSchemaFnTest {
       assert (mockedShadowTableCreator.constructed().size() == 1);
       verify(mockedShadowTableCreator.constructed().get(0)).createShadowTablesInSpanner();
 
-      assert (mockedScanner.constructed().size() == 2); // One for main, one for shadow
+      assert (mockedScanner.constructed().size()
+          == 1); // Only for shadow table DDL in processElement
       verify(mockedScanner.constructed().get(0)).scan();
-      verify(mockedScanner.constructed().get(1)).scan();
     }
 
     fn.teardown();

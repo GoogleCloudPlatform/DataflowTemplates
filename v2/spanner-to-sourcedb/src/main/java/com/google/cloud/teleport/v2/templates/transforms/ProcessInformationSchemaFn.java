@@ -43,6 +43,7 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
   private transient SpannerAccessor shadowTableSpannerAccessor;
   private transient Dialect dialect;
   private transient Dialect shadowTableDialect;
+  private transient Ddl mainDdl;
 
   public ProcessInformationSchemaFn(
       SpannerConfig spannerConfig,
@@ -77,6 +78,7 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
         new ShadowTableCreator(
             spannerConfig, shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix);
     shadowTableCreator.createShadowTablesInSpanner();
+    this.mainDdl = shadowTableCreator.getInformationSchemaOfPrimaryDb();
   }
 
   @Teardown
@@ -91,11 +93,11 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    // Fetch DDLs
-    Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor, dialect);
-    Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
-
+    // Reuse mainDdl from setup
     c.output(MAIN_DDL_TAG, mainDdl);
+
+    // Fetch shadowTableDdl
+    Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
   }
 
@@ -104,6 +106,10 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    return scanner.scan();
+    LOG.info("Scanning information schema...");
+    long startTime = System.currentTimeMillis();
+    Ddl ddl = scanner.scan();
+    LOG.info("Scanned information schema in {} ms", System.currentTimeMillis() - startTime);
+    return ddl;
   }
 }

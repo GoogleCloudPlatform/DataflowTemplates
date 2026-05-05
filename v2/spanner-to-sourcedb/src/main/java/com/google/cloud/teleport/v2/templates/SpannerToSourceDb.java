@@ -188,6 +188,17 @@ public class SpannerToSourceDb {
     void setMetadataDatabase(String value);
 
     @TemplateParameter.Text(
+        order = 36,
+        optional = true,
+        description = "Cloud Spanner Database to store change stream connector metadata",
+        helpText =
+            "This is the database to store the metadata used by the change stream connector. "
+                + "If not provided, it defaults to the metadata database.")
+    String getChangeStreamMetadataDatabase();
+
+    void setChangeStreamMetadataDatabase(String value);
+
+    @TemplateParameter.Text(
         order = 7,
         optional = true,
         description = "Cloud Spanner metadata table name",
@@ -926,12 +937,17 @@ public class SpannerToSourceDb {
     if (!options.getStartTimestamp().equals("")) {
       startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
     }
+    String metadataDb = options.getChangeStreamMetadataDatabase();
+    if (Strings.isNullOrEmpty(metadataDb)) {
+      metadataDb = options.getMetadataDatabase();
+    }
+
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()
             .withSpannerConfig(spannerConfig)
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
-            .withMetadataDatabase(options.getMetadataDatabase())
+            .withMetadataDatabase(metadataDb)
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
 
