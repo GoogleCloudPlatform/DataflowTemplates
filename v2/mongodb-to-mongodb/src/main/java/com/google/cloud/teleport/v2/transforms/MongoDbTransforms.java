@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.WriteConcern;
+import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -216,9 +217,46 @@ public class MongoDbTransforms {
                                             mongoCollection.bulkWrite(
                                                 updates, new BulkWriteOptions().ordered(ordered));
                                           } catch (MongoBulkWriteException e) {
-                                            for (Document doc : docList) {
-                                              failures.add(
-                                                  doc.toJson() + " - Error: " + e.getMessage());
+                                            List<BulkWriteError> writeErrors = e.getWriteErrors();
+                                            if (ordered) {
+                                              // Ordered execution stops at first error.
+                                              // Find the minimum index among errors.
+                                              int firstErrorIndex = docList.size();
+                                              for (BulkWriteError error : writeErrors) {
+                                                firstErrorIndex =
+                                                    Math.min(firstErrorIndex, error.getIndex());
+                                              }
+                                              // Add all documents from firstErrorIndex to the end
+                                              // to failures.
+                                              for (int i = firstErrorIndex;
+                                                  i < docList.size();
+                                                  i++) {
+                                                Document doc = docList.get(i);
+                                                String msg =
+                                                    "Ordered write failed or was not attempted.";
+                                                if (i == firstErrorIndex) {
+                                                  for (BulkWriteError error : writeErrors) {
+                                                    if (error.getIndex() == i) {
+                                                      msg = error.getMessage();
+                                                      break;
+                                                    }
+                                                  }
+                                                }
+                                                failures.add(doc.toJson() + " - Error: " + msg);
+                                              }
+                                            } else {
+                                              // Unordered execution attempts all writes.
+                                              // Add only specific failed documents to failures.
+                                              for (BulkWriteError error : writeErrors) {
+                                                int index = error.getIndex();
+                                                if (index >= 0 && index < docList.size()) {
+                                                  Document failedDoc = docList.get(index);
+                                                  failures.add(
+                                                      failedDoc.toJson()
+                                                          + " - Error: "
+                                                          + error.getMessage());
+                                                }
+                                              }
                                             }
                                           } catch (Exception e) {
                                             for (Document doc : docList) {

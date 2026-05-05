@@ -254,6 +254,11 @@ public class MongoDbToMongoDb {
       }
     }
 
+    String writeDlqPath =
+        getDefaultDlqPath(options.getWriteDlqPath(), options.getTempLocation(), "dlq");
+    String processDlqPath =
+        getDefaultDlqPath(options.getProcessDlqPath(), options.getTempLocation(), "process-dlq");
+
     for (String collection : collections) {
       String targetCollection = options.getTargetCollection();
       if (targetCollection == null || targetCollection.isEmpty()) {
@@ -310,13 +315,11 @@ public class MongoDbToMongoDb {
                   .withOutputTags(successTag, TupleTagList.of(failureTag)));
 
       // Write Process Failures to DLQ
-      if (options.getProcessDlqPath() != null && !options.getProcessDlqPath().isEmpty()) {
-        processed
-            .get(failureTag)
-            .apply(
-                "WriteProcessDlq_" + collection,
-                TextIO.write().to(options.getProcessDlqPath() + "/" + collection));
-      }
+      processed
+          .get(failureTag)
+          .apply(
+              "WriteProcessDlq_" + collection,
+              TextIO.write().to(processDlqPath + "/" + collection));
 
       // Write Stage with DLQ
       PCollection<Document> validDocs = processed.get(successTag);
@@ -331,10 +334,21 @@ public class MongoDbToMongoDb {
               .withOrdered(options.getOrdered())
               .withWriteConcern(options.getWriteConcern())
               .withJournal(options.getJournal())
-              .withDlqPath(options.getWriteDlqPath())
+              .withDlqPath(writeDlqPath)
               .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites()));
     }
 
     pipeline.run();
+  }
+
+  private static String getDefaultDlqPath(String dlqPath, String tempLocation, String suffix) {
+    if (dlqPath != null && !dlqPath.isEmpty()) {
+      return dlqPath;
+    }
+    if (tempLocation != null) {
+      String path = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
+      return path + suffix;
+    }
+    return "/tmp/" + suffix;
   }
 }
