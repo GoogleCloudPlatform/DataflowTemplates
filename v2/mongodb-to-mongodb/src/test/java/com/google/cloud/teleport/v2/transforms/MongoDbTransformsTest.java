@@ -146,7 +146,8 @@ public class MongoDbTransformsTest {
               if (callCount.getAndIncrement() == 0) {
                 throw new MongoBulkWriteException(
                     mock(BulkWriteResult.class),
-                    Arrays.asList(new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 0)),
+                    Arrays.asList(
+                        new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 0)),
                     null,
                     new ServerAddress(),
                     Collections.emptySet());
@@ -154,10 +155,8 @@ public class MongoDbTransformsTest {
               return mock(BulkWriteResult.class);
             });
 
-    PCollection<Document> input = pipeline.apply(Create.<Document>of(
-        new Document("_id", 1),
-        new Document("_id", 2)
-    ));
+    PCollection<Document> input =
+        pipeline.apply(Create.<Document>of(new Document("_id", 1), new Document("_id", 2)));
 
     input.apply(
         "Write_Partial",
@@ -215,9 +214,9 @@ public class MongoDbTransformsTest {
     assertSuccessCount(result, 0L);
   }
 
-
   private long getSuccessfulDocumentsCount(PipelineResult result) {
-    for (MetricResult<Long> c : result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+    for (MetricResult<Long> c :
+        result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
       if (c.getName().getName().equals("successful-documents-written")) {
         return c.getCommitted();
       }
