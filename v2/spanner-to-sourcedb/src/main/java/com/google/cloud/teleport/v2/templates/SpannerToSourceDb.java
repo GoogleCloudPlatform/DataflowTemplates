@@ -937,9 +937,9 @@ public class SpannerToSourceDb {
     if (!options.getStartTimestamp().equals("")) {
       startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
     }
-    String metadataDb = options.getChangeStreamMetadataDatabase();
-    if (Strings.isNullOrEmpty(metadataDb)) {
-      metadataDb = options.getMetadataDatabase();
+    String changeStreamMetadataDb = options.getChangeStreamMetadataDatabase();
+    if (Strings.isNullOrEmpty(changeStreamMetadataDb)) {
+      changeStreamMetadataDb = options.getMetadataDatabase();
     }
 
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
@@ -947,7 +947,7 @@ public class SpannerToSourceDb {
             .withSpannerConfig(spannerConfig)
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
-            .withMetadataDatabase(metadataDb)
+            .withMetadataDatabase(changeStreamMetadataDb)
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
 
