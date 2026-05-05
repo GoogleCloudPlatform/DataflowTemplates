@@ -44,13 +44,7 @@ import org.joda.time.Instant;
  */
 public final class DataGeneratorUtils {
 
-  /** Default string length when the column doesn't declare a {@code size}. */
-  @VisibleForTesting static final int DEFAULT_STRING_LENGTH = 20;
-
-  /** Default precision/scale when the column doesn't declare them. */
-  @VisibleForTesting static final int DEFAULT_NUMERIC_PRECISION = 10;
-
-  @VisibleForTesting static final int DEFAULT_NUMERIC_SCALE = 2;
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private DataGeneratorUtils() {}
 
@@ -72,56 +66,58 @@ public final class DataGeneratorUtils {
       if (type == LogicalType.JSON) {
         try {
           Object resolvedTree = resolveJsonTemplateNode(override, faker);
-          return new ObjectMapper().writeValueAsString(resolvedTree);
+          return MAPPER.writeValueAsString(resolvedTree);
         } catch (Exception e) {
           throw new RuntimeException(
-                  "Failed to serialize rich nested JSON override for column " + column.name(), e);
+              "Failed to serialize nested JSON override for column " + column.name(), e);
         }
       }
       throw new IllegalArgumentException(
-              "Unsupported rich nested override for non-JSON column '" + column.name() + "'.");
+          "Unsupported nested override for non-JSON column '" + column.name() + "'.");
     } else {
       switch (type) {
         case STRING:
           return faker.lorem().characters(limitStringLength(size));
         case JSON:
           return "{"
-                  + "\"id\": "
-                  + faker.number().randomNumber()
-                  + ", "
-                  + "\"name\": \""
-                  + faker.name().fullName()
-                  + "\", "
-                  + "\"isActive\": "
-                  + faker.bool().bool()
-                  + ", "
-                  + "\"score\": "
-                  + faker.number().randomDouble(2, 0, 100)
-                  + ", "
-                  + "\"tags\": [\""
-                  + faker.lorem().word()
-                  + "\", \""
-                  + faker.lorem().word()
-                  + "\"], "
-                  + "\"address\": {\"city\": \""
-                  + faker.address().city()
-                  + "\", \"zip\": \""
-                  + faker.address().zipCode()
-                  + "\"}"
-                  + "}";
+              + "\"id\": "
+              + faker.number().randomNumber()
+              + ", "
+              + "\"name\": \""
+              + faker.name().fullName()
+              + "\", "
+              + "\"isActive\": "
+              + faker.bool().bool()
+              + ", "
+              + "\"score\": "
+              + faker.number().randomDouble(2, 0, 100)
+              + ", "
+              + "\"tags\": [\""
+              + faker.lorem().word()
+              + "\", \""
+              + faker.lorem().word()
+              + "\"], "
+              + "\"address\": {\"city\": \""
+              + faker.address().city()
+              + "\", \"zip\": \""
+              + faker.address().zipCode()
+              + "\"}"
+              + "}";
         case UUID:
           return UUID.randomUUID().toString();
         case INT64:
           return (long) ThreadLocalRandom.current().nextInt();
         case FLOAT64:
-        {
-          int scale = column.scale() != null ? column.scale() : DEFAULT_NUMERIC_SCALE;
-          int precision =
-                  column.precision() != null ? column.precision() : DEFAULT_NUMERIC_PRECISION + 5;
-          double maxVal = Math.pow(10, precision - scale) - 1.0 / Math.pow(10, scale);
-          double minVal = -maxVal;
-          return faker.number().randomDouble(scale, (long) minVal, (long) maxVal);
-        }
+          {
+            int scale = column.scale() != null ? column.scale() : Constants.DEFAULT_NUMERIC_SCALE;
+            int precision =
+                column.precision() != null
+                    ? column.precision()
+                    : Constants.DEFAULT_NUMERIC_PRECISION + 5;
+            double maxVal = Math.pow(10, precision - scale) - 1.0 / Math.pow(10, scale);
+            double minVal = -maxVal;
+            return faker.number().randomDouble(scale, (long) minVal, (long) maxVal);
+          }
         case NUMERIC:
           return generateNumeric(column, faker);
         case BOOLEAN:
@@ -129,27 +125,28 @@ public final class DataGeneratorUtils {
         case BYTES:
           return faker.lorem().characters(limitStringLength(size)).getBytes(StandardCharsets.UTF_8);
         case DATE:
-        {
-          long minMillis = -2208988800000L; // Year 1900
-          long maxMillis = 4133980799000L; // Year 2100
-          long randomMillis = ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
-          Calendar cal = Calendar.getInstance();
-          cal.setTimeInMillis(randomMillis);
-          // Zero the time part — DATE is day-granular and TIMESTAMP uses the TIMESTAMP branch.
-          cal.set(Calendar.HOUR_OF_DAY, 0);
-          cal.set(Calendar.MINUTE, 0);
-          cal.set(Calendar.SECOND, 0);
-          cal.set(Calendar.MILLISECOND, 0);
-          return new Instant(cal.getTimeInMillis());
-        }
+          {
+            long minMillis = -2208988800000L; // Year 1900
+            long maxMillis = 4133980799000L; // Year 2100
+            long randomMillis = ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(randomMillis);
+            // Zero the time part — DATE is day-granular and TIMESTAMP uses the TIMESTAMP branch.
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            return new Instant(cal.getTimeInMillis());
+          }
         case TIMESTAMP:
-        {
-          long minMillis = -2208988800000L; // Year 1900
-          long maxMillis = 4133980799000L; // Year 2100
-          return new Instant(ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
-        }
+          {
+            long minMillis = -2208988800000L; // Year 1900
+            long maxMillis = 4133980799000L; // Year 2100
+            return new Instant(ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
+          }
         default:
-          return "unknown";
+          throw new UnsupportedOperationException(
+              "Unsupported logical type for dynamic data generation: " + type);
       }
     }
   }
@@ -200,11 +197,13 @@ public final class DataGeneratorUtils {
   @VisibleForTesting
   static BigDecimal generateNumeric(DataGeneratorColumn column, Faker faker) {
     int prec =
-            (column.precision() != null && column.precision() > 0)
-                    ? column.precision()
-                    : DEFAULT_NUMERIC_PRECISION;
+        (column.precision() != null && column.precision() > 0)
+            ? column.precision()
+            : Constants.DEFAULT_NUMERIC_PRECISION;
     int sc =
-            (column.scale() != null && column.scale() >= 0) ? column.scale() : DEFAULT_NUMERIC_SCALE;
+        (column.scale() != null && column.scale() >= 0)
+            ? column.scale()
+            : Constants.DEFAULT_NUMERIC_SCALE;
     if (sc > prec) {
       sc = prec;
     }
@@ -224,7 +223,7 @@ public final class DataGeneratorUtils {
   @VisibleForTesting
   static int limitStringLength(Long size) {
     if (size == null || size <= 0) {
-      return DEFAULT_STRING_LENGTH;
+      return Constants.DEFAULT_STRING_LENGTH;
     }
     if (size > Integer.MAX_VALUE) {
       return Integer.MAX_VALUE;
@@ -287,18 +286,19 @@ public final class DataGeneratorUtils {
       switch (type) {
         case STRING:
         case JSON:
+        case UUID:
           return raw;
         case INT64:
-          return Long.parseLong(raw.trim());
+          return Long.parseLong(raw.trim().replace(",", ""));
         case FLOAT64:
-          return Double.parseDouble(raw.trim());
+          return Double.parseDouble(raw.trim().replace(",", ""));
         case NUMERIC:
           {
-            BigDecimal bd = new BigDecimal(raw.trim());
+            BigDecimal bd = new BigDecimal(raw.trim().replace(",", ""));
             int sc =
                 (column.scale() != null && column.scale() >= 0)
                     ? column.scale()
-                    : DEFAULT_NUMERIC_SCALE;
+                    : Constants.DEFAULT_NUMERIC_SCALE;
             return bd.setScale(sc, RoundingMode.HALF_UP);
           }
         case BOOLEAN:
