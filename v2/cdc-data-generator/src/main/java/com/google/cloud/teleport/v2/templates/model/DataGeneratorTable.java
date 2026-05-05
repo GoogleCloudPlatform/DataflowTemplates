@@ -28,6 +28,7 @@ public abstract class DataGeneratorTable implements Serializable {
   public abstract String name();
 
   /** The columns of the table. */
+  // TODO(khajanchi): Consider using a map of columns instead of list
   public abstract ImmutableList<DataGeneratorColumn> columns();
 
   /** The primary key column names. */

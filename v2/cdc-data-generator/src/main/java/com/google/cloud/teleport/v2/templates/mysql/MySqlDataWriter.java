@@ -414,6 +414,7 @@ public class MySqlDataWriter implements DataWriter {
     switch (type) {
       case STRING:
       case JSON:
+      case UUID:
         return Types.VARCHAR;
       case INT64:
         return Types.BIGINT;
