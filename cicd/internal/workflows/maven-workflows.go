@@ -55,6 +55,7 @@ type MavenFlags interface {
 	RunSpannerStagingIntegrationTests() string
 	RunLoadTests() string
 	RunLoadTestObserver() string
+	RunFailureInjectionTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
