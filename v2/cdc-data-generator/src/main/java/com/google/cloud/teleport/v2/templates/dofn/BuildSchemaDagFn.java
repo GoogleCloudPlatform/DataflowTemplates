@@ -31,7 +31,7 @@ public class BuildSchemaDagFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
   @ProcessElement
   public void processElement(
       @Element DataGeneratorSchema schema, OutputReceiver<DataGeneratorSchema> receiver) {
-    DataGeneratorSchema processedSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema processedSchema = SchemaUtils.generateSchemaDAG(schema);
 
     List<String> rootTables =
         processedSchema.tables().values().stream()

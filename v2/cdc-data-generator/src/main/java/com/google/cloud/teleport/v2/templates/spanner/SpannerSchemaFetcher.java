@@ -180,7 +180,7 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
         .insertQps(0)
         .updateQps(0) // Default value
         .deleteQps(0) // Default value
-        .recordsPerTick(1) // Default value
+        .recordsPerTick(1.0) // Default value
         .build();
   }
 

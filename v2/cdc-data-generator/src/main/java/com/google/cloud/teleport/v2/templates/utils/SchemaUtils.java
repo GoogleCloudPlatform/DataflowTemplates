@@ -41,7 +41,7 @@ public class SchemaUtils {
    * @param schema The input schema.
    * @return A new schema with DAG information populated.
    */
-  public static DataGeneratorSchema setSchemaDAG(DataGeneratorSchema schema) {
+  public static DataGeneratorSchema generateSchemaDAG(DataGeneratorSchema schema) {
     Map<String, DataGeneratorTable> tableMap = schema.tables();
     Map<String, List<String>> parentToSequenceChild = new HashMap<>();
     Set<String> hasSequenceParent = new HashSet<>();

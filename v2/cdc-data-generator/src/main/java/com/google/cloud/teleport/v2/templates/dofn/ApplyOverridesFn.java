@@ -23,10 +23,11 @@ import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,57 +55,54 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
   @ProcessElement
   public void processElement(
       @Element DataGeneratorSchema schema, OutputReceiver<DataGeneratorSchema> receiver) {
-    Map<String, DataGeneratorTable> tableMap = new HashMap<>();
+    Map<String, SchemaConfig.TableConfig> configTables =
+        (schemaConfig != null && schemaConfig.getTables() != null)
+            ? schemaConfig.getTables()
+            : ImmutableMap.of();
 
-    // Step 1: Apply global defaults
+    // Warn about unknown tables specified in the config override
+    configTables.keySet().stream()
+        .filter(tableName -> !schema.tables().containsKey(tableName))
+        .forEach(tableName -> LOG.warn("Override specified for unknown table: {}", tableName));
+
+    ImmutableMap.Builder<String, DataGeneratorTable> updatedTables = ImmutableMap.builder();
     for (DataGeneratorTable table : schema.tables().values()) {
-      DataGeneratorTable.Builder tableBuilder = table.toBuilder();
-      if (defaultInsertQps != null) {
-        tableBuilder.insertQps(defaultInsertQps);
-      }
-      if (defaultUpdateQps != null) {
-        tableBuilder.updateQps(defaultUpdateQps);
-      }
-      if (defaultDeleteQps != null) {
-        tableBuilder.deleteQps(defaultDeleteQps);
-      }
-      tableMap.put(table.name(), tableBuilder.build());
+      updatedTables.put(table.name(), applyTableOverrides(table, configTables.get(table.name())));
     }
 
-    // Step 2: Apply overrides
-    if (schemaConfig != null) {
-      if (schemaConfig.getTables() != null) {
-        for (Map.Entry<String, SchemaConfig.TableConfig> entry :
-            schemaConfig.getTables().entrySet()) {
-          String tableName = entry.getKey();
-          SchemaConfig.TableConfig tableConfig = entry.getValue();
-          DataGeneratorTable existingTable = tableMap.get(tableName);
-          if (existingTable == null) {
-            LOG.warn("Override specified for unknown table: {}", tableName);
-            continue;
-          }
-          DataGeneratorTable.Builder tableBuilder = existingTable.toBuilder();
-          if (tableConfig.getInsertQps() != null) {
-            tableBuilder.insertQps(tableConfig.getInsertQps());
-          }
-          if (tableConfig.getUpdateQps() != null) {
-            tableBuilder.updateQps(tableConfig.getUpdateQps());
-          }
-          if (tableConfig.getDeleteQps() != null) {
-            tableBuilder.deleteQps(tableConfig.getDeleteQps());
-          }
-          if (tableConfig.getColumns() != null) {
-            tableBuilder.columns(applyColumnOverrides(existingTable, tableConfig.getColumns()));
-          }
-          if (tableConfig.getForeignKeys() != null) {
-            tableBuilder.foreignKeys(mergeForeignKeys(existingTable, tableConfig.getForeignKeys()));
-          }
-          tableMap.put(tableName, tableBuilder.build());
-        }
+    receiver.output(DataGeneratorSchema.builder().tables(updatedTables.build()).build());
+  }
+
+  private DataGeneratorTable applyTableOverrides(
+      DataGeneratorTable table, @Nullable SchemaConfig.TableConfig tableConfig) {
+    DataGeneratorTable.Builder tableBuilder = table.toBuilder();
+
+    // Resolve QPS values hierarchically: Table-level Override -> Global Default
+    tableBuilder.insertQps(
+        Optional.ofNullable(tableConfig)
+            .map(SchemaConfig.TableConfig::getInsertQps)
+            .orElse(defaultInsertQps));
+
+    tableBuilder.updateQps(
+        Optional.ofNullable(tableConfig)
+            .map(SchemaConfig.TableConfig::getUpdateQps)
+            .orElse(defaultUpdateQps));
+
+    tableBuilder.deleteQps(
+        Optional.ofNullable(tableConfig)
+            .map(SchemaConfig.TableConfig::getDeleteQps)
+            .orElse(defaultDeleteQps));
+
+    if (tableConfig != null) {
+      if (tableConfig.getColumns() != null) {
+        tableBuilder.columns(applyColumnOverrides(table, tableConfig.getColumns()));
+      }
+      if (tableConfig.getForeignKeys() != null) {
+        tableBuilder.foreignKeys(mergeForeignKeys(table, tableConfig.getForeignKeys()));
       }
     }
 
-    receiver.output(DataGeneratorSchema.builder().tables(ImmutableMap.copyOf(tableMap)).build());
+    return tableBuilder.build();
   }
 
   private ImmutableList<DataGeneratorColumn> applyColumnOverrides(

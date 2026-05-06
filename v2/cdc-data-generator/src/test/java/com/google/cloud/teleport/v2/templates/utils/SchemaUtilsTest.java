@@ -76,7 +76,7 @@ public class SchemaUtilsTest {
             .tables(ImmutableMap.of("Parent", parent, "Child", child))
             .build();
 
-    DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
     DataGeneratorTable newParent = dagSchema.tables().get("Parent");
     DataGeneratorTable newChild = dagSchema.tables().get("Child");
@@ -151,7 +151,7 @@ public class SchemaUtilsTest {
             .tables(ImmutableMap.of("P1", p1, "P2", p2, "Child", child))
             .build();
 
-    DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
     DataGeneratorTable newP1 = dagSchema.tables().get("P1");
     DataGeneratorTable newP2 = dagSchema.tables().get("P2");
@@ -238,7 +238,7 @@ public class SchemaUtilsTest {
                     child))
             .build();
 
-    DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
     assertFalse(dagSchema.tables().get("InterleavedParent").isRoot());
     assertTrue(dagSchema.tables().get("OtherParent").isRoot());
@@ -356,7 +356,7 @@ public class SchemaUtilsTest {
             .tables(ImmutableMap.of("P1", p1, "P2", p2, "C1", c1, "C2", c2, "GC1", gc1))
             .build();
 
-    DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
     assertTrue(dagSchema.tables().get("P1").isRoot());
     assertFalse(dagSchema.tables().get("P2").isRoot()); // P2 is now a sequence child of P1 for C1
