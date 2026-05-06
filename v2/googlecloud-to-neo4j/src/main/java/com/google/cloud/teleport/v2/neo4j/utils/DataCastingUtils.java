@@ -76,9 +76,6 @@ public class DataCastingUtils {
    */
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
-  // Evaluate the Date IDENTIFIER here so the switch statement doesn't complain.
-  private static final String DATE_LOGICAL_TYPE = org.apache.beam.sdk.schemas.logicaltypes.Date.getIdentifier();
-
   public static List<Object> sourceTextToTargetObjects(
       Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
     List<Object> castVals = new ArrayList<>();
@@ -142,31 +139,23 @@ public class DataCastingUtils {
             }
           case LOGICAL_TYPE:
             {
-              switch (type.getLogicalType().getIdentifier()) {
-                case NanosDuration.IDENTIFIER:
-                  castVals.add(asDuration(objVal));
-                  break;
-                case DATE_LOGICAL_TYPE:
-                  castVals.add(asDate(objVal));
-                  break;
-                case org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER:
-                  castVals.add(asDateTime(objVal, LocalDateTime::from));
-                  break;
-                case IsoDateTime.IDENTIFIER:
-                  castVals.add(asDateTime(objVal));
-                  break;
-                case Time.IDENTIFIER:
-                  castVals.add(asTime(objVal));
-                  break;
-                default:
-                  {
-                    var message =
-                        String.format(
-                            "Mapping '%s' types from text sources is not supported.", typeName);
-                    LOG.warn(message);
-                    castVals.add(null);
-                    break;
-                  }
+              String identifier = type.getLogicalType().getIdentifier();
+              if (NanosDuration.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDuration(objVal));
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDate(objVal));
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDateTime(objVal, LocalDateTime::from));
+              } else if (IsoDateTime.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDateTime(objVal));
+              } else if (Time.IDENTIFIER.equals(identifier)) {
+                castVals.add(asTime(objVal));
+              } else {
+                var message =
+                    String.format(
+                        "Mapping '%s' types from text sources is not supported.", typeName);
+                LOG.warn(message);
+                castVals.add(null);
               }
 
               break;
