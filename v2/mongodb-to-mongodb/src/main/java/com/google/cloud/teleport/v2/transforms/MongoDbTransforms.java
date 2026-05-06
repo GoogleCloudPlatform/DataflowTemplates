@@ -45,7 +45,6 @@ public class MongoDbTransforms {
     private String database;
     private String collection;
     private Integer batchSize = 5000;
-    private Boolean ordered = false;
 
     private String dlqPath;
     private Integer maxConcurrentAsyncWrites = 10;
@@ -74,12 +73,6 @@ public class MongoDbTransforms {
       return this;
     }
 
-    public WriteWithDlq withOrdered(Boolean ordered) {
-      if (ordered != null) {
-        this.ordered = ordered;
-      }
-      return this;
-    }
 
     public WriteWithDlq withDlqPath(String dlqPath) {
       this.dlqPath = dlqPath;
@@ -129,7 +122,6 @@ public class MongoDbTransforms {
                               .withUri(uri)
                               .withDatabase(database)
                               .withCollection(collection)
-                              .withOrdered(ordered)
                               .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
                               .withMaxRetries(maxRetries)
                               .withClientFactory(clientFactory)

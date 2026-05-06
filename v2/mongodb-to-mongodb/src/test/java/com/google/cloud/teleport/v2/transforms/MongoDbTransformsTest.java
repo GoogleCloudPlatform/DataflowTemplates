@@ -166,7 +166,6 @@ public class MongoDbTransformsTest {
             .withCollection("test")
             .withMaxRetries(3)
             .withBatchSize(2)
-            .withOrdered(false)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
 

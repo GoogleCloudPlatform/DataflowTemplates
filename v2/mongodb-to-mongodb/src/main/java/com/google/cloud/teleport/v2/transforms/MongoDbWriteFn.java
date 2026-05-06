@@ -54,7 +54,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   private final String uri;
   private final String database;
   private final String collection;
-  private final Boolean ordered;
   private final Integer maxConcurrentAsyncWrites;
   private final Integer maxRetries;
   private final SerializableFunction<String, MongoClient> clientFactory;
@@ -75,15 +74,13 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       String uri,
       String database,
       String collection,
-      Boolean ordered,
-      Integer maxConcurrentAsyncWrites,
+          Integer maxConcurrentAsyncWrites,
       Integer maxRetries,
       SerializableFunction<String, MongoClient> clientFactory,
       TupleTag<String> failureTag) {
     this.uri = uri;
     this.database = database;
     this.collection = collection;
-    this.ordered = ordered;
     this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
     this.maxRetries = maxRetries;
     this.clientFactory = clientFactory;
@@ -98,7 +95,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     private String uri;
     private String database;
     private String collection;
-    private Boolean ordered;
     private Integer maxConcurrentAsyncWrites;
     private Integer maxRetries;
     private SerializableFunction<String, MongoClient> clientFactory;
@@ -119,10 +115,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       return this;
     }
 
-    public Builder withOrdered(Boolean ordered) {
-      this.ordered = ordered;
-      return this;
-    }
 
     public Builder withMaxConcurrentAsyncWrites(Integer maxConcurrentAsyncWrites) {
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
@@ -149,8 +141,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
           uri,
           database,
           collection,
-          ordered,
-          maxConcurrentAsyncWrites,
+              maxConcurrentAsyncWrites,
           maxRetries,
           clientFactory,
           failureTag);
@@ -210,7 +201,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
                   boolean success = false;
                   while (attempt < maxRetries && !success) {
                     try {
-                      mongoCollection.bulkWrite(updates, new BulkWriteOptions().ordered(ordered));
+                      mongoCollection.bulkWrite(updates, new BulkWriteOptions().ordered(false));
                       success = true;
                       successfulCount.addAndGet(docList.size());
                     } catch (MongoBulkWriteException e) {
@@ -229,36 +220,13 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
                       }
 
                       if (hasPermanentError || attempt + 1 >= maxRetries) {
-                        if (ordered) {
-                          int firstErrorIndex = docList.size();
-                          for (BulkWriteError error : writeErrors) {
-                            firstErrorIndex = Math.min(firstErrorIndex, error.getIndex());
-                          }
-                          successfulCount.addAndGet(firstErrorIndex);
-                          // Add all documents from firstErrorIndex to the end
-                          // to failures.
-                          for (int i = firstErrorIndex; i < docList.size(); i++) {
-                            Document doc = docList.get(i);
-                            String msg = "Ordered write failed or was not attempted.";
-                            if (i == firstErrorIndex) {
-                              for (BulkWriteError error : writeErrors) {
-                                if (error.getIndex() == i) {
-                                  msg = error.getMessage();
-                                  break;
-                                }
-                              }
-                            }
-                            failures.add(doc.toJson() + " - Error: " + msg);
-                          }
-                        } else {
-                          successfulCount.addAndGet(docList.size() - writeErrors.size());
+                        successfulCount.addAndGet(docList.size() - writeErrors.size());
 
-                          for (BulkWriteError error : writeErrors) {
-                            int index = error.getIndex();
-                            if (index >= 0 && index < docList.size()) {
-                              Document failedDoc = docList.get(index);
-                              failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
-                            }
+                        for (BulkWriteError error : writeErrors) {
+                          int index = error.getIndex();
+                          if (index >= 0 && index < docList.size()) {
+                            Document failedDoc = docList.get(index);
+                            failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
                           }
                         }
                         break;

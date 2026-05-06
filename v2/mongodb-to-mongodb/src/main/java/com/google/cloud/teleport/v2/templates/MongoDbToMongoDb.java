@@ -146,17 +146,6 @@ public class MongoDbToMongoDb {
 
     void setBatchSize(Integer value);
 
-    @TemplateParameter.Boolean(
-        order = 10,
-        groupName = "Target",
-        optional = true,
-        description = "Ordered Bulk Write",
-        helpText = "Allow parallel execution and prevent batch failure on single error.")
-    @Default.Boolean(false)
-    Boolean getOrdered();
-
-    void setOrdered(Boolean value);
-
     @TemplateParameter.Text(
         order = 11,
         optional = true,
@@ -286,7 +275,6 @@ public class MongoDbToMongoDb {
               .withDatabase(options.getTargetDatabase())
               .withCollection(targetCollection)
               .withBatchSize(options.getBatchSize())
-              .withOrdered(options.getOrdered())
               .withDlqPath(writeDlqPath)
               .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
               .withMaxRetries(options.getMaxRetries()));
