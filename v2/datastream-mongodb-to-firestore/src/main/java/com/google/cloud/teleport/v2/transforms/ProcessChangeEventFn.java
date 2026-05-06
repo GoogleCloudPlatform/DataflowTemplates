@@ -204,7 +204,8 @@ public class ProcessChangeEventFn
           } else if (e instanceof MongoException mongoException) {
             errorIdentifier = mongoException.getClass().getSimpleName();
           }
-          Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrite_" + errorIdentifier).inc();
+          Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrites_" + errorIdentifier)
+              .inc();
 
           severeFailedWrites.inc();
           break; // Exit the retry loop
@@ -222,7 +223,7 @@ public class ProcessChangeEventFn
           } else if (e instanceof MongoException mongoException) {
             errorIdentifier = mongoException.getClass().getSimpleName();
           }
-          Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetry_" + errorIdentifier).inc();
+          Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries_" + errorIdentifier).inc();
 
           LOG.warn(
               "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",

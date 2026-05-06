@@ -334,6 +334,27 @@ public class ProcessChangeEventFnTest {
     verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
     verify(mockSession, never()).commitTransaction();
+
+    MetricsContainerImpl container =
+        (MetricsContainerImpl) MetricsEnvironment.getCurrentContainer();
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "totalProcessedDocuments"))
+                .getCumulative());
+    assertEquals(
+        3L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "inMemoryRetries"))
+                .getCumulative());
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "retriableFailedWrites"))
+                .getCumulative());
   }
 
   @Test
@@ -352,6 +373,21 @@ public class ProcessChangeEventFnTest {
     verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
+
+    MetricsContainerImpl container =
+        (MetricsContainerImpl) MetricsEnvironment.getCurrentContainer();
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "totalProcessedDocuments"))
+                .getCumulative());
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "severeFailedWrites"))
+                .getCumulative());
   }
 
   @Test
@@ -372,6 +408,21 @@ public class ProcessChangeEventFnTest {
     verify(mockSession).commitTransaction();
     verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
     verify(mockSuccessReceiver, times(1)).output(any());
+
+    MetricsContainerImpl container =
+        (MetricsContainerImpl) MetricsEnvironment.getCurrentContainer();
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "totalProcessedDocuments"))
+                .getCumulative());
+    assertEquals(
+        1L,
+        (long)
+            container
+                .getCounter(MetricName.named(ProcessChangeEventFn.class, "dlqRetries"))
+                .getCumulative());
   }
 
   @Test
