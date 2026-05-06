@@ -36,11 +36,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.IterableCoder;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.bson.BsonDocument;
@@ -262,23 +268,19 @@ public class MongoDbTransformsTest {
     Document doc1 = new Document("_id", 1);
     Document doc2 = new Document("_id", 2);
 
-    org.apache.beam.sdk.values.KV<String, Iterable<Document>> batch =
-        org.apache.beam.sdk.values.KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
+    KV<String, Iterable<Document>> batch = KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
 
-    org.apache.beam.sdk.coders.Coder<Document> documentCoder =
+    Coder<Document> documentCoder =
         pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(Document.class));
 
-    PCollection<org.apache.beam.sdk.values.KV<String, Iterable<Document>>> input =
+    PCollection<KV<String, Iterable<Document>>> input =
         pipeline.apply(
             Create.of(Collections.singletonList(batch))
-                .withCoder(
-                    org.apache.beam.sdk.coders.KvCoder.of(
-                        org.apache.beam.sdk.coders.StringUtf8Coder.of(),
-                        org.apache.beam.sdk.coders.IterableCoder.of(documentCoder))));
+                .withCoder(KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentCoder))));
 
     input.apply(
         "Write_DocLevelRetry",
-        org.apache.beam.sdk.transforms.ParDo.of(
+        ParDo.of(
                 MongoDbWriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
