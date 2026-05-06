@@ -93,11 +93,13 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
             .maybeUseStaticInstance()
             .build();
+    spannerMetadataResourceManager.ensureUsableAndCreateResources();
 
     spannerChangeStreamMetadataResourceManager =
         SpannerResourceManager.builder("rr-cs-meta-" + testName, project, region)
             .maybeUseStaticInstance()
             .build();
+    spannerChangeStreamMetadataResourceManager.ensureUsableAndCreateResources();
 
     gcsResourceManager = createSpannerLTGcsResourceManager();
     pubsubResourceManager = setUpPubSubResourceManager();
