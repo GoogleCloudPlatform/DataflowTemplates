@@ -75,6 +75,10 @@ public class ProcessChangeEventFn
       Metrics.counter(ProcessChangeEventFn.class, "totalProcessedDocuments");
   private final Counter retriedDocuments =
       Metrics.counter(ProcessChangeEventFn.class, "retriedDocuments");
+  private final Counter inMemoryRetries =
+      Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries");
+  private final Counter outOfOrderSkips =
+      Metrics.counter(ProcessChangeEventFn.class, "outOfOrderSkips");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -142,12 +146,13 @@ public class ProcessChangeEventFn
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
           }
+          successfulWrites.inc();
         } else {
           // Existing document has a later timestamp, skip this event
+          outOfOrderSkips.inc();
         }
         session.commitTransaction();
         out.get(successfulWriteTag).output(element);
-        successfulWrites.inc();
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
@@ -191,12 +196,37 @@ public class ProcessChangeEventFn
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(severeFailedWriteTag).output(failedElement);
+
+          String errorIdentifier = "UnknownError";
+          if (e instanceof MongoWriteException) {
+            errorIdentifier = "WriteErrorCode_" + ((MongoWriteException) e).getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException) {
+            errorIdentifier =
+                "CommandErrorCode_" + ((com.mongodb.MongoCommandException) e).getCode();
+          } else if (e instanceof MongoException) {
+            errorIdentifier = e.getClass().getSimpleName();
+          }
+          Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrite_" + errorIdentifier).inc();
+
           severeFailedWrites.inc();
           break; // Exit the retry loop
         }
 
         long backoffMs = retryDelayMs * (1 << retryCount);
         if (retryCount < maxRetries) {
+          inMemoryRetries.inc();
+
+          String errorIdentifier = "UnknownError";
+          if (e instanceof MongoWriteException) {
+            errorIdentifier = "WriteErrorCode_" + ((MongoWriteException) e).getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException) {
+            errorIdentifier =
+                "CommandErrorCode_" + ((com.mongodb.MongoCommandException) e).getCode();
+          } else if (e instanceof MongoException) {
+            errorIdentifier = e.getClass().getSimpleName();
+          }
+          Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetry_" + errorIdentifier).inc();
+
           LOG.warn(
               "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
               element.getDocumentId(),

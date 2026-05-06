@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -39,6 +41,8 @@ public class CreateMongoDbChangeEventContextFn
       new TupleTag<>("failedCreation");
 
   private final String shadowCollectionPrefix;
+  private final Counter contextCreationFailures =
+      Metrics.counter(CreateMongoDbChangeEventContextFn.class, "contextCreationFailures");
 
   public CreateMongoDbChangeEventContextFn(String shadowCollectionPrefix) {
     this.shadowCollectionPrefix = shadowCollectionPrefix;
@@ -57,6 +61,7 @@ public class CreateMongoDbChangeEventContextFn
       element.setErrorMessage(e.getMessage());
       element.setStacktrace(Throwables.getStackTraceAsString(e));
       out.get(failedCreationTag).output(element);
+      contextCreationFailures.inc();
       LOG.info("Failed element sent to DLQ");
     }
   }
