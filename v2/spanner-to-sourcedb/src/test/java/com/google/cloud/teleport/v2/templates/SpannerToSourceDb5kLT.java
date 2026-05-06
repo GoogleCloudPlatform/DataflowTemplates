@@ -66,7 +66,8 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
   private static final int NUM_TABLES = 5000;
   private static final String TEMPLATE_SPEC_PATH =
       com.google.common.base.MoreObjects.firstNonNull(
-          org.apache.beam.it.common.TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
+          org.apache.beam.it.common.TestProperties.specPath(),
+          "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
   private MySQLResourceManager jdbcResourceManager;
   private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
