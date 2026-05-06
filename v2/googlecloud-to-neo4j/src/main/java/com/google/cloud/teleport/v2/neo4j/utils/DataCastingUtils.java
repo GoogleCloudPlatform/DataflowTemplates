@@ -142,9 +142,11 @@ public class DataCastingUtils {
               String identifier = type.getLogicalType().getIdentifier();
               if (NanosDuration.IDENTIFIER.equals(identifier)) {
                 castVals.add(asDuration(objVal));
-              } else if (org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER.equals(identifier)) {
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER.equals(
+                  identifier)) {
                 castVals.add(asDate(objVal));
-              } else if (org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER.equals(identifier)) {
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER.equals(
+                  identifier)) {
                 castVals.add(asDateTime(objVal, LocalDateTime::from));
               } else if (IsoDateTime.IDENTIFIER.equals(identifier)) {
                 castVals.add(asDateTime(objVal));
