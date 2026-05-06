@@ -50,21 +50,22 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Fault Tolerance (FT) test for verifying the robustness and correctness of Change Data Capture (CDC) 
- * processing in the {@link SpannerToSourceDb} Dataflow template.
- * 
- * <p>Objective: Verify that the Reverse Replication (RR) pipeline can successfully process CDC events 
- * from a Spanner change stream and write them to a target MySQL database, even when facing persistent 
- * transaction timeouts at the sink.
- * 
+ * Fault Tolerance (FT) test for verifying the robustness and correctness of Change Data Capture
+ * (CDC) processing in the {@link SpannerToSourceDb} Dataflow template.
+ *
+ * <p>Objective: Verify that the Reverse Replication (RR) pipeline can successfully process CDC
+ * events from a Spanner change stream and write them to a target MySQL database, even when facing
+ * persistent transaction timeouts at the sink.
+ *
  * <p>Edge cases covered in this test include:
- * 
+ *
  * <ul>
- *   <li>Handling simulated MySQL transaction timeouts using the {@code TransactionTimeoutInjectionPolicy}.
- *   <li>Processing large bursts of CDC events (inserts/updates/deletes) from Spanner simultaneously while 
- *       undergoing the injected failure condition.
- *   <li>Ensuring the pipeline successfully retries aborted transactions and guarantees consistency in CDC 
- *       events processing without duplicating records.
+ *   <li>Handling simulated MySQL transaction timeouts using the {@code
+ *       TransactionTimeoutInjectionPolicy}.
+ *   <li>Processing large bursts of CDC events (inserts/updates/deletes) from Spanner simultaneously
+ *       while undergoing the injected failure condition.
+ *   <li>Ensuring the pipeline successfully retries aborted transactions and guarantees consistency
+ *       in CDC events processing without duplicating records.
  * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -93,7 +94,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   @Before
   public void setUp() throws IOException, InterruptedException {
     // 1. Create Source Spanner Databases
-    // The main database holds the data and the change stream. 
+    // The main database holds the data and the change stream.
     // The metadata database is used by the pipeline to store internal state.
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
@@ -105,7 +106,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
         USERS_TABLE, new JDBCResourceManager.JDBCSchema(USERS_TABLE_MYSQL_DDL, "id"));
 
     // 3. Create and upload GCS Resources
-    // Set up the GCS bucket and upload the reverse replication shard configuration 
+    // Set up the GCS bucket and upload the reverse replication shard configuration
     // and Spanner session files required by the pipeline.
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -120,7 +121,8 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     pubsubResourceManager = setUpPubSubResourceManager();
 
     // 5. Record Start Timestamp
-    // Capture the current time so the pipeline only streams events that occur from this point forward.
+    // Capture the current time so the pipeline only streams events that occur from this point
+    // forward.
     Timestamp startTimeStamp = Timestamp.now();
 
     int numRows = 200;
@@ -145,8 +147,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     // 80-second delay exceeds standard Spanner transaction timeout, forcing transaction
     // rollbacks. The pipeline must recover and ensure consistency in CDC events processing.
     //
-    // After the 30-minute window expires, failures are no longer injected. The pipeline then rapidly
-    // processes the accumulated burst backlog and successfully retries any previously failed events.
+    // After the 30-minute window expires, failures are no longer injected. The pipeline then
+    // rapidly processes the accumulated burst backlog and successfully retries any previously
+    // failed events.
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
@@ -192,10 +195,10 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     assertThatPipeline(jobInfo).isRunning();
 
     long expectedRows = spannerResourceManager.getRowCount(USERS_TABLE);
-    
-    // 2. Wait for the exact number of rows from Spanner to successfully appear in the target MySQL database.
-    // This verifies that despite the induced transaction rollbacks at the JDBC sink, the pipeline 
-    // successfully retried the failed events until all data was synced.
+
+    // 2. Wait for the exact number of rows from Spanner to successfully appear in the target MySQL
+    // database. This verifies that despite the induced transaction rollbacks at the JDBC sink, the
+    // pipeline successfully retried the failed events until all data was synced.
     ConditionCheck sourceDbRowCountCondition =
         CloudSQLRowsCheck.builder(cloudSqlResourceManager, USERS_TABLE)
             .setMinRows((int) expectedRows)
@@ -208,8 +211,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
-    // 3. Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
-    // buffer for the dataflow job to process the events and ensure no late-arriving events alter the state.
+    // 3. Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more
+    // minutes buffer for the dataflow job to process the events and ensure no late-arriving
+    // events alter the state.
     Thread.sleep(600000);
 
     // 4. Read data from both Spanner and MySQL and assert that the exact row states match,

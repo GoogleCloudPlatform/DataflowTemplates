@@ -54,21 +54,22 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Fault Tolerance (FT) test for verifying the robustness and correctness of Change Data Capture (CDC) 
- * processing in the {@link DataStreamToSpanner} Dataflow template.
- * 
+ * Fault Tolerance (FT) test for verifying the robustness and correctness of Change Data Capture
+ * (CDC) processing in the {@link DataStreamToSpanner} Dataflow template.
+ *
  * <p>Objective: Verify that the pipeline can successfully process and replicate CDC events from a
  * MySQL source database to a Spanner target database, even when facing persistent network timeouts
  * and Spanner transaction aborts during peak load.
- * 
+ *
  * <p>Edge cases covered in this test include:
- * 
+ *
  * <ul>
- *   <li>Handling simulated Spanner transaction timeouts using the {@code TransactionTimeoutInjectionPolicy}.
- *   <li>Replicating large bursts of CDC events (inserts/updates/deletes) simultaneously while undergoing 
- *       the injected failure condition.
- *   <li>Ensuring the template successfully retries aborted commits and guarantees consistency in CDC
- *       event processing without data loss.
+ *   <li>Handling simulated Spanner transaction timeouts using the {@code
+ *       TransactionTimeoutInjectionPolicy}.
+ *   <li>Replicating large bursts of CDC events (inserts/updates/deletes) simultaneously while
+ *       undergoing the injected failure condition.
+ *   <li>Ensuring the template successfully retries aborted commits and guarantees consistency in
+ *       CDC event processing without data loss.
  * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -171,7 +172,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     // 7. Configure Dataflow Failure Injection
     // This sets the TransactionTimeoutInjectionPolicy, which simulates 260-second long stalls
-    // in Spanner transactions over a 30-minute window, causing standard Spanner RPCs to timeout and abort.
+    // in Spanner transactions over a 30-minute window, causing standard Spanner RPCs to timeout and
+    // abort.
     //
     // NOTE: This test is estimated to take around 45-50 minutes to complete (30-minute injection
     // window + setup + post-recovery processing buffer).
@@ -180,13 +182,15 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     // Dataflow job is launched, the pipeline will immediately see all the generated CDC events as a
     // massive burst upon startup.
     //
-    // During the 30-minute window, the simulated 260-second delay exceeds standard Spanner Java Client
-    // timeout settings (typically 60 seconds for commit RPCs). This results in DEADLINE_EXCEEDED errors.
-    // This policy specifically tests the "Separate Shadow Table" transaction algorithm, where the shadow
-    // database (tracking stream offsets) and the main database are distinct. The algorithm utilizes nested 
-    // transactions to ensure consistency.
+    // During the 30-minute window, the simulated 260-second delay exceeds standard Spanner Java
+    // Client timeout settings (typically 60 seconds for commit RPCs). This results in
+    // DEADLINE_EXCEEDED errors. This policy specifically tests the "Separate Shadow Table"
+    // transaction algorithm, where the shadow database (tracking stream offsets) and the
+    // main database are distinct. The algorithm utilizes nested transactions to ensure
+    // consistency.
     //
-    // After the 30-minute window expires, failures are no longer injected. The pipeline then rapidly
+    // After the 30-minute window expires, failures are no longer injected. The pipeline then
+    // rapidly
     // processes the remaining backlog and successfully retries any previously failed events.
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
@@ -233,7 +237,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     assertThatPipeline(jobInfo).isRunning();
 
     long expectedRows = sourceDBResourceManager.getRowCount(USERS_TABLE);
-    
+
     // 2. Wait for the exact number of rows from the source to successfully appear in Spanner.
     // This checks that despite the induced transaction timeouts, the pipeline eventually
     // retries and converges to the correct row count.
@@ -249,8 +253,9 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
                 createConfig(jobInfo, Duration.ofHours(1)), spannerRowCountConditionCheck);
     assertThatResult(result).meetsConditions();
 
-    // 3. Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
-    // buffer for the dataflow job to process the events and ensure no late-arriving events alter the state.
+    // 3. Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more
+    // minutes buffer for the dataflow job to process the events and ensure no late-arriving
+    // events alter the state.
     Thread.sleep(600000);
 
     // 4. Read data from both Spanner and MySQL and assert that the exact row states match,
