@@ -111,7 +111,19 @@ public class CassandraIOTest implements Serializable {
    */
   @BeforeClass
   public static void beforeClass() throws Exception {
-    embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
+    int maxRetries = 3;
+    for (int i = 0; i < maxRetries; i++) {
+      try {
+        embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
+        break;
+      } catch (Exception e) {
+        LOG.warn("Failed to start Embedded Cassandra on attempt {}. Retrying...", i + 1, e);
+        if (i == maxRetries - 1) {
+          throw e;
+        }
+        Thread.sleep(1000);
+      }
+    }
     jmxPort = NetworkTestHelper.getAvailableLocalPort();
     cassandraInetSocketAddress = embeddedCassandra.getContactPoints().get(0);
     cassandraHost = cassandraInetSocketAddress.getHostString();
