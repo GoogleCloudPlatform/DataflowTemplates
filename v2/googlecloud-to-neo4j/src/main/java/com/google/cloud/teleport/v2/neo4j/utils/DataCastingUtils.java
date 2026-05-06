@@ -76,6 +76,9 @@ public class DataCastingUtils {
    */
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
+  // Evaluate the Date IDENTIFIER here so the switch statement doesn't complain.
+  private static final String DATE_LOGICAL_TYPE = org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER;
+
   public static List<Object> sourceTextToTargetObjects(
       Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
     List<Object> castVals = new ArrayList<>();
@@ -143,7 +146,7 @@ public class DataCastingUtils {
                 case NanosDuration.IDENTIFIER:
                   castVals.add(asDuration(objVal));
                   break;
-                case "beam:logical_type:date:v1":
+                case DATE_LOGICAL_TYPE:
                   castVals.add(asDate(objVal));
                   break;
                 case org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER:
