@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -27,6 +26,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
@@ -36,6 +36,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -219,24 +223,82 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
 
     assertThatPipeline(jobInfo).isRunning();
 
-    // 1. Write row in Spanner
-    LOG.info("Writing a row to Spanner...");
-    Mutation m = Mutation.newInsertOrUpdateBuilder("table_1").set("id").to(42L).build();
-    spannerResourceManager.write(m);
-    LOG.info("Successfully wrote a row to Spanner.");
+    // 1. Write row in every table in Spanner
+    LOG.info("Writing a row to all {} tables in Spanner...", NUM_TABLES);
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 1; i <= NUM_TABLES; i++) {
+      mutations.add(Mutation.newInsertOrUpdateBuilder("table_" + i).set("id").to(42L).build());
+      // Spanner might have mutation limits per commit. Let's write in batches of 1000 just to be
+      // safe.
+      if (mutations.size() >= 1000) {
+        spannerResourceManager.write(mutations);
+        mutations.clear();
+      }
+    }
+    if (!mutations.isEmpty()) {
+      spannerResourceManager.write(mutations);
+    }
+    LOG.info("Successfully wrote a row to all tables in Spanner.");
 
-    // 2. Assert the row in MySQL
-    LOG.info("Waiting for row to be replicated to MySQL...");
+    // 2. Assert the rows in MySQL
+    LOG.info("Constructing batch query for verification...");
+    List<String> batchQueries = new ArrayList<>();
+    int batchSize = 100; // Smaller batch size to be safe against stack overrun
+    for (int i = 1; i <= NUM_TABLES; i += batchSize) {
+      StringBuilder queryBuilder = new StringBuilder("SELECT (");
+      int end = Math.min(i + batchSize - 1, NUM_TABLES);
+      for (int j = i; j <= end; j++) {
+        queryBuilder.append("(SELECT COUNT(*) FROM table_").append(j).append(")");
+        if (j < end) {
+          queryBuilder.append(" + ");
+        }
+      }
+      queryBuilder.append(") as count");
+      batchQueries.add(queryBuilder.toString());
+    }
+
+    LOG.info("Waiting for rows to be replicated to MySQL...");
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
             createConfig(jobInfo, Duration.ofHours(1)),
-            () -> jdbcResourceManager.getRowCount("table_1") == 1);
-    assertThatResult(result).meetsConditions();
+            () -> {
+              ExecutorService executor = Executors.newFixedThreadPool(10);
+              try {
+                List<Callable<Integer>> tasks = new ArrayList<>();
+                for (String query : batchQueries) {
+                  tasks.add(
+                      () -> {
+                        try (Connection conn = getJdbcConnection(jdbcResourceManager);
+                            Statement stmt = conn.createStatement();
+                            ResultSet rs = stmt.executeQuery(query)) {
+                          if (rs.next()) {
+                            int count = rs.getInt("count");
+                            return count;
+                          }
+                        } catch (Exception e) {
+                          LOG.warn("Error executing batch query", e);
+                        }
+                        return 0;
+                      });
+                }
 
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable("table_1");
-    assertThat(rows).hasSize(1);
-    assertThat(rows.get(0).get("id").toString()).isEqualTo("42");
-    LOG.info("Validation successful! Row correctly replicated to MySQL.");
+                List<Future<Integer>> futures = executor.invokeAll(tasks);
+                int totalCount = 0;
+                for (Future<Integer> future : futures) {
+                  totalCount += future.get();
+                }
+
+                LOG.info("Current total row count across all tables: {}", totalCount);
+                return totalCount == NUM_TABLES;
+              } catch (Exception e) {
+                LOG.warn("Error checking row count", e);
+              } finally {
+                executor.shutdown();
+              }
+              return false;
+            });
+    assertThatResult(result).meetsConditions();
+    LOG.info("Validation successful! Rows correctly replicated to all tables in MySQL.");
   }
 
   private static Connection getJdbcConnection(MySQLResourceManager mySQLResourceManager)
