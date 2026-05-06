@@ -23,13 +23,27 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.metrics.MetricNameFilter;
+import org.apache.beam.sdk.metrics.MetricQueryResults;
+import org.apache.beam.sdk.metrics.MetricsFilter;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.MultiOutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -41,6 +55,8 @@ public class CreateMongoDbChangeEventContextFnTest {
 
   private static final String SHADOW_PREFIX = "shadow_";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private CreateMongoDbChangeEventContextFn createFn;
   private ProcessContext mockContext;
@@ -103,6 +119,30 @@ public class CreateMongoDbChangeEventContextFnTest {
   }
 
   @Test
+  public void testProcessElementIgnoreUpdateWithNullData() throws Exception {
+    String updateWithNullDataPayload =
+        """
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "data": null,
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789,
+              "_metadata_change_type": "UPDATE"
+            }""";
+    FailsafeElement<String, String> updateElement = FailsafeElement.of(updateWithNullDataPayload, updateWithNullDataPayload);
+    when(mockContext.element()).thenReturn(updateElement);
+
+    createFn.processElement(mockContext, mockReceiver);
+
+    // Verify that it does NOT call output on success receiver or failure receiver
+    verify(mockSuccessReceiver, times(0)).output(org.mockito.Mockito.any());
+    verify(mockFailureReceiver, times(0)).output(org.mockito.Mockito.any());
+  }
+
+  @Test
   public void testProcessElementFailureInvalidJson() throws Exception {
     when(mockContext.element()).thenReturn(failureElement);
 
@@ -113,6 +153,49 @@ public class CreateMongoDbChangeEventContextFnTest {
     verify(mockReceiver).get(CreateMongoDbChangeEventContextFn.failedCreationTag);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
 
-    assertEquals(failureElement, failureCaptor.getValue());
+    FailsafeElement<String, String> result = failureCaptor.getValue();
+    assertEquals(failureElement, result);
+    org.junit.Assert.assertNotNull(result.getErrorMessage());
+    org.junit.Assert.assertNotNull(result.getStacktrace());
+    org.junit.Assert.assertTrue(result.getErrorMessage().contains("Unrecognized token 'invalid'"));
+  }
+
+  @Test
+  public void testProcessElementIgnoreUpdateWithNullData_incrementsCounter() {
+    String updateWithNullDataPayload =
+        """
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "data": null,
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789,
+              "_metadata_change_type": "UPDATE"
+            }""";
+    
+    FailsafeElement<String, String> element = FailsafeElement.of(updateWithNullDataPayload, updateWithNullDataPayload);
+    
+    PCollectionTuple results = pipeline.apply(Create.of(element).withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(ParDo.of(createFn)
+                    .withOutputTags(CreateMongoDbChangeEventContextFn.successfulCreationTag,
+                            TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+                            
+    results.get(CreateMongoDbChangeEventContextFn.successfulCreationTag).setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    results.get(CreateMongoDbChangeEventContextFn.failedCreationTag).setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+                            
+    PAssert.that(results.get(CreateMongoDbChangeEventContextFn.successfulCreationTag)).empty();
+    PAssert.that(results.get(CreateMongoDbChangeEventContextFn.failedCreationTag)).empty();
+    
+    PipelineResult result = pipeline.run();
+    
+    MetricQueryResults metrics = result.metrics().queryMetrics(
+        MetricsFilter.builder()
+            .addNameFilter(MetricNameFilter.named(CreateMongoDbChangeEventContextFn.class, "deletion-after-update"))
+            .build());
+            
+    long count = metrics.getCounters().iterator().next().getCommitted();
+    assertEquals(1L, count);
   }
 }

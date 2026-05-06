@@ -67,7 +67,9 @@ public class MongoDbChangeEventContextTest {
                   "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
                   "data": {
                     "field1": "value1",
-                    "field2": 123
+                    "field2": 123,
+                    "myNaN": {"$numberDouble": "NaN"},
+                    "myInf": {"$numberDouble": "Infinity"}
                   },
                   "_metadata_timestamp_seconds": 1683782270,
                   "_metadata_timestamp_nanos": 123456789,
@@ -544,17 +546,49 @@ public class MongoDbChangeEventContextTest {
   public void testToString() throws JsonProcessingException {
     MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
     String jsonString = context.toString();
-
     String expectedJson =
-        "{\"changeEvent\":{\"_metadata_source\":{\"collection\":\"test_collection\"},\"_id\":\"{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"data\":{\"field1\":\"value1\",\"field2\":123},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789,\"op\":\"i\"},"
+        "{\"changeEvent\":{\"_metadata_source\":{\"collection\":\"test_collection\"},\"_id\":\"{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"data\":{\"field1\":\"value1\",\"field2\":123,\"myNaN\":{\"$numberDouble\":\"NaN\"},\"myInf\":{\"$numberDouble\":\"Infinity\"}},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789,\"op\":\"i\"},"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},"
             + "\"isDeleteEvent\":false,"
             + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789},"
             + "\"isDlqReconsumed\":false,"
-            + "\"_metadata_retry_count\":0}";
+            + "\"_metadata_retry_count\":0,"
+            + "\"modifiedJsonStringData\":null}";
 
     assertEquals(jsonString, expectedJson);
+  }
+
+  @Test
+  public void testToStringWithModifiedData() throws JsonProcessingException {
+    MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
+    context.setModifiedJsonStringData("{\"myNaN\":{\"$numberDouble\":\"NaN\"},\"myInf\":{\"$numberDouble\":\"Infinity\"}}");
+    String jsonString = context.toString();
+    assertTrue(jsonString.contains("\"modifiedJsonStringData\":\"{\\\"myNaN\\\":{\\\"$numberDouble\\\":\\\"NaN\\\"},\\\"myInf\\\":{\\\"$numberDouble\\\":\\\"Infinity\\\"}}\""));
+  }
+
+  @Test
+  public void testEqualsAndHashCode() throws JsonProcessingException {
+    MongoDbChangeEventContext context1 = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
+    MongoDbChangeEventContext context2 = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
+    
+    // Reflexivity
+    assertTrue(context1.equals(context1));
+    
+    // Symmetry
+    assertTrue(context1.equals(context2));
+    assertTrue(context2.equals(context1));
+    
+    // HashCode consistency
+    assertEquals(context1.hashCode(), context2.hashCode());
+    
+    // Inequality
+    MongoDbChangeEventContext context3 = new MongoDbChangeEventContext(deleteEvent, SHADOW_PREFIX);
+    assertFalse(context1.equals(context3));
+    
+    // Inequality with modified data
+    context2.setModifiedJsonStringData("{\"modified\":true}");
+    assertFalse(context1.equals(context2));
   }
 }

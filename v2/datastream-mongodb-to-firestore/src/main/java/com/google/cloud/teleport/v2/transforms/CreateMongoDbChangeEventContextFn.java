@@ -17,9 +17,12 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -32,6 +35,9 @@ public class CreateMongoDbChangeEventContextFn
   private static final Logger LOG =
       LoggerFactory.getLogger(CreateMongoDbChangeEventContextFn.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  
+  private static final Counter DELETION_AFTER_UPDATE_COUNTER =
+      Metrics.counter(CreateMongoDbChangeEventContextFn.class, "deletion-after-update");
 
   public static TupleTag<MongoDbChangeEventContext> successfulCreationTag =
       new TupleTag<>("successfulCreation");
@@ -49,6 +55,19 @@ public class CreateMongoDbChangeEventContextFn
     FailsafeElement<String, String> element = context.element();
     try {
       JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
+      
+      // Check for update with null data
+      String changeType = "";
+      if (jsonNode.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)) {
+        changeType = jsonNode.get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY).asText();
+      }
+      JsonNode dataNode = jsonNode.get("data");
+      if ("UPDATE".equalsIgnoreCase(changeType) && (dataNode == null || dataNode.isNull())) {
+        DELETION_AFTER_UPDATE_COUNTER.inc();
+        LOG.debug("Ignoring update event with null data for document ID: {}", jsonNode.get(DatastreamConstants.MONGODB_DOCUMENT_ID));
+        return; // Ignore the event
+      }
+
       MongoDbChangeEventContext changeEventContext =
           new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
       out.get(successfulCreationTag).output(changeEventContext);

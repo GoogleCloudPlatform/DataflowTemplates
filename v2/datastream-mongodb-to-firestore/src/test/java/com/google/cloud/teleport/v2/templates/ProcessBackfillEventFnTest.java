@@ -91,8 +91,8 @@ public class ProcessBackfillEventFnTest {
     when(event2.getDataCollection()).thenReturn(COLLECTION_NAME);
     when(event1.getDocumentId()).thenReturn("id1");
     when(event2.getDocumentId()).thenReturn("id2");
-    when(event1.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
-    when(event2.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
+    when(event1.getModifiedJsonStringData()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
+    when(event2.getModifiedJsonStringData()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
 
     when(mockContext.element()).thenReturn(event1).thenReturn(event2);
 
@@ -139,8 +139,8 @@ public class ProcessBackfillEventFnTest {
     when(event2.getDataCollection()).thenReturn(COLLECTION_NAME);
     when(event1.getDocumentId()).thenReturn("id1");
     when(event2.getDocumentId()).thenReturn("id2");
-    when(event1.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
-    when(event2.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
+    when(event1.getModifiedJsonStringData()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
+    when(event2.getModifiedJsonStringData()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
 
     when(mockContext.element()).thenReturn(event1).thenReturn(event2);
 

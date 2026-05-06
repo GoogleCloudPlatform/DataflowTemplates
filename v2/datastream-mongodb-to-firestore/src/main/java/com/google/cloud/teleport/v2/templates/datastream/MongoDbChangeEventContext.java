@@ -59,6 +59,8 @@ public class MongoDbChangeEventContext implements Serializable {
   private final Document timestampDoc;
   private boolean isDlqReconsumed;
   private int retryCount;
+  // Stores the modified JSON string after UDF transformation.
+  private String modifiedJsonStringData;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -238,6 +240,30 @@ public class MongoDbChangeEventContext implements Serializable {
   }
 
   /**
+   * Returns the document data as a JSON string.
+   */
+  public String getDocumentDataAsJsonString() throws JsonProcessingException {
+    JsonNode eventNode = this.getChangeEvent();
+    JsonNode dataNode = eventNode.get("data");
+    return dataNode != null ? OBJECT_MAPPER.writeValueAsString(dataNode) : null;
+  }
+
+  /**
+   * Returns the modified JSON string data if it was updated by a UDF,
+   * otherwise falls back to the original jsonStringData.
+   */
+  public String getModifiedJsonStringData() {
+    return modifiedJsonStringData != null ? modifiedJsonStringData : jsonStringData;
+  }
+
+  /**
+   * Sets the modified JSON string data after UDF transformation.
+   */
+  public void setModifiedJsonStringData(String modifiedJsonStringData) {
+    this.modifiedJsonStringData = modifiedJsonStringData;
+  }
+
+  /**
    * Override toString() to provide a proper JSON representation of this object. This ensures that
    * when the object is serialized to a string, it produces valid JSON.
    */
@@ -252,7 +278,13 @@ public class MongoDbChangeEventContext implements Serializable {
       // Add other important fields
       jsonNode.put("dataCollection", this.dataCollection);
       jsonNode.put("shadowCollection", this.shadowCollection);
-      jsonNode.put("documentId", Utils.documentIdToString(this.documentId));
+      if (this.documentId instanceof ObjectId) {
+        ObjectNode oidNode = OBJECT_MAPPER.createObjectNode();
+        oidNode.put("$oid", this.documentId.toString());
+        jsonNode.set("documentId", oidNode);
+      } else {
+        jsonNode.put("documentId", Utils.documentIdToString(this.documentId));
+      }
       jsonNode.put("isDeleteEvent", this.isDeleteEvent);
 
       // Convert timestamp document to JSON
@@ -265,6 +297,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
       jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, this.isDlqReconsumed);
       jsonNode.put(DatastreamConstants.RETRY_COUNT, this.retryCount);
+      jsonNode.put("modifiedJsonStringData", this.modifiedJsonStringData);
 
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {
@@ -284,10 +317,30 @@ public class MongoDbChangeEventContext implements Serializable {
     }
   }
 
-  public boolean equals(Object other) {
-    if (other instanceof MongoDbChangeEventContext) {
-      return Objects.equals(this.toString(), other.toString());
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-    return false;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MongoDbChangeEventContext that = (MongoDbChangeEventContext) o;
+    return isDeleteEvent == that.isDeleteEvent &&
+            isDlqReconsumed == that.isDlqReconsumed &&
+            retryCount == that.retryCount &&
+            Objects.equals(changeEvent, that.changeEvent) &&
+            Objects.equals(dataCollection, that.dataCollection) &&
+            Objects.equals(shadowCollection, that.shadowCollection) &&
+            Objects.equals(documentId, that.documentId) &&
+            Objects.equals(timestampDoc, that.timestampDoc) &&
+            Objects.equals(modifiedJsonStringData, that.modifiedJsonStringData);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(changeEvent, dataCollection, shadowCollection, documentId, 
+                        isDeleteEvent, timestampDoc, isDlqReconsumed, retryCount, 
+                        modifiedJsonStringData);
   }
 }
