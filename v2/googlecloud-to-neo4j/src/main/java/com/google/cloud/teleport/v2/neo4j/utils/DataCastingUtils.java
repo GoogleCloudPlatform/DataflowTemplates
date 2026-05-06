@@ -77,7 +77,7 @@ public class DataCastingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
   // Evaluate the Date IDENTIFIER here so the switch statement doesn't complain.
-  private static final String DATE_LOGICAL_TYPE = org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER;
+  private static final String DATE_LOGICAL_TYPE = org.apache.beam.sdk.schemas.logicaltypes.Date.getIdentifier();
 
   public static List<Object> sourceTextToTargetObjects(
       Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
