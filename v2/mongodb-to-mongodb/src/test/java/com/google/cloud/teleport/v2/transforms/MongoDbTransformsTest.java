@@ -30,8 +30,10 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.WriteModel;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResult;
@@ -61,6 +63,10 @@ public class MongoDbTransformsTest {
   private static MongoClient staticClient;
   private static MongoDatabase staticDatabase;
   private static MongoCollection<Document> staticCollection;
+  private static final org.apache.beam.sdk.values.TupleTag<Document> MAIN_TAG =
+      new org.apache.beam.sdk.values.TupleTag<Document>() {};
+  private static final org.apache.beam.sdk.values.TupleTag<String> FAILURE_TAG =
+      new org.apache.beam.sdk.values.TupleTag<String>() {};
 
   @Before
   public void setUp() {
@@ -225,6 +231,69 @@ public class MongoDbTransformsTest {
 
   private void assertSuccessCount(PipelineResult result, long expectedCount) {
     assertEquals(expectedCount, getSuccessfulDocumentsCount(result));
+  }
+
+  @Test
+  public void writeWithDlq_documentLevelRetry_partialSuccess()
+      throws org.apache.beam.sdk.coders.CannotProvideCoderException {
+    AtomicInteger callCount = new AtomicInteger(0);
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              int count = callCount.getAndIncrement();
+              if (count == 0) {
+                throw new MongoBulkWriteException(
+                    mock(BulkWriteResult.class),
+                    Arrays.asList(
+                        new BulkWriteError(11000, "Duplicate Key", new BsonDocument(), 1),
+                        new BulkWriteError(11600, "Interrupted", new BsonDocument(), 2)),
+                    null,
+                    new ServerAddress(),
+                    Collections.emptySet());
+              } else if (count == 1) {
+                List<WriteModel<Document>> updates = invocation.getArgument(0);
+                assertEquals(1, updates.size());
+                return mock(BulkWriteResult.class);
+              }
+              return mock(BulkWriteResult.class);
+            });
+
+    Document doc0 = new Document("_id", 0);
+    Document doc1 = new Document("_id", 1);
+    Document doc2 = new Document("_id", 2);
+
+    org.apache.beam.sdk.values.KV<String, Iterable<Document>> batch =
+        org.apache.beam.sdk.values.KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
+
+    org.apache.beam.sdk.coders.Coder<Document> documentCoder =
+        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(Document.class));
+
+    PCollection<org.apache.beam.sdk.values.KV<String, Iterable<Document>>> input =
+        pipeline.apply(
+            Create.of(Collections.singletonList(batch))
+                .withCoder(
+                    org.apache.beam.sdk.coders.KvCoder.of(
+                        org.apache.beam.sdk.coders.StringUtf8Coder.of(),
+                        org.apache.beam.sdk.coders.IterableCoder.of(documentCoder))));
+
+    input.apply(
+        "Write_DocLevelRetry",
+        org.apache.beam.sdk.transforms.ParDo.of(
+                MongoDbWriteFn.builder()
+                    .withUri("mongodb://localhost:27017")
+                    .withDatabase("test")
+                    .withCollection("test")
+                    .withMaxRetries(3)
+                    .withMaxConcurrentAsyncWrites(1)
+                    .withClientFactory(new MockClientFactory())
+                    .withFailureTag(FAILURE_TAG)
+                    .build())
+            .withOutputTags(MAIN_TAG, org.apache.beam.sdk.values.TupleTagList.of(FAILURE_TAG)));
+
+    PipelineResult result = pipeline.run();
+
+    assertEquals(2, callCount.get());
+    assertSuccessCount(result, 2L);
   }
 
   private static class MockClientFactory implements SerializableFunction<String, MongoClient> {

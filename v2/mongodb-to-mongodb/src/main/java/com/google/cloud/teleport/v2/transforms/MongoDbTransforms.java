@@ -73,7 +73,6 @@ public class MongoDbTransforms {
       return this;
     }
 
-
     public WriteWithDlq withDlqPath(String dlqPath) {
       this.dlqPath = dlqPath;
       return this;

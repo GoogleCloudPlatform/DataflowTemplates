@@ -39,10 +39,17 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
+import org.apache.beam.sdk.util.BackOff;
+import org.apache.beam.sdk.util.BackOffUtils;
+import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A {@link DoFn} that writes documents to MongoDB in bulk. */
 public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Document> {
@@ -51,6 +58,8 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   private static final int ERR_KEY_TOO_LONG = 17280;
   private static final int ERR_BAD_VALUE = 2;
 
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbWriteFn.class);
+
   private final String uri;
   private final String database;
   private final String collection;
@@ -58,6 +67,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   private final Integer maxRetries;
   private final SerializableFunction<String, MongoClient> clientFactory;
   private final TupleTag<String> failureTag;
+  private transient FluentBackoff backoffSpec;
 
   private final Counter successfulDocs =
       Metrics.counter(MongoDbTransforms.WriteWithDlq.class, "successful-documents-written");
@@ -74,7 +84,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       String uri,
       String database,
       String collection,
-          Integer maxConcurrentAsyncWrites,
+      Integer maxConcurrentAsyncWrites,
       Integer maxRetries,
       SerializableFunction<String, MongoClient> clientFactory,
       TupleTag<String> failureTag) {
@@ -115,7 +125,6 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       return this;
     }
 
-
     public Builder withMaxConcurrentAsyncWrites(Integer maxConcurrentAsyncWrites) {
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       return this;
@@ -141,7 +150,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
           uri,
           database,
           collection,
-              maxConcurrentAsyncWrites,
+          maxConcurrentAsyncWrites,
           maxRetries,
           clientFactory,
           failureTag);
@@ -152,6 +161,11 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   public void setup() {
     executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
     semaphore = new Semaphore(maxConcurrentAsyncWrites);
+    backoffSpec =
+        FluentBackoff.DEFAULT
+            .withMaxRetries(maxRetries)
+            .withInitialBackoff(Duration.standardSeconds(2))
+            .withExponent(2.0);
   }
 
   @Teardown
@@ -197,79 +211,52 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
           CompletableFuture.runAsync(
               () -> {
                 try {
-                  int attempt = 0;
-                  boolean success = false;
-                  while (attempt < maxRetries && !success) {
+                  List<WriteModel<Document>> currentUpdates = updates;
+                  List<Document> currentDocList = docList;
+                  BackOff backoff = backoffSpec.backoff();
+                  Sleeper sleeper = Sleeper.DEFAULT;
+
+                  while (true) {
                     try {
-                      mongoCollection.bulkWrite(updates, new BulkWriteOptions().ordered(false));
-                      success = true;
-                      successfulCount.addAndGet(docList.size());
+                      mongoCollection.bulkWrite(
+                          currentUpdates, new BulkWriteOptions().ordered(false));
+                      successfulCount.addAndGet(currentDocList.size());
+                      break;
                     } catch (MongoBulkWriteException e) {
-
+                      // MongoBulkWriteException provides a list of write errors, one for each write
+                      // operation that failed. For this exception type we only retry the failed
+                      // cases.
                       List<BulkWriteError> writeErrors = e.getWriteErrors();
-                      boolean hasPermanentError = false;
-                      for (BulkWriteError error : writeErrors) {
-                        int code = error.getCode();
-                        if (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
-                            || code == ERR_DOCUMENT_VALIDATION_FAILURE
-                            || code == ERR_KEY_TOO_LONG
-                            || code == ERR_BAD_VALUE) {
-                          hasPermanentError = true;
-                          break;
-                        }
-                      }
+                      successfulCount.addAndGet(currentDocList.size() - writeErrors.size());
 
-                      if (hasPermanentError || attempt + 1 >= maxRetries) {
-                        successfulCount.addAndGet(docList.size() - writeErrors.size());
+                      List<WriteModel<Document>> nextUpdates = new ArrayList<>();
+                      List<Document> nextDocList = new ArrayList<>();
+                      generateRetryBatch(
+                          writeErrors, currentUpdates, currentDocList, nextUpdates, nextDocList);
 
-                        for (BulkWriteError error : writeErrors) {
-                          int index = error.getIndex();
-                          if (index >= 0 && index < docList.size()) {
-                            Document failedDoc = docList.get(index);
-                            failures.add(failedDoc.toJson() + " - Error: " + error.getMessage());
-                          }
-                        }
+                      if (nextUpdates.isEmpty()) {
                         break;
                       }
 
-                      attempt++;
-                      long delay = (long) (1000 * Math.pow(2, attempt));
-                      try {
-                        Thread.sleep(delay);
-                      } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                      }
-                    } catch (MongoException e) {
-
-                      int code = e.getCode();
-                      boolean isPermanent =
-                          (ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
-                              || code == ERR_DOCUMENT_VALIDATION_FAILURE
-                              || code == ERR_KEY_TOO_LONG
-                              || code == ERR_BAD_VALUE);
-
-                      if (isPermanent || attempt + 1 >= maxRetries) {
-                        for (Document doc : docList) {
-                          failures.add(doc.toJson() + " - Error: " + e.getMessage());
-                        }
+                      if (handleBackoff(sleeper, backoff, nextDocList)) {
                         break;
                       }
 
-                      attempt++;
-                      long delay = (long) (1000 * Math.pow(2, attempt));
-                      try {
-                        Thread.sleep(delay);
-                      } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                      }
+                      currentUpdates = nextUpdates;
+                      currentDocList = nextDocList;
                     } catch (Exception e) {
 
-                      for (Document doc : docList) {
-                        failures.add(doc.toJson() + " - Error: " + e.getMessage());
+                      // Permanent errors are logged and sent to the DLQ immediately .
+                      if (!isRetriable(e)) {
+                        writeToDlq(currentDocList, "Failed to write documents: " + e.getMessage());
+                        break;
                       }
-                      break;
+
+                      // Retryable errors are retried using exponential backoff. If the backoff is
+                      // exhausted, the error is logged and sent to the DLQ.
+                      if (handleBackoff(sleeper, backoff, currentDocList)) {
+                        break;
+                      }
                     }
                   }
                 } finally {
@@ -279,6 +266,65 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
               executor);
       futures.add(future);
     }
+  }
+
+  private boolean isPermanentErrorCode(int code) {
+    return ErrorCategory.fromErrorCode(code) == ErrorCategory.DUPLICATE_KEY
+        || code == ERR_DOCUMENT_VALIDATION_FAILURE
+        || code == ERR_KEY_TOO_LONG
+        || code == ERR_BAD_VALUE;
+  }
+
+  private boolean isRetriable(Exception e) {
+    if (e instanceof MongoException me) {
+      return !isPermanentErrorCode(me.getCode());
+    }
+    return false;
+  }
+
+  private void generateRetryBatch(
+      List<BulkWriteError> writeErrors,
+      List<WriteModel<Document>> currentUpdates,
+      List<Document> currentDocList,
+      List<WriteModel<Document>> nextUpdates,
+      List<Document> nextDocList) {
+    for (BulkWriteError error : writeErrors) {
+      int index = error.getIndex();
+      if (index >= 0 && index < currentDocList.size()) {
+        Document failedDoc = currentDocList.get(index);
+        WriteModel<Document> failedUpdate = currentUpdates.get(index);
+
+        if (isPermanentErrorCode(error.getCode())) {
+          writeToDlq(
+              java.util.Collections.singletonList(failedDoc),
+              "Permanent failure writing document. Error: " + error.getMessage());
+        } else {
+          nextUpdates.add(failedUpdate);
+          nextDocList.add(failedDoc);
+        }
+      }
+    }
+  }
+
+  private void writeToDlq(List<Document> docList, String message) {
+    for (Document doc : docList) {
+      LOG.error("{}: {}", message, doc.toJson());
+      failures.add(doc.toJson());
+    }
+  }
+
+  private boolean handleBackoff(Sleeper sleeper, BackOff backoff, List<Document> docList) {
+    try {
+      if (!BackOffUtils.next(sleeper, backoff)) {
+        writeToDlq(docList, "Backoff exhausted. Failed to write documents");
+        return true;
+      }
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      writeToDlq(docList, "Interrupted while writing documents");
+      return true;
+    }
+    return false;
   }
 
   @FinishBundle
