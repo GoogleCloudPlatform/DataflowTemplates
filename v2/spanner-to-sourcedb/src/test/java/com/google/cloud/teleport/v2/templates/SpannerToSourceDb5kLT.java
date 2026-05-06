@@ -21,23 +21,27 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -52,29 +56,49 @@ import org.slf4j.LoggerFactory;
  * Load test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL
  * execution.
  */
-@Category(TemplateLoadTest.class)
+@Category({TemplateLoadTest.class, SkipDirectRunnerTest.class})
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
+public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kLT.class);
 
   private static final int NUM_TABLES = 5000;
+  private static final String TEMPLATE_SPEC_PATH =
+      com.google.common.base.MoreObjects.firstNonNull(
+          org.apache.beam.it.common.TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
-  private SpannerResourceManager spannerResourceManager;
-  private SpannerResourceManager spannerMetadataResourceManager;
-  private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
   private MySQLResourceManager jdbcResourceManager;
-  private GcsResourceManager gcsResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
+  private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
+  private Instant startTime;
 
   @Before
   public void setUp() throws IOException {
-    gcsResourceManager = setUpSpannerITGcsResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
-    spannerMetadataResourceManager = createSpannerMetadataDatabase();
-    spannerChangeStreamMetadataResourceManager = createSpannerMetadataDatabase();
+    LOG.info("Began Setup for 5K Table test");
+    super.setUp();
+    startTime = Instant.now();
+
+    // Initialize Resource Managers directly to avoid base class constraints
     jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+    jdbcResourceManagers.add(jdbcResourceManager);
+
+    spannerResourceManager =
+        SpannerResourceManager.builder("rr-main-" + testName, project, region)
+            .maybeUseStaticInstance()
+            .setMonitoringClient(monitoringClient)
+            .build();
+
+    spannerMetadataResourceManager =
+        SpannerResourceManager.builder("rr-meta-" + testName, project, region)
+            .maybeUseStaticInstance()
+            .build();
+
+    spannerChangeStreamMetadataResourceManager =
+        SpannerResourceManager.builder("rr-cs-meta-" + testName, project, region)
+            .maybeUseStaticInstance()
+            .build();
+
+    gcsResourceManager = createSpannerLTGcsResourceManager();
     pubsubResourceManager = setUpPubSubResourceManager();
   }
 
@@ -82,24 +106,30 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        jdbcResourceManager,
         spannerMetadataResourceManager,
         spannerChangeStreamMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
+    if (jdbcResourceManagers != null) {
+      for (JDBCResourceManager rm : jdbcResourceManagers) {
+        ResourceManagerUtils.cleanResources(rm);
+      }
+    }
+    LOG.info(
+        "CleanupCompleted for 5K Table test. Test took {}",
+        Duration.between(startTime, Instant.now()));
   }
 
   @Test
   public void test5kTables() throws Exception {
-    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+    createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
 
     SubscriptionName subscriptionName =
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
             getGcsPath("dlq", gcsResourceManager)
-                .replace("gs://" + gcsResourceManager.getBucket(), ""),
-            gcsResourceManager);
+                .replace("gs://" + gcsResourceManager.getBucket(), ""));
 
     LOG.info("Collecting {} Spanner DDL statements...", NUM_TABLES);
     List<String> spannerDdls = new ArrayList<>();
@@ -109,22 +139,14 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     }
 
     LOG.info("Executing Spanner DDLs...");
-
-    long startTime = System.currentTimeMillis();
     spannerResourceManager.executeDdlStatements(spannerDdls);
-    LOG.info("Executed Spanner DDLs in {} ms", System.currentTimeMillis() - startTime);
 
     LOG.info("Creating change stream in Spanner...");
     spannerResourceManager.executeDdlStatement(
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
     // OPTIMIZE MYSQL:
-    // Disable synchronous flushing and binary logging to speed up table creation.
-    try (Connection conn =
-            DriverManager.getConnection(
-                jdbcResourceManager.getUri(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword());
+    try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 0");
       stmt.execute("SET GLOBAL sync_binlog = 0");
@@ -133,11 +155,7 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     }
 
     LOG.info("Creating table_1 in MySQL as master...");
-    try (Connection conn =
-            DriverManager.getConnection(
-                jdbcResourceManager.getUri(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword());
+    try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       stmt.execute("CREATE TABLE table_1 (id BIGINT UNSIGNED NOT NULL PRIMARY KEY)");
     } catch (Exception e) {
@@ -146,11 +164,7 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     }
 
     LOG.info("Creating remaining {} tables in MySQL using LIKE...", NUM_TABLES - 1);
-    try (Connection conn =
-            DriverManager.getConnection(
-                jdbcResourceManager.getUri(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword());
+    try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       for (int j = 2; j <= NUM_TABLES; j++) {
         String mySqlDdl = String.format("CREATE TABLE table_%d LIKE table_1", j);
@@ -164,11 +178,7 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     LOG.info("Created {} tables on Source", NUM_TABLES);
 
     // Restore MySQL settings
-    try (Connection conn =
-            DriverManager.getConnection(
-                jdbcResourceManager.getUri(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword());
+    try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 1");
       stmt.execute("SET GLOBAL sync_binlog = 1");
@@ -177,23 +187,32 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     }
 
     LOG.info("Launching Dataflow job...");
-    Map<String, String> jobParameters = new HashMap<>();
-    jobParameters.put(
+    Map<String, String> params = new HashMap<>();
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("spannerProjectId", project);
+    params.put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+    params.put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+    params.put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
+    params.put("changeStreamName", "allstream");
+    params.put("dlqGcsPubSubSubscription", subscriptionName.toString());
+    params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
+    params.put("maxShardConnections", "5");
+    params.put("maxNumWorkers", "1");
+    params.put("numWorkers", "1");
+    params.put("sourceType", MYSQL_SOURCE_TYPE);
+    params.put("workerMachineType", "n2-standard-4");
+    params.put(
         "changeStreamMetadataDatabase", spannerChangeStreamMetadataResourceManager.getDatabaseId());
 
-    PipelineLauncher.LaunchInfo jobInfo =
-        launchDataflowJob(
-            gcsResourceManager,
-            spannerResourceManager,
-            spannerMetadataResourceManager,
-            subscriptionName.toString(),
-            null,
-            null,
-            null,
-            null,
-            null,
-            MYSQL_SOURCE_TYPE,
-            jobParameters);
+    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, TEMPLATE_SPEC_PATH);
+    options.setParameters(params);
+    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+
+    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
 
     assertThatPipeline(jobInfo).isRunning();
 
@@ -206,15 +225,22 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
     // 2. Assert the row in MySQL
     LOG.info("Waiting for row to be replicated to MySQL...");
     PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofHours(1)),
-                () -> jdbcResourceManager.getRowCount("table_1") == 1);
+        pipelineOperator.waitForCondition(
+            createConfig(jobInfo, Duration.ofHours(1)),
+            () -> jdbcResourceManager.getRowCount("table_1") == 1);
     assertThatResult(result).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManager.readTable("table_1");
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id").toString()).isEqualTo("42");
     LOG.info("Validation successful! Row correctly replicated to MySQL.");
+  }
+
+  private static Connection getJdbcConnection(MySQLResourceManager mySQLResourceManager)
+      throws SQLException {
+    return DriverManager.getConnection(
+        mySQLResourceManager.getUri(),
+        mySQLResourceManager.getUsername(),
+        mySQLResourceManager.getPassword());
   }
 }
