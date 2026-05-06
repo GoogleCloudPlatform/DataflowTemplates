@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
 import java.util.UUID;
@@ -206,5 +207,35 @@ public final class DataGeneratorUtils {
       return Integer.MAX_VALUE;
     }
     return size.intValue();
+  }
+
+  public static Object canonicalizeValue(Object v) {
+    if (v == null) {
+      return null;
+    }
+    if (v instanceof byte[]) {
+      return "0x" + bytesToHex((byte[]) v);
+    }
+    if (v instanceof ByteBuffer) {
+      ByteBuffer bb = ((ByteBuffer) v).duplicate();
+      byte[] bytes = new byte[bb.remaining()];
+      bb.get(bytes);
+      return "0x" + bytesToHex(bytes);
+    }
+    if (v instanceof Number || v instanceof Boolean || v instanceof String) {
+      return v;
+    }
+    return v.toString();
+  }
+
+  public static String bytesToHex(byte[] bytes) {
+    char[] hex = "0123456789abcdef".toCharArray();
+    char[] out = new char[bytes.length * 2];
+    for (int i = 0; i < bytes.length; i++) {
+      int b = bytes[i] & 0xff;
+      out[i * 2] = hex[b >>> 4];
+      out[i * 2 + 1] = hex[b & 0x0f];
+    }
+    return new String(out);
   }
 }
