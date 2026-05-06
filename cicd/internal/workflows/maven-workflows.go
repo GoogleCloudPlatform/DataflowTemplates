@@ -138,6 +138,10 @@ func (*mvnFlags) RunLoadTestObserver() string {
 	return "-PtemplatesLoadTestObserve"
 }
 
+func (*mvnFlags) RunFailureInjectionTests() string {
+	return "-PfailureInjectionTest"
+}
+
 // The number of modules Maven is going to build in parallel in a multi-module project.
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
