@@ -175,9 +175,8 @@ public class ProcessChangeEventFn
         // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
         // limit)
         boolean isPermanent = false;
-        if (e instanceof MongoWriteException) {
-          MongoWriteException mwe = (MongoWriteException) e;
-          if (mwe.getError().getCode() == INVALID_ARGUMENT) {
+        if (e instanceof MongoWriteException writeException) {
+          if (writeException.getError().getCode() == INVALID_ARGUMENT) {
             isPermanent = true;
           }
         }
@@ -198,13 +197,12 @@ public class ProcessChangeEventFn
           out.get(severeFailedWriteTag).output(failedElement);
 
           String errorIdentifier = "UnknownError";
-          if (e instanceof MongoWriteException) {
-            errorIdentifier = "WriteErrorCode_" + ((MongoWriteException) e).getError().getCode();
-          } else if (e instanceof com.mongodb.MongoCommandException) {
-            errorIdentifier =
-                "CommandErrorCode_" + ((com.mongodb.MongoCommandException) e).getCode();
-          } else if (e instanceof MongoException) {
-            errorIdentifier = e.getClass().getSimpleName();
+          if (e instanceof MongoWriteException writeException) {
+            errorIdentifier = "MongoWriteException_" + writeException.getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException commandException) {
+            errorIdentifier = "MongoCommandException_" + commandException.getCode();
+          } else if (e instanceof MongoException mongoException) {
+            errorIdentifier = mongoException.getClass().getSimpleName();
           }
           Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrite_" + errorIdentifier).inc();
 
@@ -217,13 +215,12 @@ public class ProcessChangeEventFn
           inMemoryRetries.inc();
 
           String errorIdentifier = "UnknownError";
-          if (e instanceof MongoWriteException) {
-            errorIdentifier = "WriteErrorCode_" + ((MongoWriteException) e).getError().getCode();
-          } else if (e instanceof com.mongodb.MongoCommandException) {
-            errorIdentifier =
-                "CommandErrorCode_" + ((com.mongodb.MongoCommandException) e).getCode();
-          } else if (e instanceof MongoException) {
-            errorIdentifier = e.getClass().getSimpleName();
+          if (e instanceof MongoWriteException writeException) {
+            errorIdentifier = "MongoWriteException_" + writeException.getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException commandException) {
+            errorIdentifier = "MongoCommandException_" + commandException.getCode();
+          } else if (e instanceof MongoException mongoException) {
+            errorIdentifier = mongoException.getClass().getSimpleName();
           }
           Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetry_" + errorIdentifier).inc();
 
