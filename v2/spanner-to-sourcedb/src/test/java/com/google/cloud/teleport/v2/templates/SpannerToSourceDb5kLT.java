@@ -21,8 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.sql.Connection;
@@ -50,15 +49,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL
+ * Load test for {@link SpannerToSourceDb} Flex template with 5000 tables using parallel DDL
  * execution.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(SpannerToSourceDb.class)
+@Category(TemplateLoadTest.class)
+@TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSourceDb5kIT extends SpannerToSourceDbITBase {
+public class SpannerToSourceDb5kLT extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kLT.class);
 
   private static final int NUM_TABLES = 5000;
 
