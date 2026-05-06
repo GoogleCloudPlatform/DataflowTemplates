@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
@@ -52,19 +54,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** A {@link DoFn} that writes documents to MongoDB in bulk. */
-public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Document> {
+public class MongoDbWriteFn
+    extends DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata> {
 
   private static final int ERR_DOCUMENT_VALIDATION_FAILURE = 121;
   private static final int ERR_KEY_TOO_LONG = 17280;
   private static final int ERR_BAD_VALUE = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbWriteFn.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final String uri;
   private final String database;
   private final String collection;
   private final Integer maxConcurrentAsyncWrites;
-  private final Integer maxRetries;
+  private final Integer maxWriteRetries;
+  private final Integer dlqMaxRetries;
   private final SerializableFunction<String, MongoClient> clientFactory;
   private final TupleTag<String> failureTag;
   private transient FluentBackoff backoffSpec;
@@ -85,14 +90,16 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       String database,
       String collection,
       Integer maxConcurrentAsyncWrites,
-      Integer maxRetries,
+      Integer maxWriteRetries,
+      Integer dlqMaxRetries,
       SerializableFunction<String, MongoClient> clientFactory,
       TupleTag<String> failureTag) {
     this.uri = uri;
     this.database = database;
     this.collection = collection;
     this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
-    this.maxRetries = maxRetries;
+    this.maxWriteRetries = maxWriteRetries;
+    this.dlqMaxRetries = dlqMaxRetries;
     this.clientFactory = clientFactory;
     this.failureTag = failureTag;
   }
@@ -106,7 +113,8 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     private String database;
     private String collection;
     private Integer maxConcurrentAsyncWrites;
-    private Integer maxRetries;
+    private Integer maxWriteRetries;
+    private Integer dlqMaxRetries;
     private SerializableFunction<String, MongoClient> clientFactory;
     private TupleTag<String> failureTag;
 
@@ -130,8 +138,13 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
       return this;
     }
 
-    public Builder withMaxRetries(Integer maxRetries) {
-      this.maxRetries = maxRetries;
+    public Builder withMaxWriteRetries(Integer maxWriteRetries) {
+      this.maxWriteRetries = maxWriteRetries;
+      return this;
+    }
+
+    public Builder withDlqMaxRetries(Integer dlqMaxRetries) {
+      this.dlqMaxRetries = dlqMaxRetries;
       return this;
     }
 
@@ -151,7 +164,8 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
           database,
           collection,
           maxConcurrentAsyncWrites,
-          maxRetries,
+          maxWriteRetries,
+          dlqMaxRetries,
           clientFactory,
           failureTag);
     }
@@ -163,7 +177,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     semaphore = new Semaphore(maxConcurrentAsyncWrites);
     backoffSpec =
         FluentBackoff.DEFAULT
-            .withMaxRetries(maxRetries)
+            .withMaxRetries(maxWriteRetries)
             .withInitialBackoff(Duration.standardSeconds(2))
             .withExponent(2.0);
   }
@@ -192,12 +206,13 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
     if (mongoCollection == null) {
       mongoCollection = clientFactory.apply(uri).getDatabase(database).getCollection(collection);
     }
-    Iterable<Document> docs = c.element().getValue();
+    Iterable<DocumentWithMetadata> items = c.element().getValue();
     List<WriteModel<Document>> updates = new ArrayList<>();
-    List<Document> docList = new ArrayList<>();
+    List<DocumentWithMetadata> itemList = new ArrayList<>();
 
-    for (Document doc : docs) {
-      docList.add(doc);
+    for (DocumentWithMetadata item : items) {
+      itemList.add(item);
+      Document doc = item.getDocument();
       Object id = doc.get("_id");
       if (id != null) {
         updates.add(
@@ -212,7 +227,7 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
               () -> {
                 try {
                   List<WriteModel<Document>> currentUpdates = updates;
-                  List<Document> currentDocList = docList;
+                  List<DocumentWithMetadata> currentItemList = itemList;
                   BackOff backoff = backoffSpec.backoff();
                   Sleeper sleeper = Sleeper.DEFAULT;
 
@@ -220,41 +235,42 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
                     try {
                       mongoCollection.bulkWrite(
                           currentUpdates, new BulkWriteOptions().ordered(false));
-                      successfulCount.addAndGet(currentDocList.size());
+                      successfulCount.addAndGet(currentItemList.size());
                       break;
                     } catch (MongoBulkWriteException e) {
                       // MongoBulkWriteException provides a list of write errors, one for each write
                       // operation that failed. For this exception type we only retry the failed
                       // cases.
                       List<BulkWriteError> writeErrors = e.getWriteErrors();
-                      successfulCount.addAndGet(currentDocList.size() - writeErrors.size());
+                      successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
 
                       List<WriteModel<Document>> nextUpdates = new ArrayList<>();
-                      List<Document> nextDocList = new ArrayList<>();
+                      List<DocumentWithMetadata> nextItemList = new ArrayList<>();
                       generateRetryBatch(
-                          writeErrors, currentUpdates, currentDocList, nextUpdates, nextDocList);
+                          writeErrors, currentUpdates, currentItemList, nextUpdates, nextItemList);
 
                       if (nextUpdates.isEmpty()) {
                         break;
                       }
 
-                      if (handleBackoff(sleeper, backoff, nextDocList)) {
+                      if (handleBackoff(sleeper, backoff, nextItemList)) {
                         break;
                       }
 
                       currentUpdates = nextUpdates;
-                      currentDocList = nextDocList;
+                      currentItemList = nextItemList;
                     } catch (Exception e) {
 
                       // Permanent errors are logged and sent to the DLQ immediately .
                       if (!isRetriable(e)) {
-                        writeToDlq(currentDocList, "Failed to write documents: " + e.getMessage());
+                        writePermanentDlqMessage(
+                            currentItemList, "Failed to write documents: " + e.getMessage());
                         break;
                       }
 
                       // Retryable errors are retried using exponential backoff. If the backoff is
                       // exhausted, the error is logged and sent to the DLQ.
-                      if (handleBackoff(sleeper, backoff, currentDocList)) {
+                      if (handleBackoff(sleeper, backoff, currentItemList)) {
                         break;
                       }
                     }
@@ -285,43 +301,78 @@ public class MongoDbWriteFn extends DoFn<KV<String, Iterable<Document>>, Documen
   private void generateRetryBatch(
       List<BulkWriteError> writeErrors,
       List<WriteModel<Document>> currentUpdates,
-      List<Document> currentDocList,
+      List<DocumentWithMetadata> currentItemList,
       List<WriteModel<Document>> nextUpdates,
-      List<Document> nextDocList) {
+      List<DocumentWithMetadata> nextItemList) {
     for (BulkWriteError error : writeErrors) {
       int index = error.getIndex();
-      if (index >= 0 && index < currentDocList.size()) {
-        Document failedDoc = currentDocList.get(index);
+      if (index >= 0 && index < currentItemList.size()) {
+        DocumentWithMetadata failedItem = currentItemList.get(index);
         WriteModel<Document> failedUpdate = currentUpdates.get(index);
 
         if (isPermanentErrorCode(error.getCode())) {
-          writeToDlq(
-              java.util.Collections.singletonList(failedDoc),
+          writePermanentDlqMessage(
+              java.util.Collections.singletonList(failedItem),
               "Permanent failure writing document. Error: " + error.getMessage());
         } else {
           nextUpdates.add(failedUpdate);
-          nextDocList.add(failedDoc);
+          nextItemList.add(failedItem);
         }
       }
     }
   }
 
-  private void writeToDlq(List<Document> docList, String message) {
-    for (Document doc : docList) {
-      LOG.error("{}: {}", message, doc.toJson());
-      failures.add(doc.toJson());
+  private void writePermanentDlqMessage(List<DocumentWithMetadata> itemList, String message) {
+    writeToDlq(itemList, message, true);
+  }
+
+  private void writeRetryableDlqMessage(List<DocumentWithMetadata> itemList, String message) {
+    writeToDlq(itemList, message, false);
+  }
+
+  private void writeToDlq(
+      List<DocumentWithMetadata> itemList, String message, boolean isPermanent) {
+    for (DocumentWithMetadata item : itemList) {
+      Document doc = item.getDocument();
+      LOG.warn("{}: {}", message, doc.toJson());
+      try {
+        ObjectNode dlqNode = MAPPER.createObjectNode();
+        ObjectNode wrapperNode = MAPPER.createObjectNode();
+        // Parse the document JSON to avoid escaping it as a string
+        wrapperNode.set("data", MAPPER.readTree(doc.toJson()));
+
+        dlqNode.set("message", wrapperNode);
+        dlqNode.put("error_message", message);
+        // Put error_type inside wrapperNode to preserve it through
+        // FileBasedDeadLetterQueueReconsumer
+        wrapperNode.put("error_type", isPermanent ? "PERMANENT" : "RETRYABLE");
+
+        if (isPermanent) {
+          wrapperNode.put("_metadata_retry_count", dlqMaxRetries + 1);
+        } else {
+          wrapperNode.put("_metadata_retry_count", item.getRetryCount() + 1);
+        }
+
+        failures.add(dlqNode.toString());
+      } catch (Exception e) {
+        LOG.error("Failed to format DLQ message", e);
+        // Fallback to simple JSON if parsing fails
+        failures.add(
+            String.format("{\"message\": %s, \"error_message\": \"%s\"}", doc.toJson(), message));
+      }
     }
   }
 
-  private boolean handleBackoff(Sleeper sleeper, BackOff backoff, List<Document> docList) {
+  private boolean handleBackoff(
+      Sleeper sleeper, BackOff backoff, List<DocumentWithMetadata> itemList) {
     try {
       if (!BackOffUtils.next(sleeper, backoff)) {
-        writeToDlq(docList, "Backoff exhausted. Failed to write documents");
+        writeRetryableDlqMessage(itemList, "Backoff exhausted. Failed to write documents");
         return true;
       }
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
-      writeToDlq(docList, "Interrupted while writing documents");
+      writeRetryableDlqMessage(itemList, "Interrupted while writing documents");
       return true;
     }
     return false;

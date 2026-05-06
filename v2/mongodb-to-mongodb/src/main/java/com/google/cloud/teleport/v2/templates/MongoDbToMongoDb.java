@@ -15,9 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -25,7 +30,6 @@ import com.mongodb.client.MongoDatabase;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -48,6 +52,10 @@ import org.bson.Document;
     flexContainerName = "mongodb-to-mongodb",
     optionsClass = MongoDbToMongoDb.Options.class)
 public class MongoDbToMongoDb {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
   public interface Options extends PipelineOptions {
     @TemplateParameter.Text(
@@ -177,12 +185,43 @@ public class MongoDbToMongoDb {
     @TemplateParameter.Integer(
         order = 14,
         optional = true,
-        description = "Max Retries",
-        helpText = "Maximum number of retry attempts for transient failures.")
+        description = "Max Write Retries",
+        helpText = "Maximum number of retry attempts for transient failures during write.")
     @Default.Integer(3)
-    Integer getMaxRetries();
+    Integer getMaxWriteRetries();
 
-    void setMaxRetries(Integer value);
+    void setMaxWriteRetries(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "DLQ Max Retries",
+        helpText = "Maximum number of times to retry events from DLQ.")
+    @Default.Integer(3)
+    Integer getDlqMaxRetries();
+
+    void setDlqMaxRetries(Integer value);
+
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Reconsume DLQ Path",
+        helpText =
+            "Path to read files from DLQ for reprocessing. If not provided, write DLQ path will be"
+                + " used.")
+    String getReconsumeDlqPath();
+
+    void setReconsumeDlqPath(String value);
+
+    @TemplateParameter.Boolean(
+        order = 17,
+        optional = true,
+        description = "Read from DLQ",
+        helpText = "If true, reads only from DLQ for retry. If false, reads from MongoDB.")
+    @Default.Boolean(false)
+    Boolean getReadFromDlq();
+
+    void setReadFromDlq(Boolean value);
   }
 
   public static void main(String[] args) {
@@ -221,38 +260,34 @@ public class MongoDbToMongoDb {
         targetCollection = collection; // Use source collection name if target not provided
       }
 
-      MongoDbIO.Read read =
-          MongoDbIO.read()
-              .withUri(options.getSourceUri())
-              .withDatabase(options.getSourceDatabase())
-              .withCollection(collection);
+      PCollection<DocumentWithMetadata> documents;
 
-      if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
-        read = read.withBucketAuto(true);
+      if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
+        String reconsumePath = options.getReconsumeDlqPath();
+        if (reconsumePath == null || reconsumePath.isEmpty()) {
+          reconsumePath = writeDlqPath;
+        }
+        documents = readFromDlq(pipeline, collection, reconsumePath);
+      } else {
+        documents = readFromMongo(pipeline, options, collection);
       }
-
-      if (options.getNumSplits() != null) {
-        read = read.withNumSplits(options.getNumSplits());
-      }
-
-      PCollection<Document> documents = pipeline.apply("Read_" + collection, read);
 
       // Validation Stage with DLQ
-      TupleTag<Document> successTag = new TupleTag<Document>() {};
+      TupleTag<DocumentWithMetadata> successTag = new TupleTag<DocumentWithMetadata>() {};
       TupleTag<String> failureTag = new TupleTag<String>() {};
 
       PCollectionTuple processed =
           documents.apply(
               "Validate_" + collection,
               ParDo.of(
-                      new DoFn<Document, Document>() {
+                      new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
                         @ProcessElement
                         public void processElement(ProcessContext c) {
-                          Document doc = c.element();
-                          if (doc == null) {
+                          DocumentWithMetadata item = c.element();
+                          if (item == null || item.getDocument() == null) {
                             c.output(failureTag, "Null document");
                           } else {
-                            c.output(successTag, doc);
+                            c.output(successTag, item);
                           }
                         }
                       })
@@ -263,10 +298,13 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteProcessDlq_" + collection,
-              TextIO.write().to(processDlqPath + "/" + collection));
+              DLQWriteTransform.WriteDLQ.newBuilder()
+                  .withDlqDirectory(processDlqPath + "/" + collection)
+                  .withTmpDirectory(options.getTempLocation())
+                  .build());
 
       // Write Stage with DLQ
-      PCollection<Document> validDocs = processed.get(successTag);
+      PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
 
       validDocs.apply(
           "Write_" + collection,
@@ -276,8 +314,10 @@ public class MongoDbToMongoDb {
               .withCollection(targetCollection)
               .withBatchSize(options.getBatchSize())
               .withDlqPath(writeDlqPath)
+              .withTmpDirectory(options.getTempLocation())
               .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
-              .withMaxRetries(options.getMaxRetries()));
+              .withMaxWriteRetries(options.getMaxWriteRetries())
+              .withDlqMaxRetries(options.getDlqMaxRetries()));
     }
 
     pipeline.run();
@@ -292,5 +332,73 @@ public class MongoDbToMongoDb {
       return path + suffix;
     }
     return "/tmp/" + suffix;
+  }
+
+  private static PCollection<DocumentWithMetadata> readFromDlq(
+      Pipeline pipeline, String collection, String reconsumePath) {
+    PCollection<String> dlqStrings =
+        pipeline.apply(
+            "ReadDlq_" + collection, FileBasedDeadLetterQueueReconsumer.create(reconsumePath));
+
+    return dlqStrings.apply(
+        "ParseDlq_" + collection,
+        ParDo.of(
+            new DoFn<String, DocumentWithMetadata>() {
+              @ProcessElement
+              public void processElement(ProcessContext c) {
+                String line = c.element();
+                try {
+                  JsonNode jsonNode = MAPPER.readTree(line);
+                  JsonNode dataNode = jsonNode.get("data");
+                  if (dataNode != null) {
+                    Document doc = Document.parse(dataNode.toString());
+
+                    Integer retryCount =
+                        jsonNode.has("_metadata_retry_count")
+                            ? jsonNode.get("_metadata_retry_count").asInt()
+                            : 0;
+                    String errorMsg =
+                        jsonNode.has("_metadata_error")
+                            ? jsonNode.get("_metadata_error").asText()
+                            : null;
+                    String errorType =
+                        jsonNode.has("error_type") ? jsonNode.get("error_type").asText() : null;
+
+                    c.output(DocumentWithMetadata.of(doc, retryCount, errorMsg, errorType));
+                  }
+                } catch (Exception e) {
+                  LOG.error("Failed to parse DLQ event", e);
+                }
+              }
+            }));
+  }
+
+  private static PCollection<DocumentWithMetadata> readFromMongo(
+      Pipeline pipeline, Options options, String collection) {
+    MongoDbIO.Read read =
+        MongoDbIO.read()
+            .withUri(options.getSourceUri())
+            .withDatabase(options.getSourceDatabase())
+            .withCollection(collection);
+
+    if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
+      read = read.withBucketAuto(true);
+    }
+
+    if (options.getNumSplits() != null) {
+      read = read.withNumSplits(options.getNumSplits());
+    }
+
+    return pipeline
+        .apply("Read_" + collection, read)
+        .apply(
+            "MapToMetadata_" + collection,
+            ParDo.of(
+                new DoFn<Document, DocumentWithMetadata>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    c.output(DocumentWithMetadata.of(c.element()));
+                  }
+                }));
   }
 }

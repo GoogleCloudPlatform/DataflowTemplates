@@ -20,7 +20,6 @@ import com.mongodb.client.MongoClients;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -31,7 +30,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.bson.Document;
 
 /** Transforms for the MongoDB to MongoDB template. */
 public class MongoDbTransforms {
@@ -40,15 +38,17 @@ public class MongoDbTransforms {
     return new WriteWithDlq();
   }
 
-  public static class WriteWithDlq extends PTransform<PCollection<Document>, PDone> {
+  public static class WriteWithDlq extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
     private String uri;
     private String database;
     private String collection;
     private Integer batchSize = 5000;
 
     private String dlqPath;
+    private String tmpDirectory;
     private Integer maxConcurrentAsyncWrites = 10;
-    private Integer maxRetries = 3;
+    private Integer maxWriteRetries = 3;
+    private Integer dlqMaxRetries = 3;
     private SerializableFunction<String, MongoClient> clientFactory = MongoClients::create;
 
     public WriteWithDlq withUri(String uri) {
@@ -78,6 +78,11 @@ public class MongoDbTransforms {
       return this;
     }
 
+    public WriteWithDlq withTmpDirectory(String tmpDirectory) {
+      this.tmpDirectory = tmpDirectory;
+      return this;
+    }
+
     public WriteWithDlq withMaxConcurrentAsyncWrites(Integer maxConcurrentAsyncWrites) {
       if (maxConcurrentAsyncWrites != null) {
         this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
@@ -85,9 +90,16 @@ public class MongoDbTransforms {
       return this;
     }
 
-    public WriteWithDlq withMaxRetries(Integer maxRetries) {
-      if (maxRetries != null) {
-        this.maxRetries = maxRetries;
+    public WriteWithDlq withMaxWriteRetries(Integer maxWriteRetries) {
+      if (maxWriteRetries != null) {
+        this.maxWriteRetries = maxWriteRetries;
+      }
+      return this;
+    }
+
+    public WriteWithDlq withDlqMaxRetries(Integer dlqMaxRetries) {
+      if (dlqMaxRetries != null) {
+        this.dlqMaxRetries = dlqMaxRetries;
       }
       return this;
     }
@@ -100,8 +112,8 @@ public class MongoDbTransforms {
     }
 
     @Override
-    public PDone expand(PCollection<Document> input) {
-      TupleTag<Document> successTag = new TupleTag<Document>() {};
+    public PDone expand(PCollection<DocumentWithMetadata> input) {
+      TupleTag<DocumentWithMetadata> successTag = new TupleTag<DocumentWithMetadata>() {};
       TupleTag<String> failureTag = new TupleTag<String>() {};
 
       PCollectionTuple writeResults =
@@ -112,7 +124,9 @@ public class MongoDbTransforms {
                       doc ->
                           String.valueOf(
                               java.util.concurrent.ThreadLocalRandom.current().nextInt(1000))))
-              .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Document.class)))
+              .setCoder(
+                  KvCoder.of(
+                      StringUtf8Coder.of(), SerializableCoder.of(DocumentWithMetadata.class)))
               .apply("GroupIntoBatches", GroupIntoBatches.ofSize(batchSize))
               .apply(
                   "WriteBatches",
@@ -122,7 +136,8 @@ public class MongoDbTransforms {
                               .withDatabase(database)
                               .withCollection(collection)
                               .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
-                              .withMaxRetries(maxRetries)
+                              .withMaxWriteRetries(maxWriteRetries)
+                              .withDlqMaxRetries(dlqMaxRetries)
                               .withClientFactory(clientFactory)
                               .withFailureTag(failureTag)
                               .build())
@@ -131,7 +146,12 @@ public class MongoDbTransforms {
       if (dlqPath != null && !dlqPath.isEmpty()) {
         writeResults
             .get(failureTag)
-            .apply("WriteDlq", TextIO.write().to(dlqPath + "/" + collection));
+            .apply(
+                "WriteDlq",
+                DLQWriteTransform.WriteDLQ.newBuilder()
+                    .withDlqDirectory(dlqPath + "/" + collection)
+                    .withTmpDirectory(tmpDirectory)
+                    .build());
       }
 
       return PDone.in(input.getPipeline());

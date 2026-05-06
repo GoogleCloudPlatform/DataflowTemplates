@@ -69,8 +69,8 @@ public class MongoDbTransformsTest {
   private static MongoClient staticClient;
   private static MongoDatabase staticDatabase;
   private static MongoCollection<Document> staticCollection;
-  private static final org.apache.beam.sdk.values.TupleTag<Document> MAIN_TAG =
-      new org.apache.beam.sdk.values.TupleTag<Document>() {};
+  private static final org.apache.beam.sdk.values.TupleTag<DocumentWithMetadata> MAIN_TAG =
+      new org.apache.beam.sdk.values.TupleTag<DocumentWithMetadata>() {};
   private static final org.apache.beam.sdk.values.TupleTag<String> FAILURE_TAG =
       new org.apache.beam.sdk.values.TupleTag<String>() {};
 
@@ -100,7 +100,8 @@ public class MongoDbTransformsTest {
               }
               return mock(BulkWriteResult.class);
             });
-    PCollection<Document> input = pipeline.apply(Create.<Document>of(new Document("_id", 1)));
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1))));
 
     input.apply(
         "Write_Transient",
@@ -108,7 +109,7 @@ public class MongoDbTransformsTest {
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
             .withCollection("test")
-            .withMaxRetries(3)
+            .withMaxWriteRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
@@ -132,7 +133,8 @@ public class MongoDbTransformsTest {
                   Collections.emptySet());
             });
 
-    PCollection<Document> input = pipeline.apply(Create.<Document>of(new Document("_id", 1)));
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1))));
 
     input.apply(
         "Write_Permanent",
@@ -140,7 +142,7 @@ public class MongoDbTransformsTest {
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
             .withCollection("test")
-            .withMaxRetries(3)
+            .withMaxWriteRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
@@ -167,8 +169,11 @@ public class MongoDbTransformsTest {
               return mock(BulkWriteResult.class);
             });
 
-    PCollection<Document> input =
-        pipeline.apply(Create.<Document>of(new Document("_id", 1), new Document("_id", 2)));
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(
+            Create.of(
+                DocumentWithMetadata.of(new Document("_id", 1)),
+                DocumentWithMetadata.of(new Document("_id", 2))));
 
     input.apply(
         "Write_Partial",
@@ -176,7 +181,7 @@ public class MongoDbTransformsTest {
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
             .withCollection("test")
-            .withMaxRetries(3)
+            .withMaxWriteRetries(3)
             .withBatchSize(2)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
@@ -190,11 +195,11 @@ public class MongoDbTransformsTest {
     when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
         .thenReturn(mock(BulkWriteResult.class));
 
-    Document[] docs = new Document[100];
+    DocumentWithMetadata[] docs = new DocumentWithMetadata[100];
     for (int i = 0; i < 100; i++) {
-      docs[i] = new Document("_id", i);
+      docs[i] = DocumentWithMetadata.of(new Document("_id", i));
     }
-    PCollection<Document> input = pipeline.apply(Create.of(Arrays.asList(docs)));
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(Arrays.asList(docs)));
 
     input.apply(
         "Write_100",
@@ -211,7 +216,8 @@ public class MongoDbTransformsTest {
 
   @Test
   public void writeWithDlq_zeroDocuments_successCountZero() {
-    PCollection<Document> input = pipeline.apply(Create.empty(TypeDescriptor.of(Document.class)));
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(Create.empty(TypeDescriptor.of(DocumentWithMetadata.class)));
 
     input.apply(
         "Write_0",
@@ -264,19 +270,21 @@ public class MongoDbTransformsTest {
               return mock(BulkWriteResult.class);
             });
 
-    Document doc0 = new Document("_id", 0);
-    Document doc1 = new Document("_id", 1);
-    Document doc2 = new Document("_id", 2);
+    DocumentWithMetadata doc0 = DocumentWithMetadata.of(new Document("_id", 0));
+    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1));
+    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2));
 
-    KV<String, Iterable<Document>> batch = KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
+    KV<String, Iterable<DocumentWithMetadata>> batch =
+        KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
 
-    Coder<Document> documentCoder =
-        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(Document.class));
+    Coder<DocumentWithMetadata> documentWithMetadataCoder =
+        pipeline.getCoderRegistry().getCoder(TypeDescriptor.of(DocumentWithMetadata.class));
 
-    PCollection<KV<String, Iterable<Document>>> input =
+    PCollection<KV<String, Iterable<DocumentWithMetadata>>> input =
         pipeline.apply(
             Create.of(Collections.singletonList(batch))
-                .withCoder(KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentCoder))));
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(documentWithMetadataCoder))));
 
     input.apply(
         "Write_DocLevelRetry",
@@ -285,7 +293,7 @@ public class MongoDbTransformsTest {
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
                     .withCollection("test")
-                    .withMaxRetries(3)
+                    .withMaxWriteRetries(3)
                     .withMaxConcurrentAsyncWrites(1)
                     .withClientFactory(new MockClientFactory())
                     .withFailureTag(FAILURE_TAG)
