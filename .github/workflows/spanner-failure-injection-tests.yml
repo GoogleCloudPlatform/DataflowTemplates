@@ -37,7 +37,7 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
-    - name: Run Integration Tests
+    - name: Run Spanner failure injection tests
       run: |
         ./cicd/run-failure-injection-tests \
         --modules-to-build="SPANNER" \
