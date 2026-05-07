@@ -83,6 +83,8 @@ import org.slf4j.LoggerFactory;
 })
 public class CassandraIOTest implements Serializable {
   private static final long NUM_ROWS = 22L;
+  private static final int MAX_RETRIES = 3;
+  private static final int RETRY_DELAY_MS = 1000;
   private static final String CASSANDRA_KEYSPACE = "beam_ks";
   private static String cassandraHost = "127.0.0.1";
   private static InetSocketAddress cassandraInetSocketAddress;
@@ -111,17 +113,17 @@ public class CassandraIOTest implements Serializable {
    */
   @BeforeClass
   public static void beforeClass() throws Exception {
-    int maxRetries = 3;
-    for (int i = 0; i < maxRetries; i++) {
+    for (int i = 0; i < MAX_RETRIES; i++) {
       try {
         embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
         break;
       } catch (Exception e) {
-        LOG.warn("Failed to start Embedded Cassandra on attempt {}. Retrying...", i + 1, e);
-        if (i == maxRetries - 1) {
+        if (i == MAX_RETRIES - 1) {
+          LOG.error("Failed to start Embedded Cassandra on final attempt.", e);
           throw e;
         }
-        Thread.sleep(1000);
+        LOG.warn("Failed to start Embedded Cassandra on attempt {}. Retrying...", i + 1, e);
+        Thread.sleep(RETRY_DELAY_MS);
       }
     }
     jmxPort = NetworkTestHelper.getAvailableLocalPort();
