@@ -296,7 +296,7 @@ public class MongoDbTransformsTest {
     input.apply(
         "Write_DocLevelRetry",
         ParDo.of(
-                MongoDbWriteFn.builder()
+                MongoDbTransforms.WriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
                     .withCollection("test")
@@ -397,7 +397,11 @@ public class MongoDbTransformsTest {
   public void applyUdfFn_noopUdf_preservesSpecialDoubles() throws Exception {
     File udfFile = tempFolder.newFile("noop_transform.js");
     try (FileWriter writer = new FileWriter(udfFile)) {
-      writer.write("function transform(inJson) {\n" + "  var obj = JSON.parse(inJson);\n" + "  return JSON.stringify(obj);\n" + "}");
+      writer.write(
+          "function transform(inJson) {\n"
+              + "  var obj = JSON.parse(inJson);\n"
+              + "  return JSON.stringify(obj);\n"
+              + "}");
     }
 
     Document doc =

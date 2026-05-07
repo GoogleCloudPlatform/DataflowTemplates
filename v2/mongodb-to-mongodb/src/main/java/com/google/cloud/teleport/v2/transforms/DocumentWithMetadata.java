@@ -32,8 +32,8 @@ public class DocumentWithMetadata implements Serializable {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS = JsonWriterSettings.builder()
-      .outputMode(JsonMode.EXTENDED).build();
+  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
+      JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
   public enum ErrorType {
     RETRYABLE,
@@ -99,14 +99,15 @@ public class DocumentWithMetadata implements Serializable {
   }
 
   public static DocumentWithMetadata of(Document document) {
-    return new DocumentWithMetadata(document, document.toJson(CANONICAL_JSON_SETTINGS), 0, null, null);
+    return new DocumentWithMetadata(
+        document, document.toJson(CANONICAL_JSON_SETTINGS), 0, null, null);
   }
 
   /**
    * Serializes the event for DLQ.
    *
-   * @param errorMessage  the error message
-   * @param errorType     the error type (PERMANENT or RETRYABLE)
+   * @param errorMessage the error message
+   * @param errorType the error type (PERMANENT or RETRYABLE)
    * @param newRetryCount the new retry count
    * @return the JSON string ready for DLQ
    */
@@ -140,16 +141,19 @@ public class DocumentWithMetadata implements Serializable {
       Document doc = Document.parse(dataNode.toString());
       String originalDocument = dataNode.toString();
 
-      Integer retryCount = messageNode.has("_metadata_retry_count")
-          ? messageNode.get("_metadata_retry_count").asInt()
-          : 0;
-      String errorMsg = jsonNode.has("error_message")
-          ? jsonNode.get("error_message").asText()
-          : (messageNode.has("_metadata_error")
-              ? messageNode.get("_metadata_error").asText()
-              : null);
+      Integer retryCount =
+          messageNode.has("_metadata_retry_count")
+              ? messageNode.get("_metadata_retry_count").asInt()
+              : 0;
+      String errorMsg =
+          jsonNode.has("error_message")
+              ? jsonNode.get("error_message").asText()
+              : (messageNode.has("_metadata_error")
+                  ? messageNode.get("_metadata_error").asText()
+                  : null);
 
-      String errorTypeStr = messageNode.has("error_type") ? messageNode.get("error_type").asText() : null;
+      String errorTypeStr =
+          messageNode.has("error_type") ? messageNode.get("error_type").asText() : null;
       ErrorType errorType = errorTypeStr != null ? ErrorType.valueOf(errorTypeStr) : null;
 
       return new DocumentWithMetadata(doc, originalDocument, retryCount, errorMsg, errorType);

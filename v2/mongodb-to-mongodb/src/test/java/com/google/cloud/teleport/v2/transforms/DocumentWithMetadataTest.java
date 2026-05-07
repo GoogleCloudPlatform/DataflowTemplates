@@ -73,9 +73,11 @@ public class DocumentWithMetadataTest {
         "Should contain canonical double",
         original.contains("\"doubleVal\": {\"$numberDouble\": \"1.23\"}"));
     assertTrue(
-        "Should contain canonical long", original.contains("\"longVal\": {\"$numberLong\": \"123\"}"));
+        "Should contain canonical long",
+        original.contains("\"longVal\": {\"$numberLong\": \"123\"}"));
     assertTrue(
-        "Should contain canonical NaN", original.contains("\"nanVal\": {\"$numberDouble\": \"NaN\"}"));
+        "Should contain canonical NaN",
+        original.contains("\"nanVal\": {\"$numberDouble\": \"NaN\"}"));
     assertTrue(
         "Should contain canonical Infinity",
         original.contains("\"infVal\": {\"$numberDouble\": \"Infinity\"}"));
