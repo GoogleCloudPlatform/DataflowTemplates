@@ -88,4 +88,18 @@ public class DocumentWithMetadataTest {
         "Should contain canonical negative Infinity",
         original.contains("\"negInfVal\": {\"$numberDouble\": \"-Infinity\"}"));
   }
+
+  @Test
+  public void documentWithMetadata_getId_returnsId() {
+    Document doc = new Document("_id", 1).append("name", "test");
+    DocumentWithMetadata item = DocumentWithMetadata.of(doc);
+    assertEquals(1, item.getId());
+  }
+
+  @Test
+  public void documentWithMetadata_getId_returnsNullWhenNoId() {
+    Document doc = new Document("name", "test");
+    DocumentWithMetadata item = DocumentWithMetadata.of(doc);
+    assertEquals(null, item.getId());
+  }
 }

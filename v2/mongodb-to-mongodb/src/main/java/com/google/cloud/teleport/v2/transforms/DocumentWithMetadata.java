@@ -86,6 +86,14 @@ public class DocumentWithMetadata implements Serializable {
     return document;
   }
 
+  /** Returns the ID of the document. */
+  public Object getId() {
+    if (document != null) {
+      return document.get("_id");
+    }
+    return null;
+  }
+
   /** Returns the original document string. */
   public String getOriginalDocument() {
     return originalDocument;

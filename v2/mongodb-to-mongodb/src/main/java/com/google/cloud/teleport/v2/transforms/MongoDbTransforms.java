@@ -508,11 +508,7 @@ public class MongoDbTransforms {
     private void writeToDlq(
         List<DocumentWithMetadata> itemList, String message, boolean isPermanent) {
       for (DocumentWithMetadata item : itemList) {
-        String docStr =
-            item.getOriginalDocument() != null
-                ? item.getOriginalDocument()
-                : item.getDocument().toJson();
-        LOG.warn("{}: {}", message, docStr);
+        LOG.warn("{}: {}", message, item.getId());
 
         int retryCount = isPermanent ? dlqMaxRetries + 1 : item.getRetryCount() + 1;
         DocumentWithMetadata.ErrorType errorType = isPermanent ? PERMANENT : RETRYABLE;
@@ -613,7 +609,7 @@ public class MongoDbTransforms {
                     item.getSourceCollection(),
                     item.getTargetCollection()));
           } else {
-            LOG.warn("UDF returned null for document: {}", item.getOriginalDocument());
+            LOG.warn("UDF returned null for document ID: {}", item.getId());
             c.output(
                 failureTag,
                 DocumentWithMetadata.of(
