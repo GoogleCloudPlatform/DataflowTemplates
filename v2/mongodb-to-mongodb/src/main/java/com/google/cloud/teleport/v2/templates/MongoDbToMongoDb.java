@@ -18,26 +18,30 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer;
-import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
@@ -155,20 +159,13 @@ public class MongoDbToMongoDb {
     @TemplateParameter.Text(
         order = 11,
         optional = true,
-        description = "Process DLQ Path",
-        helpText = "Path to store failed events during processing.")
-    String getProcessDlqPath();
+        description = "DLQ Directory",
+        helpText =
+            "Base path to store failed events. Events will be grouped by date and time, and"
+                + " separated into 'retryable' and 'permanent' subdirectories.")
+    String getDlqDirectory();
 
-    void setProcessDlqPath(String value);
-
-    @TemplateParameter.Text(
-        order = 12,
-        optional = true,
-        description = "Write DLQ Path",
-        helpText = "Path to store failed events during writing.")
-    String getWriteDlqPath();
-
-    void setWriteDlqPath(String value);
+    void setDlqDirectory(String value);
 
     @TemplateParameter.Integer(
         order = 13,
@@ -234,52 +231,93 @@ public class MongoDbToMongoDb {
     String sourceDatabase = options.getSourceDatabase();
     String sourceCollection = options.getSourceCollection();
 
-    List<String> collections = new ArrayList<>();
+    List<String> sourceCollections = new ArrayList<>();
     if (sourceCollection != null && !sourceCollection.isEmpty()) {
-      collections.add(sourceCollection);
+      sourceCollections.add(sourceCollection);
     } else {
       // List collections from source
       try (MongoClient mongoClient = MongoClients.create(sourceUri)) {
         MongoDatabase db = mongoClient.getDatabase(sourceDatabase);
         for (String name : db.listCollectionNames()) {
-          collections.add(name);
+          sourceCollections.add(name);
         }
       }
     }
 
-    String writeDlqPath =
-        getDefaultDlqPath(options.getWriteDlqPath(), options.getTempLocation(), "dlq");
-    String processDlqPath =
-        getDefaultDlqPath(options.getProcessDlqPath(), options.getTempLocation(), "process-dlq");
-
-    for (String sourceCol : collections) {
-      String targetCollection = options.getTargetCollection();
-      if (targetCollection == null || targetCollection.isEmpty()) {
-        targetCollection = sourceCol; // Use source collection name if target not provided
-      }
-
-      PCollection<DocumentWithMetadata> documents;
-
-      if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
-        String reconsumePath = options.getReconsumeDlqPath();
-        if (reconsumePath == null || reconsumePath.isEmpty()) {
-          reconsumePath = writeDlqPath;
-        }
-        documents = readFromDlq(pipeline, sourceCol, reconsumePath);
+    String stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
+    String tmpDirectory = options.getTempLocation();
+    if (tmpDirectory == null || tmpDirectory.isEmpty()) {
+      if (stagingLocation != null && !stagingLocation.isEmpty()) {
+        tmpDirectory =
+            stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
       } else {
-        documents = readFromMongo(pipeline, options, sourceCol, targetCollection);
+        tmpDirectory = "/tmp";
       }
+    }
+
+    String dlqDirectory = options.getDlqDirectory();
+    if (dlqDirectory == null || dlqDirectory.isEmpty()) {
+      dlqDirectory = tmpDirectory;
+    }
+    String baseDlqPath = dlqDirectory.endsWith("/") ? dlqDirectory : dlqDirectory + "/";
+    String timestampPath = new SimpleDateFormat("yyyy-MM-dd/HH-mm-ss").format(new Date());
+    String retryableDlqPath = baseDlqPath + timestampPath + "/retryable";
+    String permanentDlqPath = baseDlqPath + timestampPath + "/permanent";
+
+    if (options.getReadFromDlq() != null && options.getReadFromDlq()) {
+      String reconsumePath = options.getReconsumeDlqPath();
+      if (reconsumePath == null || reconsumePath.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Reconsume DLQ path must be specified when reading from DLQ.");
+      }
+      PCollection<DocumentWithMetadata> documents = readFromDlq(pipeline, reconsumePath);
+      documents.apply(
+          "ProcessDlq", new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+    } else {
+      for (String inputCollection : sourceCollections) {
+        String targetCollectionRaw = options.getTargetCollection();
+        final String targetCollection =
+            (targetCollectionRaw == null || targetCollectionRaw.isEmpty())
+                ? inputCollection
+                : targetCollectionRaw;
+
+        PCollection<DocumentWithMetadata> documents =
+            readFromMongo(pipeline, options, inputCollection, targetCollection);
+        documents.apply(
+            "Process_" + inputCollection,
+            new ProcessDocuments(options, retryableDlqPath, permanentDlqPath));
+      }
+    }
+
+    pipeline.run();
+  }
+
+  public static class ProcessDocuments
+      extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+    private final transient Options options;
+    private final String retryableDlqPath;
+    private final String permanentDlqPath;
+
+    public ProcessDocuments(Options options, String retryableDlqPath, String permanentDlqPath) {
+      this.options = options;
+      this.retryableDlqPath = retryableDlqPath;
+      this.permanentDlqPath = permanentDlqPath;
+    }
+
+    @Override
+    public PDone expand(PCollection<DocumentWithMetadata> input) {
+      PCollection<DocumentWithMetadata> documents = input;
 
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
           && !options.getJavascriptTextTransformGcsPath().isEmpty()) {
         TupleTag<DocumentWithMetadata> udfSuccessTag = new TupleTag<DocumentWithMetadata>() {};
-        TupleTag<String> udfFailureTag = new TupleTag<String>() {};
+        TupleTag<DocumentWithMetadata> udfFailureTag = new TupleTag<DocumentWithMetadata>() {};
 
         PCollectionTuple udfProcessed =
             documents.apply(
-                "ApplyUDF_" + sourceCol,
-                    ParDo.of(
+                "ApplyUDF",
+                ParDo.of(
                         new MongoDbTransforms.ApplyUdfFn(
                             options.getJavascriptTextTransformGcsPath(),
                             options.getJavascriptTextTransformFunctionName(),
@@ -287,15 +325,13 @@ public class MongoDbToMongoDb {
                             udfFailureTag))
                     .withOutputTags(udfSuccessTag, TupleTagList.of(udfFailureTag)));
 
-        // Write UDF Failures to Process DLQ
+        // Write UDF Failures to DLQ
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteUdfDlq_" + sourceCol,
-                    DLQWriteTransform.WriteDLQ.newBuilder()
-                    .withDlqDirectory(processDlqPath + "/" + sourceCol)
-                    .withTmpDirectory(options.getTempLocation())
-                    .build());
+                "WriteToDlq_UDF",
+                new MongoDbTransforms.WriteToDlq(
+                    retryableDlqPath, permanentDlqPath, options.getTempLocation()));
 
         documents =
             udfProcessed
@@ -305,18 +341,28 @@ public class MongoDbToMongoDb {
 
       // Validation Stage with DLQ
       TupleTag<DocumentWithMetadata> successTag = new TupleTag<DocumentWithMetadata>() {};
-      TupleTag<String> failureTag = new TupleTag<String>() {};
+      TupleTag<DocumentWithMetadata> failureTag = new TupleTag<DocumentWithMetadata>() {};
 
       PCollectionTuple processed =
           documents.apply(
-              "Validate_" + sourceCol,
-                  ParDo.of(
+              "Validate",
+              ParDo.of(
                       new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
                         @ProcessElement
                         public void processElement(ProcessContext c) {
                           DocumentWithMetadata item = c.element();
                           if (item == null || item.getDocument() == null) {
-                            c.output(failureTag, "Null document");
+                            c.output(
+                                failureTag,
+                                DocumentWithMetadata.of(
+                                    null,
+                                    null,
+                                    0,
+                                    "Null document",
+                                    DocumentWithMetadata.ErrorType.PERMANENT,
+                                    null,
+                                    null,
+                                    DocumentWithMetadata.FailureStage.VALIDATE));
                           } else {
                             c.output(successTag, item);
                           }
@@ -328,51 +374,40 @@ public class MongoDbToMongoDb {
       processed
           .get(failureTag)
           .apply(
-              "WriteProcessDlq_" + sourceCol,
-                  DLQWriteTransform.WriteDLQ.newBuilder()
-                  .withDlqDirectory(processDlqPath + "/" + sourceCol)
-                  .withTmpDirectory(options.getTempLocation())
-                  .build());
+              "WriteToDlq_Validate",
+              new MongoDbTransforms.WriteToDlq(
+                  retryableDlqPath, permanentDlqPath, options.getTempLocation()));
 
       // Write Stage with DLQ
       PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
 
-      validDocs.apply(
-          "Write_" + sourceCol,
+      PCollection<DocumentWithMetadata> writeFailures =
+          validDocs.apply(
+              "Write",
               MongoDbTransforms.writeWithDlq()
-              .withUri(options.getTargetUri())
-              .withDatabase(options.getTargetDatabase())
-              .withCollection(targetCollection)
-              .withBatchSize(options.getBatchSize())
-              .withDlqPath(writeDlqPath)
-              .withTmpDirectory(options.getTempLocation())
-              .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
-              .withMaxWriteRetries(options.getMaxWriteRetries())
-              .withDlqMaxRetries(options.getDlqMaxRetries()));
-    }
+                  .withUri(options.getTargetUri())
+                  .withDatabase(options.getTargetDatabase())
+                  .withBatchSize(options.getBatchSize())
+                  .withMaxConcurrentAsyncWrites(options.getMaxConcurrentAsyncWrites())
+                  .withMaxWriteRetries(options.getMaxWriteRetries())
+                  .withDlqMaxRetries(options.getDlqMaxRetries()));
 
-    pipeline.run();
-  }
+      writeFailures.apply(
+          "WriteToDlq_Write",
+          new MongoDbTransforms.WriteToDlq(
+              retryableDlqPath, permanentDlqPath, options.getTempLocation()));
 
-  private static String getDefaultDlqPath(String dlqPath, String tempLocation, String suffix) {
-    if (dlqPath != null && !dlqPath.isEmpty()) {
-      return dlqPath;
+      return PDone.in(input.getPipeline());
     }
-    if (tempLocation != null) {
-      String path = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
-      return path + suffix;
-    }
-    return "/tmp/" + suffix;
   }
 
   private static PCollection<DocumentWithMetadata> readFromDlq(
-      Pipeline pipeline, String collection, String reconsumePath) {
+      Pipeline pipeline, String reconsumePath) {
     PCollection<String> dlqStrings =
-        pipeline.apply(
-            "ReadDlq_" + collection, FileBasedDeadLetterQueueReconsumer.create(reconsumePath));
+        pipeline.apply("ReadDlq", TextIO.read().from(reconsumePath + "/**"));
 
     return dlqStrings.apply(
-        "ParseDlq_" + collection,
+        "ParseDlq",
         ParDo.of(
             new DoFn<String, DocumentWithMetadata>() {
               @ProcessElement
@@ -407,7 +442,7 @@ public class MongoDbToMongoDb {
         .apply("Read_" + sourceCollection, read)
         .apply(
             "MapToMetadata_" + sourceCollection,
-                ParDo.of(
+            ParDo.of(
                 new DoFn<Document, DocumentWithMetadata>() {
                   @ProcessElement
                   public void processElement(ProcessContext c) {

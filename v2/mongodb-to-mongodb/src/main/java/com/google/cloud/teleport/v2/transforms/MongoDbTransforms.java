@@ -45,6 +45,7 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -74,14 +75,12 @@ public class MongoDbTransforms {
     return new WriteWithDlq();
   }
 
-  public static class WriteWithDlq extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+  public static class WriteWithDlq
+      extends PTransform<PCollection<DocumentWithMetadata>, PCollection<DocumentWithMetadata>> {
     private String uri;
     private String database;
-    private String collection;
     private Integer batchSize = 5000;
 
-    private String dlqPath;
-    private String tmpDirectory;
     private Integer maxConcurrentAsyncWrites = 10;
     private Integer maxWriteRetries = 3;
     private Integer dlqMaxRetries = 3;
@@ -97,25 +96,10 @@ public class MongoDbTransforms {
       return this;
     }
 
-    public WriteWithDlq withCollection(String collection) {
-      this.collection = collection;
-      return this;
-    }
-
     public WriteWithDlq withBatchSize(Integer batchSize) {
       if (batchSize != null) {
         this.batchSize = batchSize;
       }
-      return this;
-    }
-
-    public WriteWithDlq withDlqPath(String dlqPath) {
-      this.dlqPath = dlqPath;
-      return this;
-    }
-
-    public WriteWithDlq withTmpDirectory(String tmpDirectory) {
-      this.tmpDirectory = tmpDirectory;
       return this;
     }
 
@@ -148,9 +132,9 @@ public class MongoDbTransforms {
     }
 
     @Override
-    public PDone expand(PCollection<DocumentWithMetadata> input) {
+    public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
       TupleTag<DocumentWithMetadata> successTag = new TupleTag<DocumentWithMetadata>() {};
-      TupleTag<String> failureTag = new TupleTag<String>() {};
+      TupleTag<DocumentWithMetadata> failureTag = new TupleTag<DocumentWithMetadata>() {};
 
       PCollectionTuple writeResults =
           input
@@ -178,16 +162,72 @@ public class MongoDbTransforms {
                               .build())
                       .withOutputTags(successTag, TupleTagList.of(failureTag)));
 
-      if (dlqPath != null && !dlqPath.isEmpty()) {
-        writeResults
-            .get(failureTag)
-            .apply(
-                "WriteDlq",
-                DLQWriteTransform.WriteDLQ.newBuilder()
-                    .withDlqDirectory(dlqPath + "/" + collection)
-                    .withTmpDirectory(tmpDirectory)
-                    .build());
-      }
+      return writeResults.get(failureTag);
+    }
+  }
+
+  public static class WriteToDlq extends PTransform<PCollection<DocumentWithMetadata>, PDone> {
+    private final String retryablePath;
+    private final String permanentPath;
+    private final String tempLocation;
+
+    public WriteToDlq(String retryablePath, String permanentPath, String tempLocation) {
+      this.retryablePath = retryablePath;
+      this.permanentPath = permanentPath;
+      this.tempLocation = tempLocation;
+    }
+
+    @Override
+    public PDone expand(PCollection<DocumentWithMetadata> input) {
+      PCollection<DocumentWithMetadata> retryable =
+          input.apply(
+              "FilterRetryable",
+              Filter.by(item -> item.getErrorType() == DocumentWithMetadata.ErrorType.RETRYABLE));
+
+      PCollection<DocumentWithMetadata> permanent =
+          input.apply(
+              "FilterPermanent",
+              Filter.by(item -> item.getErrorType() == DocumentWithMetadata.ErrorType.PERMANENT));
+
+      retryable
+          .apply(
+              "MapToJson_Retryable",
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      DocumentWithMetadata item = c.element();
+                      c.output(
+                          item.toDlqJson(
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
+                    }
+                  }))
+          .apply(
+              "WriteDlq_Retryable",
+              DLQWriteTransform.WriteDLQ.newBuilder()
+                  .withDlqDirectory(retryablePath)
+                  .withTmpDirectory(tempLocation)
+                  .build());
+
+      permanent
+          .apply(
+              "MapToJson_Permanent",
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      DocumentWithMetadata item = c.element();
+                      c.output(
+                          item.toDlqJson(
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
+                    }
+                  }))
+          .apply(
+              "WriteDlq_Permanent",
+              DLQWriteTransform.WriteDLQ.newBuilder()
+                  .withDlqDirectory(permanentPath)
+                  .withTmpDirectory(tempLocation)
+                  .build());
 
       return PDone.in(input.getPipeline());
     }
@@ -209,7 +249,7 @@ public class MongoDbTransforms {
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
     private final SerializableFunction<String, MongoClient> clientFactory;
-    private final TupleTag<String> failureTag;
+    private final TupleTag<DocumentWithMetadata> failureTag;
     private transient FluentBackoff backoffSpec;
 
     private final Counter successfulDocs =
@@ -219,7 +259,7 @@ public class MongoDbTransforms {
     private transient ExecutorService executor;
     private transient Semaphore semaphore;
     private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
-    private transient ConcurrentLinkedQueue<String> failures;
+    private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
     private transient AtomicLong successfulCount;
 
     public WriteFn(
@@ -229,7 +269,7 @@ public class MongoDbTransforms {
         Integer maxWriteRetries,
         Integer dlqMaxRetries,
         SerializableFunction<String, MongoClient> clientFactory,
-        TupleTag<String> failureTag) {
+        TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
       this.database = database;
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
@@ -248,9 +288,9 @@ public class MongoDbTransforms {
       private String database;
       private Integer maxConcurrentAsyncWrites;
       private Integer maxWriteRetries;
-      private Integer dlqMaxRetries;
+      private Integer dlqMaxRetries = 3;
       private SerializableFunction<String, MongoClient> clientFactory;
-      private TupleTag<String> failureTag;
+      private TupleTag<DocumentWithMetadata> failureTag;
 
       public Builder withUri(String uri) {
         this.uri = uri;
@@ -282,7 +322,7 @@ public class MongoDbTransforms {
         return this;
       }
 
-      public Builder withFailureTag(TupleTag<String> failureTag) {
+      public Builder withFailureTag(TupleTag<DocumentWithMetadata> failureTag) {
         this.failureTag = failureTag;
         return this;
       }
@@ -473,16 +513,20 @@ public class MongoDbTransforms {
                 ? item.getOriginalDocument()
                 : item.getDocument().toJson();
         LOG.warn("{}: {}", message, docStr);
-        try {
-          int retryCount = isPermanent ? dlqMaxRetries + 1 : item.getRetryCount() + 1;
-          DocumentWithMetadata.ErrorType errorType = isPermanent ? PERMANENT : RETRYABLE;
-          failures.add(item.toDlqJson(message, errorType, retryCount));
-        } catch (Exception e) {
-          LOG.error("Failed to format DLQ message", e);
-          failures.add(
-              String.format(
-                  "{\"message\": {\"data\": %s}, \"error_message\": \"%s\"}", docStr, message));
-        }
+
+        int retryCount = isPermanent ? dlqMaxRetries + 1 : item.getRetryCount() + 1;
+        DocumentWithMetadata.ErrorType errorType = isPermanent ? PERMANENT : RETRYABLE;
+
+        failures.add(
+            DocumentWithMetadata.of(
+                item.getDocument(),
+                item.getOriginalDocument(),
+                retryCount,
+                message,
+                errorType,
+                item.getSourceCollection(),
+                item.getTargetCollection(),
+                DocumentWithMetadata.FailureStage.WRITE));
       }
     }
 
@@ -511,7 +555,7 @@ public class MongoDbTransforms {
 
       successfulDocs.inc(successfulCount.get());
 
-      String failure;
+      DocumentWithMetadata failure;
       while ((failure = failures.poll()) != null) {
         c.output(failureTag, failure, Instant.now(), GlobalWindow.INSTANCE);
       }
@@ -525,14 +569,14 @@ public class MongoDbTransforms {
     private final String fileSystemPath;
     private final String functionName;
     private final Integer reloadIntervalMinutes;
-    private final TupleTag<String> failureTag;
+    private final TupleTag<DocumentWithMetadata> failureTag;
     private transient JavascriptTextTransformer.JavascriptRuntime javascriptRuntime;
 
     public ApplyUdfFn(
         String fileSystemPath,
         String functionName,
         Integer reloadIntervalMinutes,
-        TupleTag<String> failureTag) {
+        TupleTag<DocumentWithMetadata> failureTag) {
       this.fileSystemPath = fileSystemPath;
       this.functionName = functionName;
       this.reloadIntervalMinutes = reloadIntervalMinutes;
@@ -571,13 +615,30 @@ public class MongoDbTransforms {
           } else {
             LOG.warn("UDF returned null for document: {}", item.getOriginalDocument());
             c.output(
-                failureTag, item.toDlqJson("UDF returned null", RETRYABLE, item.getRetryCount()));
+                failureTag,
+                DocumentWithMetadata.of(
+                    item.getDocument(),
+                    item.getOriginalDocument(),
+                    item.getRetryCount(),
+                    "UDF returned null",
+                    DocumentWithMetadata.ErrorType.RETRYABLE,
+                    item.getSourceCollection(),
+                    item.getTargetCollection(),
+                    DocumentWithMetadata.FailureStage.UDF));
           }
         } catch (Throwable e) {
           LOG.error("Failed to apply UDF: {}", e.getMessage());
           c.output(
               failureTag,
-              item.toDlqJson("UDF failed: " + e.getMessage(), RETRYABLE, item.getRetryCount()));
+              DocumentWithMetadata.of(
+                  item.getDocument(),
+                  item.getOriginalDocument(),
+                  item.getRetryCount(),
+                  "UDF failed: " + e.getMessage(),
+                  DocumentWithMetadata.ErrorType.RETRYABLE,
+                  item.getSourceCollection(),
+                  item.getTargetCollection(),
+                  DocumentWithMetadata.FailureStage.UDF));
         }
       } else {
         c.output(item);

@@ -52,6 +52,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.bson.BsonDocument;
@@ -76,10 +77,10 @@ public class MongoDbTransformsTest {
   private static MongoClient staticClient;
   private static MongoDatabase staticDatabase;
   private static MongoCollection<Document> staticCollection;
-  private static final org.apache.beam.sdk.values.TupleTag<DocumentWithMetadata> MAIN_TAG =
-      new org.apache.beam.sdk.values.TupleTag<DocumentWithMetadata>() {};
-  private static final org.apache.beam.sdk.values.TupleTag<String> FAILURE_TAG =
-      new org.apache.beam.sdk.values.TupleTag<String>() {};
+  private static final TupleTag<DocumentWithMetadata> MAIN_TAG =
+      new TupleTag<DocumentWithMetadata>() {};
+  private static final TupleTag<DocumentWithMetadata> FAILURE_TAG =
+      new TupleTag<DocumentWithMetadata>() {};
 
   @Before
   @SuppressWarnings("unchecked")
@@ -116,7 +117,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("test")
             .withMaxWriteRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
@@ -149,7 +149,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("test")
             .withMaxWriteRetries(3)
             .withBatchSize(1)
             .withClientFactory(new MockClientFactory()));
@@ -188,7 +187,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("test")
             .withMaxWriteRetries(3)
             .withBatchSize(2)
             .withClientFactory(new MockClientFactory()));
@@ -214,7 +212,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("test")
             .withBatchSize(100)
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
@@ -232,7 +229,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("test")
             .withClientFactory(new MockClientFactory()));
     PipelineResult result = pipeline.run();
 
@@ -385,8 +381,9 @@ public class MongoDbTransformsTest {
     PAssert.that(output.get(FAILURE_TAG))
         .satisfies(
             collection -> {
-              String result = collection.iterator().next();
-              org.junit.Assert.assertTrue(result.contains("UDF failed intentionally"));
+              DocumentWithMetadata result = collection.iterator().next();
+              org.junit.Assert.assertTrue(
+                  result.getErrorMessage().contains("UDF failed intentionally"));
               return null;
             });
 
@@ -456,7 +453,6 @@ public class MongoDbTransformsTest {
         MongoDbTransforms.writeWithDlq()
             .withUri("mongodb://localhost:27017")
             .withDatabase("test")
-            .withCollection("default_col")
             .withBatchSize(2)
             .withClientFactory(new MockClientFactory()));
 

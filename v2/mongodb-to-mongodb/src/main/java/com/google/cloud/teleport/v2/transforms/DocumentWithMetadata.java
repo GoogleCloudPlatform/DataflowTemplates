@@ -40,10 +40,17 @@ public class DocumentWithMetadata implements Serializable {
   public static final String METADATA_SOURCE_COLLECTION = "_metadata_source_collection";
   public static final String METADATA_TARGET_COLLECTION = "_metadata_target_collection";
   public static final String METADATA_ERROR_MESSAGE = "_metadata_error_message";
+  public static final String METADATA_FAILURE_STAGE = "_metadata_failure_stage";
 
   public enum ErrorType {
     RETRYABLE,
     PERMANENT
+  }
+
+  public enum FailureStage {
+    UDF,
+    VALIDATE,
+    WRITE
   }
 
   private final Document document;
@@ -53,6 +60,7 @@ public class DocumentWithMetadata implements Serializable {
   private final ErrorType errorType;
   private final String sourceCollection;
   private final String targetCollection;
+  private final FailureStage failureStage;
 
   public DocumentWithMetadata(
       Document document,
@@ -61,7 +69,8 @@ public class DocumentWithMetadata implements Serializable {
       String errorMessage,
       ErrorType errorType,
       String sourceCollection,
-      String targetCollection) {
+      String targetCollection,
+      FailureStage failureStage) {
     this.document = document;
     this.originalDocument = originalDocument;
     this.retryCount = retryCount;
@@ -69,6 +78,7 @@ public class DocumentWithMetadata implements Serializable {
     this.errorType = errorType;
     this.sourceCollection = sourceCollection;
     this.targetCollection = targetCollection;
+    this.failureStage = failureStage;
   }
 
   /** Returns the current BSON document. */
@@ -106,6 +116,11 @@ public class DocumentWithMetadata implements Serializable {
     return targetCollection;
   }
 
+  /** Returns the failure stage. */
+  public FailureStage getFailureStage() {
+    return failureStage;
+  }
+
   public static DocumentWithMetadata of(
       Document document,
       String originalDocument,
@@ -113,7 +128,7 @@ public class DocumentWithMetadata implements Serializable {
       String errorMessage,
       ErrorType errorType) {
     return new DocumentWithMetadata(
-        document, originalDocument, retryCount, errorMessage, errorType, null, null);
+        document, originalDocument, retryCount, errorMessage, errorType, null, null, null);
   }
 
   public static DocumentWithMetadata of(
@@ -131,16 +146,17 @@ public class DocumentWithMetadata implements Serializable {
         errorMessage,
         errorType,
         sourceCollection,
-        targetCollection);
+        targetCollection,
+        null);
   }
 
   public static DocumentWithMetadata of(Document document, String originalDocument) {
-    return new DocumentWithMetadata(document, originalDocument, 0, null, null, null, null);
+    return new DocumentWithMetadata(document, originalDocument, 0, null, null, null, null, null);
   }
 
   public static DocumentWithMetadata of(Document document) {
     return new DocumentWithMetadata(
-        document, document.toJson(CANONICAL_JSON_SETTINGS), 0, null, null, null, null);
+        document, document.toJson(CANONICAL_JSON_SETTINGS), 0, null, null, null, null, null);
   }
 
   public static DocumentWithMetadata of(
@@ -152,7 +168,28 @@ public class DocumentWithMetadata implements Serializable {
         null,
         null,
         sourceCollection,
-        targetCollection);
+        targetCollection,
+        null);
+  }
+
+  public static DocumentWithMetadata of(
+      Document document,
+      String originalDocument,
+      Integer retryCount,
+      String errorMessage,
+      ErrorType errorType,
+      String sourceCollection,
+      String targetCollection,
+      FailureStage failureStage) {
+    return new DocumentWithMetadata(
+        document,
+        originalDocument,
+        retryCount,
+        errorMessage,
+        errorType,
+        sourceCollection,
+        targetCollection,
+        failureStage);
   }
 
   /**
@@ -175,11 +212,24 @@ public class DocumentWithMetadata implements Serializable {
       wrapperNode.put(METADATA_RETRY_COUNT, newRetryCount);
       wrapperNode.put(METADATA_SOURCE_COLLECTION, sourceCollection);
       wrapperNode.put(METADATA_TARGET_COLLECTION, targetCollection);
+      wrapperNode.put(METADATA_FAILURE_STAGE, failureStage != null ? failureStage.name() : null);
 
       return dlqNode.toString();
     } catch (Exception e) {
       throw new RuntimeException("Failed to serialize DLQ message", e);
     }
+  }
+
+  private static String getOrDefault(JsonNode node, String fieldName, String defaultValue) {
+    return node.has(fieldName) && !node.get(fieldName).isNull()
+        ? node.get(fieldName).asText()
+        : defaultValue;
+  }
+
+  private static int getIntOrDefault(JsonNode node, String fieldName, int defaultValue) {
+    return node.has(fieldName) && !node.get(fieldName).isNull()
+        ? node.get(fieldName).asInt()
+        : defaultValue;
   }
 
   public static DocumentWithMetadata fromDlqJson(String jsonStr) {
@@ -195,35 +245,15 @@ public class DocumentWithMetadata implements Serializable {
       Document doc = Document.parse(dataNode.toString());
       String originalDocument = dataNode.toString();
 
-      Integer retryCount =
-          messageNode.has(METADATA_RETRY_COUNT) ? messageNode.get(METADATA_RETRY_COUNT).asInt() : 0;
-      String errorMsg =
-          messageNode.has(METADATA_ERROR_MESSAGE)
-              ? messageNode.get(METADATA_ERROR_MESSAGE).asText()
-              : (jsonNode.has("error_message")
-                  ? jsonNode.get("error_message").asText()
-                  : (messageNode.has("_metadata_error")
-                      ? messageNode.get("_metadata_error").asText()
-                      : null));
-
-      String errorTypeStr =
-          messageNode.has(METADATA_ERROR_TYPE)
-              ? messageNode.get(METADATA_ERROR_TYPE).asText()
-              : (messageNode.has("error_type") ? messageNode.get("error_type").asText() : null);
+      Integer retryCount = getIntOrDefault(messageNode, METADATA_RETRY_COUNT, 0);
+      String errorMsg = getOrDefault(messageNode, METADATA_ERROR_MESSAGE, null);
+      String errorTypeStr = getOrDefault(messageNode, METADATA_ERROR_TYPE, null);
       ErrorType errorType = errorTypeStr != null ? ErrorType.valueOf(errorTypeStr) : null;
-
-      String sourceCollection =
-          messageNode.has(METADATA_SOURCE_COLLECTION)
-              ? messageNode.get(METADATA_SOURCE_COLLECTION).asText()
-              : (messageNode.has("source_collection")
-                  ? messageNode.get("source_collection").asText()
-                  : null);
-      String targetCollection =
-          messageNode.has(METADATA_TARGET_COLLECTION)
-              ? messageNode.get(METADATA_TARGET_COLLECTION).asText()
-              : (messageNode.has("target_collection")
-                  ? messageNode.get("target_collection").asText()
-                  : null);
+      String sourceCollection = getOrDefault(messageNode, METADATA_SOURCE_COLLECTION, null);
+      String targetCollection = getOrDefault(messageNode, METADATA_TARGET_COLLECTION, null);
+      String failureStageStr = getOrDefault(messageNode, METADATA_FAILURE_STAGE, null);
+      FailureStage failureStage =
+          failureStageStr != null ? FailureStage.valueOf(failureStageStr) : null;
 
       return new DocumentWithMetadata(
           doc,
@@ -232,7 +262,8 @@ public class DocumentWithMetadata implements Serializable {
           errorMsg,
           errorType,
           sourceCollection,
-          targetCollection);
+          targetCollection,
+          failureStage);
     } catch (Exception e) {
       throw new RuntimeException("Failed to parse DLQ message", e);
     }
