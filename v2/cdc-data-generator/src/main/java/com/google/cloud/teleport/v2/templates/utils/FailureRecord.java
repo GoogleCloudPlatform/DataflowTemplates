@@ -73,7 +73,7 @@ public final class FailureRecord {
         raw = "<unreadable: " + e.getClass().getSimpleName() + ">";
       }
       Object val = DataGeneratorUtils.canonicalizeValue(raw);
-      obj.put(field.getName(), val == null ? JSONObject.NULL : val);
+      obj.put(field.getName(), val);
     }
     return obj;
   }

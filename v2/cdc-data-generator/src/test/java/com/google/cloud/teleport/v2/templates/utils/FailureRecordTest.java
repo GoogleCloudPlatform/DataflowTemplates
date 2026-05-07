@@ -72,26 +72,25 @@ public class FailureRecordTest {
   }
 
   @Test
-  public void toJson_byteArrayFieldHexEncoded() {
+  public void toJson_byteArrayFieldBase64Encoded() {
     Schema schema = Schema.builder().addByteArrayField("payload").build();
     Row row = Row.withSchema(schema).addValue(new byte[] {0x00, 0x0a, (byte) 0xff}).build();
 
     JSONObject obj =
         new JSONObject(FailureRecord.toJson("T", "INSERT", row, new RuntimeException("e")));
-    String hex = obj.getJSONObject("row").getString("payload");
-    assertThat(hex).isEqualTo("0x000aff");
+    String base64 = obj.getJSONObject("row").getString("payload");
+    assertThat(base64).isEqualTo("AAr/");
   }
 
   @Test
-  public void toJson_byteBufferFieldHexEncoded() {
+  public void toJson_byteBufferFieldBase64Encoded() {
     Schema schema = Schema.builder().addField("payload", Schema.FieldType.BYTES).build();
     Row row = Row.withSchema(schema).addValue(ByteBuffer.wrap(new byte[] {1, 2, 3})).build();
 
     JSONObject obj =
         new JSONObject(FailureRecord.toJson("T", "INSERT", row, new RuntimeException("e")));
-    String hex = obj.getJSONObject("row").getString("payload");
-    assertThat(hex).startsWith("0x");
-    assertThat(hex).contains("010203");
+    String base64 = obj.getJSONObject("row").getString("payload");
+    assertThat(base64).isEqualTo("AQID");
   }
 
   @Test

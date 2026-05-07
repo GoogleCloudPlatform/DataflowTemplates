@@ -93,7 +93,7 @@ public class MutationBatcherTest {
         .when(mockWriter)
         .insert(any(), any(), anyString(), anyInt());
 
-    assertTrue(batcher.getPendingDlq().isEmpty());
+    assertTrue(batcher.getFailedRecords().isEmpty());
 
     // Push two rows to force threshold trip and catch error routing
     batcher.bufferRow(
@@ -101,8 +101,8 @@ public class MutationBatcherTest {
     batcher.bufferRow(
         "Users", sampleRow, MutationBatcher.MUTATION_INSERT, sampleTable, "shard0", topoOrder);
 
-    assertFalse(batcher.getPendingDlq().isEmpty());
-    assertEquals(2, batcher.getPendingDlq().size());
+    assertFalse(batcher.getFailedRecords().isEmpty());
+    assertEquals(2, batcher.getFailedRecords().size());
   }
 
   @Test
@@ -138,7 +138,7 @@ public class MutationBatcherTest {
     batcher.bufferRow("Users", sampleRow, "INVALID_OP", sampleTable, "shard0", topoOrder);
 
     // Shoud go to DLQ since switch fallback throws IllegalStateException caught inside flush loop
-    assertFalse(batcher.getPendingDlq().isEmpty());
+    assertFalse(batcher.getFailedRecords().isEmpty());
   }
 
   @Test

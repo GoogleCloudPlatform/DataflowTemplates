@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.cloud.teleport.v2.templates.utils.FailureRecord;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,19 +40,19 @@ import org.slf4j.LoggerFactory;
  * type). This prevents large tables from starving smaller ones or forcing premature cross-table
  * flushes, ensuring maximum throughput and proper database transactional sizing.
  */
-public class MutationBatcher implements Serializable {
+public class MutationBatcher {
   private static final Logger LOG = LoggerFactory.getLogger(MutationBatcher.class);
 
   public static final String MUTATION_INSERT = "INSERT";
   public static final String MUTATION_UPDATE = "UPDATE";
   public static final String MUTATION_DELETE = "DELETE";
 
-  private final int batchSize;
+  private final Integer batchSize;
   private final Integer jdbcPoolSize;
   private final DataWriter writer;
 
   private transient Map<BufferKey, BufferValue> buffers;
-  private transient List<String> pendingDlq;
+  private transient List<String> failedRecords;
 
   private final Counter batchesWritten = Metrics.counter(MutationBatcher.class, "batchesWritten");
   private final Counter recordsWritten = Metrics.counter(MutationBatcher.class, "recordsWritten");
@@ -67,16 +66,16 @@ public class MutationBatcher implements Serializable {
 
   public void startBundle() {
     this.buffers = new HashMap<>();
-    this.pendingDlq = new ArrayList<>();
+    this.failedRecords = new ArrayList<>();
   }
 
-  public List<String> getPendingDlq() {
-    return pendingDlq;
+  public List<String> getFailedRecords() {
+    return failedRecords;
   }
 
   public void clearDlq() {
-    if (this.pendingDlq != null) {
-      this.pendingDlq.clear();
+    if (this.failedRecords != null) {
+      this.failedRecords.clear();
     }
   }
 
@@ -193,7 +192,7 @@ public class MutationBatcher implements Serializable {
           writeError);
       writeFailures.inc(batch.size());
       for (Row r : batch) {
-        pendingDlq.add(FailureRecord.toJson(tableName, operation, r, writeError));
+        failedRecords.add(FailureRecord.toJson(tableName, operation, r, writeError));
       }
     } finally {
       batch.clear();
