@@ -31,6 +31,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,12 +44,15 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
+import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.bson.BsonDocument;
 import org.bson.Document;
@@ -55,6 +60,7 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.MethodSorters;
@@ -64,6 +70,7 @@ import org.junit.runners.MethodSorters;
 public class MongoDbTransformsTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TemporaryFolder tempFolder = new TemporaryFolder();
 
   // Static fields to avoid serialization issues in Beam tests
   private static MongoClient staticClient;
@@ -298,7 +305,7 @@ public class MongoDbTransformsTest {
                     .withClientFactory(new MockClientFactory())
                     .withFailureTag(FAILURE_TAG)
                     .build())
-            .withOutputTags(MAIN_TAG, org.apache.beam.sdk.values.TupleTagList.of(FAILURE_TAG)));
+            .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
 
     PipelineResult result = pipeline.run();
 
@@ -311,5 +318,118 @@ public class MongoDbTransformsTest {
     public MongoClient apply(String input) {
       return staticClient;
     }
+  }
+
+  @Test
+  public void applyUdfFn_transformsDocument() throws Exception {
+    File udfFile = tempFolder.newFile("transform.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write(
+          "function transform(inJson) {\n"
+              + "  var obj = JSON.parse(inJson);\n"
+              + "  obj.udf_applied = true;\n"
+              + "  return JSON.stringify(obj);\n"
+              + "}");
+    }
+
+    Document doc = new Document("_id", 1).append("name", "test");
+    DocumentWithMetadata input = DocumentWithMetadata.of(doc);
+
+    PCollection<DocumentWithMetadata> inputCollection = pipeline.apply(Create.of(input));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(), "transform", 0, FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG))
+        .satisfies(
+            collection -> {
+              DocumentWithMetadata result = collection.iterator().next();
+              assertEquals(true, result.getDocument().get("udf_applied"));
+              assertEquals("test", result.getDocument().get("name"));
+              return null;
+            });
+
+    PAssert.that(output.get(FAILURE_TAG)).empty();
+
+    pipeline.run();
+  }
+
+  @Test
+  public void applyUdfFn_failure_routesToDlq() throws Exception {
+    File udfFile = tempFolder.newFile("transform_fail.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write(
+          "function transform(inJson) {\n" + "  throw 'UDF failed intentionally';\n" + "}");
+    }
+
+    Document doc = new Document("_id", 1).append("name", "test");
+    DocumentWithMetadata input = DocumentWithMetadata.of(doc);
+
+    PCollection<DocumentWithMetadata> inputCollection = pipeline.apply(Create.of(input));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(), "transform", 0, FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG)).empty();
+
+    PAssert.that(output.get(FAILURE_TAG))
+        .satisfies(
+            collection -> {
+              String result = collection.iterator().next();
+              org.junit.Assert.assertTrue(result.contains("UDF failed intentionally"));
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void applyUdfFn_noopUdf_preservesSpecialDoubles() throws Exception {
+    File udfFile = tempFolder.newFile("noop_transform.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write("function transform(inJson) {\n" + "  var obj = JSON.parse(inJson);\n" + "  return JSON.stringify(obj);\n" + "}");
+    }
+
+    Document doc =
+        new Document("_id", 1)
+            .append("nanVal", Double.NaN)
+            .append("infVal", Double.POSITIVE_INFINITY)
+            .append("negInfVal", Double.NEGATIVE_INFINITY);
+    DocumentWithMetadata input = DocumentWithMetadata.of(doc);
+
+    PCollection<DocumentWithMetadata> inputCollection = pipeline.apply(Create.of(input));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(), "transform", 0, FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG))
+        .satisfies(
+            collection -> {
+              DocumentWithMetadata result = collection.iterator().next();
+              Document resultDoc = result.getDocument();
+              assertEquals(Double.NaN, resultDoc.get("nanVal"));
+              assertEquals(Double.POSITIVE_INFINITY, resultDoc.get("infVal"));
+              assertEquals(Double.NEGATIVE_INFINITY, resultDoc.get("negInfVal"));
+              return null;
+            });
+
+    PAssert.that(output.get(FAILURE_TAG)).empty();
+
+    pipeline.run();
   }
 }

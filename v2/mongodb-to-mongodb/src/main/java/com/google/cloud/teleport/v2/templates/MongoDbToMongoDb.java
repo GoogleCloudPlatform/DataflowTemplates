@@ -15,14 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.dlq.FileBasedDeadLetterQueueReconsumer;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.MongoDbTransforms;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -30,9 +29,9 @@ import com.mongodb.client.MongoDatabase;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -52,12 +51,11 @@ import org.bson.Document;
     flexContainerName = "mongodb-to-mongodb",
     optionsClass = MongoDbToMongoDb.Options.class)
 public class MongoDbToMongoDb {
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final org.slf4j.Logger LOG =
       org.slf4j.LoggerFactory.getLogger(MongoDbToMongoDb.class);
 
-  public interface Options extends PipelineOptions {
+  public interface Options extends JavascriptTextTransformer.JavascriptTextTransformerOptions {
     @TemplateParameter.Text(
         order = 1,
         groupName = "Source",
@@ -272,6 +270,39 @@ public class MongoDbToMongoDb {
         documents = readFromMongo(pipeline, options, collection);
       }
 
+      // UDF Stage
+      if (options.getJavascriptTextTransformGcsPath() != null
+          && !options.getJavascriptTextTransformGcsPath().isEmpty()) {
+        TupleTag<DocumentWithMetadata> udfSuccessTag = new TupleTag<DocumentWithMetadata>() {};
+        TupleTag<String> udfFailureTag = new TupleTag<String>() {};
+
+        PCollectionTuple udfProcessed =
+            documents.apply(
+                "ApplyUDF_" + collection,
+                ParDo.of(
+                        new MongoDbTransforms.ApplyUdfFn(
+                            options.getJavascriptTextTransformGcsPath(),
+                            options.getJavascriptTextTransformFunctionName(),
+                            options.getJavascriptTextTransformReloadIntervalMinutes(),
+                            udfFailureTag))
+                    .withOutputTags(udfSuccessTag, TupleTagList.of(udfFailureTag)));
+
+        // Write UDF Failures to Process DLQ
+        udfProcessed
+            .get(udfFailureTag)
+            .apply(
+                "WriteUdfDlq_" + collection,
+                DLQWriteTransform.WriteDLQ.newBuilder()
+                    .withDlqDirectory(processDlqPath + "/" + collection)
+                    .withTmpDirectory(options.getTempLocation())
+                    .build());
+
+        documents =
+            udfProcessed
+                .get(udfSuccessTag)
+                .setCoder(SerializableCoder.of(DocumentWithMetadata.class));
+      }
+
       // Validation Stage with DLQ
       TupleTag<DocumentWithMetadata> successTag = new TupleTag<DocumentWithMetadata>() {};
       TupleTag<String> failureTag = new TupleTag<String>() {};
@@ -348,24 +379,7 @@ public class MongoDbToMongoDb {
               public void processElement(ProcessContext c) {
                 String line = c.element();
                 try {
-                  JsonNode jsonNode = MAPPER.readTree(line);
-                  JsonNode dataNode = jsonNode.get("data");
-                  if (dataNode != null) {
-                    Document doc = Document.parse(dataNode.toString());
-
-                    Integer retryCount =
-                        jsonNode.has("_metadata_retry_count")
-                            ? jsonNode.get("_metadata_retry_count").asInt()
-                            : 0;
-                    String errorMsg =
-                        jsonNode.has("_metadata_error")
-                            ? jsonNode.get("_metadata_error").asText()
-                            : null;
-                    String errorType =
-                        jsonNode.has("error_type") ? jsonNode.get("error_type").asText() : null;
-
-                    c.output(DocumentWithMetadata.of(doc, retryCount, errorMsg, errorType));
-                  }
+                  c.output(DocumentWithMetadata.fromDlqJson(line));
                 } catch (Exception e) {
                   LOG.error("Failed to parse DLQ event", e);
                 }

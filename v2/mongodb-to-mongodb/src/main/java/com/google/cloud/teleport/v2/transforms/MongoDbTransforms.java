@@ -15,11 +15,14 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -30,6 +33,9 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Transforms for the MongoDB to MongoDB template. */
 public class MongoDbTransforms {
@@ -155,6 +161,71 @@ public class MongoDbTransforms {
       }
 
       return PDone.in(input.getPipeline());
+    }
+  }
+
+  /** A {@link DoFn} that applies a JavaScript UDF to the document. */
+  public static class ApplyUdfFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
+    private static final Logger LOG = LoggerFactory.getLogger(ApplyUdfFn.class);
+
+    private final String fileSystemPath;
+    private final String functionName;
+    private final Integer reloadIntervalMinutes;
+    private final TupleTag<String> failureTag;
+    private transient JavascriptTextTransformer.JavascriptRuntime javascriptRuntime;
+
+    public ApplyUdfFn(
+        String fileSystemPath,
+        String functionName,
+        Integer reloadIntervalMinutes,
+        TupleTag<String> failureTag) {
+      this.fileSystemPath = fileSystemPath;
+      this.functionName = functionName;
+      this.reloadIntervalMinutes = reloadIntervalMinutes;
+      this.failureTag = failureTag;
+    }
+
+    @Setup
+    public void setup() {
+      if (fileSystemPath != null && functionName != null) {
+        javascriptRuntime =
+            JavascriptTextTransformer.JavascriptRuntime.newBuilder()
+                .setFileSystemPath(fileSystemPath)
+                .setFunctionName(functionName)
+                .setReloadIntervalMinutes(reloadIntervalMinutes)
+                .build();
+      }
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      DocumentWithMetadata item = c.element();
+      if (javascriptRuntime != null) {
+        try {
+          String transformed = javascriptRuntime.invoke(item.getOriginalDocument());
+          if (transformed != null) {
+            Document doc = Document.parse(transformed);
+            c.output(
+                DocumentWithMetadata.of(
+                    doc,
+                    item.getOriginalDocument(),
+                    item.getRetryCount(),
+                    item.getErrorMessage(),
+                    item.getErrorType()));
+          } else {
+            LOG.warn("UDF returned null for document: {}", item.getOriginalDocument());
+            c.output(
+                failureTag, item.toDlqJson("UDF returned null", RETRYABLE, item.getRetryCount()));
+          }
+        } catch (Throwable e) {
+          LOG.error("Failed to apply UDF: {}", e.getMessage());
+          c.output(
+              failureTag,
+              item.toDlqJson("UDF failed: " + e.getMessage(), RETRYABLE, item.getRetryCount()));
+        }
+      } else {
+        c.output(item);
+      }
     }
   }
 }

@@ -15,8 +15,13 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.Serializable;
 import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 
 /**
  * This class contains the raw document and metadata related to the migration. It is used to carry
@@ -25,22 +30,43 @@ import org.bson.Document;
  */
 public class DocumentWithMetadata implements Serializable {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS = JsonWriterSettings.builder()
+      .outputMode(JsonMode.EXTENDED).build();
+
+  public enum ErrorType {
+    RETRYABLE,
+    PERMANENT
+  }
+
   private final Document document;
+  private final String originalDocument;
   private final Integer retryCount;
   private final String errorMessage;
-  private final String errorType;
+  private final ErrorType errorType;
 
   public DocumentWithMetadata(
-      Document document, Integer retryCount, String errorMessage, String errorType) {
+      Document document,
+      String originalDocument,
+      Integer retryCount,
+      String errorMessage,
+      ErrorType errorType) {
     this.document = document;
+    this.originalDocument = originalDocument;
     this.retryCount = retryCount;
     this.errorMessage = errorMessage;
     this.errorType = errorType;
   }
 
-  /** Returns the raw BSON document read from the source. */
+  /** Returns the current BSON document. */
   public Document getDocument() {
     return document;
+  }
+
+  /** Returns the original document string. */
+  public String getOriginalDocument() {
+    return originalDocument;
   }
 
   /** Returns the retry count associated with this document in DLQ. */
@@ -54,16 +80,81 @@ public class DocumentWithMetadata implements Serializable {
   }
 
   /** Returns the error type (e.g., RETRYABLE, PERMANENT). */
-  public String getErrorType() {
+  public ErrorType getErrorType() {
     return errorType;
   }
 
   public static DocumentWithMetadata of(
-      Document document, Integer retryCount, String errorMessage, String errorType) {
-    return new DocumentWithMetadata(document, retryCount, errorMessage, errorType);
+      Document document,
+      String originalDocument,
+      Integer retryCount,
+      String errorMessage,
+      ErrorType errorType) {
+    return new DocumentWithMetadata(
+        document, originalDocument, retryCount, errorMessage, errorType);
+  }
+
+  public static DocumentWithMetadata of(Document document, String originalDocument) {
+    return new DocumentWithMetadata(document, originalDocument, 0, null, null);
   }
 
   public static DocumentWithMetadata of(Document document) {
-    return new DocumentWithMetadata(document, 0, null, null);
+    return new DocumentWithMetadata(document, document.toJson(CANONICAL_JSON_SETTINGS), 0, null, null);
+  }
+
+  /**
+   * Serializes the event for DLQ.
+   *
+   * @param errorMessage  the error message
+   * @param errorType     the error type (PERMANENT or RETRYABLE)
+   * @param newRetryCount the new retry count
+   * @return the JSON string ready for DLQ
+   */
+  public String toDlqJson(String errorMessage, ErrorType errorType, Integer newRetryCount) {
+    try {
+      ObjectNode dlqNode = MAPPER.createObjectNode();
+      ObjectNode wrapperNode = MAPPER.createObjectNode();
+
+      wrapperNode.set("data", MAPPER.readTree(originalDocument));
+      dlqNode.set("message", wrapperNode);
+      dlqNode.put("error_message", errorMessage);
+      wrapperNode.put("error_type", errorType != null ? errorType.name() : null);
+      wrapperNode.put("_metadata_retry_count", newRetryCount);
+
+      return dlqNode.toString();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to serialize DLQ message", e);
+    }
+  }
+
+  public static DocumentWithMetadata fromDlqJson(String jsonStr) {
+    try {
+      JsonNode jsonNode = MAPPER.readTree(jsonStr);
+      JsonNode messageNode = jsonNode.has("message") ? jsonNode.get("message") : jsonNode;
+
+      JsonNode dataNode = messageNode.get("data");
+      if (dataNode == null) {
+        throw new IllegalArgumentException("Invalid DLQ message: missing 'data' field");
+      }
+
+      Document doc = Document.parse(dataNode.toString());
+      String originalDocument = dataNode.toString();
+
+      Integer retryCount = messageNode.has("_metadata_retry_count")
+          ? messageNode.get("_metadata_retry_count").asInt()
+          : 0;
+      String errorMsg = jsonNode.has("error_message")
+          ? jsonNode.get("error_message").asText()
+          : (messageNode.has("_metadata_error")
+              ? messageNode.get("_metadata_error").asText()
+              : null);
+
+      String errorTypeStr = messageNode.has("error_type") ? messageNode.get("error_type").asText() : null;
+      ErrorType errorType = errorTypeStr != null ? ErrorType.valueOf(errorTypeStr) : null;
+
+      return new DocumentWithMetadata(doc, originalDocument, retryCount, errorMsg, errorType);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse DLQ message", e);
+    }
   }
 }

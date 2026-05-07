@@ -15,8 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.PERMANENT;
+import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
+
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
@@ -62,7 +63,6 @@ public class MongoDbWriteFn
   private static final int ERR_BAD_VALUE = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbWriteFn.class);
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final String uri;
   private final String database;
@@ -333,32 +333,21 @@ public class MongoDbWriteFn
   private void writeToDlq(
       List<DocumentWithMetadata> itemList, String message, boolean isPermanent) {
     for (DocumentWithMetadata item : itemList) {
-      Document doc = item.getDocument();
-      LOG.warn("{}: {}", message, doc.toJson());
+      String docStr =
+          item.getOriginalDocument() != null
+              ? item.getOriginalDocument()
+              : item.getDocument().toJson();
+      LOG.warn("{}: {}", message, docStr);
       try {
-        ObjectNode dlqNode = MAPPER.createObjectNode();
-        ObjectNode wrapperNode = MAPPER.createObjectNode();
-        // Parse the document JSON to avoid escaping it as a string
-        wrapperNode.set("data", MAPPER.readTree(doc.toJson()));
-
-        dlqNode.set("message", wrapperNode);
-        dlqNode.put("error_message", message);
-        // Put error_type inside wrapperNode to preserve it through
-        // FileBasedDeadLetterQueueReconsumer
-        wrapperNode.put("error_type", isPermanent ? "PERMANENT" : "RETRYABLE");
-
-        if (isPermanent) {
-          wrapperNode.put("_metadata_retry_count", dlqMaxRetries + 1);
-        } else {
-          wrapperNode.put("_metadata_retry_count", item.getRetryCount() + 1);
-        }
-
-        failures.add(dlqNode.toString());
+        int retryCount = isPermanent ? dlqMaxRetries + 1 : item.getRetryCount() + 1;
+        DocumentWithMetadata.ErrorType errorType = isPermanent ? PERMANENT : RETRYABLE;
+        failures.add(item.toDlqJson(message, errorType, retryCount));
       } catch (Exception e) {
         LOG.error("Failed to format DLQ message", e);
         // Fallback to simple JSON if parsing fails
         failures.add(
-            String.format("{\"message\": %s, \"error_message\": \"%s\"}", doc.toJson(), message));
+            String.format(
+                "{\"message\": {\"data\": %s}, \"error_message\": \"%s\"}", docStr, message));
       }
     }
   }
