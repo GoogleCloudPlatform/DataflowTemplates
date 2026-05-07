@@ -78,27 +78,27 @@ You can apply a JavaScript UDF to transform documents before they are written to
 ```javascript
 function transform(inJson) {
   var obj = JSON.parse(inJson);
-  
+
   // Example of throwing an error (sends document to DLQ)
   if (!obj.userId) {
     throw new Error("Missing required field: userId");
   }
-  
+
   // Example of renaming a field
   if (obj.oldFieldName) {
     obj.newFieldName = obj.oldFieldName;
     delete obj.oldFieldName;
   }
-  
+
   // Add a processed flag
   obj.processed = true;
-  
+
   // Add a timestamp
   obj.processTimestamp = new Date().getTime();
-  
+
   // Remove sensitive field
   delete obj.sensitiveData;
-  
+
   return JSON.stringify(obj);
 }
 ```
