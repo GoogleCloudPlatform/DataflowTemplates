@@ -168,7 +168,7 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
   private ImmutableList<DataGeneratorForeignKey> mergeForeignKeys(
       DataGeneratorTable existingTable, List<SchemaConfig.ForeignKeyConfig> fkConfigs) {
     // Use LinkedHashMap to preserve the discovered schema's physical foreign key insertion order.
-    // This guarantees that downstream DFS graph traversals (SchemaUtils.dfsGeneralized) remain
+    // This guarantees that downstream DFS graph traversals remain
     // 100% deterministic and reproducible across cluster worker node restarts and unit tests.
     LinkedHashMap<String, DataGeneratorForeignKey> mergedFksByName = new LinkedHashMap<>();
     for (DataGeneratorForeignKey fk : existingTable.foreignKeys()) {
