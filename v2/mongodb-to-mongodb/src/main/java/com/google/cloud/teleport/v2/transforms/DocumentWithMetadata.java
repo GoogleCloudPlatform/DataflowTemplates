@@ -203,16 +203,14 @@ public class DocumentWithMetadata implements Serializable {
   public String toDlqJson(String errorMessage, ErrorType errorType, Integer newRetryCount) {
     try {
       ObjectNode dlqNode = MAPPER.createObjectNode();
-      ObjectNode wrapperNode = MAPPER.createObjectNode();
 
-      wrapperNode.set("data", MAPPER.readTree(originalDocument));
-      dlqNode.set("message", wrapperNode);
-      wrapperNode.put(METADATA_ERROR_MESSAGE, errorMessage);
-      wrapperNode.put(METADATA_ERROR_TYPE, errorType != null ? errorType.name() : null);
-      wrapperNode.put(METADATA_RETRY_COUNT, newRetryCount);
-      wrapperNode.put(METADATA_SOURCE_COLLECTION, sourceCollection);
-      wrapperNode.put(METADATA_TARGET_COLLECTION, targetCollection);
-      wrapperNode.put(METADATA_FAILURE_STAGE, failureStage != null ? failureStage.name() : null);
+      dlqNode.set("data", MAPPER.readTree(originalDocument));
+      dlqNode.put(METADATA_ERROR_MESSAGE, errorMessage);
+      dlqNode.put(METADATA_ERROR_TYPE, errorType != null ? errorType.name() : null);
+      dlqNode.put(METADATA_RETRY_COUNT, newRetryCount);
+      dlqNode.put(METADATA_SOURCE_COLLECTION, sourceCollection);
+      dlqNode.put(METADATA_TARGET_COLLECTION, targetCollection);
+      dlqNode.put(METADATA_FAILURE_STAGE, failureStage != null ? failureStage.name() : null);
 
       return dlqNode.toString();
     } catch (Exception e) {
@@ -235,9 +233,7 @@ public class DocumentWithMetadata implements Serializable {
   public static DocumentWithMetadata fromDlqJson(String jsonStr) {
     try {
       JsonNode jsonNode = MAPPER.readTree(jsonStr);
-      JsonNode messageNode = jsonNode.has("message") ? jsonNode.get("message") : jsonNode;
-
-      JsonNode dataNode = messageNode.get("data");
+      JsonNode dataNode = jsonNode.get("data");
       if (dataNode == null) {
         throw new IllegalArgumentException("Invalid DLQ message: missing 'data' field");
       }
@@ -245,13 +241,13 @@ public class DocumentWithMetadata implements Serializable {
       Document doc = Document.parse(dataNode.toString());
       String originalDocument = dataNode.toString();
 
-      Integer retryCount = getIntOrDefault(messageNode, METADATA_RETRY_COUNT, 0);
-      String errorMsg = getOrDefault(messageNode, METADATA_ERROR_MESSAGE, null);
-      String errorTypeStr = getOrDefault(messageNode, METADATA_ERROR_TYPE, null);
+      Integer retryCount = getIntOrDefault(jsonNode, METADATA_RETRY_COUNT, 0);
+      String errorMsg = getOrDefault(jsonNode, METADATA_ERROR_MESSAGE, null);
+      String errorTypeStr = getOrDefault(jsonNode, METADATA_ERROR_TYPE, null);
       ErrorType errorType = errorTypeStr != null ? ErrorType.valueOf(errorTypeStr) : null;
-      String sourceCollection = getOrDefault(messageNode, METADATA_SOURCE_COLLECTION, null);
-      String targetCollection = getOrDefault(messageNode, METADATA_TARGET_COLLECTION, null);
-      String failureStageStr = getOrDefault(messageNode, METADATA_FAILURE_STAGE, null);
+      String sourceCollection = getOrDefault(jsonNode, METADATA_SOURCE_COLLECTION, null);
+      String targetCollection = getOrDefault(jsonNode, METADATA_TARGET_COLLECTION, null);
+      String failureStageStr = getOrDefault(jsonNode, METADATA_FAILURE_STAGE, null);
       FailureStage failureStage =
           failureStageStr != null ? FailureStage.valueOf(failureStageStr) : null;
 

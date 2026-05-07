@@ -58,6 +58,12 @@ To reprocess documents that failed in a previous run and were written to the DLQ
 2. Set `reconsumeDlqPath` to the specific directory containing the failed files (e.g., `gs://your-bucket/dlq/2026-05-07/12-00-00/retryable`).
 3. The template will read these files, parse the JSON representations of the failed documents, and attempt to process and write them again.
 
+## Mongo Target
+
+Regardless of whether the pipeline is configured to read from a MongoDB source or from DLQ files (reconsume mode), the data will always be written to the specified MongoDB target. The target is configured using `targetUri` and `targetDatabase`. Documents will be routed to collections based on the `targetCollection` parameter or dynamically routed to match the source collection name if `targetCollection` is omitted.
+
+
+
 ## User Defined Functions (UDF)
 
 You can apply a JavaScript UDF to transform documents before they are written to the target.
@@ -100,6 +106,23 @@ function transform(inJson) {
 ## Dead Letter Queue Configuration
 
 The template uses a file-based DLQ to store documents that fail processing or writing.
+
+### Event Format
+
+Failures are written as JSON lines. Each line is a JSON object with the following structure:
+
+```json
+{
+  "data": { ... }, // The original document content
+  "_metadata_retry_count": 1, // Number of times this event has been retried
+  "_metadata_error_type": "RETRYABLE", // RETRYABLE or PERMANENT
+  "_metadata_source_collection": "source_col", // Source collection name
+  "_metadata_target_collection": "target_col", // Target collection name
+  "_metadata_error_message": "Error description", // Reason for failure
+  "_metadata_failure_stage": "WRITE" // UDF, VALIDATE, or WRITE
+}
+```
+
 
 ### Directory Structure
 
