@@ -30,6 +30,9 @@ import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Rule;
@@ -42,7 +45,7 @@ public class ApplyOverridesFnTest {
   @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
-  public void testProcessElement_NoConfigPath() {
+  public void testProcessElement_NoConfigPath() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
             .tables(
@@ -58,6 +61,7 @@ public class ApplyOverridesFnTest {
             .build();
 
     ApplyOverridesFn fn = new ApplyOverridesFn(null, 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -74,7 +78,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_WithTableOverrides() {
+  public void testProcessElement_WithTableOverrides() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
             .tables(
@@ -89,12 +93,12 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    tableConfig.setInsertQps(500);
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent = "tables {\n  table1 {\n    insertQps = 500\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -109,7 +113,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_WithColumnOverrides() {
+  public void testProcessElement_WithColumnOverrides() throws Exception {
     DataGeneratorColumn col =
         DataGeneratorColumn.builder()
             .name("email")
@@ -132,15 +136,13 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ColumnConfig colConfig = new SchemaConfig.ColumnConfig();
-    colConfig.setFakerExpression("#{internet.emailAddress}");
-    colConfig.setSkip(true);
-    tableConfig.setColumns(ImmutableMap.of("email", colConfig));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    columns {\n      email {\n        fakerExpression = \"#{internet.emailAddress}\"\n        skip = true\n      }\n    }\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -155,7 +157,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_SkipPrimaryKeyThrows() {
+  public void testProcessElement_SkipPrimaryKeyThrows() throws Exception {
     DataGeneratorColumn col =
         DataGeneratorColumn.builder()
             .name("id")
@@ -178,21 +180,20 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ColumnConfig colConfig = new SchemaConfig.ColumnConfig();
-    colConfig.setSkip(true);
-    tableConfig.setColumns(ImmutableMap.of("id", colConfig));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    columns {\n      id {\n        skip = true\n      }\n    }\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
 
     assertThrows(RuntimeException.class, () -> fn.processElement(schema, receiver));
   }
 
   @Test
-  public void testProcessElement_WithForeignKeys() {
+  public void testProcessElement_WithForeignKeys() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
             .tables(
@@ -207,17 +208,13 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ForeignKeyConfig fkConfig = new SchemaConfig.ForeignKeyConfig();
-    fkConfig.setName("fk1");
-    fkConfig.setReferencedTable("table2");
-    fkConfig.setKeyColumns(Arrays.asList("col1"));
-    fkConfig.setReferencedColumns(Arrays.asList("col2"));
-    tableConfig.setForeignKeys(Arrays.asList(fkConfig));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table2\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -235,7 +232,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_FkConflictThrows() {
+  public void testProcessElement_FkConflictThrows() throws Exception {
     DataGeneratorForeignKey existingFk =
         DataGeneratorForeignKey.builder()
             .name("fk1")
@@ -258,24 +255,20 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ForeignKeyConfig conflictingFk = new SchemaConfig.ForeignKeyConfig();
-    conflictingFk.setName("fk1");
-    conflictingFk.setReferencedTable("table3"); // Conflict
-    conflictingFk.setKeyColumns(Arrays.asList("col1"));
-    conflictingFk.setReferencedColumns(Arrays.asList("col2"));
-    tableConfig.setForeignKeys(Arrays.asList(conflictingFk));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table3\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
 
     assertThrows(IllegalArgumentException.class, () -> fn.processElement(schema, receiver));
   }
 
   @Test
-  public void testProcessElement_FkEquivalentNoOp() {
+  public void testProcessElement_FkEquivalentNoOp() throws Exception {
     DataGeneratorForeignKey existingFk =
         DataGeneratorForeignKey.builder()
             .name("fk1")
@@ -298,17 +291,13 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ForeignKeyConfig equivalentFk = new SchemaConfig.ForeignKeyConfig();
-    equivalentFk.setName("fk1");
-    equivalentFk.setReferencedTable("table2"); // Same
-    equivalentFk.setKeyColumns(Arrays.asList("col1"));
-    equivalentFk.setReferencedColumns(Arrays.asList("col2"));
-    tableConfig.setForeignKeys(Arrays.asList(equivalentFk));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table2\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -321,15 +310,15 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_UnknownTableOverrideWarns() {
+  public void testProcessElement_UnknownTableOverrideWarns() throws Exception {
     DataGeneratorSchema schema = DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    tableConfig.setInsertQps(500);
-    schemaConfig.setTables(ImmutableMap.of("unknown_table", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent = "tables {\n  unknown_table {\n    insertQps = 500\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -341,7 +330,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testProcessElement_WithUpdateAndDeleteQpsOverrides() {
+  public void testProcessElement_WithUpdateAndDeleteQpsOverrides() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
             .tables(
@@ -356,13 +345,12 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    tableConfig.setUpdateQps(20);
-    tableConfig.setDeleteQps(5);
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent = "tables {\n  table1 {\n    updateQps = 20\n    deleteQps = 5\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -377,7 +365,7 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testApplyColumnOverrides_SkipFalseOnPrimaryKey() {
+  public void testApplyColumnOverrides_SkipFalseOnPrimaryKey() throws Exception {
     DataGeneratorColumn col =
         DataGeneratorColumn.builder()
             .name("id")
@@ -400,14 +388,13 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    SchemaConfig schemaConfig = new SchemaConfig();
-    SchemaConfig.TableConfig tableConfig = new SchemaConfig.TableConfig();
-    SchemaConfig.ColumnConfig colConfig = new SchemaConfig.ColumnConfig();
-    colConfig.setSkip(false);
-    tableConfig.setColumns(ImmutableMap.of("id", colConfig));
-    schemaConfig.setTables(ImmutableMap.of("table1", tableConfig));
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent =
+        "tables {\n  table1 {\n    columns {\n      id {\n        skip = false\n      }\n    }\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(schemaConfig, 100, 10, 1);
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -418,5 +405,24 @@ public class ApplyOverridesFnTest {
     DataGeneratorTable table = resolvedSchema.tables().get("table1");
     DataGeneratorColumn updatedCol = table.columns().get(0);
     assertTrue(!updatedCol.isSkipped());
+  }
+
+  @Test
+  public void testSetup_loadsAndParsesValidHoconFile() throws Exception {
+    File file = tempFolder.newFile("config.conf");
+    String hoconContent = "tables {\n  table1 {\n    insertQps = 777\n  }\n}\n";
+    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
+    fn.setup();
+
+    java.lang.reflect.Field field = ApplyOverridesFn.class.getDeclaredField("schemaConfig");
+    field.setAccessible(true);
+    SchemaConfig parsedConfig = (SchemaConfig) field.get(fn);
+
+    assertNotNull(parsedConfig);
+    assertNotNull(parsedConfig.getTables());
+    assertTrue(parsedConfig.getTables().containsKey("table1"));
+    assertEquals(Integer.valueOf(777), parsedConfig.getTables().get("table1").getInsertQps());
   }
 }
