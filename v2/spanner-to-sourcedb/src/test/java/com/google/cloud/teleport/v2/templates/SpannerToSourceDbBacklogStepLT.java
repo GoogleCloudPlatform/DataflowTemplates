@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.it.common.TestProperties.getProperty;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -27,13 +30,18 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
+import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,16 +70,15 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
 
   private final String spannerDdlResource = "SpannerToSourceDbBacklogLT/spanner-schema.sql";
   private final String sessionFileResource = "SpannerToSourceDbBacklogLT/session.json";
+  private final String table = "MigrationLoadTest";
 
   private CloudSqlShardOrchestrator orchestrator;
+  private Integer originalSpannerNodeCount = null;
 
   @Before
   public void setup() throws IOException {
     LOG.info(
         "Initializing resource managers for Step 1 Setup & Connectivity validation via Orchestrator...");
-
-    String password = System.getProperty("cloudProxyPassword", "Welcome@1");
-    System.setProperty("cloudProxyPassword", password);
 
     // Setup Spanner database and metadata database, GCS artifact resource manager, and session
     // files
@@ -113,6 +120,16 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
   @After
   public void tearDown() {
     LOG.info("Cleaning up resources...");
+
+    // Reset Spanner instance to its original node count if it was modified
+    if (originalSpannerNodeCount != null && spannerResourceManager != null) {
+      try {
+        updateSpannerNodeCount(spannerResourceManager.getInstanceId(), originalSpannerNodeCount);
+      } catch (Exception e) {
+        LOG.warn("Failed to reset Spanner node count during teardown: ", e);
+      }
+    }
+
     cleanupResourceManagers();
     if (orchestrator != null) {
       orchestrator.cleanup();
@@ -269,5 +286,141 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
     JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri");
     return jsObj;
+  }
+
+  @Test
+  public void test2_avroImportSanity() throws IOException, InterruptedException {
+    LOG.info("Running Step 2 Avro Import Sanity check...");
+
+    // Get parameters
+    String avroInputDir =
+        getProperty(
+            "avroInputDir",
+            "gs://nokill-spanner-to-sourcedb-load/small-data/avro/",
+            TestProperties.Type.PROPERTY);
+    long expectedSpannerCount =
+        Long.parseLong(getProperty("expectedSpannerCount", "100", TestProperties.Type.PROPERTY));
+    int importTimeoutMinutes =
+        Integer.parseInt(getProperty("importTimeoutMinutes", "15", TestProperties.Type.PROPERTY));
+
+    // Ensure avroInputDir ends with a trailing slash for the classic import template
+    if (!avroInputDir.endsWith("/")) {
+      avroInputDir = avroInputDir + "/";
+    }
+
+    LOG.info("Avro Input Directory: {}", avroInputDir);
+    LOG.info("Expected Spanner count: {}", expectedSpannerCount);
+
+    int scaleNodes =
+        Integer.parseInt(getProperty("spannerScaleNodes", "25", TestProperties.Type.PROPERTY));
+
+    LOG.info("Scaling up Spanner instance to {} nodes before starting import job...", scaleNodes);
+    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), scaleNodes);
+
+    // Assert/Verify that the node count was updated successfully
+    int currentNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
+    LOG.info("Verified current Spanner instance node count is: {}", currentNodeCount);
+    assertEquals(
+        "Spanner instance node count mismatch after scale-up", scaleNodes, currentNodeCount);
+
+    // Launch Avro-to-Spanner import job
+    LOG.info("Launching classic GCS Avro to Cloud Spanner Import job with a small dataset...");
+    PipelineLauncher.LaunchInfo importJobInfo = launchClassicImportJob(avroInputDir);
+    assertThatPipeline(importJobInfo).isRunning();
+
+    // Wait for the Import job to complete with a fail-fast timeout (e.g., 15 minutes)
+    LOG.info(
+        "Waiting for Spanner import job to finish (timeout: {} mins)...", importTimeoutMinutes);
+    PipelineOperator.Result importResult =
+        pipelineOperator.waitUntilDone(
+            createConfig(importJobInfo, Duration.ofMinutes(importTimeoutMinutes)));
+
+    assertThatResult(importResult).isLaunchFinished();
+    LOG.info("Import job completed successfully.");
+
+    // Assert that the rows have been imported correctly into Spanner
+    long spannerCount = spannerResourceManager.getRowCount(table);
+    LOG.info("Spanner database row count after import: {}", spannerCount);
+    assertEquals("Spanner database row count mismatch", expectedSpannerCount, spannerCount);
+
+    LOG.info("Step 2 Avro Import Sanity check passed successfully! Import is verified.");
+  }
+
+  private PipelineLauncher.LaunchInfo launchClassicImportJob(String inputDir) throws IOException {
+    ClassicTemplateClient classicClient = ClassicTemplateClient.builder(CREDENTIALS).build();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("inputDir", inputDir);
+
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder(
+                "spanner-avro-import-sanity",
+                "gs://dataflow-templates/latest/GCS_Avro_to_Cloud_Spanner")
+            .setParameters(params)
+            .addEnvironment("numWorkers", 80)
+            .addEnvironment("maxWorkers", 120)
+            .addEnvironment("machineType", "n2-standard-8")
+            .build();
+
+    return classicClient.launch(project, region, options);
+  }
+
+  /**
+   * Programmatically updates the node count of the Spanner instance. Useful for scaling up before
+   * heavy loads and downscaling afterwards.
+   */
+  public void updateSpannerNodeCount(String instanceId, int nodeCount) {
+    com.google.cloud.spanner.SpannerOptions options =
+        com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
+    try (com.google.cloud.spanner.Spanner spanner = options.getService()) {
+      com.google.cloud.spanner.InstanceAdminClient instanceAdminClient =
+          spanner.getInstanceAdminClient();
+
+      // Capture the original node count before the first modification
+      if (originalSpannerNodeCount == null) {
+        com.google.cloud.spanner.Instance instance = instanceAdminClient.getInstance(instanceId);
+        originalSpannerNodeCount = instance.getNodeCount();
+        LOG.info(
+            "Captured original Spanner instance {} node count: {}",
+            instanceId,
+            originalSpannerNodeCount);
+      }
+
+      LOG.info(
+          "Updating Spanner instance {} node count from {} to {}...",
+          instanceId,
+          originalSpannerNodeCount,
+          nodeCount);
+      com.google.cloud.spanner.InstanceInfo instanceInfo =
+          com.google.cloud.spanner.InstanceInfo.newBuilder(
+                  com.google.cloud.spanner.InstanceId.of(project, instanceId))
+              .setNodeCount(nodeCount)
+              .build();
+      instanceAdminClient
+          .updateInstance(
+              instanceInfo, com.google.cloud.spanner.InstanceInfo.InstanceField.NODE_COUNT)
+          .get();
+      LOG.info("Successfully updated Spanner instance {} node count to {}.", instanceId, nodeCount);
+    } catch (Exception e) {
+      LOG.error("Failed to update Spanner instance node count.", e);
+      throw new RuntimeException("Failed to update Spanner node count", e);
+    }
+  }
+
+  /** Programmatically retrieves the current node count of the Spanner instance. */
+  public int getSpannerNodeCount(String instanceId) {
+    com.google.cloud.spanner.SpannerOptions options =
+        com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
+    try (com.google.cloud.spanner.Spanner spanner = options.getService()) {
+      com.google.cloud.spanner.InstanceAdminClient instanceAdminClient =
+          spanner.getInstanceAdminClient();
+      com.google.cloud.spanner.Instance instance = instanceAdminClient.getInstance(instanceId);
+      return instance.getNodeCount();
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve Spanner instance node count.", e);
+      throw new RuntimeException("Failed to get Spanner node count", e);
+    }
   }
 }
