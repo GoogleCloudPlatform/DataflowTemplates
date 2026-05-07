@@ -199,6 +199,7 @@ public class MongoDbToMongoDb {
 
     @TemplateParameter.Text(
         order = 16,
+        groupName = "Source",
         optional = true,
         description = "Reconsume DLQ Path",
         helpText =
@@ -210,6 +211,7 @@ public class MongoDbToMongoDb {
 
     @TemplateParameter.Boolean(
         order = 17,
+        groupName = "Source",
         optional = true,
         description = "Read from DLQ",
         helpText = "If true, reads only from DLQ for retry. If false, reads from MongoDB.")
