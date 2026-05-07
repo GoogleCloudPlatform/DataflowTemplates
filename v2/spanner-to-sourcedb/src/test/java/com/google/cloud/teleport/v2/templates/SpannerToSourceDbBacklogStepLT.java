@@ -52,14 +52,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Step 1 Validation / Setup-Only test for {@link SpannerToSourceDb} template.
+ * Progressive, fail-fast Consolidated End-to-End Load/Sanity test for {@link SpannerToSourceDb}
+ * template.
  *
- * <p>Objective: Verify initial setup, DDL, schemas, GCS artifacts, and CloudSQL connectivity before
- * launching the massive backlog load test.
- *
- * <p>This setup utilizes the programmatic {@link CloudSqlShardOrchestrator} to dynamically
- * provision and manage physical instances over Private IPs inside the target VPC, completely
- * bypassing proxy requirements.
+ * <p>Objective: Validate Spanner, GCS config, CloudSQL connectivity (Step 1), classic Avro Import
+ * template upscaling and execution (Step 2), and SpannerToSourceDb reverse replication E2E sanity
+ * backlog migration (Step 3) back-to-back in under 15 minutes using a tiny dataset.
  */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
@@ -68,17 +66,21 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbBacklogStepLT.class);
 
+  private static final String TEMPLATE_SPEC_PATH =
+      com.google.common.base.MoreObjects.firstNonNull(
+          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
+
   private final String spannerDdlResource = "SpannerToSourceDbBacklogLT/spanner-schema.sql";
   private final String sessionFileResource = "SpannerToSourceDbBacklogLT/session.json";
   private final String table = "MigrationLoadTest";
 
   private CloudSqlShardOrchestrator orchestrator;
   private Integer originalSpannerNodeCount = null;
+  private Integer originalSpannerMetadataNodeCount = null;
 
   @Before
   public void setup() throws IOException {
-    LOG.info(
-        "Initializing resource managers for Step 1 Setup & Connectivity validation via Orchestrator...");
+    LOG.info("Initializing resource managers for Consolidated E2E Sanity Test via Orchestrator...");
 
     // Setup Spanner database and metadata database, GCS artifact resource manager, and session
     // files
@@ -115,6 +117,11 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
     // Upload sharding configuration in the flat format expected by SpannerToSourceDb
     LOG.info("Generating and uploading flat sharding configuration to GCS...");
     createAndUploadShardConfigToGcs();
+
+    // Store original node counts for cleanup
+    originalSpannerNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
+    originalSpannerMetadataNodeCount =
+        getSpannerNodeCount(spannerMetadataResourceManager.getInstanceId());
   }
 
   @After
@@ -129,6 +136,15 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
         LOG.warn("Failed to reset Spanner node count during teardown: ", e);
       }
     }
+    // Reset Spanner Metadata instance to its original node count if it was modified
+    if (originalSpannerMetadataNodeCount != null && spannerMetadataResourceManager != null) {
+      try {
+        updateSpannerNodeCount(
+            spannerMetadataResourceManager.getInstanceId(), originalSpannerMetadataNodeCount);
+      } catch (Exception e) {
+        LOG.warn("Failed to reset Spanner Metadata node count during teardown: ", e);
+      }
+    }
 
     cleanupResourceManagers();
     if (orchestrator != null) {
@@ -137,19 +153,20 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
   }
 
   @Test
-  public void test1_setupAndConnectivitySanity() throws IOException {
-    LOG.info("Running Step 1 Setup and Connectivity Sanity check...");
+  public void backlogReplicationSanityE2E() throws IOException, InterruptedException {
+    LOG.info("Running Consolidated Backlog Replication E2E Sanity Test...");
 
-    // 1. Verify Spanner Connectivity and Table DDL
-    LOG.info("Verifying Spanner database connectivity and schema...");
+    // -------------------------------------------------------------
+    // PHASE 1: Connectivity & Setup Sanity
+    // -------------------------------------------------------------
+    LOG.info("PHASE 1: Verifying Spanner & CloudSQL setup connectivity...");
     assertNotNull("Spanner resource manager should be initialized", spannerResourceManager);
 
     String testId = "test-id-12345";
-    String testPayload = "test-payload-step1";
+    String testPayload = "test-payload-sanity";
     String testShardId = "shard_0";
 
-    // Write a row directly to Spanner
-    LOG.info("Writing a test row directly to Spanner...");
+    // Write/Read Spanner Ping Row
     List<Mutation> mutations = new ArrayList<>();
     mutations.add(
         Mutation.newInsertOrUpdateBuilder("MigrationLoadTest")
@@ -162,58 +179,150 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
             .build());
     spannerResourceManager.write(mutations);
 
-    // Read the row back from Spanner to verify
-    LOG.info("Reading the test row back from Spanner...");
-    List<Struct> results =
+    List<Struct> spannerResults =
         spannerResourceManager.runQuery(
             String.format(
                 "SELECT Payload FROM MigrationLoadTest WHERE migration_shard_id = '%s' AND Id = '%s'",
                 testShardId, testId));
-    assertNotNull("Results from Spanner should not be null", results);
-    assertEquals("Should return exactly 1 row", 1, results.size());
+    assertNotNull("Results from Spanner should not be null", spannerResults);
+    assertEquals("Should return exactly 1 row", 1, spannerResults.size());
     assertEquals(
         "Payload matches what was written to Spanner",
         testPayload,
-        results.get(0).getString("Payload"));
-
-    // Delete test row from Spanner
-    LOG.info("Deleting test row from Spanner...");
+        spannerResults.get(0).getString("Payload"));
     spannerResourceManager.write(
         List.of(
             Mutation.delete(
                 "MigrationLoadTest", com.google.cloud.spanner.Key.of(testShardId, testId))));
 
-    // 2. Verify GCS Artifacts (Session and Sharding configurations)
-    LOG.info("Verifying GCS configuration artifacts...");
-    assertNotNull("GCS resource manager should be initialized", gcsResourceManager);
-
+    // Verify GCS configs exist
     String sessionGcsPath = getGcsPath(SESSION_FILE_NAME, gcsResourceManager);
-    LOG.info("Session file GCS Path: {}", sessionGcsPath);
     assertTrue("Session file should exist on GCS", sessionGcsPath.startsWith("gs://"));
-
     String shardGcsPath = getGcsPath(SOURCE_SHARDS_FILE_NAME, gcsResourceManager);
-    LOG.info("Shard file GCS Path: {}", shardGcsPath);
     assertTrue("Shard file should exist on GCS", shardGcsPath.startsWith("gs://"));
 
-    // 3. Verify MySQL Connectivity, DDL, and Shards
-    LOG.info("Verifying CloudSQL MySQL Shard connectivity and DDL...");
+    // Verify CloudSQL connectivity
     CloudSqlResourceManager manager1 =
         (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard1");
     CloudSqlResourceManager manager2 =
         (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard2");
     assertNotNull("Shard 1 resource manager should be initialized", manager1);
     assertNotNull("Shard 2 resource manager should be initialized", manager2);
-
-    // Write and read from logical database shard0 (on Shard 1 physical instance)
     verifyMySqlLogicalShard(manager1, "shard0");
-    // Write and read from logical database shard1 (on Shard 1 physical instance)
     verifyMySqlLogicalShard(manager1, "shard1");
-    // Write and read from logical database shard2 (on Shard 2 physical instance)
     verifyMySqlLogicalShard(manager2, "shard2");
-    // Write and read from logical database shard3 (on Shard 2 physical instance)
     verifyMySqlLogicalShard(manager2, "shard3");
 
-    LOG.info("Step 1 Setup and Connectivity Sanity check passed successfully! All systems are GO.");
+    // -------------------------------------------------------------
+    // PHASE 2: Spanner Scale-Up & Avro Import
+    // -------------------------------------------------------------
+    LOG.info("PHASE 2: Scaling Spanner & running Avro Import...");
+
+    // Record UTC start timestamp before import begins (to serve as change stream start timestamp)
+    String startTimestamp = java.time.Instant.now().toString();
+    LOG.info("Recorded UTC start timestamp for change stream: {}", startTimestamp);
+
+    int scaleNodes =
+        Integer.parseInt(getProperty("spannerScaleNodes", "25", TestProperties.Type.PROPERTY));
+    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), scaleNodes);
+
+    // Verify scale-up
+    int currentNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
+    assertEquals(
+        "Spanner instance node count mismatch after scale-up", scaleNodes, currentNodeCount);
+
+    // Run Avro Import with small dataset (100 rows)
+    String avroInputDir =
+        getProperty(
+            "avroInputDir",
+            "gs://nokill-spanner-to-sourcedb-load/small-data/avro/",
+            TestProperties.Type.PROPERTY);
+    long expectedSpannerCount =
+        Long.parseLong(getProperty("expectedSpannerCount", "100", TestProperties.Type.PROPERTY));
+    int importTimeoutMinutes =
+        Integer.parseInt(getProperty("importTimeoutMinutes", "15", TestProperties.Type.PROPERTY));
+
+    // Ensure avroInputDir ends with a trailing slash for the classic import template
+    if (!avroInputDir.endsWith("/")) {
+      avroInputDir = avroInputDir + "/";
+    }
+
+    LOG.info("Avro Input Directory: {}", avroInputDir);
+    LOG.info("Expected Spanner count: {}", expectedSpannerCount);
+
+    PipelineLauncher.LaunchInfo importJobInfo = launchClassicImportJob(avroInputDir);
+    assertThatPipeline(importJobInfo).isRunning();
+
+    PipelineOperator.Result importResult =
+        pipelineOperator.waitUntilDone(
+            createConfig(importJobInfo, Duration.ofMinutes(importTimeoutMinutes)));
+    assertThatResult(importResult).isLaunchFinished();
+
+    long spannerCount = spannerResourceManager.getRowCount(table);
+    assertEquals("Spanner database row count mismatch", expectedSpannerCount, spannerCount);
+    LOG.info("Import Phase successful! Imported {} rows.", spannerCount);
+
+    // -------------------------------------------------------------
+    // PHASE 3: Downscale & Reverse Replication E2E Verification
+    // -------------------------------------------------------------
+    // Downscale main Spanner instance to 5 nodes and upscale metadata Spanner instance to 20 nodes
+    LOG.info(
+        "Downscaling main Spanner instance to 5 nodes and upscaling metadata instance to 20 nodes before starting replication...");
+    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), 5);
+    updateSpannerNodeCount(spannerMetadataResourceManager.getInstanceId(), 20);
+
+    int reverseTimeoutMinutes =
+        Integer.parseInt(getProperty("reverseTimeoutMinutes", "10", TestProperties.Type.PROPERTY));
+    int maxShardConnections =
+        Integer.parseInt(getProperty("maxShardConnections", "2000", TestProperties.Type.PROPERTY));
+
+    PipelineLauncher.LaunchInfo reverseJobInfo =
+        launchReverseReplicationJob(startTimestamp, 200, 200, "n2-highmem-8", maxShardConnections);
+    assertThatPipeline(reverseJobInfo).isRunning();
+
+    // Poll success_record_count metric until it reaches the expected count (100)
+    long polledCount = 0;
+    long startTimeMillis = System.currentTimeMillis();
+    while (polledCount < expectedSpannerCount) {
+      if (System.currentTimeMillis() - startTimeMillis > reverseTimeoutMinutes * 60 * 1000) {
+        throw new RuntimeException(
+            "Reverse replication sanity check timed out after "
+                + reverseTimeoutMinutes
+                + " minutes.");
+      }
+      Thread.sleep(30000); // Poll every 30 seconds
+      Double metricVal =
+          pipelineLauncher.getMetric(
+              project, region, reverseJobInfo.jobId(), "success_record_count");
+      polledCount = metricVal != null ? metricVal.longValue() : 0;
+      LOG.info("Polled success_record_count: {}. Target: {}", polledCount, expectedSpannerCount);
+    }
+
+    // Verify database parity on MySQL shards
+    LOG.info(
+        "Replication threshold reached. Verifying logical databases row counts on CloudSQL...");
+    long count0 = getLogicalDatabaseRowCount(manager1, "shard0");
+    long count1 = getLogicalDatabaseRowCount(manager1, "shard1");
+    long count2 = getLogicalDatabaseRowCount(manager2, "shard2");
+    long count3 = getLogicalDatabaseRowCount(manager2, "shard3");
+
+    LOG.info(
+        "Logical databases replicated row counts: shard0={}, shard1={}, shard2={}, shard3={}",
+        count0,
+        count1,
+        count2,
+        count3);
+    assertEquals("shard0 row count mismatch", 0L, count0);
+    assertEquals("shard1 row count mismatch", expectedSpannerCount, count1);
+    assertEquals("shard2 row count mismatch", 0L, count2);
+    assertEquals("shard3 row count mismatch", 0L, count3);
+
+    LOG.info("All systems and replication components verified E2E! Cancelling job...");
+    PipelineOperator.Result cancelResult =
+        pipelineOperator.cancelJobAndFinish(createConfig(reverseJobInfo, Duration.ofMinutes(5)));
+    assertThatResult(cancelResult).isLaunchFinished();
+
+    LOG.info("Consolidated Backlog Replication E2E Sanity Test passed successfully!");
   }
 
   private void verifyMySqlLogicalShard(CloudSqlResourceManager manager, String dbName) {
@@ -288,64 +397,6 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
     return jsObj;
   }
 
-  @Test
-  public void test2_avroImportSanity() throws IOException, InterruptedException {
-    LOG.info("Running Step 2 Avro Import Sanity check...");
-
-    // Get parameters
-    String avroInputDir =
-        getProperty(
-            "avroInputDir",
-            "gs://nokill-spanner-to-sourcedb-load/small-data/avro/",
-            TestProperties.Type.PROPERTY);
-    long expectedSpannerCount =
-        Long.parseLong(getProperty("expectedSpannerCount", "100", TestProperties.Type.PROPERTY));
-    int importTimeoutMinutes =
-        Integer.parseInt(getProperty("importTimeoutMinutes", "15", TestProperties.Type.PROPERTY));
-
-    // Ensure avroInputDir ends with a trailing slash for the classic import template
-    if (!avroInputDir.endsWith("/")) {
-      avroInputDir = avroInputDir + "/";
-    }
-
-    LOG.info("Avro Input Directory: {}", avroInputDir);
-    LOG.info("Expected Spanner count: {}", expectedSpannerCount);
-
-    int scaleNodes =
-        Integer.parseInt(getProperty("spannerScaleNodes", "25", TestProperties.Type.PROPERTY));
-
-    LOG.info("Scaling up Spanner instance to {} nodes before starting import job...", scaleNodes);
-    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), scaleNodes);
-
-    // Assert/Verify that the node count was updated successfully
-    int currentNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
-    LOG.info("Verified current Spanner instance node count is: {}", currentNodeCount);
-    assertEquals(
-        "Spanner instance node count mismatch after scale-up", scaleNodes, currentNodeCount);
-
-    // Launch Avro-to-Spanner import job
-    LOG.info("Launching classic GCS Avro to Cloud Spanner Import job with a small dataset...");
-    PipelineLauncher.LaunchInfo importJobInfo = launchClassicImportJob(avroInputDir);
-    assertThatPipeline(importJobInfo).isRunning();
-
-    // Wait for the Import job to complete with a fail-fast timeout (e.g., 15 minutes)
-    LOG.info(
-        "Waiting for Spanner import job to finish (timeout: {} mins)...", importTimeoutMinutes);
-    PipelineOperator.Result importResult =
-        pipelineOperator.waitUntilDone(
-            createConfig(importJobInfo, Duration.ofMinutes(importTimeoutMinutes)));
-
-    assertThatResult(importResult).isLaunchFinished();
-    LOG.info("Import job completed successfully.");
-
-    // Assert that the rows have been imported correctly into Spanner
-    long spannerCount = spannerResourceManager.getRowCount(table);
-    LOG.info("Spanner database row count after import: {}", spannerCount);
-    assertEquals("Spanner database row count mismatch", expectedSpannerCount, spannerCount);
-
-    LOG.info("Step 2 Avro Import Sanity check passed successfully! Import is verified.");
-  }
-
   private PipelineLauncher.LaunchInfo launchClassicImportJob(String inputDir) throws IOException {
     ClassicTemplateClient classicClient = ClassicTemplateClient.builder(CREDENTIALS).build();
 
@@ -367,10 +418,56 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
     return classicClient.launch(project, region, options);
   }
 
-  /**
-   * Programmatically updates the node count of the Spanner instance. Useful for scaling up before
-   * heavy loads and downscaling afterwards.
-   */
+  private PipelineLauncher.LaunchInfo launchReverseReplicationJob(
+      String startTimestamp,
+      int numWorkers,
+      int maxWorkers,
+      String machineType,
+      int maxShardConnections)
+      throws IOException {
+
+    Map<String, String> params = new HashMap<>();
+    params.put("changeStreamName", "MigrationStream");
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("spannerProjectId", project);
+    params.put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+    params.put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+    params.put("sourceShardsFilePath", getGcsPath(SOURCE_SHARDS_FILE_NAME, gcsResourceManager));
+    params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
+    params.put("startTimestamp", startTimestamp);
+    params.put("maxShardConnections", String.valueOf(maxShardConnections));
+    params.put("sessionFilePath", getGcsPath(SESSION_FILE_NAME, gcsResourceManager));
+    params.put("workerMachineType", machineType);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+    options
+        .addEnvironment("maxWorkers", maxWorkers)
+        .addEnvironment("numWorkers", numWorkers)
+        .addEnvironment("machineType", machineType)
+        .addEnvironment(
+            "additionalExperiments", java.util.Collections.singletonList("use_runner_v2"));
+
+    options.setParameters(params);
+    return pipelineLauncher.launch(project, region, options.build());
+  }
+
+  private long getLogicalDatabaseRowCount(CloudSqlResourceManager manager, String dbName) {
+    String query = "SELECT COUNT(*) FROM " + dbName + ".MigrationLoadTest";
+    List<Map<String, Object>> result =
+        manager.runSQLQuery(query); // Using runSQLQuery to execute simple counting query
+    if (result != null && !result.isEmpty()) {
+      Map<String, Object> row = result.get(0);
+      for (Object val : row.values()) {
+        if (val instanceof Number) {
+          return ((Number) val).longValue();
+        }
+      }
+    }
+    return 0;
+  }
+
   public void updateSpannerNodeCount(String instanceId, int nodeCount) {
     com.google.cloud.spanner.SpannerOptions options =
         com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
@@ -378,20 +475,20 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
       com.google.cloud.spanner.InstanceAdminClient instanceAdminClient =
           spanner.getInstanceAdminClient();
 
-      // Capture the original node count before the first modification
-      if (originalSpannerNodeCount == null) {
-        com.google.cloud.spanner.Instance instance = instanceAdminClient.getInstance(instanceId);
-        originalSpannerNodeCount = instance.getNodeCount();
-        LOG.info(
-            "Captured original Spanner instance {} node count: {}",
-            instanceId,
-            originalSpannerNodeCount);
+      int fromCount = -1;
+      if (spannerResourceManager != null
+          && instanceId.equals(spannerResourceManager.getInstanceId())) {
+        fromCount = originalSpannerNodeCount != null ? originalSpannerNodeCount : -1;
+      } else if (spannerMetadataResourceManager != null
+          && instanceId.equals(spannerMetadataResourceManager.getInstanceId())) {
+        fromCount =
+            originalSpannerMetadataNodeCount != null ? originalSpannerMetadataNodeCount : -1;
       }
 
       LOG.info(
           "Updating Spanner instance {} node count from {} to {}...",
           instanceId,
-          originalSpannerNodeCount,
+          fromCount,
           nodeCount);
       com.google.cloud.spanner.InstanceInfo instanceInfo =
           com.google.cloud.spanner.InstanceInfo.newBuilder(
@@ -409,7 +506,6 @@ public class SpannerToSourceDbBacklogStepLT extends SpannerToSourceDbLTBase {
     }
   }
 
-  /** Programmatically retrieves the current node count of the Spanner instance. */
   public int getSpannerNodeCount(String instanceId) {
     com.google.cloud.spanner.SpannerOptions options =
         com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
