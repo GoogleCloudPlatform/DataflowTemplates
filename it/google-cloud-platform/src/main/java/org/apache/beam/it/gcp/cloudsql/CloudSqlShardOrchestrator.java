@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.loadtesting;
+package org.apache.beam.it.gcp.cloudsql;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -27,7 +27,6 @@ import com.google.api.services.sqladmin.model.User;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -39,9 +38,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
-import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
-import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -72,7 +68,12 @@ public class CloudSqlShardOrchestrator {
   public static final String MYSQL_8_0 = "MYSQL_8_0";
   public static final String POSTGRES_14 = "POSTGRES_14";
 
-  protected final SQLDialect sqlDialect;
+  public enum DatabaseType {
+    MYSQL,
+    POSTGRESQL
+  }
+
+  protected final DatabaseType databaseType;
   protected final String dbVersion;
   protected final int port;
   protected final String project;
@@ -80,21 +81,22 @@ public class CloudSqlShardOrchestrator {
   protected final String username;
   protected final String password;
   protected final GcsResourceManager gcsResourceManager;
-  protected final Map<String, CloudSqlResourceManager> managers;
+  public final Map<String, CloudSqlResourceManager> managers;
   protected final Map<String, String> instanceIpMap;
-  protected Map<String, List<String>> requestedShardMap;
+  public Map<String, List<String>> requestedShardMap;
   protected final SQLAdmin sqlAdmin;
 
   /**
    * Constructs a new orchestrator for the specified database dialect.
    *
-   * @param dbType The dialect of the source database (e.g., MYSQL, POSTGRESQL).
+   * @param dbType The type of the source database (MYSQL or POSTGRESQL).
+   * @param dbVersion The version of the database.
    * @param project The GCP project ID.
    * @param region The GCP region for Cloud SQL instances.
    * @param gcsResourceManager The GCS resource manager for uploading configuration artifacts.
    */
   public CloudSqlShardOrchestrator(
-      SQLDialect dbType,
+      DatabaseType dbType,
       String dbVersion,
       String project,
       String region,
@@ -106,7 +108,7 @@ public class CloudSqlShardOrchestrator {
         region,
         gcsResourceManager,
         System.getProperty(
-            "cloudProxyUsername", (dbType == SQLDialect.MYSQL) ? "root" : "postgres"),
+            "cloudProxyUsername", (dbType == DatabaseType.MYSQL) ? "root" : "postgres"),
         System.getProperty("cloudProxyPassword", ""),
         null);
   }
@@ -114,7 +116,8 @@ public class CloudSqlShardOrchestrator {
   /**
    * Constructs a new orchestrator with explicit credentials.
    *
-   * @param sqlDialect The dialect of the source database.
+   * @param databaseType The type of the source database.
+   * @param dbVersion The version of the database.
    * @param project The GCP project ID.
    * @param region The GCP region.
    * @param gcsResourceManager The GCS resource manager.
@@ -123,7 +126,7 @@ public class CloudSqlShardOrchestrator {
    * @param credentials The GCP credentials to use.
    */
   public CloudSqlShardOrchestrator(
-      SQLDialect sqlDialect,
+      DatabaseType databaseType,
       String dbVersion,
       String project,
       String region,
@@ -131,8 +134,8 @@ public class CloudSqlShardOrchestrator {
       String username,
       String password,
       GoogleCredentials credentials) {
-    checkVersionCompatibility(sqlDialect, dbVersion);
-    this.sqlDialect = sqlDialect;
+    checkVersionCompatibility(databaseType, dbVersion);
+    this.databaseType = databaseType;
     this.dbVersion = dbVersion;
     this.project = project;
     this.region = region;
@@ -158,14 +161,14 @@ public class CloudSqlShardOrchestrator {
       LOG.error("Exception while initializing SQL Admin", e);
       throw new RuntimeException("Failed to initialize SQLAdmin client", e);
     }
-    port = (sqlDialect == SQLDialect.MYSQL) ? 3306 : 5432;
+    port = (databaseType == DatabaseType.MYSQL) ? 3306 : 5432;
   }
 
   @VisibleForTesting
-  protected static void checkVersionCompatibility(SQLDialect sqlDialect, String dbVersion) {
+  protected static void checkVersionCompatibility(DatabaseType databaseType, String dbVersion) {
     Preconditions.checkArgument(
-        (sqlDialect == SQLDialect.MYSQL && dbVersion.toLowerCase().startsWith("mysql"))
-            || (sqlDialect == SQLDialect.POSTGRESQL
+        (databaseType == DatabaseType.MYSQL && dbVersion.toLowerCase().startsWith("mysql"))
+            || (databaseType == DatabaseType.POSTGRESQL
                 && dbVersion.toLowerCase().startsWith("postgres")));
   }
 
@@ -213,10 +216,9 @@ public class CloudSqlShardOrchestrator {
    * @param shardMap A mapping of physical instance names to the list of logical DB names to create.
    * @param artifactName The name of the artifact file (e.g., "shards.json").
    * @return The full GCS URI to the generated bulkShardConfig.json.
-   * @throws ShardOrchestrationException if provisioning or creation fails after retries.
+   * @throws RuntimeException if provisioning or creation fails after retries.
    */
-  public String initialize(Map<String, List<String>> shardMap, String artifactName)
-      throws ShardOrchestrationException {
+  public String initialize(Map<String, List<String>> shardMap, String artifactName) {
     this.requestedShardMap = new HashMap<>(shardMap);
 
     LOG.info("Initializing shard orchestrator for {} physical instances", shardMap.size());
@@ -231,7 +233,7 @@ public class CloudSqlShardOrchestrator {
       return generateAndUploadConfig(artifactName);
     } catch (Exception e) {
       LOG.error("Exception while initializing sharded environment", e);
-      throw new ShardOrchestrationException("Failed to initialize sharded environment", e);
+      throw new RuntimeException("Failed to initialize sharded environment", e);
     }
   }
 
@@ -265,7 +267,7 @@ public class CloudSqlShardOrchestrator {
     User user = new User().setName(username).setPassword(password);
 
     // MySQL requires a '%' host for connections from any IP within the VPC.
-    if (sqlDialect == SQLDialect.MYSQL) {
+    if (databaseType == DatabaseType.MYSQL) {
       user.setHost("%");
     }
 
@@ -273,7 +275,7 @@ public class CloudSqlShardOrchestrator {
     // These are passed as query parameters in the Update request.
     SQLAdmin.Users.Update request = sqlAdmin.users().update(project, instanceName, user);
     request.setName(username);
-    if (sqlDialect == SQLDialect.MYSQL) {
+    if (databaseType == DatabaseType.MYSQL) {
       // In MySQL, host is part of the primary key for a user. '%' allows the user to connect from
       // any VPC IP.
       request.setHost("%");
@@ -319,7 +321,7 @@ public class CloudSqlShardOrchestrator {
 
   protected void createPhysicalInstance(String instanceName)
       throws IOException, InterruptedException {
-    String tier = sqlDialect == SQLDialect.MYSQL ? "db-n1-standard-2" : "db-custom-2-7680";
+    String tier = databaseType == DatabaseType.MYSQL ? "db-n1-standard-2" : "db-custom-2-7680";
     DatabaseInstance instance =
         new DatabaseInstance()
             .setName(instanceName)
@@ -370,19 +372,19 @@ public class CloudSqlShardOrchestrator {
 
   protected CloudSqlResourceManager createManager(String instanceName) {
     String ip = instanceIpMap.get(instanceName);
-    if (sqlDialect == SQLDialect.MYSQL) {
+    if (databaseType == DatabaseType.MYSQL) {
       return (CloudSqlResourceManager)
           CloudMySQLResourceManager.builder(instanceName)
               .maybeUseStaticInstance(ip, port, username, password)
               .build();
-    } else if (sqlDialect == SQLDialect.POSTGRESQL) {
+    } else if (databaseType == DatabaseType.POSTGRESQL) {
       return (CloudSqlResourceManager)
           CloudPostgresResourceManager.builder(instanceName)
               .maybeUseStaticInstance(ip, port, username, password)
               .setDatabaseName("postgres")
               .build();
     } else {
-      throw new IllegalArgumentException("Unsupported database type: " + sqlDialect);
+      throw new IllegalArgumentException("Unsupported database type: " + databaseType);
     }
   }
 
@@ -456,16 +458,16 @@ public class CloudSqlShardOrchestrator {
     executor.shutdown();
     try {
       if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
-        throw new ShardOrchestrationException(phase + " phase timed out");
+        throw new RuntimeException(phase + " phase timed out");
       }
       for (java.util.concurrent.Future<?> future : futures) {
         future.get();
       }
     } catch (java.util.concurrent.ExecutionException e) {
-      throw new ShardOrchestrationException(phase + " phase failed", e.getCause());
+      throw new RuntimeException(phase + " phase failed", e.getCause());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new ShardOrchestrationException(phase + " phase interrupted", e);
+      throw new RuntimeException(phase + " phase interrupted", e);
     }
   }
 

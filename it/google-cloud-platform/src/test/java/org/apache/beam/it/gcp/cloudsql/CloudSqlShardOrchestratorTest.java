@@ -13,11 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.loadtesting;
+package org.apache.beam.it.gcp.cloudsql;
 
-import static com.google.cloud.teleport.v2.templates.loadtesting.CloudSqlShardOrchestrator.MYSQL_8_0;
-import static com.google.cloud.teleport.v2.templates.loadtesting.CloudSqlShardOrchestrator.POSTGRES_14;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.MYSQL_8_0;
+import static org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.POSTGRES_14;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -41,7 +41,6 @@ import com.google.api.services.sqladmin.model.Operation;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.io.IOException;
 import java.util.Arrays;
@@ -50,8 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
-import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,13 +86,13 @@ public class CloudSqlShardOrchestratorTest {
   /** Helper subclass to inject mock SQLAdmin and synchronous executor. */
   private static class TestCloudSqlShardOrchestrator extends CloudSqlShardOrchestrator {
     public TestCloudSqlShardOrchestrator(
-        SQLDialect sqlDialect,
+        DatabaseType databaseType,
         String dbVersion,
         String project,
         String region,
         GcsResourceManager gcsResourceManager,
         SQLAdmin sqlAdmin) {
-      super(sqlDialect, dbVersion, project, region, gcsResourceManager);
+      super(databaseType, dbVersion, project, region, gcsResourceManager);
       // Overwrite the real sqlAdmin created in super constructor
       try {
         java.lang.reflect.Field field =
@@ -138,7 +136,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testInitialize_provisionsAndSetsUpCorrectly() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     // Mock Stage 1: Physical Provisioning
     DatabaseInstance instance =
@@ -189,7 +187,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testInitialize_createsInstance_whenMissing() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     // Mock 404 for first call, then 200 for refresh
     when(sqlAdmin.instances().get(PROJECT_ID, INSTANCE_NAME).execute())
@@ -228,7 +226,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testCleanup_delegatesToManagers() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     // Mock successful initialization to populate managers map
     when(sqlAdmin.instances().get(PROJECT_ID, INSTANCE_NAME).execute())
@@ -272,7 +270,7 @@ public class CloudSqlShardOrchestratorTest {
 
       CloudSqlShardOrchestrator orchestrator =
           new CloudSqlShardOrchestrator(
-              SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager);
+              DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager);
 
       assertThat(orchestrator.project).isEqualTo(PROJECT_ID);
     }
@@ -282,7 +280,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testInitialize_provisionsAndSetsUpPostgresCorrectly() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.POSTGRESQL, POSTGRES_14, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.POSTGRESQL, POSTGRES_14, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     DatabaseInstance instance =
         new DatabaseInstance()
@@ -318,20 +316,19 @@ public class CloudSqlShardOrchestratorTest {
   public void testInitialize_throwsOnFailure() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     when(sqlAdmin.instances().get(anyString(), anyString()).execute())
         .thenThrow(new IOException("API Error"));
 
-    assertThrows(
-        ShardOrchestrationException.class, () -> orchestrator.initialize(shardMap, "shards.json"));
+    assertThrows(RuntimeException.class, () -> orchestrator.initialize(shardMap, "shards.json"));
   }
 
   @Test
   public void testExecuteWithRetries_retriesOn409() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
         mockRequest =
@@ -355,7 +352,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testWaitForOperation_throwsOnOpError() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     Operation op = mock(Operation.class, Answers.RETURNS_DEEP_STUBS);
     when(op.getName()).thenReturn("op-error");
@@ -373,7 +370,7 @@ public class CloudSqlShardOrchestratorTest {
   public void testCleanup_handlesDropDatabaseError() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
     // Mock successful initialization
     DatabaseInstance instance =
@@ -411,13 +408,14 @@ public class CloudSqlShardOrchestratorTest {
   public void testVersionCompatability() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> CloudSqlShardOrchestrator.checkVersionCompatibility(SQLDialect.MYSQL, POSTGRES_14));
+        () -> CloudSqlShardOrchestrator.checkVersionCompatibility(DatabaseType.MYSQL, POSTGRES_14));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            CloudSqlShardOrchestrator.checkVersionCompatibility(SQLDialect.POSTGRESQL, MYSQL_8_0));
+            CloudSqlShardOrchestrator.checkVersionCompatibility(
+                DatabaseType.POSTGRESQL, MYSQL_8_0));
 
-    CloudSqlShardOrchestrator.checkVersionCompatibility(SQLDialect.MYSQL, MYSQL_8_0);
-    CloudSqlShardOrchestrator.checkVersionCompatibility(SQLDialect.POSTGRESQL, POSTGRES_14);
+    CloudSqlShardOrchestrator.checkVersionCompatibility(DatabaseType.MYSQL, MYSQL_8_0);
+    CloudSqlShardOrchestrator.checkVersionCompatibility(DatabaseType.POSTGRESQL, POSTGRES_14);
   }
 }
