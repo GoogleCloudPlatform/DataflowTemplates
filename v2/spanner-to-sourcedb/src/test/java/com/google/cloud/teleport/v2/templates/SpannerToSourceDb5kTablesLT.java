@@ -63,9 +63,9 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateLoadTest.class, SkipDirectRunnerTest.class})
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
+public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kLT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kTablesLT.class);
 
   private static final int NUM_TABLES = 5000;
   private static final String TEMPLATE_SPEC_PATH =
@@ -260,7 +260,7 @@ public class SpannerToSourceDb5kLT extends SpannerToSourceDbLTBase {
     LOG.info("Waiting for rows to be replicated to MySQL...");
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofHours(1)),
+            createConfig(jobInfo, Duration.ofHours(1), Duration.ofMinutes(2)),
             () -> {
               ExecutorService executor = Executors.newFixedThreadPool(10);
               try {
