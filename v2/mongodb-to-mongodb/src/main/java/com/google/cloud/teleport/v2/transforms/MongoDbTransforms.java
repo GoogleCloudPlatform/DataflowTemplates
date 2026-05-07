@@ -25,13 +25,14 @@ import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -169,7 +170,6 @@ public class MongoDbTransforms {
                           WriteFn.builder()
                               .withUri(uri)
                               .withDatabase(database)
-                              .withCollection(collection)
                               .withMaxConcurrentAsyncWrites(maxConcurrentAsyncWrites)
                               .withMaxWriteRetries(maxWriteRetries)
                               .withDlqMaxRetries(dlqMaxRetries)
@@ -205,7 +205,6 @@ public class MongoDbTransforms {
 
     private final String uri;
     private final String database;
-    private final String collection;
     private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
@@ -217,7 +216,6 @@ public class MongoDbTransforms {
         Metrics.counter(WriteWithDlq.class, "successful-documents-written");
 
     private transient MongoClient mongoClient;
-    private transient MongoCollection<Document> mongoCollection;
     private transient ExecutorService executor;
     private transient Semaphore semaphore;
     private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
@@ -227,7 +225,6 @@ public class MongoDbTransforms {
     public WriteFn(
         String uri,
         String database,
-        String collection,
         Integer maxConcurrentAsyncWrites,
         Integer maxWriteRetries,
         Integer dlqMaxRetries,
@@ -235,7 +232,6 @@ public class MongoDbTransforms {
         TupleTag<String> failureTag) {
       this.uri = uri;
       this.database = database;
-      this.collection = collection;
       this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
@@ -250,7 +246,6 @@ public class MongoDbTransforms {
     public static class Builder {
       private String uri;
       private String database;
-      private String collection;
       private Integer maxConcurrentAsyncWrites;
       private Integer maxWriteRetries;
       private Integer dlqMaxRetries;
@@ -264,11 +259,6 @@ public class MongoDbTransforms {
 
       public Builder withDatabase(String database) {
         this.database = database;
-        return this;
-      }
-
-      public Builder withCollection(String collection) {
-        this.collection = collection;
         return this;
       }
 
@@ -301,7 +291,6 @@ public class MongoDbTransforms {
         return new WriteFn(
             uri,
             database,
-            collection,
             maxConcurrentAsyncWrites,
             maxWriteRetries,
             dlqMaxRetries,
@@ -331,9 +320,6 @@ public class MongoDbTransforms {
     @StartBundle
     public void startBundle() {
       mongoClient = clientFactory.apply(uri);
-      MongoDatabase db = mongoClient.getDatabase(database);
-
-      mongoCollection = db.getCollection(collection);
 
       futures = new ConcurrentLinkedQueue<>();
       failures = new ConcurrentLinkedQueue<>();
@@ -342,75 +328,42 @@ public class MongoDbTransforms {
 
     @ProcessElement
     public void processElement(ProcessContext c) throws InterruptedException {
-      if (mongoCollection == null) {
-        mongoCollection = clientFactory.apply(uri).getDatabase(database).getCollection(collection);
-      }
       Iterable<DocumentWithMetadata> items = c.element().getValue();
-      List<WriteModel<Document>> updates = new ArrayList<>();
-      List<DocumentWithMetadata> itemList = new ArrayList<>();
+
+      Map<String, List<WriteModel<Document>>> updatesByCollection = new HashMap<>();
+      Map<String, List<DocumentWithMetadata>> itemsByCollection = new HashMap<>();
 
       for (DocumentWithMetadata item : items) {
-        itemList.add(item);
+        String targetCol = item.getTargetCollection();
+
         Document doc = item.getDocument();
         Object id = doc.get("_id");
         if (id != null) {
-          updates.add(
-              new ReplaceOneModel<>(
-                  new Document("_id", id), doc, new ReplaceOptions().upsert(true)));
+          updatesByCollection
+              .computeIfAbsent(targetCol, k -> new ArrayList<>())
+              .add(
+                  new ReplaceOneModel<>(
+                      new Document("_id", id), doc, new ReplaceOptions().upsert(true)));
+          itemsByCollection.computeIfAbsent(targetCol, k -> new ArrayList<>()).add(item);
         }
       }
 
-      if (!updates.isEmpty()) {
+      if (!updatesByCollection.isEmpty()) {
         semaphore.acquire();
         CompletableFuture<Void> future =
             CompletableFuture.runAsync(
                 () -> {
                   try {
-                    List<WriteModel<Document>> currentUpdates = updates;
-                    List<DocumentWithMetadata> currentItemList = itemList;
-                    BackOff backoff = backoffSpec.backoff();
-                    Sleeper sleeper = Sleeper.DEFAULT;
+                    for (Map.Entry<String, List<WriteModel<Document>>> entry :
+                        updatesByCollection.entrySet()) {
+                      String colName = entry.getKey();
+                      List<WriteModel<Document>> currentUpdates = entry.getValue();
+                      List<DocumentWithMetadata> currentItemList = itemsByCollection.get(colName);
 
-                    while (true) {
-                      try {
-                        mongoCollection.bulkWrite(
-                            currentUpdates, new BulkWriteOptions().ordered(false));
-                        successfulCount.addAndGet(currentItemList.size());
-                        break;
-                      } catch (MongoBulkWriteException e) {
-                        List<BulkWriteError> writeErrors = e.getWriteErrors();
-                        successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+                      MongoCollection<Document> col =
+                          mongoClient.getDatabase(database).getCollection(colName);
 
-                        List<WriteModel<Document>> nextUpdates = new ArrayList<>();
-                        List<DocumentWithMetadata> nextItemList = new ArrayList<>();
-                        generateRetryBatch(
-                            writeErrors,
-                            currentUpdates,
-                            currentItemList,
-                            nextUpdates,
-                            nextItemList);
-
-                        if (nextUpdates.isEmpty()) {
-                          break;
-                        }
-
-                        if (handleBackoff(sleeper, backoff, nextItemList)) {
-                          break;
-                        }
-
-                        currentUpdates = nextUpdates;
-                        currentItemList = nextItemList;
-                      } catch (Exception e) {
-                        if (!isRetriable(e)) {
-                          writePermanentDlqMessage(
-                              currentItemList, "Failed to write documents: " + e.getMessage());
-                          break;
-                        }
-
-                        if (handleBackoff(sleeper, backoff, currentItemList)) {
-                          break;
-                        }
-                      }
+                      writeBatchWithRetry(col, currentUpdates, currentItemList);
                     }
                   } finally {
                     semaphore.release();
@@ -418,6 +371,51 @@ public class MongoDbTransforms {
                 },
                 executor);
         futures.add(future);
+      }
+    }
+
+    private void writeBatchWithRetry(
+        MongoCollection<Document> col,
+        List<WriteModel<Document>> currentUpdates,
+        List<DocumentWithMetadata> currentItemList) {
+      BackOff backoff = backoffSpec.backoff();
+      Sleeper sleeper = Sleeper.DEFAULT;
+
+      while (true) {
+        try {
+          col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
+          successfulCount.addAndGet(currentItemList.size());
+          break;
+        } catch (MongoBulkWriteException e) {
+          List<BulkWriteError> writeErrors = e.getWriteErrors();
+          successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+
+          List<WriteModel<Document>> nextUpdates = new ArrayList<>();
+          List<DocumentWithMetadata> nextItemList = new ArrayList<>();
+          generateRetryBatch(
+              writeErrors, currentUpdates, currentItemList, nextUpdates, nextItemList);
+
+          if (nextUpdates.isEmpty()) {
+            break;
+          }
+
+          if (handleBackoff(sleeper, backoff, nextItemList)) {
+            break;
+          }
+
+          currentUpdates = nextUpdates;
+          currentItemList = nextItemList;
+        } catch (Exception e) {
+          if (!isRetriable(e)) {
+            writePermanentDlqMessage(
+                currentItemList, "Failed to write documents: " + e.getMessage());
+            break;
+          }
+
+          if (handleBackoff(sleeper, backoff, currentItemList)) {
+            break;
+          }
+        }
       }
     }
 
@@ -567,7 +565,9 @@ public class MongoDbTransforms {
                     item.getOriginalDocument(),
                     item.getRetryCount(),
                     item.getErrorMessage(),
-                    item.getErrorType()));
+                    item.getErrorType(),
+                    item.getSourceCollection(),
+                    item.getTargetCollection()));
           } else {
             LOG.warn("UDF returned null for document: {}", item.getOriginalDocument());
             c.output(

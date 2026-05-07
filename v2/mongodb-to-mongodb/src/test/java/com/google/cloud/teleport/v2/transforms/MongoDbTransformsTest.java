@@ -82,6 +82,7 @@ public class MongoDbTransformsTest {
       new org.apache.beam.sdk.values.TupleTag<String>() {};
 
   @Before
+  @SuppressWarnings("unchecked")
   public void setUp() {
     staticClient = mock(MongoClient.class);
     staticDatabase = mock(MongoDatabase.class);
@@ -108,7 +109,7 @@ public class MongoDbTransformsTest {
               return mock(BulkWriteResult.class);
             });
     PCollection<DocumentWithMetadata> input =
-        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1))));
+        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1), "test", "test")));
 
     input.apply(
         "Write_Transient",
@@ -141,7 +142,7 @@ public class MongoDbTransformsTest {
             });
 
     PCollection<DocumentWithMetadata> input =
-        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1))));
+        pipeline.apply(Create.of(DocumentWithMetadata.of(new Document("_id", 1), "test", "test")));
 
     input.apply(
         "Write_Permanent",
@@ -179,8 +180,8 @@ public class MongoDbTransformsTest {
     PCollection<DocumentWithMetadata> input =
         pipeline.apply(
             Create.of(
-                DocumentWithMetadata.of(new Document("_id", 1)),
-                DocumentWithMetadata.of(new Document("_id", 2))));
+                DocumentWithMetadata.of(new Document("_id", 1), "test", "test"),
+                DocumentWithMetadata.of(new Document("_id", 2), "test", "test")));
 
     input.apply(
         "Write_Partial",
@@ -204,7 +205,7 @@ public class MongoDbTransformsTest {
 
     DocumentWithMetadata[] docs = new DocumentWithMetadata[100];
     for (int i = 0; i < 100; i++) {
-      docs[i] = DocumentWithMetadata.of(new Document("_id", i));
+      docs[i] = DocumentWithMetadata.of(new Document("_id", i), "test", "test");
     }
     PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(Arrays.asList(docs)));
 
@@ -277,9 +278,9 @@ public class MongoDbTransformsTest {
               return mock(BulkWriteResult.class);
             });
 
-    DocumentWithMetadata doc0 = DocumentWithMetadata.of(new Document("_id", 0));
-    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1));
-    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2));
+    DocumentWithMetadata doc0 = DocumentWithMetadata.of(new Document("_id", 0), "test", "test");
+    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "test", "test");
+    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "test", "test");
 
     KV<String, Iterable<DocumentWithMetadata>> batch =
         KV.of("fixed-key", Arrays.asList(doc0, doc1, doc2));
@@ -299,7 +300,6 @@ public class MongoDbTransformsTest {
                 MongoDbTransforms.WriteFn.builder()
                     .withUri("mongodb://localhost:27017")
                     .withDatabase("test")
-                    .withCollection("test")
                     .withMaxWriteRetries(3)
                     .withMaxConcurrentAsyncWrites(1)
                     .withClientFactory(new MockClientFactory())
@@ -435,5 +435,34 @@ public class MongoDbTransformsTest {
     PAssert.that(output.get(FAILURE_TAG)).empty();
 
     pipeline.run();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeWithDlq_dynamicRouting_writesToCorrectCollection() {
+    MongoCollection<Document> col1 = mock(MongoCollection.class);
+    MongoCollection<Document> col2 = mock(MongoCollection.class);
+
+    when(staticDatabase.getCollection("col1")).thenReturn(col1);
+    when(staticDatabase.getCollection("col2")).thenReturn(col2);
+
+    DocumentWithMetadata doc1 = DocumentWithMetadata.of(new Document("_id", 1), "src1", "col1");
+    DocumentWithMetadata doc2 = DocumentWithMetadata.of(new Document("_id", 2), "src2", "col2");
+
+    PCollection<DocumentWithMetadata> input = pipeline.apply(Create.of(doc1, doc2));
+
+    input.apply(
+        "Write_Dynamic",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withCollection("default_col")
+            .withBatchSize(2)
+            .withClientFactory(new MockClientFactory()));
+
+    pipeline.run();
+
+    org.mockito.Mockito.verify(col1).bulkWrite(anyList(), any(BulkWriteOptions.class));
+    org.mockito.Mockito.verify(col2).bulkWrite(anyList(), any(BulkWriteOptions.class));
   }
 }

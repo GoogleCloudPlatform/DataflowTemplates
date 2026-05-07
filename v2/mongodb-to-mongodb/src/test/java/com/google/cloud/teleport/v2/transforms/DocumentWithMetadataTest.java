@@ -32,7 +32,8 @@ public class DocumentWithMetadataTest {
     Document doc = new Document("_id", 1).append("name", "test");
     String originalDocStr = doc.toJson();
     DocumentWithMetadata original =
-        DocumentWithMetadata.of(doc, originalDocStr, 1, "Error message", RETRYABLE);
+        DocumentWithMetadata.of(
+            doc, originalDocStr, 1, "Error message", RETRYABLE, "srcCol", "tgtCol");
 
     String dlqJson = original.toDlqJson("Error message", RETRYABLE, 1);
     DocumentWithMetadata reconstructed = DocumentWithMetadata.fromDlqJson(dlqJson);
@@ -44,6 +45,8 @@ public class DocumentWithMetadataTest {
     assertEquals(original.getRetryCount(), reconstructed.getRetryCount());
     assertEquals(original.getErrorMessage(), reconstructed.getErrorMessage());
     assertEquals(original.getErrorType(), reconstructed.getErrorType());
+    assertEquals(original.getSourceCollection(), reconstructed.getSourceCollection());
+    assertEquals(original.getTargetCollection(), reconstructed.getTargetCollection());
   }
 
   @Test(expected = RuntimeException.class)

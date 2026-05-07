@@ -252,10 +252,10 @@ public class MongoDbToMongoDb {
     String processDlqPath =
         getDefaultDlqPath(options.getProcessDlqPath(), options.getTempLocation(), "process-dlq");
 
-    for (String collection : collections) {
+    for (String sourceCol : collections) {
       String targetCollection = options.getTargetCollection();
       if (targetCollection == null || targetCollection.isEmpty()) {
-        targetCollection = collection; // Use source collection name if target not provided
+        targetCollection = sourceCol; // Use source collection name if target not provided
       }
 
       PCollection<DocumentWithMetadata> documents;
@@ -265,9 +265,9 @@ public class MongoDbToMongoDb {
         if (reconsumePath == null || reconsumePath.isEmpty()) {
           reconsumePath = writeDlqPath;
         }
-        documents = readFromDlq(pipeline, collection, reconsumePath);
+        documents = readFromDlq(pipeline, sourceCol, reconsumePath);
       } else {
-        documents = readFromMongo(pipeline, options, collection);
+        documents = readFromMongo(pipeline, options, sourceCol, targetCollection);
       }
 
       // UDF Stage
@@ -278,8 +278,8 @@ public class MongoDbToMongoDb {
 
         PCollectionTuple udfProcessed =
             documents.apply(
-                "ApplyUDF_" + collection,
-                ParDo.of(
+                "ApplyUDF_" + sourceCol,
+                    ParDo.of(
                         new MongoDbTransforms.ApplyUdfFn(
                             options.getJavascriptTextTransformGcsPath(),
                             options.getJavascriptTextTransformFunctionName(),
@@ -291,9 +291,9 @@ public class MongoDbToMongoDb {
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteUdfDlq_" + collection,
-                DLQWriteTransform.WriteDLQ.newBuilder()
-                    .withDlqDirectory(processDlqPath + "/" + collection)
+                "WriteUdfDlq_" + sourceCol,
+                    DLQWriteTransform.WriteDLQ.newBuilder()
+                    .withDlqDirectory(processDlqPath + "/" + sourceCol)
                     .withTmpDirectory(options.getTempLocation())
                     .build());
 
@@ -309,8 +309,8 @@ public class MongoDbToMongoDb {
 
       PCollectionTuple processed =
           documents.apply(
-              "Validate_" + collection,
-              ParDo.of(
+              "Validate_" + sourceCol,
+                  ParDo.of(
                       new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
                         @ProcessElement
                         public void processElement(ProcessContext c) {
@@ -328,9 +328,9 @@ public class MongoDbToMongoDb {
       processed
           .get(failureTag)
           .apply(
-              "WriteProcessDlq_" + collection,
-              DLQWriteTransform.WriteDLQ.newBuilder()
-                  .withDlqDirectory(processDlqPath + "/" + collection)
+              "WriteProcessDlq_" + sourceCol,
+                  DLQWriteTransform.WriteDLQ.newBuilder()
+                  .withDlqDirectory(processDlqPath + "/" + sourceCol)
                   .withTmpDirectory(options.getTempLocation())
                   .build());
 
@@ -338,8 +338,8 @@ public class MongoDbToMongoDb {
       PCollection<DocumentWithMetadata> validDocs = processed.get(successTag);
 
       validDocs.apply(
-          "Write_" + collection,
-          MongoDbTransforms.writeWithDlq()
+          "Write_" + sourceCol,
+              MongoDbTransforms.writeWithDlq()
               .withUri(options.getTargetUri())
               .withDatabase(options.getTargetDatabase())
               .withCollection(targetCollection)
@@ -388,12 +388,12 @@ public class MongoDbToMongoDb {
   }
 
   private static PCollection<DocumentWithMetadata> readFromMongo(
-      Pipeline pipeline, Options options, String collection) {
+      Pipeline pipeline, Options options, String sourceCollection, String targetCollection) {
     MongoDbIO.Read read =
         MongoDbIO.read()
             .withUri(options.getSourceUri())
             .withDatabase(options.getSourceDatabase())
-            .withCollection(collection);
+            .withCollection(sourceCollection);
 
     if (options.getUseBucketAuto() != null && options.getUseBucketAuto()) {
       read = read.withBucketAuto(true);
@@ -404,14 +404,15 @@ public class MongoDbToMongoDb {
     }
 
     return pipeline
-        .apply("Read_" + collection, read)
+        .apply("Read_" + sourceCollection, read)
         .apply(
-            "MapToMetadata_" + collection,
-            ParDo.of(
+            "MapToMetadata_" + sourceCollection,
+                ParDo.of(
                 new DoFn<Document, DocumentWithMetadata>() {
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    c.output(DocumentWithMetadata.of(c.element()));
+                    c.output(
+                        DocumentWithMetadata.of(c.element(), sourceCollection, targetCollection));
                   }
                 }));
   }
