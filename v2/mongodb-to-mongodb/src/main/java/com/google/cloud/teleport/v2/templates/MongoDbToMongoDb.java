@@ -33,6 +33,8 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -308,7 +310,20 @@ public class MongoDbToMongoDb {
 
     @Override
     public PDone expand(PCollection<DocumentWithMetadata> input) {
-      PCollection<DocumentWithMetadata> documents = input;
+      PCollection<DocumentWithMetadata> documents =
+          input.apply(
+              "CountTotalProcessed",
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
+                    private final Counter totalProcessedDocuments =
+                        Metrics.counter(MongoDbToMongoDb.class, "totalProcessedDocuments");
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      totalProcessedDocuments.inc();
+                      c.output(c.element());
+                    }
+                  }));
 
       // UDF Stage
       if (options.getJavascriptTextTransformGcsPath() != null
@@ -350,10 +365,14 @@ public class MongoDbToMongoDb {
               "Validate",
               ParDo.of(
                       new DoFn<DocumentWithMetadata, DocumentWithMetadata>() {
+                        private final Counter contextCreationFailures =
+                            Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
+
                         @ProcessElement
                         public void processElement(ProcessContext c) {
                           DocumentWithMetadata item = c.element();
                           if (item == null || item.getDocument() == null) {
+                            contextCreationFailures.inc();
                             c.output(
                                 failureTag,
                                 DocumentWithMetadata.of(
@@ -412,13 +431,20 @@ public class MongoDbToMongoDb {
         "ParseDlq",
         ParDo.of(
             new DoFn<String, DocumentWithMetadata>() {
+              private final Counter retriedDocuments =
+                  Metrics.counter(MongoDbToMongoDb.class, "retriedDocuments");
+              private final Counter contextCreationFailures =
+                  Metrics.counter(MongoDbToMongoDb.class, "contextCreationFailures");
+
               @ProcessElement
               public void processElement(ProcessContext c) {
                 String line = c.element();
                 try {
                   c.output(DocumentWithMetadata.fromDlqJson(line));
+                  retriedDocuments.inc();
                 } catch (Exception e) {
                   LOG.error("Failed to parse DLQ event", e);
+                  contextCreationFailures.inc();
                 }
               }
             }));

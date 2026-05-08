@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -252,8 +253,14 @@ public class MongoDbTransforms {
     private final TupleTag<DocumentWithMetadata> failureTag;
     private transient FluentBackoff backoffSpec;
 
-    private final Counter successfulDocs =
-        Metrics.counter(WriteWithDlq.class, "successful-documents-written");
+    private final Counter successfulWrites =
+        Metrics.counter(WriteWithDlq.class, "successfulWrites");
+    private final Counter inMemoryRetries = Metrics.counter(WriteWithDlq.class, "inMemoryRetries");
+    private final Counter severeFailedWrites =
+        Metrics.counter(WriteWithDlq.class, "severeFailedWrites");
+    private final Counter dlqRetries = Metrics.counter(WriteWithDlq.class, "dlqRetries");
+    private final Counter permanentFailures =
+        Metrics.counter(WriteWithDlq.class, "permanentFailures");
 
     private transient MongoClient mongoClient;
     private transient ExecutorService executor;
@@ -261,6 +268,18 @@ public class MongoDbTransforms {
     private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
     private transient AtomicLong successfulCount;
+    private transient ConcurrentHashMap<String, AtomicLong> dynamicCounters;
+    private transient AtomicLong inMemoryRetriesCount;
+    private transient AtomicLong severeFailedWritesCount;
+    private transient AtomicLong dlqRetriesCount;
+    private transient AtomicLong permanentFailuresCount;
+
+    private void incDynamicCounter(String prefix, String exceptionName, int code, long count) {
+      String counterName = prefix + "_" + exceptionName + "_" + code;
+      if (dynamicCounters != null) {
+        dynamicCounters.computeIfAbsent(counterName, k -> new AtomicLong(0)).addAndGet(count);
+      }
+    }
 
     public WriteFn(
         String uri,
@@ -364,6 +383,11 @@ public class MongoDbTransforms {
       futures = new ConcurrentLinkedQueue<>();
       failures = new ConcurrentLinkedQueue<>();
       successfulCount = new AtomicLong(0);
+      dynamicCounters = new ConcurrentHashMap<>();
+      inMemoryRetriesCount = new AtomicLong(0);
+      severeFailedWritesCount = new AtomicLong(0);
+      dlqRetriesCount = new AtomicLong(0);
+      permanentFailuresCount = new AtomicLong(0);
     }
 
     @ProcessElement
@@ -446,12 +470,26 @@ public class MongoDbTransforms {
           currentUpdates = nextUpdates;
           currentItemList = nextItemList;
         } catch (Exception e) {
+          int code = 0;
+          if (e instanceof MongoException me) {
+            code = me.getCode();
+          }
           if (!isRetriable(e)) {
+            incDynamicCounter(
+                "severeFailedWrites", e.getClass().getSimpleName(), code, currentItemList.size());
+            if (severeFailedWritesCount != null) {
+              severeFailedWritesCount.addAndGet(currentItemList.size());
+            }
             writePermanentDlqMessage(
                 currentItemList, "Failed to write documents: " + e.getMessage());
             break;
           }
 
+          incDynamicCounter(
+              "inMemoryRetries", e.getClass().getSimpleName(), code, currentItemList.size());
+          if (inMemoryRetriesCount != null) {
+            inMemoryRetriesCount.addAndGet(currentItemList.size());
+          }
           if (handleBackoff(sleeper, backoff, currentItemList)) {
             break;
           }
@@ -486,10 +524,18 @@ public class MongoDbTransforms {
           WriteModel<Document> failedUpdate = currentUpdates.get(index);
 
           if (isPermanentErrorCode(error.getCode())) {
+            incDynamicCounter("severeFailedWrites", "MongoBulkWriteException", error.getCode(), 1);
+            if (severeFailedWritesCount != null) {
+              severeFailedWritesCount.addAndGet(1);
+            }
             writePermanentDlqMessage(
                 java.util.Collections.singletonList(failedItem),
                 "Permanent failure writing document. Error: " + error.getMessage());
           } else {
+            incDynamicCounter("inMemoryRetries", "MongoBulkWriteException", error.getCode(), 1);
+            if (inMemoryRetriesCount != null) {
+              inMemoryRetriesCount.addAndGet(1);
+            }
             nextUpdates.add(failedUpdate);
             nextItemList.add(failedItem);
           }
@@ -507,6 +553,15 @@ public class MongoDbTransforms {
 
     private void writeToDlq(
         List<DocumentWithMetadata> itemList, String message, boolean isPermanent) {
+      if (isPermanent) {
+        if (permanentFailuresCount != null) {
+          permanentFailuresCount.addAndGet(itemList.size());
+        }
+      } else {
+        if (dlqRetriesCount != null) {
+          dlqRetriesCount.addAndGet(itemList.size());
+        }
+      }
       for (DocumentWithMetadata item : itemList) {
         LOG.warn("{}: {}", message, item.getId());
 
@@ -549,7 +604,23 @@ public class MongoDbTransforms {
         mongoClient.close();
       }
 
-      successfulDocs.inc(successfulCount.get());
+      successfulWrites.inc(successfulCount.get());
+      if (inMemoryRetriesCount != null) {
+        inMemoryRetries.inc(inMemoryRetriesCount.get());
+      }
+      if (severeFailedWritesCount != null) {
+        severeFailedWrites.inc(severeFailedWritesCount.get());
+      }
+      if (dlqRetriesCount != null) {
+        dlqRetries.inc(dlqRetriesCount.get());
+      }
+      if (permanentFailuresCount != null) {
+        permanentFailures.inc(permanentFailuresCount.get());
+      }
+      if (dynamicCounters != null) {
+        dynamicCounters.forEach(
+            (name, count) -> Metrics.counter(WriteWithDlq.class, name).inc(count.get()));
+      }
 
       DocumentWithMetadata failure;
       while ((failure = failures.poll()) != null) {
@@ -567,6 +638,8 @@ public class MongoDbTransforms {
     private final Integer reloadIntervalMinutes;
     private final TupleTag<DocumentWithMetadata> failureTag;
     private transient JavascriptTextTransformer.JavascriptRuntime javascriptRuntime;
+    private final Counter udfProcessingFailures =
+        Metrics.counter(ApplyUdfFn.class, "udfProcessingFailures");
 
     public ApplyUdfFn(
         String fileSystemPath,
@@ -610,6 +683,7 @@ public class MongoDbTransforms {
                     item.getTargetCollection()));
           } else {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
+            udfProcessingFailures.inc();
             c.output(
                 failureTag,
                 DocumentWithMetadata.of(
@@ -624,6 +698,7 @@ public class MongoDbTransforms {
           }
         } catch (Throwable e) {
           LOG.error("Failed to apply UDF: {}", e.getMessage());
+          udfProcessingFailures.inc();
           c.output(
               failureTag,
               DocumentWithMetadata.of(
