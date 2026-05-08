@@ -33,6 +33,7 @@ func main() {
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
+		mvnFlags.RunFailureInjectionTests(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
