@@ -303,7 +303,8 @@ public final class DataStreamMongoDBToFirestoreTest {
         .get(DataStreamMongoDBToFirestore.RESTORE_FAILURE_TAG)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    FailsafeElement<String, String> expectedOutput = FailsafeElement.of(fullEventJson, fullEventJson);
+    FailsafeElement<String, String> expectedOutput =
+        FailsafeElement.of(fullEventJson, fullEventJson);
     PAssert.that(result.get(SUCCESS_TAG)).containsInAnyOrder(expectedOutput);
 
     pipeline.run();
@@ -411,6 +412,7 @@ public final class DataStreamMongoDBToFirestoreTest {
 
     Files.delete(udfFile);
   }
+
   @Test
   public void applyUdfToDataField_specialValues() throws IOException {
     String udfCode =
@@ -434,7 +436,8 @@ public final class DataStreamMongoDBToFirestoreTest {
 
     DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
 
-    String fullEventJson = "{\"data\":{\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"negInf\":{\"$numberDouble\":\"-Infinity\"},\"dbl\":3.14,\"lng\":{\"$numberLong\":\"1234567890\"}}}";
+    String fullEventJson =
+        "{\"data\":{\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"negInf\":{\"$numberDouble\":\"-Infinity\"},\"dbl\":3.14,\"lng\":{\"$numberLong\":\"1234567890\"}}}";
     FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
 
     PCollection<FailsafeElement<String, String>> result =
@@ -455,15 +458,15 @@ public final class DataStreamMongoDBToFirestoreTest {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode node = mapper.readTree(element.getPayload());
                 String dataStr = node.get("data").asText();
-                
+
                 org.bson.Document doc = org.bson.Document.parse(dataStr);
-                
+
                 assertEquals(Double.NaN, doc.getDouble("nan"), 0.0);
                 assertEquals(Double.POSITIVE_INFINITY, doc.getDouble("inf"), 0.0);
                 assertEquals(Double.NEGATIVE_INFINITY, doc.getDouble("negInf"), 0.0);
                 assertEquals(3.14, doc.getDouble("dbl"), 0.0);
                 assertEquals(1234567890L, doc.getLong("lng").longValue());
-                
+
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }
@@ -475,4 +478,3 @@ public final class DataStreamMongoDBToFirestoreTest {
     Files.delete(udfFile);
   }
 }
-
