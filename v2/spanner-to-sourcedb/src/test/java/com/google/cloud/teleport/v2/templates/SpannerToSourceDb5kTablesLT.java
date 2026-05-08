@@ -22,7 +22,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -32,7 +31,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +40,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -68,10 +65,6 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kTablesLT.class);
 
   private static final int NUM_TABLES = 5000;
-  private static final String TEMPLATE_SPEC_PATH =
-      com.google.common.base.MoreObjects.firstNonNull(
-          org.apache.beam.it.common.TestProperties.specPath(),
-          "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
   private MySQLResourceManager jdbcResourceManager;
   private SpannerResourceManager spannerChangeStreamMetadataResourceManager;
@@ -131,7 +124,7 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
   public void test5kTables() throws Exception {
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManagers);
 
-    SubscriptionName subscriptionName =
+    subscriptionName =
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
@@ -152,7 +145,6 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
     spannerResourceManager.executeDdlStatement(
         "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d', allow_txn_exclusion = true)");
 
-    // OPTIMIZE MYSQL:
     try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 0");
@@ -184,7 +176,6 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
     }
     LOG.info("Created {} tables on Source", NUM_TABLES);
 
-    // Restore MySQL settings
     try (Connection conn = getJdbcConnection(jdbcResourceManager);
         Statement stmt = conn.createStatement()) {
       stmt.execute("SET GLOBAL innodb_flush_log_at_trx_commit = 1");
@@ -195,31 +186,19 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
     LOG.info("Launching Dataflow job...");
     Map<String, String> params = new HashMap<>();
-    params.put("instanceId", spannerResourceManager.getInstanceId());
-    params.put("databaseId", spannerResourceManager.getDatabaseId());
-    params.put("spannerProjectId", project);
-    params.put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-    params.put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-    params.put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
-    params.put("changeStreamName", "allstream");
-    params.put("dlqGcsPubSubSubscription", subscriptionName.toString());
-    params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
     params.put("maxShardConnections", "5");
-    params.put("maxNumWorkers", "1");
-    params.put("numWorkers", "1");
-    params.put("sourceType", MYSQL_SOURCE_TYPE);
-    params.put("workerMachineType", "n2-standard-4");
     params.put(
         "changeStreamMetadataDatabase", spannerChangeStreamMetadataResourceManager.getDatabaseId());
 
-    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, TEMPLATE_SPEC_PATH);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
-
-    PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
+    PipelineLauncher.LaunchInfo jobInfo =
+        launchDataflowJob(
+            1, // numWorkers
+            1, // maxWorkers
+            null, // customTransformation
+            MYSQL_SOURCE_TYPE,
+            "input/shard.json",
+            null, // sessionFileName
+            params);
 
     assertThatPipeline(jobInfo).isRunning();
 
@@ -228,8 +207,6 @@ public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 1; i <= NUM_TABLES; i++) {
       mutations.add(Mutation.newInsertOrUpdateBuilder("table_" + i).set("id").to(42L).build());
-      // Spanner might have mutation limits per commit. Let's write in batches of 1000 just to be
-      // safe.
       if (mutations.size() >= 1000) {
         spannerResourceManager.write(mutations);
         mutations.clear();

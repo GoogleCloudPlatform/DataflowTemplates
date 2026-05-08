@@ -70,11 +70,12 @@ public class ShadowTableCreator {
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    LOG.info("Scanning information schema for metadata database...");
+    LOG.info("Scanning information schema for {}...", metadataConfig.getDatabaseId().get());
     long startTime = System.currentTimeMillis();
     this.informationSchemaOfMetadataDb = scanner.scan();
     LOG.info(
-        "Scanned information schema for metadata database in {} ms",
+        "Scanned information schema for {} in {} ms",
+        metadataConfig.getDatabaseId().get(),
         System.currentTimeMillis() - startTime);
   }
 
@@ -122,7 +123,7 @@ public class ShadowTableCreator {
             null);
 
     try {
-      op.get(15, TimeUnit.MINUTES);
+      op.get(5, TimeUnit.MINUTES);
       LOG.info(
           "Successfully created {} shadow tables in Spanner in {} ms",
           createShadowTableStatements.size(),

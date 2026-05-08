@@ -941,6 +941,7 @@ public class SpannerToSourceDb {
     if (Strings.isNullOrEmpty(changeStreamMetadataDb)) {
       changeStreamMetadataDb = options.getMetadataDatabase();
     }
+    LOG.info("Using database {} for change stream metadata.", changeStreamMetadataDb);
 
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()

@@ -75,14 +75,17 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
                 shadowTableSpannerConfig.getDatabaseId().get())
             .getDialect();
 
-    this.mainDdl = getInformationSchemaAsDdl(spannerAccessor, dialect, "primary database");
+    this.mainDdl =
+        getInformationSchemaAsDdl(spannerAccessor, dialect, spannerConfig.getDatabaseId().get());
     ShadowTableCreator shadowTableCreator =
         new ShadowTableCreator(
             shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix, mainDdl);
     shadowTableCreator.createShadowTablesInSpanner();
     this.shadowTableDdl =
         getInformationSchemaAsDdl(
-            shadowTableSpannerAccessor, shadowTableDialect, "metadata database");
+            shadowTableSpannerAccessor,
+            shadowTableDialect,
+            shadowTableSpannerConfig.getDatabaseId().get());
   }
 
   @Teardown
@@ -101,17 +104,17 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
   }
 
-  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect, String dbLabel) {
+  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect, String dbName) {
     BatchClient batchClient = accessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    LOG.info("Scanning information schema for {}...", dbLabel);
+    LOG.info("Scanning information schema for {}...", dbName);
     long startTime = System.currentTimeMillis();
     Ddl ddl = scanner.scan();
     LOG.info(
         "Scanned information schema for {} in {} ms",
-        dbLabel,
+        dbName,
         System.currentTimeMillis() - startTime);
     return ddl;
   }

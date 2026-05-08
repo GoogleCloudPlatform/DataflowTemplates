@@ -196,33 +196,51 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       String shardFileName,
       String sessionFileName)
       throws IOException {
-    // default parameters
+    return launchDataflowJob(
+        numWorkers,
+        maxWorkers,
+        customTransformation,
+        sourceType,
+        shardFileName,
+        sessionFileName,
+        Collections.emptyMap());
+  }
 
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            if (sessionFileName != null) {
-              put("sessionFilePath", getGcsPath(sessionFileName, gcsResourceManager));
-            }
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", project);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath(shardFileName, gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName.toString());
-            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "100");
-            put("sourceType", sourceType);
-            put("workerMachineType", "n2-standard-4");
-          }
-        };
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      int numWorkers,
+      int maxWorkers,
+      CustomTransformation customTransformation,
+      String sourceType,
+      String shardFileName,
+      String sessionFileName,
+      Map<String, String> extraParams)
+      throws IOException {
+    // default parameters
+    Map<String, String> params = new HashMap<>();
+    if (sessionFileName != null) {
+      params.put("sessionFilePath", getGcsPath(sessionFileName, gcsResourceManager));
+    }
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("spannerProjectId", project);
+    params.put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+    params.put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+    params.put("sourceShardsFilePath", getGcsPath(shardFileName, gcsResourceManager));
+    params.put("changeStreamName", "allstream");
+    params.put("dlqGcsPubSubSubscription", subscriptionName.toString());
+    params.put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
+    params.put("maxShardConnections", "100");
+    params.put("sourceType", sourceType);
+    params.put("workerMachineType", "n2-standard-4");
 
     if (customTransformation != null) {
       params.put(
           "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+    }
+
+    if (extraParams != null) {
+      params.putAll(extraParams);
     }
 
     LaunchConfig.Builder options =
