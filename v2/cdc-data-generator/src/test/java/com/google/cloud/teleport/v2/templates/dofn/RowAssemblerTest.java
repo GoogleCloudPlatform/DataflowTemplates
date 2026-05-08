@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.dofn;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.github.javafaker.Faker;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
@@ -28,6 +27,7 @@ import com.google.common.collect.ImmutableList;
 import java.util.LinkedHashMap;
 import java.util.Random;
 import java.util.Set;
+import net.datafaker.Faker;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
