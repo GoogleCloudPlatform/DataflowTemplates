@@ -124,6 +124,8 @@ public class MongoDbTransformsTest {
 
     assertEquals(2, callCount.get());
     assertSuccessCount(result, 1L);
+    assertCounter(result, "inMemoryRetries", 1L);
+    assertCounter(result, "inMemoryRetries_MongoBulkWriteException_11600", 1L);
   }
 
   @Test
@@ -156,6 +158,9 @@ public class MongoDbTransformsTest {
 
     assertEquals(1, callCount.get());
     assertSuccessCount(result, 0L);
+    assertCounter(result, "severeFailedWrites", 1L);
+    assertCounter(result, "severeFailedWrites_MongoBulkWriteException_11000", 1L);
+    assertCounter(result, "permanentFailures", 1L);
   }
 
   @Test
@@ -194,6 +199,9 @@ public class MongoDbTransformsTest {
 
     assertEquals(2, callCount.get());
     assertSuccessCount(result, 1L);
+    assertCounter(result, "severeFailedWrites", 1L);
+    assertCounter(result, "severeFailedWrites_MongoBulkWriteException_11000", 1L);
+    assertCounter(result, "permanentFailures", 1L);
   }
 
   @Test
@@ -235,18 +243,22 @@ public class MongoDbTransformsTest {
     assertSuccessCount(result, 0L);
   }
 
-  private long getSuccessfulDocumentsCount(PipelineResult result) {
+  private long getCounterValue(PipelineResult result, String counterName) {
     for (MetricResult<Long> c :
         result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
-      if (c.getName().getName().equals("successful-documents-written")) {
+      if (c.getName().getName().equals(counterName)) {
         return c.getCommitted();
       }
     }
     return 0L;
   }
 
+  private void assertCounter(PipelineResult result, String counterName, long expectedCount) {
+    assertEquals(expectedCount, getCounterValue(result, counterName));
+  }
+
   private void assertSuccessCount(PipelineResult result, long expectedCount) {
-    assertEquals(expectedCount, getSuccessfulDocumentsCount(result));
+    assertCounter(result, "successfulWrites", expectedCount);
   }
 
   @Test
