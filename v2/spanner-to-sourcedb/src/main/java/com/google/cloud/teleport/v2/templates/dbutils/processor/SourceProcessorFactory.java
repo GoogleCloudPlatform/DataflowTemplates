@@ -15,20 +15,25 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.SpannerTargetDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.PostgreSQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.SpannerDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +54,9 @@ public class SourceProcessorFactory {
           Constants.SOURCE_CASSANDRA,
           "com.datastax.oss.driver.api.core.CqlSession", // Cassandra Session Class
           Constants.SOURCE_POSTGRESQL,
-          "org.postgresql.Driver" // PostgreSQL JDBC Driver
+          "org.postgresql.Driver", // PostgreSQL JDBC Driver
+          Constants.SOURCE_SPANNER,
+          "com.google.cloud.spanner.DatabaseClient" // Spanner DatabaseClient
           );
 
   private static Map<String, Function<Shard, String>> connectionUrl = new HashMap<>();
@@ -58,10 +65,12 @@ public class SourceProcessorFactory {
     dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
     dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
     dmlGeneratorMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLDMLGenerator());
+    dmlGeneratorMap.put(Constants.SOURCE_SPANNER, new SpannerDMLGenerator());
 
     connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
     connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
     connectionHelperMap.put(Constants.SOURCE_POSTGRESQL, new JdbcConnectionHelper());
+    connectionHelperMap.put(Constants.SOURCE_SPANNER, new SpannerConnectionHelper());
 
     connectionUrl.put(
         Constants.SOURCE_MYSQL,
@@ -87,6 +96,12 @@ public class SourceProcessorFactory {
               + cassandraShard.getUserName()
               + "/"
               + cassandraShard.getKeySpaceName();
+        });
+    connectionUrl.put(
+        Constants.SOURCE_SPANNER,
+        shard -> {
+          SpannerShard spannerShard = (SpannerShard) shard;
+          return SpannerConnectionHelper.connectionKey(spannerShard);
         });
   }
 
@@ -119,6 +134,15 @@ public class SourceProcessorFactory {
                       maxConnections,
                       driverMap.get(Constants.SOURCE_CASSANDRA),
                       null, // No specific initialization query for Cassandra
+                      null),
+              Constants.SOURCE_SPANNER,
+              (shards, maxConnections) ->
+                  new ConnectionHelperRequest(
+                      shards,
+                      null,
+                      maxConnections,
+                      driverMap.get(Constants.SOURCE_SPANNER),
+                      null, // No JDBC init query for Spanner
                       null));
 
   // for unit testing purposes
@@ -195,6 +219,10 @@ public class SourceProcessorFactory {
       IDao sqlDao;
       if (source.equals(Constants.SOURCE_MYSQL) || source.equals(Constants.SOURCE_POSTGRESQL)) {
         sqlDao = new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
+      } else if (source.equals(Constants.SOURCE_SPANNER)) {
+        sqlDao =
+            new SpannerTargetDao(
+                connectionUrl, (IConnectionHelper<DatabaseClient>) getConnectionHelper(source));
       } else {
         sqlDao = new CassandraDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
       }

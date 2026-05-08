@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SPANNER;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
@@ -48,6 +49,77 @@ public class InputRecordProcessor {
       Metrics.distribution(
           InputRecordProcessor.class, "apply_custom_transformation_impl_latency_ms");
 
+  /**
+   * Generates the {@link DMLGeneratorResponse} for the given record without writing to any DAO.
+   * Returns {@code null} if the event is filtered by a custom transformation.
+   *
+   * <p>Use this when the write must be deferred to a point outside an enclosing transaction (e.g.
+   * to avoid nested Spanner transactions for the {@code SOURCE_SPANNER} path).
+   */
+  public static DMLGeneratorResponse generateDMLResponse(
+      TrimmedShardedDataChangeRecord spannerRecord,
+      ISchemaMapper schemaMapper,
+      Ddl ddl,
+      SourceSchema sourceSchema,
+      String shardId,
+      String sourceDbTimezoneOffset,
+      IDMLGenerator dmlGenerator,
+      ISpannerMigrationTransformer spannerToSourceTransformer,
+      String source)
+      throws Exception {
+
+    String tableName = spannerRecord.getTableName();
+    String modType = spannerRecord.getModType().name();
+    String keysJsonStr = spannerRecord.getMod().getKeysJson();
+    String newValueJsonStr = spannerRecord.getMod().getNewValuesJson();
+    JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+    JSONObject keysJson = new JSONObject(keysJsonStr);
+    Map<String, Object> customTransformationResponse = null;
+
+    if (spannerToSourceTransformer != null) {
+      org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
+      Map<String, Object> mapRequest =
+          ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
+      MigrationTransformationRequest migrationTransformationRequest =
+          new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
+      MigrationTransformationResponse migrationTransformationResponse = null;
+      try {
+        migrationTransformationResponse =
+            spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
+      } catch (Exception e) {
+        throw new InvalidTransformationException(e);
+      }
+      org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
+      applyCustomTransformationResponseTimeMetric.update(
+          new Duration(startTimestamp, endTimestamp).getMillis());
+      if (migrationTransformationResponse.isEventFiltered()) {
+        Metrics.counter(InputRecordProcessor.class, "filtered_events_" + shardId).inc();
+        return null;
+      }
+      if (migrationTransformationResponse != null) {
+        customTransformationResponse = migrationTransformationResponse.getResponseRow();
+      }
+    }
+
+    DMLGeneratorRequest dmlGeneratorRequest =
+        new DMLGeneratorRequest.Builder(
+                modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
+            .setSchemaMapper(schemaMapper)
+            .setCustomTransformationResponse(customTransformationResponse)
+            .setCommitTimestamp(spannerRecord.getCommitTimestamp())
+            .setDdl(ddl)
+            .setSourceSchema(sourceSchema)
+            .build();
+
+    DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
+
+    if (!SOURCE_SPANNER.equals(source) && dmlGeneratorResponse.getDmlStatement().isEmpty()) {
+      throw new InvalidDMLGenerationException("DML statement is empty for table: " + tableName);
+    }
+
+    return dmlGeneratorResponse;
+  }
+
   public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       ISchemaMapper schemaMapper,
@@ -63,63 +135,22 @@ public class InputRecordProcessor {
       throws Exception {
 
     try {
+      DMLGeneratorResponse dmlGeneratorResponse =
+          generateDMLResponse(
+              spannerRecord,
+              schemaMapper,
+              ddl,
+              sourceSchema,
+              shardId,
+              sourceDbTimezoneOffset,
+              dmlGenerator,
+              spannerToSourceTransformer,
+              source);
 
-      String tableName = spannerRecord.getTableName();
-      String modType = spannerRecord.getModType().name();
-      String keysJsonStr = spannerRecord.getMod().getKeysJson();
-      String newValueJsonStr = spannerRecord.getMod().getNewValuesJson();
-      JSONObject newValuesJson = new JSONObject(newValueJsonStr);
-      JSONObject keysJson = new JSONObject(keysJsonStr);
-      Map<String, Object> customTransformationResponse = null;
-
-      if (spannerToSourceTransformer != null) {
-        org.joda.time.Instant startTimestamp = org.joda.time.Instant.now();
-        Map<String, Object> mapRequest =
-            ChangeEventToMapConvertor.combineJsonObjects(keysJson, newValuesJson);
-        MigrationTransformationRequest migrationTransformationRequest =
-            new MigrationTransformationRequest(tableName, mapRequest, shardId, modType);
-        MigrationTransformationResponse migrationTransformationResponse = null;
-        try {
-          migrationTransformationResponse =
-              spannerToSourceTransformer.toSourceRow(migrationTransformationRequest);
-        } catch (Exception e) {
-          throw new InvalidTransformationException(e);
-        }
-        org.joda.time.Instant endTimestamp = org.joda.time.Instant.now();
-        applyCustomTransformationResponseTimeMetric.update(
-            new Duration(startTimestamp, endTimestamp).getMillis());
-        if (migrationTransformationResponse.isEventFiltered()) {
-          Metrics.counter(InputRecordProcessor.class, "filtered_events_" + shardId).inc();
-          return true;
-        }
-        if (migrationTransformationResponse != null) {
-          customTransformationResponse = migrationTransformationResponse.getResponseRow();
-        }
+      if (dmlGeneratorResponse == null) {
+        return true; // filtered
       }
-      DMLGeneratorRequest dmlGeneratorRequest =
-          new DMLGeneratorRequest.Builder(
-                  modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
-              .setSchemaMapper(schemaMapper)
-              .setCustomTransformationResponse(customTransformationResponse)
-              .setCommitTimestamp(spannerRecord.getCommitTimestamp())
-              .setDdl(ddl)
-              .setSourceSchema(sourceSchema)
-              .build();
 
-      DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
-      if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
-        throw new InvalidDMLGenerationException("DML statement is empty for table: " + tableName);
-      }
-      // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
-      // TODO Statement and Raw Statement Differently
-      /*
-       * TODO:
-       * Note: The `SOURCE_CASSANDRA` case not covered in the unit tests.
-       * Answer: Currently, we have implemented unit tests for the Input Record Processor under the SourceWrittenFn.
-       *         These tests cover the majority of scenarios, but they are tightly coupled with the existing code.
-       *         Adding unit tests for SOURCE_CASSANDRA would require a significant refactoring of the entire unit test file.
-       *         Given the current implementation, such refactoring is deemed unnecessary as it would not provide substantial value or impact.
-       */
       switch (source) {
         case SOURCE_CASSANDRA:
           dao.write(dmlGeneratorResponse, null);
@@ -136,4 +167,5 @@ public class InputRecordProcessor {
       throw e; // throw the original exception since it needs to go to DLQ
     }
   }
+
 }

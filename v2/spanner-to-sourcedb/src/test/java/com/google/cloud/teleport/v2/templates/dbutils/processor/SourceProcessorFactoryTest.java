@@ -21,12 +21,16 @@ import static org.mockito.Mockito.doNothing;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.SpannerTargetDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.SpannerDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import java.util.Arrays;
 import java.util.List;
@@ -108,5 +112,26 @@ public class SourceProcessorFactoryTest {
     Assert.assertTrue(processor.getDmlGenerator() instanceof CassandraDMLGenerator);
     Assert.assertEquals(1, processor.getSourceDaoMap().size());
     Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof CassandraDao);
+  }
+
+  @Test
+  public void testCreateSourceProcessor_spanner_validSource() throws Exception {
+    SpannerShard spannerShard =
+        new SpannerShard("shard1", "my-project", "my-instance", "my-database");
+
+    List<Shard> shards = List.of(spannerShard);
+    int maxConnections = 10;
+    SpannerConnectionHelper mockConnectionHelper = Mockito.mock(SpannerConnectionHelper.class);
+    doNothing().when(mockConnectionHelper).init(any());
+    SourceProcessorFactory.setConnectionHelperMap(
+        Map.of(Constants.SOURCE_SPANNER, mockConnectionHelper));
+    SourceProcessor processor =
+        SourceProcessorFactory.createSourceProcessor(
+            Constants.SOURCE_SPANNER, shards, maxConnections);
+
+    Assert.assertNotNull(processor);
+    Assert.assertTrue(processor.getDmlGenerator() instanceof SpannerDMLGenerator);
+    Assert.assertEquals(1, processor.getSourceDaoMap().size());
+    Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof SpannerTargetDao);
   }
 }
