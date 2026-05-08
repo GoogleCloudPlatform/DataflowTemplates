@@ -60,85 +60,91 @@ public class MongoDbChangeEventContextTest {
     insertEvent =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
-                  "data": {
-                    "field1": "value1",
-                    "field2": 123
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789,
-                  "op": "i"
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "data": {
+                "field1": "value1",
+                "field2": 123
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789,
+              "op": "i"
+            }\
+            """);
 
     deleteEvent =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789,
-                  "op": "d",
-                  "_metadata_change_type": "DELETE"
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789,
+              "op": "d",
+              "_metadata_change_type": "DELETE"
+            }\
+            """);
 
     updateEvent =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
-                  "data": {
-                    "field1": "updated_value",
-                    "field2": 456
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789,
-                  "op": "u"
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "data": {
+                "field1": "updated_value",
+                "field2": 456
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789,
+              "op": "u"
+            }\
+            """);
 
     invalidEventMissingMetadata = OBJECT_MAPPER.readTree("{}");
 
     invalidEventMissingId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
 
     invalidEventUnsupportedIdType =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "[1, 2, 3]",
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "[1, 2, 3]",
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
 
     invalidEventMissingTimestamp =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}"
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}"
+            }\
+            """);
   }
 
   @Test
@@ -213,18 +219,19 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithObjectId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{ \\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
-                  "data": {
-                    "field1": "updated_value",
-                    "field2": 456
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{ \\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+              "data": {
+                "field1": "updated_value",
+                "field2": 456
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithObjectId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -237,18 +244,19 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithLongId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": 9223372036854775806,
-                  "data": {
-                    "field1": "updated_value",
-                    "field2": 456
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": 9223372036854775806,
+              "data": {
+                "field1": "updated_value",
+                "field2": 456
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithLongId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -261,18 +269,19 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithStringId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "\\\"test_id\\\"",
-                  "data": {
-                    "field1": "updated_value",
-                    "field2": 456
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "\\\"test_id\\\"",
+              "data": {
+                "field1": "updated_value",
+                "field2": 456
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithStringId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -285,17 +294,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithDoubleId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "123.456",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "123.456",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithDoubleId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -308,17 +318,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithZeroId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "0",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "0",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithZeroId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -330,17 +341,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithGenericObjectId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"a\\\": 1, \\\"b\\\": \\\"test\\\"}",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"a\\\": 1, \\\"b\\\": \\\"test\\\"}",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithGenericObjectId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -355,17 +367,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithIntId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": 123,
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": 123,
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithIntId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -378,17 +391,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithBinaryId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "{\\\"$binary\\\": {\\\"base64\\\": \\\"AQID\\\", \\\"subType\\\": \\\"00\\\"}}",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "{\\\"$binary\\\": {\\\"base64\\\": \\\"AQID\\\", \\\"subType\\\": \\\"00\\\"}}",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     MongoDbChangeEventContext context =
         new MongoDbChangeEventContext(eventWithBinaryId, SHADOW_PREFIX);
     assertNotNull(context.getDocumentId());
@@ -402,17 +416,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithArrayId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "[1, 2, 3]",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "[1, 2, 3]",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     new MongoDbChangeEventContext(eventWithArrayId, SHADOW_PREFIX);
   }
 
@@ -421,17 +436,18 @@ public class MongoDbChangeEventContextTest {
     JsonNode eventWithNullId =
         OBJECT_MAPPER.readTree(
             """
-                {
-                  "_metadata_source": {
-                    "collection": "test_collection"
-                  },
-                  "_id": "null",
-                  "data": {
-                    "field1": "updated_value"
-                  },
-                  "_metadata_timestamp_seconds": 1683782270,
-                  "_metadata_timestamp_nanos": 123456789
-                }""");
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "null",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
     new MongoDbChangeEventContext(eventWithNullId, SHADOW_PREFIX);
   }
 
@@ -546,14 +562,13 @@ public class MongoDbChangeEventContextTest {
     String jsonString = context.toString();
 
     String expectedJson =
-        "{\"changeEvent\":{\"_metadata_source\":{\"collection\":\"test_collection\"},\"_id\":\"{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"data\":{\"field1\":\"value1\",\"field2\":123},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789,\"op\":\"i\"},"
+        "{\"changeEvent\":{\"_metadata_source\":{\"collection\":\"test_collection\"},\"_id\":\"{\\\"$oid\\\":"
+            + " \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"data\":{\"field1\":\"value1\",\"field2\":123},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789,\"op\":\"i\"},"
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
-            + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},"
-            + "\"isDeleteEvent\":false,"
+            + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},\"isDeleteEvent\":false,"
             + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789},"
-            + "\"isDlqReconsumed\":false,"
-            + "\"_metadata_retry_count\":0}";
+            + "\"isDlqReconsumed\":false,\"_metadata_retry_count\":0}";
 
     assertEquals(jsonString, expectedJson);
   }

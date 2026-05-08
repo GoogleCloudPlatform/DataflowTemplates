@@ -67,17 +67,18 @@ public class CreateMongoDbChangeEventContextFnTest {
 
     String validPayload =
         """
-            {
-              "_metadata_source": {
-                "collection": "test_collection"
-              },
-              "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
-              "data": {
-                "field1": "testString"
-              },
-              "_metadata_timestamp_seconds": 1683782270,
-              "_metadata_timestamp_nanos": 123456789
-            }""";
+        {
+          "_metadata_source": {
+            "collection": "test_collection"
+          },
+          "_id": "{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}",
+          "data": {
+            "field1": "testString"
+          },
+          "_metadata_timestamp_seconds": 1683782270,
+          "_metadata_timestamp_nanos": 123456789
+        }\
+        """;
     successElement = FailsafeElement.of(validPayload, validPayload);
     when(mockContext.element()).thenReturn(successElement);
     validJsonNode = OBJECT_MAPPER.readTree(validPayload);

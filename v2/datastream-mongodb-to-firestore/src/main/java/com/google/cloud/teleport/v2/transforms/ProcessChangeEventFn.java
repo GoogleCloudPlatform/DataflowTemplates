@@ -226,7 +226,8 @@ public class ProcessChangeEventFn
           Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries_" + errorIdentifier).inc();
 
           LOG.warn(
-              "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
+              "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying"
+                  + " in {} ms...",
               element.getDocumentId(),
               retryCount + 1,
               backoffMs,
