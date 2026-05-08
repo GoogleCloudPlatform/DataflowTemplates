@@ -1475,11 +1475,6 @@ public class DataStreamMongoDBToFirestore {
 
       try {
         JsonNode fullEventNode = OBJECT_MAPPER.readTree(fullEventJson);
-        if (transformedData.equals(fullEventJson)) {
-          c.output(element);
-          return;
-        }
-
         ((ObjectNode) fullEventNode).put(MongoDbChangeEventContext.DATA_COL, transformedData);
 
         String modifiedEventJson = OBJECT_MAPPER.writeValueAsString(fullEventNode);
