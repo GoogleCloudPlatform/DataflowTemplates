@@ -15,6 +15,9 @@ RUN if ! [ -f ${requirementsFile} ] ; then >&2 echo "error: no ${requirementsFil
 # Set up custom PyPi repository, if applicable
 ${airlockConfig}
 
+RUN apt-get update && \
+    apt-get upgrade -y &&
+
 RUN pip install -U --require-hashes -r ${requirementsFile}
 ${setupInstall}
 ${workerRequirementsCache}
