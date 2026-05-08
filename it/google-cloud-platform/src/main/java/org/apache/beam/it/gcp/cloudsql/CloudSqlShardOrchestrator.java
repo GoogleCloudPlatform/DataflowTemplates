@@ -216,9 +216,10 @@ public class CloudSqlShardOrchestrator {
    * @param shardMap A mapping of physical instance names to the list of logical DB names to create.
    * @param artifactName The name of the artifact file (e.g., "shards.json").
    * @return The full GCS URI to the generated bulkShardConfig.json.
-   * @throws RuntimeException if provisioning or creation fails after retries.
+   * @throws ShardOrchestrationException if provisioning or creation fails after retries.
    */
-  public String initialize(Map<String, List<String>> shardMap, String artifactName) {
+  public String initialize(Map<String, List<String>> shardMap, String artifactName)
+      throws ShardOrchestrationException {
     this.requestedShardMap = new HashMap<>(shardMap);
 
     LOG.info("Initializing shard orchestrator for {} physical instances", shardMap.size());
@@ -233,7 +234,7 @@ public class CloudSqlShardOrchestrator {
       return generateAndUploadConfig(artifactName);
     } catch (Exception e) {
       LOG.error("Exception while initializing sharded environment", e);
-      throw new RuntimeException("Failed to initialize sharded environment", e);
+      throw new ShardOrchestrationException("Failed to initialize sharded environment", e);
     }
   }
 
@@ -402,6 +403,11 @@ public class CloudSqlShardOrchestrator {
                 CloudSqlResourceManager manager = createManager(instanceName);
                 managers.put(instanceName, manager);
                 for (String dbName : dbNames) {
+                  try {
+                    manager.runSQLUpdate("DROP DATABASE IF EXISTS " + dbName);
+                  } catch (Exception e) {
+                    LOG.warn("Failed to drop pre-existing database {} if it existed", dbName, e);
+                  }
                   manager.createDatabase(dbName);
                 }
               }));
@@ -458,16 +464,16 @@ public class CloudSqlShardOrchestrator {
     executor.shutdown();
     try {
       if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
-        throw new RuntimeException(phase + " phase timed out");
+        throw new ShardOrchestrationException(phase + " phase timed out");
       }
       for (java.util.concurrent.Future<?> future : futures) {
         future.get();
       }
     } catch (java.util.concurrent.ExecutionException e) {
-      throw new RuntimeException(phase + " phase failed", e.getCause());
+      throw new ShardOrchestrationException(phase + " phase failed", e.getCause());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException(phase + " phase interrupted", e);
+      throw new ShardOrchestrationException(phase + " phase interrupted", e);
     }
   }
 

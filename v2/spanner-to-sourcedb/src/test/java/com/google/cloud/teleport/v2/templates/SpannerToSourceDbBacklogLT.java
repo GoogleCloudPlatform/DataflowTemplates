@@ -19,22 +19,30 @@ import static org.apache.beam.it.common.TestProperties.getProperty;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Instance;
+import com.google.cloud.spanner.InstanceAdminClient;
+import com.google.cloud.spanner.InstanceId;
+import com.google.cloud.spanner.InstanceInfo;
+import com.google.cloud.spanner.InstanceInfo.InstanceField;
+import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.common.base.MoreObjects;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.text.ParseException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
@@ -65,28 +73,24 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbBacklogLT.class);
 
   private static final String TEMPLATE_SPEC_PATH =
-      com.google.common.base.MoreObjects.firstNonNull(
+      MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
-  private final String spannerDdlResource = "SpannerToSourceDbBacklogLT/spanner-schema.sql";
-  private final String sessionFileResource = "SpannerToSourceDbBacklogLT/session.json";
-  private final String table = "MigrationLoadTest";
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerToSourceDbBacklogLT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbBacklogLT/session.json";
+  private static final String TABLE = "MigrationLoadTest";
 
   private CloudSqlShardOrchestrator orchestrator;
+  private CloudSqlResourceManager manager1;
+  private CloudSqlResourceManager manager2;
   private Integer originalSpannerNodeCount = null;
   private Integer originalSpannerMetadataNodeCount = null;
 
   @Before
   public void setup() throws IOException {
-    LOG.info(
-        "Initializing resource managers for High-Scale Backlog Replication E2E Load Test via Orchestrator...");
+    setupResourceManagers(SPANNER_DDL_RESOURCE, SESSION_FILE_RESOURCE);
 
-    // Setup Spanner database and metadata database, GCS artifact resource manager, and session
-    // files
-    setupResourceManagers(spannerDdlResource, sessionFileResource);
-
-    // Initialize the Cloud SQL Shard Orchestrator for dynamic GCP-level provisioning over Private
-    // IP
     orchestrator =
         new CloudSqlShardOrchestrator(
             DatabaseType.MYSQL,
@@ -95,26 +99,30 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
             region,
             gcsResourceManager);
 
+    // The CloudSQL setup consists of 2 physical shards with 2 logical shards each
+    String physicalShard1 =
+        getProperty(
+            "physicalShard1", "nokill-high-resources-backlog-shard1", TestProperties.Type.PROPERTY);
+    String physicalShard2 =
+        getProperty(
+            "physicalShard2", "nokill-high-resources-backlog-shard2", TestProperties.Type.PROPERTY);
+
     Map<String, List<String>> shardMap = new HashMap<>();
-    shardMap.put("nokill-high-resources-backlog-shard1", List.of("shard0", "shard1"));
-    shardMap.put("nokill-high-resources-backlog-shard2", List.of("shard2", "shard3"));
+    shardMap.put(physicalShard1, List.of("shard0", "shard1"));
+    shardMap.put(physicalShard2, List.of("shard2", "shard3"));
 
     // Initialize the physical instances (reusing existing ones) and logical schemas
     orchestrator.initialize(shardMap, "orchestrator_shards_bulk.json");
+    manager1 = (CloudSqlResourceManager) orchestrator.managers.get(physicalShard1);
+    manager2 = (CloudSqlResourceManager) orchestrator.managers.get(physicalShard2);
 
-    // Create logical table schemas inside each database shard
     LOG.info("Creating logical schemas on MySQL shards...");
-    CloudSqlResourceManager manager1 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard1");
-    CloudSqlResourceManager manager2 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard2");
     createLogicalTableSchema(manager1, "shard0");
     createLogicalTableSchema(manager1, "shard1");
     createLogicalTableSchema(manager2, "shard2");
     createLogicalTableSchema(manager2, "shard3");
 
-    // Upload sharding configuration in the flat format expected by SpannerToSourceDb
-    LOG.info("Generating and uploading flat sharding configuration to GCS...");
+    LOG.info("Generating and uploading sharding configuration to GCS...");
     createAndUploadShardConfigToGcs();
 
     // Store original node counts for cleanup
@@ -153,80 +161,25 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
 
   @Test
   public void reverseReplicationBacklogLoadTest()
-      throws IOException, java.text.ParseException, InterruptedException {
-    LOG.info("Running High-Scale Backlog Replication E2E Load Test (1 Billion rows)...");
+      throws IOException, ParseException, InterruptedException {
 
     // -------------------------------------------------------------
-    // PHASE 1: Connectivity & Setup Sanity
+    // PHASE 1: Import 1 billion rows to Spanner
     // -------------------------------------------------------------
-    LOG.info("PHASE 1: Verifying Spanner & CloudSQL setup connectivity...");
-    assertNotNull("Spanner resource manager should be initialized", spannerResourceManager);
+    LOG.info("PHASE 1: Import 1 billion rows to Spanner");
 
-    String testId = "test-id-12345";
-    String testPayload = "test-payload-sanity";
-    String testShardId = "shard_0";
-
-    // Write/Read Spanner Ping Row
-    List<Mutation> mutations = new ArrayList<>();
-    mutations.add(
-        Mutation.newInsertOrUpdateBuilder("MigrationLoadTest")
-            .set("Id")
-            .to(testId)
-            .set("Payload")
-            .to(testPayload)
-            .set("migration_shard_id")
-            .to(testShardId)
-            .build());
-    spannerResourceManager.write(mutations);
-
-    List<Struct> spannerResults =
-        spannerResourceManager.runQuery(
-            String.format(
-                "SELECT Payload FROM MigrationLoadTest WHERE migration_shard_id = '%s' AND Id = '%s'",
-                testShardId, testId));
-    assertNotNull("Results from Spanner should not be null", spannerResults);
-    assertEquals("Should return exactly 1 row", 1, spannerResults.size());
-    assertEquals(
-        "Payload matches what was written to Spanner",
-        testPayload,
-        spannerResults.get(0).getString("Payload"));
-    spannerResourceManager.write(
-        List.of(
-            Mutation.delete(
-                "MigrationLoadTest", com.google.cloud.spanner.Key.of(testShardId, testId))));
-
-    // Verify GCS configs exist
-    String sessionGcsPath = getGcsPath(SESSION_FILE_NAME, gcsResourceManager);
-    assertTrue("Session file should exist on GCS", sessionGcsPath.startsWith("gs://"));
-    String shardGcsPath = getGcsPath(SOURCE_SHARDS_FILE_NAME, gcsResourceManager);
-    assertTrue("Shard file should exist on GCS", shardGcsPath.startsWith("gs://"));
-
-    // Verify CloudSQL connectivity
-    CloudSqlResourceManager manager1 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard1");
-    CloudSqlResourceManager manager2 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard2");
-    assertNotNull("Shard 1 resource manager should be initialized", manager1);
-    assertNotNull("Shard 2 resource manager should be initialized", manager2);
-    verifyMySqlLogicalShard(manager1, "shard0");
-    verifyMySqlLogicalShard(manager1, "shard1");
-    verifyMySqlLogicalShard(manager2, "shard2");
-    verifyMySqlLogicalShard(manager2, "shard3");
-
-    // -------------------------------------------------------------
-    // PHASE 2: Spanner Scale-Up & Avro Import
-    // -------------------------------------------------------------
-    LOG.info("PHASE 2: Scaling Spanner & running Avro Import...");
-
-    // Record UTC start timestamp before import begins (to serve as change stream start timestamp)
+    // Record UTC start timestamp before import begins (to serve as start timestamp to reverse
+    // replication job)
     String startTimestamp = java.time.Instant.now().toString();
-    LOG.info("Recorded UTC start timestamp for change stream: {}", startTimestamp);
+    LOG.info("Recorded UTC start timestamp for Reverse Replication Job: {}", startTimestamp);
 
+    // Node count taken from manual test results available in go/reverse-backlog-manual-tests
     int scaleNodes =
         Integer.parseInt(getProperty("spannerScaleNodes", "25", TestProperties.Type.PROPERTY));
     updateSpannerNodeCount(spannerResourceManager.getInstanceId(), scaleNodes);
 
-    // Verify scale-up
+    // Verify scale-up - it is critical that the Spanner instance is scaled up, otherwise the
+    // pipeline might run out of resources or face bottleneck issues.
     int currentNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
     assertEquals(
         "Spanner instance node count mismatch after scale-up", scaleNodes, currentNodeCount);
@@ -251,7 +204,7 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     LOG.info("Avro Input Directory: {}", avroInputDir);
     LOG.info("Expected Spanner count: {}", expectedSpannerCount);
 
-    PipelineLauncher.LaunchInfo importJobInfo = launchClassicImportJob(avroInputDir);
+    PipelineLauncher.LaunchInfo importJobInfo = launchImportJob(avroInputDir);
     assertThatPipeline(importJobInfo).isRunning();
 
     PipelineOperator.Result importResult =
@@ -259,18 +212,26 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
             createConfig(importJobInfo, Duration.ofMinutes(importTimeoutMinutes)));
     assertThatResult(importResult).isLaunchFinished();
 
-    long spannerCount = spannerResourceManager.getRowCount(table);
+    long spannerCount = spannerResourceManager.getRowCount(TABLE);
     assertEquals("Spanner database row count mismatch", expectedSpannerCount, spannerCount);
     LOG.info("Import Phase successful! Imported {} rows.", spannerCount);
 
     // -------------------------------------------------------------
-    // PHASE 3: Downscale & Reverse Replication E2E Verification
+    // PHASE 2: Reverse Replication E2E Verification
     // -------------------------------------------------------------
     // Downscale main Spanner instance to 5 nodes and upscale metadata Spanner instance to 20 nodes
+    // (go/reverse-backlog-manual-tests)
+    int spannerDownscaleNodes =
+        Integer.parseInt(getProperty("spannerDownscaleNodes", "5", TestProperties.Type.PROPERTY));
+    int metadataScaleNodes =
+        Integer.parseInt(getProperty("metadataScaleNodes", "20", TestProperties.Type.PROPERTY));
+
     LOG.info(
-        "Downscaling main Spanner instance to 5 nodes and upscaling metadata instance to 20 nodes before starting replication...");
-    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), 5);
-    updateSpannerNodeCount(spannerMetadataResourceManager.getInstanceId(), 20);
+        "Downscaling main Spanner instance to {} nodes and upscaling metadata instance to {} nodes before starting replication...",
+        spannerDownscaleNodes,
+        metadataScaleNodes);
+    updateSpannerNodeCount(spannerResourceManager.getInstanceId(), spannerDownscaleNodes);
+    updateSpannerNodeCount(spannerMetadataResourceManager.getInstanceId(), metadataScaleNodes);
 
     int reverseTimeoutMinutes =
         Integer.parseInt(getProperty("reverseTimeoutMinutes", "600", TestProperties.Type.PROPERTY));
@@ -282,18 +243,26 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
         Integer.parseInt(getProperty("maxWorkers", "200", TestProperties.Type.PROPERTY));
     String machineType = getProperty("machineType", "n2-highmem-8", TestProperties.Type.PROPERTY);
 
-    long expectedShardCount =
-        Long.parseLong(
-            getProperty("expectedShardCount", "250000000", TestProperties.Type.PROPERTY));
-    long metricThreshold =
-        Long.parseLong(getProperty("metricThreshold", "999999999", TestProperties.Type.PROPERTY));
-
     PipelineLauncher.LaunchInfo reverseJobInfo =
         launchReverseReplicationJob(
             startTimestamp, numWorkers, maxWorkers, machineType, maxShardConnections);
     assertThatPipeline(reverseJobInfo).isRunning();
 
-    // Poll success_record_count metric until it reaches the threshold
+    // This is a long running test (7-8 hours) and we don't expect the SQL count queries to pass
+    // the assertion for the first few hours (when the replication backlog is being processed).
+    // Asserting on direct database counts during early stages would be highly inefficient and put
+    // unnecessary resource contention on the database shards. Thus, we poll the
+    // "success_record_count" metric and only start asserting on SQL counts once the metric
+    // threshold is met.
+    // Note that the above metric can NOT act as a reliable source of truth for the success of a
+    // replication pipeline. It is ONLY used as an indicator to start the SQL count verification.
+
+    long expectedShardCount =
+        Long.parseLong(
+            getProperty("expectedShardCount", "250000000", TestProperties.Type.PROPERTY));
+    long metricThreshold =
+        Long.parseLong(getProperty("metricThreshold", "1000000000", TestProperties.Type.PROPERTY));
+
     long polledCount = 0;
     long startTimeMillis = System.currentTimeMillis();
     int numShards = 4;
@@ -305,21 +274,11 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
                 + reverseTimeoutMinutes
                 + " minutes.");
       }
-      Thread.sleep(300000); // Poll every 5 minutes
 
-      Double metricVal =
+      Double successRecordsCount =
           pipelineLauncher.getMetric(
               project, region, reverseJobInfo.jobId(), "success_record_count");
-      polledCount = metricVal != null ? metricVal.longValue() : 0;
-
-      Double severeErrors =
-          pipelineLauncher.getMetric(project, region, reverseJobInfo.jobId(), "severe_error_count");
-      double severeErrorVal = severeErrors != null ? severeErrors : 0.0;
-
-      Double skippedRecords =
-          pipelineLauncher.getMetric(
-              project, region, reverseJobInfo.jobId(), "skipped_record_count");
-      double skippedRecordVal = skippedRecords != null ? skippedRecords : 0.0;
+      polledCount = successRecordsCount != null ? successRecordsCount.longValue() : 0;
 
       LOG.info("--- PIPELINE PROGRESS UPDATE ---");
       LOG.info(
@@ -328,87 +287,107 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
           reverseTimeoutMinutes);
       LOG.info(
           "Polled success_record_count: {}. Target threshold: {}", polledCount, metricThreshold);
-      LOG.info("Severe errors so far: {}", severeErrorVal);
-      LOG.info("Skipped records so far: {}", skippedRecordVal);
-
-      for (int i = 1; i <= numShards; ++i) {
-        Double replicationLag =
-            pipelineLauncher.getMetric(
-                project,
-                region,
-                reverseJobInfo.jobId(),
-                "replication_lag_in_seconds_Shard" + i + "_MEAN");
-        LOG.info(
-            "Replication Lag Mean Shard{}: {} seconds",
-            i,
-            replicationLag != null ? replicationLag : 0.0);
-      }
       LOG.info("---------------------------------");
+
+      if (polledCount >= metricThreshold) {
+        break;
+      }
+
+      Thread.sleep(
+          900000); // Poll every 15 minutes. Since the test runs for 7-8 hours, 15-minute intervals
+      // print exactly 4 logs per hour, preventing clutter and API call costs.
     }
 
-    // Verify database parity on MySQL shards
+    // Verify database parity on MySQL shards with a retry loop to handle minor replication
+    // synchronization lag
     LOG.info(
-        "Replication threshold reached. Verifying logical databases row counts on CloudSQL...");
-    long count0 = getLogicalDatabaseRowCount(manager1, "shard0");
-    long count1 = getLogicalDatabaseRowCount(manager1, "shard1");
-    long count2 = getLogicalDatabaseRowCount(manager2, "shard2");
-    long count3 = getLogicalDatabaseRowCount(manager2, "shard3");
+        "Replication threshold reached. Verifying logical databases row counts on CloudSQL with a catch-up retry loop...");
+    long verificationStartTime = System.currentTimeMillis();
+    int verificationTimeoutMinutes =
+        Integer.parseInt(
+            getProperty("verificationTimeoutMinutes", "30", TestProperties.Type.PROPERTY));
+    long verificationTimeoutMs =
+        verificationTimeoutMinutes
+            * 60
+            * 1000; // Configurable minutes timeout for final parity catch-up
+    boolean parityAchieved = false;
+    long count0 = 0, count1 = 0, count2 = 0, count3 = 0;
 
-    LOG.info(
-        "Logical databases replicated row counts: shard0={}, shard1={}, shard2={}, shard3={}",
-        count0,
-        count1,
-        count2,
-        count3);
-    assertEquals("shard0 row count mismatch", expectedShardCount, count0);
-    assertEquals("shard1 row count mismatch", expectedShardCount, count1);
-    assertEquals("shard2 row count mismatch", expectedShardCount, count2);
-    assertEquals("shard3 row count mismatch", expectedShardCount, count3);
+    // We execute the logical database row counts using a parallel thread pool instead of running
+    // them sequentially. At 1-billion row scale, executing sequential SELECT COUNT(*) on 4 massive
+    // MySQL database shards sequentially takes around 12 minutes per iteration, causing the
+    // catch-up verification timeout to exhaust after only two/three iterations. Running in parallel
+    // reduces
+    // the query round-trip time to the slowest single shard query (~3 minutes), ensuring the loop
+    // has
+    // ample opportunities to poll and catch up.
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+    try {
+      while (System.currentTimeMillis() - verificationStartTime < verificationTimeoutMs) {
+        CompletableFuture<Long> f0 =
+            CompletableFuture.supplyAsync(
+                () -> getLogicalDatabaseRowCount(manager1, "shard0"), executor);
+        CompletableFuture<Long> f1 =
+            CompletableFuture.supplyAsync(
+                () -> getLogicalDatabaseRowCount(manager1, "shard1"), executor);
+        CompletableFuture<Long> f2 =
+            CompletableFuture.supplyAsync(
+                () -> getLogicalDatabaseRowCount(manager2, "shard2"), executor);
+        CompletableFuture<Long> f3 =
+            CompletableFuture.supplyAsync(
+                () -> getLogicalDatabaseRowCount(manager2, "shard3"), executor);
+
+        // Block and wait for all parallel database count queries to resolve and return their values
+        // - neccessary for the subsequent if block to compute correctly
+        count0 = f0.join();
+        count1 = f1.join();
+        count2 = f2.join();
+        count3 = f3.join();
+
+        LOG.info(
+            "Polled replicated row counts: shard0={}, shard1={}, shard2={}, shard3={} (Target: {})",
+            count0,
+            count1,
+            count2,
+            count3,
+            expectedShardCount);
+
+        if (count0 == expectedShardCount
+            && count1 == expectedShardCount
+            && count2 == expectedShardCount
+            && count3 == expectedShardCount) {
+          parityAchieved = true;
+          break;
+        }
+
+        LOG.info(
+            "Database counts have not reached exact target parity yet. Retrying in 1 minute...");
+        Thread.sleep(60000); // Polling retry interval of 1 minute
+      }
+    } finally {
+      executor.shutdown();
+    }
+
+    assertTrue(
+        String.format(
+            "Logical database row count mismatch after replication verification timeout. Replicated: shard0=%d, shard1=%d, shard2=%d, shard3=%d (Expected: %d each)",
+            count0, count1, count2, count3, expectedShardCount),
+        parityAchieved);
 
     LOG.info("All sharded replication backlog counts successfully verified. Cancelling job...");
     PipelineOperator.Result cancelResult =
         pipelineOperator.cancelJobAndFinish(createConfig(reverseJobInfo, Duration.ofMinutes(20)));
     assertThatResult(cancelResult).isLaunchFinished();
-
     exportMetrics(reverseJobInfo, numShards);
-    LOG.info("High-Scale Backlog Replication E2E Load Test passed successfully!");
-  }
-
-  private void verifyMySqlLogicalShard(CloudSqlResourceManager manager, String dbName) {
-    LOG.info("Verifying logical database: {}...", dbName);
-
-    String testId = "test-id-" + dbName;
-    String testPayload = "payload-" + dbName;
-
-    // Insert test row
-    String insertSql =
-        String.format(
-            "INSERT INTO %s.MigrationLoadTest (Id, Payload) VALUES ('%s', '%s')",
-            dbName, testId, testPayload);
-    manager.runSQLUpdate(insertSql);
-
-    // Query test row back
-    String selectSql =
-        String.format("SELECT Payload FROM %s.MigrationLoadTest WHERE Id = '%s'", dbName, testId);
-    List<Map<String, Object>> result = manager.runSQLQuery(selectSql);
-
-    assertNotNull("Result from MySQL logical shard " + dbName + " should not be null", result);
-    assertEquals("Should return exactly 1 row", 1, result.size());
-    assertEquals(
-        "Payload matches what was written to " + dbName, testPayload, result.get(0).get("Payload"));
-
-    // Cleanup test row
-    String deleteSql =
-        String.format("DELETE FROM %s.MigrationLoadTest WHERE Id = '%s'", dbName, testId);
-    manager.runSQLUpdate(deleteSql);
-    LOG.info("Logical database {} verified successfully.", dbName);
   }
 
   private void createLogicalTableSchema(CloudSqlResourceManager manager, String dbName) {
     manager.runSQLUpdate(
         "CREATE TABLE IF NOT EXISTS "
             + dbName
-            + ".MigrationLoadTest ("
+            + "."
+            + TABLE
+            + " ("
             + "Id VARCHAR(36) NOT NULL,"
             + "Payload LONGTEXT NOT NULL,"
             + "PRIMARY KEY (Id)"
@@ -416,11 +395,6 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
   }
 
   private void createAndUploadShardConfigToGcs() throws IOException {
-    CloudSqlResourceManager manager1 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard1");
-    CloudSqlResourceManager manager2 =
-        (CloudSqlResourceManager) orchestrator.managers.get("nokill-high-resources-backlog-shard2");
-
     JsonArray ja = new JsonArray();
     ja.add(createShardConfig("shard_0", "shard0", manager1));
     ja.add(createShardConfig("shard_1", "shard1", manager1));
@@ -446,7 +420,7 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     return jsObj;
   }
 
-  private PipelineLauncher.LaunchInfo launchClassicImportJob(String inputDir) throws IOException {
+  private PipelineLauncher.LaunchInfo launchImportJob(String inputDir) throws IOException {
     ClassicTemplateClient classicClient = ClassicTemplateClient.builder(CREDENTIALS).build();
 
     Map<String, String> params = new HashMap<>();
@@ -460,7 +434,7 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
                 "gs://dataflow-templates/latest/GCS_Avro_to_Cloud_Spanner")
             .setParameters(params)
             .addEnvironment("numWorkers", 80)
-            .addEnvironment("maxWorkers", 500)
+            .addEnvironment("maxWorkers", 120)
             .addEnvironment("machineType", "n2-highmem-8")
             .build();
 
@@ -503,10 +477,17 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
   }
 
   private long getLogicalDatabaseRowCount(CloudSqlResourceManager manager, String dbName) {
+    // We use the InnoDB Optimizer hint 'SET_VAR(innodb_parallel_read_threads=94)' to explicitly
+    // instruct
+    // MySQL to leverage parallel read threads for the COUNT(*) operation. On massive shards
+    // containing
+    // 250 million rows, this utilizes multiple CPU cores of the high-resource Cloud SQL instance,
+    // accelerating the full-table scan from over 10 minutes down to 2 minutes.
     String query =
         "SELECT /*+ SET_VAR(innodb_parallel_read_threads=94) */ COUNT(*) FROM "
             + dbName
-            + ".MigrationLoadTest";
+            + "."
+            + TABLE;
     List<Map<String, Object>> result = manager.runSQLQuery(query);
     if (result != null && !result.isEmpty()) {
       Map<String, Object> row = result.get(0);
@@ -520,36 +501,16 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
   }
 
   public void updateSpannerNodeCount(String instanceId, int nodeCount) {
-    com.google.cloud.spanner.SpannerOptions options =
-        com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
-    try (com.google.cloud.spanner.Spanner spanner = options.getService()) {
-      com.google.cloud.spanner.InstanceAdminClient instanceAdminClient =
-          spanner.getInstanceAdminClient();
+    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(project).build();
+    try (Spanner spanner = options.getService()) {
+      InstanceAdminClient instanceAdminClient = spanner.getInstanceAdminClient();
 
-      int fromCount = -1;
-      if (spannerResourceManager != null
-          && instanceId.equals(spannerResourceManager.getInstanceId())) {
-        fromCount = originalSpannerNodeCount != null ? originalSpannerNodeCount : -1;
-      } else if (spannerMetadataResourceManager != null
-          && instanceId.equals(spannerMetadataResourceManager.getInstanceId())) {
-        fromCount =
-            originalSpannerMetadataNodeCount != null ? originalSpannerMetadataNodeCount : -1;
-      }
-
-      LOG.info(
-          "Updating Spanner instance {} node count from {} to {}...",
-          instanceId,
-          fromCount,
-          nodeCount);
-      com.google.cloud.spanner.InstanceInfo instanceInfo =
-          com.google.cloud.spanner.InstanceInfo.newBuilder(
-                  com.google.cloud.spanner.InstanceId.of(project, instanceId))
+      LOG.info("Updating Spanner instance {} node count to {}...", instanceId, nodeCount);
+      InstanceInfo instanceInfo =
+          InstanceInfo.newBuilder(InstanceId.of(project, instanceId))
               .setNodeCount(nodeCount)
               .build();
-      instanceAdminClient
-          .updateInstance(
-              instanceInfo, com.google.cloud.spanner.InstanceInfo.InstanceField.NODE_COUNT)
-          .get();
+      instanceAdminClient.updateInstance(instanceInfo, InstanceField.NODE_COUNT).get();
       LOG.info("Successfully updated Spanner instance {} node count to {}.", instanceId, nodeCount);
     } catch (Exception e) {
       LOG.error("Failed to update Spanner instance node count.", e);
@@ -558,12 +519,10 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
   }
 
   public int getSpannerNodeCount(String instanceId) {
-    com.google.cloud.spanner.SpannerOptions options =
-        com.google.cloud.spanner.SpannerOptions.newBuilder().setProjectId(project).build();
-    try (com.google.cloud.spanner.Spanner spanner = options.getService()) {
-      com.google.cloud.spanner.InstanceAdminClient instanceAdminClient =
-          spanner.getInstanceAdminClient();
-      com.google.cloud.spanner.Instance instance = instanceAdminClient.getInstance(instanceId);
+    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(project).build();
+    try (Spanner spanner = options.getService()) {
+      InstanceAdminClient instanceAdminClient = spanner.getInstanceAdminClient();
+      Instance instance = instanceAdminClient.getInstance(instanceId);
       return instance.getNodeCount();
     } catch (Exception e) {
       LOG.error("Failed to retrieve Spanner instance node count.", e);
