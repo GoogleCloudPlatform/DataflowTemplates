@@ -57,6 +57,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
+        --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails
