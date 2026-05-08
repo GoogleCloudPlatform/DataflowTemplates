@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.javafaker.Faker;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.common.annotations.VisibleForTesting;
@@ -31,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import net.datafaker.Faker;
 import org.apache.beam.sdk.schemas.Schema;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.Instant;

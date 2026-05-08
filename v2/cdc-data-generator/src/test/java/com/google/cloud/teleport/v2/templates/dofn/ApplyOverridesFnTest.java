@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
@@ -30,19 +31,18 @@ import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import com.jasonclawson.jackson.dataformat.hocon.HoconFactory;
 import java.util.Arrays;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 
 public class ApplyOverridesFnTest {
 
-  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
+  private SchemaConfig parseConfig(String hoconContent) throws Exception {
+    ObjectMapper mapper = new ObjectMapper(new HoconFactory());
+    return mapper.readValue(hoconContent, SchemaConfig.class);
+  }
 
   @Test
   public void testProcessElement_NoConfigPath() throws Exception {
@@ -61,7 +61,6 @@ public class ApplyOverridesFnTest {
             .build();
 
     ApplyOverridesFn fn = new ApplyOverridesFn(null, 100, 10, 1);
-    fn.setup();
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -75,6 +74,37 @@ public class ApplyOverridesFnTest {
     assertEquals(100L, (long) table.insertQps());
     assertEquals(10L, (long) table.updateQps());
     assertEquals(1L, (long) table.deleteQps());
+  }
+
+  @Test
+  public void testProcessElement_ConfigWithNullTables() throws Exception {
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "table1",
+                    DataGeneratorTable.builder()
+                        .name("table1")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .build()))
+            .build();
+
+    SchemaConfig configWithNullTables = new SchemaConfig();
+    ApplyOverridesFn fn = new ApplyOverridesFn(configWithNullTables, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    assertNotNull(resolvedSchema);
+    DataGeneratorTable table = resolvedSchema.tables().get("table1");
+    assertNotNull(table);
+    assertEquals(100L, (long) table.insertQps());
   }
 
   @Test
@@ -93,12 +123,10 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent = "tables {\n  table1 {\n    insertQps = 500\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -136,13 +164,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    columns {\n      email {\n        fakerExpression = \"#{internet.emailAddress}\"\n        skip = true\n      }\n    }\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -180,13 +206,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    columns {\n      id {\n        skip = true\n      }\n    }\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
 
     assertThrows(RuntimeException.class, () -> fn.processElement(schema, receiver));
@@ -208,13 +232,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table2\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -255,13 +277,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table3\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
 
     assertThrows(IllegalArgumentException.class, () -> fn.processElement(schema, receiver));
@@ -291,13 +311,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    foreignKeys = [\n      {\n        name = \"fk1\"\n        referencedTable = \"table2\"\n        keyColumns = [\"col1\"]\n        referencedColumns = [\"col2\"]\n      }\n    ]\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -313,12 +331,10 @@ public class ApplyOverridesFnTest {
   public void testProcessElement_UnknownTableOverrideWarns() throws Exception {
     DataGeneratorSchema schema = DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent = "tables {\n  unknown_table {\n    insertQps = 500\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -345,12 +361,10 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent = "tables {\n  table1 {\n    updateQps = 20\n    deleteQps = 5\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -388,13 +402,11 @@ public class ApplyOverridesFnTest {
                         .build()))
             .build();
 
-    File file = tempFolder.newFile("config.conf");
     String hoconContent =
         "tables {\n  table1 {\n    columns {\n      id {\n        skip = false\n      }\n    }\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
 
@@ -408,21 +420,19 @@ public class ApplyOverridesFnTest {
   }
 
   @Test
-  public void testSetup_loadsAndParsesValidHoconFile() throws Exception {
-    File file = tempFolder.newFile("config.conf");
+  public void testConstructorAssignment() throws Exception {
     String hoconContent = "tables {\n  table1 {\n    insertQps = 777\n  }\n}\n";
-    Files.write(file.toPath(), hoconContent.getBytes(StandardCharsets.UTF_8));
+    SchemaConfig config = parseConfig(hoconContent);
 
-    ApplyOverridesFn fn = new ApplyOverridesFn(file.getAbsolutePath(), 100, 10, 1);
-    fn.setup();
+    ApplyOverridesFn fn = new ApplyOverridesFn(config, 100, 10, 1);
 
     java.lang.reflect.Field field = ApplyOverridesFn.class.getDeclaredField("schemaConfig");
     field.setAccessible(true);
-    SchemaConfig parsedConfig = (SchemaConfig) field.get(fn);
+    SchemaConfig assignedConfig = (SchemaConfig) field.get(fn);
 
-    assertNotNull(parsedConfig);
-    assertNotNull(parsedConfig.getTables());
-    assertTrue(parsedConfig.getTables().containsKey("table1"));
-    assertEquals(Integer.valueOf(777), parsedConfig.getTables().get("table1").getInsertQps());
+    assertNotNull(assignedConfig);
+    assertNotNull(assignedConfig.getTables());
+    assertTrue(assignedConfig.getTables().containsKey("table1"));
+    assertEquals(Integer.valueOf(777), assignedConfig.getTables().get("table1").getInsertQps());
   }
 }

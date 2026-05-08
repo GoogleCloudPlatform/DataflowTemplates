@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.templates.dofn.ApplyOverridesFn;
 import com.google.cloud.teleport.v2.templates.dofn.BuildSchemaDagFn;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
+import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -40,7 +41,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
   private final Integer insertQps;
   private final Integer updateQps;
   private final Integer deleteQps;
-  private final String schemaConfigPath;
+  private final SchemaConfig schemaConfig;
 
   public SchemaLoader(
       SinkType sinkType,
@@ -48,13 +49,13 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
       Integer insertQps,
       Integer updateQps,
       Integer deleteQps,
-      String schemaConfigPath) {
+      SchemaConfig schemaConfig) {
     this.sinkType = sinkType;
     this.sinkOptionsPath = sinkOptionsPath;
     this.insertQps = insertQps;
     this.updateQps = updateQps;
     this.deleteQps = deleteQps;
-    this.schemaConfigPath = schemaConfigPath;
+    this.schemaConfig = schemaConfig;
   }
 
   @Override
@@ -64,7 +65,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
         .apply("FetchSchemaFromDb", ParDo.of(new FetchSchemaFn(sinkType, sinkOptionsPath)))
         .apply(
             "ApplyOverrides",
-            ParDo.of(new ApplyOverridesFn(schemaConfigPath, insertQps, updateQps, deleteQps)))
+            ParDo.of(new ApplyOverridesFn(schemaConfig, insertQps, updateQps, deleteQps)))
         .apply("BuildSchemaDAG", ParDo.of(new BuildSchemaDagFn()))
         .apply("ViewAsSingleton", View.asSingleton());
   }

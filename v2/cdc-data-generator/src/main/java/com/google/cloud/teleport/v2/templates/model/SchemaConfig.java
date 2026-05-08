@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.v2.templates.model;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 /** Configuration class for schema overrides, used for deserializing HOCON/JSON config files. */
-public class SchemaConfig {
+public class SchemaConfig implements Serializable {
 
   private Map<String, TableConfig> tables;
 
@@ -31,7 +32,13 @@ public class SchemaConfig {
     this.tables = tables;
   }
 
-  public static class TableConfig {
+  public static Map<String, TableConfig> getTables(SchemaConfig config) {
+    return (config != null && config.getTables() != null)
+        ? config.getTables()
+        : java.util.Collections.emptyMap();
+  }
+
+  public static class TableConfig implements Serializable {
     private Integer insertQps;
     private Integer updateQps;
     private Integer deleteQps;
@@ -79,7 +86,7 @@ public class SchemaConfig {
     }
   }
 
-  public static class ColumnConfig {
+  public static class ColumnConfig implements Serializable {
     private Object fakerExpression;
     private Boolean skip;
 
@@ -100,7 +107,7 @@ public class SchemaConfig {
     }
   }
 
-  public static class ForeignKeyConfig {
+  public static class ForeignKeyConfig implements Serializable {
     private String name;
     private String referencedTable;
     private List<String> keyColumns;
