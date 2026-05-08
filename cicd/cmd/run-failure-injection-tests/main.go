@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -33,31 +33,29 @@ func main() {
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8),
+		mvnFlags.ThreadCount(1),
 		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
 
-	// Run spanner integration tests
+	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
-		mvnFlags.IncludeDependencies(),
-		mvnFlags.IncludeDependents(),
+		mvnFlags.DoNotIncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
-		mvnFlags.RunSpannerStagingIntegrationTests(),
-		mvnFlags.ThreadCount(4),
-		mvnFlags.IntegrationTestParallelism(3),
+		mvnFlags.RunFailureInjectionTests(),
+		mvnFlags.ThreadCount(flags.ThreadCount()),
+		mvnFlags.IntegrationTestParallelism(flags.IntegrationTestParallelism()),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
 		mvnFlags.InternalMaven(),
@@ -76,7 +74,10 @@ func main() {
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
-		flags.UnifiedWorkerHarnessContainerImage())
+		flags.UnifiedWorkerHarnessContainerImage(),
+		flags.CloudProxyPassword(),
+		mvnFlags.SpecificTest(flags.TestToRun()),
+		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}

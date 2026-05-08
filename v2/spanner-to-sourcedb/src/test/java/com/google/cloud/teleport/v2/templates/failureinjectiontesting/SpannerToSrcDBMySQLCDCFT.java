@@ -50,8 +50,23 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Test for verifying correctness of CDC processing in {@link SpannerToSourceDb} Spanner to SourceDb
- * template.
+ * Fault Tolerance (FT) test for verifying the robustness and correctness of Change Data Capture
+ * (CDC) processing in the {@link SpannerToSourceDb} Dataflow template.
+ *
+ * <p>Objective: Verify that the Reverse Replication (RR) pipeline can successfully process CDC
+ * events from a Spanner change stream and write them to a target MySQL database, even when facing
+ * persistent transaction timeouts at the sink.
+ *
+ * <p>Edge cases covered in this test include:
+ *
+ * <ul>
+ *   <li>Handling simulated MySQL transaction timeouts using the {@code
+ *       TransactionTimeoutInjectionPolicy}.
+ *   <li>Processing large bursts of CDC events (inserts/updates/deletes) from Spanner simultaneously
+ *       while undergoing the injected failure condition.
+ *   <li>Ensuring the pipeline successfully retries aborted transactions and guarantees consistency
+ *       in CDC events processing without duplicating records.
+ * </ul>
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -78,16 +93,21 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
-    // create Spanner Resources
+    // 1. Create Source Spanner Databases
+    // The main database holds the data and the change stream.
+    // The metadata database is used by the pipeline to store internal state.
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    // create MySql Resources
+    // 2. Create Target MySQL Database
+    // Set up the downstream Cloud SQL MySQL database and create the target Users table.
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
     cloudSqlResourceManager.createTable(
         USERS_TABLE, new JDBCResourceManager.JDBCSchema(USERS_TABLE_MYSQL_DDL, "id"));
 
-    // create and upload GCS Resources
+    // 3. Create and upload GCS Resources
+    // Set up the GCS bucket and upload the reverse replication shard configuration
+    // and Spanner session files required by the pipeline.
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
@@ -96,20 +116,40 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     gcsResourceManager.uploadArtifact(
         "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
-    // create pubsub manager
+    // 4. Create Pub/Sub Resources
+    // Set up Pub/Sub resources for DLQ processing and error notifications.
     pubsubResourceManager = setUpPubSubResourceManager();
 
-    // record startTimeStamp
+    // 5. Record Start Timestamp
+    // Capture the current time so the pipeline only streams events that occur from this point
+    // forward.
     Timestamp startTimeStamp = Timestamp.now();
 
     int numRows = 200;
     int burstIterations = 5000;
 
-    // generate Load
+    // 6. Generate CDC Load
+    // Simulate high traffic by loading 200 initial rows and generating 5,000 random burst mutations
+    // directly into the Spanner source database.
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     cdcLoadGenerator.generateLoad(numRows, burstIterations, 0.5, spannerResourceManager);
 
-    // launch reverse migration template
+    // 7. Launch Dataflow Template with Failure Injection
+    // This configures the TransactionTimeoutInjectionPolicy, simulating 80-second stalls
+    // for JDBC transactions over a 30-minute window.
+    //
+    // NOTE: This test is estimated to take around 45-50 minutes to complete (30-minute injection
+    // window + setup + post-recovery processing buffer).
+    //
+    // The `startTimestamp` passed here was captured before the CDC load generation. Since the
+    // Dataflow job is launched after all CDC events are loaded into Spanner, it will immediately
+    // face all the CDC events as a burst. During the 30-minute window, the simulated
+    // 80-second delay exceeds standard Spanner transaction timeout, forcing transaction
+    // rollbacks. The pipeline must recover and ensure consistency in CDC events processing.
+    //
+    // After the 30-minute window expires, failures are no longer injected. The pipeline then
+    // rapidly processes the accumulated burst backlog and successfully retries any previously
+    // failed events.
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
@@ -151,10 +191,14 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   @Test
   public void reverseReplicationCrossDbTxnCdcTest() throws IOException, InterruptedException {
 
+    // 1. Wait for the Reverse Replication job to be in a running state
     assertThatPipeline(jobInfo).isRunning();
 
     long expectedRows = spannerResourceManager.getRowCount(USERS_TABLE);
-    // Wait for exact number of rows as Spanner to appear in source
+
+    // 2. Wait for the exact number of rows from Spanner to successfully appear in the target MySQL
+    // database. This verifies that despite the induced transaction rollbacks at the JDBC sink, the
+    // pipeline successfully retried the failed events until all data was synced.
     ConditionCheck sourceDbRowCountCondition =
         CloudSQLRowsCheck.builder(cloudSqlResourceManager, USERS_TABLE)
             .setMinRows((int) expectedRows)
@@ -167,11 +211,13 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
-    // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
-    // buffer for the dataflow job to process the events before asserting the results.
+    // 3. Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more
+    // minutes buffer for the dataflow job to process the events and ensure no late-arriving
+    // events alter the state.
     Thread.sleep(600000);
 
-    // Read data from Spanner and assert that it exactly matches with SourceDb
+    // 4. Read data from both Spanner and MySQL and assert that the exact row states match,
+    // validating the content data integrity and consistency between Spanner and the MySQL target.
     cdcLoadGenerator.assertRows(spannerResourceManager, cloudSqlResourceManager);
   }
 }

@@ -21,9 +21,11 @@ import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +36,7 @@ import net.datafaker.Faker;
 import org.apache.beam.sdk.schemas.Schema;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.Instant;
+import org.json.JSONObject;
 
 /**
  * Common utilities for data generation — value synthesis and Beam type mapping.
@@ -339,5 +342,23 @@ public final class DataGeneratorUtils {
               + "'",
           e);
     }
+  }
+
+  public static Object canonicalizeValue(Object v) {
+    if (v == null) {
+      return JSONObject.NULL;
+    }
+
+    // Convert byte[] to standard Base64 string
+    if (v instanceof byte[] bytes) {
+      return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    // Safely extract bytes from ByteBuffer and convert to Base64
+    if (v instanceof ByteBuffer bb) {
+      return Base64.getEncoder().encodeToString(bb.array());
+    }
+
+    return JSONObject.wrap(v);
   }
 }

@@ -69,6 +69,8 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -928,12 +930,38 @@ public class DataStreamMongoDBToFirestore {
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         reconsumedElements
             .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
-            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+            .apply(
+                "Count DLQ Retries",
+                ParDo.of(
+                    new DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>>() {
+                      private final Counter dlqRetries =
+                          Metrics.counter(DataStreamMongoDBToFirestore.class, "dlqRetries");
+
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        dlqRetries.inc();
+                        c.output(c.element());
+                      }
+                    }));
 
     // Write non-retryable errors to DLQ
     reconsumedElements
         .get(DeadLetterQueueManager.PERMANENT_ERRORS)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            "Count Permanent Failures",
+            ParDo.of(
+                new DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>>() {
+                  private final Counter permanentFailures =
+                      Metrics.counter(DataStreamMongoDBToFirestore.class, "permanentFailures");
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    permanentFailures.inc();
+                    c.output(c.element());
+                  }
+                }))
         .apply(
             "Write new non-retryable errors To DLQ",
             MapElements.via(new StringDeadLetterQueueSanitizer()))
@@ -1136,6 +1164,13 @@ public class DataStreamMongoDBToFirestore {
     private transient Map<String, MongoCollection<Document>> collectionMap;
     private transient MongoClient client;
 
+    private final Counter successfulWrites =
+        Metrics.counter(ProcessBackfillEventFn.class, "successfulWrites");
+    private final Counter retriableFailedWrites =
+        Metrics.counter(ProcessBackfillEventFn.class, "retriableFailedWrites");
+    private final Counter severeFailedWrites =
+        Metrics.counter(ProcessBackfillEventFn.class, "severeFailedWrites");
+
     public ProcessBackfillEventFn(String connectionString, String databaseName, int batchSize) {
       this.connectionString = connectionString;
       this.targetDatabaseName = databaseName;
@@ -1265,6 +1300,7 @@ public class DataStreamMongoDBToFirestore {
         // Output successful events
         for (MongoDbChangeEventContext event : events) {
           out.get(successfulWriteTag).output(event);
+          successfulWrites.inc();
         }
       } catch (MongoBulkWriteException e) {
         LOG.warn(
@@ -1284,8 +1320,10 @@ public class DataStreamMongoDBToFirestore {
           // limit)
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             out.get(severeFailedWriteTag).output(failedElement);
+            severeFailedWrites.inc();
           } else {
             out.get(failedWriteTag).output(failedElement);
+            retriableFailedWrites.inc();
           }
         }
 
@@ -1293,6 +1331,7 @@ public class DataStreamMongoDBToFirestore {
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             out.get(successfulWriteTag).output(events.get(i));
+            successfulWrites.inc();
           }
         }
       } catch (Exception e) {
@@ -1309,6 +1348,7 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
+          retriableFailedWrites.inc();
         }
       }
 
@@ -1358,6 +1398,7 @@ public class DataStreamMongoDBToFirestore {
         // Output successful events
         for (MongoDbChangeEventContext event : events) {
           context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+          successfulWrites.inc();
         }
       } catch (MongoBulkWriteException e) {
         LOG.warn(
@@ -1378,8 +1419,10 @@ public class DataStreamMongoDBToFirestore {
           if (error.getCode() == ProcessChangeEventFn.INVALID_ARGUMENT) {
             context.output(
                 severeFailedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+            severeFailedWrites.inc();
           } else {
             context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+            retriableFailedWrites.inc();
           }
         }
 
@@ -1387,6 +1430,7 @@ public class DataStreamMongoDBToFirestore {
         for (int i = 0; i < events.size(); i++) {
           if (!failedIndices.contains(i)) {
             context.output(successfulWriteTag, events.get(i), Instant.now(), GlobalWindow.INSTANCE);
+            successfulWrites.inc();
           }
         }
       } catch (Exception e) {
@@ -1403,6 +1447,7 @@ public class DataStreamMongoDBToFirestore {
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
+          retriableFailedWrites.inc();
         }
       }
 

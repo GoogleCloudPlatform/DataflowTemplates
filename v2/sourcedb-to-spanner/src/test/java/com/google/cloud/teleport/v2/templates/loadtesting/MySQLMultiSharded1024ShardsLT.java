@@ -50,7 +50,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -69,7 +68,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateLoadTest.class, SkipDirectRunnerTest.class})
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Waiting Dataflow release b/504521494")
 public class MySQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLMultiSharded1024ShardsLT.class);
   private Instant startTime;
@@ -79,7 +77,7 @@ public class MySQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase {
   private final int numPhysicalInstances = 32;
   private final int numLogicalInstances = 32;
 
-  private final Boolean skipBaseCleanup = true;
+  private final Boolean skipBaseCleanup = false;
 
   @Before
   public void setUp() throws IOException {

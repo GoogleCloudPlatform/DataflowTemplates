@@ -102,7 +102,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Max retry attempts.",
       helpText =
-          "The maximum number of retry attempts. Must be greater than zero. Defaults to `no retries`.")
+          "The maximum number of retry attempts. Must be greater than zero. Defaults to `5`.")
+  @Default.Integer(5)
   Integer getMaxRetryAttempts();
 
   void setMaxRetryAttempts(Integer maxRetryAttempts);
@@ -112,7 +113,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
       optional = true,
       description = "Max retry duration.",
       helpText =
-          "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `no retries`.")
+          "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `60000` (1 minute).")
+  @Default.Long(60000)
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);

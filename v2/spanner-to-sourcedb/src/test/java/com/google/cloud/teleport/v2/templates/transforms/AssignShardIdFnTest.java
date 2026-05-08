@@ -41,6 +41,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -176,6 +177,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
     Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
@@ -209,6 +211,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
 
@@ -254,6 +257,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -309,6 +313,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -356,6 +361,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
 
     record.setShard("shard1");
     assignShardIdFn.setMapper(new ObjectMapper());
@@ -398,6 +404,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
     // The line below actually triggers the loading logic that throws the exception
     ShardingLogicImplFetcher.getShardingLogicImpl(
         customJarPath, shardingCustomClassName, "", schemaMapper, "skip");
@@ -472,6 +479,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH));
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -518,6 +526,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH));
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -573,6 +582,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH));
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
@@ -613,6 +623,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
 
     record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -659,6 +670,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH));
 
     record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -714,6 +726,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
 
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
@@ -772,6 +785,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
     record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
@@ -1098,6 +1112,7 @@ public class AssignShardIdFnTest {
             "",
             "",
             "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
     record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();

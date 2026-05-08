@@ -18,8 +18,10 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext.DATA_COL;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import java.util.Base64;
 import java.util.Set;
 import org.bson.Document;
+import org.bson.types.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,5 +55,19 @@ public final class Utils {
     }
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
+  }
+
+  public static String documentIdToString(Object documentId) {
+    if (documentId == null) {
+      return "null";
+    }
+    if (documentId instanceof Binary) {
+      Binary binary = (Binary) documentId;
+      return Base64.getEncoder().encodeToString(binary.getData());
+    }
+    if (documentId instanceof Document) {
+      return ((Document) documentId).toJson();
+    }
+    return documentId.toString();
   }
 }
