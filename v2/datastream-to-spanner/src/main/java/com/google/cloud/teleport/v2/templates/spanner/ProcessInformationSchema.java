@@ -134,7 +134,7 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
         shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
         useSeparateShadowTableDb = true;
       }
-
+      // TODO: Add pgsql support/ cross dialect support.
       mainDdl = getInformationSchemaAsDdl(spannerAccessor);
       shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
 

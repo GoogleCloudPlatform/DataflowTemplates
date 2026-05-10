@@ -28,6 +28,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
+import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -48,6 +49,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -68,8 +70,10 @@ import org.slf4j.LoggerFactory;
  */
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
-  protected static final String SPEC_PATH =
-      "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner";
+  protected static final String TEMPLATE_SPEC_PATH =
+      MoreObjects.firstNonNull(
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner");
   protected String testRootDir;
   protected final int maxWorkers = 100;
   protected final int numWorkers = 50;
@@ -91,6 +95,15 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    */
   public void setUpResourceManagers(String spannerDdlResource, boolean separateShadowTableDb)
       throws IOException {
+    setUpResourceManagers(spannerDdlResource, separateShadowTableDb, 0, 0);
+  }
+
+  public void setUpResourceManagers(
+      String spannerDdlResource,
+      boolean separateShadowTableDb,
+      int maxConcurrentCdcTasks,
+      int maxConcurrentBackfillTasks)
+      throws IOException {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
@@ -104,10 +117,14 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             .build();
 
     gcsResourceManager = createSpannerLTGcsResourceManager();
-    datastreamResourceManager =
+    DatastreamResourceManager.Builder datastreamBuilder =
         DatastreamResourceManager.builder(testName, project, region)
-            .setCredentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
+            .setCredentialsProvider(CREDENTIALS_PROVIDER);
+    if (System.getProperty("privateConnectivity") != null) {
+      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
+    }
+
+    datastreamResourceManager = datastreamBuilder.build();
     secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
 
     // Initialize shadowTableSpannerResourceManager only if separateShadowTableDb is true
@@ -134,6 +151,16 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
       JDBCSource mySQLSource,
       HashMap<String, String> templateParameters,
       HashMap<String, Object> environmentOptions)
+      throws IOException, ParseException, InterruptedException {
+    runLoadTest(tables, mySQLSource, templateParameters, environmentOptions, null);
+  }
+
+  public void runLoadTest(
+      HashMap<String, Integer> tables,
+      JDBCSource mySQLSource,
+      HashMap<String, String> templateParameters,
+      HashMap<String, Object> environmentOptions,
+      Runnable afterLaunchCallback)
       throws IOException, ParseException, InterruptedException {
     // TestClassName/runId/TestMethodName/cdc
     String gcsPrefix =
@@ -192,7 +219,9 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     // Add all parameters for the template
     params.putAll(templateParameters);
 
-    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
 
     // Set all environment options
@@ -202,6 +231,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     // Act
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
     assertThatPipeline(jobInfo).isRunning();
+
+    if (afterLaunchCallback != null) {
+      afterLaunchCallback.run();
+    }
 
     Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tables);
     PipelineOperator.Result result =
@@ -323,6 +356,9 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    */
   public void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
       throws IOException {
+    if (resourceName == null) {
+      return;
+    }
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
