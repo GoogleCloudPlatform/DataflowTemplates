@@ -18,14 +18,21 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext.DATA_COL;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import java.util.Base64;
 import java.util.Set;
 import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
+import org.bson.types.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Utils used by the Datastream-mongodb-to-mongodb pipeline. */
 public final class Utils {
   private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+
+  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
+      JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
   public static void removeTableRowFields(Document doc, Set<String> ignoreFields) {
     for (String ignoreField : ignoreFields) {
@@ -53,5 +60,34 @@ public final class Utils {
     }
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
+  }
+
+  public static String documentIdToString(Object documentId) {
+    if (documentId == null) {
+      return "null";
+    }
+    if (documentId instanceof Binary) {
+      Binary binary = (Binary) documentId;
+      return Base64.getEncoder().encodeToString(binary.getData());
+    }
+    if (documentId instanceof Document) {
+      return ((Document) documentId).toJson();
+    }
+    return documentId.toString();
+  }
+
+  public static String getCanonicalJsonOfDataField(String jsonString) {
+    Document fullEvent = Document.parse(jsonString);
+    Object dataVal = fullEvent.get(DATA_COL);
+    if (dataVal == null) {
+      return null;
+    }
+    if (dataVal instanceof Document) {
+      return ((Document) dataVal).toJson(CANONICAL_JSON_SETTINGS);
+    } else if (dataVal instanceof String) {
+      Document dataDoc = Document.parse((String) dataVal);
+      return dataDoc.toJson(CANONICAL_JSON_SETTINGS);
+    }
+    throw new IllegalArgumentException("Unsupported data field type: " + dataVal.getClass());
   }
 }

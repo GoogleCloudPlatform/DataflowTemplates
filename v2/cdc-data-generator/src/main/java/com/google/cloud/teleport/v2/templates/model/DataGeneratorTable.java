@@ -45,19 +45,24 @@ public abstract class DataGeneratorTable implements Serializable {
   public abstract ImmutableList<DataGeneratorUniqueKey> uniqueKeys();
 
   /** Whether this table is a root table (not interleaved/child). */
-  public abstract boolean isRoot();
+  @Nullable
+  public abstract Boolean isRoot();
 
   /** The QPS for inserts. */
-  public abstract int insertQps();
+  @Nullable
+  public abstract Integer insertQps();
 
   /** The QPS for updates. */
-  public abstract int updateQps();
+  @Nullable
+  public abstract Integer updateQps();
 
   /** The QPS for deletes. */
-  public abstract int deleteQps();
+  @Nullable
+  public abstract Integer deleteQps();
 
   /** The number of records to generate for this table for each record of the parent table. */
-  public abstract double recordsPerTick();
+  @Nullable
+  public abstract Double recordsPerTick();
 
   /** The name of the parent table that drives generation for this table (if any). */
   @Nullable
@@ -87,15 +92,15 @@ public abstract class DataGeneratorTable implements Serializable {
 
     public abstract Builder uniqueKeys(ImmutableList<DataGeneratorUniqueKey> uniqueKeys);
 
-    public abstract Builder isRoot(boolean isRoot);
+    public abstract Builder isRoot(@Nullable Boolean isRoot);
 
-    public abstract Builder insertQps(int insertQps);
+    public abstract Builder insertQps(@Nullable Integer insertQps);
 
-    public abstract Builder updateQps(int updateQps);
+    public abstract Builder updateQps(@Nullable Integer updateQps);
 
-    public abstract Builder deleteQps(int deleteQps);
+    public abstract Builder deleteQps(@Nullable Integer deleteQps);
 
-    public abstract Builder recordsPerTick(double recordsPerTick);
+    public abstract Builder recordsPerTick(@Nullable Double recordsPerTick);
 
     public abstract Builder generatorParent(@Nullable String generatorParent);
 

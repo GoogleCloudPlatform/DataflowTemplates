@@ -44,9 +44,9 @@
             <version>3.6.1</version>
         </dependency>
         <dependency>
-            <groupId>com.github.javafaker</groupId>
-            <artifactId>javafaker</artifactId>
-            <version>1.0.2</version>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <version>2.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -79,6 +79,16 @@
             <artifactId>json</artifactId>
             <version>${json.version}</version>
         </dependency>
+
+        <!-- HOCON parsing and deserialization -->
+        <dependency>
+            <groupId>com.jasonclawson</groupId>
+            <artifactId>jackson-dataformat-hocon</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+
+
+
 
         <!-- Test dependencies -->
         <dependency>

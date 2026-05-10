@@ -20,6 +20,9 @@ public final class Constants {
 
   // Default HikariCP pool size per shard when writing to JDBC sinks.
   public static final int DEFAULT_JDBC_POOL_SIZE = 10;
+  public static final int DEFAULT_STRING_LENGTH = 20;
+  public static final int DEFAULT_NUMERIC_PRECISION = 10;
+  public static final int DEFAULT_NUMERIC_SCALE = 2;
 
   // MySQL JDBC driver class name, used when constructing ConnectionHelperRequest.
   public static final String MYSQL_JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
