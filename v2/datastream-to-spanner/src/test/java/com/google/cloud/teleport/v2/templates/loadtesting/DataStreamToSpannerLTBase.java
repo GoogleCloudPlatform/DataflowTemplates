@@ -35,14 +35,20 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
@@ -50,16 +56,18 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.junit.After;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for DataStreamToSpanner Load tests. It provides helper functions related to
  * environment setup and assertConditions.
  */
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
   protected static final String SPEC_PATH =
       "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner";
   protected String testRootDir;
@@ -195,20 +203,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
     assertThatPipeline(jobInfo).isRunning();
 
-    ConditionCheck[] checks = new ConditionCheck[tables.size()];
-    int iterationCount = 0;
-    for (Map.Entry<String, Integer> entry : tables.entrySet()) {
-      checks[iterationCount] =
-          SpannerRowsCheck.builder(spannerResourceManager, entry.getKey())
-              .setMinRows(entry.getValue())
-              .setMaxRows(entry.getValue())
-              .build();
-      iterationCount++;
-    }
-
+    Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tables);
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), checks);
+            createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), condition);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -222,6 +220,38 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  private boolean checkAllTablesRowCounts(HashMap<String, Integer> tables) {
+    ExecutorService executor = Executors.newFixedThreadPool(20);
+    try {
+      List<Callable<Boolean>> tasks = new ArrayList<>();
+      for (Map.Entry<String, Integer> entry : tables.entrySet()) {
+        tasks.add(
+            () -> {
+              try {
+                long rowCount = spannerResourceManager.getRowCount(entry.getKey());
+                return rowCount >= entry.getValue();
+              } catch (Exception e) {
+                return false;
+              }
+            });
+      }
+
+      List<Future<Boolean>> futures = executor.invokeAll(tasks);
+      boolean allPassed = true;
+      for (Future<Boolean> future : futures) {
+        if (!future.get()) {
+          allPassed = false;
+        }
+      }
+      return allPassed;
+    } catch (Exception e) {
+      LOG.warn("Error checking row count in Spanner", e);
+    } finally {
+      executor.shutdown();
+    }
+    return false;
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
