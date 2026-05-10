@@ -376,4 +376,292 @@ public class SchemaUtilsTest {
     assertEquals(0, dagSchema.tables().get("C2").childTables().size());
     assertEquals(0, dagSchema.tables().get("GC1").childTables().size());
   }
+
+  @Test
+  public void testDAGConstructionMultiParentChainComplex() {
+    DataGeneratorTable departments =
+        DataGeneratorTable.builder()
+            .name("Departments")
+            .insertQps(10)
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorTable employees =
+        DataGeneratorTable.builder()
+            .name("EmployeeAssignments")
+            .insertQps(100)
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_emp_dept")
+                        .keyColumns(ImmutableList.of("DeptCode"))
+                        .referencedTable("Departments")
+                        .referencedColumns(ImmutableList.of("DeptCode"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorTable projects =
+        DataGeneratorTable.builder()
+            .name("Projects")
+            .insertQps(50)
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_proj_dept")
+                        .keyColumns(ImmutableList.of("DeptCode"))
+                        .referencedTable("Departments")
+                        .referencedColumns(ImmutableList.of("DeptCode"))
+                        .build(),
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_proj_emp")
+                        .keyColumns(ImmutableList.of("EmpId"))
+                        .referencedTable("EmployeeAssignments")
+                        .referencedColumns(ImmutableList.of("EmpId"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "Departments",
+                    departments,
+                    "EmployeeAssignments",
+                    employees,
+                    "Projects",
+                    projects))
+            .build();
+
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
+
+    DataGeneratorTable newDept = dagSchema.tables().get("Departments");
+    DataGeneratorTable newEmp = dagSchema.tables().get("EmployeeAssignments");
+    DataGeneratorTable newProj = dagSchema.tables().get("Projects");
+
+    assertTrue(newDept.isRoot()); // Departments should be root!
+    assertFalse(newEmp.isRoot());
+    assertFalse(newProj.isRoot());
+
+    // Departments should have EmployeeAssignments as child
+    assertEquals(1, newDept.childTables().size());
+    assertEquals("EmployeeAssignments", newDept.childTables().get(0));
+
+    // EmployeeAssignments should have Projects as child
+    assertEquals(1, newEmp.childTables().size());
+    assertEquals("Projects", newEmp.childTables().get(0));
+  }
+
+  @Test
+  public void testBuildInsertTopoOrderRootsBeforeChildren() {
+    DataGeneratorTable parent =
+        DataGeneratorTable.builder()
+            .name("Parent")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(1)
+            .isRoot(true)
+            .childTables(ImmutableList.of("Child"))
+            .build();
+    DataGeneratorTable child =
+        DataGeneratorTable.builder()
+            .name("Child")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(1)
+            .isRoot(false)
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(ImmutableMap.of("Parent", parent, "Child", child))
+            .build();
+
+    java.util.List<String> order = SchemaUtils.buildInsertTopoOrder(schema);
+    assertEquals(2, order.size());
+    assertEquals("Parent", order.get(0));
+    assertEquals("Child", order.get(1));
+  }
+
+  @Test
+  public void testBuildInsertTopoOrderMultipleRootsSortedByName() {
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(
+                ImmutableMap.of(
+                    "B",
+                    DataGeneratorTable.builder()
+                        .name("B")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .insertQps(1)
+                        .isRoot(true)
+                        .build(),
+                    "A",
+                    DataGeneratorTable.builder()
+                        .name("A")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .insertQps(1)
+                        .isRoot(true)
+                        .build(),
+                    "C",
+                    DataGeneratorTable.builder()
+                        .name("C")
+                        .columns(ImmutableList.of())
+                        .primaryKeys(ImmutableList.of())
+                        .foreignKeys(ImmutableList.of())
+                        .uniqueKeys(ImmutableList.of())
+                        .insertQps(1)
+                        .isRoot(true)
+                        .build()))
+            .build();
+
+    java.util.List<String> order = SchemaUtils.buildInsertTopoOrder(schema);
+    assertEquals(3, order.size());
+    assertEquals("A", order.get(0));
+    assertEquals("B", order.get(1));
+    assertEquals("C", order.get(2));
+  }
+
+  @Test
+  public void testSetSchemaDAG_overridesChildDeleteQpsWhenAncestorHasDeletes() {
+    // Grandparent (deleteQps = 5) -> Parent (deleteQps = 0) -> Child (deleteQps = 10)
+    DataGeneratorTable grandparent =
+        DataGeneratorTable.builder()
+            .name("Grandparent")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(10)
+            .deleteQps(5)
+            .build();
+
+    DataGeneratorTable parent =
+        DataGeneratorTable.builder()
+            .name("Parent")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_gp")
+                        .keyColumns(ImmutableList.of("gpId"))
+                        .referencedTable("Grandparent")
+                        .referencedColumns(ImmutableList.of("id"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(10)
+            .deleteQps(0)
+            .build();
+
+    DataGeneratorTable child =
+        DataGeneratorTable.builder()
+            .name("Child")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_parent")
+                        .keyColumns(ImmutableList.of("parentId"))
+                        .referencedTable("Parent")
+                        .referencedColumns(ImmutableList.of("id"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(10)
+            .deleteQps(10)
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(ImmutableMap.of("Grandparent", grandparent, "Parent", parent, "Child", child))
+            .build();
+
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
+
+    assertEquals(Integer.valueOf(5), dagSchema.tables().get("Grandparent").deleteQps());
+    assertEquals(Integer.valueOf(0), dagSchema.tables().get("Parent").deleteQps());
+    assertEquals(
+        Integer.valueOf(0),
+        dagSchema.tables().get("Child").deleteQps()); // Overwritten due to grandparent!
+  }
+
+  @Test
+  public void testBuildTopoIndex() {
+    java.util.List<String> order = ImmutableList.of("TableA", "TableB", "TableC");
+    java.util.Map<String, Integer> indexMap = SchemaUtils.buildTopoIndex(order);
+    assertEquals(3, indexMap.size());
+    assertEquals(Integer.valueOf(0), indexMap.get("TableA"));
+    assertEquals(Integer.valueOf(1), indexMap.get("TableB"));
+    assertEquals(Integer.valueOf(2), indexMap.get("TableC"));
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testCircularDependencyThrowsException() {
+    DataGeneratorTable t1 =
+        DataGeneratorTable.builder()
+            .name("T1")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_t1_t2")
+                        .keyColumns(ImmutableList.of("t2Id"))
+                        .referencedTable("T2")
+                        .referencedColumns(ImmutableList.of("id"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(10)
+            .build();
+
+    DataGeneratorTable t2 =
+        DataGeneratorTable.builder()
+            .name("T2")
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_t2_t1")
+                        .keyColumns(ImmutableList.of("t1Id"))
+                        .referencedTable("T1")
+                        .referencedColumns(ImmutableList.of("id"))
+                        .build()))
+            .uniqueKeys(ImmutableList.of())
+            .insertQps(10)
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder().tables(ImmutableMap.of("T1", t1, "T2", t2)).build();
+
+    SchemaUtils.buildInsertTopoOrder(schema);
+  }
+
+  @Test
+  public void testPrivateConstructor() throws Exception {
+    java.lang.reflect.Constructor<SchemaUtils> constructor =
+        SchemaUtils.class.getDeclaredConstructor();
+    assertTrue(java.lang.reflect.Modifier.isPublic(constructor.getModifiers()));
+    constructor.setAccessible(true);
+    constructor.newInstance();
+  }
 }

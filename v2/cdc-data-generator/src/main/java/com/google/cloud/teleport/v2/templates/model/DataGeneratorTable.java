@@ -72,10 +72,12 @@ public abstract class DataGeneratorTable implements Serializable {
   @Nullable
   public abstract ImmutableList<String> childTables();
 
+  public abstract int depth();
+
   public abstract Builder toBuilder();
 
   public static Builder builder() {
-    return new AutoValue_DataGeneratorTable.Builder();
+    return new AutoValue_DataGeneratorTable.Builder().depth(0);
   }
 
   @AutoValue.Builder
@@ -105,6 +107,8 @@ public abstract class DataGeneratorTable implements Serializable {
     public abstract Builder generatorParent(@Nullable String generatorParent);
 
     public abstract Builder childTables(ImmutableList<String> childTables);
+
+    public abstract Builder depth(int depth);
 
     public abstract DataGeneratorTable build();
   }
