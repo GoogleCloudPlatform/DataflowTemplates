@@ -380,9 +380,13 @@ def _anomaly_id(value):
 
 
 def _key_anomaly_for_async(element):
-  """Ensure (K, V) shape. Unkeyed pipelines get the sentinel key."""
+  """Ensure (str, V) shape. Keys are stringified because AsyncWrapper's
+  ``next_time_to_fire`` calls ``random.seed(key)`` which rejects tuples
+  (upstream keyed pipelines emit tuple keys like ``('campaign_a',)``).
+  Unkeyed pipelines get the sentinel."""
   if _is_keyed_pair(element):
-    return element
+    key, value = element
+    return (str(key), value)
   return (_UNKEYED_SENTINEL, element)
 
 

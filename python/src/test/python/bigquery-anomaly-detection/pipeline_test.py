@@ -1121,9 +1121,22 @@ class AnomalyIdTest(unittest.TestCase):
 class KeyAnomalyForAsyncTest(unittest.TestCase):
   """Tests for _key_anomaly_for_async."""
 
-  def test_already_keyed_passes_through(self):
-    elem = ('mykey', 'val')
-    self.assertEqual(_key_anomaly_for_async(elem), ('mykey', 'val'))
+  def test_already_keyed_string_passes_through_unchanged(self):
+    self.assertEqual(_key_anomaly_for_async(('mykey', 'val')), ('mykey', 'val'))
+
+  def test_tuple_key_stringified(self):
+    """Regression: upstream keyed pipelines emit tuple keys (e.g.
+    ``('campaign_a',)`` for a single-column ``group_by``). AsyncWrapper
+    feeds the key to ``random.seed`` which rejects tuples, so the key
+    must be stringified before reaching the stateful DoFns."""
+    out = _key_anomaly_for_async((('campaign_a',), 'val'))
+    self.assertEqual(out, ("('campaign_a',)", 'val'))
+    import random as _random
+    _random.seed(out[0])  # would TypeError on tuple before the fix
+
+  def test_multi_column_tuple_key_stringified(self):
+    out = _key_anomaly_for_async((('search', 'mobile'), 'val'))
+    self.assertEqual(out, ("('search', 'mobile')", 'val'))
 
   def test_unkeyed_gets_sentinel(self):
     self.assertEqual(
