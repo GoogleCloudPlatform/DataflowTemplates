@@ -224,4 +224,18 @@ final class RowAssembler {
 
     return Row.withSchema(schemaBuilder.build()).addValues(values).build();
   }
+
+  static LinkedHashMap<String, Object> pkValuesOf(Row row, DataGeneratorTable table) {
+    LinkedHashMap<String, Object> pk = new LinkedHashMap<>();
+    for (String pkCol : table.primaryKeys()) {
+      if (!row.getSchema().hasField(pkCol)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Required Primary Key column '%s' missing from row schema for table '%s'",
+                pkCol, table.name()));
+      }
+      pk.put(pkCol, row.getValue(pkCol));
+    }
+    return pk;
+  }
 }

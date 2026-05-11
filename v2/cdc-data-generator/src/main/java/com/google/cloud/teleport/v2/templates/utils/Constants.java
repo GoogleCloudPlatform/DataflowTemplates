@@ -44,4 +44,8 @@ public final class Constants {
 
   public static final String SINK_TYPE_MYSQL = "MYSQL";
   public static final String SINK_TYPE_SPANNER = "SPANNER";
+
+  public static final String MUTATION_INSERT = "INSERT";
+  public static final String MUTATION_UPDATE = "UPDATE";
+  public static final String MUTATION_DELETE = "DELETE";
 }
