@@ -263,7 +263,7 @@ _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
 
 _WEBHOOK_DEFAULT_SCOPES = ('https://www.googleapis.com/auth/cloud-platform',)
 _WEBHOOK_DEFAULT_METHOD = 'POST'
-# Default timeout is 5 minutes
+# Default timeout is 10 minutes
 _WEBHOOK_DEFAULT_TIMEOUT_SEC = 600.0
 # AsyncWrapper parallelism: how many in-flight requests one worker can have.
 _WEBHOOK_DEFAULT_PARALLELISM = 5
@@ -1286,8 +1286,8 @@ def _parse_webhook_spec(json_str, message_metadata):
         "method":   "POST"|"PUT"|"PATCH",         # optional, default POST
         "headers":  {<str>: <str>, ...},          # optional, also templated
         "scopes":   ["https://...", ...],         # optional, default cloud-platform
-        "timeout_seconds": <number>,              # optional, default 300 (5min)
-        "parallelism": <int>,                     # optional, default 20
+        "timeout_seconds": <number>,              # optional, default 300 (10min)
+        "parallelism": <int>,                     # optional, default 5
         "callback_frequency_seconds": <number>    # optional, default 30
       }
 

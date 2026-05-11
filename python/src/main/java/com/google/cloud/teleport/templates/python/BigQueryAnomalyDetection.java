@@ -210,7 +210,7 @@ public interface BigQueryAnomalyDetection {
               + "headers (object), scopes (list of OAuth scopes; default "
               + "cloud-platform), timeout_seconds (default 300), "
               + "parallelism (max concurrent in-flight POSTs per worker, "
-              + "default 20), callback_frequency_seconds (how often the "
+              + "default 5), callback_frequency_seconds (how often the "
               + "AsyncWrapper sweeps finished futures, default 30). "
               + "String leaves in body and headers are Python-format-substituted "
               + "against anomaly fields, message_metadata keys, and the "
