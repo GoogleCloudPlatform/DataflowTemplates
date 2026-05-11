@@ -43,7 +43,6 @@ from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _parse_webhook_spec
 from bqmonitor.pipeline import _PostAnomalyToWebhook
 from bqmonitor.pipeline import _RateLimitAlerts
-from bqmonitor.pipeline import _strip_unkeyed_sentinel
 from bqmonitor.pipeline import _substitute_template_tree
 from bqmonitor.pipeline import _ThresholdAlert
 from bqmonitor.pipeline import _UNKEYED_SENTINEL
@@ -223,16 +222,6 @@ class FormatAnomalyAsJsonTest(unittest.TestCase):
     payload = json.loads(results[0])
     self.assertIn('Anomaly detected', payload['event_description'])
     self.assertEqual(payload['agent_id'], 'TestModel')
-
-  def test_normal_emits_nothing(self):
-    dofn = _FormatAnomalyAsJson()
-    results = list(dofn.process(self._make_result(label=0)))
-    self.assertEqual(len(results), 0)
-
-  def test_warmup_emits_nothing(self):
-    dofn = _FormatAnomalyAsJson()
-    results = list(dofn.process(self._make_result(label=-2)))
-    self.assertEqual(len(results), 0)
 
   def test_keyed_outlier_includes_key(self):
     dofn = _FormatAnomalyAsJson()
@@ -603,11 +592,6 @@ class FormatAnomalyCustomFormatTest(unittest.TestCase):
     payload = json.loads(results[0])
     self.assertEqual(payload['alert'], 'sensor_1')
     self.assertEqual(payload['job'], 'pipeline-123')
-
-  def test_custom_format_non_outlier_suppressed(self):
-    dofn = _FormatAnomalyAsJson(message_format='alert: {value}')
-    results = list(dofn.process(self._make_result(label=0)))
-    self.assertEqual(len(results), 0)
 
   def test_metadata_does_not_override_anomaly_fields(self):
     dofn = _FormatAnomalyAsJson(
@@ -998,16 +982,6 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
       self.assertNotIn(sensitive_key, log_line)
       self.assertNotIn('key=', log_line)
 
-  def test_normal_suppressed(self):
-    dofn = self._make_dofn({'q': '{value}'})
-    dofn.process(self._make_result(label=0))
-    self.assertEqual(len(dofn._session.calls), 0)
-
-  def test_warmup_suppressed(self):
-    dofn = self._make_dofn({'q': '{value}'})
-    dofn.process(self._make_result(label=-2))
-    self.assertEqual(len(dofn._session.calls), 0)
-
   def test_anomaly_message_default(self):
     dofn = self._make_dofn({'q': '{anomaly_message}'})
     dofn.process(self._make_result(label=1, value=12.0))
@@ -1330,20 +1304,6 @@ class IsOutlierTest(unittest.TestCase):
     """Keyed-pipeline tuples must be unwrapped to test the value's label."""
     self.assertTrue(_is_outlier(('campaign_a', self._result(label=1))))
     self.assertFalse(_is_outlier(('campaign_a', self._result(label=0))))
-
-
-class StripUnkeyedSentinelTest(unittest.TestCase):
-  """Tests for _strip_unkeyed_sentinel."""
-
-  def test_strips_sentinel(self):
-    self.assertEqual(_strip_unkeyed_sentinel((_UNKEYED_SENTINEL, 'val')), 'val')
-
-  def test_passes_real_keyed_through(self):
-    elem = ('real_key', 'val')
-    self.assertEqual(_strip_unkeyed_sentinel(elem), elem)
-
-  def test_passes_bare_value_through(self):
-    self.assertEqual(_strip_unkeyed_sentinel('bare'), 'bare')
 
 
 class RateLimitAlertsTest(unittest.TestCase):

@@ -17,211 +17,16 @@
 """Anomaly monitoring pipeline for BigQuery tables.
 
 Reads streaming CDC data from BigQuery, computes a configurable windowed
-metric, runs anomaly detection, and publishes anomalies to Pub/Sub.
+metric, runs anomaly detection, and emits anomalies to Pub/Sub and/or a
+REST webhook. Run as a Dataflow Flex Template or locally with DirectRunner.
 
-Designed to be run as a Dataflow Flex Template or locally with DirectRunner.
+Alerts are rate-limited by default with a 10-minute session-window gap;
+tune via ``--alert_cooldown_seconds`` (0 disables). The optional BigQuery
+sink table records every anomaly regardless.
 
-Alerts to Pub/Sub and the REST webhook are **rate-limited by default**: per
-anomaly key, after the first alert fires, subsequent anomalies are
-suppressed until a 10-minute gap between consecutive anomalies elapses.
-Tune via ``--alert_cooldown_seconds`` (set to 0 to disable). The optional
-BigQuery sink table is unaffected and records every anomaly regardless of
-the rate limit.
-
-Usage (Flex Template)::
-
-    gcloud dataflow flex-template run "sales-monitor-$(date +%Y%m%d)" \\
-        --template-file-gcs-location "gs://bucket/anomaly_monitor.json" \\
-        --parameters table="project:dataset.table" \\
-        --parameters metric_spec='{"aggregation":{"window":{"type":"fixed","size_seconds":3600},"measures":[{"field":"transaction_amount","agg":"SUM","alias":"revenue"}]}}' \\
-        --parameters detector_spec='{"type":"ZScore"}' \\
-        --region us-central1
-
-Usage (PrismRunner)::
-
-    python main.py \\
-        --table=project:dataset.table \\
-        --metric_spec='{"aggregation":{"window":{"type":"fixed","size_seconds":3600},"measures":[{"field":"transaction_amount","agg":"SUM","alias":"revenue"}]}}' \\
-        --detector_spec='{"type":"ZScore"}' \\
-        --runner=PrismRunner
-
-Usage (DataflowRunner)::
-
-    python main.py \\
-        --table=project:dataset.table \\
-        --metric_spec='<json>' \\
-        --detector_spec='<json>' \\
-        --runner=DataflowRunner \\
-        --project=my-project \\
-        --region=us-central1 \\
-        --temp_location=gs://bucket/temp \\
-        --staging_location=gs://bucket/staging \\
-        --setup_file=./setup.py
-
-
-metric_spec JSON Reference
-==========================
-
-Top-level ``metric_spec`` object::
-
-    {
-      "aggregation": { ... },           # required
-      "derived_fields": [ ... ],         # optional, pre-aggregation
-      "measure_combiner": { ... }        # optional (required if >1 measure)
-    }
-
-aggregation
------------
-::
-
-    "aggregation": {
-      "window": {
-        "type": "fixed" | "sliding",
-        "size_seconds": <number>,        # window size in seconds
-        "period_seconds": <number>       # slide period (required for sliding)
-      },
-      "group_by": ["field1", "field2"],  # optional, omit for global agg
-      "measures": [
-        {"field": "<col>", "agg": "<AGG>", "alias": "<name>"},
-        ...
-      ]
-    }
-
-Aggregation operators (``agg``): ``SUM``, ``COUNT``, ``MIN``, ``MAX``, ``MEAN``.
-
-For ``COUNT``, the ``field`` value is ignored — it counts all rows in the
-group.
-
-Expressions
------------
-Both ``measure_combiner.expression`` and ``derived_fields[].expression``
-are Python expression strings. Bare names are field references, and the
-following syntax is supported:
-
-- Arithmetic: ``+``, ``-``, ``*``, ``/``, ``//``, ``%``, ``**``
-- Comparisons: ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``
-- Boolean logic: ``and``, ``or``, ``not``
-- Negation: ``-field``
-- Conditional: ``true_val if condition else false_val``
-- Functions: ``abs()``, ``min()``, ``max()``, ``round()``
-- Grouping: parentheses for precedence
-
-``measure_combiner`` references measure aliases and is validated at
-pipeline construction time.
-
-derived_fields
---------------
-Computed before aggregation. Each entry creates a new column available to
-measures::
-
-    "derived_fields": [
-      {"name": "is_success", "expression": "1 if status == 'success' else 0"}
-    ]
-
-measure_combiner
-----------------
-Post-aggregation expression that combines measure aliases into a single
-value. Required when there are multiple measures (e.g., ratio metrics)::
-
-    "measure_combiner": {"expression": "clicks / impressions"}
-    "measure_combiner": {"expression": "(successes + partial) / total"}
-
-
-detector_spec JSON Reference
-=============================
-
-Top-level ``detector_spec`` object::
-
-    {"type": "<DetectorName>", "config": { ... }}
-
-The ``type`` must be a registered ``@specifiable`` detector class name.
-``config`` keys map to that class's ``__init__`` parameters plus inherited
-``AnomalyDetector`` parameters.
-
-Common AnomalyDetector parameters (all detectors)::
-
-    "config": {
-      "threshold_criterion": { ... },       # optional, see below
-      "model_id": "<string>"                # optional detector ID
-    }
-
-``features`` is automatically set to ``['value']`` to match
-``ComputeMetric`` output; it does not need to be specified.
-
-window_size
------------
-All detectors maintain an internal sliding window of recent values for their
-statistical trackers (mean, stdev, quantiles, etc.).  The default is 1000
-data points.  Use ``window_size`` as a shorthand to override this for all
-internal trackers at once::
-
-    {"type": "ZScore", "config": {"window_size": 500}}
-
-Available detectors
--------------------
-
-**ZScore** — ``|value - mean| / stdev`` (default threshold: 3)::
-
-    {"type": "ZScore"}
-
-**IQR** — Interquartile Range (default threshold: 1.5)::
-
-    {"type": "IQR"}
-
-**RobustZScore** — Modified Z-Score using median/MAD (default threshold: 3.5)::
-
-    {"type": "RobustZScore"}
-
-threshold_criterion
--------------------
-Override the default threshold by nesting a specifiable threshold object.
-
-**FixedThreshold** — static cutoff (scores >= cutoff are outliers)::
-
-    "threshold_criterion": {
-      "type": "FixedThreshold",
-      "config": {"cutoff": 10}
-    }
-
-**QuantileThreshold** — dynamic cutoff at a quantile of observed scores::
-
-    "threshold_criterion": {
-      "type": "QuantileThreshold",
-      "config": {"quantile": 0.95}
-    }
-
-Both accept optional ``normal_label`` (default 0), ``outlier_label``
-(default 1), and ``missing_label`` (default -2).
-
-**Threshold** — fixed threshold alert based on a boolean expression.
-No warmup period, no history buffer. Alerts whenever the expression
-evaluates to true::
-
-    {"type": "Threshold", "expression": "value >= 0.5"}
-    {"type": "Threshold", "expression": "value > 100 or value < -100"}
-    {"type": "Threshold", "expression": "value <= 0.01"}
-
-The expression receives the computed metric as ``value`` and supports
-all safe expression operators (see Expressions section above).
-
-
-Examples
---------
-
-Simple SUM metric with ZScore::
-
-    --metric_spec='{"aggregation":{"window":{"type":"fixed","size_seconds":3600},"measures":[{"field":"transaction_amount","agg":"SUM","alias":"revenue"}]}}'
-    --detector_spec='{"type":"ZScore"}'
-
-Grouped ratio metric (CTR) with ZScore::
-
-    --metric_spec='{"aggregation":{"window":{"type":"fixed","size_seconds":10},"group_by":["campaign_type","browser_version"],"measures":[{"field":"is_click","agg":"SUM","alias":"clicks"},{"field":"is_click","agg":"COUNT","alias":"impressions"}]},"measure_combiner":{"expression":"clicks / impressions"}}'
-    --detector_spec='{"type":"ZScore"}'
-
-Derived field + ratio + custom threshold::
-
-    --metric_spec='{"derived_fields":[{"name":"is_success","expression":"1 if status == \\'success\\' else 0"}],"aggregation":{"window":{"type":"fixed","size_seconds":10},"group_by":["brand_name","category"],"measures":[{"field":"is_success","agg":"SUM","alias":"successes"},{"field":"is_success","agg":"COUNT","alias":"total"}]},"measure_combiner":{"expression":"successes / total"}}'
-    --detector_spec='{"type":"ZScore","config":{"threshold_criterion":{"type":"FixedThreshold","config":{"cutoff":10}}}}'
+See ``python main.py --help`` for the full set of options and their
+JSON-schema details (``--metric_spec``, ``--detector_spec``,
+``--webhook_spec``).
 """
 
 import json
@@ -246,6 +51,8 @@ from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms.async_dofn import AsyncWrapper
 from apache_beam.transforms.userstate import ReadModifyWriteStateSpec
 from apache_beam.utils.timestamp import Duration
+from apache_beam.io.gcp import bigquery_tools
+from apache_beam.io.gcp.internal.clients import bigquery
 
 from bqmonitor.metric import ComputeMetric
 from bqmonitor.metric import FanoutStrategy
@@ -289,6 +96,10 @@ _WEBHOOK_KNOWN_KEYS = frozenset({
 # retried indefinitely.
 _TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
 
+# Synthetic key attached to unkeyed pipelines' elements so they can flow
+# through stateful DoFns. _unpack_result translates it back to None.
+_UNKEYED_SENTINEL = '__bqm_unkeyed__'
+
 @dataclass(frozen=True)
 class OffsetKey:
   """Key that pairs an optional grouping key with a window offset.
@@ -310,18 +121,6 @@ _TABLE_RE = re.compile(
 
 
 def _validate_topic_path(topic):
-  """Validate that a Pub/Sub topic is a full resource path.
-
-  Args:
-    topic: Full Pub/Sub topic path, e.g.
-        'projects/my-project/topics/my-topic'.
-
-  Returns:
-    The validated topic path.
-
-  Raises:
-    ValueError: If the topic is not a full resource path.
-  """
   if not (topic.startswith('projects/') and '/topics/' in topic):
     raise ValueError(
         f"--topic must be a full Pub/Sub resource path "
@@ -329,25 +128,19 @@ def _validate_topic_path(topic):
   return topic
 
 
-def _unpack_result(element):
-  """Unpack a possibly-keyed AnomalyResult element.
+def _is_keyed_pair(element):
+  return isinstance(element, tuple) and len(element) == 2
 
-  Returns:
-    (key, result) where key is None for unkeyed elements.
-  """
-  if isinstance(element, tuple) and len(element) == 2:
-    return element[0], element[1]
+
+def _unpack_result(element):
+  """Returns ``(key, result)``. Internal sentinel keys are mapped to None."""
+  if _is_keyed_pair(element):
+    key, value = element
+    return (None if key == _UNKEYED_SENTINEL else key), value
   return None, element
 
 
 def _parse_message_metadata(metadata_str):
-  """Decode the ``--message_metadata`` option into a dict, or None.
-
-  Returns None when ``metadata_str`` is unset/empty. Raises ValueError if
-  the option is set but not parseable as a JSON object. Centralizing this
-  lets both build_pipeline() and the webhook preflight check share the
-  same parsing path without duplicating error wording.
-  """
   if not metadata_str:
     return None
   try:
@@ -363,18 +156,6 @@ def _parse_message_metadata(metadata_str):
 
 
 def _parse_table_ref(table):
-  """Parse and validate a table reference string.
-
-  Args:
-    table: Table reference in 'project:dataset.table' or
-        'project.dataset.table' format.
-
-  Returns:
-    (project, dataset, table_name) tuple.
-
-  Raises:
-    ValueError: If the table string doesn't match the expected format.
-  """
   if not _TABLE_RE.match(table):
     raise ValueError(
         f"Invalid --table format: '{table}'. "
@@ -424,18 +205,10 @@ class _LogAnomalyResult(beam.DoFn):
 
 
 class _ThresholdAlert(beam.DoFn):
-  """Evaluates a threshold expression against metric values.
+  """Emits AnomalyResult(label=1) when ``expression`` is truthy, else label=0.
 
-  Emits AnomalyResult elements consistent with the statistical detectors,
-  allowing threshold alerts to flow through the same logging and Pub/Sub
-  pipeline.
-
-  The expression is evaluated with ``value`` bound to the metric value.
-  If it evaluates to truthy, the element is labelled as an outlier (1);
-  otherwise it is labelled normal (0).
-
-  Example expressions: ``value >= 0.5``, ``value <= 0.01``,
-  ``value > 100 or value < -100``.
+  ``value`` is bound to the metric value. The output matches the shape
+  of the statistical detectors so downstream sinks are uniform.
   """
 
   def __init__(self, expression_text):
@@ -446,7 +219,7 @@ class _ThresholdAlert(beam.DoFn):
     self._expr = Expr(self._expression_text)
 
   def process(self, element):
-    if isinstance(element, tuple) and len(element) == 2:
+    if _is_keyed_pair(element):
       key, row = element
     else:
       key, row = None, element
@@ -476,12 +249,6 @@ _ANOMALY_FIELDS = frozenset({
 
 
 def _validate_format_placeholders(format_str, known_fields, location=''):
-  """Validate that every ``{placeholder}`` in ``format_str`` is in known_fields.
-
-  Shared by both the Pub/Sub ``message_format`` validator and the webhook
-  body/header tree validator so we keep one definition of "which
-  placeholders may appear in a template".
-  """
   referenced = {
       fname for _, fname, _, _ in string.Formatter().parse(format_str)
       if fname is not None}
@@ -494,24 +261,12 @@ def _validate_format_placeholders(format_str, known_fields, location=''):
 
 
 def _validate_message_format(format_str, metadata):
-  """Validate that all placeholders in ``--message_format`` are resolvable.
-
-  Raises ValueError at pipeline construction if the format string
-  references a field that is neither a known anomaly field nor a key
-  in the user-provided metadata.
-  """
   _validate_format_placeholders(
       format_str, _ANOMALY_FIELDS | set(metadata or {}))
 
 
 def _validate_template_tree(tree, known_fields, location=''):
-  """Recursively validate format placeholders in a JSON-shaped tree.
-
-  Walks dicts and lists; every string leaf is validated as a Python
-  format string against ``known_fields``. Non-string primitives
-  (int/float/bool/None) pass through unchanged because they cannot
-  contain placeholders.
-  """
+  """Walks dicts/lists and validates every string leaf as a format string."""
   if isinstance(tree, dict):
     for k, v in tree.items():
       _validate_template_tree(v, known_fields, location=f'{location}.{k}')
@@ -523,12 +278,7 @@ def _validate_template_tree(tree, known_fields, location=''):
 
 
 def _substitute_template_tree(tree, fields):
-  """Recursively format every string leaf of a JSON-shaped tree.
-
-  Returns a new tree with the same shape; dicts/lists are rebuilt so the
-  caller's original spec object is not mutated (matters because the spec
-  is reused for every anomaly bundle).
-  """
+  """Returns a new tree with every string leaf format-substituted."""
   if isinstance(tree, dict):
     return {k: _substitute_template_tree(v, fields) for k, v in tree.items()}
   if isinstance(tree, list):
@@ -539,19 +289,10 @@ def _substitute_template_tree(tree, fields):
 
 
 def _build_anomaly_fields(key, result):
-  """Extract template fields from an already-unpacked anomaly result.
+  """Returns the ``_ANOMALY_FIELDS``-keyed dict used for template substitution.
 
-  Callers are expected to have unpacked the raw element via
-  ``_unpack_result`` (or otherwise) first. This split lets DoFns short-
-  circuit on the label check before doing the per-field string
-  conversion work — and avoids the prior double-unpack where this
-  function called ``_unpack_result`` internally even though most call
-  sites had already done so to perform their own label gate.
-
-  Returns the fields dict; ``_ANOMALY_FIELDS`` lists the keys it
-  contains. None-valued prediction/example fields are coerced to empty
-  strings or the literal ``'null'`` for safe interpolation into
-  user-supplied format strings.
+  None-valued prediction fields are coerced to ``''`` or ``'null'`` for
+  safe interpolation into user-supplied format strings.
   """
   prediction = result.predictions[0]
   example = result.example
@@ -570,53 +311,23 @@ def _build_anomaly_fields(key, result):
   }
 
 
-def _default_anomaly_message(fields):
-  """Default natural-language summary used when message_format is unset.
-
-  This is the same text Pub/Sub embeds as ``event_description``; sharing it
-  here lets the webhook sink emit a sensible default for ``{anomaly_message}``
-  without forcing users to specify ``--message_format``.
-  """
-  return (
-      f'Anomaly detected value={fields["value"]}'
-      f' score={fields["score"]}'
-      f' in window={fields["window_start"]}-{fields["window_end"]}')
-
-
 def _compute_anomaly_message(fields, message_format, message_metadata):
-  """Render the canonical anomaly message string.
-
-  Used by both the Pub/Sub sink (for the default ``event_description``
-  field and for the full custom-format payload) and the webhook sink
-  (for the ``{anomaly_message}`` placeholder substituted into the body).
-  """
-  if message_format is not None:
-    merged = dict(message_metadata or {})
-    merged.update(fields)
-    return message_format.format(**merged)
-  return _default_anomaly_message(fields)
+  if message_format is None:
+    return (
+        f'Anomaly detected value={fields["value"]}'
+        f' score={fields["score"]}'
+        f' in window={fields["window_start"]}-{fields["window_end"]}')
+  # Anomaly fields win on key collision with metadata.
+  merged = {**(message_metadata or {}), **fields}
+  return message_format.format(**merged)
 
 
 class _FormatAnomalyAsJson(beam.DoFn):
-  """Converts anomaly results (label == 1) to byte strings for Pub/Sub.
+  """Renders an anomaly for Pub/Sub as UTF-8 bytes.
 
-  Supports two modes:
-
-  1. **Default** (no ``message_format``): emits a JSON object with
-     ``event_description``, ``agent_id``, and optionally ``key``.
-
-  2. **Custom format** (``message_format`` provided): evaluates the
-     Python format string with anomaly fields and user metadata, then
-     emits the result as UTF-8 bytes. The output does not need to be
-     JSON — it can be any string the downstream consumer expects.
-
-  Args:
-    message_format: Optional Python format string. Available fields:
-        ``{value}``, ``{score}``, ``{label}``, ``{threshold}``,
-        ``{model_id}``, ``{info}``, ``{key}``, ``{window_start}``,
-        ``{window_end}``, plus any keys from ``message_metadata``.
-    message_metadata: Optional dict of static key-value pairs that
-        are available as additional format fields.
+  If ``message_format`` is set, emits ``message_format.format(...)``.
+  Otherwise emits a default JSON envelope. Inputs are assumed already
+  filtered to outliers by the upstream pipeline.
   """
 
   def __init__(self, message_format=None, message_metadata=None):
@@ -625,27 +336,21 @@ class _FormatAnomalyAsJson(beam.DoFn):
 
   def process(self, element):
     key, result = _unpack_result(element)
-    if result.predictions[0].label != 1:
-      return
-
-    # Only compute the (somewhat expensive, string-conversion-heavy)
-    # fields dict after we know the element is an outlier we're going
-    # to emit; non-outliers are dropped above without paying that cost.
     fields = _build_anomaly_fields(key, result)
-
     message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
 
     if self._message_format is not None:
       yield message.encode('utf-8')
-    else:
-      payload = {
-          'event_description': message,
-          'agent_id': fields['model_id'],
-      }
-      if key is not None:
-        payload['key'] = str(key)
-      yield json.dumps(payload).encode('utf-8')
+      return
+
+    payload = {
+        'event_description': message,
+        'agent_id': fields['model_id'],
+    }
+    if key is not None:
+      payload['key'] = str(key)
+    yield json.dumps(payload).encode('utf-8')
 
 
 _SINK_SCHEMA = {
@@ -662,16 +367,9 @@ _SINK_SCHEMA = {
 
 
 def _anomaly_id(value):
-  """Stable identity tuple for an anomaly, used by ``AsyncWrapper`` for
-  per-element deduplication.
-
-  The wrapper passes us the value half of a ``(K, V)`` element and uses
-  whatever this returns as a hashable id; two values with the same id
-  are treated as the same anomaly and only one is delivered downstream.
-  We key on the window bounds + the detector identity, which together
-  uniquely name a detected anomaly even if the same bundle is replayed
-  by the runner.
-  """
+  """Stable hashable identity per anomaly. Used as AsyncWrapper's id_fn
+  for dedup across runner replays — must survive a serialize/deserialize
+  round-trip, hence (window_micros, model_id) rather than object identity."""
   example = value.example
   prediction = value.predictions[0]
   return (
@@ -681,111 +379,34 @@ def _anomaly_id(value):
   )
 
 
-# Sentinel key attached to anomalies from unkeyed pipelines (no
-# metric_spec.group_by) so they have somewhere to anchor per-key state in
-# downstream stateful DoFns (_RateLimitAlerts, AsyncWrapper). The value is
-# never compared against user keys — _key_anomaly_for_async only attaches
-# this sentinel when the element ISN'T already a (K, V) tuple, so keyed
-# and unkeyed pipelines never mix in the same stream. The
-# double-underscore name is just for human-readable debugging — if you see
-# this string in logs you immediately know it's an internal placeholder.
-_UNKEYED_SENTINEL = '__bqm_unkeyed__'
-
-
 def _key_anomaly_for_async(element):
-  """Ensure each anomaly is a ``(K, V)`` tuple before it reaches a stateful
-  DoFn (``AsyncWrapper`` for the webhook sink, or ``_RateLimitAlerts``).
-
-  Stateful DoFns shard state per key, so the input must be keyed. Pipelines
-  with ``metric_spec.group_by`` already produce ``(key, AnomalyResult)``
-  tuples; unkeyed pipelines emit bare ``AnomalyResult`` objects and get
-  the sentinel key so the wrapper has somewhere to anchor state.
-  """
-  if isinstance(element, tuple) and len(element) == 2:
+  """Ensure (K, V) shape. Unkeyed pipelines get the sentinel key."""
+  if _is_keyed_pair(element):
     return element
   return (_UNKEYED_SENTINEL, element)
 
 
 def _is_outlier(element):
-  """Predicate for ``beam.Filter`` that keeps only outlier anomalies
-  (``label == 1``) from the ``AnomalyDetection`` output stream.
-
-  Accepts both keyed ``(K, AnomalyResult)`` tuples (from pipelines with
-  ``metric_spec.group_by``) and bare ``AnomalyResult`` (unkeyed
-  pipelines), unwrapping via the same shape-test ``_unpack_result``
-  uses. Centralizing this here means the rate-limit branch in
-  ``build_pipeline`` doesn't carry a multi-line lambda and we have a
-  single point to test the label-check.
-  """
-  if isinstance(element, tuple) and len(element) == 2:
-    result = element[1]
-  else:
-    result = element
+  result = element[1] if _is_keyed_pair(element) else element
   return result.predictions[0].label == 1
 
 
-def _strip_unkeyed_sentinel(element):
-  """Inverse of ``_key_anomaly_for_async`` for the unkeyed branch only.
-
-  After a stateful DoFn (e.g. ``_RateLimitAlerts``), unkeyed-pipeline
-  elements are still wrapped in ``(_UNKEYED_SENTINEL, value)``. We strip
-  that back to a bare ``value`` so downstream consumers see exactly the
-  shape they would see without rate limiting — i.e. the Pub/Sub default
-  payload doesn't suddenly grow a ``key`` field for previously-unkeyed
-  pipelines. Genuinely-keyed elements pass through untouched.
-  """
-  if (isinstance(element, tuple) and len(element) == 2
-      and element[0] == _UNKEYED_SENTINEL):
-    return element[1]
-  return element
-
-
 class _RateLimitAlerts(beam.DoFn):
-  """Stateful DoFn that debounces alerts using session-window semantics.
+  """Per-key session-window debounce for alerts. ``window_end`` is "now".
 
-  For each key, tracks the timestamp of the most recent outlier event.
-  An outlier is emitted downstream (i.e. allowed to alert) iff:
+  Fires iff first event for the key OR gap from the prior event ≥ cooldown.
+  ``last_event_micros`` advances on every event (including suppressed
+  ones), so continuous outliers keep the session open — the classic
+  session-window invariant. ``cooldown_seconds <= 0`` makes the DoFn a
+  pass-through so the cooldown can be toggled via Dataflow ``--update``
+  without changing the pipeline graph.
 
-    - it's the first outlier for this key, OR
-    - ``window_end - last_event_micros >= cooldown_micros``.
-
-  ``last_event_micros`` is updated on every outlier regardless of
-  whether it fired, so a continuous stream of outliers keeps extending
-  the active-alert window. Alerts fire only on genuine gaps in the
-  outlier stream, which matches how a Beam ``SessionWindow`` with the
-  same gap would coalesce events.
-
-  Example (cooldown=10 min):
+  Example (cooldown=10 min)::
 
       T0  → fire    (no prior)            last_event := T0
       T1  → suppress (T1-T0  =  1 < 10)   last_event := T1
-      T2  → suppress (T2-T1  =  1 < 10)   last_event := T2
-      T8  → suppress (T8-T2  =  6 < 10)   last_event := T8
+      T8  → suppress (T8-T0  =  8 < 10)   last_event := T8
       T19 → fire    (T19-T8 = 11 ≥ 10)    last_event := T19
-
-  Only T0 and T19 reach the downstream sinks (Pub/Sub, webhook). The
-  BigQuery sink table is intentionally placed *upstream* of this DoFn
-  so the analytical record retains every anomaly.
-
-  The "now" timestamp is the anomaly's ``window_end.micros`` (event
-  time), not wall-clock processing time. This makes the behavior stable
-  under replay and backfill; for real-time CDC, ``window_end`` tracks
-  wall-clock within ``buffer_sec``.
-
-  **Cooldown = 0 → pass-through.** The DoFn is always topologically
-  present in the pipeline so operators can change ``--alert_cooldown_seconds``
-  via ``--update`` without altering the pipeline graph. When the
-  parameter is 0 (or negative), every outlier yields without touching
-  state. This means tuning the cooldown — including disabling it — does
-  not require a redeploy.
-
-  **Input is filtered to outliers upstream.** The pipeline applies a
-  ``label == 1`` filter before keying for this DoFn, so the body
-  doesn't need to handle non-outliers in practice. The label-gate
-  below remains as defense-in-depth in case that upstream filter is
-  ever removed or bypassed.
-
-  Per-key state cost is one int.
   """
 
   LAST_EVENT_MICROS = ReadModifyWriteStateSpec(
@@ -799,16 +420,12 @@ class _RateLimitAlerts(beam.DoFn):
               last_event=beam.DoFn.StateParam(LAST_EVENT_MICROS)):
     _, result = element
 
-    # Pass-through when rate limiting is disabled. We still want the DoFn
-    # in the topology (so toggling cooldown via --update doesn't change
-    # the pipeline graph), but we don't read or write state in this mode.
     if self._cooldown_micros <= 0:
       yield element
       return
 
-    # Defense-in-depth label gate: the upstream filter should have already
-    # dropped non-outliers, but if it ever goes missing, we still must not
-    # let normal/warmup events poison the session state.
+    # Defense-in-depth: the upstream filter should have dropped non-outliers,
+    # but if it ever goes missing they must not poison the session state.
     if result.predictions[0].label != 1:
       yield element
       return
@@ -817,9 +434,6 @@ class _RateLimitAlerts(beam.DoFn):
     last = last_event.read()
 
     fires = last is None or (now_micros - last) >= self._cooldown_micros
-    # Always advance the session boundary, even when suppressing — this
-    # is the session-window semantic ("continuous events extend the
-    # window") that distinguishes this from a cooldown-since-last-fire.
     last_event.write(now_micros)
 
     if fires:
@@ -838,37 +452,18 @@ class _RateLimitAlerts(beam.DoFn):
 
 
 class _PostAnomalyToWebhook(beam.DoFn):
-  """POSTs each anomaly (``label == 1``) to a configured REST endpoint.
+  """POSTs each anomaly to ``webhook_spec.endpoint`` using ADC.
 
-  The webhook spec is the parsed/normalized output of
-  ``_parse_webhook_spec`` — it has ``endpoint``, ``body``, ``method``,
-  ``headers``, ``scopes``, and ``timeout_seconds`` already filled in.
+  String leaves in ``body`` and ``headers`` are format-substituted with
+  ``anomaly fields | message_metadata | {anomaly_message}``.
 
-  Each string leaf in ``body`` and ``headers`` is Python-format-substituted
-  against the union of anomaly fields, ``message_metadata``, and the
-  virtual ``{anomaly_message}`` field. ``{anomaly_message}`` is the
-  output of ``message_format`` (or the default natural-language summary
-  when ``message_format`` is unset), allowing the same configured
-  anomaly message to flow into both the Pub/Sub sink and the webhook
-  body without the user having to specify it twice.
-
-  Authentication uses Google Application Default Credentials with the
-  scopes from the spec (default: cloud-platform).
-
-  **Response handling**: streaming Dataflow retries bundles indefinitely,
-  so raising on every non-2xx would block the pipeline forever (and DoS
-  the target) on a misconfigured request. To avoid that we split:
-
-    - **2xx** → success, nothing emitted.
-    - **5xx and 408/425/429** → transient (server overload, rate limit,
-      timeout); raise so Beam retries the bundle.
-    - **Other 4xx** (400, 401, 403, 404, 422, ...) → permanent client
-      error; log the response and drop the anomaly. The drop count is
-      exposed via a Beam metric so operators can alert on it.
-
-  Network-level errors (DNS, connection refused, read timeout) are not
-  caught here; they propagate and Beam retries the bundle, which is the
-  right behavior since they're transient by nature.
+  Response handling (because streaming Dataflow retries bundles
+  indefinitely, we cannot blindly raise on every non-2xx — that would
+  block the pipeline on a misconfigured request):
+    * 2xx → success.
+    * 5xx, 408, 425, 429 → raise (transient; bundle retries).
+    * Other 4xx → log + drop + increment ``dropped_permanent_4xx`` metric.
+  Network errors propagate as-is so Beam's bundle retry handles them.
   """
 
   _DROPPED_4XX_COUNTER = Metrics.counter(
@@ -886,9 +481,6 @@ class _PostAnomalyToWebhook(beam.DoFn):
 
   def process(self, element):
     key, result = _unpack_result(element)
-    if result.predictions[0].label != 1:
-      return
-
     fields = _build_anomaly_fields(key, result)
     anomaly_message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
@@ -1107,11 +699,6 @@ class AnomalyMonitorOptions(PipelineOptions):
 
 
 def _parse_metric_spec(json_str):
-  """Parse a MetricSpec from a JSON string.
-
-  Raises:
-    ValueError: If the JSON is malformed or the spec is invalid.
-  """
   try:
     d = json.loads(json_str)
   except json.JSONDecodeError as e:
@@ -1125,14 +712,9 @@ def _parse_metric_spec(json_str):
 
 
 def _dict_to_spec(d):
-  """Recursively convert nested dicts with ``type`` keys into Spec objects.
-
-  ``json.loads`` produces plain dicts, but ``Specifiable.from_spec`` expects
-  ``Spec`` objects for nested specifiables (e.g. ``threshold_criterion``
-  inside a detector config).  Without this conversion the nested dict passes
-  through ``_specifiable_from_spec_helper`` unchanged and the detector
-  receives a raw dict instead of the expected ``ThresholdFn`` instance.
-  """
+  """Recursively turns nested ``{"type": ..., "config": ...}`` dicts into
+  ``Spec`` objects. ``Specifiable.from_spec`` requires ``Spec`` for nested
+  specifiables (e.g. ``threshold_criterion``)."""
   if isinstance(d, dict) and 'type' in d:
     config = d.get('config', {})
     if config:
@@ -1144,19 +726,9 @@ def _dict_to_spec(d):
 
 
 def _expand_window_size(d):
-  """Expand ``window_size`` shorthand into detector-specific tracker configs.
-
-  Instead of constructing deeply nested tracker specs, users can write::
-
-      {"type": "ZScore", "config": {"window_size": 500}}
-
-  This expands into the full nested tracker configuration that each detector
-  type expects.  If the user already set explicit tracker configs, those take
-  precedence (``setdefault`` semantics).
-
-  Raises:
-    ValueError: If window_size is not a positive integer.
-  """
+  """Expands the ``window_size`` shorthand into the detector-specific
+  tracker configs each ``Specifiable`` detector expects. User-supplied
+  tracker configs win (``setdefault`` semantics)."""
   config = d.get('config', {})
   ws = config.pop('window_size', None)
   if ws is None:
@@ -1213,45 +785,11 @@ def _expand_window_size(d):
 
 
 def _parse_detector_spec(json_str):
-  """Parse an anomaly detector from a JSON Spec string.
+  """Parses ``--detector_spec`` JSON into a detector instance.
 
-  The JSON should have the form::
-
-      {"type": "ZScore"}
-
-  Nested specifiable objects (e.g. ``threshold_criterion``) are supported::
-
-      {"type": "ZScore", "config": {
-          "threshold_criterion": {"type": "FixedThreshold", "config": {"cutoff": 10}}
-      }}
-
-  A ``window_size`` shorthand sets the history buffer for all internal
-  trackers::
-
-      {"type": "ZScore", "config": {"window_size": 500}}
-
-  **Threshold** — a simple fixed-threshold alerter that evaluates a boolean
-  expression against the metric value. No warmup period, no history::
-
-      {"type": "Threshold", "expression": "value >= 0.5"}
-      {"type": "Threshold", "expression": "value > 100 or value < -100"}
-
-  The expression may use ``value`` (the computed metric) and all safe
-  expression operators (see Expressions section above).
-
-  For statistical detectors, the ``type`` field must match a registered
-  @specifiable detector class (e.g. ZScore, IQR, RobustZScore).
-
-  ``features`` is automatically set to ``['value']`` to match the output of
-  ``ComputeMetric``. Any user-supplied ``features`` is overwritten.
-
-  Returns:
-    For statistical detectors: an instantiated AnomalyDetector.
-    For Threshold: a ``_ThresholdAlert`` DoFn instance.
-
-  Raises:
-    ValueError: If the JSON is malformed, detector type is unknown, or
-        the spec is otherwise invalid.
+  Returns an ``AnomalyDetector`` for statistical types, a
+  ``RelativeChangeConfig`` for RelativeChange, or a ``_ThresholdAlert``
+  DoFn for Threshold. Raises ValueError on malformed input.
   """
   try:
     d = json.loads(json_str)
@@ -1334,31 +872,9 @@ def _parse_detector_spec(json_str):
 # ---------------------------------------------------------------------------
 
 def _parse_webhook_spec(json_str, message_metadata):
-  """Parse and validate a ``--webhook_spec`` JSON string.
+  """Parses ``--webhook_spec`` JSON and returns a dict with defaults applied.
 
-  Schema::
-
-      {
-        "endpoint": "https://...",                # required
-        "body":     <JSON object or array>,       # required, template tree
-        "method":   "POST"|"PUT"|"PATCH",         # optional, default POST
-        "headers":  {<str>: <str>, ...},          # optional, also templated
-        "scopes":   ["https://...", ...],         # optional, default cloud-platform
-        "timeout_seconds": <number>,              # optional, default 600 (10 min)
-        "parallelism": <int>,                     # optional, default 5
-        "callback_frequency_seconds": <number>    # optional, default 30
-      }
-
-  String leaves in ``body`` and ``headers`` are validated as Python format
-  strings against the union of ``_ANOMALY_FIELDS``, the keys of
-  ``message_metadata``, and the synthetic field ``{anomaly_message}``.
-
-  ``parallelism`` and ``callback_frequency_seconds`` configure the
-  ``AsyncWrapper`` that runs the actual POSTs off the Beam worker thread,
-  so a long deadline (``timeout_seconds``) doesn't translate to a long
-  thread-blocking period for downstream work.
-
-  Returns the normalized spec dict with all defaults applied.
+  See the ``--webhook_spec`` argparse help for the schema.
   """
   try:
     spec = json.loads(json_str)
@@ -1464,20 +980,7 @@ def _parse_webhook_spec(json_str, message_metadata):
 
 
 def _preflight_checks(options, metric_spec):
-  """Validate GCP resources are accessible before building the pipeline.
-
-  Checks:
-    - BigQuery source table exists and is readable.
-    - Required metric columns exist in the source table (dry-run query).
-    - BigQuery temp dataset is writable (if specified) or datasets.create
-      permission exists (dry-run only — does not actually create).
-    - Pub/Sub topic exists (only if --topic is set).
-    - Webhook spec parses and default credentials are obtainable
-      (only if --webhook_spec is set; no network call to the endpoint).
-
-  Logs warnings and continues if a check cannot be performed (e.g. missing
-  client library). Raises ValueError on definite failures.
-  """
+  """Fails fast on misconfigured GCP resources before pipeline construction."""
   project, dataset, table_name = _parse_table_ref(options.table)
 
   required_columns = sorted(metric_spec.required_source_columns())
@@ -1495,20 +998,7 @@ def _preflight_checks(options, metric_spec):
 
 def _check_bq_source_table(project, dataset, table_name, options,
                            required_columns):
-  """Verify the source BigQuery table exists and required columns are present.
-
-  Runs a dry-run CDC query selecting the columns referenced by the metric
-  spec. This validates table access, CDC function access, and column
-  existence in a single round-trip.
-  """
-  try:
-    from apache_beam.io.gcp import bigquery_tools
-    from apache_beam.io.gcp.internal.clients import bigquery
-  except ImportError:
-    _LOGGER.warning(
-        '[Preflight] Skipping BQ table check: '
-        'BigQuery client libraries not available')
-    return
+  """Verifies source table access + required columns via a dry-run CDC query."""
 
   try:
     bq = bigquery_tools.BigQueryWrapper()
@@ -1623,9 +1113,7 @@ def _check_bq_temp_dataset(project, options):
 
 
 def _check_webhook_spec(options):
-  """Validate the webhook spec and that Google default credentials are
-  obtainable for the requested scopes.
-  """
+  """Validates the webhook spec parses and ADC is obtainable for its scopes."""
   message_metadata = _parse_message_metadata(options.message_metadata)
   spec = _parse_webhook_spec(options.webhook_spec, message_metadata)
 
@@ -1677,18 +1165,52 @@ def _check_pubsub_topic(topic_path):
 # ---------------------------------------------------------------------------
 
 
-def build_pipeline(pipeline, options, metric_spec, detector):
-  """Construct the anomaly monitoring pipeline.
+def _apply_detector(global_metrics, detector, has_group_by, window_duration):
+  """Runs anomaly detection on the windowed metric stream.
 
-  Args:
-    pipeline: A beam.Pipeline instance.
-    options: AnomalyMonitorOptions with table, poll_interval_sec, etc.
-    metric_spec: Parsed MetricSpec instance.
-    detector: Parsed anomaly detector instance.
-
-  Returns:
-    The final PCollection (for testing).
+  Stateful detectors (ZScore/IQR/RobustZScore/RelativeChange) are
+  wrapped in an ``OffsetKey(key, offset_micros)`` so each sliding-window
+  offset gets independent state, then unwrapped afterward.
+  ``_ThresholdAlert`` is stateless and bypasses that machinery.
   """
+  if isinstance(detector, _ThresholdAlert):
+    return global_metrics | 'DetectAnomalies' >> beam.ParDo(detector)
+
+  def _add_offset_key(element, _wd=window_duration, _keyed=has_group_by):
+    if _keyed:
+      key, row = element
+    else:
+      key, row = None, element
+    offset = (row.window_start % _wd).micros
+    return (OffsetKey(key=key, offset=offset), row)
+
+  keyed = global_metrics | 'AddOffsetKey' >> beam.Map(_add_offset_key)
+
+  if isinstance(detector, RelativeChangeConfig):
+    anomalies = keyed | 'DetectAnomalies' >> beam.ParDo(
+        RelativeChangeDoFn(
+            direction=detector.direction,
+            threshold_pct=detector.threshold_pct,
+            absolute_threshold=detector.absolute_threshold,
+            lookback_windows=detector.lookback_windows))
+  else:
+    # AnomalyDetection requires a typed (K, V) input.
+    typed = keyed | 'TypeHintMetrics' >> beam.Map(
+        lambda x: x).with_output_types(beam.typehints.Tuple[Any, beam.Row])
+    anomalies = typed | 'DetectAnomalies' >> AnomalyDetection(detector)
+
+  def _strip_offset_key(element, _keyed=has_group_by):
+    offset_key, result = element
+    if _keyed:
+      return (offset_key.key, result)
+    return result
+
+  return anomalies | 'StripOffsetKey' >> beam.Map(_strip_offset_key)
+
+
+def build_pipeline(pipeline, options, metric_spec, detector):
+  """Constructs the anomaly monitoring pipeline. Returns the anomalies
+  PCollection (exposed for testing)."""
   from bqmonitor.cdc import ReadBigQueryChangeHistory
 
   start_time = time.time() - options.start_offset_sec
@@ -1704,20 +1226,18 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   columns = sorted(metric_spec.required_source_columns())
   _LOGGER.info('  Columns: %s', columns)
 
-  # Auto-rename pseudo-columns if they conflict with user column names.
+  # Rename CDC pseudo-columns away if they clash with user column names.
   change_type_col = 'change_type'
   change_ts_col = 'change_timestamp'
   col_set = set(columns)
   if change_type_col in col_set:
     change_type_col = '_bqm_change_type'
     _LOGGER.info(
-        '  Renamed pseudo-column change_type -> %s to avoid conflict',
-        change_type_col)
+        '  Renamed pseudo-column change_type -> %s', change_type_col)
   if change_ts_col in col_set:
     change_ts_col = '_bqm_change_timestamp'
     _LOGGER.info(
-        '  Renamed pseudo-column change_timestamp -> %s to avoid conflict',
-        change_ts_col)
+        '  Renamed pseudo-column change_timestamp -> %s', change_ts_col)
 
   cdc_kwargs = dict(
       table=options.table,
@@ -1738,100 +1258,35 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   metrics = rows | 'ComputeMetric' >> ComputeMetric(
       metric_spec, fanout_strategy=fanout_strategy, fanout=options.fanout)
 
-  # Rewindow into GlobalWindows so the anomaly detector sees the full
-  # stream of window results as a time series, not isolated per-window.
+  # GlobalWindows so the detector sees the full stream as a time series.
   from apache_beam.transforms.window import GlobalWindows
   global_metrics = metrics | 'Rewindow' >> beam.WindowInto(
       GlobalWindows())
 
-  # Wrap every element's key in an OffsetKey so that stateful detectors
-  # (ZScore, IQR, RobustZScore) route each sliding-window offset to
-  # independent state. For example, size=60 period=30 produces offsets
-  # 0 and 30 — key "K" becomes OffsetKey("K", 0) and OffsetKey("K", 30).
-  # Fixed windows always get offset=0.
-  _window_duration = Duration(metric_spec.aggregation.window.size_seconds)
+  window_duration = Duration(metric_spec.aggregation.window.size_seconds)
   has_group_by = bool(metric_spec.aggregation.group_by)
-
-  def _add_offset_key(element, _wd=_window_duration, _keyed=has_group_by):
-    if _keyed:
-      key, row = element
-    else:
-      key, row = None, element
-    offset = (row.window_start % _wd).micros
-    return (OffsetKey(key=key, offset=offset), row)
-
-  if not isinstance(detector, _ThresholdAlert):
-    global_metrics = (
-        global_metrics | 'AddOffsetKey' >> beam.Map(_add_offset_key))
-
-  if isinstance(detector, RelativeChangeConfig):
-    anomalies = (
-        global_metrics
-        | 'DetectAnomalies' >> beam.ParDo(
-            RelativeChangeDoFn(
-                direction=detector.direction,
-                threshold_pct=detector.threshold_pct,
-                absolute_threshold=detector.absolute_threshold,
-                lookback_windows=detector.lookback_windows)))
-
-  elif isinstance(detector, _ThresholdAlert):
-    anomalies = global_metrics | 'DetectAnomalies' >> beam.ParDo(detector)
-  else:
-    global_metrics = (
-        global_metrics
-        | 'TypeHintMetrics' >> beam.Map(lambda x: x).with_output_types(
-            beam.typehints.Tuple[Any, beam.Row]))
-    anomalies = global_metrics | 'DetectAnomalies' >> AnomalyDetection(detector)
-
-  # Strip OffsetKey back to the original key (or no key) for downstream.
-  if not isinstance(detector, _ThresholdAlert):
-
-    def _strip_offset_key(element, _keyed=has_group_by):
-      offset_key, result = element
-      if _keyed:
-        return (offset_key.key, result)
-      return result
-
-    anomalies = (
-        anomalies | 'StripOffsetKey' >> beam.Map(_strip_offset_key))
+  anomalies = _apply_detector(
+      global_metrics, detector, has_group_by, window_duration)
 
   if options.log_all_results.lower() == 'true':
     _ = anomalies | 'LogResults' >> beam.ParDo(_LogAnomalyResult())
 
-  # Parse message_metadata + message_format once; both sinks share them.
   message_metadata = _parse_message_metadata(options.message_metadata)
   message_format = options.message_format
   if message_format is not None:
     _validate_message_format(message_format, message_metadata)
 
-  # Apply alert rate limiting before the external-alert sinks (Pub/Sub,
-  # webhook). Session-window semantics: per anomaly key, the first
-  # outlier fires and subsequent outliers within the cooldown gap of
-  # the previous event are suppressed. Continuous outliers extend the
-  # active-alert window. The BigQuery sink branch below intentionally
-  # consumes the un-rate-limited `anomalies` so the analytical record
-  # retains every detection (warmup / normal / outlier).
-  #
-  # The stage is wired unconditionally so operators can tune
-  # --alert_cooldown_seconds via Dataflow --update without changing the
-  # pipeline topology. When the cooldown is 0 the rate-limit DoFn is a
-  # pass-through (yields outliers without touching state); see
-  # _RateLimitAlerts for details.
-  #
-  # We filter to label == 1 BEFORE keying so the keyed reshuffle and
-  # stateful DoFn only see outliers. For a tuned detector outliers are
-  # a tiny fraction of the stream — keying the full stream and relying
-  # on an early-return inside the DoFn would shuffle ~100x more data
-  # than necessary.
+  # Alert path: filter to outliers, then key (so the keyed reshuffle
+  # sees only outliers, not the full detection stream), then rate-limit.
+  # The BQ sink branch below consumes the un-rate-limited `anomalies` so
+  # the analytical record retains every detection.
   alert_anomalies = (
       anomalies
       | 'FilterOutliers' >> beam.Filter(_is_outlier)
-      | 'KeyForRateLimit' >> beam.Map(_key_anomaly_for_async)
+      | 'KeyForAlerts' >> beam.Map(_key_anomaly_for_async)
       | 'RateLimitAlerts' >> beam.ParDo(
-          _RateLimitAlerts(options.alert_cooldown_seconds))
-      | 'RestoreAlertShape' >> beam.Map(_strip_unkeyed_sentinel))
+          _RateLimitAlerts(options.alert_cooldown_seconds)))
 
-  # Publish anomalies (label == 1) to Pub/Sub (if --topic is set).
   if options.topic:
     topic_path = _validate_topic_path(options.topic)
     _ = (
@@ -1842,13 +1297,6 @@ def build_pipeline(pipeline, options, metric_spec, detector):
                 message_metadata=message_metadata))
         | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
 
-  # POST anomalies (label == 1) to a REST webhook (if --webhook_spec is set).
-  #
-  # The actual POST is offloaded to a thread pool inside AsyncWrapper so a
-  # long target deadline (default 5 min) does not block the Beam worker
-  # thread. AsyncWrapper requires a (K, V) input because it uses per-key
-  # state and a real-time timer for at-least-once delivery semantics, so
-  # we key the stream first via _key_anomaly_for_async.
   if options.webhook_spec:
     webhook_spec = _parse_webhook_spec(
         options.webhook_spec, message_metadata)
@@ -1864,10 +1312,8 @@ def build_pipeline(pipeline, options, metric_spec, detector):
     )
     _ = (
         alert_anomalies
-        | 'KeyForAsyncWebhook' >> beam.Map(_key_anomaly_for_async)
         | 'PostAnomaliesToWebhook' >> beam.ParDo(async_webhook_dofn))
 
-  # Write all results to a BigQuery sink table (if configured).
   if options.sink_table:
     sink_table = options.sink_table.replace(':', '.')
     _ = (
@@ -1884,30 +1330,21 @@ def build_pipeline(pipeline, options, metric_spec, detector):
 
 
 def run(argv=None):
-  """Main entry point."""
   options = PipelineOptions(argv)
   monitor_options = options.view_as(AnomalyMonitorOptions)
 
-  # Validate required options.
   for required_opt in ('table', 'metric_spec', 'detector_spec'):
     if getattr(monitor_options, required_opt) is None:
       raise ValueError(f'--{required_opt} is required')
 
-  # Outputs: at least one of --topic or --webhook_spec must be configured,
-  # otherwise the pipeline would compute anomalies and discard them.
   if monitor_options.topic is None and monitor_options.webhook_spec is None:
     raise ValueError(
         'At least one of --topic or --webhook_spec must be set; '
         'otherwise detected anomalies have nowhere to go.')
 
-  # Validate table format.
   _parse_table_ref(monitor_options.table)
-
-  # Parse specs early so errors surface before pipeline construction.
   metric_spec = _parse_metric_spec(monitor_options.metric_spec)
   detector = _parse_detector_spec(monitor_options.detector_spec)
-
-  # Check GCP resources are accessible.
   _preflight_checks(monitor_options, metric_spec)
 
   options.view_as(SetupOptions).save_main_session = True
