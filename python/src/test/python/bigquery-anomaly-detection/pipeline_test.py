@@ -18,6 +18,7 @@
 
 import json
 import logging
+import time
 import unittest
 
 logging.basicConfig(level=logging.INFO)
@@ -31,9 +32,11 @@ from apache_beam.transforms.window import TimestampedValue
 
 from parameterized import parameterized, param
 from bqmonitor.metric import ComputeMetric, FanoutStrategy, MetricSpec
+from bqmonitor.pipeline import _anomaly_id
 from bqmonitor.pipeline import _compute_anomaly_message
 from bqmonitor.pipeline import _FormatAnomalyAsJson
 from bqmonitor.pipeline import _FormatResultForBQ
+from bqmonitor.pipeline import _key_anomaly_for_async
 from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _parse_webhook_spec
@@ -650,7 +653,9 @@ class ParseWebhookSpecTest(unittest.TestCase):
     self.assertEqual(out['headers'], {})
     self.assertEqual(
         out['scopes'], ['https://www.googleapis.com/auth/cloud-platform'])
-    self.assertEqual(out['timeout_seconds'], 30.0)
+    self.assertEqual(out['timeout_seconds'], 300.0)
+    self.assertEqual(out['parallelism'], 5)
+    self.assertEqual(out['callback_frequency_seconds'], 30.0)
 
   def test_full_spec(self):
     out = _parse_webhook_spec(
@@ -661,11 +666,15 @@ class ParseWebhookSpecTest(unittest.TestCase):
             'headers': {'X-Trace': '{key}'},
             'scopes': ['https://www.googleapis.com/auth/cloud-platform'],
             'timeout_seconds': 30,
+            'parallelism': 8,
+            'callback_frequency_seconds': 15,
         }),
         None)
     self.assertEqual(out['method'], 'PUT')
     self.assertEqual(out['headers'], {'X-Trace': '{key}'})
     self.assertEqual(out['timeout_seconds'], 30.0)
+    self.assertEqual(out['parallelism'], 8)
+    self.assertEqual(out['callback_frequency_seconds'], 15.0)
 
   def test_invalid_json_raises(self):
     with self.assertRaises(ValueError) as ctx:
@@ -737,6 +746,27 @@ class ParseWebhookSpecTest(unittest.TestCase):
       _parse_webhook_spec(self._minimal_spec(timeout_seconds=-5), None)
     with self.assertRaises(ValueError):
       _parse_webhook_spec(self._minimal_spec(timeout_seconds='10s'), None)
+
+  def test_parallelism_override(self):
+    out = _parse_webhook_spec(self._minimal_spec(parallelism=5), None)
+    self.assertEqual(out['parallelism'], 5)
+
+  def test_bad_parallelism_raises(self):
+    for bad in (0, -1, 1.5, 'many', True):
+      with self.assertRaises(ValueError, msg=f'parallelism={bad!r}'):
+        _parse_webhook_spec(self._minimal_spec(parallelism=bad), None)
+
+  def test_callback_frequency_override(self):
+    out = _parse_webhook_spec(
+        self._minimal_spec(callback_frequency_seconds=15), None)
+    self.assertEqual(out['callback_frequency_seconds'], 15.0)
+
+  def test_bad_callback_frequency_raises(self):
+    for bad in (0, -2.5, 'fast', True):
+      with self.assertRaises(
+          ValueError, msg=f'callback_frequency_seconds={bad!r}'):
+        _parse_webhook_spec(
+            self._minimal_spec(callback_frequency_seconds=bad), None)
 
   def test_unknown_placeholder_in_body_raises(self):
     with self.assertRaises(ValueError) as ctx:
@@ -932,6 +962,38 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
     self.assertEqual(call['url'], 'https://example.com/x')
     self.assertEqual(call['json'], {'q': 'value=99.0'})
 
+  def test_success_log_includes_window_and_elapsed(self):
+    """The success path emits an INFO log line that names the specific
+    anomaly window and how long the POST took, so operators can trace
+    individual anomalies through the webhook stage.
+
+    Importantly, the grouping key is NOT logged: in keyed pipelines the
+    key can hold user-derived values (account id, customer segment,
+    etc.) that shouldn't leak into pipeline logs. This test feeds a
+    keyed element with a recognizable sentinel value and asserts the
+    sentinel does NOT appear in the captured log output.
+    """
+    dofn = self._make_dofn({'q': '{value}'})
+    sensitive_key = 'SENSITIVE_CUSTOMER_ID_12345'
+    with self.assertLogs('bqmonitor.pipeline', level='INFO') as ctx:
+      dofn.process((sensitive_key, self._make_result(label=1, value=99.0)))
+    success_lines = [r for r in ctx.output if 'posted anomaly' in r]
+    self.assertEqual(
+        len(success_lines), 1, f'expected one success log, got: {ctx.output}')
+    line = success_lines[0]
+    # Window timestamps come from Timestamp(1000)/Timestamp(1001) as RFC3339.
+    self.assertIn('window=', line)
+    self.assertIn('1970-01-01T00:16:40', line)  # Timestamp(1000)
+    self.assertIn('model_id=ZScore', line)
+    self.assertIn('status=200', line)
+    # Elapsed time is formatted as "%.2fs"; just confirm the suffix.
+    self.assertRegex(line, r'in \d+\.\d{2}s')
+    # Privacy: the grouping key must not appear anywhere in the log
+    # output — neither the value (could be PII) nor a 'key=' label.
+    for log_line in ctx.output:
+      self.assertNotIn(sensitive_key, log_line)
+      self.assertNotIn('key=', log_line)
+
   def test_normal_suppressed(self):
     dofn = self._make_dofn({'q': '{value}'})
     dofn.process(self._make_result(label=0))
@@ -1048,6 +1110,170 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
     dofn.process(self._make_result(label=1))
     self.assertEqual(dofn._session.calls[0]['timeout'], 10.0)
 
+
+class AnomalyIdTest(unittest.TestCase):
+  """Tests for _anomaly_id used by AsyncWrapper for per-element dedup."""
+
+  def _result(self, ws=1000, we=1001, model_id='ZScore', value=42.0):
+    row = beam.Row(
+        value=value, window_start=Timestamp(ws), window_end=Timestamp(we))
+    pred = AnomalyPrediction(model_id=model_id, score=1.0, label=1)
+    return AnomalyResult(example=row, predictions=[pred])
+
+  def test_stable_for_same_anomaly(self):
+    a = self._result()
+    b = self._result()
+    self.assertEqual(_anomaly_id(a), _anomaly_id(b))
+
+  def test_differs_by_window(self):
+    self.assertNotEqual(
+        _anomaly_id(self._result(ws=1000)),
+        _anomaly_id(self._result(ws=2000)))
+
+  def test_differs_by_model_id(self):
+    self.assertNotEqual(
+        _anomaly_id(self._result(model_id='ZScore')),
+        _anomaly_id(self._result(model_id='IQR')))
+
+  def test_hashable(self):
+    # AsyncWrapper stores ids as dict keys, so they must be hashable.
+    hash(_anomaly_id(self._result()))
+
+
+class KeyAnomalyForAsyncTest(unittest.TestCase):
+  """Tests for _key_anomaly_for_async."""
+
+  def test_already_keyed_passes_through(self):
+    elem = ('mykey', 'val')
+    self.assertEqual(_key_anomaly_for_async(elem), ('mykey', 'val'))
+
+  def test_unkeyed_gets_sentinel(self):
+    self.assertEqual(_key_anomaly_for_async('val'), ('_unkeyed', 'val'))
+
+  def test_unkeyed_anomaly_result(self):
+    result = AnomalyResult(
+        example=beam.Row(
+            value=1.0,
+            window_start=Timestamp(0), window_end=Timestamp(1)),
+        predictions=[
+            AnomalyPrediction(model_id='X', score=1.0, label=1)])
+    out = _key_anomaly_for_async(result)
+    self.assertEqual(out[0], '_unkeyed')
+    self.assertIs(out[1], result)
+
+
+class _FakeBagState:
+  """In-memory stand-in for a Beam BagStateSpec.
+
+  Matches the contract AsyncWrapper expects (``add``, ``clear``,
+  ``read``). Modeled directly on the helper used in Beam's own
+  apache_beam/transforms/async_dofn_test.py so the test patterns
+  translate one-to-one.
+  """
+
+  def __init__(self, items):
+    self.items = list(items)
+    self.lock = __import__('threading').Lock()
+
+  def add(self, item):
+    with self.lock:
+      self.items.append(item)
+
+  def clear(self):
+    with self.lock:
+      self.items = []
+
+  def read(self):
+    with self.lock:
+      return self.items.copy()
+
+
+class _FakeTimer:
+  def __init__(self, t):
+    self.time = t
+
+  def set(self, t):
+    self.time = t
+
+
+class AsyncWebhookWiringTest(unittest.TestCase):
+  """End-to-end tests of _PostAnomalyToWebhook wrapped in AsyncWrapper.
+
+  We bypass the real GCP auth path by overriding the inner DoFn's setup
+  (so AsyncWrapper.setup doesn't try to fetch ADC) and inject a
+  _StubSession before triggering any processing. State is simulated
+  with _FakeBagState / _FakeTimer per the Beam-internal test pattern.
+  """
+
+  def setUp(self):
+    super().setUp()
+    # Reset the wrapper's module-level pool registry so tests don't
+    # leak state into each other.
+    from apache_beam.transforms.async_dofn import AsyncWrapper as _AW
+    _AW.reset_state()
+
+  def _build(self, body, *, status_code=200, parallelism=2,
+             callback_frequency=0.1):
+    from apache_beam.transforms.async_dofn import AsyncWrapper as _AW
+    spec = {
+        'endpoint': 'https://example.com/x',
+        'body': body,
+        'method': 'POST',
+        'headers': {},
+        'scopes': ['https://www.googleapis.com/auth/cloud-platform'],
+        'timeout_seconds': 10.0,
+    }
+    sync_dofn = _PostAnomalyToWebhook(spec, None, None)
+    stub = _StubSession(status_code=status_code)
+    # Bypass real google.auth.default() by overriding setup; AsyncWrapper
+    # calls sync_dofn.setup() inside its own setup().
+    sync_dofn.setup = lambda: setattr(sync_dofn, '_session', stub)
+    async_dofn = _AW(
+        sync_dofn,
+        parallelism=parallelism,
+        callback_frequency=callback_frequency,
+        id_fn=_anomaly_id)
+    async_dofn.setup()
+    return async_dofn, sync_dofn, stub
+
+  def _make_result(self, label=1, value=42.0, ws=1000, we=1001):
+    row = beam.Row(
+        value=value,
+        window_start=Timestamp(ws), window_end=Timestamp(we))
+    pred = AnomalyPrediction(model_id='ZScore', score=5.0, label=label)
+    return AnomalyResult(example=row, predictions=[pred])
+
+  def _wait_empty(self, async_dofn, timeout=10):
+    elapsed = 0
+    while not async_dofn.is_empty():
+      time.sleep(0.5)
+      elapsed += 0.5
+      if elapsed > timeout:
+        raise TimeoutError('async dofn did not drain')
+    # Give callbacks a moment to settle once the future completes.
+    time.sleep(0.5)
+
+  def test_outlier_posts_via_async_wrapper(self):
+    async_dofn, _, stub = self._build({'q': 'value={value}'})
+    msg = ('k1', self._make_result(label=1, value=99.0))
+    state = _FakeBagState([])
+    timer = _FakeTimer(0)
+
+    result = async_dofn.process(msg, to_process=state, timer=timer)
+    # Async: nothing emitted yet; element is queued in bag state.
+    self.assertEqual(result, [])
+    self.assertEqual(state.items, [msg])
+    self.assertNotEqual(timer.time, 0)  # timer was set
+
+    self._wait_empty(async_dofn)
+    # Now drive the timer callback to harvest the finished future.
+    async_dofn.commit_finished_items(state, timer)
+    self.assertEqual(state.items, [])
+
+    # The inner DoFn's stub session recorded exactly one POST with the
+    # substituted body.
+    self.assertEqual(len(stub.calls), 1)
+    self.assertEqual(stub.calls[0]['json'], {'q': 'value=99.0'})
 
 if __name__ == '__main__':
   unittest.main()

@@ -235,6 +235,7 @@ from apache_beam.io.gcp.pubsub import WriteToPubSub
 from apache_beam.metrics import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
+from apache_beam.transforms.async_dofn import AsyncWrapper
 from apache_beam.utils.timestamp import Duration
 
 from bqmonitor.metric import ComputeMetric
@@ -258,6 +259,26 @@ _LOGGER = logging.getLogger(__name__)
 
 _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
 
+_WEBHOOK_DEFAULT_SCOPES = ('https://www.googleapis.com/auth/cloud-platform',)
+_WEBHOOK_DEFAULT_METHOD = 'POST'
+# Default timeout is 5 minutes
+_WEBHOOK_DEFAULT_TIMEOUT_SEC = 300.0
+# AsyncWrapper parallelism: how many in-flight requests one worker can have.
+_WEBHOOK_DEFAULT_PARALLELISM = 5
+# How often the AsyncWrapper timer fires to harvest finished futures.
+_WEBHOOK_DEFAULT_CALLBACK_FREQUENCY_SEC = 30.0
+_WEBHOOK_ALLOWED_METHODS = frozenset({'POST', 'PUT', 'PATCH'})
+_WEBHOOK_KNOWN_KEYS = frozenset({
+    'endpoint', 'body', 'method', 'headers', 'scopes', 'timeout_seconds',
+    'parallelism', 'callback_frequency_seconds',
+})
+
+# 4xx codes that are still transient: server is telling us to back off
+# or retry later. All 5xx codes are also treated as transient. Every
+# other 4xx is treated as a permanent client-side problem (bad URL, bad
+# auth, bad payload schema) and the anomaly is dropped rather than
+# retried indefinitely.
+_TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
 
 @dataclass(frozen=True)
 class OffsetKey:
@@ -620,6 +641,35 @@ _SINK_SCHEMA = {
 }
 
 
+def _anomaly_id(value):
+  """Stable identity tuple for an anomaly, used by ``AsyncWrapper`` for
+  per-element deduplication.
+
+  The wrapper passes us the value half of a ``(K, V)`` element and uses
+  whatever this returns as a hashable id; two values with the same id
+  are treated as the same anomaly and only one is delivered downstream.
+  We key on the window bounds + the detector identity, which together
+  uniquely name a detected anomaly even if the same bundle is replayed
+  by the runner.
+  """
+  example = value.example
+  prediction = value.predictions[0]
+  return (
+      example.window_start.micros,
+      example.window_end.micros,
+      prediction.model_id or '',
+  )
+
+
+def _key_anomaly_for_async(element):
+  """Ensure each anomaly is a ``(K, V)`` tuple before it reaches the
+  ``AsyncWrapper``.
+  """
+  if isinstance(element, tuple) and len(element) == 2:
+    return element
+  return ('_unkeyed', element)
+
+
 class _PostAnomalyToWebhook(beam.DoFn):
   """POSTs each anomaly (``label == 1``) to a configured REST endpoint.
 
@@ -684,33 +734,43 @@ class _PostAnomalyToWebhook(beam.DoFn):
     body = _substitute_template_tree(self._webhook_spec['body'], merged)
     headers = _substitute_template_tree(self._webhook_spec['headers'], merged)
 
+    window_str = f"{fields['window_start']}/{fields['window_end']}"
+    model_id = fields['model_id'] or '<none>'
+
+    start_monotonic = time.monotonic()
     resp = self._session.request(
         method=self._webhook_spec['method'],
         url=self._webhook_spec['endpoint'],
         json=body,
         headers=headers or None,
         timeout=self._webhook_spec['timeout_seconds'])
+    elapsed_sec = time.monotonic() - start_monotonic
 
     status = resp.status_code
     if 200 <= status < 300:
+      _LOGGER.info(
+          'Webhook %s %s posted anomaly window=%s model_id=%s '
+          'in %.2fs (status=%d).',
+          self._webhook_spec['method'], self._webhook_spec['endpoint'],
+          window_str, model_id, elapsed_sec, status)
       return
 
     if status >= 500 or status in _TRANSIENT_RETRY_STATUSES:
       _LOGGER.warning(
-          'Webhook %s to %s returned transient status %d; bundle will '
-          'retry. Response: %s',
+          'Webhook %s %s returned transient status %d after %.2fs for '
+          'anomaly window=%s model_id=%s; bundle will retry. '
+          'Response: %s',
           self._webhook_spec['method'], self._webhook_spec['endpoint'],
-          status, resp.text[:500])
+          status, elapsed_sec, window_str, model_id, resp.text[:500])
       raise RuntimeError(
           f'Webhook returned transient status {status}; retrying bundle.')
 
-    # Permanent 4xx: log and drop. Counting it lets operators monitor
-    # for misconfigured runs without blocking pipeline progress.
     _LOGGER.error(
-        'Webhook %s to %s returned permanent status %d; dropping '
-        'anomaly. Response: %s',
+        'Webhook %s %s returned permanent status %d after %.2fs for '
+        'anomaly window=%s model_id=%s; dropping anomaly. '
+        'Response: %s',
         self._webhook_spec['method'], self._webhook_spec['endpoint'],
-        status, resp.text[:500])
+        status, elapsed_sec, window_str, model_id, resp.text[:500])
     self._DROPPED_4XX_COUNTER.inc()
 
 
@@ -1081,39 +1141,30 @@ def _parse_detector_spec(json_str):
 # Webhook spec parsing
 # ---------------------------------------------------------------------------
 
-_WEBHOOK_DEFAULT_SCOPES = ('https://www.googleapis.com/auth/cloud-platform',)
-_WEBHOOK_DEFAULT_METHOD = 'POST'
-_WEBHOOK_DEFAULT_TIMEOUT_SEC = 30.0
-_WEBHOOK_ALLOWED_METHODS = frozenset({'POST', 'PUT', 'PATCH'})
-_WEBHOOK_KNOWN_KEYS = frozenset({
-    'endpoint', 'body', 'method', 'headers', 'scopes', 'timeout_seconds',
-})
-
-# 4xx codes that are still transient: server is telling us to back off
-# or retry later. All 5xx codes are also treated as transient. Every
-# other 4xx is treated as a permanent client-side problem (bad URL, bad
-# auth, bad payload schema) and the anomaly is dropped rather than
-# retried indefinitely.
-_TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
-
-
 def _parse_webhook_spec(json_str, message_metadata):
   """Parse and validate a ``--webhook_spec`` JSON string.
 
   Schema::
 
       {
-        "endpoint": "https://...",          # required
-        "body":     <JSON object or array>, # required, template tree
-        "method":   "POST"|"PUT"|"PATCH",   # optional, default POST
-        "headers":  {<str>: <str>, ...},    # optional, also templated
-        "scopes":   ["https://...", ...],   # optional, default cloud-platform
-        "timeout_seconds": <number>          # optional, default 120
+        "endpoint": "https://...",                # required
+        "body":     <JSON object or array>,       # required, template tree
+        "method":   "POST"|"PUT"|"PATCH",         # optional, default POST
+        "headers":  {<str>: <str>, ...},          # optional, also templated
+        "scopes":   ["https://...", ...],         # optional, default cloud-platform
+        "timeout_seconds": <number>,              # optional, default 300 (5min)
+        "parallelism": <int>,                     # optional, default 20
+        "callback_frequency_seconds": <number>    # optional, default 30
       }
 
   String leaves in ``body`` and ``headers`` are validated as Python format
   strings against the union of ``_ANOMALY_FIELDS``, the keys of
   ``message_metadata``, and the synthetic field ``{anomaly_message}``.
+
+  ``parallelism`` and ``callback_frequency_seconds`` configure the
+  ``AsyncWrapper`` that runs the actual POSTs off the Beam worker thread,
+  so a long deadline (``timeout_seconds``) doesn't translate to a long
+  thread-blocking period for downstream work.
 
   Returns the normalized spec dict with all defaults applied.
   """
@@ -1182,6 +1233,22 @@ def _parse_webhook_spec(json_str, message_metadata):
         f"--webhook_spec.timeout_seconds must be a positive number, "
         f"got {timeout_seconds!r}")
 
+  parallelism = spec.get('parallelism', _WEBHOOK_DEFAULT_PARALLELISM)
+  if (not isinstance(parallelism, int) or isinstance(parallelism, bool)
+      or parallelism <= 0):
+    raise ValueError(
+        f"--webhook_spec.parallelism must be a positive integer, "
+        f"got {parallelism!r}")
+
+  callback_frequency_seconds = spec.get(
+      'callback_frequency_seconds', _WEBHOOK_DEFAULT_CALLBACK_FREQUENCY_SEC)
+  if (not isinstance(callback_frequency_seconds, (int, float))
+      or isinstance(callback_frequency_seconds, bool)
+      or callback_frequency_seconds <= 0):
+    raise ValueError(
+        f"--webhook_spec.callback_frequency_seconds must be a positive "
+        f"number, got {callback_frequency_seconds!r}")
+
   known_fields = (
       _ANOMALY_FIELDS | set(message_metadata or {}) | {'anomaly_message'})
   _validate_template_tree(body, known_fields, location='body')
@@ -1194,6 +1261,8 @@ def _parse_webhook_spec(json_str, message_metadata):
       'headers': headers,
       'scopes': list(scopes),
       'timeout_seconds': float(timeout_seconds),
+      'parallelism': parallelism,
+      'callback_frequency_seconds': float(callback_frequency_seconds),
   }
 
 
@@ -1555,16 +1624,29 @@ def build_pipeline(pipeline, options, metric_spec, detector):
         | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
 
   # POST anomalies (label == 1) to a REST webhook (if --webhook_spec is set).
+  #
+  # The actual POST is offloaded to a thread pool inside AsyncWrapper so a
+  # long target deadline (default 5 min) does not block the Beam worker
+  # thread. AsyncWrapper requires a (K, V) input because it uses per-key
+  # state and a real-time timer for at-least-once delivery semantics, so
+  # we key the stream first via _key_anomaly_for_async.
   if options.webhook_spec:
     webhook_spec = _parse_webhook_spec(
         options.webhook_spec, message_metadata)
+    sync_webhook_dofn = _PostAnomalyToWebhook(
+        webhook_spec=webhook_spec,
+        message_format=message_format,
+        message_metadata=message_metadata)
+    async_webhook_dofn = AsyncWrapper(
+        sync_webhook_dofn,
+        parallelism=webhook_spec['parallelism'],
+        callback_frequency=webhook_spec['callback_frequency_seconds'],
+        id_fn=_anomaly_id,
+    )
     _ = (
         anomalies
-        | 'PostAnomaliesToWebhook' >> beam.ParDo(
-            _PostAnomalyToWebhook(
-                webhook_spec=webhook_spec,
-                message_format=message_format,
-                message_metadata=message_metadata)))
+        | 'KeyForAsyncWebhook' >> beam.Map(_key_anomaly_for_async)
+        | 'PostAnomaliesToWebhook' >> beam.ParDo(async_webhook_dofn))
 
   # Write all results to a BigQuery sink table (if configured).
   if options.sink_table:
