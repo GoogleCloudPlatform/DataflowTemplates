@@ -220,12 +220,10 @@ gcloud dataflow flex-template run "data-generator-spanner-$(date +%Y%m%d-%H%M%S)
   --parameters \
 sinkType=SPANNER,\
 sinkOptions=gs://my-bucket/configs/sink_options.json,\
-qpsPerPartition=1000,\
 batchSize=100,\
 insertQps=5000,\
 updateQps=1000,\
-deleteQps=500,\
-maxShards=1
+deleteQps=500
 ```
 
 This streams 5 000 inserts / 1 000 updates / 500 deletes per second, batched
@@ -242,12 +240,10 @@ gcloud dataflow flex-template run "data-generator-mysql-$(date +%Y%m%d-%H%M%S)" 
   --parameters \
 sinkType=MYSQL,\
 sinkOptions=gs://my-bucket/configs/source-shards.json,\
-qpsPerPartition=1000,\
 batchSize=200,\
 insertQps=10000,\
 updateQps=2000,\
 deleteQps=0,\
-maxShards=2,\
 schemaConfig=gs://my-bucket/configs/overrides.conf
 ```
 
@@ -262,13 +258,13 @@ shards, with a per-table override file applied on top.
 | ----------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sinkType`        | Yes      | —       | `SPANNER` or `MYSQL`. Selects the schema fetcher and writer.                                                                                    |
 | `sinkOptions`     | Yes      | —       | GCS path to the sink configuration document. Spanner: `sink_options.json`. MySQL: shard list. See samples above.                                |
-| `qpsPerPartition` | No       | `1000`  | Target QPS each pipeline partition tries to drive. Used to right-size the tick fan-out for high-throughput runs.                                |
 | `batchSize`       | No       | `100`   | Maximum rows buffered per `(table, shard, operation)` before flushing to the sink. Tune up for higher throughput, down for lower memory.        |
 | `insertQps`       | No       | `1000`  | Default insert QPS per table. Per-table overrides come from `--schemaConfig`.                                                                   |
 | `updateQps`       | No       | `0`     | Default update QPS per table. `0` disables UPDATE generation.                                                                                   |
 | `deleteQps`       | No       | `0`     | Default delete QPS per table. `0` disables DELETE generation.                                                                                   |
-| `maxShards`       | No       | `1`     | Maximum number of logical shards the generated data is distributed across. For MySQL this is capped by the number of shards in the shard file. |
 | `schemaConfig`    | No       | —       | GCS path to a HOCON / JSON file with per-table overrides. See [Schema overrides reference](#schema-overrides-reference).                        |
+| `updateInterval`  | No       | `5`     | Interval cadence in seconds between successive UPDATEs for a given row.                                                                         |
+| `deleteInterval`  | No       | `5`     | Interval cadence in seconds trailing standard updates before a DELETE is scheduled. Executes exactly `deleteInterval` seconds after the final UPDATE. |
 
 The pipeline also accepts the standard Beam / Dataflow flags
 (`--runner`, `--region`, `--workerMachineType`, `--maxNumWorkers`,
