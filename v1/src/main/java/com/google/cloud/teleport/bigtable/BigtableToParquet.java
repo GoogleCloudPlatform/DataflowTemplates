@@ -209,15 +209,9 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
-    ParquetIO.Sink parquetSink = ParquetIO.sink(BigtableRow.getClassSchema());
-    ValueProvider<Integer> minRowCountOpt = options.getMinRowCountForPageSizeCheck();
-    if (minRowCountOpt.isAccessible()) {
-      Integer minRowCount = minRowCountOpt.get();
-      if (minRowCount != null && minRowCount > 0) {
-        parquetSink =
-            parquetSink.withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
-      }
-    }
+    ParquetIO.Sink parquetSink =
+        ParquetIO.sink(BigtableRow.getClassSchema())
+            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
     FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
             .via(parquetSink)
