@@ -31,12 +31,17 @@ from apache_beam.transforms.window import TimestampedValue
 
 from parameterized import parameterized, param
 from bqmonitor.metric import ComputeMetric, FanoutStrategy, MetricSpec
+from bqmonitor.pipeline import _compute_anomaly_message
 from bqmonitor.pipeline import _FormatAnomalyAsJson
 from bqmonitor.pipeline import _FormatResultForBQ
 from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
+from bqmonitor.pipeline import _parse_webhook_spec
+from bqmonitor.pipeline import _PostAnomalyToWebhook
+from bqmonitor.pipeline import _substitute_template_tree
 from bqmonitor.pipeline import _ThresholdAlert
 from bqmonitor.pipeline import _unpack_result
+from bqmonitor.pipeline import _validate_template_tree
 from apache_beam.utils.timestamp import Timestamp
 from bqmonitor.pipeline import _validate_message_format
 
@@ -624,6 +629,424 @@ class FormatAnomalyCustomFormatTest(unittest.TestCase):
         message_metadata={'env': 'prod', 'team': 'oncall'})
     results = list(dofn.process(self._make_result(label=1)))
     self.assertEqual(results[0], b'prod-oncall')
+
+
+class ParseWebhookSpecTest(unittest.TestCase):
+  """Tests for _parse_webhook_spec."""
+
+  def _minimal_spec(self, **overrides):
+    spec = {
+        'endpoint': 'https://example.com/api',
+        'body': {'text': 'static'},
+    }
+    spec.update(overrides)
+    return json.dumps(spec)
+
+  def test_minimal_valid(self):
+    out = _parse_webhook_spec(self._minimal_spec(), None)
+    self.assertEqual(out['endpoint'], 'https://example.com/api')
+    self.assertEqual(out['body'], {'text': 'static'})
+    self.assertEqual(out['method'], 'POST')
+    self.assertEqual(out['headers'], {})
+    self.assertEqual(
+        out['scopes'], ['https://www.googleapis.com/auth/cloud-platform'])
+    self.assertEqual(out['timeout_seconds'], 30.0)
+
+  def test_full_spec(self):
+    out = _parse_webhook_spec(
+        json.dumps({
+            'endpoint': 'https://api.example.com/v1/chat',
+            'body': {'q': '{anomaly_message}'},
+            'method': 'put',
+            'headers': {'X-Trace': '{key}'},
+            'scopes': ['https://www.googleapis.com/auth/cloud-platform'],
+            'timeout_seconds': 30,
+        }),
+        None)
+    self.assertEqual(out['method'], 'PUT')
+    self.assertEqual(out['headers'], {'X-Trace': '{key}'})
+    self.assertEqual(out['timeout_seconds'], 30.0)
+
+  def test_invalid_json_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec('{bad json}', None)
+    self.assertIn('Invalid JSON', str(ctx.exception))
+
+  def test_not_object_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec('["a","b"]', None)
+    self.assertIn('JSON object', str(ctx.exception))
+
+  def test_missing_endpoint_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(json.dumps({'body': {}}), None)
+    self.assertIn("'endpoint'", str(ctx.exception))
+
+  def test_missing_body_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(
+          json.dumps({'endpoint': 'https://example.com'}), None)
+    self.assertIn("'body'", str(ctx.exception))
+
+  def test_non_http_endpoint_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(self._minimal_spec(endpoint='ftp://x'), None)
+    self.assertIn('http(s)', str(ctx.exception))
+
+  def test_unknown_key_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(
+          self._minimal_spec(unexpected='field'), None)
+    self.assertIn('unexpected', str(ctx.exception))
+
+  def test_bad_method_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(self._minimal_spec(method='DELETE'), None)
+    self.assertIn('method', str(ctx.exception))
+
+  def test_bad_body_type_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(self._minimal_spec(body='just a string'), None)
+    self.assertIn('body', str(ctx.exception))
+
+  def test_body_can_be_list(self):
+    out = _parse_webhook_spec(
+        self._minimal_spec(body=[{'text': 'hi'}]), None)
+    self.assertEqual(out['body'], [{'text': 'hi'}])
+
+  def test_bad_headers_shape_raises(self):
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(headers=['x']), None)
+
+  def test_bad_header_value_type_raises(self):
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(headers={'X': 1}), None)
+
+  def test_bad_scopes_raises(self):
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(scopes=[]), None)
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(scopes='not-a-list'), None)
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(scopes=[123]), None)
+
+  def test_bad_timeout_raises(self):
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(timeout_seconds=0), None)
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(timeout_seconds=-5), None)
+    with self.assertRaises(ValueError):
+      _parse_webhook_spec(self._minimal_spec(timeout_seconds='10s'), None)
+
+  def test_unknown_placeholder_in_body_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(
+          self._minimal_spec(body={'q': 'hello {bogus}'}), None)
+    self.assertIn('bogus', str(ctx.exception))
+
+  def test_unknown_placeholder_in_header_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _parse_webhook_spec(
+          self._minimal_spec(headers={'X-Trace': '{bogus}'}), None)
+    self.assertIn('bogus', str(ctx.exception))
+
+  def test_metadata_keys_allowed_as_placeholders(self):
+    out = _parse_webhook_spec(
+        self._minimal_spec(body={'q': '{env}-{value}'}),
+        {'env': 'prod'})
+    self.assertEqual(out['body'], {'q': '{env}-{value}'})
+
+  def test_anomaly_message_placeholder_allowed(self):
+    out = _parse_webhook_spec(
+        self._minimal_spec(body={'q': '{anomaly_message}'}), None)
+    self.assertEqual(out['body'], {'q': '{anomaly_message}'})
+
+  def test_non_string_leaves_pass_through(self):
+    out = _parse_webhook_spec(
+        self._minimal_spec(
+            body={'count': 1, 'enabled': True, 'pct': 0.5, 'tag': None}),
+        None)
+    self.assertEqual(
+        out['body'],
+        {'count': 1, 'enabled': True, 'pct': 0.5, 'tag': None})
+
+
+class SubstituteTemplateTreeTest(unittest.TestCase):
+  """Tests for _substitute_template_tree."""
+
+  def test_dict_substitution(self):
+    out = _substitute_template_tree(
+        {'text': '{a} and {b}'}, {'a': 1, 'b': 2})
+    self.assertEqual(out, {'text': '1 and 2'})
+
+  def test_nested_substitution(self):
+    tree = {
+        'messages': [
+            {'userMessage': {'text': 'Anomaly: {value}'}},
+            {'userMessage': {'text': 'Key: {key}'}},
+        ],
+        'meta': {'agent': 'projects/{project}/agents/x'},
+    }
+    out = _substitute_template_tree(
+        tree, {'value': 99.0, 'key': 'campaign_a', 'project': 'p1'})
+    self.assertEqual(
+        out['messages'][0]['userMessage']['text'], 'Anomaly: 99.0')
+    self.assertEqual(out['messages'][1]['userMessage']['text'],
+                     'Key: campaign_a')
+    self.assertEqual(out['meta']['agent'], 'projects/p1/agents/x')
+
+  def test_non_string_leaves_unchanged(self):
+    tree = {'n': 1, 'b': True, 'f': 2.5, 'z': None, 's': '{a}'}
+    out = _substitute_template_tree(tree, {'a': 'X'})
+    self.assertEqual(out, {'n': 1, 'b': True, 'f': 2.5, 'z': None, 's': 'X'})
+
+  def test_does_not_mutate_input(self):
+    tree = {'a': [{'b': '{x}'}]}
+    out = _substitute_template_tree(tree, {'x': 'sub'})
+    self.assertEqual(tree['a'][0]['b'], '{x}')
+    self.assertEqual(out['a'][0]['b'], 'sub')
+
+  def test_static_string_passes_through(self):
+    out = _substitute_template_tree({'x': 'literal'}, {})
+    self.assertEqual(out, {'x': 'literal'})
+
+
+class ValidateTemplateTreeTest(unittest.TestCase):
+  """Tests for _validate_template_tree."""
+
+  def test_valid_tree(self):
+    _validate_template_tree(
+        {'a': '{x}', 'b': [{'c': '{y}'}]}, {'x', 'y'})
+
+  def test_unknown_at_top_level_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _validate_template_tree({'a': '{bogus}'}, {'x'})
+    self.assertIn('bogus', str(ctx.exception))
+
+  def test_unknown_nested_raises(self):
+    with self.assertRaises(ValueError) as ctx:
+      _validate_template_tree(
+          {'a': [{'b': 'ok'}, {'c': '{nope}'}]}, {'ok'})
+    self.assertIn('nope', str(ctx.exception))
+
+  def test_non_string_leaves_skipped(self):
+    _validate_template_tree({'a': 1, 'b': True, 'c': None}, set())
+
+
+class ComputeAnomalyMessageTest(unittest.TestCase):
+  """Tests for _compute_anomaly_message."""
+
+  def _fields(self, **overrides):
+    base = {
+        'value': 42.0, 'score': 5.0, 'label': 1, 'threshold': 'null',
+        'model_id': 'ZScore', 'info': '', 'key': '',
+        'window_start': '2026-05-10T00:00:00Z',
+        'window_end': '2026-05-10T00:01:00Z',
+    }
+    base.update(overrides)
+    return base
+
+  def test_default_message(self):
+    msg = _compute_anomaly_message(self._fields(), None, None)
+    self.assertIn('Anomaly detected', msg)
+    self.assertIn('value=42.0', msg)
+    self.assertIn('score=5.0', msg)
+
+  def test_custom_format(self):
+    msg = _compute_anomaly_message(
+        self._fields(value=77.0), 'alert v={value}', None)
+    self.assertEqual(msg, 'alert v=77.0')
+
+  def test_metadata_visible_in_custom_format(self):
+    msg = _compute_anomaly_message(
+        self._fields(), '{env}-{model_id}', {'env': 'prod'})
+    self.assertEqual(msg, 'prod-ZScore')
+
+  def test_anomaly_fields_override_metadata(self):
+    msg = _compute_anomaly_message(
+        self._fields(value=10.0),
+        'v={value}',
+        {'value': 'SHOULD_NOT_APPEAR'})
+    self.assertEqual(msg, 'v=10.0')
+
+
+class _StubResponse:
+  """Minimal stand-in for a requests Response used by DoFn tests."""
+
+  def __init__(self, status_code=200, text=''):
+    self.status_code = status_code
+    self.text = text
+
+  def raise_for_status(self):
+    if self.status_code >= 400:
+      raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class _StubSession:
+  """Captures the most recent request() call for assertions."""
+
+  def __init__(self, status_code=200):
+    self.calls = []
+    self._status_code = status_code
+
+  def request(self, method, url, json=None, headers=None, timeout=None):
+    self.calls.append({
+        'method': method, 'url': url, 'json': json,
+        'headers': headers, 'timeout': timeout,
+    })
+    return _StubResponse(status_code=self._status_code)
+
+
+class PostAnomalyToWebhookTest(unittest.TestCase):
+  """Tests for _PostAnomalyToWebhook DoFn (session stubbed; no network)."""
+
+  def _make_result(self, label, value=42.0, score=5.0, model_id='ZScore'):
+    row = beam.Row(
+        value=value,
+        window_start=Timestamp(1000), window_end=Timestamp(1001))
+    prediction = AnomalyPrediction(
+        model_id=model_id, score=score, label=label)
+    return AnomalyResult(example=row, predictions=[prediction])
+
+  def _make_dofn(self, body, *, message_format=None, message_metadata=None,
+                 headers=None, status_code=200, method='POST',
+                 endpoint='https://example.com/x'):
+    spec = {
+        'endpoint': endpoint,
+        'body': body,
+        'method': method,
+        'headers': headers or {},
+        'scopes': ['https://www.googleapis.com/auth/cloud-platform'],
+        'timeout_seconds': 10.0,
+    }
+    dofn = _PostAnomalyToWebhook(spec, message_format, message_metadata)
+    dofn._session = _StubSession(status_code=status_code)
+    return dofn
+
+  def test_outlier_triggers_post(self):
+    dofn = self._make_dofn({'q': 'value={value}'})
+    dofn.process(self._make_result(label=1, value=99.0))
+    self.assertEqual(len(dofn._session.calls), 1)
+    call = dofn._session.calls[0]
+    self.assertEqual(call['method'], 'POST')
+    self.assertEqual(call['url'], 'https://example.com/x')
+    self.assertEqual(call['json'], {'q': 'value=99.0'})
+
+  def test_normal_suppressed(self):
+    dofn = self._make_dofn({'q': '{value}'})
+    dofn.process(self._make_result(label=0))
+    self.assertEqual(len(dofn._session.calls), 0)
+
+  def test_warmup_suppressed(self):
+    dofn = self._make_dofn({'q': '{value}'})
+    dofn.process(self._make_result(label=-2))
+    self.assertEqual(len(dofn._session.calls), 0)
+
+  def test_anomaly_message_default(self):
+    dofn = self._make_dofn({'q': '{anomaly_message}'})
+    dofn.process(self._make_result(label=1, value=12.0))
+    body_q = dofn._session.calls[0]['json']['q']
+    self.assertIn('Anomaly detected', body_q)
+    self.assertIn('value=12.0', body_q)
+
+  def test_anomaly_message_from_message_format(self):
+    dofn = self._make_dofn(
+        {'q': '{anomaly_message}'},
+        message_format='custom alert v={value}')
+    dofn.process(self._make_result(label=1, value=99.0))
+    self.assertEqual(
+        dofn._session.calls[0]['json']['q'], 'custom alert v=99.0')
+
+  def test_metadata_visible_in_body(self):
+    dofn = self._make_dofn(
+        {'q': '{env} v={value}'},
+        message_metadata={'env': 'prod'})
+    dofn.process(self._make_result(label=1, value=7.0))
+    self.assertEqual(
+        dofn._session.calls[0]['json']['q'], 'prod v=7.0')
+
+  def test_keyed_element_substitutes_key(self):
+    dofn = self._make_dofn({'q': 'k={key}'})
+    dofn.process(('campaign_search', self._make_result(label=1)))
+    self.assertEqual(
+        dofn._session.calls[0]['json']['q'], 'k=campaign_search')
+
+  def test_headers_substituted(self):
+    dofn = self._make_dofn(
+        {'q': 'x'},
+        headers={'X-Anomaly-Key': '{key}'})
+    dofn.process(('campaign_a', self._make_result(label=1)))
+    self.assertEqual(
+        dofn._session.calls[0]['headers'],
+        {'X-Anomaly-Key': 'campaign_a'})
+
+  def test_nested_body_substituted(self):
+    dofn = self._make_dofn({
+        'messages': [{
+            'userMessage': {
+                'text': '{anomaly_message}',
+                'runtime_params': {'static': 'value'},
+            },
+        }],
+        'dataAgentContext': {'dataAgent': 'projects/p/dataAgents/a'},
+    })
+    dofn.process(self._make_result(label=1, value=88.0))
+    posted = dofn._session.calls[0]['json']
+    self.assertIn(
+        'value=88.0', posted['messages'][0]['userMessage']['text'])
+    self.assertEqual(
+        posted['messages'][0]['userMessage']['runtime_params']['static'],
+        'value')
+    self.assertEqual(
+        posted['dataAgentContext']['dataAgent'],
+        'projects/p/dataAgents/a')
+
+  def test_5xx_raises_for_retry(self):
+    """5xx → transient; bundle retry covers server-side flapping."""
+    dofn = self._make_dofn({'q': '{value}'}, status_code=500)
+    with self.assertRaises(RuntimeError):
+      dofn.process(self._make_result(label=1))
+    # The POST was attempted even though it failed.
+    self.assertEqual(len(dofn._session.calls), 1)
+
+  def test_503_raises_for_retry(self):
+    dofn = self._make_dofn({'q': '{value}'}, status_code=503)
+    with self.assertRaises(RuntimeError):
+      dofn.process(self._make_result(label=1))
+
+  def test_429_raises_for_retry(self):
+    """429 Too Many Requests → transient; back off and retry."""
+    dofn = self._make_dofn({'q': '{value}'}, status_code=429)
+    with self.assertRaises(RuntimeError):
+      dofn.process(self._make_result(label=1))
+
+  def test_408_raises_for_retry(self):
+    dofn = self._make_dofn({'q': '{value}'}, status_code=408)
+    with self.assertRaises(RuntimeError):
+      dofn.process(self._make_result(label=1))
+
+  def test_permanent_4xx_dropped(self):
+    """Permanent 4xx (e.g. 400 bad request) is logged and dropped, not
+    raised. Raising would cause streaming Dataflow to retry the bundle
+    indefinitely, blocking pipeline progress on a misconfigured run."""
+    for status in (400, 401, 403, 404, 422):
+      dofn = self._make_dofn({'q': '{value}'}, status_code=status)
+      # Should not raise.
+      dofn.process(self._make_result(label=1))
+      # Should still have attempted the POST once.
+      self.assertEqual(
+          len(dofn._session.calls), 1,
+          f'expected one call for status {status}')
+
+  def test_method_propagated(self):
+    dofn = self._make_dofn({'q': 'x'}, method='PUT')
+    dofn.process(self._make_result(label=1))
+    self.assertEqual(dofn._session.calls[0]['method'], 'PUT')
+
+  def test_timeout_propagated(self):
+    dofn = self._make_dofn({'q': 'x'})
+    dofn.process(self._make_result(label=1))
+    self.assertEqual(dofn._session.calls[0]['timeout'], 10.0)
 
 
 if __name__ == '__main__':

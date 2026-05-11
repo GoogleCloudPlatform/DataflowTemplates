@@ -226,9 +226,13 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Optional
 
+import google.auth
+from google.auth.transport.requests import AuthorizedSession
+
 import apache_beam as beam
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.gcp.pubsub import WriteToPubSub
+from apache_beam.metrics import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.utils.timestamp import Duration
@@ -304,6 +308,28 @@ def _unpack_result(element):
   if isinstance(element, tuple) and len(element) == 2:
     return element[0], element[1]
   return None, element
+
+
+def _parse_message_metadata(metadata_str):
+  """Decode the ``--message_metadata`` option into a dict, or None.
+
+  Returns None when ``metadata_str`` is unset/empty. Raises ValueError if
+  the option is set but not parseable as a JSON object. Centralizing this
+  lets both build_pipeline() and the webhook preflight check share the
+  same parsing path without duplicating error wording.
+  """
+  if not metadata_str:
+    return None
+  try:
+    metadata = json.loads(metadata_str)
+  except json.JSONDecodeError as e:
+    raise ValueError(
+        f'--message_metadata must be valid JSON: {e}') from e
+  if not isinstance(metadata, dict):
+    raise ValueError(
+        '--message_metadata must be a JSON object (dict), '
+        f'got {type(metadata).__name__}')
+  return metadata
 
 
 def _parse_table_ref(table):
@@ -419,22 +445,67 @@ _ANOMALY_FIELDS = frozenset({
 })
 
 
+def _validate_format_placeholders(format_str, known_fields, location=''):
+  """Validate that every ``{placeholder}`` in ``format_str`` is in known_fields.
+
+  Shared by both the Pub/Sub ``message_format`` validator and the webhook
+  body/header tree validator so we keep one definition of "which
+  placeholders may appear in a template".
+  """
+  referenced = {
+      fname for _, fname, _, _ in string.Formatter().parse(format_str)
+      if fname is not None}
+  unknown = referenced - known_fields
+  if unknown:
+    loc = f' at {location}' if location else ''
+    raise ValueError(
+        f'Template{loc} references unknown fields: {sorted(unknown)}. '
+        f'Allowed fields: {sorted(known_fields)}.')
+
+
 def _validate_message_format(format_str, metadata):
-  """Validate that all placeholders in format_str are resolvable.
+  """Validate that all placeholders in ``--message_format`` are resolvable.
 
   Raises ValueError at pipeline construction if the format string
   references a field that is neither a known anomaly field nor a key
   in the user-provided metadata.
   """
-  referenced = {
-      fname for _, fname, _, _ in string.Formatter().parse(format_str)
-      if fname is not None}
-  unknown = referenced - _ANOMALY_FIELDS - set(metadata or {})
-  if unknown:
-    raise ValueError(
-        f'message_format references unknown fields: {sorted(unknown)}. '
-        f'Available anomaly fields: {sorted(_ANOMALY_FIELDS)}. '
-        f'Available metadata keys: {sorted(metadata or {})}.')
+  _validate_format_placeholders(
+      format_str, _ANOMALY_FIELDS | set(metadata or {}))
+
+
+def _validate_template_tree(tree, known_fields, location=''):
+  """Recursively validate format placeholders in a JSON-shaped tree.
+
+  Walks dicts and lists; every string leaf is validated as a Python
+  format string against ``known_fields``. Non-string primitives
+  (int/float/bool/None) pass through unchanged because they cannot
+  contain placeholders.
+  """
+  if isinstance(tree, dict):
+    for k, v in tree.items():
+      _validate_template_tree(v, known_fields, location=f'{location}.{k}')
+  elif isinstance(tree, list):
+    for i, v in enumerate(tree):
+      _validate_template_tree(v, known_fields, location=f'{location}[{i}]')
+  elif isinstance(tree, str):
+    _validate_format_placeholders(tree, known_fields, location=location)
+
+
+def _substitute_template_tree(tree, fields):
+  """Recursively format every string leaf of a JSON-shaped tree.
+
+  Returns a new tree with the same shape; dicts/lists are rebuilt so the
+  caller's original spec object is not mutated (matters because the spec
+  is reused for every anomaly bundle).
+  """
+  if isinstance(tree, dict):
+    return {k: _substitute_template_tree(v, fields) for k, v in tree.items()}
+  if isinstance(tree, list):
+    return [_substitute_template_tree(v, fields) for v in tree]
+  if isinstance(tree, str):
+    return tree.format(**fields)
+  return tree
 
 
 def _build_anomaly_fields(element):
@@ -460,6 +531,33 @@ def _build_anomaly_fields(element):
       'window_end': example.window_end.to_rfc3339(),
   }
   return fields, key, result
+
+
+def _default_anomaly_message(fields):
+  """Default natural-language summary used when message_format is unset.
+
+  This is the same text Pub/Sub embeds as ``event_description``; sharing it
+  here lets the webhook sink emit a sensible default for ``{anomaly_message}``
+  without forcing users to specify ``--message_format``.
+  """
+  return (
+      f'Anomaly detected value={fields["value"]}'
+      f' score={fields["score"]}'
+      f' in window={fields["window_start"]}-{fields["window_end"]}')
+
+
+def _compute_anomaly_message(fields, message_format, message_metadata):
+  """Render the canonical anomaly message string.
+
+  Used by both the Pub/Sub sink (for the default ``event_description``
+  field and for the full custom-format payload) and the webhook sink
+  (for the ``{anomaly_message}`` placeholder substituted into the body).
+  """
+  if message_format is not None:
+    merged = dict(message_metadata or {})
+    merged.update(fields)
+    return message_format.format(**merged)
+  return _default_anomaly_message(fields)
 
 
 class _FormatAnomalyAsJson(beam.DoFn):
@@ -494,16 +592,14 @@ class _FormatAnomalyAsJson(beam.DoFn):
     if prediction.label != 1:
       return
 
+    message = _compute_anomaly_message(
+        fields, self._message_format, self._message_metadata)
+
     if self._message_format is not None:
-      merged = dict(self._message_metadata)
-      merged.update(fields)
-      yield self._message_format.format(**merged).encode('utf-8')
+      yield message.encode('utf-8')
     else:
       payload = {
-          'event_description': (
-              f'Anomaly detected value={fields["value"]}'
-              f' score={fields["score"]}'
-              f' in window={fields["window_start"]}-{fields["window_end"]}'),
+          'event_description': message,
           'agent_id': fields['model_id'],
       }
       if key is not None:
@@ -522,6 +618,100 @@ _SINK_SCHEMA = {
         {'name': 'key', 'type': 'STRING', 'mode': 'NULLABLE'},
     ]
 }
+
+
+class _PostAnomalyToWebhook(beam.DoFn):
+  """POSTs each anomaly (``label == 1``) to a configured REST endpoint.
+
+  The webhook spec is the parsed/normalized output of
+  ``_parse_webhook_spec`` — it has ``endpoint``, ``body``, ``method``,
+  ``headers``, ``scopes``, and ``timeout_seconds`` already filled in.
+
+  Each string leaf in ``body`` and ``headers`` is Python-format-substituted
+  against the union of anomaly fields, ``message_metadata``, and the
+  virtual ``{anomaly_message}`` field. ``{anomaly_message}`` is the
+  output of ``message_format`` (or the default natural-language summary
+  when ``message_format`` is unset), allowing the same configured
+  anomaly message to flow into both the Pub/Sub sink and the webhook
+  body without the user having to specify it twice.
+
+  Authentication uses Google Application Default Credentials with the
+  scopes from the spec (default: cloud-platform).
+
+  **Response handling**: streaming Dataflow retries bundles indefinitely,
+  so raising on every non-2xx would block the pipeline forever (and DoS
+  the target) on a misconfigured request. To avoid that we split:
+
+    - **2xx** → success, nothing emitted.
+    - **5xx and 408/425/429** → transient (server overload, rate limit,
+      timeout); raise so Beam retries the bundle.
+    - **Other 4xx** (400, 401, 403, 404, 422, ...) → permanent client
+      error; log the response and drop the anomaly. The drop count is
+      exposed via a Beam metric so operators can alert on it.
+
+  Network-level errors (DNS, connection refused, read timeout) are not
+  caught here; they propagate and Beam retries the bundle, which is the
+  right behavior since they're transient by nature.
+  """
+
+  _DROPPED_4XX_COUNTER = Metrics.counter(
+      'bqmonitor.webhook', 'dropped_permanent_4xx')
+
+  def __init__(self, webhook_spec, message_format, message_metadata):
+    self._webhook_spec = webhook_spec
+    self._message_format = message_format
+    self._message_metadata = message_metadata or {}
+    self._session = None
+
+  def setup(self):
+    creds, _ = google.auth.default(scopes=self._webhook_spec['scopes'])
+    self._session = AuthorizedSession(creds)
+
+  def process(self, element):
+    _, result = _unpack_result(element)
+    prediction = result.predictions[0]
+    if prediction.label != 1:
+      return
+
+    fields, _, _ = _build_anomaly_fields(element)
+    anomaly_message = _compute_anomaly_message(
+        fields, self._message_format, self._message_metadata)
+
+    merged = dict(self._message_metadata)
+    merged.update(fields)
+    merged['anomaly_message'] = anomaly_message
+
+    body = _substitute_template_tree(self._webhook_spec['body'], merged)
+    headers = _substitute_template_tree(self._webhook_spec['headers'], merged)
+
+    resp = self._session.request(
+        method=self._webhook_spec['method'],
+        url=self._webhook_spec['endpoint'],
+        json=body,
+        headers=headers or None,
+        timeout=self._webhook_spec['timeout_seconds'])
+
+    status = resp.status_code
+    if 200 <= status < 300:
+      return
+
+    if status >= 500 or status in _TRANSIENT_RETRY_STATUSES:
+      _LOGGER.warning(
+          'Webhook %s to %s returned transient status %d; bundle will '
+          'retry. Response: %s',
+          self._webhook_spec['method'], self._webhook_spec['endpoint'],
+          status, resp.text[:500])
+      raise RuntimeError(
+          f'Webhook returned transient status {status}; retrying bundle.')
+
+    # Permanent 4xx: log and drop. Counting it lets operators monitor
+    # for misconfigured runs without blocking pipeline progress.
+    _LOGGER.error(
+        'Webhook %s to %s returned permanent status %d; dropping '
+        'anomaly. Response: %s',
+        self._webhook_spec['method'], self._webhook_spec['endpoint'],
+        status, resp.text[:500])
+    self._DROPPED_4XX_COUNTER.inc()
 
 
 class _FormatResultForBQ(beam.DoFn):
@@ -604,7 +794,20 @@ class AnomalyMonitorOptions(PipelineOptions):
         '--topic',
         default=None,
         help='Pub/Sub topic for anomaly results. '
-        'Full path: projects/<project>/topics/<topic>.')
+        'Full path: projects/<project>/topics/<topic>. '
+        'Optional: at least one of --topic or --webhook_spec must be set.')
+    parser.add_argument(
+        '--webhook_spec',
+        default=None,
+        help='JSON object configuring a REST webhook for anomaly results. '
+        'Required keys: endpoint (http/https URL), body (JSON object/array). '
+        'Optional keys: method (POST/PUT/PATCH, default POST), headers (object), '
+        'scopes (list of OAuth scopes; default cloud-platform), '
+        'timeout_seconds (default 10). String leaves in body and headers are '
+        'Python-format-substituted against anomaly fields, '
+        '--message_metadata keys, and the synthetic {anomaly_message} field '
+        '(which equals --message_format output, or a default natural-language '
+        'summary). At least one of --topic or --webhook_spec must be set.')
     parser.add_argument(
         '--log_all_results',
         default='false',
@@ -875,6 +1078,126 @@ def _parse_detector_spec(json_str):
 
 
 # ---------------------------------------------------------------------------
+# Webhook spec parsing
+# ---------------------------------------------------------------------------
+
+_WEBHOOK_DEFAULT_SCOPES = ('https://www.googleapis.com/auth/cloud-platform',)
+_WEBHOOK_DEFAULT_METHOD = 'POST'
+_WEBHOOK_DEFAULT_TIMEOUT_SEC = 30.0
+_WEBHOOK_ALLOWED_METHODS = frozenset({'POST', 'PUT', 'PATCH'})
+_WEBHOOK_KNOWN_KEYS = frozenset({
+    'endpoint', 'body', 'method', 'headers', 'scopes', 'timeout_seconds',
+})
+
+# 4xx codes that are still transient: server is telling us to back off
+# or retry later. All 5xx codes are also treated as transient. Every
+# other 4xx is treated as a permanent client-side problem (bad URL, bad
+# auth, bad payload schema) and the anomaly is dropped rather than
+# retried indefinitely.
+_TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
+
+
+def _parse_webhook_spec(json_str, message_metadata):
+  """Parse and validate a ``--webhook_spec`` JSON string.
+
+  Schema::
+
+      {
+        "endpoint": "https://...",          # required
+        "body":     <JSON object or array>, # required, template tree
+        "method":   "POST"|"PUT"|"PATCH",   # optional, default POST
+        "headers":  {<str>: <str>, ...},    # optional, also templated
+        "scopes":   ["https://...", ...],   # optional, default cloud-platform
+        "timeout_seconds": <number>          # optional, default 120
+      }
+
+  String leaves in ``body`` and ``headers`` are validated as Python format
+  strings against the union of ``_ANOMALY_FIELDS``, the keys of
+  ``message_metadata``, and the synthetic field ``{anomaly_message}``.
+
+  Returns the normalized spec dict with all defaults applied.
+  """
+  try:
+    spec = json.loads(json_str)
+  except json.JSONDecodeError as e:
+    raise ValueError(
+        f"Invalid JSON in --webhook_spec: {e}. "
+        f"Value: {json_str[:200]}") from e
+
+  if not isinstance(spec, dict):
+    raise ValueError(
+        f"--webhook_spec must be a JSON object, "
+        f"got {type(spec).__name__}")
+
+  unknown = set(spec) - _WEBHOOK_KNOWN_KEYS
+  if unknown:
+    raise ValueError(
+        f"--webhook_spec contains unknown keys: {sorted(unknown)}. "
+        f"Allowed keys: {sorted(_WEBHOOK_KNOWN_KEYS)}")
+
+  if 'endpoint' not in spec:
+    raise ValueError("--webhook_spec is missing required 'endpoint' field")
+  endpoint = spec['endpoint']
+  if not isinstance(endpoint, str) or not (
+      endpoint.startswith('http://') or endpoint.startswith('https://')):
+    raise ValueError(
+        f"--webhook_spec.endpoint must be an http(s) URL, got: {endpoint!r}")
+
+  if 'body' not in spec:
+    raise ValueError("--webhook_spec is missing required 'body' field")
+  body = spec['body']
+  if not isinstance(body, (dict, list)):
+    raise ValueError(
+        f"--webhook_spec.body must be a JSON object or array, "
+        f"got {type(body).__name__}")
+
+  method = str(spec.get('method', _WEBHOOK_DEFAULT_METHOD)).upper()
+  if method not in _WEBHOOK_ALLOWED_METHODS:
+    raise ValueError(
+        f"--webhook_spec.method must be one of "
+        f"{sorted(_WEBHOOK_ALLOWED_METHODS)}, got {method!r}")
+
+  headers = spec.get('headers', {})
+  if not isinstance(headers, dict):
+    raise ValueError(
+        f"--webhook_spec.headers must be a JSON object, "
+        f"got {type(headers).__name__}")
+  for k, v in headers.items():
+    if not isinstance(k, str) or not isinstance(v, str):
+      raise ValueError(
+          f"--webhook_spec.headers must map string to string, "
+          f"got {k!r}: {v!r}")
+
+  scopes = spec.get('scopes', list(_WEBHOOK_DEFAULT_SCOPES))
+  if (not isinstance(scopes, list)
+      or not scopes
+      or not all(isinstance(s, str) and s for s in scopes)):
+    raise ValueError(
+        f"--webhook_spec.scopes must be a non-empty list of strings, "
+        f"got {scopes!r}")
+
+  timeout_seconds = spec.get('timeout_seconds', _WEBHOOK_DEFAULT_TIMEOUT_SEC)
+  if not isinstance(timeout_seconds, (int, float)) or timeout_seconds <= 0:
+    raise ValueError(
+        f"--webhook_spec.timeout_seconds must be a positive number, "
+        f"got {timeout_seconds!r}")
+
+  known_fields = (
+      _ANOMALY_FIELDS | set(message_metadata or {}) | {'anomaly_message'})
+  _validate_template_tree(body, known_fields, location='body')
+  _validate_template_tree(headers, known_fields, location='headers')
+
+  return {
+      'endpoint': endpoint,
+      'body': body,
+      'method': method,
+      'headers': headers,
+      'scopes': list(scopes),
+      'timeout_seconds': float(timeout_seconds),
+  }
+
+
+# ---------------------------------------------------------------------------
 # Preflight checks
 # ---------------------------------------------------------------------------
 
@@ -887,19 +1210,26 @@ def _preflight_checks(options, metric_spec):
     - Required metric columns exist in the source table (dry-run query).
     - BigQuery temp dataset is writable (if specified) or datasets.create
       permission exists (dry-run only — does not actually create).
-    - Pub/Sub topic exists.
+    - Pub/Sub topic exists (only if --topic is set).
+    - Webhook spec parses and default credentials are obtainable
+      (only if --webhook_spec is set; no network call to the endpoint).
 
   Logs warnings and continues if a check cannot be performed (e.g. missing
   client library). Raises ValueError on definite failures.
   """
   project, dataset, table_name = _parse_table_ref(options.table)
-  topic_path = _validate_topic_path(options.topic)
 
   required_columns = sorted(metric_spec.required_source_columns())
   _check_bq_source_table(project, dataset, table_name, options,
                          required_columns)
   _check_bq_temp_dataset(project, options)
-  _check_pubsub_topic(topic_path)
+
+  if options.topic:
+    topic_path = _validate_topic_path(options.topic)
+    _check_pubsub_topic(topic_path)
+
+  if options.webhook_spec:
+    _check_webhook_spec(options)
 
 
 def _check_bq_source_table(project, dataset, table_name, options,
@@ -1029,6 +1359,26 @@ def _check_bq_temp_dataset(project, options):
     _LOGGER.info(
         '[Preflight] No --temp_dataset specified; '
         'will auto-create at runtime (requires bigquery.datasets.create)')
+
+
+def _check_webhook_spec(options):
+  """Validate the webhook spec and that Google default credentials are
+  obtainable for the requested scopes.
+  """
+  message_metadata = _parse_message_metadata(options.message_metadata)
+  spec = _parse_webhook_spec(options.webhook_spec, message_metadata)
+
+  try:
+    creds, _ = google.auth.default(scopes=spec['scopes'])
+    _LOGGER.info(
+        '[Preflight] Webhook auth: obtained credentials of type %s '
+        'with scopes %s for endpoint %s',
+        type(creds).__name__, spec['scopes'], spec['endpoint'])
+  except Exception as e:
+    raise ValueError(
+        f"Cannot obtain Google default credentials for webhook with "
+        f"scopes {spec['scopes']}. Verify the service account is "
+        f"configured and the scopes are valid. Error: {e}") from e
 
 
 def _check_pubsub_topic(topic_path):
@@ -1187,32 +1537,34 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   if options.log_all_results.lower() == 'true':
     _ = anomalies | 'LogResults' >> beam.ParDo(_LogAnomalyResult())
 
-  # Publish anomalies (label == 1) to Pub/Sub.
-  topic_path = _validate_topic_path(options.topic)
-
-  message_metadata = None
-  if options.message_metadata:
-    try:
-      message_metadata = json.loads(options.message_metadata)
-    except json.JSONDecodeError as e:
-      raise ValueError(
-          f'--message_metadata must be valid JSON: {e}') from e
-    if not isinstance(message_metadata, dict):
-      raise ValueError(
-          '--message_metadata must be a JSON object (dict), '
-          f'got {type(message_metadata).__name__}')
-
+  # Parse message_metadata + message_format once; both sinks share them.
+  message_metadata = _parse_message_metadata(options.message_metadata)
   message_format = options.message_format
   if message_format is not None:
     _validate_message_format(message_format, message_metadata)
 
-  _ = (
-      anomalies
-      | 'FormatAnomalies' >> beam.ParDo(
-          _FormatAnomalyAsJson(
-              message_format=message_format,
-              message_metadata=message_metadata))
-      | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
+  # Publish anomalies (label == 1) to Pub/Sub (if --topic is set).
+  if options.topic:
+    topic_path = _validate_topic_path(options.topic)
+    _ = (
+        anomalies
+        | 'FormatAnomalies' >> beam.ParDo(
+            _FormatAnomalyAsJson(
+                message_format=message_format,
+                message_metadata=message_metadata))
+        | 'WriteToPubSub' >> WriteToPubSub(topic=topic_path))
+
+  # POST anomalies (label == 1) to a REST webhook (if --webhook_spec is set).
+  if options.webhook_spec:
+    webhook_spec = _parse_webhook_spec(
+        options.webhook_spec, message_metadata)
+    _ = (
+        anomalies
+        | 'PostAnomaliesToWebhook' >> beam.ParDo(
+            _PostAnomalyToWebhook(
+                webhook_spec=webhook_spec,
+                message_format=message_format,
+                message_metadata=message_metadata)))
 
   # Write all results to a BigQuery sink table (if configured).
   if options.sink_table:
@@ -1236,9 +1588,16 @@ def run(argv=None):
   monitor_options = options.view_as(AnomalyMonitorOptions)
 
   # Validate required options.
-  for required_opt in ('table', 'metric_spec', 'detector_spec', 'topic'):
+  for required_opt in ('table', 'metric_spec', 'detector_spec'):
     if getattr(monitor_options, required_opt) is None:
       raise ValueError(f'--{required_opt} is required')
+
+  # Outputs: at least one of --topic or --webhook_spec must be configured,
+  # otherwise the pipeline would compute anomalies and discard them.
+  if monitor_options.topic is None and monitor_options.webhook_spec is None:
+    raise ValueError(
+        'At least one of --topic or --webhook_spec must be set; '
+        'otherwise detected anomalies have nowhere to go.')
 
   # Validate table format.
   _parse_table_ref(monitor_options.table)

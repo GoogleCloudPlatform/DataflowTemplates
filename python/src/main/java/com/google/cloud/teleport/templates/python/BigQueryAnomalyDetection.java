@@ -30,7 +30,8 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
         "[Experimental] Real-time anomaly detection on BigQuery change data (CDC). "
             + "Reads streaming APPENDS/CHANGES data from a BigQuery table, "
             + "computes a configurable windowed metric, runs anomaly detection "
-            + "(ZScore, IQR, or RobustZScore), and publishes anomalies to Pub/Sub.",
+            + "(ZScore, IQR, or RobustZScore), and emits anomalies to Pub/Sub "
+            + "and/or a REST webhook.",
     preview = true,
     flexContainerName = "bigquery-anomaly-detection",
     filesToCopy = {"main.py", "setup.py", "pyproject.toml", "requirements_all.txt", "src"},
@@ -71,10 +72,13 @@ public interface BigQueryAnomalyDetection {
 
   @TemplateParameter.Text(
       order = 4,
+      optional = true,
       name = "topic",
       description = "Pub/Sub Topic",
       helpText =
-          "Pub/Sub topic for anomaly results. " + "Full path: projects/<project>/topics/<topic>.",
+          "Pub/Sub topic for anomaly results. "
+              + "Full path: projects/<project>/topics/<topic>. "
+              + "Optional: at least one of topic or webhook_spec must be set.",
       regexes = {"^projects/[^/]+/topics/[^/]+$"})
   String getTopic();
 
@@ -193,4 +197,22 @@ public interface BigQueryAnomalyDetection {
               + "Example: {\"job_id\": \"pipeline-123\", \"env\": \"prod\"}. "
               + "Anomaly fields take precedence on key collision.")
   String getMessageMetadata();
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      name = "webhook_spec",
+      description = "REST Webhook Specification (JSON)",
+      helpText =
+          "JSON object configuring a REST webhook for anomaly results. "
+              + "Required keys: endpoint (http/https URL), body (JSON object/array). "
+              + "Optional keys: method (POST/PUT/PATCH, default POST), "
+              + "headers (object), scopes (list of OAuth scopes; default "
+              + "cloud-platform), timeout_seconds (default 10). "
+              + "String leaves in body and headers are Python-format-substituted "
+              + "against anomaly fields, message_metadata keys, and the "
+              + "{anomaly_message} field (which equals message_format output, "
+              + "or a default natural-language summary). "
+              + "At least one of topic or webhook_spec must be set.")
+  String getWebhookSpec();
 }
