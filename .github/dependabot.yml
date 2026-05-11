@@ -11,9 +11,14 @@ updates:
       interval: daily
 
   - package-ecosystem: pip
-    directory: /v1/src/main/python
+    directory: /
     schedule:
       interval: daily
+    exclude-paths:
+      - "python/src/main/python/**/requirements.txt"
+      - "yaml/src/main/python/requirements.txt"
+      - "v2/**/resources/requirements.txt"
+      - "yaml/src/main/java/com/google/cloud/teleport/templates/yaml/requirements.txt"
 
   - package-ecosystem: maven
     directory: /
