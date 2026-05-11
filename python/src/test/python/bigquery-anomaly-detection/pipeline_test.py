@@ -653,7 +653,7 @@ class ParseWebhookSpecTest(unittest.TestCase):
     self.assertEqual(out['headers'], {})
     self.assertEqual(
         out['scopes'], ['https://www.googleapis.com/auth/cloud-platform'])
-    self.assertEqual(out['timeout_seconds'], 300.0)
+    self.assertEqual(out['timeout_seconds'], 600.0)
     self.assertEqual(out['parallelism'], 5)
     self.assertEqual(out['callback_frequency_seconds'], 30.0)
 

@@ -262,7 +262,7 @@ _SUPPORTED_DETECTORS = ('ZScore', 'IQR', 'RobustZScore', 'RelativeChange')
 _WEBHOOK_DEFAULT_SCOPES = ('https://www.googleapis.com/auth/cloud-platform',)
 _WEBHOOK_DEFAULT_METHOD = 'POST'
 # Default timeout is 5 minutes
-_WEBHOOK_DEFAULT_TIMEOUT_SEC = 300.0
+_WEBHOOK_DEFAULT_TIMEOUT_SEC = 600.0
 # AsyncWrapper parallelism: how many in-flight requests one worker can have.
 _WEBHOOK_DEFAULT_PARALLELISM = 5
 # How often the AsyncWrapper timer fires to harvest finished futures.
