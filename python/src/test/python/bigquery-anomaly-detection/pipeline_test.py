@@ -41,8 +41,11 @@ from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _parse_webhook_spec
 from bqmonitor.pipeline import _PostAnomalyToWebhook
+from bqmonitor.pipeline import _RateLimitAlerts
+from bqmonitor.pipeline import _strip_unkeyed_sentinel
 from bqmonitor.pipeline import _substitute_template_tree
 from bqmonitor.pipeline import _ThresholdAlert
+from bqmonitor.pipeline import _UNKEYED_SENTINEL
 from bqmonitor.pipeline import _unpack_result
 from bqmonitor.pipeline import _validate_template_tree
 from apache_beam.utils.timestamp import Timestamp
@@ -1148,7 +1151,8 @@ class KeyAnomalyForAsyncTest(unittest.TestCase):
     self.assertEqual(_key_anomaly_for_async(elem), ('mykey', 'val'))
 
   def test_unkeyed_gets_sentinel(self):
-    self.assertEqual(_key_anomaly_for_async('val'), ('_unkeyed', 'val'))
+    self.assertEqual(
+        _key_anomaly_for_async('val'), (_UNKEYED_SENTINEL, 'val'))
 
   def test_unkeyed_anomaly_result(self):
     result = AnomalyResult(
@@ -1158,7 +1162,7 @@ class KeyAnomalyForAsyncTest(unittest.TestCase):
         predictions=[
             AnomalyPrediction(model_id='X', score=1.0, label=1)])
     out = _key_anomaly_for_async(result)
-    self.assertEqual(out[0], '_unkeyed')
+    self.assertEqual(out[0], _UNKEYED_SENTINEL)
     self.assertIs(out[1], result)
 
 
@@ -1274,6 +1278,185 @@ class AsyncWebhookWiringTest(unittest.TestCase):
     # substituted body.
     self.assertEqual(len(stub.calls), 1)
     self.assertEqual(stub.calls[0]['json'], {'q': 'value=99.0'})
+
+class _FakeReadModifyWriteState:
+  """In-memory stand-in for a Beam ReadModifyWriteStateSpec, used to
+  unit-test _RateLimitAlerts without a real pipeline.
+
+  Matches the contract the DoFn relies on: ``read()`` returns the last
+  value written (or None if never written), ``write(v)`` overwrites,
+  ``clear()`` resets to the never-written state.
+  """
+
+  def __init__(self):
+    self._value = None
+
+  def read(self):
+    return self._value
+
+  def write(self, v):
+    self._value = v
+
+  def clear(self):
+    self._value = None
+
+
+class StripUnkeyedSentinelTest(unittest.TestCase):
+  """Tests for _strip_unkeyed_sentinel."""
+
+  def test_strips_sentinel(self):
+    self.assertEqual(_strip_unkeyed_sentinel((_UNKEYED_SENTINEL, 'val')), 'val')
+
+  def test_passes_real_keyed_through(self):
+    elem = ('real_key', 'val')
+    self.assertEqual(_strip_unkeyed_sentinel(elem), elem)
+
+  def test_passes_bare_value_through(self):
+    self.assertEqual(_strip_unkeyed_sentinel('bare'), 'bare')
+
+
+class RateLimitAlertsTest(unittest.TestCase):
+  """Tests for _RateLimitAlerts.
+
+  The DoFn is stateful (per-key ReadModifyWriteStateSpec). We bypass
+  Beam's state plumbing by passing a _FakeReadModifyWriteState directly
+  as the keyword argument the DoFn declares for the StateParam.
+  """
+
+  def _make_element(self, window_end_sec, key='k1'):
+    """Build a (key, AnomalyResult) element. Only window_end matters
+    for the rate limiter's decision; window_start is arbitrary."""
+    row = beam.Row(
+        value=1.0,
+        window_start=Timestamp(max(0, window_end_sec - 1)),
+        window_end=Timestamp(window_end_sec))
+    pred = AnomalyPrediction(model_id='ZScore', score=5.0, label=1)
+    return (key, AnomalyResult(example=row, predictions=[pred]))
+
+  def _run(self, dofn, element, state):
+    return list(dofn.process(element, last_event=state))
+
+  def test_first_anomaly_fires(self):
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    out = self._run(dofn, self._make_element(window_end_sec=100), state)
+    self.assertEqual(len(out), 1, 'first event for a key must fire')
+    # last_event_micros recorded.
+    self.assertEqual(state.read(), 100 * 1_000_000)
+
+  def test_within_cooldown_suppressed(self):
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    # T0 fires.
+    self._run(dofn, self._make_element(window_end_sec=0), state)
+    # T+5 min: well within 10 min cooldown.
+    out = self._run(dofn, self._make_element(window_end_sec=300), state)
+    self.assertEqual(out, [], 'within-cooldown event must be suppressed')
+    # State STILL advanced — session-window semantics.
+    self.assertEqual(state.read(), 300 * 1_000_000)
+
+  def test_after_cooldown_fires(self):
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    self._run(dofn, self._make_element(window_end_sec=0), state)
+    out = self._run(
+        dofn, self._make_element(window_end_sec=600), state)
+    self.assertEqual(len(out), 1, 'event >=cooldown after prior must fire')
+    self.assertEqual(state.read(), 600 * 1_000_000)
+
+  def test_session_extends_with_continuous_events(self):
+    """User's canonical example: events at T0, T1, T2, T8, T19 with a
+    10-minute (600s) cooldown. Only T0 and T19 should fire — even
+    though T19 is more than 10 min after the first fire, every event
+    in between has been pushing last_event forward."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    fired = []
+    for minute in (0, 1, 2, 8, 19):
+      out = self._run(
+          dofn, self._make_element(window_end_sec=minute * 60), state)
+      if out:
+        fired.append(minute)
+    self.assertEqual(
+        fired, [0, 19],
+        f'expected fires at minutes [0, 19] only; got {fired}')
+
+  def test_cooldown_zero_in_dofn_fires_every_time(self):
+    """cooldown=0 effectively means no rate limit — every event fires.
+
+    Note: build_pipeline doesn't even instantiate the DoFn when
+    options.alert_cooldown_seconds <= 0; this test just confirms the
+    DoFn's own boundary behavior."""
+    dofn = _RateLimitAlerts(cooldown_seconds=0)
+    state = _FakeReadModifyWriteState()
+    for sec in (0, 1, 2, 3):
+      out = self._run(dofn, self._make_element(window_end_sec=sec), state)
+      self.assertEqual(len(out), 1, f'event at {sec}s should fire')
+
+  def test_exactly_at_cooldown_fires(self):
+    """The rule is `delta >= cooldown`, not strictly `>`, so an event
+    at exactly cooldown_seconds after the prior must fire."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    self._run(dofn, self._make_element(window_end_sec=0), state)
+    out = self._run(
+        dofn, self._make_element(window_end_sec=600), state)
+    self.assertEqual(len(out), 1)
+
+  def test_state_is_per_key_in_practice(self):
+    """The DoFn body doesn't manage per-key sharding itself — Beam does
+    that by giving the DoFn a fresh state instance per key. This test
+    documents the contract by passing independent state instances for
+    two different keys and verifying neither suppresses the other's
+    first event."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state_a = _FakeReadModifyWriteState()
+    state_b = _FakeReadModifyWriteState()
+    # Both keys fire at T0 because each has its own state.
+    self.assertEqual(
+        len(self._run(
+            dofn, self._make_element(window_end_sec=0, key='a'),
+            state_a)), 1)
+    self.assertEqual(
+        len(self._run(
+            dofn, self._make_element(window_end_sec=0, key='b'),
+            state_b)), 1)
+    # Key a's next event is within cooldown — suppressed under state_a.
+    self.assertEqual(
+        len(self._run(
+            dofn, self._make_element(window_end_sec=60, key='a'),
+            state_a)), 0)
+    # But key b's next event is also within cooldown — suppressed under
+    # state_b, INDEPENDENT of what state_a is doing.
+    self.assertEqual(
+        len(self._run(
+            dofn, self._make_element(window_end_sec=60, key='b'),
+            state_b)), 0)
+
+  def test_suppress_logs_window_not_key(self):
+    """Privacy: the suppression log must include the anomaly window
+    but not the grouping key (matches the webhook DoFn's policy)."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    # Fire once to seed state.
+    self._run(
+        dofn, self._make_element(window_end_sec=0, key='SECRET_KEY'),
+        state)
+    # Now suppress with a recognizable key.
+    with self.assertLogs('bqmonitor.pipeline', level='INFO') as ctx:
+      self._run(
+          dofn,
+          self._make_element(window_end_sec=60, key='SECRET_KEY'),
+          state)
+    suppressed = [r for r in ctx.output if 'suppressed' in r]
+    self.assertEqual(
+        len(suppressed), 1, f'expected 1 suppression log, got: {ctx.output}')
+    line = suppressed[0]
+    self.assertIn('window=', line)
+    for log_line in ctx.output:
+      self.assertNotIn('SECRET_KEY', log_line)
+      self.assertNotIn('key=', log_line)
+
 
 if __name__ == '__main__':
   unittest.main()

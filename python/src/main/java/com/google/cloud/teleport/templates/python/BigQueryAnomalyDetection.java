@@ -218,4 +218,20 @@ public interface BigQueryAnomalyDetection {
               + "or a default natural-language summary). "
               + "At least one of topic or webhook_spec must be set.")
   String getWebhookSpec();
+
+  @TemplateParameter.Double(
+      order = 18,
+      optional = true,
+      name = "alert_cooldown_seconds",
+      description = "Alert Cooldown (seconds)",
+      helpText =
+          "Session-window gap for debouncing alerts to external systems "
+              + "(Pub/Sub, webhook). Per anomaly key, the first anomaly fires "
+              + "immediately; subsequent anomalies are suppressed (logged as "
+              + "\"still active\") until a gap of at least this many seconds "
+              + "passes between consecutive anomalies. Continuous anomalies "
+              + "extend the active-alert window. The BigQuery sink table is "
+              + "unaffected and records every anomaly. Set to 0 to disable "
+              + "rate limiting. Default: 600 (10 minutes).")
+  Double getAlertCooldownSeconds();
 }

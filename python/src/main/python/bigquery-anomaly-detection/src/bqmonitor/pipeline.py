@@ -230,12 +230,14 @@ import google.auth
 from google.auth.transport.requests import AuthorizedSession
 
 import apache_beam as beam
+from apache_beam.coders import coders
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.gcp.pubsub import WriteToPubSub
 from apache_beam.metrics import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 from apache_beam.transforms.async_dofn import AsyncWrapper
+from apache_beam.transforms.userstate import ReadModifyWriteStateSpec
 from apache_beam.utils.timestamp import Duration
 
 from bqmonitor.metric import ComputeMetric
@@ -661,13 +663,110 @@ def _anomaly_id(value):
   )
 
 
+# Sentinel key used to give unkeyed pipelines (no metric_spec.group_by) a
+# single bag-state lane for stateful DoFns. The string is deliberately
+# unlikely to collide with a real user-supplied key. Both _RateLimitAlerts
+# and the AsyncWrapper-wrapped webhook DoFn share this constant.
+_UNKEYED_SENTINEL = '__bqm_unkeyed__'
+
+
 def _key_anomaly_for_async(element):
-  """Ensure each anomaly is a ``(K, V)`` tuple before it reaches the
-  ``AsyncWrapper``.
+  """Ensure each anomaly is a ``(K, V)`` tuple before it reaches a stateful
+  DoFn (``AsyncWrapper`` for the webhook sink, or ``_RateLimitAlerts``).
+
+  Stateful DoFns shard state per key, so the input must be keyed. Pipelines
+  with ``metric_spec.group_by`` already produce ``(key, AnomalyResult)``
+  tuples; unkeyed pipelines emit bare ``AnomalyResult`` objects and get
+  the sentinel key so the wrapper has somewhere to anchor state.
   """
   if isinstance(element, tuple) and len(element) == 2:
     return element
-  return ('_unkeyed', element)
+  return (_UNKEYED_SENTINEL, element)
+
+
+def _strip_unkeyed_sentinel(element):
+  """Inverse of ``_key_anomaly_for_async`` for the unkeyed branch only.
+
+  After a stateful DoFn (e.g. ``_RateLimitAlerts``), unkeyed-pipeline
+  elements are still wrapped in ``(_UNKEYED_SENTINEL, value)``. We strip
+  that back to a bare ``value`` so downstream consumers see exactly the
+  shape they would see without rate limiting — i.e. the Pub/Sub default
+  payload doesn't suddenly grow a ``key`` field for previously-unkeyed
+  pipelines. Genuinely-keyed elements pass through untouched.
+  """
+  if (isinstance(element, tuple) and len(element) == 2
+      and element[0] == _UNKEYED_SENTINEL):
+    return element[1]
+  return element
+
+
+class _RateLimitAlerts(beam.DoFn):
+  """Stateful DoFn that debounces alerts using session-window semantics.
+
+  For each key, tracks the timestamp of the most recent anomaly event.
+  An anomaly is emitted downstream (i.e. allowed to alert) iff:
+
+    - it's the first event for this key, OR
+    - ``window_end - last_event_micros >= cooldown_micros``.
+
+  ``last_event_micros`` is updated on **every** anomaly regardless of
+  whether it fired, so a continuous stream of anomalies keeps extending
+  the active-alert window. Alerts fire only on genuine gaps in the
+  stream, which matches how a Beam ``SessionWindow`` with the same gap
+  would coalesce events.
+
+  Example (cooldown=10 min):
+
+      T0  → fire    (no prior)            last_event := T0
+      T1  → suppress (T1-T0  =  1 < 10)   last_event := T1
+      T2  → suppress (T2-T1  =  1 < 10)   last_event := T2
+      T8  → suppress (T8-T2  =  6 < 10)   last_event := T8
+      T19 → fire    (T19-T8 = 11 ≥ 10)    last_event := T19
+
+  Only T0 and T19 reach the downstream sinks (Pub/Sub, webhook). The
+  BigQuery sink table is intentionally placed *upstream* of this DoFn
+  so the analytical record retains every anomaly.
+
+  The "now" timestamp is the anomaly's ``window_end.micros`` (event
+  time), not wall-clock processing time. This makes the behavior stable
+  under replay and backfill; for real-time CDC, ``window_end`` tracks
+  wall-clock within ``buffer_sec``.
+
+  Per-key state cost is one int.
+  """
+
+  LAST_EVENT_MICROS = ReadModifyWriteStateSpec(
+      'last_event_micros', coders.VarIntCoder())
+
+  def __init__(self, cooldown_seconds):
+    self._cooldown_seconds = cooldown_seconds
+    self._cooldown_micros = int(cooldown_seconds * 1_000_000)
+
+  def process(self, element,
+              last_event=beam.DoFn.StateParam(LAST_EVENT_MICROS)):
+    _, result = element
+    now_micros = result.example.window_end.micros
+    last = last_event.read()
+
+    fires = last is None or (now_micros - last) >= self._cooldown_micros
+    # Always advance the session boundary, even when suppressing — this
+    # is the session-window semantic ("continuous events extend the
+    # window") that distinguishes this from a cooldown-since-last-fire.
+    last_event.write(now_micros)
+
+    if fires:
+      yield element
+      return
+
+    window_str = (
+        f"{result.example.window_start.to_rfc3339()}/"
+        f"{result.example.window_end.to_rfc3339()}")
+    gap_sec = (now_micros - last) // 1_000_000
+    _LOGGER.info(
+        'Alert suppressed for window=%s: still active '
+        '(prior anomaly %ds ago, cooldown=%.0fs); '
+        'not notifying external systems.',
+        window_str, gap_sec, self._cooldown_seconds)
 
 
 class _PostAnomalyToWebhook(beam.DoFn):
@@ -907,6 +1006,18 @@ class AnomalyMonitorOptions(PipelineOptions):
         default=400,
         help='Number of shards for sharded or hotkey_fanout strategies. '
         'Ignored for none and precombine. Default: 400.')
+    parser.add_argument(
+        '--alert_cooldown_seconds',
+        type=float,
+        default=600.0,
+        help='Session-window gap (in seconds) for debouncing alerts to '
+        'external systems (Pub/Sub, webhook). Per anomaly key, the first '
+        'anomaly fires immediately; subsequent anomalies are suppressed '
+        '(logged INFO as "still active") until a gap of at least this '
+        'many seconds passes between consecutive anomalies. Continuous '
+        'anomalies extend the active-alert window. The BigQuery sink '
+        'table is unaffected and records every anomaly. Set to 0 to '
+        'disable rate limiting. Default: 600 (10 minutes).')
 
 
 # ---------------------------------------------------------------------------
@@ -1612,11 +1723,28 @@ def build_pipeline(pipeline, options, metric_spec, detector):
   if message_format is not None:
     _validate_message_format(message_format, message_metadata)
 
+  # Apply alert rate limiting before the external-alert sinks (Pub/Sub,
+  # webhook). Session-window semantics: per anomaly key, the first
+  # anomaly fires and subsequent anomalies within the cooldown gap of
+  # the previous event are suppressed. Continuous anomalies extend the
+  # active-alert window. The BigQuery sink branch below intentionally
+  # consumes the un-rate-limited `anomalies` so the analytical record
+  # retains every detection.
+  if options.alert_cooldown_seconds > 0:
+    alert_anomalies = (
+        anomalies
+        | 'KeyForRateLimit' >> beam.Map(_key_anomaly_for_async)
+        | 'RateLimitAlerts' >> beam.ParDo(
+            _RateLimitAlerts(options.alert_cooldown_seconds))
+        | 'RestoreAlertShape' >> beam.Map(_strip_unkeyed_sentinel))
+  else:
+    alert_anomalies = anomalies
+
   # Publish anomalies (label == 1) to Pub/Sub (if --topic is set).
   if options.topic:
     topic_path = _validate_topic_path(options.topic)
     _ = (
-        anomalies
+        alert_anomalies
         | 'FormatAnomalies' >> beam.ParDo(
             _FormatAnomalyAsJson(
                 message_format=message_format,
@@ -1644,7 +1772,7 @@ def build_pipeline(pipeline, options, metric_spec, detector):
         id_fn=_anomaly_id,
     )
     _ = (
-        anomalies
+        alert_anomalies
         | 'KeyForAsyncWebhook' >> beam.Map(_key_anomaly_for_async)
         | 'PostAnomaliesToWebhook' >> beam.ParDo(async_webhook_dofn))
 
