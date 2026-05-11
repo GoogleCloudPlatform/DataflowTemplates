@@ -31,7 +31,13 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
             + "Reads streaming APPENDS/CHANGES data from a BigQuery table, "
             + "computes a configurable windowed metric, runs anomaly detection "
             + "(ZScore, IQR, or RobustZScore), and emits anomalies to Pub/Sub "
-            + "and/or a REST webhook.",
+            + "and/or a REST webhook. "
+            + "Alerts to Pub/Sub and the REST webhook are rate-limited by "
+            + "default: per anomaly key, after the first alert fires further "
+            + "anomalies are suppressed until a 10-minute gap between "
+            + "consecutive anomalies elapses. Tune or disable via "
+            + "alert_cooldown_seconds (set to 0 to disable). The BigQuery "
+            + "sink table is unaffected and records every anomaly.",
     preview = true,
     flexContainerName = "bigquery-anomaly-detection",
     filesToCopy = {"main.py", "setup.py", "pyproject.toml", "requirements_all.txt", "src"},
@@ -208,7 +214,7 @@ public interface BigQueryAnomalyDetection {
               + "Required keys: endpoint (http/https URL), body (JSON object/array). "
               + "Optional keys: method (POST/PUT/PATCH, default POST), "
               + "headers (object), scopes (list of OAuth scopes; default "
-              + "cloud-platform), timeout_seconds (default 300), "
+              + "cloud-platform), timeout_seconds (default 600, i.e. 10 min), "
               + "parallelism (max concurrent in-flight POSTs per worker, "
               + "default 5), callback_frequency_seconds (how often the "
               + "AsyncWrapper sweeps finished futures, default 30). "

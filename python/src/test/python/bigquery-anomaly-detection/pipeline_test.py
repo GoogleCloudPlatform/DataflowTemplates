@@ -36,6 +36,7 @@ from bqmonitor.pipeline import _anomaly_id
 from bqmonitor.pipeline import _compute_anomaly_message
 from bqmonitor.pipeline import _FormatAnomalyAsJson
 from bqmonitor.pipeline import _FormatResultForBQ
+from bqmonitor.pipeline import _is_outlier
 from bqmonitor.pipeline import _key_anomaly_for_async
 from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
@@ -1301,6 +1302,36 @@ class _FakeReadModifyWriteState:
     self._value = None
 
 
+class IsOutlierTest(unittest.TestCase):
+  """Tests for _is_outlier, the filter predicate that gates entry to the
+  rate-limit stage. Without this filter, the keyed reshuffle in front of
+  _RateLimitAlerts would shuffle every detection result (outlier, normal,
+  warmup) instead of just the small minority that need alerting.
+  """
+
+  def _result(self, label):
+    row = beam.Row(
+        value=1.0, window_start=Timestamp(0), window_end=Timestamp(1))
+    return AnomalyResult(
+        example=row,
+        predictions=[
+            AnomalyPrediction(model_id='ZScore', score=1.0, label=label)])
+
+  def test_outlier_label_one_kept(self):
+    self.assertTrue(_is_outlier(self._result(label=1)))
+
+  def test_normal_label_zero_filtered(self):
+    self.assertFalse(_is_outlier(self._result(label=0)))
+
+  def test_warmup_label_minus_two_filtered(self):
+    self.assertFalse(_is_outlier(self._result(label=-2)))
+
+  def test_keyed_element_unwrapped_correctly(self):
+    """Keyed-pipeline tuples must be unwrapped to test the value's label."""
+    self.assertTrue(_is_outlier(('campaign_a', self._result(label=1))))
+    self.assertFalse(_is_outlier(('campaign_a', self._result(label=0))))
+
+
 class StripUnkeyedSentinelTest(unittest.TestCase):
   """Tests for _strip_unkeyed_sentinel."""
 
@@ -1385,17 +1416,38 @@ class RateLimitAlertsTest(unittest.TestCase):
         fired, [0, 19],
         f'expected fires at minutes [0, 19] only; got {fired}')
 
-  def test_cooldown_zero_in_dofn_fires_every_time(self):
-    """cooldown=0 effectively means no rate limit — every event fires.
+  def test_cooldown_zero_is_passthrough_and_never_touches_state(self):
+    """cooldown=0 is the documented "rate limiting disabled" mode.
+    The DoFn must:
+      - yield every outlier (no suppression), AND
+      - never read or write state.
 
-    Note: build_pipeline doesn't even instantiate the DoFn when
-    options.alert_cooldown_seconds <= 0; this test just confirms the
-    DoFn's own boundary behavior."""
+    The second property matters for Dataflow --update: the stage is
+    always topologically present so operators can toggle the cooldown
+    without redeploying, and that toggle must not leave stale state
+    behind from the disabled-cooldown phase. We assert state stays
+    untouched by checking the FakeReadModifyWriteState's internal
+    value stays at its initial None across many invocations.
+    """
     dofn = _RateLimitAlerts(cooldown_seconds=0)
     state = _FakeReadModifyWriteState()
-    for sec in (0, 1, 2, 3):
+    for sec in (0, 1, 2, 3, 600, 6000):
       out = self._run(dofn, self._make_element(window_end_sec=sec), state)
       self.assertEqual(len(out), 1, f'event at {sec}s should fire')
+    self.assertIsNone(
+        state.read(),
+        'cooldown=0 must not write state, but state is %r' % state.read())
+
+  def test_negative_cooldown_is_also_passthrough(self):
+    """Defensive: negative cooldowns are treated the same as 0 (the
+    `<= 0` boundary). This guards against accidentally passing -1 as
+    a "disabled" sentinel through some other code path."""
+    dofn = _RateLimitAlerts(cooldown_seconds=-1)
+    state = _FakeReadModifyWriteState()
+    for sec in (0, 100, 200):
+      out = self._run(dofn, self._make_element(window_end_sec=sec), state)
+      self.assertEqual(len(out), 1)
+    self.assertIsNone(state.read())
 
   def test_exactly_at_cooldown_fires(self):
     """The rule is `delta >= cooldown`, not strictly `>`, so an event

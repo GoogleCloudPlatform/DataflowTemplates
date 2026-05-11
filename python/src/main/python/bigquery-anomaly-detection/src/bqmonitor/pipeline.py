@@ -21,6 +21,13 @@ metric, runs anomaly detection, and publishes anomalies to Pub/Sub.
 
 Designed to be run as a Dataflow Flex Template or locally with DirectRunner.
 
+Alerts to Pub/Sub and the REST webhook are **rate-limited by default**: per
+anomaly key, after the first alert fires, subsequent anomalies are
+suppressed until a 10-minute gap between consecutive anomalies elapses.
+Tune via ``--alert_cooldown_seconds`` (set to 0 to disable). The optional
+BigQuery sink table is unaffected and records every anomaly regardless of
+the rate limit.
+
 Usage (Flex Template)::
 
     gcloud dataflow flex-template run "sales-monitor-$(date +%Y%m%d)" \\
@@ -531,17 +538,25 @@ def _substitute_template_tree(tree, fields):
   return tree
 
 
-def _build_anomaly_fields(element):
-  """Extract template fields from an anomaly result element.
+def _build_anomaly_fields(key, result):
+  """Extract template fields from an already-unpacked anomaly result.
 
-  Returns (fields_dict, key, result) where fields_dict contains all
-  _ANOMALY_FIELDS with None values coerced to empty strings or 'null'.
+  Callers are expected to have unpacked the raw element via
+  ``_unpack_result`` (or otherwise) first. This split lets DoFns short-
+  circuit on the label check before doing the per-field string
+  conversion work — and avoids the prior double-unpack where this
+  function called ``_unpack_result`` internally even though most call
+  sites had already done so to perform their own label gate.
+
+  Returns the fields dict; ``_ANOMALY_FIELDS`` lists the keys it
+  contains. None-valued prediction/example fields are coerced to empty
+  strings or the literal ``'null'`` for safe interpolation into
+  user-supplied format strings.
   """
-  key, result = _unpack_result(element)
   prediction = result.predictions[0]
   example = result.example
 
-  fields = {
+  return {
       'value': example.value,
       'score': prediction.score if prediction.score is not None else 'null',
       'label': prediction.label,
@@ -553,7 +568,6 @@ def _build_anomaly_fields(element):
       'window_start': example.window_start.to_rfc3339(),
       'window_end': example.window_end.to_rfc3339(),
   }
-  return fields, key, result
 
 
 def _default_anomaly_message(fields):
@@ -610,10 +624,14 @@ class _FormatAnomalyAsJson(beam.DoFn):
     self._message_metadata = message_metadata or {}
 
   def process(self, element):
-    fields, key, result = _build_anomaly_fields(element)
-    prediction = result.predictions[0]
-    if prediction.label != 1:
+    key, result = _unpack_result(element)
+    if result.predictions[0].label != 1:
       return
+
+    # Only compute the (somewhat expensive, string-conversion-heavy)
+    # fields dict after we know the element is an outlier we're going
+    # to emit; non-outliers are dropped above without paying that cost.
+    fields = _build_anomaly_fields(key, result)
 
     message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
@@ -663,10 +681,14 @@ def _anomaly_id(value):
   )
 
 
-# Sentinel key used to give unkeyed pipelines (no metric_spec.group_by) a
-# single bag-state lane for stateful DoFns. The string is deliberately
-# unlikely to collide with a real user-supplied key. Both _RateLimitAlerts
-# and the AsyncWrapper-wrapped webhook DoFn share this constant.
+# Sentinel key attached to anomalies from unkeyed pipelines (no
+# metric_spec.group_by) so they have somewhere to anchor per-key state in
+# downstream stateful DoFns (_RateLimitAlerts, AsyncWrapper). The value is
+# never compared against user keys — _key_anomaly_for_async only attaches
+# this sentinel when the element ISN'T already a (K, V) tuple, so keyed
+# and unkeyed pipelines never mix in the same stream. The
+# double-underscore name is just for human-readable debugging — if you see
+# this string in logs you immediately know it's an internal placeholder.
 _UNKEYED_SENTINEL = '__bqm_unkeyed__'
 
 
@@ -682,6 +704,24 @@ def _key_anomaly_for_async(element):
   if isinstance(element, tuple) and len(element) == 2:
     return element
   return (_UNKEYED_SENTINEL, element)
+
+
+def _is_outlier(element):
+  """Predicate for ``beam.Filter`` that keeps only outlier anomalies
+  (``label == 1``) from the ``AnomalyDetection`` output stream.
+
+  Accepts both keyed ``(K, AnomalyResult)`` tuples (from pipelines with
+  ``metric_spec.group_by``) and bare ``AnomalyResult`` (unkeyed
+  pipelines), unwrapping via the same shape-test ``_unpack_result``
+  uses. Centralizing this here means the rate-limit branch in
+  ``build_pipeline`` doesn't carry a multi-line lambda and we have a
+  single point to test the label-check.
+  """
+  if isinstance(element, tuple) and len(element) == 2:
+    result = element[1]
+  else:
+    result = element
+  return result.predictions[0].label == 1
 
 
 def _strip_unkeyed_sentinel(element):
@@ -703,22 +743,13 @@ def _strip_unkeyed_sentinel(element):
 class _RateLimitAlerts(beam.DoFn):
   """Stateful DoFn that debounces alerts using session-window semantics.
 
-  Only **outliers** (``predictions[0].label == 1``) participate in the
-  rate-limit logic; normal (label 0) and warmup (label -2) results pass
-  through untouched and never affect state. The downstream alert sinks
-  (``_FormatAnomalyAsJson``, ``_PostAnomalyToWebhook``) already filter
-  on ``label == 1`` themselves, so non-outliers don't reach Pub/Sub or
-  the webhook — but it's critical that they not write to ``last_event``
-  here, otherwise a noisy warmup or normal-traffic phase would silently
-  start (and keep extending) a session before any real outlier fires.
-
-  For each key, tracks the timestamp of the most recent **outlier**
-  event. An outlier is emitted downstream (i.e. allowed to alert) iff:
+  For each key, tracks the timestamp of the most recent outlier event.
+  An outlier is emitted downstream (i.e. allowed to alert) iff:
 
     - it's the first outlier for this key, OR
     - ``window_end - last_event_micros >= cooldown_micros``.
 
-  ``last_event_micros`` is updated on **every outlier** regardless of
+  ``last_event_micros`` is updated on every outlier regardless of
   whether it fired, so a continuous stream of outliers keeps extending
   the active-alert window. Alerts fire only on genuine gaps in the
   outlier stream, which matches how a Beam ``SessionWindow`` with the
@@ -741,6 +772,19 @@ class _RateLimitAlerts(beam.DoFn):
   under replay and backfill; for real-time CDC, ``window_end`` tracks
   wall-clock within ``buffer_sec``.
 
+  **Cooldown = 0 → pass-through.** The DoFn is always topologically
+  present in the pipeline so operators can change ``--alert_cooldown_seconds``
+  via ``--update`` without altering the pipeline graph. When the
+  parameter is 0 (or negative), every outlier yields without touching
+  state. This means tuning the cooldown — including disabling it — does
+  not require a redeploy.
+
+  **Input is filtered to outliers upstream.** The pipeline applies a
+  ``label == 1`` filter before keying for this DoFn, so the body
+  doesn't need to handle non-outliers in practice. The label-gate
+  below remains as defense-in-depth in case that upstream filter is
+  ever removed or bypassed.
+
   Per-key state cost is one int.
   """
 
@@ -755,15 +799,16 @@ class _RateLimitAlerts(beam.DoFn):
               last_event=beam.DoFn.StateParam(LAST_EVENT_MICROS)):
     _, result = element
 
-    # Only outliers (label == 1) advance the session boundary or are
-    # subject to suppression. Normal results (label == 0) and warmup
-    # results (label == -2) pass through unchanged so the downstream
-    # sinks see them — though _FormatAnomalyAsJson and
-    # _PostAnomalyToWebhook both filter on label == 1 themselves, so
-    # non-outliers don't actually reach Pub/Sub or the webhook anyway.
-    # The key thing is that they must not write to last_event, or a
-    # noisy warmup phase would silently start (and keep extending) a
-    # session before any real anomaly fires.
+    # Pass-through when rate limiting is disabled. We still want the DoFn
+    # in the topology (so toggling cooldown via --update doesn't change
+    # the pipeline graph), but we don't read or write state in this mode.
+    if self._cooldown_micros <= 0:
+      yield element
+      return
+
+    # Defense-in-depth label gate: the upstream filter should have already
+    # dropped non-outliers, but if it ever goes missing, we still must not
+    # let normal/warmup events poison the session state.
     if result.predictions[0].label != 1:
       yield element
       return
@@ -840,12 +885,11 @@ class _PostAnomalyToWebhook(beam.DoFn):
     self._session = AuthorizedSession(creds)
 
   def process(self, element):
-    _, result = _unpack_result(element)
-    prediction = result.predictions[0]
-    if prediction.label != 1:
+    key, result = _unpack_result(element)
+    if result.predictions[0].label != 1:
       return
 
-    fields, _, _ = _build_anomaly_fields(element)
+    fields = _build_anomaly_fields(key, result)
     anomaly_message = _compute_anomaly_message(
         fields, self._message_format, self._message_metadata)
 
@@ -985,11 +1029,25 @@ class AnomalyMonitorOptions(PipelineOptions):
         'Required keys: endpoint (http/https URL), body (JSON object/array). '
         'Optional keys: method (POST/PUT/PATCH, default POST), headers (object), '
         'scopes (list of OAuth scopes; default cloud-platform), '
-        'timeout_seconds (default 10). String leaves in body and headers are '
-        'Python-format-substituted against anomaly fields, '
-        '--message_metadata keys, and the synthetic {anomaly_message} field '
-        '(which equals --message_format output, or a default natural-language '
-        'summary). At least one of --topic or --webhook_spec must be set.')
+        'timeout_seconds (default 600, i.e. 10 min), parallelism (max '
+        'concurrent in-flight '
+        'POSTs per worker; default 5), callback_frequency_seconds (how often '
+        'the async wrapper sweeps finished futures; default 30). '
+        'String leaves in body and headers are Python-format-substituted '
+        'against anomaly fields, --message_metadata keys, and the synthetic '
+        '{anomaly_message} field (which equals --message_format output, or a '
+        'default natural-language summary). At least one of --topic or '
+        '--webhook_spec must be set. '
+        'Example: '
+        '\'{"endpoint":'
+        '"https://geminidataanalytics.googleapis.com/v1alpha/projects/MY_PROJECT/'
+        'locations/global:chat",'
+        '"body":{"messages":[{"userMessage":{"text":"{anomaly_message}",'
+        '"runtime_params":{"workflow_params":{'
+        '"workflow_agent":"projects/MY_PROJECT/locations/global/dataAgents/AGENT_ID",'
+        '"action":"EXECUTE"}}}}],'
+        '"dataAgentContext":{"dataAgent":'
+        '"projects/MY_PROJECT/locations/global/dataAgents/AGENT_ID"}}}\'')
     parser.add_argument(
         '--log_all_results',
         default='false',
@@ -1286,7 +1344,7 @@ def _parse_webhook_spec(json_str, message_metadata):
         "method":   "POST"|"PUT"|"PATCH",         # optional, default POST
         "headers":  {<str>: <str>, ...},          # optional, also templated
         "scopes":   ["https://...", ...],         # optional, default cloud-platform
-        "timeout_seconds": <number>,              # optional, default 300 (10min)
+        "timeout_seconds": <number>,              # optional, default 600 (10 min)
         "parallelism": <int>,                     # optional, default 5
         "callback_frequency_seconds": <number>    # optional, default 30
       }
@@ -1748,20 +1806,30 @@ def build_pipeline(pipeline, options, metric_spec, detector):
 
   # Apply alert rate limiting before the external-alert sinks (Pub/Sub,
   # webhook). Session-window semantics: per anomaly key, the first
-  # anomaly fires and subsequent anomalies within the cooldown gap of
-  # the previous event are suppressed. Continuous anomalies extend the
+  # outlier fires and subsequent outliers within the cooldown gap of
+  # the previous event are suppressed. Continuous outliers extend the
   # active-alert window. The BigQuery sink branch below intentionally
   # consumes the un-rate-limited `anomalies` so the analytical record
-  # retains every detection.
-  if options.alert_cooldown_seconds > 0:
-    alert_anomalies = (
-        anomalies
-        | 'KeyForRateLimit' >> beam.Map(_key_anomaly_for_async)
-        | 'RateLimitAlerts' >> beam.ParDo(
-            _RateLimitAlerts(options.alert_cooldown_seconds))
-        | 'RestoreAlertShape' >> beam.Map(_strip_unkeyed_sentinel))
-  else:
-    alert_anomalies = anomalies
+  # retains every detection (warmup / normal / outlier).
+  #
+  # The stage is wired unconditionally so operators can tune
+  # --alert_cooldown_seconds via Dataflow --update without changing the
+  # pipeline topology. When the cooldown is 0 the rate-limit DoFn is a
+  # pass-through (yields outliers without touching state); see
+  # _RateLimitAlerts for details.
+  #
+  # We filter to label == 1 BEFORE keying so the keyed reshuffle and
+  # stateful DoFn only see outliers. For a tuned detector outliers are
+  # a tiny fraction of the stream — keying the full stream and relying
+  # on an early-return inside the DoFn would shuffle ~100x more data
+  # than necessary.
+  alert_anomalies = (
+      anomalies
+      | 'FilterOutliers' >> beam.Filter(_is_outlier)
+      | 'KeyForRateLimit' >> beam.Map(_key_anomaly_for_async)
+      | 'RateLimitAlerts' >> beam.ParDo(
+          _RateLimitAlerts(options.alert_cooldown_seconds))
+      | 'RestoreAlertShape' >> beam.Map(_strip_unkeyed_sentinel))
 
   # Publish anomalies (label == 1) to Pub/Sub (if --topic is set).
   if options.topic:
