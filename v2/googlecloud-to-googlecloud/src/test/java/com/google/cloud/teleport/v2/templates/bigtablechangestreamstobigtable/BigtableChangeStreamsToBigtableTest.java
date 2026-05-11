@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigtable;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -25,14 +26,17 @@ import static org.mockito.Mockito.when;
 import com.google.bigtable.v2.Mutation;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
+import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToBigtableOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigtable.BigtableChangeStreamsToBigtable.ConvertChangeStreamToNativeMutationFn;
 import com.google.protobuf.ByteString;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Test;
@@ -74,6 +78,12 @@ public class BigtableChangeStreamsToBigtableTest {
     TimestampRange range = TimestampRange.create(startTs, endTs);
     when(deleteCells.getTimestampRange()).thenReturn(range);
     return deleteCells;
+  }
+
+  private static DeleteFamily createDeleteFamily(String cf) {
+    DeleteFamily deleteFamily = mock(DeleteFamily.class);
+    when(deleteFamily.getFamilyName()).thenReturn(cf);
+    return deleteFamily;
   }
 
   @Test
@@ -160,5 +170,86 @@ public class BigtableChangeStreamsToBigtableTest {
 
     // Should be completely filtered out because the incoming mutation carries the replication tag
     verifyNoInteractions(receiver);
+  }
+
+  @Test
+  public void testDeleteCellsConversion() throws Exception {
+    ConvertChangeStreamToNativeMutationFn fn =
+        new ConvertChangeStreamToNativeMutationFn(false, "SOURCE_CBT", "SOURCE_CBT", false);
+
+    DeleteCells deleteCells = createDeleteCells(CF, QUAL, 1000, 2000);
+    ChangeStreamMutation mutation =
+        createMutation(ChangeStreamMutation.MutationType.USER, List.of(deleteCells));
+
+    @SuppressWarnings("unchecked")
+    OutputReceiver<KV<ByteString, Iterable<Mutation>>> receiver = mock(OutputReceiver.class);
+
+    fn.processElement(KV.of(ByteString.copyFromUtf8(ROW_KEY), mutation), receiver);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<KV<ByteString, Iterable<Mutation>>> captor = ArgumentCaptor.forClass(KV.class);
+
+    verify(receiver).output(captor.capture());
+
+    KV<ByteString, Iterable<Mutation>> kv = captor.getValue();
+    assertEquals(ROW_KEY, kv.getKey().toStringUtf8());
+
+    Iterator<Mutation> iter = kv.getValue().iterator();
+    assertTrue(iter.hasNext());
+    Mutation mut = iter.next();
+    assertTrue(mut.hasDeleteFromColumn());
+
+    Mutation.DeleteFromColumn delCol = mut.getDeleteFromColumn();
+    assertEquals(CF, delCol.getFamilyName());
+    assertEquals(QUAL, delCol.getColumnQualifier().toStringUtf8());
+    assertEquals(1000, delCol.getTimeRange().getStartTimestampMicros());
+    assertEquals(2000, delCol.getTimeRange().getEndTimestampMicros());
+  }
+
+  @Test
+  public void testDeleteFamilyConversion() throws Exception {
+    ConvertChangeStreamToNativeMutationFn fn =
+        new ConvertChangeStreamToNativeMutationFn(false, "SOURCE_CBT", "SOURCE_CBT", false);
+
+    DeleteFamily deleteFamily = createDeleteFamily(CF);
+    ChangeStreamMutation mutation =
+        createMutation(ChangeStreamMutation.MutationType.USER, List.of(deleteFamily));
+
+    @SuppressWarnings("unchecked")
+    OutputReceiver<KV<ByteString, Iterable<Mutation>>> receiver = mock(OutputReceiver.class);
+
+    fn.processElement(KV.of(ByteString.copyFromUtf8(ROW_KEY), mutation), receiver);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<KV<ByteString, Iterable<Mutation>>> captor = ArgumentCaptor.forClass(KV.class);
+
+    verify(receiver).output(captor.capture());
+
+    KV<ByteString, Iterable<Mutation>> kv = captor.getValue();
+    assertEquals(ROW_KEY, kv.getKey().toStringUtf8());
+
+    Iterator<Mutation> iter = kv.getValue().iterator();
+    assertTrue(iter.hasNext());
+    Mutation mut = iter.next();
+    assertTrue(mut.hasDeleteFromFamily());
+
+    Mutation.DeleteFromFamily delFam = mut.getDeleteFromFamily();
+    assertEquals(CF, delFam.getFamilyName());
+  }
+
+  @Test
+  public void testCreateWrite() {
+    BigtableChangeStreamsToBigtableOptions options =
+        mock(BigtableChangeStreamsToBigtableOptions.class);
+    when(options.getBigtableWriteInstanceId()).thenReturn("inst1");
+    when(options.getBigtableWriteTableId()).thenReturn("table1");
+    when(options.getBigtableWriteProjectId()).thenReturn("proj1");
+    when(options.getBigtableWriteAppProfile()).thenReturn("appProfile1");
+    when(options.getBigtableBulkWriteMaxRowKeyCount()).thenReturn(100);
+    when(options.getBigtableBulkWriteMaxRequestSizeBytes()).thenReturn(1024);
+    when(options.getBigtableBulkWriteFlowControl()).thenReturn(true);
+
+    BigtableIO.Write write = BigtableChangeStreamsToBigtable.createWrite(options);
+    assertNotNull(write);
   }
 }

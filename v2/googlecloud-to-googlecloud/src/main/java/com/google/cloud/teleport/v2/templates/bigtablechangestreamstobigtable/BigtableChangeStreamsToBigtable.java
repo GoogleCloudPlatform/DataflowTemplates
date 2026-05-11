@@ -174,7 +174,7 @@ public class BigtableChangeStreamsToBigtable {
     return pipeline.run();
   }
 
-  private static BigtableIO.Write createWrite(BigtableChangeStreamsToBigtableOptions options) {
+  static BigtableIO.Write createWrite(BigtableChangeStreamsToBigtableOptions options) {
     BigtableIO.Write write =
         BigtableIO.write()
             .withInstanceId(options.getBigtableWriteInstanceId())
