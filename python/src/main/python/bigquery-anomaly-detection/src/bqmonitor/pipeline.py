@@ -703,17 +703,26 @@ def _strip_unkeyed_sentinel(element):
 class _RateLimitAlerts(beam.DoFn):
   """Stateful DoFn that debounces alerts using session-window semantics.
 
-  For each key, tracks the timestamp of the most recent anomaly event.
-  An anomaly is emitted downstream (i.e. allowed to alert) iff:
+  Only **outliers** (``predictions[0].label == 1``) participate in the
+  rate-limit logic; normal (label 0) and warmup (label -2) results pass
+  through untouched and never affect state. The downstream alert sinks
+  (``_FormatAnomalyAsJson``, ``_PostAnomalyToWebhook``) already filter
+  on ``label == 1`` themselves, so non-outliers don't reach Pub/Sub or
+  the webhook — but it's critical that they not write to ``last_event``
+  here, otherwise a noisy warmup or normal-traffic phase would silently
+  start (and keep extending) a session before any real outlier fires.
 
-    - it's the first event for this key, OR
+  For each key, tracks the timestamp of the most recent **outlier**
+  event. An outlier is emitted downstream (i.e. allowed to alert) iff:
+
+    - it's the first outlier for this key, OR
     - ``window_end - last_event_micros >= cooldown_micros``.
 
-  ``last_event_micros`` is updated on **every** anomaly regardless of
-  whether it fired, so a continuous stream of anomalies keeps extending
+  ``last_event_micros`` is updated on **every outlier** regardless of
+  whether it fired, so a continuous stream of outliers keeps extending
   the active-alert window. Alerts fire only on genuine gaps in the
-  stream, which matches how a Beam ``SessionWindow`` with the same gap
-  would coalesce events.
+  outlier stream, which matches how a Beam ``SessionWindow`` with the
+  same gap would coalesce events.
 
   Example (cooldown=10 min):
 
@@ -745,6 +754,20 @@ class _RateLimitAlerts(beam.DoFn):
   def process(self, element,
               last_event=beam.DoFn.StateParam(LAST_EVENT_MICROS)):
     _, result = element
+
+    # Only outliers (label == 1) advance the session boundary or are
+    # subject to suppression. Normal results (label == 0) and warmup
+    # results (label == -2) pass through unchanged so the downstream
+    # sinks see them — though _FormatAnomalyAsJson and
+    # _PostAnomalyToWebhook both filter on label == 1 themselves, so
+    # non-outliers don't actually reach Pub/Sub or the webhook anyway.
+    # The key thing is that they must not write to last_event, or a
+    # noisy warmup phase would silently start (and keep extending) a
+    # session before any real anomaly fires.
+    if result.predictions[0].label != 1:
+      yield element
+      return
+
     now_micros = result.example.window_end.micros
     last = last_event.read()
 

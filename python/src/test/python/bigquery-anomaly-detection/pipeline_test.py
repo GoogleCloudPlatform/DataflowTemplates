@@ -1323,14 +1323,18 @@ class RateLimitAlertsTest(unittest.TestCase):
   as the keyword argument the DoFn declares for the StateParam.
   """
 
-  def _make_element(self, window_end_sec, key='k1'):
+  def _make_element(self, window_end_sec, key='k1', label=1):
     """Build a (key, AnomalyResult) element. Only window_end matters
-    for the rate limiter's decision; window_start is arbitrary."""
+    for the rate limiter's decision; window_start is arbitrary.
+
+    ``label`` defaults to 1 (outlier) for the typical test path.
+    Pass 0 for "normal" or -2 for "warmup" to exercise the
+    label-gating behavior."""
     row = beam.Row(
         value=1.0,
         window_start=Timestamp(max(0, window_end_sec - 1)),
         window_end=Timestamp(window_end_sec))
-    pred = AnomalyPrediction(model_id='ZScore', score=5.0, label=1)
+    pred = AnomalyPrediction(model_id='ZScore', score=5.0, label=label)
     return (key, AnomalyResult(example=row, predictions=[pred]))
 
   def _run(self, dofn, element, state):
@@ -1432,6 +1436,70 @@ class RateLimitAlertsTest(unittest.TestCase):
         len(self._run(
             dofn, self._make_element(window_end_sec=60, key='b'),
             state_b)), 0)
+
+  def test_normal_label_passes_through_without_touching_state(self):
+    """Regression: only outliers (label=1) should affect state.
+    Normal results (label=0) must pass through unchanged and must NOT
+    write last_event, otherwise a quiet baseline of normal traffic
+    would silently extend the session before any real outlier."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    # Feed a stream of normal results at increasing timestamps.
+    for sec in (0, 60, 120, 180):
+      out = self._run(
+          dofn, self._make_element(window_end_sec=sec, label=0), state)
+      self.assertEqual(len(out), 1, 'normal results must pass through')
+    # State must still be unset — normals do not touch it.
+    self.assertIsNone(
+        state.read(),
+        f'normals must not write last_event; got {state.read()!r}')
+
+  def test_warmup_label_passes_through_without_touching_state(self):
+    """Same as the normal case but for warmup results (label=-2)."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    for sec in (0, 60, 120):
+      out = self._run(
+          dofn, self._make_element(window_end_sec=sec, label=-2), state)
+      self.assertEqual(len(out), 1, 'warmup results must pass through')
+    self.assertIsNone(state.read())
+
+  def test_warmup_then_outlier_fires_first_outlier(self):
+    """Warmup results before the first outlier must NOT eat the
+    initial fire. The outlier's session starts fresh."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    # 5 minutes of warmup at +60s intervals — none should touch state.
+    for sec in (0, 60, 120, 180, 240, 300):
+      self._run(
+          dofn, self._make_element(window_end_sec=sec, label=-2), state)
+    # First real outlier at T=350s: must fire (no prior outlier).
+    out = self._run(
+        dofn, self._make_element(window_end_sec=350, label=1), state)
+    self.assertEqual(
+        len(out), 1,
+        'first outlier must fire even after a long warmup phase')
+    self.assertEqual(state.read(), 350 * 1_000_000)
+
+  def test_outliers_interleaved_with_normals(self):
+    """A real-world scenario: outliers at minutes 0 and 11, with a
+    stream of normal results in between. The normals must not extend
+    the session, so the outlier at 11min still fires (11 >= 10)."""
+    dofn = _RateLimitAlerts(cooldown_seconds=600)
+    state = _FakeReadModifyWriteState()
+    fired = []
+    # T0: outlier → fires.
+    if self._run(dofn, self._make_element(0, label=1), state):
+      fired.append(0)
+    # T1..T10 minutes: normals (label=0).
+    for m in range(1, 11):
+      self._run(dofn, self._make_element(m * 60, label=0), state)
+    # T11 min: outlier — gap from prior outlier (T0) is 11 min ≥ 10.
+    if self._run(dofn, self._make_element(11 * 60, label=1), state):
+      fired.append(11)
+    self.assertEqual(
+        fired, [0, 11],
+        'normals between outliers must NOT extend the session')
 
   def test_suppress_logs_window_not_key(self):
     """Privacy: the suppression log must include the anomaly window
