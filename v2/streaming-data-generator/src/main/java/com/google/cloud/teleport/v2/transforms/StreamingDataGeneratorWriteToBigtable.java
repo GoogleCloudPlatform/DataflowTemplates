@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDa
 import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -44,7 +43,6 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 @AutoValue
 public abstract class StreamingDataGeneratorWriteToBigtable
     extends PTransform<PCollection<byte[]>, PDone> {
-
 
   abstract StreamingDataGeneratorOptions getPipelineOptions();
 
@@ -98,8 +96,7 @@ public abstract class StreamingDataGeneratorWriteToBigtable
         .apply("Write to Bigtable", write);
   }
 
-  static class BytesToNativeMutationFn
-      extends DoFn<byte[], KV<ByteString, Iterable<Mutation>>> {
+  static class BytesToNativeMutationFn extends DoFn<byte[], KV<ByteString, Iterable<Mutation>>> {
 
     private final String columnFamily;
     private final String rowkeyField;
@@ -117,8 +114,7 @@ public abstract class StreamingDataGeneratorWriteToBigtable
 
     @ProcessElement
     public void processElement(
-        @Element byte[] message,
-        OutputReceiver<KV<ByteString, Iterable<Mutation>>> receiver) {
+        @Element byte[] message, OutputReceiver<KV<ByteString, Iterable<Mutation>>> receiver) {
 
       JsonNode row;
       try {

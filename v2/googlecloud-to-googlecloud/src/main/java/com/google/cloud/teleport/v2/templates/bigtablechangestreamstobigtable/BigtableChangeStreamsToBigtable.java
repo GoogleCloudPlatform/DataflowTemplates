@@ -198,8 +198,7 @@ public class BigtableChangeStreamsToBigtable {
     }
     if (options.getBigtableBulkWriteMaxRequestSizeBytes() != null) {
       write =
-          write.withMaxBytesPerBatch(
-              options.getBigtableBulkWriteMaxRequestSizeBytes().longValue());
+          write.withMaxBytesPerBatch(options.getBigtableBulkWriteMaxRequestSizeBytes().longValue());
     }
     if (options.getBigtableBulkWriteFlowControl() != null) {
       write = write.withFlowControl(options.getBigtableBulkWriteFlowControl());
