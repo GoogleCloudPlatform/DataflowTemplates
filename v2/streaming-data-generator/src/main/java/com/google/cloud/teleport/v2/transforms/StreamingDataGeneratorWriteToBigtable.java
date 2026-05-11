@@ -36,8 +36,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that converts generated fake messages to native Bigtable protobuf mutations
@@ -122,11 +120,9 @@ public abstract class StreamingDataGeneratorWriteToBigtable
         @Element byte[] message,
         OutputReceiver<KV<ByteString, Iterable<Mutation>>> receiver) {
 
-      String jsonStr = new String(message, StandardCharsets.UTF_8);
-
       JsonNode row;
       try {
-        row = Preconditions.checkNotNull(mapper).readTree(jsonStr);
+        row = Preconditions.checkNotNull(mapper).readTree(message);
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to parse JSON for Bigtable mutation", e);
       }
@@ -148,7 +144,7 @@ public abstract class StreamingDataGeneratorWriteToBigtable
 
       List<Mutation> protoMutations = new ArrayList<>();
 
-      Iterator<Map.Entry<String, JsonNode>> fields = row.properties().iterator();
+      Iterator<Map.Entry<String, JsonNode>> fields = row.fields();
       while (fields.hasNext()) {
         Map.Entry<String, JsonNode> entry = fields.next();
         String columnName = entry.getKey();

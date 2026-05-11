@@ -192,6 +192,18 @@ public class BigtableChangeStreamsToBigtable {
         && !options.getBigtableWriteAppProfile().isEmpty()) {
       write = write.withAppProfileId(options.getBigtableWriteAppProfile());
     }
+    if (options.getBigtableBulkWriteMaxRowKeyCount() != null) {
+      write =
+          write.withMaxElementsPerBatch(options.getBigtableBulkWriteMaxRowKeyCount().longValue());
+    }
+    if (options.getBigtableBulkWriteMaxRequestSizeBytes() != null) {
+      write =
+          write.withMaxBytesPerBatch(
+              options.getBigtableBulkWriteMaxRequestSizeBytes().longValue());
+    }
+    if (options.getBigtableBulkWriteFlowControl() != null) {
+      write = write.withFlowControl(options.getBigtableBulkWriteFlowControl());
+    }
     return write;
   }
 
