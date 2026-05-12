@@ -345,6 +345,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
           final String typeName = resultSet.getString("type_name");
+          final SourceColumnIndexInfo.IndexType indexType =
+              indexTypeFrom(resultSet.getString("type_category"), typeName);
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(resultSet.getString("column_name"))
@@ -353,14 +355,23 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setIsPrimary(resultSet.getBoolean("is_primary"))
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                  .setIndexType(indexTypeFrom(resultSet.getString("type_category"), typeName));
+                  .setIndexType(indexType);
 
           String collation = resultSet.getString("collation");
+          if (collation == null && indexType == SourceColumnIndexInfo.IndexType.STRING) {
+            collation = "C";
+          }
           if (collation != null) {
             String charset = resultSet.getString("charset");
+            if (charset == null) {
+              charset = "UTF8";
+            }
             Integer typeLength = resultSet.getInt("type_length");
             if (resultSet.wasNull()) {
               typeLength = null;
+            }
+            if (typeLength == null && "uuid".equalsIgnoreCase(typeName)) {
+              typeLength = 36;
             }
             // Collation PAD SPACE is not supported in Postgresql
             // (https://www.postgresql.org/docs/current/infoschema-collations.html)
@@ -374,8 +385,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                     .setPadSpace(shouldPadSpace)
                     .build());
             indexBuilder.setStringMaxLength(typeLength == null ? VARCHAR_MAX_LENGTH : typeLength);
-          } else if ("uuid".equalsIgnoreCase(typeName)) {
-            indexBuilder.setStringMaxLength(36);
           }
           if (builders.containsKey(tableName)) {
             builders.get(tableName).add(indexBuilder.build());

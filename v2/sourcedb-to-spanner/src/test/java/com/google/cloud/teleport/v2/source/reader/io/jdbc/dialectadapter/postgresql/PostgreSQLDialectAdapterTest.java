@@ -315,6 +315,8 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
     when(mockResultSet.getString("type_category")).thenReturn("U");
     when(mockResultSet.getString("type_name")).thenReturn("uuid");
+    when(mockResultSet.getInt("type_length")).thenReturn(0);
+    when(mockResultSet.wasNull()).thenReturn(true);
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
         .containsExactly(
@@ -328,6 +330,12 @@ public class PostgreSQLDialectAdapterTest {
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setCollationReference(
+                        CollationReference.builder()
+                            .setDbCharacterSet("UTF8")
+                            .setDbCollation("C")
+                            .setPadSpace(false)
+                            .build())
                     .setStringMaxLength(36)
                     .build()));
   }
