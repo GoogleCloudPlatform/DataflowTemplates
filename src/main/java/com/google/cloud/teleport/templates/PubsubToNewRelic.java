@@ -60,7 +60,10 @@ import org.slf4j.LoggerFactory;
  *
  * <p>INPUT_SUB_NAME=SUB NAME WHERE LOGS ARE
  *
- * <p>NR_LOG_ENDPOINT=https://log-api.newrelic.com/log/v1
+ * <p># New Relic Logs API endpoint (choose based on your region):
+ * <p># US Region: NR_LOG_ENDPOINT=https://log-api.newrelic.com/log/v1
+ * <p># EU Region: NR_LOG_ENDPOINT=https://log-api.eu.newrelic.com/log/v1
+ * <p># JP Region: NR_LOG_ENDPOINT=https://log-api.jp.newrelic.com/log/v1
  *
  * <p>NR_LICENSE_KEY=YOUR NEW RELIC LICENSE KEY
  *
