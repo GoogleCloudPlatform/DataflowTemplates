@@ -16,7 +16,10 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +29,11 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.metrics.MetricNameFilter;
+import org.apache.beam.sdk.metrics.MetricQueryResults;
+import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -240,6 +247,172 @@ public final class DataStreamMongoDBToFirestoreTest {
   }
 
   @Test
+  public void prepareUdfInputFn_updateWithNullData_skipsEvent() {
+    String fullEventJson = "{\"_metadata_change_type\":\"UPDATE\"}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "PrepareUdfInput",
+                ParDo.of(new DataStreamMongoDBToFirestore.PrepareUdfInputFn())
+                    .withOutputTags(
+                        SUCCESS_TAG,
+                        TupleTagList.of(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)));
+
+    result
+        .get(SUCCESS_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(result.get(SUCCESS_TAG)).empty();
+    PAssert.that(result.get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)).empty();
+
+    PipelineResult pipelineResult = pipeline.run();
+
+    MetricQueryResults metrics =
+        pipelineResult
+            .metrics()
+            .queryMetrics(
+                MetricsFilter.builder()
+                    .addNameFilter(
+                        MetricNameFilter.named(
+                            DataStreamMongoDBToFirestore.PrepareUdfInputFn.class,
+                            "skippedUpdatesWithNullData"))
+                    .build());
+
+    long count = 0;
+    if (metrics.getCounters().iterator().hasNext()) {
+      count = metrics.getCounters().iterator().next().getAttempted();
+    }
+    assertEquals(1L, count);
+  }
+
+  @Test
+  public void prepareUdfInputFn_insertWithNullData_routesToDlq() {
+    String fullEventJson = "{\"_metadata_change_type\":\"INSERT\"}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "PrepareUdfInput",
+                ParDo.of(new DataStreamMongoDBToFirestore.PrepareUdfInputFn())
+                    .withOutputTags(
+                        SUCCESS_TAG,
+                        TupleTagList.of(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)));
+
+    result
+        .get(SUCCESS_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(result.get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG))
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              assertEquals(fullEventJson, element.getOriginalPayload());
+              assertEquals(
+                  "Missing data field in event or unsupported data field type",
+                  element.getErrorMessage());
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void prepareUdfInputFn_wrappedEvent_succeeds() {
+    String fullEventJson =
+        "{\"changeEvent\":{\"_metadata_change_type\":\"UPDATE\",\"data\":{\"field\":\"value\"}}}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "PrepareUdfInput",
+                ParDo.of(new DataStreamMongoDBToFirestore.PrepareUdfInputFn())
+                    .withOutputTags(
+                        SUCCESS_TAG,
+                        TupleTagList.of(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)));
+
+    result
+        .get(SUCCESS_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(result.get(SUCCESS_TAG))
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              assertEquals(fullEventJson, element.getOriginalPayload());
+              assertTrue(element.getPayload().contains("\"field\": \"value\""));
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void prepareUdfInputFn_alreadyProcessed_bypassesUdf() {
+    String processedJson = "{\"_metadata_udf_processed\": true, \"data\": \"{}\"}";
+    FailsafeElement<String, String> input = FailsafeElement.of(processedJson, processedJson);
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "PrepareUdfInput",
+                ParDo.of(new DataStreamMongoDBToFirestore.PrepareUdfInputFn())
+                    .withOutputTags(
+                        SUCCESS_TAG,
+                        TupleTagList.of(DataStreamMongoDBToFirestore.BYPASS_UDF_TAG)
+                            .and(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)));
+
+    result
+        .get(SUCCESS_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.BYPASS_UDF_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.PREPARE_FAILURE_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(result.get(DataStreamMongoDBToFirestore.BYPASS_UDF_TAG))
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              assertEquals(processedJson, element.getOriginalPayload());
+              assertEquals(processedJson, element.getPayload());
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
   public void prepareUdfInputFn_invalidJson_routesToDlq() {
     String invalidJson = "{invalid}";
     FailsafeElement<String, String> input = FailsafeElement.of(invalidJson, invalidJson);
@@ -303,15 +476,68 @@ public final class DataStreamMongoDBToFirestoreTest {
         .get(DataStreamMongoDBToFirestore.RESTORE_FAILURE_TAG)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    FailsafeElement<String, String> expectedOutput =
-        FailsafeElement.of(fullEventJson, fullEventJson);
-    PAssert.that(result.get(SUCCESS_TAG)).containsInAnyOrder(expectedOutput);
+    PAssert.that(result.get(SUCCESS_TAG))
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(element.getPayload());
+                assertFalse(node.has("_metadata_udf_processed"));
+                assertEquals("{\"name\":\"John\"}", node.get("data").asText());
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void restoreUdfOutputFn_invalidTransformedData_routesToDlq() {
+    String fullEventJson = "{\"data\":\"{\\\"name\\\":\\\"John\\\"}\"}";
+    String invalidTransformedData = "invalid json";
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(fullEventJson, invalidTransformedData);
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "RestoreUdfOutput",
+                ParDo.of(new DataStreamMongoDBToFirestore.RestoreUdfOutputFn())
+                    .withOutputTags(
+                        SUCCESS_TAG,
+                        TupleTagList.of(DataStreamMongoDBToFirestore.RESTORE_FAILURE_TAG)));
+
+    result
+        .get(SUCCESS_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    result
+        .get(DataStreamMongoDBToFirestore.RESTORE_FAILURE_TAG)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(result.get(DataStreamMongoDBToFirestore.RESTORE_FAILURE_TAG))
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              assertEquals(fullEventJson, element.getOriginalPayload());
+              assertEquals(invalidTransformedData, element.getPayload());
+              assertNotNull(element.getErrorMessage());
+              return null;
+            });
 
     pipeline.run();
   }
 
   @Test
   public void restoreUdfOutputFn_changedPayload() {
+    // Test that RestoreUdfOutputFn correctly merges transformed data back into the full event
+    // and overwrites BOTH originalPayload and payload with the modified event JSON.
     String fullEventJson = "{\"data\":{\"name\":\"John\"}}";
     String transformedData = "{\"name\":\"Jane\"}";
     FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, transformedData);
@@ -346,6 +572,12 @@ public final class DataStreamMongoDBToFirestoreTest {
                 String dataStr = node.get("data").asText();
                 JsonNode dataNode = mapper.readTree(dataStr);
                 assertEquals("Jane", dataNode.get("name").asText());
+
+                // Verify that originalPayload is ALSO overwritten with the transformed data
+                JsonNode originalNode = mapper.readTree(element.getOriginalPayload());
+                String originalDataStr = originalNode.get("data").asText();
+                JsonNode originalDataNode = mapper.readTree(originalDataStr);
+                assertEquals("Jane", originalDataNode.get("name").asText());
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }
@@ -418,6 +650,7 @@ public final class DataStreamMongoDBToFirestoreTest {
     String udfCode =
         "function transform(inJson) {\n"
             + "  var obj = JSON.parse(inJson);\n"
+            + "  obj.processed = true;\n"
             + "  return JSON.stringify(obj);\n"
             + "}";
     Path udfFile = Files.createTempFile("test-udf-special", ".js");
@@ -437,7 +670,7 @@ public final class DataStreamMongoDBToFirestoreTest {
     DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
 
     String fullEventJson =
-        "{\"data\":{\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"negInf\":{\"$numberDouble\":\"-Infinity\"},\"dbl\":3.14,\"lng\":{\"$numberLong\":\"1234567890\"}}}";
+        "{\"data\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"negInf\":{\"$numberDouble\":\"-Infinity\"},\"dbl\":3.14,\"lng\":{\"$numberLong\":\"1234567890\"},\"ts\":{\"$timestamp\":{\"t\":123,\"i\":456}}}}";
     FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
 
     PCollection<FailsafeElement<String, String>> result =
@@ -466,10 +699,310 @@ public final class DataStreamMongoDBToFirestoreTest {
                 assertEquals(Double.NEGATIVE_INFINITY, doc.getDouble("negInf"), 0.0);
                 assertEquals(3.14, doc.getDouble("dbl"), 0.0);
                 assertEquals(1234567890L, doc.getLong("lng").longValue());
+                assertEquals(
+                    new org.bson.types.ObjectId("507f1f77bcf86cd799439011"),
+                    doc.getObjectId("_id"));
+                assertEquals(
+                    new org.bson.BsonTimestamp(123, 456),
+                    doc.get("ts", org.bson.BsonTimestamp.class));
+                assertEquals(true, doc.getBoolean("processed"));
 
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }
+              return null;
+            });
+
+    pipeline.run();
+
+    Files.delete(udfFile);
+  }
+
+  @Test
+  public void applyUdfToDataField_updateWithNullData_skipsEvent() throws IOException {
+    String udfCode =
+        "function transform(inJson) {\n"
+            + "  var obj = JSON.parse(inJson);\n"
+            + "  obj.processed = true;\n"
+            + "  return JSON.stringify(obj);\n"
+            + "}";
+    Path udfFile = Files.createTempFile("test-udf-skip", ".js");
+    Files.write(udfFile, udfCode.getBytes());
+
+    String[] args =
+        new String[] {
+          "--javascriptTextTransformGcsPath=" + udfFile.toAbsolutePath().toString(),
+          "--javascriptTextTransformFunctionName=transform",
+          "--deadLetterQueueDirectory=/tmp/dlq"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
+
+    String fullEventJson = "{\"_metadata_change_type\":\"UPDATE\"}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollection<FailsafeElement<String, String>> result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "ApplyUdf",
+                new DataStreamMongoDBToFirestore.ApplyUdfToDataField(options, dlqManager));
+
+    PAssert.that(result).empty();
+
+    pipeline.run();
+
+    Files.delete(udfFile);
+  }
+
+  @Test
+  public void applyUdfToDataField_udfFails_emitsEmptyResult() throws IOException {
+    String udfCode =
+        "function transform(inJson) {\n" + "  throw new Error(\"UDF failed\");\n" + "}";
+    Path udfFile = Files.createTempFile("test-udf-fail", ".js");
+    Files.write(udfFile, udfCode.getBytes());
+
+    String[] args =
+        new String[] {
+          "--javascriptTextTransformGcsPath=" + udfFile.toAbsolutePath().toString(),
+          "--javascriptTextTransformFunctionName=transform",
+          "--deadLetterQueueDirectory=/tmp/dlq"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
+
+    String fullEventJson = "{\"data\":{\"name\":\"john\"}}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollection<FailsafeElement<String, String>> result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "ApplyUdf",
+                new DataStreamMongoDBToFirestore.ApplyUdfToDataField(options, dlqManager));
+
+    // The result should be empty because the event failed UDF and went to DLQ
+    PAssert.that(result).empty();
+
+    pipeline.run();
+
+    Files.delete(udfFile);
+  }
+
+  @Test
+  public void applyUdfToDataField_udfReturnsNonBson_emitsEmptyResult() throws IOException {
+    String udfCode = "function transform(inJson) {\n" + "  return \"invalid json\";\n" + "}";
+    Path udfFile = Files.createTempFile("test-udf-non-bson", ".js");
+    Files.write(udfFile, udfCode.getBytes());
+
+    String[] args =
+        new String[] {
+          "--javascriptTextTransformGcsPath=" + udfFile.toAbsolutePath().toString(),
+          "--javascriptTextTransformFunctionName=transform",
+          "--deadLetterQueueDirectory=/tmp/dlq"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
+
+    String fullEventJson = "{\"data\":{\"name\":\"john\"}}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollection<FailsafeElement<String, String>> result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "ApplyUdf",
+                new DataStreamMongoDBToFirestore.ApplyUdfToDataField(options, dlqManager));
+
+    // If we expect it to be DLQed, the successful result should be empty!
+    PAssert.that(result).empty();
+
+    pipeline.run();
+
+    Files.delete(udfFile);
+  }
+
+  @Test
+  public void applyUdfToDataField_deleteEvent_bypassesUdf() throws IOException {
+    String udfCode =
+        "function transform(inJson) {\n"
+            + "  var obj = JSON.parse(inJson);\n"
+            + "  obj.processed = true;\n"
+            + "  return JSON.stringify(obj);\n"
+            + "}";
+    Path udfFile = Files.createTempFile("test-udf-delete", ".js");
+    Files.write(udfFile, udfCode.getBytes());
+
+    String[] args =
+        new String[] {
+          "--javascriptTextTransformGcsPath=" + udfFile.toAbsolutePath().toString(),
+          "--javascriptTextTransformFunctionName=transform",
+          "--deadLetterQueueDirectory=/tmp/dlq"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
+
+    String fullEventJson = "{\"_metadata_change_type\":\"DELETE\",\"data\":{\"name\":\"John\"}}";
+    FailsafeElement<String, String> input = FailsafeElement.of(fullEventJson, fullEventJson);
+
+    PCollection<FailsafeElement<String, String>> result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "ApplyUdf",
+                new DataStreamMongoDBToFirestore.ApplyUdfToDataField(options, dlqManager));
+
+    PAssert.that(result)
+        .satisfies(
+            iterable -> {
+              FailsafeElement<String, String> element = iterable.iterator().next();
+              try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(element.getPayload());
+                assertEquals("DELETE", node.get("_metadata_change_type").asText());
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+              return null;
+            });
+
+    pipeline.run();
+
+    Files.delete(udfFile);
+  }
+
+  @Test
+  public void applyUdfToDataField_mixedEvents_correctlyProcessed() throws IOException {
+    String udfCode =
+        "function transform(inJson) {\n"
+            + "  var obj = JSON.parse(inJson);\n"
+            + "  obj.processed = true;\n"
+            + "  return JSON.stringify(obj);\n"
+            + "}";
+    Path udfFile = Files.createTempFile("test-udf-mixed", ".js");
+    Files.write(udfFile, udfCode.getBytes());
+
+    String[] args =
+        new String[] {
+          "--javascriptTextTransformGcsPath=" + udfFile.toAbsolutePath().toString(),
+          "--javascriptTextTransformFunctionName=transform",
+          "--deadLetterQueueDirectory=/tmp/dlq"
+        };
+    DataStreamMongoDBToFirestore.Options options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(DataStreamMongoDBToFirestore.Options.class);
+
+    DeadLetterQueueManager dlqManager = DeadLetterQueueManager.create("/tmp/dlq", 3);
+
+    String insertJson = "{\"_metadata_change_type\":\"INSERT\",\"data\":{\"name\":\"inv1\"}}";
+    String deleteJson = "{\"_metadata_change_type\":\"DELETE\",\"data\":{\"name\":\"del1\"}}";
+    String updateWithDataJson =
+        "{\"_metadata_change_type\":\"UPDATE\",\"data\":{\"name\":\"upd1\"}}";
+    String updateNullDataJson = "{\"_metadata_change_type\":\"UPDATE\"}";
+    String readJson = "{\"_metadata_change_type\":\"READ\",\"data\":{\"name\":\"rd1\"}}";
+
+    java.util.List<FailsafeElement<String, String>> inputs =
+        java.util.Arrays.asList(
+            FailsafeElement.of(insertJson, insertJson),
+            FailsafeElement.of(deleteJson, deleteJson),
+            FailsafeElement.of(updateWithDataJson, updateWithDataJson),
+            FailsafeElement.of(updateNullDataJson, updateNullDataJson),
+            FailsafeElement.of(readJson, readJson));
+
+    PCollection<FailsafeElement<String, String>> result =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(inputs)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                "ApplyUdf",
+                new DataStreamMongoDBToFirestore.ApplyUdfToDataField(options, dlqManager));
+
+    PAssert.that(result)
+        .satisfies(
+            iterable -> {
+              java.util.List<FailsafeElement<String, String>> elements =
+                  new java.util.ArrayList<>();
+              iterable.forEach(elements::add);
+
+              assertEquals(4, elements.size());
+
+              java.util.Map<String, JsonNode> eventMap = new java.util.HashMap<>();
+              ObjectMapper mapper = new ObjectMapper();
+
+              for (FailsafeElement<String, String> element : elements) {
+                try {
+                  JsonNode node = mapper.readTree(element.getPayload());
+                  String type = node.get("_metadata_change_type").asText();
+                  eventMap.put(type, node);
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              }
+
+              assertTrue(eventMap.containsKey("INSERT"));
+              assertTrue(eventMap.containsKey("DELETE"));
+              assertTrue(eventMap.containsKey("UPDATE"));
+              assertTrue(eventMap.containsKey("READ"));
+
+              // Verify UDF processed flag
+              assertTrue(eventMap.get("INSERT").has("_metadata_udf_processed"));
+              assertTrue(eventMap.get("UPDATE").has("_metadata_udf_processed"));
+              assertTrue(eventMap.get("READ").has("_metadata_udf_processed"));
+              assertFalse(eventMap.get("DELETE").has("_metadata_udf_processed"));
+
+              try {
+                // Verify UDF was applied to INSERT, UPDATE, READ
+                String insertDataStr = eventMap.get("INSERT").get("data").asText();
+                JsonNode insertDataNode = mapper.readTree(insertDataStr);
+                assertTrue(insertDataNode.has("processed"));
+
+                String updateDataStr = eventMap.get("UPDATE").get("data").asText();
+                JsonNode updateDataNode = mapper.readTree(updateDataStr);
+                assertTrue(updateDataNode.has("processed"));
+
+                String readDataStr = eventMap.get("READ").get("data").asText();
+                JsonNode readDataNode = mapper.readTree(readDataStr);
+                assertTrue(readDataNode.has("processed"));
+
+                // Verify UDF was NOT applied to DELETE
+                JsonNode deleteDataNode = eventMap.get("DELETE").get("data");
+                assertFalse(deleteDataNode.has("processed"));
+
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+
               return null;
             });
 

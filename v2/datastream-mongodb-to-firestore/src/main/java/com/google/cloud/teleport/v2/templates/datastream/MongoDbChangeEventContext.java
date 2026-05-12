@@ -87,10 +87,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public MongoDbChangeEventContext(JsonNode payload, String shadowCollectionPrefix)
       throws JsonProcessingException {
-    this.changeEvent =
-        payload.has(DatastreamConstants.CHANGE_EVENT)
-            ? payload.get(DatastreamConstants.CHANGE_EVENT)
-            : payload;
+    this.changeEvent = Utils.extractInnerEvent(payload);
 
     this.retryCount =
         changeEvent.has(DatastreamConstants.RETRY_COUNT)
