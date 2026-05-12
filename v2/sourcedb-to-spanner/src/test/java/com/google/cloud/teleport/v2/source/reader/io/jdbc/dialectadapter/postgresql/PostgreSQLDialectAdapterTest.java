@@ -238,7 +238,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getString("collation")).thenReturn(null, "en_US", "en_US", null);
     when(mockResultSet.getInt("type_length")).thenReturn(100, 0);
     when(mockResultSet.wasNull()).thenReturn(false, true);
-    when(mockResultSet.getString("type_name")).thenReturn("char", "text");
+    when(mockResultSet.getString("type_name")).thenReturn("bigint", "char", "text", "timestamp");
     when(mockResultSet.getString("charset")).thenReturn("UTF8", "UTF8");
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
