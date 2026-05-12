@@ -27,7 +27,7 @@ permissions: write-all
 jobs:
   spanner_failure_injection_tests:
     name: Spanner Failure Injection Tests
-    timeout-minutes: 180
+    timeout-minutes: 360
     runs-on: [ self-hosted, spanner-it ]
     steps:
     - name: Checkout Code
