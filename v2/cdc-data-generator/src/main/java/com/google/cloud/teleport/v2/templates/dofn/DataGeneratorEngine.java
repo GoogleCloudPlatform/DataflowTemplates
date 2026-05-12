@@ -100,7 +100,7 @@ public class DataGeneratorEngine {
 
     tableMapState.put(tableName, table);
 
-    processTable(
+    generateAndBufferInsertWithLifecycle(
         table,
         row,
         eventQueueState,
@@ -140,7 +140,7 @@ public class DataGeneratorEngine {
       if (events != null) {
         for (LifecycleEvent event : events) {
           try {
-            processEvent(event, tableMapState, batcher);
+            executeScheduledLifecycleMutation(event, tableMapState, batcher);
           } catch (Exception genError) {
             LOG.error(
                 "Lifecycle event generation failed for table {} ({})",
@@ -167,7 +167,7 @@ public class DataGeneratorEngine {
    * Assembles and buffers an insert row for the specified table, calculates lifecycle mutation
    * schedules, and cascades generation to its child tables.
    */
-  private void processTable(
+  private void generateAndBufferInsertWithLifecycle(
       DataGeneratorTable table,
       Row row,
       MapState<Long, List<LifecycleEvent>> eventQueueState,
@@ -182,6 +182,7 @@ public class DataGeneratorEngine {
     String tableName = table.name();
     tableMapState.put(tableName, table);
 
+    // 1. Complete Row & Buffer Insert Mutation
     Row fullRow = RowAssembler.completeRow(table, row, faker);
     String shardId =
         fullRow.getSchema().hasField(Constants.SHARD_ID_COLUMN_NAME)
@@ -209,6 +210,7 @@ public class DataGeneratorEngine {
     batcher.bufferRow(
         tableName, fullRow, Constants.MUTATION_INSERT, table, shardId, insertTopoOrder);
 
+    // 2. Calculate Lifecycle Timing Bounds (Updates & Deletes)
     long now = System.currentTimeMillis();
     long deleteTimestamp = 0L;
     int numUpdates = 0;
@@ -243,6 +245,7 @@ public class DataGeneratorEngine {
       }
     }
 
+    // 3. Cascade Generation Fan-Out to Child Tables
     Map<String, Row> updatedAncestorRows = new HashMap<>(ancestorRows);
     updatedAncestorRows.put(tableName, fullRow);
 
@@ -273,9 +276,10 @@ public class DataGeneratorEngine {
       }
     }
 
+    // 4. Enqueue Future Lifecycle Mutations in State
     if (!pkMap.isEmpty()) {
       for (int i = 1; i <= numUpdates; i++) {
-        scheduleEvent(
+        enqueueLifecycleEvent(
             now + upInterval * i,
             new LifecycleEvent(pkMap, Constants.MUTATION_UPDATE, tableName, reducedRow),
             eventQueueState,
@@ -283,7 +287,7 @@ public class DataGeneratorEngine {
             eventTimer);
       }
       if (deleteTimestamp > 0) {
-        scheduleEvent(
+        enqueueLifecycleEvent(
             deleteTimestamp,
             new LifecycleEvent(pkMap, Constants.MUTATION_DELETE, tableName, reducedRow),
             eventQueueState,
@@ -329,7 +333,7 @@ public class DataGeneratorEngine {
                             childTable.name()))));
         break;
       }
-      processTable(
+      generateAndBufferInsertWithLifecycle(
           childTable,
           childRow,
           eventQueueState,
@@ -440,7 +444,7 @@ public class DataGeneratorEngine {
    * Persists a future lifecycle event into the state queue, keeping the active timestamp list
    * sorted via binary search.
    */
-  private void scheduleEvent(
+  private void enqueueLifecycleEvent(
       long timestamp,
       LifecycleEvent event,
       MapState<Long, List<LifecycleEvent>> eventQueueState,
@@ -472,7 +476,7 @@ public class DataGeneratorEngine {
    * Executes a scheduled update or delete event by assembling the mutated row and buffering it into
    * the batcher.
    */
-  private void processEvent(
+  private void executeScheduledLifecycleMutation(
       LifecycleEvent event,
       MapState<String, DataGeneratorTable> tableMapState,
       MutationBatcher batcher) {

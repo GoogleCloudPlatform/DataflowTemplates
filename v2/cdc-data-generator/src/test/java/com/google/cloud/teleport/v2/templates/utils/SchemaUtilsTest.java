@@ -380,13 +380,40 @@ public class SchemaUtilsTest {
 
   @Test
   public void testDAGConstructionMultiParentChainComplex() {
-    DataGeneratorTable departments =
+    DataGeneratorTable organizations =
         DataGeneratorTable.builder()
-            .name("Departments")
-            .insertQps(10)
+            .name("Organizations")
+            .insertQps(500)
             .columns(ImmutableList.of())
             .primaryKeys(ImmutableList.of())
             .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorTable xyz =
+        DataGeneratorTable.builder()
+            .name("xyz")
+            .insertQps(400)
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorTable departments =
+        DataGeneratorTable.builder()
+            .name("Departments")
+            .insertQps(200)
+            .columns(ImmutableList.of())
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(
+                ImmutableList.of(
+                    DataGeneratorForeignKey.builder()
+                        .name("fk_dept_org")
+                        .keyColumns(ImmutableList.of("OrgId"))
+                        .referencedTable("Organizations")
+                        .referencedColumns(ImmutableList.of("OrgId"))
+                        .build()))
             .uniqueKeys(ImmutableList.of())
             .build();
 
@@ -399,10 +426,10 @@ public class SchemaUtilsTest {
             .foreignKeys(
                 ImmutableList.of(
                     DataGeneratorForeignKey.builder()
-                        .name("fk_emp_dept")
-                        .keyColumns(ImmutableList.of("DeptCode"))
-                        .referencedTable("Departments")
-                        .referencedColumns(ImmutableList.of("DeptCode"))
+                        .name("fk_emp_xyz")
+                        .keyColumns(ImmutableList.of("xyzId"))
+                        .referencedTable("xyz")
+                        .referencedColumns(ImmutableList.of("xyzId"))
                         .build()))
             .uniqueKeys(ImmutableList.of())
             .build();
@@ -434,6 +461,10 @@ public class SchemaUtilsTest {
         DataGeneratorSchema.builder()
             .tables(
                 ImmutableMap.of(
+                    "Organizations",
+                    organizations,
+                    "xyz",
+                    xyz,
                     "Departments",
                     departments,
                     "EmployeeAssignments",
@@ -444,21 +475,29 @@ public class SchemaUtilsTest {
 
     DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
+    DataGeneratorTable newOrg = dagSchema.tables().get("Organizations");
+    DataGeneratorTable newXyz = dagSchema.tables().get("xyz");
     DataGeneratorTable newDept = dagSchema.tables().get("Departments");
     DataGeneratorTable newEmp = dagSchema.tables().get("EmployeeAssignments");
     DataGeneratorTable newProj = dagSchema.tables().get("Projects");
 
-    assertTrue(newDept.isRoot()); // Departments should be root!
+    assertTrue(newXyz.isRoot());
     assertFalse(newEmp.isRoot());
+    assertFalse(newOrg.isRoot());
+    assertFalse(newDept.isRoot());
     assertFalse(newProj.isRoot());
 
-    // Departments should have EmployeeAssignments as child
-    assertEquals(1, newDept.childTables().size());
-    assertEquals("EmployeeAssignments", newDept.childTables().get(0));
+    assertEquals(1, newXyz.childTables().size());
+    assertEquals("EmployeeAssignments", newXyz.childTables().get(0));
 
-    // EmployeeAssignments should have Projects as child
     assertEquals(1, newEmp.childTables().size());
-    assertEquals("Projects", newEmp.childTables().get(0));
+    assertEquals("Organizations", newEmp.childTables().get(0));
+
+    assertEquals(1, newOrg.childTables().size());
+    assertEquals("Departments", newOrg.childTables().get(0));
+
+    assertEquals(1, newDept.childTables().size());
+    assertEquals("Projects", newDept.childTables().get(0));
   }
 
   @Test

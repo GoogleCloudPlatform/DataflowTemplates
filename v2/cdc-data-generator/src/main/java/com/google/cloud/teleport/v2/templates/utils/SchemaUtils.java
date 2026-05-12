@@ -21,12 +21,12 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -37,81 +37,61 @@ public class SchemaUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
 
   /**
-   * Constructs a Directed Acyclic Graph (DAG) of tables in the schema. Identifies parent-child
-   * relationships based on Foreign Keys and Interleaving. Handles multiple parents by selecting the
-   * one with the *least* QPS. Populates the `children` list for each table and sets `isRoot`
-   * accordingly.
-   *
-   * <p>Note: Circular dependencies are not supported right now.
-   *
-   * @param schema The input schema.
-   * @return A new schema with DAG information populated.
+   * Constructs a Directed Acyclic Graph (DAG) of tables in the schema. Merges parallel parent
+   * tracks into sequential execution chains sorted by QPS.
    */
   public static DataGeneratorSchema generateSchemaDAG(DataGeneratorSchema schema) {
     Map<String, DataGeneratorTable> tableMap = schema.tables();
     Map<String, List<String>> parentToSequenceChild = new HashMap<>();
     Set<String> hasSequenceParent = new HashSet<>();
 
-    // 1. Build Dependency Chains for Each Table
+    // 1. Generate a single, authoritative global topological order sorted by QPS
+    List<DataGeneratorTable> globalOrder = sortGloballyTopologically(tableMap);
+
+    // 2. Build Sequential Execution Chains using sub-sequences of the global order
     for (DataGeneratorTable childTable : tableMap.values()) {
-      String childName = childTable.name();
+      Set<DataGeneratorTable> uniqueParents = new HashSet<>();
+      // Gather all recursive upstream ancestors (interleaving + foreign keys)
+      collectAncestors(childTable, tableMap, uniqueParents);
 
-      // Collect Parents (Interleaved and FK)
-      List<DataGeneratorTable> parents = new ArrayList<>();
+      if (uniqueParents.isEmpty()) {
+        continue; // Standalone table with no dependencies
+      }
 
-      if (childTable.interleavedInTable() != null) {
-        String parentName = childTable.interleavedInTable();
-        DataGeneratorTable parentTable = tableMap.get(parentName);
-        if (parentTable != null) {
-          parents.add(parentTable);
+      Set<String> lineageNames =
+          uniqueParents.stream().map(DataGeneratorTable::name).collect(Collectors.toSet());
+      lineageNames.add(childTable.name());
+
+      // Filter the master global order to keep only this table's specific lineage
+      List<DataGeneratorTable> executionChain =
+          globalOrder.stream()
+              .filter(t -> lineageNames.contains(t.name()))
+              .collect(Collectors.toList());
+
+      // Link the sorted lineage chain together consecutively (P1 -> P2 -> ... -> Child)
+      for (int i = 0; i < executionChain.size() - 1; i++) {
+        String currentTable = executionChain.get(i).name();
+        String nextTable = executionChain.get(i + 1).name();
+
+        List<String> sequenceChildren =
+            parentToSequenceChild.computeIfAbsent(currentTable, k -> new ArrayList<>());
+        if (!sequenceChildren.contains(nextTable)) {
+          sequenceChildren.add(nextTable);
         }
+        hasSequenceParent.add(nextTable);
       }
-
-      for (DataGeneratorForeignKey fk : childTable.foreignKeys()) {
-        DataGeneratorTable parentTable = tableMap.get(fk.referencedTable());
-        if (parentTable != null && !parents.contains(parentTable)) {
-          parents.add(parentTable);
-        }
-      }
-
-      if (parents.isEmpty()) {
-        continue; // No parents for this table
-      }
-
-      // Sort Parents Topologically to respect physical FK relations
-      List<DataGeneratorTable> sortedParents = sortTopologically(parents, tableMap);
-
-      // Chain the Parents: P1 -> P2 -> ... -> Pn -> Child
-      for (int i = 0; i < sortedParents.size() - 1; i++) {
-        String currentParentName = sortedParents.get(i).name();
-        String nextParentName = sortedParents.get(i + 1).name();
-        // Avoid adding duplicate dependencies if a table is part of multiple chains
-        List<String> currentChildren =
-            parentToSequenceChild.computeIfAbsent(currentParentName, k -> new ArrayList<>());
-        if (!currentChildren.contains(nextParentName)) {
-          currentChildren.add(nextParentName);
-        }
-        hasSequenceParent.add(nextParentName);
-      }
-
-      // Link the last parent in the chain to the child table
-      String lastParentName = sortedParents.get(sortedParents.size() - 1).name();
-      List<String> lastParentChildren =
-          parentToSequenceChild.computeIfAbsent(lastParentName, k -> new ArrayList<>());
-      if (!lastParentChildren.contains(childName)) {
-        lastParentChildren.add(childName);
-      }
-      hasSequenceParent.add(childName);
     }
 
-    // 2. Update Tables with Sequence Children and isRoot
+    // 3. Construct Final Table Definitions
     ImmutableMap.Builder<String, DataGeneratorTable> newTablesBuilder = ImmutableMap.builder();
     for (DataGeneratorTable table : tableMap.values()) {
       String tableName = table.name();
       List<String> sequenceChildren =
           parentToSequenceChild.getOrDefault(tableName, ImmutableList.of());
+      // A table is a root if it is not triggered as a sequence child by any other table
       boolean isRoot = !hasSequenceParent.contains(tableName);
 
+      // Prevent double deletion conflicts by suppressing delete generation on child tables
       boolean hasAncestorDelete =
           hasPhysicalAncestorWithDeleteQps(table, tableMap, new HashSet<>());
       Integer finalDeleteQps = hasAncestorDelete ? Integer.valueOf(0) : table.deleteQps();
@@ -119,9 +99,7 @@ public class SchemaUtils {
       newTablesBuilder.put(
           tableName,
           table.toBuilder()
-              .childTables(
-                  ImmutableList.copyOf(
-                      sequenceChildren)) // These are tables to generate data AFTER this one
+              .childTables(ImmutableList.copyOf(sequenceChildren))
               .isRoot(isRoot)
               .deleteQps(finalDeleteQps)
               .build());
@@ -138,16 +116,107 @@ public class SchemaUtils {
   }
 
   /**
-   * Checks if any physical ancestor (via interleaving or foreign keys) has delete QPS configured.
-   * Used to suppress child table delete generation to prevent double deletion conflicts.
+   * Standard Kahn's Algorithm for Global Topological Sorting. Uses a PriorityQueue to ensure that
+   * when multiple parent tables are unblocked, the one with the lowest insertQps is selected first.
+   */
+  private static List<DataGeneratorTable> sortGloballyTopologically(
+      Map<String, DataGeneratorTable> tableMap) {
+    Map<String, Integer> inDegree = new HashMap<>();
+    Map<String, List<String>> adjacencyList = new HashMap<>();
+
+    for (String tableName : tableMap.keySet()) {
+      inDegree.put(tableName, 0);
+      adjacencyList.put(tableName, new ArrayList<>());
+    }
+
+    // Map physical dependencies (interleaving and FKs) into graph directed edges
+    for (DataGeneratorTable table : tableMap.values()) {
+      String child = table.name();
+      List<String> parents = new ArrayList<>();
+      if (table.interleavedInTable() != null) {
+        parents.add(table.interleavedInTable());
+      }
+      if (table.foreignKeys() != null) {
+        for (DataGeneratorForeignKey fk : table.foreignKeys()) {
+          parents.add(fk.referencedTable());
+        }
+      }
+
+      for (String parent : parents) {
+        if (tableMap.containsKey(parent)) {
+          adjacencyList.get(parent).add(child);
+          inDegree.put(child, inDegree.get(child) + 1);
+        }
+      }
+    }
+
+    // Priority Queue sorts prioritizing roots, then ascending by QPS, then alphabetically by name
+    PriorityQueue<DataGeneratorTable> queue =
+        new PriorityQueue<>(
+            Comparator.comparing(
+                    (DataGeneratorTable t) -> t.isRoot() != null && t.isRoot(),
+                    Comparator.reverseOrder())
+                .thenComparingInt(
+                    (DataGeneratorTable t) -> t.insertQps() != null ? t.insertQps() : 0)
+                .thenComparing(DataGeneratorTable::name));
+
+    for (Map.Entry<String, Integer> entry : inDegree.entrySet()) {
+      if (entry.getValue() == 0) {
+        queue.add(tableMap.get(entry.getKey()));
+      }
+    }
+
+    List<DataGeneratorTable> globalOrder = new ArrayList<>();
+    while (!queue.isEmpty()) {
+      DataGeneratorTable current = queue.poll();
+      globalOrder.add(current);
+
+      for (String neighbor : adjacencyList.get(current.name())) {
+        int updatedInDegree = inDegree.get(neighbor) - 1;
+        inDegree.put(neighbor, updatedInDegree);
+        if (updatedInDegree == 0) {
+          queue.add(tableMap.get(neighbor));
+        }
+      }
+    }
+
+    if (globalOrder.size() != tableMap.size()) {
+      throw new IllegalStateException("Circular dependency detected in schema layout.");
+    }
+
+    return globalOrder;
+  }
+
+  /** Recursively collects all physical upstream ancestor tables (via interleaving or FKs). */
+  private static void collectAncestors(
+      DataGeneratorTable table,
+      Map<String, DataGeneratorTable> tableMap,
+      Set<DataGeneratorTable> uniqueParents) {
+    if (table.interleavedInTable() != null) {
+      DataGeneratorTable parent = tableMap.get(table.interleavedInTable());
+      if (parent != null && uniqueParents.add(parent)) {
+        collectAncestors(parent, tableMap, uniqueParents);
+      }
+    }
+    if (table.foreignKeys() != null) {
+      for (DataGeneratorForeignKey fk : table.foreignKeys()) {
+        DataGeneratorTable parent = tableMap.get(fk.referencedTable());
+        if (parent != null && uniqueParents.add(parent)) {
+          collectAncestors(parent, tableMap, uniqueParents);
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if any physical ancestor (interleaved or foreign key) has delete QPS configured. Used to
+   * suppress child table delete generation to prevent double deletion conflicts.
    */
   private static boolean hasPhysicalAncestorWithDeleteQps(
       DataGeneratorTable table, Map<String, DataGeneratorTable> tableMap, Set<String> visited) {
     if (table == null || !visited.add(table.name())) {
-      return false; // Cycle or null table reached
+      return false;
     }
-
-    // 1. Check Interleaved Parent
     if (table.interleavedInTable() != null) {
       DataGeneratorTable p = tableMap.get(table.interleavedInTable());
       if (p != null) {
@@ -159,8 +228,6 @@ public class SchemaUtils {
         }
       }
     }
-
-    // 2. Check Foreign Key Parents
     if (table.foreignKeys() != null) {
       for (DataGeneratorForeignKey fk : table.foreignKeys()) {
         DataGeneratorTable p = tableMap.get(fk.referencedTable());
@@ -177,78 +244,9 @@ public class SchemaUtils {
     return false;
   }
 
-  /**
-   * Sorts a collection of tables topologically, ensuring parent/referenced tables are listed before
-   * their dependent child tables.
-   */
-  public static List<DataGeneratorTable> sortTopologically(
-      Collection<DataGeneratorTable> tables, Map<String, DataGeneratorTable> allTables) {
-    List<DataGeneratorTable> sortedInput = new ArrayList<>(tables);
-    // Deterministic initial sort prioritizing roots and higher QPS tables
-    sortedInput.sort(
-        Comparator.comparing(
-                (DataGeneratorTable t) -> t.isRoot() != null && t.isRoot(),
-                Comparator.reverseOrder())
-            .thenComparingInt(t -> t.insertQps() != null ? t.insertQps() : 0)
-            .thenComparing(DataGeneratorTable::name));
-
-    List<DataGeneratorTable> sorted = new ArrayList<>();
-    Set<String> visited = new HashSet<>();
-    Set<String> visiting = new HashSet<>();
-
-    for (DataGeneratorTable table : sortedInput) {
-      if (!visited.contains(table.name())) {
-        visitTopologically(table, allTables, visited, visiting, sorted, sortedInput);
-      }
-    }
-    return sorted;
-  }
-
-  /**
-   * Recursive depth-first search helper for topological sorting. Detects circular dependencies via
-   * the 'visiting' tracking set.
-   */
-  private static void visitTopologically(
-      DataGeneratorTable table,
-      Map<String, DataGeneratorTable> allTables,
-      Set<String> visited,
-      Set<String> visiting,
-      List<DataGeneratorTable> sorted,
-      List<DataGeneratorTable> subset) {
-    visiting.add(table.name());
-
-    // Collect all physical dependencies (interleaved + FK parents)
-    List<String> parentNames = new ArrayList<>();
-    if (table.interleavedInTable() != null) {
-      parentNames.add(table.interleavedInTable());
-    }
-    for (DataGeneratorForeignKey fk : table.foreignKeys()) {
-      parentNames.add(fk.referencedTable());
-    }
-
-    // Recursively visit dependencies first
-    for (String refTable : parentNames) {
-      if (subset.stream().anyMatch(t -> t.name().equals(refTable))) {
-        DataGeneratorTable parent = allTables.get(refTable);
-        if (parent != null && !visited.contains(refTable)) {
-          if (visiting.contains(refTable)) {
-            throw new IllegalStateException(
-                "Circular dependency detected in schema involving table: " + refTable);
-          }
-          visitTopologically(parent, allTables, visited, visiting, sorted, subset);
-        }
-      }
-    }
-
-    visiting.remove(table.name());
-    visited.add(table.name());
-    sorted.add(table);
-  }
-
   /** Builds the global insertion order across all tables in the schema for pipeline execution. */
   public static List<String> buildInsertTopoOrder(DataGeneratorSchema schema) {
-    List<DataGeneratorTable> sortedTables =
-        sortTopologically(schema.tables().values(), schema.tables());
+    List<DataGeneratorTable> sortedTables = sortGloballyTopologically(schema.tables());
     return sortedTables.stream().map(DataGeneratorTable::name).collect(Collectors.toList());
   }
 }
