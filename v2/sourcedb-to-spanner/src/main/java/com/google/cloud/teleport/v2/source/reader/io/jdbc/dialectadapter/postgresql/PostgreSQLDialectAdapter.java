@@ -533,15 +533,26 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
    */
   private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
-    if ("uuid".equalsIgnoreCase(typeName)) {
-      return SourceColumnIndexInfo.IndexType.STRING;
-    }
     switch (typeCategory) {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;
       case "D":
         return SourceColumnIndexInfo.IndexType.TIME_STAMP;
       case "S":
+        return SourceColumnIndexInfo.IndexType.STRING;
+      case "U":
+        return indexTypeForUserDefinedType(typeName);
+      default:
+        return SourceColumnIndexInfo.IndexType.OTHER;
+    }
+  }
+
+  private SourceColumnIndexInfo.IndexType indexTypeForUserDefinedType(String typeName) {
+    if (typeName == null) {
+      return SourceColumnIndexInfo.IndexType.OTHER;
+    }
+    switch (typeName.toUpperCase()) {
+      case "UUID":
         return SourceColumnIndexInfo.IndexType.STRING;
       default:
         return SourceColumnIndexInfo.IndexType.OTHER;
