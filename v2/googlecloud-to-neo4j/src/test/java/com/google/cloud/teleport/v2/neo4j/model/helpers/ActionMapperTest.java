@@ -20,7 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
 import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
 import com.google.cloud.teleport.v2.neo4j.actions.HttpMethod;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONArray;
@@ -43,7 +43,7 @@ public class ActionMapperTest {
                     "name", "an-action",
                     "options", List.of(Map.of("url", "https://example.com")))));
 
-    List<Action> actions = ActionMapper.parse(json, new OptionsParams());
+    List<Action> actions = ActionMapper.parse(json, new OverlayTokens(Map.of()));
 
     var expectedAction =
         new HttpAction(
@@ -65,8 +65,8 @@ public class ActionMapperTest {
                     List.of(Map.of("url", "https://example.$ext")),
                     "headers",
                     List.of(Map.of("header1", "$secret"), Map.of("header2", "another-value")))));
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"ext\": \"com\", \"secret\": \"a-secret-value\"}");
+    OverlayTokens options =
+        OverlayTokenParser.parse("{\"ext\": \"com\", \"secret\": \"a-secret-value\"}");
 
     List<Action> actions = ActionMapper.parse(json, options);
 
@@ -91,7 +91,7 @@ public class ActionMapperTest {
                     "name", "an-action",
                     "options", List.of(Map.of("url", "https://example.com")))));
 
-    List<Action> actions = ActionMapper.parse(json, new OptionsParams());
+    List<Action> actions = ActionMapper.parse(json, new OverlayTokens(Map.of()));
 
     var expectedAction =
         new HttpAction(
@@ -115,8 +115,8 @@ public class ActionMapperTest {
                     List.of(Map.of("url", "https://example.$ext")),
                     "headers",
                     List.of(Map.of("header1", "$secret"), Map.of("header2", "another-value")))));
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"ext\": \"com\", \"secret\": \"a-secret-value\"}");
+    OverlayTokens options =
+        OverlayTokenParser.parse("{\"ext\": \"com\", \"secret\": \"a-secret-value\"}");
 
     List<Action> actions = ActionMapper.parse(json, options);
 
@@ -145,7 +145,7 @@ public class ActionMapperTest {
                                 "sql",
                                 "SELECT name, description FROM placeholder_table LIMIT 42")))));
 
-    List<Action> actions = ActionMapper.parse(json, new OptionsParams());
+    List<Action> actions = ActionMapper.parse(json, new OverlayTokens(Map.of()));
 
     var expectedAction =
         new BigQueryAction(
@@ -170,8 +170,8 @@ public class ActionMapperTest {
                     "an-action",
                     "options",
                     List.of(Map.of("sql", "SELECT name, description FROM $table LIMIT $limit")))));
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"table\": \"placeholder_table\", \"limit\": 42}");
+    OverlayTokens options =
+        OverlayTokenParser.parse("{\"table\": \"placeholder_table\", \"limit\": 42}");
 
     List<Action> actions = ActionMapper.parse(json, options);
 
@@ -198,7 +198,7 @@ public class ActionMapperTest {
                                 "cypher",
                                 "MATCH (p:Placeholder) RETURN p.name, p.description LIMIT 42")))));
 
-    List<Action> actions = ActionMapper.parse(json, new OptionsParams());
+    List<Action> actions = ActionMapper.parse(json, new OverlayTokens(Map.of()));
 
     var expectedAction =
         new CypherAction(
@@ -227,8 +227,7 @@ public class ActionMapperTest {
                         Map.of(
                             "cypher",
                             "MATCH (p:$label) RETURN p.name, p.description LIMIT $limit")))));
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"label\": \"Placeholder\", \"limit\": 42}");
+    OverlayTokens options = OverlayTokenParser.parse("{\"label\": \"Placeholder\", \"limit\": 42}");
 
     List<Action> actions = ActionMapper.parse(json, options);
 

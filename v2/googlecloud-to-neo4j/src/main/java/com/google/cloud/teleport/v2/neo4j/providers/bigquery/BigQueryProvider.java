@@ -17,11 +17,11 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec.BigQuerySpecBuilder;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
-import com.google.cloud.teleport.v2.neo4j.providers.Provider;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -32,20 +32,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Provider implementation for reading and writing BigQuery. */
-public class BigQueryImpl implements Provider {
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
+public class BigQueryProvider implements SourceProvider {
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryProvider.class);
   private final BigQuerySource source;
-  private final TargetSequence targetSequence;
-  private OptionsParams optionsParams;
+  private final StepSequence targetSequence;
+  private OverlayTokens overlayTokens;
 
-  public BigQueryImpl(BigQuerySource source, TargetSequence targetSequence) {
+  public BigQueryProvider(BigQuerySource source, StepSequence targetSequence) {
     this.source = source;
     this.targetSequence = targetSequence;
   }
 
   @Override
-  public void configure(OptionsParams optionsParams) {
-    this.optionsParams = optionsParams;
+  public void configure(OverlayTokens overlayTokens) {
+    this.overlayTokens = overlayTokens;
   }
 
   @Override
@@ -54,12 +54,13 @@ public class BigQueryImpl implements Provider {
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(Schema schema) {
+  public PTransform<PBegin, PCollection<Row>> querySourceRows(Schema schema) {
     return new BqQueryToRow(getSourceQueryBeamSpec());
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
+  public PTransform<PBegin, PCollection<Row>> querySourceRowsForTarget(
+      TargetQuerySpec targetQuerySpec) {
     return new BqQueryToRow(getTargetQueryBeamSpec(targetQuerySpec));
   }
 

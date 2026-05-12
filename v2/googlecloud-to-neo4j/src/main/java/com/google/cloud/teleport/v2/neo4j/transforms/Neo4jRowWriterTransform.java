@@ -15,37 +15,30 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
-import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
-import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.neo4j.driver.TransactionConfig;
 import org.neo4j.importer.v1.Configuration;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.targets.CustomQueryTarget;
-import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.TargetType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Neo4j write transformation. */
 public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
@@ -69,17 +62,16 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   private static final String LEGACY_QUERY_PARALLELISM_SETTING = "custom_query_parallelism";
   private static final Integer DEFAULT_QUERY_PARALLELISM_FACTOR = 1;
 
-  private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   private final ImportSpecification importSpecification;
   private final Target target;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
-  private final TargetSequence targetSequence;
+  private final StepSequence targetSequence;
 
   public Neo4jRowWriterTransform(
       ImportSpecification importSpecification,
       ConnectionParams neoConnection,
       String templateVersion,
-      TargetSequence targetSequence,
+      StepSequence targetSequence,
       Target target) {
     this(
         importSpecification,
@@ -91,7 +83,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @VisibleForTesting
   Neo4jRowWriterTransform(
       ImportSpecification importSpecification,
-      TargetSequence targetSequence,
+      StepSequence targetSequence,
       Target target,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
     this.importSpecification = importSpecification;
@@ -105,23 +97,35 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
     var targetType = target.getTargetType();
     ReportedSourceType reportedSourceType = determineReportedSourceType();
-    if (targetType == TargetType.NODE || targetType == TargetType.RELATIONSHIP) {
-      createIndicesAndConstraints(reportedSourceType);
-    }
 
     Configuration config = importSpecification.getConfiguration();
 
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
             reportedSourceType,
-            targetType,
-            getCypherQuery(),
+            importSpecification,
+            target,
             false,
             "rows",
             getRowCastingFunction(),
             connectionSupplier);
 
-    return input
+    PCollection<Row> readyInput = input;
+    if (targetType == TargetType.NODE || targetType == TargetType.RELATIONSHIP) {
+      var schemaSetupDone =
+          input
+              .getPipeline()
+              .apply("Schema setup seed " + target.getName(), Create.of(1))
+              .apply(
+                  "Schema setup " + target.getName(),
+                  ParDo.of(new Neo4jInitSchemaFn(target, reportedSourceType, connectionSupplier)));
+      readyInput =
+          input
+              .apply("Wait for schema setup " + target.getName(), Wait.on(schemaSetupDone))
+              .setCoder(input.getCoder());
+    }
+
+    return readyInput
         .apply(
             "Create KV pairs",
             WithKeys.of(ThreadLocalRandomInt.of(parallelismFactor(targetType, config))))
@@ -129,7 +133,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .apply(
             targetSequence.getSequenceNumber(target) + ": Neo4j write " + target.getName(),
             ParDo.of(neo4jUnwindFn))
-        .setRowSchema(input.getSchema());
+        .setRowSchema(readyInput.getSchema());
   }
 
   private ReportedSourceType determineReportedSourceType() {
@@ -139,57 +143,6 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
             .findFirst()
             .get();
     return ReportedSourceType.reportedSourceTypeOf(source);
-  }
-
-  private void createIndicesAndConstraints(ReportedSourceType reportedSourceType) {
-    try (Neo4jConnection connection = connectionSupplier.get()) {
-      var capabilities = connection.capabilities();
-      var statements = CypherGenerator.getSchemaStatements((EntityTarget) target, capabilities);
-      if (statements.isEmpty()) {
-        return;
-      }
-
-      LOG.info("Adding {} indices and constraints", statements.size());
-      for (String statement : statements) {
-        LOG.info("Executing cypher: {}", statement);
-        try {
-          TransactionConfig txConfig =
-              TransactionConfig.builder()
-                  .withMetadata(
-                      Neo4jTelemetry.transactionMetadata(
-                          Map.of(
-                              "sink",
-                              "neo4j",
-                              "source",
-                              reportedSourceType.format(),
-                              "target-type",
-                              target.getTargetType().name().toLowerCase(Locale.ROOT),
-                              "step",
-                              "init-schema")))
-                  .build();
-          connection.runAutocommit(statement, txConfig);
-        } catch (Exception e) {
-          LOG.error("Error executing cypher: {}, {}", statement, e.getMessage());
-        }
-      }
-    }
-  }
-
-  private String getCypherQuery() {
-    TargetType targetType = target.getTargetType();
-
-    if (targetType == TargetType.QUERY) {
-      var query = ((CustomQueryTarget) target).getQuery();
-      LOG.info("Custom cypher query: {}", query);
-      return query;
-    }
-
-    var capabilities = getNeo4jCapabilities();
-    var query =
-        CypherGenerator.getImportStatement(
-            importSpecification, (EntityTarget) target, capabilities);
-    LOG.info("Unwind cypher query: {}", query);
-    return query;
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {
@@ -228,12 +181,6 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
           .get(Integer.class, QUERY_PARALLELISM_SETTING, LEGACY_QUERY_PARALLELISM_SETTING)
           .orElse(DEFAULT_QUERY_PARALLELISM_FACTOR);
     };
-  }
-
-  private Neo4jCapabilities getNeo4jCapabilities() {
-    try (Neo4jConnection neo4jConnection = connectionSupplier.get()) {
-      return neo4jConnection.capabilities();
-    }
   }
 
   private record ThreadLocalRandomInt(int bound) implements SerializableFunction<Row, Integer> {
