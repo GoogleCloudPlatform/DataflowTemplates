@@ -25,6 +25,7 @@ import com.google.cloud.teleport.bigtable.BigtableToParquet.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.util.DurationUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -155,6 +156,29 @@ public class BigtableToParquet {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+
+    @TemplateParameter.Duration(
+        order = 8,
+        groupName = "Source",
+        description = "Read rows attempt timeout",
+        helpText = "Controls the timeout for each remote read rows call.")
+    @Default.String("5m")
+    String getReadRowsAttemptTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsAttemptTimeout(String timeout);
+
+    @TemplateParameter.Duration(
+        order = 9,
+        groupName = "Source",
+        description = "Read rows operation timeout",
+        helpText =
+            "Controls the total timeout of each read rows operation, including all attempts.")
+    @Default.String("5m")
+    String getReadRowsOperationTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsOperationTimeout(String timeout);
   }
 
   /**
@@ -185,6 +209,9 @@ public class BigtableToParquet {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
+            .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
+            .withOperationTimeout(
+                DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
