@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.text;
 
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
-import com.google.cloud.teleport.v2.neo4j.providers.Provider;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
@@ -27,20 +27,20 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 
 /** Provider implementation for reading and writing Text files. */
-public class TextImpl implements Provider {
+public class TextProvider implements SourceProvider {
 
   private final TextSource source;
-  private final TargetSequence targetSequence;
-  private OptionsParams optionsParams;
+  private final StepSequence targetSequence;
+  private OverlayTokens overlayTokens;
 
-  public TextImpl(TextSource source, TargetSequence targetSequence) {
+  public TextProvider(TextSource source, StepSequence targetSequence) {
     this.source = source;
     this.targetSequence = targetSequence;
   }
 
   @Override
-  public void configure(OptionsParams optionsParams) {
-    this.optionsParams = optionsParams;
+  public void configure(OverlayTokens overlayTokens) {
+    this.overlayTokens = overlayTokens;
   }
 
   @Override
@@ -49,13 +49,14 @@ public class TextImpl implements Provider {
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(Schema schema) {
+  public PTransform<PBegin, PCollection<Row>> querySourceRows(Schema schema) {
     return new TextSourceFileToRow(source, schema);
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
-    return new TextTargetToRow(optionsParams, targetSequence, targetQuerySpec);
+  public PTransform<PBegin, PCollection<Row>> querySourceRowsForTarget(
+      TargetQuerySpec targetQuerySpec) {
+    return new TextTargetToRow(overlayTokens, targetSequence, targetQuerySpec);
   }
 
   @Override
