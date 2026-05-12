@@ -157,8 +157,21 @@ public class BigtableToParquet {
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
 
-    @TemplateParameter.Duration(
+    @TemplateParameter.Integer(
         order = 8,
+        optional = true,
+        description = "Minimum row count for page size check",
+        helpText =
+            "The minimum number of rows to buffer before checking if the page size threshold is reached. "
+                + "With large rows, the default (100) can cause excessive memory use; set a lower value "
+                + "(for example, 1) to flush pages more frequently. The default is 100.")
+    ValueProvider<Integer> getMinRowCountForPageSizeCheck();
+
+    @SuppressWarnings("unused")
+    void setMinRowCountForPageSizeCheck(ValueProvider<Integer> minRowCountForPageSizeCheck);
+
+    @TemplateParameter.Duration(
+        order = 9,
         groupName = "Source",
         description = "Read rows attempt timeout",
         helpText = "Controls the timeout for each remote read rows call.")
@@ -169,7 +182,7 @@ public class BigtableToParquet {
     void setReadRowsAttemptTimeout(String timeout);
 
     @TemplateParameter.Duration(
-        order = 9,
+        order = 10,
         groupName = "Source",
         description = "Read rows operation timeout",
         helpText =
@@ -223,9 +236,12 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
+    ParquetIO.Sink parquetSink =
+        ParquetIO.sink(BigtableRow.getClassSchema())
+            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
     FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
-            .via(ParquetIO.sink(BigtableRow.getClassSchema()))
+            .via(parquetSink)
             .to(options.getOutputDirectory())
             .withPrefix(options.getFilenamePrefix())
             .withSuffix(".parquet");
