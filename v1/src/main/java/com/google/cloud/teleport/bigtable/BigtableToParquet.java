@@ -173,6 +173,7 @@ public class BigtableToParquet {
     @TemplateParameter.Duration(
         order = 9,
         groupName = "Source",
+        optional = true,
         description = "Read rows attempt timeout",
         helpText = "Controls the timeout for each remote read rows call.")
     @Default.String("5m")
@@ -184,6 +185,7 @@ public class BigtableToParquet {
     @TemplateParameter.Duration(
         order = 10,
         groupName = "Source",
+        optional = true,
         description = "Read rows operation timeout",
         helpText =
             "Controls the total timeout of each read rows operation, including all attempts.")
