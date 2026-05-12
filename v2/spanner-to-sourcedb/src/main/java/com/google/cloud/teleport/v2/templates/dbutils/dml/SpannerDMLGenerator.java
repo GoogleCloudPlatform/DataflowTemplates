@@ -315,10 +315,50 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         builder.set(targetColName).to(Value.json(null));
         break;
       case ARRAY:
-        builder.set(targetColName).to(Value.stringArray(null));
+        setNullArrayValue(builder, targetColName, type.getArrayElementType());
         break;
       default:
         builder.set(targetColName).to((String) null);
+    }
+  }
+
+  /**
+   * Emits a typed NULL for an ARRAY column. The Spanner client requires the null value to carry
+   * the array element type, otherwise a commit-time type mismatch occurs (e.g. binding
+   * {@code Value.stringArray(null)} to an {@code ARRAY<INT64>} column).
+   */
+  private static void setNullArrayValue(
+      Mutation.WriteBuilder builder, String targetColName, Type elementType) {
+    switch (elementType.getCode()) {
+      case BOOL:
+        builder.set(targetColName).to(Value.boolArray((Iterable<Boolean>) null));
+        break;
+      case INT64:
+        builder.set(targetColName).to(Value.int64Array((Iterable<Long>) null));
+        break;
+      case FLOAT64:
+        builder.set(targetColName).to(Value.float64Array((Iterable<Double>) null));
+        break;
+      case FLOAT32:
+        builder.set(targetColName).to(Value.float32Array((Iterable<Float>) null));
+        break;
+      case BYTES:
+        builder.set(targetColName).to(Value.bytesArray((Iterable<ByteArray>) null));
+        break;
+      case DATE:
+        builder.set(targetColName).to(Value.dateArray((Iterable<Date>) null));
+        break;
+      case TIMESTAMP:
+        builder.set(targetColName).to(Value.timestampArray((Iterable<Timestamp>) null));
+        break;
+      case NUMERIC:
+        builder.set(targetColName).to(Value.numericArray((Iterable<BigDecimal>) null));
+        break;
+      case JSON:
+        builder.set(targetColName).to(Value.jsonArray(null));
+        break;
+      default:
+        builder.set(targetColName).to(Value.stringArray((Iterable<String>) null));
     }
   }
 

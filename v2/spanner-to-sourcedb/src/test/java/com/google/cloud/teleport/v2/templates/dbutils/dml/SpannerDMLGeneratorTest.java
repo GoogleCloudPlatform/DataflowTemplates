@@ -628,6 +628,88 @@ public final class SpannerDMLGeneratorTest {
   }
 
   @Test
+  public void nullArrayOfInt64IsBoundAsTypedNullArray() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.int64()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<INT64>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject();
+    newValues.put("ArrVal", JSONObject.NULL);
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    com.google.cloud.spanner.Value v =
+        ((SpannerMutationResponse) response).getMutation().asMap().get("ArrVal");
+    assertNotNull(v);
+    org.junit.Assert.assertTrue(v.isNull());
+    assertEquals(
+        com.google.cloud.spanner.Type.array(com.google.cloud.spanner.Type.int64()), v.getType());
+  }
+
+  @Test
+  public void nullArrayOfTimestampIsBoundAsTypedNullArray() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.timestamp()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<TIMESTAMP>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject();
+    newValues.put("ArrVal", JSONObject.NULL);
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    com.google.cloud.spanner.Value v =
+        ((SpannerMutationResponse) response).getMutation().asMap().get("ArrVal");
+    assertNotNull(v);
+    org.junit.Assert.assertTrue(v.isNull());
+    assertEquals(
+        com.google.cloud.spanner.Type.array(com.google.cloud.spanner.Type.timestamp()),
+        v.getType());
+  }
+
+  @Test
+  public void nullArrayOfBoolIsBoundAsTypedNullArray() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.bool()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<BOOL>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject();
+    newValues.put("ArrVal", JSONObject.NULL);
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    com.google.cloud.spanner.Value v =
+        ((SpannerMutationResponse) response).getMutation().asMap().get("ArrVal");
+    assertNotNull(v);
+    org.junit.Assert.assertTrue(v.isNull());
+    assertEquals(
+        com.google.cloud.spanner.Type.array(com.google.cloud.spanner.Type.bool()), v.getType());
+  }
+
+  @Test
   public void customTransformationNullEmitsTypedNull() throws Exception {
     Ddl ddl = buildDdlWithSingleNonPkCol("Counter", Type.int64());
     SourceSchema schema = buildSchemaWithSingleNonPkCol("Counter", "INT64");
