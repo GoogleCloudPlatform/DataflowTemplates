@@ -344,6 +344,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       try (ResultSet resultSet = statement.executeQuery()) {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
+          final String typeName = resultSet.getString("type_name");
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(resultSet.getString("column_name"))
@@ -352,12 +353,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setIsPrimary(resultSet.getBoolean("is_primary"))
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                  .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
+                  .setIndexType(indexTypeFrom(resultSet.getString("type_category"), typeName));
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
             String charset = resultSet.getString("charset");
-            String typeName = resultSet.getString("type_name");
             Integer typeLength = resultSet.getInt("type_length");
             if (resultSet.wasNull()) {
               typeLength = null;
@@ -374,6 +374,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                     .setPadSpace(shouldPadSpace)
                     .build());
             indexBuilder.setStringMaxLength(typeLength == null ? VARCHAR_MAX_LENGTH : typeLength);
+          } else if ("uuid".equalsIgnoreCase(typeName)) {
+            indexBuilder.setStringMaxLength(36);
           }
           if (builders.containsKey(tableName)) {
             builders.get(tableName).add(indexBuilder.build());
@@ -530,7 +532,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * Ref <a
    * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
    */
-  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory) {
+  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
+    if ("uuid".equalsIgnoreCase(typeName)) {
+      return SourceColumnIndexInfo.IndexType.STRING;
+    }
     switch (typeCategory) {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;

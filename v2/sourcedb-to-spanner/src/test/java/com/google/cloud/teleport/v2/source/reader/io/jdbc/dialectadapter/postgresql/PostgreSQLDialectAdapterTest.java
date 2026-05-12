@@ -298,6 +298,41 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testDiscoverTableIndexesWithUuid()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getString("column_name")).thenReturn("col_uuid");
+    when(mockResultSet.getString("index_name")).thenReturn("table_uuid_idx");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("type_category")).thenReturn("U");
+    when(mockResultSet.getString("type_name")).thenReturn("uuid");
+
+    assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_uuid")
+                    .setIndexName("table_uuid_idx")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
+                    .setStringMaxLength(36)
+                    .build()));
+  }
+
+  @Test
   public void testDiscoverTableIndexesBulk()
       throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> tables = ImmutableList.of("table1", "table2");
