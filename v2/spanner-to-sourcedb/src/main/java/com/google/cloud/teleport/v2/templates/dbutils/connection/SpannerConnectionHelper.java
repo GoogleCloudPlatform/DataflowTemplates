@@ -30,9 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manages {@link DatabaseClient} connections to target Cloud Spanner databases.
- */
+/** Manages {@link DatabaseClient} connections to target Cloud Spanner databases. */
 public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient> {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerConnectionHelper.class);

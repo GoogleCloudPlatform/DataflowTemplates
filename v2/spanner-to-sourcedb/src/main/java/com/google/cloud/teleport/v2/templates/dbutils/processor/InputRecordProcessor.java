@@ -167,5 +167,4 @@ public class InputRecordProcessor {
       throw e; // throw the original exception since it needs to go to DLQ
     }
   }
-
 }

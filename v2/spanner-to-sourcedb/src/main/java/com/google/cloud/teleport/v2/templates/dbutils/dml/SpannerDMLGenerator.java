@@ -323,9 +323,9 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   }
 
   /**
-   * Emits a typed NULL for an ARRAY column. The Spanner client requires the null value to carry
-   * the array element type, otherwise a commit-time type mismatch occurs (e.g. binding
-   * {@code Value.stringArray(null)} to an {@code ARRAY<INT64>} column).
+   * Emits a typed NULL for an ARRAY column. The Spanner client requires the null value to carry the
+   * array element type, otherwise a commit-time type mismatch occurs (e.g. binding {@code
+   * Value.stringArray(null)} to an {@code ARRAY<INT64>} column).
    */
   private static void setNullArrayValue(
       Mutation.WriteBuilder builder, String targetColName, Type elementType) {
@@ -482,8 +482,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
    * Appends a custom-transformation primary-key {@link Object} to the {@link Key.Builder} using the
    * source column's Spanner type. Mirrors {@link #setCustomColumnValue} for the DELETE path.
    */
-  private static void appendCustomKeyComponent(
-      Key.Builder keyBuilder, Column col, Object value) {
+  private static void appendCustomKeyComponent(Key.Builder keyBuilder, Column col, Object value) {
     if (value == null) {
       keyBuilder.append((String) null);
       return;
