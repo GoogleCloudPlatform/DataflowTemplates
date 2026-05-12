@@ -174,7 +174,7 @@ public class BigtableToParquet {
         description = "Read rows operation timeout",
         helpText =
             "Controls the total timeout of each read rows operation, including all attempts.")
-    @Default.String("5m")
+    @Default.String("10m")
     String getReadRowsOperationTimeout();
 
     @SuppressWarnings("unused")
