@@ -131,6 +131,11 @@ public abstract class CollationMapper implements Serializable {
     if (element == null) {
       return BigInteger.valueOf(-1);
     }
+    if ("UUID".equalsIgnoreCase(this.collationReference().dbCollation())) {
+      // For UUID columns, we strip hyphens and normalize to lowercase so that we can
+      // map the canonical 32 hexadecimal characters directly to BigInteger.
+      element = element.replace("-", "").toLowerCase();
+    }
     BigInteger ret = BigInteger.ZERO;
 
     // MySQL ignores empty character in string comparisons.
@@ -204,6 +209,19 @@ public abstract class CollationMapper implements Serializable {
       index++;
     }
     String ret = word.reverse().toString();
+    if ("UUID".equalsIgnoreCase(this.collationReference().dbCollation())) {
+      // Convert the unmapped 32-character hex string back to the standard 36-character
+      // UUID format by padding with leading zeros and re-inserting hyphens at correct offsets.
+      String hex = org.apache.commons.lang3.StringUtils.leftPad(ret, 32, '0');
+      ret =
+          String.format(
+              "%s-%s-%s-%s-%s",
+              hex.substring(0, 8),
+              hex.substring(8, 12),
+              hex.substring(12, 16),
+              hex.substring(16, 20),
+              hex.substring(20, 32));
+    }
     return ret;
   }
 
@@ -227,6 +245,12 @@ public abstract class CollationMapper implements Serializable {
       UniformSplitterDBAdapter dbAdapter,
       CollationReference collationReference)
       throws SQLException {
+    if ("UUID".equalsIgnoreCase(collationReference.dbCollation())) {
+      // Standard UUID values reside in the hexadecimal character range.
+      // We use a static, pre-compiled base-16 character mapper to avoid expensive database
+      // collation queries.
+      return buildStaticUuidMapper(collationReference);
+    }
     String query =
         dbAdapter.getCollationsOrderQuery(
             collationReference.dbCharacterSet(),
@@ -344,5 +368,24 @@ public abstract class CollationMapper implements Serializable {
     public CollationMapper build() {
       return autoBuild();
     }
+  }
+
+  private static CollationMapper buildStaticUuidMapper(CollationReference collationReference) {
+    Builder builder = builder(collationReference);
+    String hexChars = "0123456789abcdef";
+    for (int i = 0; i < hexChars.length(); i++) {
+      char c = hexChars.charAt(i);
+      builder.addCharacter(
+          CollationOrderRow.builder()
+              .setCharsetChar(c)
+              .setEquivalentChar(c)
+              .setCodepointRank((long) i)
+              .setEquivalentCharPadSpace(c)
+              .setCodepointRankPadSpace((long) i)
+              .setIsEmpty(false)
+              .setIsSpace(false)
+              .build());
+    }
+    return builder.build();
   }
 }

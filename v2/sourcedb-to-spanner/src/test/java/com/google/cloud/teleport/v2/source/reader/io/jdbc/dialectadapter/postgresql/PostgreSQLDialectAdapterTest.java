@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -318,7 +319,11 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getInt("type_length")).thenReturn(0);
     when(mockResultSet.wasNull()).thenReturn(true);
 
-    assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    // 1. Assert discovered index info matches expected schema mapping with standard C collation
+    assertThat(indexes)
         .containsExactly(
             "my_schema.table1",
             ImmutableList.of(
@@ -333,11 +338,43 @@ public class PostgreSQLDialectAdapterTest {
                     .setCollationReference(
                         CollationReference.builder()
                             .setDbCharacterSet("UTF8")
-                            .setDbCollation("C")
+                            .setDbCollation("UUID")
                             .setPadSpace(false)
                             .build())
-                    .setStringMaxLength(36)
+                    .setStringMaxLength(32)
                     .build()));
+
+    SourceColumnIndexInfo info = indexes.get("my_schema.table1").get(0);
+
+    // 2. Assert that a PartitionColumn can be built successfully from this index info (precondition
+    // check)
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName(info.columnName())
+            .setColumnClass(String.class)
+            .setStringCollation(info.collationReference())
+            .setStringMaxLength(info.stringMaxLength())
+            .build();
+
+    assertThat(partitionColumn).isNotNull();
+    assertThat(partitionColumn.stringCollation()).isEqualTo(info.collationReference());
+    assertThat(partitionColumn.stringMaxLength()).isEqualTo(32);
+
+    // 3. Assert that getBoundaryQuery correctly wraps this discovered UUID column in a CAST
+    // statement
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_uuid"))
+        .isEqualTo(
+            "SELECT MIN(CAST(col_uuid AS TEXT)), MAX(CAST(col_uuid AS TEXT)) FROM my_schema.table1");
+
+    // 4. Assert that getReadQuery generates the correct query for UUID column
+    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_uuid")))
+        .isEqualTo(
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= CAST(? AS uuid) AND (col_uuid < CAST(? AS uuid) OR (? = TRUE AND col_uuid = CAST(? AS uuid)))))");
+
+    // 5. Assert that getCountQuery generates the correct query for UUID column
+    assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_uuid"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= CAST(? AS uuid) AND (col_uuid < CAST(? AS uuid) OR (? = TRUE AND col_uuid = CAST(? AS uuid)))))");
   }
 
   @Test
