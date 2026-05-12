@@ -545,4 +545,112 @@ public final class SpannerDMLGeneratorTest {
     }
     return mapper;
   }
+
+  @Test
+  public void customTransformationInt64IsBoundAsInt64() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("Counter", Type.int64());
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("Counter", "INT64");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"Counter\":\"1\"}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    custom.put("Counter", 42L); // custom returns a Long, not a String
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .setCustomTransformationResponse(custom)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    // Type-aware binding: the value should be an INT64, not a STRING.
+    assertEquals(42L, mutation.asMap().get("Counter").getInt64());
+  }
+
+  @Test
+  public void customTransformationBoolIsBoundAsBool() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("IsActive", Type.bool());
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("IsActive", "BOOL");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"IsActive\":false}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    custom.put("IsActive", Boolean.TRUE);
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .setCustomTransformationResponse(custom)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(true, mutation.asMap().get("IsActive").getBool());
+  }
+
+  @Test
+  public void customTransformationTimestampIsBoundAsTimestamp() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("Ts", Type.timestamp());
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("Ts", "TIMESTAMP");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"Ts\":\"2024-01-15T10:30:00Z\"}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    custom.put("Ts", "2025-06-01T00:00:00Z"); // custom returns a String for TIMESTAMP
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .setCustomTransformationResponse(custom)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(
+        com.google.cloud.Timestamp.parseTimestamp("2025-06-01T00:00:00Z"),
+        mutation.asMap().get("Ts").getTimestamp());
+  }
+
+  @Test
+  public void customTransformationNullEmitsTypedNull() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("Counter", Type.int64());
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("Counter", "INT64");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"Counter\":\"1\"}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    custom.put("Counter", null);
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .setCustomTransformationResponse(custom)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation.asMap().get("Counter"));
+    org.junit.Assert.assertTrue(mutation.asMap().get("Counter").isNull());
+  }
 }

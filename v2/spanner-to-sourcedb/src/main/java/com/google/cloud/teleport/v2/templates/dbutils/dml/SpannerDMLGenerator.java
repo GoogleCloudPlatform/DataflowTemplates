@@ -134,13 +134,6 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
       String targetColName = targetCol.name();
 
-      if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(targetColName)) {
-        Object customVal = request.getCustomTransformationResponse().get(targetColName);
-        builder.set(targetColName).to(customVal == null ? (String) null : customVal.toString());
-        continue;
-      }
-
       String sourceColName;
       try {
         sourceColName = schemaMapper.getSpannerColumnName("", targetTable.name(), targetColName);
@@ -150,6 +143,17 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
       Column sourceCol = spannerTable.column(sourceColName);
       if (sourceCol == null) {
+        continue;
+      }
+
+      if (request.getCustomTransformationResponse() != null
+          && request.getCustomTransformationResponse().containsKey(targetColName)) {
+        Object customVal = request.getCustomTransformationResponse().get(targetColName);
+        if (customVal == null) {
+          setNullValue(builder, targetColName, sourceCol.type());
+        } else {
+          setCustomColumnValue(builder, targetColName, sourceCol, customVal);
+        }
         continue;
       }
 
@@ -190,10 +194,16 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         targetColName = sourceColName;
       }
 
+      Column sourceCol = spannerTable.column(sourceColName);
+      if (sourceCol == null) {
+        throw new InvalidDMLGenerationException(
+            "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
+      }
+
       if (request.getCustomTransformationResponse() != null
           && request.getCustomTransformationResponse().containsKey(targetColName)) {
         Object customVal = request.getCustomTransformationResponse().get(targetColName);
-        keyBuilder.append(customVal == null ? null : customVal.toString());
+        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
         continue;
       }
 
@@ -206,12 +216,6 @@ public class SpannerDMLGenerator implements IDMLGenerator {
                 + sourceColName
                 + "' missing from change record for table "
                 + targetTableName);
-      }
-
-      Column sourceCol = spannerTable.column(sourceColName);
-      if (sourceCol == null) {
-        throw new InvalidDMLGenerationException(
-            "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
       }
 
       if (valuesJson.isNull(sourceColName)) {
@@ -349,6 +353,163 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         break;
       default:
         keyBuilder.append(valuesJson.getString(sourceColName));
+    }
+  }
+
+  /**
+   * Binds a custom-transformation {@link Object} to the mutation builder using the target column's
+   * Spanner type. Strings are coerced into the correct primitive when needed; already-typed values
+   * are passed through.
+   */
+  private static void setCustomColumnValue(
+      Mutation.WriteBuilder builder, String targetColName, Column col, Object value) {
+    Type type = col.type();
+    switch (type.getCode()) {
+      case BOOL:
+        if (value instanceof Boolean) {
+          builder.set(targetColName).to((Boolean) value);
+        } else {
+          builder.set(targetColName).to(Boolean.parseBoolean(value.toString()));
+        }
+        break;
+      case INT64:
+        if (value instanceof Number) {
+          builder.set(targetColName).to(((Number) value).longValue());
+        } else {
+          builder.set(targetColName).to(Long.parseLong(value.toString()));
+        }
+        break;
+      case FLOAT64:
+        if (value instanceof Number) {
+          builder.set(targetColName).to(((Number) value).doubleValue());
+        } else {
+          builder.set(targetColName).to(Double.parseDouble(value.toString()));
+        }
+        break;
+      case FLOAT32:
+        if (value instanceof Number) {
+          builder.set(targetColName).to(((Number) value).floatValue());
+        } else {
+          builder.set(targetColName).to(Float.parseFloat(value.toString()));
+        }
+        break;
+      case STRING:
+        builder.set(targetColName).to(value.toString());
+        break;
+      case JSON:
+        builder.set(targetColName).to(Value.json(value.toString()));
+        break;
+      case BYTES:
+        if (value instanceof byte[]) {
+          builder.set(targetColName).to(ByteArray.copyFrom((byte[]) value));
+        } else if (value instanceof ByteArray) {
+          builder.set(targetColName).to((ByteArray) value);
+        } else {
+          builder.set(targetColName).to(ByteArray.fromBase64(value.toString()));
+        }
+        break;
+      case DATE:
+        if (value instanceof Date) {
+          builder.set(targetColName).to((Date) value);
+        } else {
+          builder.set(targetColName).to(Date.parseDate(value.toString()));
+        }
+        break;
+      case TIMESTAMP:
+        if (value instanceof Timestamp) {
+          builder.set(targetColName).to((Timestamp) value);
+        } else {
+          builder.set(targetColName).to(Timestamp.parseTimestamp(value.toString()));
+        }
+        break;
+      case NUMERIC:
+        if (value instanceof BigDecimal) {
+          builder.set(targetColName).to((BigDecimal) value);
+        } else {
+          builder.set(targetColName).to(new BigDecimal(value.toString()));
+        }
+        break;
+      default:
+        LOG.warn(
+            "Unrecognised Spanner type code {} for custom-transformation column '{}'; falling back to STRING.",
+            type.getCode(),
+            targetColName);
+        builder.set(targetColName).to(value.toString());
+    }
+  }
+
+  /**
+   * Appends a custom-transformation primary-key {@link Object} to the {@link Key.Builder} using the
+   * source column's Spanner type. Mirrors {@link #setCustomColumnValue} for the DELETE path.
+   */
+  private static void appendCustomKeyComponent(
+      Key.Builder keyBuilder, Column col, Object value) {
+    if (value == null) {
+      keyBuilder.append((String) null);
+      return;
+    }
+    Type type = col.type();
+    switch (type.getCode()) {
+      case BOOL:
+        if (value instanceof Boolean) {
+          keyBuilder.append((Boolean) value);
+        } else {
+          keyBuilder.append(Boolean.parseBoolean(value.toString()));
+        }
+        break;
+      case INT64:
+        if (value instanceof Number) {
+          keyBuilder.append(((Number) value).longValue());
+        } else {
+          keyBuilder.append(Long.parseLong(value.toString()));
+        }
+        break;
+      case FLOAT64:
+        if (value instanceof Number) {
+          keyBuilder.append(((Number) value).doubleValue());
+        } else {
+          keyBuilder.append(Double.parseDouble(value.toString()));
+        }
+        break;
+      case FLOAT32:
+        if (value instanceof Number) {
+          keyBuilder.append(((Number) value).floatValue());
+        } else {
+          keyBuilder.append(Float.parseFloat(value.toString()));
+        }
+        break;
+      case BYTES:
+        if (value instanceof byte[]) {
+          keyBuilder.append(ByteArray.copyFrom((byte[]) value));
+        } else if (value instanceof ByteArray) {
+          keyBuilder.append((ByteArray) value);
+        } else {
+          keyBuilder.append(ByteArray.fromBase64(value.toString()));
+        }
+        break;
+      case DATE:
+        if (value instanceof Date) {
+          keyBuilder.append((Date) value);
+        } else {
+          keyBuilder.append(Date.parseDate(value.toString()));
+        }
+        break;
+      case TIMESTAMP:
+        if (value instanceof Timestamp) {
+          keyBuilder.append((Timestamp) value);
+        } else {
+          keyBuilder.append(Timestamp.parseTimestamp(value.toString()));
+        }
+        break;
+      case NUMERIC:
+        if (value instanceof BigDecimal) {
+          keyBuilder.append((BigDecimal) value);
+        } else {
+          keyBuilder.append(new BigDecimal(value.toString()));
+        }
+        break;
+      default:
+        keyBuilder.append(value.toString());
     }
   }
 
