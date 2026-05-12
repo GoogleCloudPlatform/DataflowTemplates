@@ -45,7 +45,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
   private final ImportSpecification importSpecification;
   private final Target target;
-  private final String staticCypher;
   private final SerializableFunction<Row, Map<String, Object>> parametersFunction;
   private final boolean logCypher;
   private final String unwindMapName;
@@ -66,53 +65,8 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
       SerializableFunction<Row, Map<String, Object>> parametersFunction,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
 
-    this(
-        reportedSourceType,
-        target.getTargetType(),
-        null,
-        importSpecification,
-        target,
-        logCypher,
-        unwindMapName,
-        parametersFunction,
-        connectionSupplier);
-  }
-
-  public Neo4jBlockingUnwindFn(
-      ReportedSourceType reportedSourceType,
-      TargetType targetType,
-      String cypher,
-      boolean logCypher,
-      String unwindMapName,
-      SerializableFunction<Row, Map<String, Object>> parametersFunction,
-      SerializableSupplier<Neo4jConnection> connectionSupplier) {
-
-    this(
-        reportedSourceType,
-        targetType,
-        cypher,
-        null,
-        null,
-        logCypher,
-        unwindMapName,
-        parametersFunction,
-        connectionSupplier);
-  }
-
-  private Neo4jBlockingUnwindFn(
-      ReportedSourceType reportedSourceType,
-      TargetType targetType,
-      String staticCypher,
-      ImportSpecification importSpecification,
-      Target target,
-      boolean logCypher,
-      String unwindMapName,
-      SerializableFunction<Row, Map<String, Object>> parametersFunction,
-      SerializableSupplier<Neo4jConnection> connectionSupplier) {
-
     this.reportedSourceType = reportedSourceType;
-    this.targetType = targetType;
-    this.staticCypher = staticCypher;
+    this.targetType = target.getTargetType();
     this.importSpecification = importSpecification;
     this.target = target;
     this.parametersFunction = parametersFunction;
@@ -191,10 +145,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   }
 
   private String resolveCypher() {
-    if (target == null) {
-      return staticCypher;
-    }
-
     if (targetType == TargetType.QUERY) {
       var query = ((CustomQueryTarget) target).getQuery();
       LOG.info("Custom cypher query: {}", query);
@@ -215,7 +165,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
         .keySet()
         .forEach(
             key -> {
-              if (parametersString.length() > 0) {
+              if (!parametersString.isEmpty()) {
                 parametersString.append(',');
               }
               parametersString.append(key).append('=');

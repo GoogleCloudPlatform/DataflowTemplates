@@ -33,8 +33,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
+import org.neo4j.importer.v1.targets.CustomQueryTarget;
 import org.neo4j.importer.v1.targets.Target;
-import org.neo4j.importer.v1.targets.TargetType;
 
 public class Neo4jBlockingUnwindFnTest {
 
@@ -44,8 +44,8 @@ public class Neo4jBlockingUnwindFnTest {
     Neo4jBlockingUnwindFn batchImporter =
         new Neo4jBlockingUnwindFn(
             ReportedSourceType.BIGQUERY,
-            TargetType.RELATIONSHIP,
-            "RETURN 42",
+            null,
+            new CustomQueryTarget(true, "a-target", "a-source", null, "RETURN 42"),
             false,
             "map",
             (row) -> DataCastingUtils.rowToNeo4jDataMap(row, mock(Target.class)),
@@ -55,8 +55,7 @@ public class Neo4jBlockingUnwindFnTest {
     batchImporter.processElement(aProcessContext());
 
     Map<String, String> expectedTxMetadata =
-        Map.of(
-            "sink", "neo4j", "source", "BigQuery", "target-type", "relationship", "step", "import");
+        Map.of("sink", "neo4j", "source", "BigQuery", "target-type", "query", "step", "import");
     TransactionConfig expectedTransactionConfig =
         TransactionConfig.builder()
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
