@@ -88,6 +88,10 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
   private final StateSpec<MapState<String, DataGeneratorTable>> tableMapSpec =
       StateSpecs.map(StringUtf8Coder.of(), SerializableCoder.of(DataGeneratorTable.class));
 
+  @StateId("insertTopoOrderState")
+  private final StateSpec<ValueState<List<String>>> insertTopoOrderSpec =
+      StateSpecs.value(ListCoder.of(StringUtf8Coder.of()));
+
   @TimerId("eventTimer")
   private final TimerSpec eventTimerSpec = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
 
@@ -146,9 +150,10 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
       @StateId("eventQueue") MapState<Long, List<LifecycleEvent>> eventQueueState,
       @StateId("activeTimestamps") ValueState<List<Long>> activeTimestamps,
       @StateId("tableMapState") MapState<String, DataGeneratorTable> tableMapState,
+      @StateId("insertTopoOrderState") ValueState<List<String>> insertTopoOrderState,
       @TimerId("eventTimer") Timer eventTimer) {
 
-    ensureSchemaInitialized(c);
+    ensureSchemaInitialized(c, insertTopoOrderState);
 
     GeneratedRecord record = c.element().getValue();
     String tableName = record.tableName();
@@ -163,7 +168,8 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
           tableMapState,
           eventTimer,
           schema,
-          batcher);
+          batcher,
+          insertTopoOrder);
     } catch (Exception genError) {
       LOG.error("Generation failed for table {}", tableName, genError);
       Metrics.counter(BatchAndWriteFn.class, "generationFailures").inc();
@@ -183,7 +189,12 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
       @StateId("eventQueue") MapState<Long, List<LifecycleEvent>> eventQueueState,
       @StateId("activeTimestamps") ValueState<List<Long>> activeTimestamps,
       @StateId("tableMapState") MapState<String, DataGeneratorTable> tableMapState,
+      @StateId("insertTopoOrderState") ValueState<List<String>> insertTopoOrderState,
       @TimerId("eventTimer") Timer eventTimer) {
+
+    if (this.insertTopoOrder == null) {
+      this.insertTopoOrder = insertTopoOrderState.read();
+    }
 
     try {
       dataGeneratorEngine.processScheduledEvents(
@@ -192,7 +203,8 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
           tableMapState,
           eventTimer,
           batcher,
-          batcher.getFailedRecords());
+          batcher.getFailedRecords(),
+          this.insertTopoOrder);
     } catch (Exception timerError) {
       LOG.error("Scheduled events generation failed during timer processing", timerError);
       Metrics.counter(BatchAndWriteFn.class, "generationFailures").inc();
@@ -233,12 +245,14 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     }
   }
 
-  private void ensureSchemaInitialized(ProcessContext c) {
-    if (schema != null) {
+  private void ensureSchemaInitialized(
+      ProcessContext c, ValueState<List<String>> insertTopoOrderState) {
+    if (schema != null && insertTopoOrder != null) {
       return;
     }
     DataGeneratorSchema loaded = c.sideInput(schemaView);
     this.insertTopoOrder = SchemaUtils.buildInsertTopoOrder(loaded);
+    insertTopoOrderState.write(this.insertTopoOrder);
     this.schema = loaded;
   }
 
@@ -251,5 +265,65 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
       sink.accept(record);
     }
     batcher.clearDlq();
+  }
+
+  @VisibleForTesting
+  DataWriter getWriter() {
+    return writer;
+  }
+
+  @VisibleForTesting
+  void setWriter(DataWriter writer) {
+    this.writer = writer;
+  }
+
+  @VisibleForTesting
+  Faker getFaker() {
+    return faker;
+  }
+
+  @VisibleForTesting
+  void setFaker(Faker faker) {
+    this.faker = faker;
+  }
+
+  @VisibleForTesting
+  DataGeneratorSchema getSchema() {
+    return schema;
+  }
+
+  @VisibleForTesting
+  void setSchema(DataGeneratorSchema schema) {
+    this.schema = schema;
+  }
+
+  @VisibleForTesting
+  List<String> getInsertTopoOrder() {
+    return insertTopoOrder;
+  }
+
+  @VisibleForTesting
+  void setInsertTopoOrder(List<String> insertTopoOrder) {
+    this.insertTopoOrder = insertTopoOrder;
+  }
+
+  @VisibleForTesting
+  DataGeneratorEngine getDataGeneratorEngine() {
+    return dataGeneratorEngine;
+  }
+
+  @VisibleForTesting
+  void setDataGeneratorEngine(DataGeneratorEngine dataGeneratorEngine) {
+    this.dataGeneratorEngine = dataGeneratorEngine;
+  }
+
+  @VisibleForTesting
+  MutationBatcher getBatcher() {
+    return batcher;
+  }
+
+  @VisibleForTesting
+  void setBatcher(MutationBatcher batcher) {
+    this.batcher = batcher;
   }
 }
