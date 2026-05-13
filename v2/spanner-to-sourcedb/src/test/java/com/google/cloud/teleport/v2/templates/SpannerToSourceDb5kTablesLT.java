@@ -46,6 +46,7 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateLoadTest.class, SkipDirectRunnerTest.class})
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("Disabling long running LT")
 public class SpannerToSourceDb5kTablesLT extends SpannerToSourceDbLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb5kTablesLT.class);
