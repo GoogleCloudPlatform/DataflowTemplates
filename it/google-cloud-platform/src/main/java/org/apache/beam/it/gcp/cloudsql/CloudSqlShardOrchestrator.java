@@ -322,7 +322,9 @@ public class CloudSqlShardOrchestrator {
 
   protected void createPhysicalInstance(String instanceName)
       throws IOException, InterruptedException {
-    String tier = databaseType == DatabaseType.MYSQL ? "db-n1-standard-2" : "db-custom-2-7680";
+    String defaultTier =
+        databaseType == DatabaseType.MYSQL ? "db-n1-standard-2" : "db-custom-2-7680";
+    String tier = System.getProperty("cloudSqlInstanceTier", defaultTier);
     DatabaseInstance instance =
         new DatabaseInstance()
             .setName(instanceName)

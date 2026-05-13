@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -39,6 +40,7 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
+import org.apache.beam.it.gcp.TestConstants;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -152,10 +154,57 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
-    SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, project, region)
-            .maybeUseStaticInstance()
-            .build();
+    String metadataInstanceId = System.getProperty("spannerMetadataInstanceId");
+    SpannerResourceManager.Builder builder =
+        SpannerResourceManager.builder("rr-meta-" + testName, project, region);
+
+    if (metadataInstanceId != null && !metadataInstanceId.isEmpty()) {
+      builder.setInstanceId(metadataInstanceId).useStaticInstance();
+    } else {
+      builder.maybeUseStaticInstance();
+    }
+
+    SpannerResourceManager spannerMetadataResourceManager = builder.build();
+
+    // Collision Detection and Auto-Avoidance
+    if (spannerResourceManager != null
+        && spannerMetadataResourceManager
+            .getInstanceId()
+            .equals(spannerResourceManager.getInstanceId())) {
+
+      String spannerInstanceId =
+          System.getProperty("spannerInstanceId"); // check if it was a user defined instance
+      boolean isTestProject =
+          java.util.Objects.equals(project, "cloud-teleport-testing")
+              || java.util.Objects.equals(project, "span-cloud-teleport-testing");
+      boolean shouldPickRandomInstance =
+          com.google.common.base.Strings.isNullOrEmpty(spannerInstanceId)
+              || java.util.Objects.equals(spannerInstanceId, "teleport");
+
+      if (isTestProject && shouldPickRandomInstance) {
+        List<String> staticInstanceList = new ArrayList<>(TestConstants.SPANNER_TEST_INSTANCES);
+        // Avoid picking the same instance
+        staticInstanceList.remove(spannerResourceManager.getInstanceId());
+        if (!staticInstanceList.isEmpty()) {
+          String newMetadataInstanceId =
+              staticInstanceList.get(new Random().nextInt(staticInstanceList.size()));
+          LOG.info(
+              "Spanner collision detected. Re-selecting metadata instance to: {}",
+              newMetadataInstanceId);
+          spannerMetadataResourceManager =
+              SpannerResourceManager.builder("rr-meta-" + testName, project, region)
+                  .setInstanceId(newMetadataInstanceId)
+                  .useStaticInstance()
+                  .build();
+        }
+      } else {
+        LOG.warn(
+            "WARNING: Both primary and metadata Spanner resource managers are configured to use the same instance: {}. "
+                + "To isolate resources, consider specifying '-DspannerInstanceId' and '-DspannerMetadataInstanceId' separately.",
+            spannerResourceManager.getInstanceId());
+      }
+    }
+
     String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     return spannerMetadataResourceManager;

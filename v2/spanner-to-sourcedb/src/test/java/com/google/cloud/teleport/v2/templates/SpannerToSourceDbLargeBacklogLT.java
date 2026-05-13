@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
@@ -68,18 +69,37 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
+public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbBacklogLT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLargeBacklogLT.class);
 
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
 
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSourceDbBacklogLT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbBacklogLT/session.json";
+      "SpannerToSourceDbLargeBacklogLT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "SpannerToSourceDbLargeBacklogLT/session.json";
   private static final String TABLE = "MigrationLoadTest";
+
+  private static final String DEFAULT_PHYSICAL_SHARD_1 = "nokill-high-resources-backlog-shard1";
+  private static final String DEFAULT_PHYSICAL_SHARD_2 = "nokill-high-resources-backlog-shard2";
+  private static final String DEFAULT_SPANNER_SCALE_NODES = "25";
+  private static final String DEFAULT_AVRO_INPUT_DIR =
+      "gs://nokill-spanner-to-sourcedb-load/data/avro/";
+  private static final String DEFAULT_EXPECTED_SPANNER_COUNT = "1000000000";
+  private static final String DEFAULT_IMPORT_TIMEOUT_MINUTES = "120";
+  private static final String DEFAULT_SPANNER_DOWNSCALE_NODES = "5";
+  private static final String DEFAULT_METADATA_SCALE_NODES = "20";
+  private static final String DEFAULT_REVERSE_TIMEOUT_MINUTES = "600";
+  private static final String DEFAULT_MAX_SHARD_CONNECTIONS = "2000";
+  private static final String DEFAULT_NUM_WORKERS = "200";
+  private static final String DEFAULT_MAX_WORKERS = "200";
+  private static final String DEFAULT_MACHINE_TYPE = "n2-highmem-8";
+  private static final String DEFAULT_EXPECTED_SHARD_COUNT = "250000000";
+  private static final String DEFAULT_METRIC_THRESHOLD = "1000000000";
+  private static final String DEFAULT_VERIFICATION_TIMEOUT_MINUTES = "30";
 
   private CloudSqlShardOrchestrator orchestrator;
   private CloudSqlResourceManager manager1;
@@ -101,11 +121,9 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
 
     // The CloudSQL setup consists of 2 physical shards with 2 logical shards each
     String physicalShard1 =
-        getProperty(
-            "physicalShard1", "nokill-high-resources-backlog-shard1", TestProperties.Type.PROPERTY);
+        getProperty("physicalShard1", DEFAULT_PHYSICAL_SHARD_1, TestProperties.Type.PROPERTY);
     String physicalShard2 =
-        getProperty(
-            "physicalShard2", "nokill-high-resources-backlog-shard2", TestProperties.Type.PROPERTY);
+        getProperty("physicalShard2", DEFAULT_PHYSICAL_SHARD_2, TestProperties.Type.PROPERTY);
 
     Map<String, List<String>> shardMap = new HashMap<>();
     shardMap.put(physicalShard1, List.of("shard0", "shard1"));
@@ -175,7 +193,9 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
 
     // Node count taken from manual test results available in go/reverse-backlog-manual-tests
     int scaleNodes =
-        Integer.parseInt(getProperty("spannerScaleNodes", "25", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "spannerScaleNodes", DEFAULT_SPANNER_SCALE_NODES, TestProperties.Type.PROPERTY));
     updateSpannerNodeCount(spannerResourceManager.getInstanceId(), scaleNodes);
 
     // Verify scale-up - it is critical that the Spanner instance is scaled up, otherwise the
@@ -186,15 +206,19 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
 
     // Run Avro Import with complete dataset (1 billion rows)
     String avroInputDir =
-        getProperty(
-            "avroInputDir",
-            "gs://nokill-spanner-to-sourcedb-load/data/avro/",
-            TestProperties.Type.PROPERTY);
+        getProperty("avroInputDir", DEFAULT_AVRO_INPUT_DIR, TestProperties.Type.PROPERTY);
     long expectedSpannerCount =
         Long.parseLong(
-            getProperty("expectedSpannerCount", "1000000000", TestProperties.Type.PROPERTY));
+            getProperty(
+                "expectedSpannerCount",
+                DEFAULT_EXPECTED_SPANNER_COUNT,
+                TestProperties.Type.PROPERTY));
     int importTimeoutMinutes =
-        Integer.parseInt(getProperty("importTimeoutMinutes", "120", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "importTimeoutMinutes",
+                DEFAULT_IMPORT_TIMEOUT_MINUTES,
+                TestProperties.Type.PROPERTY));
 
     // Ensure avroInputDir ends with a trailing slash for the classic import template
     if (!avroInputDir.endsWith("/")) {
@@ -222,9 +246,15 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     // Downscale main Spanner instance to 5 nodes and upscale metadata Spanner instance to 20 nodes
     // (go/reverse-backlog-manual-tests)
     int spannerDownscaleNodes =
-        Integer.parseInt(getProperty("spannerDownscaleNodes", "5", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "spannerDownscaleNodes",
+                DEFAULT_SPANNER_DOWNSCALE_NODES,
+                TestProperties.Type.PROPERTY));
     int metadataScaleNodes =
-        Integer.parseInt(getProperty("metadataScaleNodes", "20", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "metadataScaleNodes", DEFAULT_METADATA_SCALE_NODES, TestProperties.Type.PROPERTY));
 
     LOG.info(
         "Downscaling main Spanner instance to {} nodes and upscaling metadata instance to {} nodes before starting replication...",
@@ -234,14 +264,25 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     updateSpannerNodeCount(spannerMetadataResourceManager.getInstanceId(), metadataScaleNodes);
 
     int reverseTimeoutMinutes =
-        Integer.parseInt(getProperty("reverseTimeoutMinutes", "600", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "reverseTimeoutMinutes",
+                DEFAULT_REVERSE_TIMEOUT_MINUTES,
+                TestProperties.Type.PROPERTY));
     int maxShardConnections =
-        Integer.parseInt(getProperty("maxShardConnections", "2000", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty(
+                "maxShardConnections",
+                DEFAULT_MAX_SHARD_CONNECTIONS,
+                TestProperties.Type.PROPERTY));
     int numWorkers =
-        Integer.parseInt(getProperty("numWorkers", "200", TestProperties.Type.PROPERTY));
+        Integer.parseInt(
+            getProperty("numWorkers", DEFAULT_NUM_WORKERS, TestProperties.Type.PROPERTY));
     int maxWorkers =
-        Integer.parseInt(getProperty("maxWorkers", "200", TestProperties.Type.PROPERTY));
-    String machineType = getProperty("machineType", "n2-highmem-8", TestProperties.Type.PROPERTY);
+        Integer.parseInt(
+            getProperty("maxWorkers", DEFAULT_MAX_WORKERS, TestProperties.Type.PROPERTY));
+    String machineType =
+        getProperty("machineType", DEFAULT_MACHINE_TYPE, TestProperties.Type.PROPERTY);
 
     PipelineLauncher.LaunchInfo reverseJobInfo =
         launchReverseReplicationJob(
@@ -259,44 +300,63 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
 
     long expectedShardCount =
         Long.parseLong(
-            getProperty("expectedShardCount", "250000000", TestProperties.Type.PROPERTY));
+            getProperty(
+                "expectedShardCount", DEFAULT_EXPECTED_SHARD_COUNT, TestProperties.Type.PROPERTY));
     long metricThreshold =
-        Long.parseLong(getProperty("metricThreshold", "1000000000", TestProperties.Type.PROPERTY));
+        Long.parseLong(
+            getProperty("metricThreshold", DEFAULT_METRIC_THRESHOLD, TestProperties.Type.PROPERTY));
 
-    long polledCount = 0;
     long startTimeMillis = System.currentTimeMillis();
     int numShards = 4;
 
-    while (polledCount < metricThreshold) {
-      if (System.currentTimeMillis() - startTimeMillis > reverseTimeoutMinutes * 60 * 1000) {
-        throw new RuntimeException(
-            "Reverse replication load check timed out after "
-                + reverseTimeoutMinutes
-                + " minutes.");
-      }
+    ConditionCheck successRecordsCheck =
+        new ConditionCheck() {
+          @Override
+          protected String getDescription() {
+            return String.format(
+                "Check if Dataflow metric success_record_count reaches %d", metricThreshold);
+          }
 
-      Double successRecordsCount =
-          pipelineLauncher.getMetric(
-              project, region, reverseJobInfo.jobId(), "success_record_count");
-      polledCount = successRecordsCount != null ? successRecordsCount.longValue() : 0;
+          @Override
+          protected CheckResult check() {
+            try {
+              Double successRecordsCount =
+                  pipelineLauncher.getMetric(
+                      project, region, reverseJobInfo.jobId(), "success_record_count");
+              long polledCount = successRecordsCount != null ? successRecordsCount.longValue() : 0;
 
-      LOG.info("--- PIPELINE PROGRESS UPDATE ---");
-      LOG.info(
-          "Time Elapsed: {} minutes / {} minutes",
-          (System.currentTimeMillis() - startTimeMillis) / 60000,
-          reverseTimeoutMinutes);
-      LOG.info(
-          "Polled success_record_count: {}. Target threshold: {}", polledCount, metricThreshold);
-      LOG.info("---------------------------------");
+              LOG.info("--- PIPELINE PROGRESS UPDATE ---");
+              LOG.info(
+                  "Time Elapsed: {} minutes / {} minutes",
+                  (System.currentTimeMillis() - startTimeMillis) / 60000,
+                  reverseTimeoutMinutes);
+              LOG.info(
+                  "Polled success_record_count: {} / Target: {}", polledCount, metricThreshold);
+              LOG.info("---------------------------------");
 
-      if (polledCount >= metricThreshold) {
-        break;
-      }
+              if (polledCount >= metricThreshold) {
+                return new CheckResult(true, String.format("Threshold reached: %d", polledCount));
+              }
+              return new CheckResult(
+                  false, String.format("Current progress: %d rows", polledCount));
+            } catch (Exception e) {
+              return new CheckResult(false, "Failed to retrieve job metrics: " + e.getMessage());
+            }
+          }
+        };
 
-      Thread.sleep(
-          900000); // Poll every 15 minutes. Since the test runs for 7-8 hours, 15-minute intervals
-      // print exactly 4 logs per hour, preventing clutter and API call costs.
-    }
+    PipelineOperator.Result result =
+        pipelineOperator.waitForCondition(
+            createConfig(
+                reverseJobInfo,
+                Duration.ofMinutes(reverseTimeoutMinutes), // total timeout
+                Duration.ofMinutes(
+                    15)), // Poll every 15 minutes. Since the test runs for 7-8 hours, 15-minute
+            // intervals
+            // print exactly 4 logs per hour, preventing clutter and API call costs.
+            successRecordsCheck);
+
+    assertThatResult(result).meetsConditions();
 
     // Verify database parity on MySQL shards with a retry loop to handle minor replication
     // synchronization lag
@@ -305,7 +365,10 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     long verificationStartTime = System.currentTimeMillis();
     int verificationTimeoutMinutes =
         Integer.parseInt(
-            getProperty("verificationTimeoutMinutes", "30", TestProperties.Type.PROPERTY));
+            getProperty(
+                "verificationTimeoutMinutes",
+                DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
+                TestProperties.Type.PROPERTY));
     long verificationTimeoutMs =
         verificationTimeoutMinutes
             * 60
@@ -505,15 +568,40 @@ public class SpannerToSourceDbBacklogLT extends SpannerToSourceDbLTBase {
     try (Spanner spanner = options.getService()) {
       InstanceAdminClient instanceAdminClient = spanner.getInstanceAdminClient();
 
-      LOG.info("Updating Spanner instance {} node count to {}...", instanceId, nodeCount);
       InstanceInfo instanceInfo =
           InstanceInfo.newBuilder(InstanceId.of(project, instanceId))
               .setNodeCount(nodeCount)
               .build();
-      instanceAdminClient.updateInstance(instanceInfo, InstanceField.NODE_COUNT).get();
-      LOG.info("Successfully updated Spanner instance {} node count to {}.", instanceId, nodeCount);
+
+      int maxRetries = 3;
+      long backoffMs = 10000; // 10 seconds initial backoff
+      for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          LOG.info(
+              "Updating Spanner instance {} node count to {}... (Attempt {}/{})",
+              instanceId,
+              nodeCount,
+              attempt,
+              maxRetries);
+          instanceAdminClient.updateInstance(instanceInfo, InstanceField.NODE_COUNT).get();
+          LOG.info(
+              "Successfully updated Spanner instance {} node count to {}.", instanceId, nodeCount);
+          return;
+        } catch (Exception e) {
+          if (attempt == maxRetries) {
+            throw e;
+          }
+          LOG.warn(
+              "Failed to update Spanner instance node count on attempt {}. Retrying in {} ms...",
+              attempt,
+              backoffMs,
+              e);
+          Thread.sleep(backoffMs);
+          backoffMs *= 2; // Exponential backoff
+        }
+      }
     } catch (Exception e) {
-      LOG.error("Failed to update Spanner instance node count.", e);
+      LOG.error("Failed to update Spanner instance node count after retries.", e);
       throw new RuntimeException("Failed to update Spanner node count", e);
     }
   }
