@@ -91,7 +91,13 @@ public class SchemaUtils {
       // A table is a root if it is not triggered as a sequence child by any other table
       boolean isRoot = !hasSequenceParent.contains(tableName);
 
-      // Prevent double deletion conflicts by suppressing delete generation on child tables
+      // Prevent double deletion conflicts by overriding deleteQps to 0 on child tables when any
+      // upstream
+      // physical ancestor has deleteQps > 0. This ensures child tables do not randomly delete
+      // themselves
+      // independently. Instead, child tables explicitly adopt their parent's forced deletion
+      // schedule
+      // during cascading generation in DataGeneratorEngine.
       boolean hasAncestorDelete =
           hasPhysicalAncestorWithDeleteQps(table, tableMap, new HashSet<>());
       Integer finalDeleteQps = hasAncestorDelete ? Integer.valueOf(0) : table.deleteQps();
@@ -210,7 +216,7 @@ public class SchemaUtils {
 
   /**
    * Checks if any physical ancestor (interleaved or foreign key) has delete QPS configured. Used to
-   * suppress child table delete generation to prevent double deletion conflicts.
+   * override child table deleteQps to 0 to prevent double deletion conflicts across hierarchies.
    */
   private static boolean hasPhysicalAncestorWithDeleteQps(
       DataGeneratorTable table, Map<String, DataGeneratorTable> tableMap, Set<String> visited) {

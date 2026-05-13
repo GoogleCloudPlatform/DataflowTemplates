@@ -46,6 +46,72 @@ import org.slf4j.LoggerFactory;
 /**
  * Orchestrates schema tree traversal and synthesized value updates, scheduling lifecycle timer
  * events to match operational distribution patterns.
+ *
+ * <p><b>End-to-End Lifecycle Walkthrough Example:</b> <br>
+ * Consider a schema with a Parent table (insertQps=10, updateQps=20, deleteQps=5) and a Child table
+ * (insertQps=30, updateQps=300, deleteQps=30) where Child references Parent via a foreign key.
+ *
+ * <ol>
+ *   <li><b>Root Record Ingestion (T0):</b>
+ *       <ul>
+ *         <li>The engine receives an initial partially-populated Parent Row.
+ *         <li>It completes the Parent Row, buffering an {@code INSERT} mutation for Parent into
+ *             {@link MutationBatcher}.
+ *         <li>It calculates the Parent's lifecycle timing bounds based on QPS ratios: <br>
+ *             - Num Updates = updateQps / insertQps = 2 updates. <br>
+ *             - Delete Ratio = deleteQps / insertQps = 0.5 (50% chance of deletion). <br>
+ *             - Supposing {@code updateInterval=5s} and {@code deleteInterval=5s}, if this record
+ *             falls into the 50% deletion cohort, Parent schedules Update1 at T0+5s, Update2 at
+ *             T0+10s, and Delete at T0+15s.
+ *       </ul>
+ *   <li><b>Cascading Generation, Interval Readjustment & Delete Suppression (Fan-Out to Child
+ *       Tables):</b>
+ *       <ul>
+ *         <li>The engine calculates the child fan-out ratio: Child insertQps / Parent insertQps = 3
+ *             Child records per Parent.
+ *         <li>It synthesizes 3 distinct Child rows, inheriting the Parent's primary key for the
+ *             foreign key relation.
+ *         <li>For each Child row, it buffers a Child {@code INSERT} mutation into {@link
+ *             MutationBatcher}.
+ *         <li>Child has an independent deleteQps=30 configured in schema, but because its Parent
+ *             table has deleteQps > 0, {@link SchemaUtils#generateSchemaDAG} overrides the Child's
+ *             configured deleteQps to 0. This prevents double-deletion conflicts (where a child
+ *             table independently deletes itself at a different time than its parent).
+ *         <li>Instead, the Child adopts the Parent's exact forced deletion timestamp (T0+15s) as
+ *             {@code forcedDeleteTimestamp}.
+ *         <li>Child has a high update QPS: updateQps / insertQps = 10 updates per child record.
+ *         <li><b>Dynamic Interval Compression:</b> Normally, 10 updates spaced by the default 5s
+ *             update interval would require 50 seconds. However, the Child must complete all
+ *             updates before the Parent's forced deletion at T0+15s.
+ *         <li>The engine reserves 5s for the trailing delete interval (delInterval), leaving an
+ *             active time budget of: (T0+15s) - T0 - 5s = 10 seconds.
+ *         <li>To fit 10 updates into 10 seconds, the engine proportionally compresses the child's
+ *             update interval: 10 seconds / 10 updates = 1-second update interval.
+ *         <li>Each Child schedules 10 compressed updates (T0+1s, T0+2s, ..., T0+10s) and its forced
+ *             {@code DELETE} timer at exactly T0+15s.
+ *       </ul>
+ *   <li><b>Lifecycle Timer Execution (T0+1s to T0+10s):</b>
+ *       <ul>
+ *         <li>As processing time advances, Beam fires {@code eventTimer} at each snapped 1-second
+ *             bucket, invoking {@code processScheduledEvents}.
+ *         <li>At T0+1s, T0+2s, T0+3s, T0+4s: Timers fire. The 3 Child records synthesize and buffer
+ *             their scheduled updates into {@link MutationBatcher}.
+ *         <li>At T0+5s: Timer fires. Parent Update1 and Child Update5 are synthesized and buffered.
+ *         <li>At T0+6s, T0+7s, T0+8s, T0+9s: Timers fire. Child updates 6 through 9 are synthesized
+ *             and buffered.
+ *         <li>At T0+10s: Timer fires. Parent Update2 and final Child Update10 are synthesized and
+ *             buffered.
+ *       </ul>
+ *   <li><b>Referential Integrity Safe Deletion (T0+15s):</b>
+ *       <ul>
+ *         <li>At T0+15s: The scheduled {@code DELETE} timers fire for both Parent and Child tables.
+ *         <li>{@link MutationBatcher} buffers the deletion rows. When flushed at bundle completion,
+ *             {@code flushDeletesInReverseTopoOrder} iterates in reverse topological order (Child
+ *             before Parent).
+ *         <li>All 3 Child {@code DELETE} mutations are flushed to the sink first, followed by the
+ *             Parent {@code DELETE} mutation, guaranteeing zero foreign key constraint violations.
+ *       </ul>
+ * </ol>
  */
 public class DataGeneratorEngine {
   private static final Logger LOG = LoggerFactory.getLogger(DataGeneratorEngine.class);
@@ -55,7 +121,6 @@ public class DataGeneratorEngine {
   private final Faker faker;
 
   private transient volatile DataGeneratorSchema schema;
-  private transient volatile List<String> insertTopoOrder;
 
   private final Counter insertsGenerated =
       Metrics.counter(DataGeneratorEngine.class, "insertsGenerated");
@@ -84,12 +149,10 @@ public class DataGeneratorEngine {
       MapState<String, DataGeneratorTable> tableMapState,
       Timer eventTimer,
       DataGeneratorSchema loadedSchema,
-      MutationBatcher batcher) {
+      MutationBatcher batcher,
+      List<String> insertTopoOrder) {
 
     this.schema = loadedSchema;
-    if (this.insertTopoOrder == null) {
-      this.insertTopoOrder = SchemaUtils.buildInsertTopoOrder(loadedSchema);
-    }
 
     DataGeneratorTable table = schema.tables().get(tableName);
 
@@ -110,7 +173,8 @@ public class DataGeneratorEngine {
         /* forcedDeleteTimestamp= */ 0L,
         /* earliestAncestorDelete= */ Long.MAX_VALUE,
         new HashMap<>(),
-        batcher);
+        batcher,
+        insertTopoOrder);
   }
 
   /**
@@ -123,7 +187,8 @@ public class DataGeneratorEngine {
       MapState<String, DataGeneratorTable> tableMapState,
       Timer eventTimer,
       MutationBatcher batcher,
-      List<String> pendingDlq) {
+      List<String> pendingDlq,
+      List<String> insertTopoOrder) {
 
     List<Long> timestamps = activeTimestamps.read();
     if (timestamps == null || timestamps.isEmpty()) {
@@ -133,6 +198,8 @@ public class DataGeneratorEngine {
     long now = System.currentTimeMillis();
     int firstFutureIdx = 0;
     for (Long ts : timestamps) {
+      // Timestamps are maintained in sorted order. Once we encounter a timestamp
+      // in the future, we stop processing immediately to keep future events buffered in state.
       if (ts > now) {
         break;
       }
@@ -140,7 +207,7 @@ public class DataGeneratorEngine {
       if (events != null) {
         for (LifecycleEvent event : events) {
           try {
-            executeScheduledLifecycleMutation(event, tableMapState, batcher);
+            executeScheduledLifecycleMutation(event, tableMapState, batcher, insertTopoOrder);
           } catch (Exception genError) {
             LOG.error(
                 "Lifecycle event generation failed for table {} ({})",
@@ -151,14 +218,17 @@ public class DataGeneratorEngine {
             pendingDlq.add(FailureRecord.toJson(event.tableName, event.type, null, genError));
           }
         }
+        // Clear executed event bucket from state storage to reclaim memory
         eventQueueState.remove(ts);
       }
       firstFutureIdx++;
     }
 
+    // Prune executed timestamps and update state tracking
     timestamps = new ArrayList<>(timestamps.subList(firstFutureIdx, timestamps.size()));
     activeTimestamps.write(timestamps);
     if (!timestamps.isEmpty()) {
+      // Reset Beam timer to fire at the very next upcoming event timestamp
       eventTimer.set(Instant.ofEpochMilli(timestamps.get(0)));
     }
   }
@@ -177,7 +247,8 @@ public class DataGeneratorEngine {
       long forcedDeleteTimestamp,
       long earliestAncestorDelete,
       Map<String, Row> ancestorRows,
-      MutationBatcher batcher) {
+      MutationBatcher batcher,
+      List<String> insertTopoOrder) {
 
     String tableName = table.name();
     tableMapState.put(tableName, table);
@@ -225,12 +296,18 @@ public class DataGeneratorEngine {
       numUpdates = calculateNumUpdates(tableInsertQps, tableUpdateQps);
       double deleteRatio = tableInsertQps > 0 ? (double) tableDeleteQps / tableInsertQps : 0.0;
 
+      // If a parent table is scheduled for deletion, child tables adopt that exact deletion
+      // timestamp
+      // to guarantee consistent lifecycle teardown across the hierarchy.
       if (forcedDeleteTimestamp > 0) {
         deleteTimestamp = forcedDeleteTimestamp;
       } else if (ThreadLocalRandom.current().nextDouble() < deleteRatio) {
         deleteTimestamp = now + upInterval * numUpdates + delInterval;
       }
 
+      // Dynamic Interval Compression: Ensure scheduled updates complete before row deletion.
+      // If the standard update interval exceeds the remaining lifespan before deletion,
+      // proportionally compress the update interval to fit all updates into the available budget.
       long myDeleteBound = deleteTimestamp > 0 ? deleteTimestamp : Long.MAX_VALUE;
       long effectiveDeleteBound = Math.min(myDeleteBound, earliestAncestorDelete);
       if (effectiveDeleteBound < Long.MAX_VALUE && numUpdates > 0) {
@@ -272,7 +349,8 @@ public class DataGeneratorEngine {
             deleteTimestamp,
             childEarliestAncestorDelete,
             updatedAncestorRows,
-            batcher);
+            batcher,
+            insertTopoOrder);
       }
     }
 
@@ -312,7 +390,8 @@ public class DataGeneratorEngine {
       long forcedDeleteTimestamp,
       long earliestAncestorDelete,
       Map<String, Row> ancestorRows,
-      MutationBatcher batcher) {
+      MutationBatcher batcher,
+      List<String> insertTopoOrder) {
 
     int numChildren = calculateNumChildren(parentTable.insertQps(), childTable.insertQps());
 
@@ -343,7 +422,8 @@ public class DataGeneratorEngine {
           forcedDeleteTimestamp,
           earliestAncestorDelete,
           ancestorRows,
-          batcher);
+          batcher,
+          insertTopoOrder);
     }
   }
 
@@ -451,6 +531,7 @@ public class DataGeneratorEngine {
       ValueState<List<Long>> activeTimestamps,
       Timer eventTimer) {
 
+    // Snap timer scheduling to discrete 1-second buckets to minimize state tracking overhead
     long snappedTimestamp = (timestamp / 1000) * 1000;
 
     List<LifecycleEvent> events = eventQueueState.get(snappedTimestamp).read();
@@ -464,6 +545,7 @@ public class DataGeneratorEngine {
     if (timestamps == null) {
       timestamps = new ArrayList<>();
     }
+    // Perform binary search to maintain timestamps in strictly ascending order for quick pruning
     int idx = Collections.binarySearch(timestamps, snappedTimestamp);
     if (idx < 0) {
       timestamps.add(-(idx + 1), snappedTimestamp);
@@ -479,7 +561,8 @@ public class DataGeneratorEngine {
   private void executeScheduledLifecycleMutation(
       LifecycleEvent event,
       MapState<String, DataGeneratorTable> tableMapState,
-      MutationBatcher batcher) {
+      MutationBatcher batcher,
+      List<String> insertTopoOrder) {
 
     DataGeneratorTable table = tableMapState.get(event.tableName).read();
     if (table == null) {

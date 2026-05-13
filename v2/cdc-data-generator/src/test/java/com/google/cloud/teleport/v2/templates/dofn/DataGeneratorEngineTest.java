@@ -136,7 +136,8 @@ public class DataGeneratorEngineTest {
         mock(MapState.class),
         mock(Timer.class),
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of("Parent", "Child"));
 
     assertEquals("Should have exactly 1 record in the DLQ", 1, dlq.size());
     String dlqPayload = dlq.get(0);
@@ -166,7 +167,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         mock(Timer.class),
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of());
 
     verifyNoInteractions(batcher);
     verifyNoInteractions(eventQueueState);
@@ -260,7 +262,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         eventTimer,
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of("Parent", "Child"));
 
     assertFalse(
         "Active timestamps should be scheduled after processing parent record",
@@ -275,7 +278,13 @@ public class DataGeneratorEngineTest {
 
     List<String> dlq = new ArrayList<>();
     engine.processScheduledEvents(
-        eventQueueState, activeTimestamps, tableMapState, eventTimer, batcher, dlq);
+        eventQueueState,
+        activeTimestamps,
+        tableMapState,
+        eventTimer,
+        batcher,
+        dlq,
+        ImmutableList.of("Parent", "Child"));
 
     assertTrue("DLQ should remain empty on successful lifecycle execution", dlq.isEmpty());
     verify(eventQueueState, atLeastOnce()).remove(ArgumentMatchers.anyLong());
@@ -411,7 +420,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         mock(Timer.class),
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of("Parent", "Child"));
 
     assertTrue(
         "DLQ should be empty for schema with composite columns of different names", dlq.isEmpty());
@@ -519,7 +529,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         eventTimer,
         schemaA,
-        batcherA);
+        batcherA,
+        ImmutableList.of("Parent", "Child"));
 
     assertEquals(
         "Should have exactly 1 record in DLQ for missing table constraint", 1, dlqA.size());
@@ -569,7 +580,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         eventTimer,
         schemaB,
-        batcherB);
+        batcherB,
+        ImmutableList.of("Parent", "Child"));
 
     assertEquals("Should have exactly 1 record in DLQ for missing parent column", 1, dlqB.size());
     String dlqPayloadB = dlqB.get(0);
@@ -607,7 +619,13 @@ public class DataGeneratorEngineTest {
     when(batcher.getFailedRecords()).thenReturn(dlq);
 
     engine.processScheduledEvents(
-        eventQueueState, activeTimestamps, tableMapState, mock(Timer.class), batcher, dlq);
+        eventQueueState,
+        activeTimestamps,
+        tableMapState,
+        mock(Timer.class),
+        batcher,
+        dlq,
+        ImmutableList.of("Parent"));
 
     assertEquals("Failed scheduled execution must output to the pending DLQ list", 1, dlq.size());
     String dlqPayload = dlq.get(0);
@@ -685,7 +703,13 @@ public class DataGeneratorEngineTest {
     when(batcher.getFailedRecords()).thenReturn(new ArrayList<>());
 
     engine.processScheduledEvents(
-        eventQueueState, activeTimestamps, tableMapState, mock(Timer.class), batcher, dlq);
+        eventQueueState,
+        activeTimestamps,
+        tableMapState,
+        mock(Timer.class),
+        batcher,
+        dlq,
+        ImmutableList.of("Parent"));
 
     assertTrue("DLQ should be empty on successful scheduled events processing", dlq.isEmpty());
     verify(eventQueueState, atLeastOnce()).remove(ArgumentMatchers.anyLong());
@@ -787,7 +811,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         eventTimer,
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of("Parent", "Child"));
 
     assertEquals(
         "Should have exactly 1 record in DLQ for missing interleaved parent mapping",
@@ -816,7 +841,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         mock(Timer.class),
         mock(MutationBatcher.class),
-        new ArrayList<>());
+        new ArrayList<>(),
+        ImmutableList.of());
 
     verifyNoInteractions(eventQueueState);
     verifyNoInteractions(tableMapState);
@@ -839,7 +865,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         mock(Timer.class),
         mock(MutationBatcher.class),
-        new ArrayList<>());
+        new ArrayList<>(),
+        ImmutableList.of());
 
     verifyNoInteractions(eventQueueState);
     verifyNoInteractions(tableMapState);
@@ -918,7 +945,8 @@ public class DataGeneratorEngineTest {
         tableMapState,
         eventTimer,
         schema,
-        batcher);
+        batcher,
+        ImmutableList.of("Parent", "Child"));
 
     assertEquals(
         "Should have exactly 1 record in DLQ for missing source interleaved columns",
