@@ -141,6 +141,7 @@ public class DataStreamMongoDBToFirestore {
   static final TupleTag<FailsafeElement<String, String>> UDF_FAILURE_TAG = new TupleTag<>();
   static final TupleTag<FailsafeElement<String, String>> PREPARE_FAILURE_TAG = new TupleTag<>();
   static final TupleTag<FailsafeElement<String, String>> RESTORE_FAILURE_TAG = new TupleTag<>();
+  static final TupleTag<FailsafeElement<String, String>> BYPASS_UDF_TAG = new TupleTag<>();
   private static final String AVRO_SUFFIX = "avro";
   private static final String JSON_SUFFIX = "json";
   public static final Set<String> MAPPER_IGNORE_FIELDS =
@@ -1442,18 +1443,54 @@ public class DataStreamMongoDBToFirestore {
 
   public static class PrepareUdfInputFn
       extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
+
+    private final Counter skippedUpdates =
+        Metrics.counter(PrepareUdfInputFn.class, "skippedUpdatesWithNullData");
+
     @ProcessElement
     public void processElement(ProcessContext c) {
       FailsafeElement<String, String> element = c.element();
       try {
         String fullEventJson = element.getPayload();
-        String canonicalJson = Utils.getCanonicalJsonOfDataField(fullEventJson);
-        if (canonicalJson != null) {
-          c.output(FailsafeElement.of(fullEventJson, canonicalJson));
-        } else {
+        Document doc = Document.parse(fullEventJson);
+        // Handle events wrapped in a changeEvent field (common for reconsumed DLQ records)
+        Document innerDoc = Utils.extractInnerEvent(doc);
+
+        // Skip UDF if it has already been processed (e.g. on DLQ retry)
+        Boolean udfProcessed = innerDoc.getBoolean("_metadata_udf_processed");
+        if (udfProcessed != null && udfProcessed) {
+          c.output(BYPASS_UDF_TAG, element);
+          return;
+        }
+
+        String changeType = innerDoc.getString(DatastreamConstants.EVENT_CHANGE_TYPE_KEY);
+        if (changeType == null) {
+          changeType = "";
+        }
+
+        Object dataVal = innerDoc.get(MongoDbChangeEventContext.DATA_COL);
+
+        // Delete events don't have a 'data' field to transform, so we bypass the UDF.
+        if ("DELETE".equalsIgnoreCase(changeType)) {
+          c.output(BYPASS_UDF_TAG, element);
+          return;
+        }
+
+        // Update events with null data occurs when an updated document is later
+        // deleted. In this case, we skip the UDF transformation.
+        if ("UPDATE".equalsIgnoreCase(changeType) && dataVal == null) {
+          skippedUpdates.inc();
+          return; // Skip by not outputting anything
+        }
+
+        // Extract and canonicalize the 'data' field for UDF input.
+        String canonicalJson = Utils.getCanonicalJsonOfDataField(innerDoc);
+        if (canonicalJson == null) {
           throw new IllegalArgumentException(
               "Missing data field in event or unsupported data field type");
         }
+
+        c.output(FailsafeElement.of(fullEventJson, canonicalJson));
       } catch (Exception e) {
         LOG.error("Error preparing UDF input, exception: {}", e.getMessage(), e);
         FailsafeElement<String, String> failedElement =
@@ -1475,6 +1512,10 @@ public class DataStreamMongoDBToFirestore {
 
       try {
         JsonNode fullEventNode = OBJECT_MAPPER.readTree(fullEventJson);
+        // Validate that the UDF output is a valid BSON document before proceeding.
+        // This ensures we don't write invalid data to the destination.
+        Document.parse(transformedData);
+
         ((ObjectNode) fullEventNode).put(MongoDbChangeEventContext.DATA_COL, transformedData);
 
         String modifiedEventJson = OBJECT_MAPPER.writeValueAsString(fullEventNode);
@@ -1486,6 +1527,22 @@ public class DataStreamMongoDBToFirestore {
         failedElement.setErrorMessage(e.getMessage());
         failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
         c.output(RESTORE_FAILURE_TAG, failedElement);
+      }
+    }
+  }
+
+  public static class MarkUdfProcessedFn
+      extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      FailsafeElement<String, String> element = c.element();
+      try {
+        JsonNode node = OBJECT_MAPPER.readTree(element.getPayload());
+        ((ObjectNode) node).put("_metadata_udf_processed", true);
+        String json = OBJECT_MAPPER.writeValueAsString(node);
+        c.output(FailsafeElement.of(json, json));
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1510,7 +1567,8 @@ public class DataStreamMongoDBToFirestore {
           input.apply(
               "Prepare UDF Input",
               ParDo.of(new PrepareUdfInputFn())
-                  .withOutputTags(UDF_SUCCESS_TAG, TupleTagList.of(PREPARE_FAILURE_TAG)));
+                  .withOutputTags(
+                      UDF_SUCCESS_TAG, TupleTagList.of(PREPARE_FAILURE_TAG).and(BYPASS_UDF_TAG)));
 
       // Handle failed preparation
       writeFailedJsonToDlq(options, preparedResult, dlqManager, PREPARE_FAILURE_TAG);
@@ -1518,6 +1576,11 @@ public class DataStreamMongoDBToFirestore {
       PCollection<FailsafeElement<String, String>> preparedInput =
           preparedResult
               .get(UDF_SUCCESS_TAG)
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+      PCollection<FailsafeElement<String, String>> bypassedElements =
+          preparedResult
+              .get(BYPASS_UDF_TAG)
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
       PCollectionTuple udfResult =
@@ -1545,9 +1608,20 @@ public class DataStreamMongoDBToFirestore {
 
       writeFailedJsonToDlq(options, restoreResult, dlqManager, RESTORE_FAILURE_TAG);
 
-      return restoreResult
-          .get(UDF_SUCCESS_TAG)
-          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+      PCollection<FailsafeElement<String, String>> restoredOutput =
+          restoreResult
+              .get(UDF_SUCCESS_TAG)
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+      // Mark as UDF processed to avoid re-processing on DLQ retries
+      PCollection<FailsafeElement<String, String>> markedOutput =
+          restoredOutput.apply("Mark UDF Processed", ParDo.of(new MarkUdfProcessedFn()));
+
+      // Merge the restored UDF output with the events that bypassed the UDF.
+      // Both streams now contain the full event JSON in the required format for downstream steps.
+      return PCollectionList.of(markedOutput)
+          .and(bypassedElements)
+          .apply("Merge Streams", Flatten.pCollections());
     }
   }
 }
