@@ -70,7 +70,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
-  protected static final String TEMPLATE_SPEC_PATH =
+  protected static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(),
           "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner");
@@ -83,6 +83,16 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   protected GcsResourceManager gcsResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected SecretManagerResourceManager secretClient;
+
+  public static class RowRange {
+    public final int min;
+    public final int max;
+
+    public RowRange(int min, int max) {
+      this.min = min;
+      this.max = max;
+    }
+  }
 
   public void setUpResourceManagers(String spannerDdlResource) throws IOException {
     setUpResourceManagers(spannerDdlResource, false);
@@ -210,8 +220,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     // Add all parameters for the template
     params.putAll(templateParameters);
 
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
+    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
 
@@ -227,7 +236,11 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
       afterLaunchCallback.run();
     }
 
-    Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tables);
+    HashMap<String, RowRange> tableRanges = new HashMap<>();
+    for (Map.Entry<String, Integer> entry : tables.entrySet()) {
+      tableRanges.put(entry.getKey(), new RowRange(entry.getValue(), entry.getValue()));
+    }
+    Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tableRanges);
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
             createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), condition);
@@ -246,16 +259,17 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     exportMetricsToBigQuery(jobInfo, metrics);
   }
 
-  private boolean checkAllTablesRowCounts(HashMap<String, Integer> tables) {
+  private boolean checkAllTablesRowCounts(HashMap<String, RowRange> tables) {
     ExecutorService executor = Executors.newFixedThreadPool(20);
     try {
       List<Callable<Boolean>> tasks = new ArrayList<>();
-      for (Map.Entry<String, Integer> entry : tables.entrySet()) {
+      for (Map.Entry<String, RowRange> entry : tables.entrySet()) {
         tasks.add(
             () -> {
               try {
                 long rowCount = spannerResourceManager.getRowCount(entry.getKey());
-                return rowCount >= entry.getValue();
+                RowRange range = entry.getValue();
+                return rowCount >= range.min && rowCount <= range.max;
               } catch (Exception e) {
                 return false;
               }

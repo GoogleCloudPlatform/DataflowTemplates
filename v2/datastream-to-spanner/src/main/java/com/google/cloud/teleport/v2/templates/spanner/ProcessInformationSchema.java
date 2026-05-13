@@ -94,8 +94,6 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
     private final Boolean shouldCreateShadowTables;
     private final String shadowTablePrefix;
     private final String sourceType;
-    private transient Ddl mainDdl;
-    private transient Ddl shadowTableDdl;
 
     // Timeout for Cloud Spanner schema update.
     private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
@@ -134,20 +132,6 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
         shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
         useSeparateShadowTableDb = true;
       }
-      // TODO: Add pgsql support/ cross dialect support.
-      mainDdl = getInformationSchemaAsDdl(spannerAccessor);
-      shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
-
-      if (shouldCreateShadowTables) {
-        createShadowTablesInSpanner(mainDdl, shadowTableDdl);
-        // Refresh shadow table DDL after creating new shadow tables
-        shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
-      }
-      // Clean up DDLs to ensure proper separation of main and shadow tables. Note that this is only
-      // for data hygiene, the downstream methods using these can handle Ddl with excess tables as
-      // well.
-      mainDdl = cleanupDdl(mainDdl, shadowTablePrefix, /* isMainDdl= */ true);
-      shadowTableDdl = cleanupDdl(shadowTableDdl, shadowTablePrefix, /* isMainDdl= */ false);
     }
 
     @Teardown
@@ -160,6 +144,20 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
 
     @ProcessElement
     public void processElement(ProcessContext c) {
+      // TODO: Add pgsql support/ cross dialect support.
+      Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor);
+      Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
+
+      if (shouldCreateShadowTables) {
+        createShadowTablesInSpanner(mainDdl, shadowTableDdl);
+        // Refresh shadow table DDL after creating new shadow tables
+        shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
+      }
+      // Clean up DDLs to ensure proper separation of main and shadow tables. Note that this is only
+      // for data hygiene, the downstream methods using these can handle Ddl with excess tables as
+      // well.
+      mainDdl = cleanupDdl(mainDdl, shadowTablePrefix, /* isMainDdl= */ true);
+      shadowTableDdl = cleanupDdl(shadowTableDdl, shadowTablePrefix, /* isMainDdl= */ false);
       c.output(MAIN_DDL_TAG, mainDdl);
       c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
     }
