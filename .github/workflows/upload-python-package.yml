@@ -25,6 +25,9 @@ on:
         description: 'Version number for the package (e.g., 0.1.0)'
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-upload:
     runs-on: [self-hosted, release]

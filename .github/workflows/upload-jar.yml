@@ -30,6 +30,9 @@ on:
         required: true
 
 
+permissions:
+  contents: read
+
 jobs:
   build-and-upload:
     runs-on:  [self-hosted, release]
