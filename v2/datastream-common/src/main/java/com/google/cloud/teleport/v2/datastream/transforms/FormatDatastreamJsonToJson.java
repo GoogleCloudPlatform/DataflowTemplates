@@ -245,13 +245,13 @@ public final class FormatDatastreamJsonToJson
 
     // Try primary_keys first (MySQL, Oracle, PostgreSQL)
     JsonNode primaryKeys = md.get("primary_keys");
-    if (primaryKeys != null) {
+    if (primaryKeys != null && !primaryKeys.isNull()) {
       return primaryKeys;
     }
 
     // Fallback to replication_index for SQL Server
     JsonNode replicationIndex = md.get("replication_index");
-    if (replicationIndex != null) {
+    if (replicationIndex != null && !replicationIndex.isNull()) {
       return replicationIndex;
     }
 

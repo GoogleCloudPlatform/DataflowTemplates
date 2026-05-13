@@ -285,20 +285,20 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    JsonNode dataInput = getSourceMetadataJson(record);
+    if (sourceMetadata == null) {
+      return null;
+    }
 
     // Try primary_keys first (MySQL, Oracle, PostgreSQL)
     if (sourceMetadata.getSchema().getField("primary_keys") != null
         && sourceMetadata.get("primary_keys") != null) {
-      JsonNode primaryKeys = dataInput.get("primary_keys");
-      return primaryKeys;
+      return getSourceMetadataJson(record).get("primary_keys");
     }
 
     // Fallback to replication_index for SQL Server
     if (sourceMetadata.getSchema().getField("replication_index") != null
         && sourceMetadata.get("replication_index") != null) {
-      JsonNode replicationIndex = dataInput.get("replication_index");
-      return replicationIndex;
+      return getSourceMetadataJson(record).get("replication_index");
     }
 
     return null;
