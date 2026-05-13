@@ -29,11 +29,8 @@ import com.google.cloud.datastream.v1.MysqlTable;
  */
 public class MySQLSource extends JDBCSource {
 
-  private final int maxConcurrentBackfillTasks;
-
   MySQLSource(Builder builder) {
     super(builder);
-    this.maxConcurrentBackfillTasks = builder.maxConcurrentBackfillTasks;
   }
 
   @Override
@@ -44,9 +41,6 @@ public class MySQLSource extends JDBCSource {
   @Override
   public MysqlSourceConfig config() {
     MysqlSourceConfig.Builder configBuilder = MysqlSourceConfig.newBuilder();
-    if (this.maxConcurrentBackfillTasks > 0) {
-      configBuilder.setMaxConcurrentBackfillTasks(this.maxConcurrentBackfillTasks);
-    }
     if (this.allowedTables().size() > 0) {
       MysqlRdbms.Builder mysqlRdmsBuilder = MysqlRdbms.newBuilder();
       for (String db : this.allowedTables().keySet()) {
@@ -67,15 +61,8 @@ public class MySQLSource extends JDBCSource {
 
   /** Builder for {@link MySQLSource}. */
   public static class Builder extends JDBCSource.Builder<MySQLSource> {
-    private int maxConcurrentBackfillTasks = 0;
-
     public Builder(String hostname, String username, String password, int port) {
       super(hostname, username, password, port);
-    }
-
-    public Builder setMaxConcurrentBackfillTasks(int maxConcurrentBackfillTasks) {
-      this.maxConcurrentBackfillTasks = maxConcurrentBackfillTasks;
-      return this;
     }
 
     @Override

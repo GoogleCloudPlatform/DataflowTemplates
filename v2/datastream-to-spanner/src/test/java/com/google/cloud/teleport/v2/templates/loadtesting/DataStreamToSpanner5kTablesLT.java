@@ -58,7 +58,7 @@ public class DataStreamToSpanner5kTablesLT extends DataStreamToSpannerLTBase {
     LOG.info("Began Setup for 5K Table test");
     startTime = Instant.now();
 
-    setUpResourceManagers(null, true, 50, 50);
+    setUpResourceManagers(null, true);
     jdbcResourceManager = CloudMySQLResourceManager.builder(testName).build();
   }
 
@@ -69,72 +69,6 @@ public class DataStreamToSpanner5kTablesLT extends DataStreamToSpannerLTBase {
     LOG.info(
         "CleanupCompleted for 5K Table test. Test took {}",
         Duration.between(startTime, Instant.now()));
-  }
-
-  @Test
-  public void test5kTablesBackfill() throws Exception {
-    // 1. Create 5k tables in MySQL
-    LOG.info("Creating master table in MySQL...");
-    try (Connection conn = getJdbcConnection(jdbcResourceManager);
-        Statement stmt = conn.createStatement()) {
-      stmt.execute("CREATE TABLE table_1 (id BIGINT NOT NULL PRIMARY KEY)");
-    }
-
-    LOG.info("Creating remaining {} tables in MySQL...", NUM_TABLES - 1);
-    try (Connection conn = getJdbcConnection(jdbcResourceManager);
-        Statement stmt = conn.createStatement()) {
-      for (int j = 2; j <= NUM_TABLES; j++) {
-        String mySqlDdl = String.format("CREATE TABLE table_%d LIKE table_1", j);
-        stmt.addBatch(mySqlDdl);
-      }
-      stmt.executeBatch();
-    }
-
-    // Insert 1 row into all tables in MySQL (Backfill mode)
-    LOG.info("Inserting 1 row into all {} tables in MySQL...", NUM_TABLES);
-    try (Connection conn = getJdbcConnection(jdbcResourceManager);
-        Statement stmt = conn.createStatement()) {
-      for (int i = 1; i <= NUM_TABLES; i++) {
-        String sql = String.format("INSERT INTO table_%d (id) VALUES (%d)", i, i);
-        stmt.addBatch(sql);
-      }
-      stmt.executeBatch();
-    }
-
-    // 2. Create 5k tables in Spanner
-    LOG.info("Creating 5k tables in Spanner...");
-    List<String> spannerDdls = new ArrayList<>();
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      spannerDdls.add(
-          String.format("CREATE TABLE table_%d (id INT64 NOT NULL) PRIMARY KEY(id)", i));
-    }
-    spannerResourceManager.executeDdlStatements(spannerDdls);
-
-    // 3. Setup Datastream source
-    List<String> tableNames = new ArrayList<>();
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      tableNames.add("table_" + i);
-    }
-    java.util.Map<String, List<String>> allowedTables =
-        java.util.Map.of(jdbcResourceManager.getDatabaseName(), tableNames);
-
-    JDBCSource mySQLSource =
-        new MySQLSource.Builder(
-                jdbcResourceManager.getHost(),
-                jdbcResourceManager.getUsername(),
-                jdbcResourceManager.getPassword(),
-                jdbcResourceManager.getPort())
-            .setMaxConcurrentBackfillTasks(50)
-            .setAllowedTables(allowedTables)
-            .build();
-
-    HashMap<String, Integer> tables = new HashMap<>();
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      tables.put("table_" + i, 1);
-    }
-
-    // 4. Run Load Test using the overridden method
-    runLoadTest(tables, mySQLSource);
   }
 
   @Test

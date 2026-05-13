@@ -95,15 +95,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    */
   public void setUpResourceManagers(String spannerDdlResource, boolean separateShadowTableDb)
       throws IOException {
-    setUpResourceManagers(spannerDdlResource, separateShadowTableDb, 0, 0);
-  }
-
-  public void setUpResourceManagers(
-      String spannerDdlResource,
-      boolean separateShadowTableDb,
-      int maxConcurrentCdcTasks,
-      int maxConcurrentBackfillTasks)
-      throws IOException {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
