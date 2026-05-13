@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -171,5 +172,76 @@ public class ProcessBackfillEventFnTest {
     FailsafeElement failedElement = failureCaptor.getValue();
     assertEquals(event2, failedElement.getOriginalPayload());
     assertEquals("Some other error", failedElement.getErrorMessage());
+  }
+
+  @Test
+  public void testProcessBatch_success() {
+    MongoDbChangeEventContext event1 = mock(MongoDbChangeEventContext.class);
+    MongoDbChangeEventContext event2 = mock(MongoDbChangeEventContext.class);
+
+    when(event1.getDataCollection()).thenReturn(COLLECTION_NAME);
+    when(event2.getDataCollection()).thenReturn(COLLECTION_NAME);
+    when(event1.getDocumentId()).thenReturn("id1");
+    when(event2.getDocumentId()).thenReturn("id2");
+    when(event1.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
+    when(event2.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id2\"}}");
+
+    when(mockContext.element()).thenReturn(event1).thenReturn(event2);
+
+    // Process first element
+    fn.processElement(mockContext, mockReceiver);
+
+    // Process second element, should trigger batch processing
+    com.mongodb.bulk.BulkWriteResult mockResult = mock(com.mongodb.bulk.BulkWriteResult.class);
+    when(mockResult.getInsertedCount()).thenReturn(2);
+    when(mockResult.getModifiedCount()).thenReturn(0);
+    when(mockResult.getUpserts()).thenReturn(Collections.emptyList());
+    when(mockResult.getDeletedCount()).thenReturn(0);
+
+    when(mockCollection.bulkWrite(anyList(), any())).thenReturn(mockResult);
+
+    fn.processElement(mockContext, mockReceiver);
+
+    // Verify output
+    verify(mockSuccessReceiver, times(1)).output(event1);
+    verify(mockSuccessReceiver, times(1)).output(event2);
+  }
+
+  @Test
+  public void testFinishBundle_processesRemainingEvents() {
+    MongoDbChangeEventContext event1 = mock(MongoDbChangeEventContext.class);
+
+    when(event1.getDataCollection()).thenReturn(COLLECTION_NAME);
+    when(event1.getDocumentId()).thenReturn("id1");
+    when(event1.getDataAsJsonString()).thenReturn("{\"data\": {\"_id\":\"id1\"}}");
+
+    when(mockContext.element()).thenReturn(event1);
+
+    // Process element, but don't reach batch size (batch size is 2)
+    fn.processElement(mockContext, mockReceiver);
+
+    // Verify no output yet
+    verify(mockSuccessReceiver, times(0)).output(any());
+
+    // Finish bundle
+    com.mongodb.bulk.BulkWriteResult mockResult = mock(com.mongodb.bulk.BulkWriteResult.class);
+    when(mockResult.getInsertedCount()).thenReturn(1);
+    when(mockResult.getModifiedCount()).thenReturn(0);
+    when(mockResult.getUpserts()).thenReturn(Collections.emptyList());
+    when(mockResult.getDeletedCount()).thenReturn(0);
+
+    when(mockCollection.bulkWrite(anyList(), any())).thenReturn(mockResult);
+
+    DoFn.FinishBundleContext mockFinishBundleContext = mock(DoFn.FinishBundleContext.class);
+
+    fn.finishBundle(mockFinishBundleContext);
+
+    // Verify output in finishBundle
+    verify(mockFinishBundleContext, times(1))
+        .output(
+            eq(DataStreamMongoDBToFirestore.ProcessBackfillEventFn.successfulWriteTag),
+            eq(event1),
+            any(org.joda.time.Instant.class),
+            any(org.apache.beam.sdk.transforms.windowing.GlobalWindow.class));
   }
 }
