@@ -20,9 +20,8 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.GeneratedRecord;
 import com.google.cloud.teleport.v2.templates.model.LifecycleEvent;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
+import com.google.cloud.teleport.v2.templates.sink.DataWriterFactory;
 import com.google.cloud.teleport.v2.templates.utils.FailureRecord;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -117,7 +116,7 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     this.schema = null;
     this.insertTopoOrder = null;
     if (writer == null) {
-      writer = createWriter(sinkType, sinkOptionsPath);
+      writer = DataWriterFactory.createWriter(sinkType, sinkOptionsPath);
     }
     if (faker == null) {
       faker = new Faker();
@@ -125,18 +124,6 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
 
     this.batcher = new MutationBatcher(batchSize, jdbcPoolSize, writer);
     this.dataGeneratorEngine = new DataGeneratorEngine(updateInterval, deleteInterval, faker);
-  }
-
-  @VisibleForTesting
-  protected DataWriter createWriter(SinkType type, String configPath) {
-    switch (type) {
-      case MYSQL:
-        return new MySqlDataWriter(configPath);
-      case SPANNER:
-        return new SpannerDataWriter(configPath);
-      default:
-        throw new IllegalArgumentException("Unsupported sink type: " + type);
-    }
   }
 
   @StartBundle
@@ -208,11 +195,7 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     } catch (Exception timerError) {
       LOG.error("Scheduled events generation failed during timer processing", timerError);
       Metrics.counter(BatchAndWriteFn.class, "generationFailures").inc();
-      batcher
-          .getFailedRecords()
-          .add(
-              FailureRecord.toJson(
-                  "UNKNOWN_TABLE", FailureRecord.OPERATION_GENERATION, null, timerError));
+      batcher.getFailedRecords().add(FailureRecord.toJson("UNKNOWN_TABLE", null, null, timerError));
     }
 
     writeFailedRecords(c::output);

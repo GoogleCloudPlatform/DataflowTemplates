@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.dofn;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,9 +32,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.GeneratedRecord;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
@@ -96,30 +93,6 @@ public class BatchAndWriteFnTest {
 
     assertEquals(mockWriter, fn.getWriter());
     assertEquals(mockFaker, fn.getFaker());
-  }
-
-  @Test
-  public void testCreateWriter_mySql() {
-    BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.MYSQL, "{}", 1, null, 10, 10, mock(PCollectionView.class));
-    DataWriter writer = fn.createWriter(SinkType.MYSQL, "{}");
-    assertTrue(writer instanceof MySqlDataWriter);
-  }
-
-  @Test
-  public void testCreateWriter_spanner() {
-    BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, "{}", 1, null, 10, 10, mock(PCollectionView.class));
-    DataWriter writer = fn.createWriter(SinkType.SPANNER, "{}");
-    assertTrue(writer instanceof SpannerDataWriter);
-  }
-
-  @Test(expected = NullPointerException.class)
-  public void testCreateWriter_unsupportedThrowsException() {
-    BatchAndWriteFn fn =
-        new BatchAndWriteFn(SinkType.SPANNER, "{}", 1, null, 10, 10, mock(PCollectionView.class));
-    // Passing null or an invalid type not in switch will trigger default case / exception
-    fn.createWriter((SinkType) null, "{}");
   }
 
   @Test
