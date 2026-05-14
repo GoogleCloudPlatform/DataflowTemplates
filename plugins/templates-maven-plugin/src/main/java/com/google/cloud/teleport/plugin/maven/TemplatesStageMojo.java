@@ -1785,8 +1785,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       BackOff backOff =
           FluentBackoff.DEFAULT
-              .withInitialBackoff(org.joda.time.Duration.standardSeconds(10))
-              .withMaxBackoff(org.joda.time.Duration.standardSeconds(60))
+              .withInitialBackoff(org.joda.time.Duration.standardSeconds(5))
+              .withMaxBackoff(org.joda.time.Duration.standardSeconds(30))
               .withMaxRetries(5)
               .backoff();
       Sleeper sleeper = Sleeper.DEFAULT;
@@ -1800,6 +1800,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           lastException = null;
           break;
         } catch (Exception e) {
+          LOG.error(
+              "Error generating SBOM. Retrying after {} seconds...",
+              backOff.nextBackOffMillis() / 1000,
+              e);
           lastException = e;
         }
       } while (BackOffUtils.next(sleeper, backOff));
