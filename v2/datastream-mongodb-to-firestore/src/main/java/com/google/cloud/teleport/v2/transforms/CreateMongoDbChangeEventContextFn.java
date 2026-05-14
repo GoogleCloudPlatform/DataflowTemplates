@@ -52,9 +52,10 @@ public class CreateMongoDbChangeEventContextFn
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     FailsafeElement<String, String> element = context.element();
     try {
-      JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getPayload());
+      JsonNode originalNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
       MongoDbChangeEventContext changeEventContext =
-          new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
+          new MongoDbChangeEventContext(jsonNode, originalNode, shadowCollectionPrefix);
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
       LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);

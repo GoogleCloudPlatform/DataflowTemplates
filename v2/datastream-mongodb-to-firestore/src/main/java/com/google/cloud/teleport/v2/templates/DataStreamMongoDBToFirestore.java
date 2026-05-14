@@ -1456,13 +1456,6 @@ public class DataStreamMongoDBToFirestore {
         // Handle events wrapped in a changeEvent field (common for reconsumed DLQ records)
         Document innerDoc = Utils.extractInnerEvent(doc);
 
-        // Skip UDF if it has already been processed (e.g. on DLQ retry)
-        Boolean udfProcessed = innerDoc.getBoolean("_metadata_udf_processed");
-        if (udfProcessed != null && udfProcessed) {
-          c.output(BYPASS_UDF_TAG, element);
-          return;
-        }
-
         String changeType = innerDoc.getString(DatastreamConstants.EVENT_CHANGE_TYPE_KEY);
         if (changeType == null) {
           changeType = "";
@@ -1516,10 +1509,17 @@ public class DataStreamMongoDBToFirestore {
         // This ensures we don't write invalid data to the destination.
         Document.parse(transformedData);
 
-        ((ObjectNode) fullEventNode).put(MongoDbChangeEventContext.DATA_COL, transformedData);
+        // Merge the transformed data back into the full event JSON.
+        // The payload of the output FailsafeElement will contain this modified event JSON,
+        // which is used by downstream steps (like writing to Firestore) to process the update.
+        // The originalPayload remains the raw event for safety and DLQ purposes.
+        JsonNode targetNode = Utils.extractInnerEvent(fullEventNode);
+        ((ObjectNode) targetNode).put(MongoDbChangeEventContext.DATA_COL, transformedData);
 
         String modifiedEventJson = OBJECT_MAPPER.writeValueAsString(fullEventNode);
-        c.output(FailsafeElement.of(modifiedEventJson, modifiedEventJson));
+        // Output the element with the preserved original payload and the modified event JSON
+        // containing UDF output.
+        c.output(FailsafeElement.of(element.getOriginalPayload(), modifiedEventJson));
       } catch (Exception e) {
         LOG.error("Error restoring UDF output, exception: {}", e.getMessage(), e);
         FailsafeElement<String, String> failedElement =
@@ -1527,22 +1527,6 @@ public class DataStreamMongoDBToFirestore {
         failedElement.setErrorMessage(e.getMessage());
         failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
         c.output(RESTORE_FAILURE_TAG, failedElement);
-      }
-    }
-  }
-
-  public static class MarkUdfProcessedFn
-      extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-      FailsafeElement<String, String> element = c.element();
-      try {
-        JsonNode node = OBJECT_MAPPER.readTree(element.getPayload());
-        ((ObjectNode) node).put("_metadata_udf_processed", true);
-        String json = OBJECT_MAPPER.writeValueAsString(node);
-        c.output(FailsafeElement.of(json, json));
-      } catch (Exception e) {
-        throw new RuntimeException(e);
       }
     }
   }
@@ -1613,13 +1597,9 @@ public class DataStreamMongoDBToFirestore {
               .get(UDF_SUCCESS_TAG)
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-      // Mark as UDF processed to avoid re-processing on DLQ retries
-      PCollection<FailsafeElement<String, String>> markedOutput =
-          restoredOutput.apply("Mark UDF Processed", ParDo.of(new MarkUdfProcessedFn()));
-
       // Merge the restored UDF output with the events that bypassed the UDF.
       // Both streams now contain the full event JSON in the required format for downstream steps.
-      return PCollectionList.of(markedOutput)
+      return PCollectionList.of(restoredOutput)
           .and(bypassedElements)
           .apply("Merge Streams", Flatten.pCollections());
     }
