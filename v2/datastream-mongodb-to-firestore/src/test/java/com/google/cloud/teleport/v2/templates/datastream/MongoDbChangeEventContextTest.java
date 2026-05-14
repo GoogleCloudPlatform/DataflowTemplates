@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.common.collect.ImmutableMap;
 import org.bson.Document;
@@ -571,5 +572,53 @@ public class MongoDbChangeEventContextTest {
             + "\"isDlqReconsumed\":false,\"_metadata_retry_count\":0}";
 
     assertEquals(jsonString, expectedJson);
+  }
+
+  @Test
+  public void testConstructorWithOriginalEvent() throws JsonProcessingException {
+    // Test that the 3-argument constructor correctly stores separate instances for
+    // the current change event and the original change event.
+    JsonNode originalEvent = insertEvent.deepCopy();
+    ((ObjectNode) insertEvent).put("modified", true);
+
+    MongoDbChangeEventContext context =
+        new MongoDbChangeEventContext(insertEvent, originalEvent, SHADOW_PREFIX);
+
+    // Verify that both current and original events are preserved as passed.
+    assertEquals(insertEvent, context.getChangeEvent());
+    assertEquals(originalEvent, context.getOriginalChangeEvent());
+  }
+
+  @Test
+  public void test2ArgumentConstructorSetsOriginalSameAsCurrent() throws JsonProcessingException {
+    // Test that the 2-argument constructor falls back to setting the original event
+    // to be the same as the current event when no separate original event is provided.
+    MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
+
+    assertEquals(insertEvent, context.getChangeEvent());
+    assertEquals(insertEvent, context.getOriginalChangeEvent());
+  }
+
+  @Test
+  public void testConstructorWithWrappedPayload() throws JsonProcessingException {
+    // Test that the constructor correctly detects and unwraps events that are
+    // wrapped in a DLQ structure (containing "changeEvent" and "dataCollection").
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode wrappedPayload =
+        mapper.readTree(
+            "{\"changeEvent\":{\"_id\":\"{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"op\":\"i\",\"data\":\"{\\\"name\\\":\\\"John\\\"}\",\"_metadata_source\":{\"collection\":\"test_collection\"},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789},\"dataCollection\":\"test\"}");
+
+    MongoDbChangeEventContext context =
+        new MongoDbChangeEventContext(wrappedPayload, SHADOW_PREFIX);
+
+    // Verify that it successfully extracted and unwrapped the inner event.
+    JsonNode extractedEvent = context.getChangeEvent();
+    assertEquals("i", extractedEvent.get("op").asText());
+    assertEquals(
+        "test_collection", extractedEvent.get("_metadata_source").get("collection").asText());
+
+    // Verify that originalChangeEvent is also correctly extracted and unwrapped.
+    JsonNode originalExtractedEvent = context.getOriginalChangeEvent();
+    assertEquals("i", originalExtractedEvent.get("op").asText());
   }
 }
