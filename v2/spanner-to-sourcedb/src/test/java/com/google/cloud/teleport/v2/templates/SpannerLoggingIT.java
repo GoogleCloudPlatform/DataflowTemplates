@@ -15,14 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
 public class SpannerLoggingIT {
 
@@ -31,8 +34,8 @@ public class SpannerLoggingIT {
   @Test
   public void testLoggingPerformance() {
     List<String> statements = new ArrayList<>();
-    for (int i = 0; i < 5000; i++) {
-      statements.add("CREATE TABLE table_" + i + " (id INT64) PRIMARY KEY (id)");
+    for (int i = 1; i <= 5000; i++) {
+      statements.add(String.format("CREATE TABLE table_%d (id INT64 NOT NULL) PRIMARY KEY(id)", i));
     }
     LOG.info("START: Simulating massive log statement...");
     long startTime = System.currentTimeMillis();
