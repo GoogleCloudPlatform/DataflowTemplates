@@ -28,9 +28,12 @@ import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Test;
 import org.neo4j.driver.TransactionConfig;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
+import org.neo4j.importer.v1.pipeline.SourceStep;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
 import org.neo4j.importer.v1.targets.NodeSchema;
 import org.neo4j.importer.v1.targets.NodeTarget;
@@ -73,7 +76,9 @@ public class Neo4jRowWriterTransformTest {
             "a-source", List.of(List.of("placeholder", "for"), List.of("inline", "data")), header);
     var initSchemaFn =
         new Neo4jInitSchemaFn(
-            target, ReportedSourceType.reportedSourceTypeOf(source), () -> connection);
+            new NodeTargetStep(target, Set.of()),
+            ReportedSourceType.reportedSourceTypeOf(new SourceStep(source)),
+            () -> connection);
     @SuppressWarnings("unchecked")
     DoFn<Integer, Integer>.ProcessContext context = mock(DoFn.ProcessContext.class);
     initSchemaFn.processElement(context);

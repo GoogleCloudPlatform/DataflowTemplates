@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
-import static org.neo4j.importer.v1.targets.TargetType.QUERY;
-
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
@@ -26,6 +24,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProviderFactory;
+import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.transforms.VerifyOrResetDatabaseFn;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
@@ -45,18 +44,15 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.actions.Action;
 import org.neo4j.importer.v1.pipeline.ActionStep;
+import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
 import org.neo4j.importer.v1.pipeline.ImportPipeline;
 import org.neo4j.importer.v1.pipeline.ImportStep;
 import org.neo4j.importer.v1.pipeline.SourceStep;
 import org.neo4j.importer.v1.pipeline.TargetStep;
-import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.Target;
 
-public class Neo4jImportPipeline {
+public class Neo4jImportPipelineRunner {
 
   private static final String STARTUP_STEP = "__VERIFY_OR_RESET__";
 
@@ -66,8 +62,6 @@ public class Neo4jImportPipeline {
 
   private final OverlayTokens overlayTokens;
 
-  private final ImportSpecification importSpecification;
-
   private final ImportPipeline pipelineDescription;
 
   private final PipelineRegistry pipelineRegistry;
@@ -76,19 +70,18 @@ public class Neo4jImportPipeline {
 
   private final StepSequence stepSequence;
 
-  public Neo4jImportPipeline(
+  public Neo4jImportPipelineRunner(
       PipelineOptions options,
       String templateVersion,
       ConnectionParams neo4jConnectionConfig,
       OverlayTokens overlayTokens,
-      ImportSpecification importSpecification) {
+      ImportPipeline pipeline) {
 
     this.options = options;
     this.templateVersion = templateVersion;
     this.neo4jConnectionConfig = neo4jConnectionConfig;
     this.overlayTokens = overlayTokens;
-    this.importSpecification = importSpecification;
-    this.pipelineDescription = ImportPipeline.of(importSpecification);
+    this.pipelineDescription = pipeline;
     this.pipelineRegistry = new PipelineRegistry();
     this.stepSequence = new StepSequence();
   }
@@ -129,64 +122,60 @@ public class Neo4jImportPipeline {
     var schema = metadata.getSchema();
     pipelineRegistry.registerSourceContext(
         source.getName(),
-        new SourceContext(name, provider, schema, pipelineRegistry.findDependency(STARTUP_STEP)));
+        new SourceContext(step, provider, schema, pipelineRegistry.findDependency(STARTUP_STEP)));
     pipelineRegistry.registerDependency(step.name(), metadata);
   }
 
   void handleTarget(Pipeline pipeline, TargetStep step) {
-    var target = findTarget(step.name());
-    var source = pipelineRegistry.findSource(step.sourceName());
-    var targetName = target.getName();
-    var sourceRows = querySourceRows(pipeline, source, target);
-
+    var stepName = step.name();
+    var sourceContext = pipelineRegistry.findSourceContext(step.sourceName());
+    var dependencies = resolveDependencies(step);
+    var sourceRows = querySourceRows(pipeline, sourceContext, step);
     PCollection<Long> targetWrite =
         sourceRows
-            .apply("Wait for " + targetName + " dependencies", Wait.on(resolveDependencies(step)))
+            .apply("Wait for %s dependencies".formatted(stepName), Wait.on(dependencies))
             .setCoder(sourceRows.getCoder())
             .apply(
-                "Write " + targetName,
+                "Write %s".formatted(stepName),
                 new Neo4jRowWriterTransform(
-                    importSpecification,
+                    pipelineDescription.configuration(),
+                    ReportedSourceType.reportedSourceTypeOf(sourceContext.step),
                     neo4jConnectionConfig,
                     templateVersion,
                     stepSequence,
-                    target))
-            .apply("Completion " + targetName, Count.globally());
+                    dependencies,
+                    step))
+            .apply("Completion of %s".formatted(stepName), Count.globally());
 
-    pipelineRegistry.registerDependency(targetName, targetWrite);
+    pipelineRegistry.registerDependency(stepName, targetWrite);
   }
 
-  PCollection<Row> querySourceRows(Pipeline pipeline, SourceContext source, Target target) {
-    if (target.getTargetType() == QUERY) {
+  PCollection<Row> querySourceRows(Pipeline pipeline, SourceContext source, TargetStep step) {
+    if (step instanceof CustomQueryTargetStep) {
       return source.getOrCreateRows(pipeline);
     }
+
     var sourceProvider = source.provider();
-    var targetQuerySpec = buildTargetQuerySpec(pipeline, source, target);
+    var targetQuerySpec = buildTargetQuerySpec(pipeline, source, step);
     return pipeline.apply(
-        "Query " + target.getName(),
+        "Query %s".formatted(step.name()),
         // apply transforms, either:
         // - by pushing down changes to SQL (if source supports SQL pushdown)
         // - or by applying them to the reused source rows
         sourceProvider.querySourceRowsForTarget(targetQuerySpec));
   }
 
-  TargetQuerySpec buildTargetQuerySpec(Pipeline pipeline, SourceContext source, Target target) {
+  TargetQuerySpec buildTargetQuerySpec(Pipeline pipeline, SourceContext source, TargetStep step) {
     PCollection<Row> baseRows = null;
     if (!source.provider().supportsSqlPushDown()) {
       // re-use source rows since source query cannot be modified by pushdown
       baseRows = source.getOrCreateRows(pipeline);
     }
-    var specBuilder =
-        new TargetQuerySpecBuilder()
-            .sourceBeamSchema(source.schema())
-            .nullableSourceRows(baseRows)
-            .target(target);
-    if (target instanceof RelationshipTarget relationshipTarget) {
-      specBuilder
-          .startNodeTarget(findNodeTarget(relationshipTarget.getStartNodeReference().getName()))
-          .endNodeTarget(findNodeTarget(relationshipTarget.getEndNodeReference().getName()));
-    }
-    return specBuilder.build();
+    return new TargetQuerySpecBuilder()
+        .sourceBeamSchema(source.schema())
+        .nullableSourceRows(baseRows)
+        .targetStep(step)
+        .build();
   }
 
   void handleAction(Pipeline pipeline, ActionStep step) {
@@ -229,7 +218,7 @@ public class Neo4jImportPipeline {
   }
 
   SourceContext findSourceContext(String name) {
-    return pipelineRegistry.findSource(name);
+    return pipelineRegistry.findSourceContext(name);
   }
 
   private PCollection<Long> checkConnectionOrResetDb(Pipeline pipeline) {
@@ -247,25 +236,6 @@ public class Neo4jImportPipeline {
     return new ActionContext(action, neo4jConnectionConfig, templateVersion);
   }
 
-  private Target findTarget(String targetName) {
-    return importSpecification.getTargets().getAllActive().stream()
-        .filter(target -> target.getName().equals(targetName))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException("Could not find active target: " + targetName));
-  }
-
-  private NodeTarget findNodeTarget(String nodeTargetName) {
-    return importSpecification.getTargets().getNodes().stream()
-        .filter(Target::isActive)
-        .filter(target -> target.getName().equals(nodeTargetName))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "Could not find active node target: " + nodeTargetName));
-  }
-
   private static class PipelineRegistry {
 
     private final Map<String, SourceContext> sources = new HashMap<>();
@@ -280,7 +250,7 @@ public class Neo4jImportPipeline {
       dependencies.put(targetName, completion);
     }
 
-    public SourceContext findSource(String name) {
+    public SourceContext findSourceContext(String name) {
       return sources.get(name);
     }
 
@@ -291,7 +261,7 @@ public class Neo4jImportPipeline {
 
   static final class SourceContext implements Serializable {
 
-    private final String name;
+    private final SourceStep step;
 
     private final SourceProvider provider;
 
@@ -302,8 +272,8 @@ public class Neo4jImportPipeline {
     private PCollection<Row> rows;
 
     SourceContext(
-        String name, SourceProvider provider, Schema schema, PCollection<?> startupDependency) {
-      this.name = name;
+        SourceStep step, SourceProvider provider, Schema schema, PCollection<?> startupDependency) {
+      this.step = step;
       this.provider = provider;
       this.schema = schema;
       this.startupDependency = startupDependency;
@@ -311,6 +281,7 @@ public class Neo4jImportPipeline {
 
     public PCollection<Row> getOrCreateRows(Pipeline pipeline) {
       if (rows == null) {
+        var name = step.name();
         rows =
             pipeline
                 .apply(String.format("Query for source %s", name), provider.querySourceRows(schema))
@@ -335,26 +306,31 @@ public class Neo4jImportPipeline {
       if (!(o instanceof SourceContext that)) {
         return false;
       }
-      return Objects.equals(name, that.name)
+      return Objects.equals(step, that.step)
           && Objects.equals(provider, that.provider)
-          && Objects.equals(schema, that.schema);
+          && Objects.equals(schema, that.schema)
+          && Objects.equals(startupDependency, that.startupDependency)
+          && Objects.equals(rows, that.rows);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(name, provider, schema);
+      return Objects.hash(step, provider, schema, startupDependency, rows);
     }
 
     @Override
     public String toString() {
       return "SourceContext{"
-          + "name='"
-          + name
-          + '\''
+          + "step="
+          + step
           + ", provider="
           + provider
           + ", schema="
           + schema
+          + ", startupDependency="
+          + startupDependency
+          + ", rows="
+          + rows
           + '}';
     }
   }

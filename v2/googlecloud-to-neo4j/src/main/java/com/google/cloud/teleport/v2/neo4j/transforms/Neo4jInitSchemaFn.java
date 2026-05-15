@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.targetType;
+
 import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
@@ -24,8 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.neo4j.driver.TransactionConfig;
-import org.neo4j.importer.v1.targets.EntityTarget;
-import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,32 +35,32 @@ final class Neo4jInitSchemaFn extends DoFn<Integer, Integer> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jInitSchemaFn.class);
 
-  private final Target target;
+  private final TargetStep step;
   private final ReportedSourceType reportedSourceType;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
 
   Neo4jInitSchemaFn(
-      Target target,
+      TargetStep step,
       ReportedSourceType reportedSourceType,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
-    this.target = target;
+    this.step = step;
     this.reportedSourceType = reportedSourceType;
     this.connectionSupplier = connectionSupplier;
   }
 
   @ProcessElement
   public void processElement(ProcessContext context) {
-    initSchema(target, reportedSourceType, connectionSupplier);
+    initSchema(step, reportedSourceType, connectionSupplier);
     context.output(1);
   }
 
   private static void initSchema(
-      Target target,
+      TargetStep step,
       ReportedSourceType reportedSourceType,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
     try (Neo4jConnection connection = connectionSupplier.get()) {
       var capabilities = connection.capabilities();
-      var statements = CypherGenerator.getSchemaStatements((EntityTarget) target, capabilities);
+      var statements = CypherGenerator.getSchemaStatements((EntityTargetStep) step, capabilities);
       if (statements.isEmpty()) {
         return;
       }
@@ -77,7 +79,7 @@ final class Neo4jInitSchemaFn extends DoFn<Integer, Integer> {
                               "source",
                               reportedSourceType.format(),
                               "target-type",
-                              target.getTargetType().name().toLowerCase(Locale.ROOT),
+                              targetType(step).name().toLowerCase(Locale.ROOT),
                               "step",
                               "init-schema")))
                   .build();

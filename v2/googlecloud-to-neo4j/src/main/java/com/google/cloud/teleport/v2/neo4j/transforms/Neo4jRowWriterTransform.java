@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.targetType;
+
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
@@ -22,7 +24,7 @@ import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
@@ -35,9 +37,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.importer.v1.Configuration;
-import org.neo4j.importer.v1.ImportSpecification;
-import org.neo4j.importer.v1.sources.Source;
-import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.neo4j.importer.v1.targets.TargetType;
 
 /** Neo4j write transformation. */
@@ -62,32 +63,42 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   private static final String LEGACY_QUERY_PARALLELISM_SETTING = "custom_query_parallelism";
   private static final Integer DEFAULT_QUERY_PARALLELISM_FACTOR = 1;
 
-  private final ImportSpecification importSpecification;
-  private final Target target;
+  private final Configuration configuration;
+  private final ReportedSourceType reportedSourceType;
+  private final TargetStep step;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
   private final StepSequence targetSequence;
+  private final List<PCollection<?>> dependencies;
 
   public Neo4jRowWriterTransform(
-      ImportSpecification importSpecification,
+      Configuration configuration,
+      ReportedSourceType reportedSourceType,
       ConnectionParams neoConnection,
       String templateVersion,
       StepSequence targetSequence,
-      Target target) {
+      List<PCollection<?>> dependencies,
+      TargetStep step) {
     this(
-        importSpecification,
+        configuration,
+        reportedSourceType,
         targetSequence,
-        target,
+        dependencies,
+        step,
         () -> new Neo4jConnection(neoConnection, templateVersion));
   }
 
   @VisibleForTesting
   Neo4jRowWriterTransform(
-      ImportSpecification importSpecification,
+      Configuration configuration,
+      ReportedSourceType reportedSourceType,
       StepSequence targetSequence,
-      Target target,
+      List<PCollection<?>> dependencies,
+      TargetStep step,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
-    this.importSpecification = importSpecification;
-    this.target = target;
+    this.configuration = configuration;
+    this.reportedSourceType = reportedSourceType;
+    this.dependencies = dependencies;
+    this.step = step;
     this.connectionSupplier = connectionSupplier;
     this.targetSequence = targetSequence;
   }
@@ -95,58 +106,43 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
-    var targetType = target.getTargetType();
-    ReportedSourceType reportedSourceType = determineReportedSourceType();
-
-    Configuration config = importSpecification.getConfiguration();
-
     Neo4jBlockingUnwindFn neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
             reportedSourceType,
-            importSpecification,
-            target,
+            step,
             false,
             "rows",
-            getRowCastingFunction(),
+            DataCastingUtils::rowToNeo4jDataMap,
             connectionSupplier);
 
     PCollection<Row> readyInput = input;
-    if (targetType == TargetType.NODE || targetType == TargetType.RELATIONSHIP) {
+    if (step instanceof EntityTargetStep) {
       var schemaSetupDone =
           input
               .getPipeline()
-              .apply("Schema setup seed " + target.getName(), Create.of(1))
+              .apply("Schema setup seed " + step.name(), Create.of(1))
+              .apply("Wait for schema setup dependencies " + step.name(), Wait.on(dependencies))
               .apply(
-                  "Schema setup " + target.getName(),
-                  ParDo.of(new Neo4jInitSchemaFn(target, reportedSourceType, connectionSupplier)));
+                  "Schema setup " + step.name(),
+                  ParDo.of(new Neo4jInitSchemaFn(step, reportedSourceType, connectionSupplier)));
       readyInput =
           input
-              .apply("Wait for schema setup " + target.getName(), Wait.on(schemaSetupDone))
+              .apply("Wait for schema setup " + step.name(), Wait.on(schemaSetupDone))
               .setCoder(input.getCoder());
     }
 
     return readyInput
         .apply(
             "Create KV pairs",
-            WithKeys.of(ThreadLocalRandomInt.of(parallelismFactor(targetType, config))))
-        .apply("Group into batches", GroupIntoBatches.ofSize(batchSize(targetType, config)))
+            WithKeys.of(
+                ThreadLocalRandomInt.of(parallelismFactor(targetType(step), configuration))))
         .apply(
-            targetSequence.getSequenceNumber(target) + ": Neo4j write " + target.getName(),
+            "Group into batches",
+            GroupIntoBatches.ofSize(batchSize(targetType(step), configuration)))
+        .apply(
+            targetSequence.getSequenceNumber(step) + ": Neo4j write " + step.name(),
             ParDo.of(neo4jUnwindFn))
         .setRowSchema(readyInput.getSchema());
-  }
-
-  private ReportedSourceType determineReportedSourceType() {
-    Source source =
-        importSpecification.getSources().stream()
-            .filter(src -> src.getName().equals(target.getSource()))
-            .findFirst()
-            .get();
-    return ReportedSourceType.reportedSourceTypeOf(source);
-  }
-
-  private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {
-    return (row) -> DataCastingUtils.rowToNeo4jDataMap(row, target);
   }
 
   private static int batchSize(TargetType targetType, Configuration config) {
