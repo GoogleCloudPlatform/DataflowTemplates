@@ -25,10 +25,14 @@ import java.math.BigDecimal;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @AutoValue
 public abstract class Boundary<T extends Serializable>
     implements Serializable, Comparable<Boundary> {
+
+  private static final Logger logger = LoggerFactory.getLogger(Boundary.class);
 
   /** Identifier of the table for a given boundary. */
   abstract TableIdentifier tableIdentifier();
@@ -129,6 +133,32 @@ public abstract class Boundary<T extends Serializable>
    * delta/min-step based comparison for: - Floating-point types (Float, Double) - Source DB type
    * where there is a defined precision Examples: Float(p, d) TODO: Double(p, d).
    */
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
+  }
+
   @VisibleForTesting
   protected boolean areValuesEqual(Object valueA, Object valueB) {
     if (valueA instanceof Float f1 && valueB instanceof Float f2) {
@@ -141,6 +171,19 @@ public abstract class Boundary<T extends Serializable>
       BigDecimal b2 = new BigDecimal(d2.toString());
       return bigDecimalEqual(b1, b2);
     }
+    if (valueA instanceof byte[] b1 && valueB instanceof byte[] b2) {
+      boolean isEqual = java.util.Arrays.equals(b1, b2);
+      logger.info(
+          "[UUID Partitioning / Stage 7: Equality] "
+              + getCallerInfo()
+              + " Evaluated byte[] equality | A: "
+              + bytesToHex(b1)
+              + " vs B: "
+              + bytesToHex(b2)
+              + " -> "
+              + isEqual);
+      return isEqual;
+    }
 
     return Objects.equal(valueA, valueB);
   }
@@ -148,6 +191,50 @@ public abstract class Boundary<T extends Serializable>
   private boolean bigDecimalEqual(BigDecimal b1, BigDecimal b2) {
     BigDecimal diff = b1.subtract(b2).abs();
     return diff.compareTo(decimalStepSize()) < 0;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) {
+      return true;
+    }
+    if (!(obj instanceof Boundary)) {
+      return false;
+    }
+    Boundary<?> that = (Boundary<?>) obj;
+    return Objects.equal(this.tableIdentifier(), that.tableIdentifier())
+        && Objects.equal(this.partitionColumn(), that.partitionColumn())
+        && Objects.equal(this.splitIndex(), that.splitIndex())
+        && areEqualObjectsOrArrays(this.start(), that.start())
+        && areEqualObjectsOrArrays(this.end(), that.end())
+        && Objects.equal(this.boundarySplitter(), that.boundarySplitter())
+        && Objects.equal(this.boundaryTypeMapper(), that.boundaryTypeMapper());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(
+        tableIdentifier(),
+        partitionColumn(),
+        splitIndex(),
+        hashObjectOrArray(start()),
+        hashObjectOrArray(end()),
+        boundarySplitter(),
+        boundaryTypeMapper());
+  }
+
+  private static boolean areEqualObjectsOrArrays(Object a, Object b) {
+    if (a instanceof byte[] b1 && b instanceof byte[] b2) {
+      return java.util.Arrays.equals(b1, b2);
+    }
+    return Objects.equal(a, b);
+  }
+
+  private static int hashObjectOrArray(Object a) {
+    if (a instanceof byte[] b) {
+      return java.util.Arrays.hashCode(b);
+    }
+    return Objects.hashCode(a);
   }
 
   /**

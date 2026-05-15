@@ -541,7 +541,29 @@ public final class JdbcIoWrapper implements IoWrapper {
     return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
   }
 
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
   private static PartitionColumn partitionColumnFromIndexInfo(SourceColumnIndexInfo idxInfo) {
+    if ("uuid".equalsIgnoreCase(idxInfo.columnTypeName())) {
+      logger.info(
+          "[UUID Partitioning / Stage 2: Config Inference] "
+              + getCallerInfo()
+              + " Building runtime PartitionColumn for UUID column: "
+              + idxInfo.columnName());
+    }
     return PartitionColumn.builder()
         .setColumnName(delimitIdentifier(idxInfo.columnName()))
         .setColumnClass(indexTypeToColumnClass(idxInfo))
@@ -550,6 +572,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setNumericScale(idxInfo.numericScale())
         .setDecimalStepSize(idxInfo.decimalStepSize())
         .setDatetimePrecision(idxInfo.datetimePrecision())
+        .setColumnTypeName(idxInfo.columnTypeName())
         .build();
   }
 

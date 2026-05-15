@@ -32,7 +32,8 @@ import org.slf4j.LoggerFactory;
  */
 public class RangePreparedStatementSetter implements PreparedStatementSetter<Range> {
 
-  private ImmutableMap<TableIdentifier, Long> numColumnsMap;
+  private final ImmutableMap<TableIdentifier, Long> numColumnsMap;
+  private final ImmutableMap<TableIdentifier, ImmutableList<PartitionColumn>> partitionColumnsMap;
   private static final Logger logger = LoggerFactory.getLogger(PreparedStatementSetter.class);
 
   public RangePreparedStatementSetter(
@@ -44,6 +45,46 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
                     specification -> specification.tableIdentifier(), // Key Mapper
                     specification -> (long) specification.partitionColumns().size() // Value Mapper
                     ));
+    this.partitionColumnsMap =
+        tableSplitSpecifications.stream()
+            .collect(
+                ImmutableMap.toImmutableMap(
+                    specification -> specification.tableIdentifier(),
+                    specification -> specification.partitionColumns()));
+  }
+
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
+  }
+
+  private static java.util.UUID bytesToUuid(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+    return new java.util.UUID(bb.getLong(), bb.getLong());
   }
 
   /**
@@ -71,14 +112,45 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       throw new RuntimeException("Invalid Range");
     }
     long numColumns = numColumnsMap.get(element.tableIdentifier());
+    ImmutableList<PartitionColumn> partitionColumns =
+        partitionColumnsMap.get(element.tableIdentifier());
     long extraColumns = numColumns - rangeColumns;
     Range range = element;
     for (long i = 0; i < rangeColumns; i++) {
+      PartitionColumn pc = partitionColumns.get((int) i);
+      Object start = range.start();
+      if (start instanceof byte[] bytes && "uuid".equalsIgnoreCase(pc.columnTypeName())) {
+        java.util.UUID uuid = bytesToUuid(bytes);
+        logger.info(
+            "[UUID Partitioning / Stage 5: Query Binding] "
+                + getCallerInfo()
+                + " Table: "
+                + element.tableIdentifier().tableName()
+                + " | Parameter Start: Converted 16-byte Hex "
+                + bytesToHex(bytes)
+                + " -> Native JDBC java.util.UUID: "
+                + uuid);
+        start = uuid;
+      }
+      Object end = range.end();
+      if (end instanceof byte[] bytes && "uuid".equalsIgnoreCase(pc.columnTypeName())) {
+        java.util.UUID uuid = bytesToUuid(bytes);
+        logger.info(
+            "[UUID Partitioning / Stage 5: Query Binding] "
+                + getCallerInfo()
+                + " Table: "
+                + element.tableIdentifier().tableName()
+                + " | Parameter End: Converted 16-byte Hex "
+                + bytesToHex(bytes)
+                + " -> Native JDBC java.util.UUID: "
+                + uuid);
+        end = uuid;
+      }
       preparedStatement.setObject(startParameterIdx++, true /* include column */);
-      preparedStatement.setObject(startParameterIdx++, range.start());
-      preparedStatement.setObject(startParameterIdx++, range.end());
+      preparedStatement.setObject(startParameterIdx++, start);
+      preparedStatement.setObject(startParameterIdx++, end);
       preparedStatement.setObject(startParameterIdx++, range.isLast());
-      preparedStatement.setObject(startParameterIdx++, range.end());
+      preparedStatement.setObject(startParameterIdx++, end);
       range = range.childRange();
     }
     for (long i = 0; i < extraColumns; i++) {

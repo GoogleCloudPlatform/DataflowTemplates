@@ -30,9 +30,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
 public class BoundarySplitterFactory {
+
+  private static final Logger logger = LoggerFactory.getLogger(BoundarySplitterFactory.class);
 
   private static final BigInteger SECONDS_TO_NANOS =
       BigInteger.valueOf(Duration.ofSeconds(1).toNanos());
@@ -64,7 +68,7 @@ public class BoundarySplitterFactory {
               BYTE_ARRAY_CLASS,
               (BoundarySplitter<byte[]>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitBytes(start, end))
+                      splitBytes(start, end, partitionColumn))
           .put(
               Timestamp.class,
               (BoundarySplitter<Timestamp>)
@@ -234,14 +238,130 @@ public class BoundarySplitterFactory {
     return Date.valueOf(LocalDate.ofEpochDay(dateLong));
   }
 
-  private static byte[] splitBytes(byte[] start, byte[] end) {
-    BigInteger startBigInt = (start == null) ? null : new BigInteger(start);
-    BigInteger endBigInt = (end == null) ? null : new BigInteger(end);
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
+  }
+
+  private static byte[] splitBytes(byte[] start, byte[] end, PartitionColumn partitionColumn) {
+    if (start == null && end == null) {
+      return null;
+    }
+    boolean isUuid =
+        partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
+
+    if (isUuid) {
+      int targetLength = (start != null) ? start.length : ((end != null) ? end.length : 16);
+      byte[] actualStart = start;
+      if (actualStart == null) {
+        actualStart = new byte[targetLength];
+      }
+
+      byte[] actualEnd = end;
+      if (actualEnd == null) {
+        actualEnd = new byte[targetLength];
+        java.util.Arrays.fill(actualEnd, (byte) 0xFF);
+      }
+
+      BigInteger startBigInt = new BigInteger(1, actualStart);
+      BigInteger endBigInt = new BigInteger(1, actualEnd);
+      BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+      if (split == null) {
+        return null;
+      }
+      logger.info(
+          "[UUID Partitioning / Stage 4: Splitting] "
+              + getCallerInfo()
+              + " Calculating midpoint for UUID | Target Length: "
+              + targetLength
+              + " | Start Hex: "
+              + bytesToHex(actualStart)
+              + " | End Hex: "
+              + bytesToHex(actualEnd));
+      byte[] alignedResult = toFixedLengthByteArray(split, targetLength);
+      logger.info(
+          "[UUID Partitioning / Stage 4: Splitting] "
+              + getCallerInfo()
+              + " Successfully generated midpoint Hex: "
+              + bytesToHex(alignedResult)
+              + " (Length "
+              + alignedResult.length
+              + ")");
+      return alignedResult;
+    }
+
+    // Standard generic byte array splitting behavior
+    BigInteger startBigInt = (start == null) ? null : new BigInteger(1, start);
+    BigInteger endBigInt = (end == null) ? null : new BigInteger(1, end);
     BigInteger split = splitBigIntegers(startBigInt, endBigInt);
     if (split == null) {
       return null;
     }
+    if (start != null && end != null && start.length == end.length) {
+      return toFixedLengthByteArray(split, start.length);
+    }
     return split.toByteArray();
+  }
+
+  private static byte[] toFixedLengthByteArray(BigInteger bigInt, int expectedLength) {
+    byte[] array = bigInt.toByteArray();
+    if (array.length == expectedLength) {
+      return array;
+    }
+    byte[] result = new byte[expectedLength];
+    if (array.length > expectedLength) {
+      // Truncate leading bytes (e.g. 0x00 sign byte)
+      System.arraycopy(array, array.length - expectedLength, result, 0, expectedLength);
+      logger.info(
+          "[UUID Partitioning / Stage 4: Splitting Alignment] "
+              + getCallerInfo()
+              + " Truncated leading sign byte: "
+              + bytesToHex(array)
+              + " ("
+              + array.length
+              + "B) -> "
+              + bytesToHex(result)
+              + " ("
+              + expectedLength
+              + "B)");
+    } else {
+      // Pad leading zero bytes on the left for small numbers
+      System.arraycopy(array, 0, result, expectedLength - array.length, array.length);
+      logger.info(
+          "[UUID Partitioning / Stage 4: Splitting Alignment] "
+              + getCallerInfo()
+              + " Padded leading zero bytes on left: "
+              + bytesToHex(array)
+              + " ("
+              + array.length
+              + "B) -> "
+              + bytesToHex(result)
+              + " ("
+              + expectedLength
+              + "B)");
+    }
+    return result;
   }
 
   private static String splitStrings(

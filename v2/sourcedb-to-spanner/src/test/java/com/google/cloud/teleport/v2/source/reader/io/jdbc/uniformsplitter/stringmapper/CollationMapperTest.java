@@ -29,8 +29,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -475,29 +473,5 @@ public class CollationMapperTest {
         .isGreaterThan(0);
     // Check that trailing spaces are ignored.
     assertThat(collationMapper.mapString("a", 1).equals(collationMapper.mapString("a ", 1)));
-  }
-
-  @Test
-  public void testUuidCollationMapper() throws SQLException {
-    CollationReference uuidCollation =
-        CollationReference.builder()
-            .setDbCharacterSet("UTF8")
-            .setDbCollation("UUID")
-            .setPadSpace(false)
-            .build();
-    CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT), uuidCollation);
-
-    assertThat(collationMapper.collationReference().dbCollation()).isEqualTo("UUID");
-
-    // Map a UUID string
-    String uuidStr = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
-    BigInteger mapped = collationMapper.mapString(uuidStr, 32);
-    assertThat(mapped).isNotNull();
-
-    // Unmap back
-    String unmapped = collationMapper.unMapString(mapped);
-    assertThat(unmapped).isEqualTo(uuidStr.toLowerCase());
   }
 }

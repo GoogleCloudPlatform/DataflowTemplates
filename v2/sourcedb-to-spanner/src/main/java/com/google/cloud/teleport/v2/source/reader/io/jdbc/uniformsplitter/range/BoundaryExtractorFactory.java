@@ -29,9 +29,13 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Factory to construct {@link BoundaryExtractor} for supported {@link class}. */
 public class BoundaryExtractorFactory {
+
+  private static final Logger logger = LoggerFactory.getLogger(BoundaryExtractorFactory.class);
 
   @FunctionalInterface
   public interface BoundaryDurationExtractor extends Serializable {
@@ -172,8 +176,8 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
-    byte[] start = resultSet.getBytes(1);
-    byte[] end = resultSet.getBytes(2);
+    byte[] start = extractBinaryOrUuidBytes(resultSet, 1);
+    byte[] end = extractBinaryOrUuidBytes(resultSet, 2);
     return Boundary.<byte[]>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
@@ -182,6 +186,61 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(BYTE_ARRAY_CLASS))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
+  }
+
+  private static byte[] extractBinaryOrUuidBytes(ResultSet rs, int colIndex) throws SQLException {
+    java.sql.ResultSetMetaData metaData = null;
+    try {
+      metaData = rs.getMetaData();
+    } catch (Exception e) {
+      // In mocked unit tests, getMetaData() might not be mocked
+    }
+    if (metaData != null && "uuid".equalsIgnoreCase(metaData.getColumnTypeName(colIndex))) {
+      if (rs.getObject(colIndex) == null) {
+        return null;
+      }
+      java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
+      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+      bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+      byte[] rawBytes = bb.array();
+      logger.info(
+          "[UUID Partitioning / Stage 3: Extraction] "
+              + getCallerInfo()
+              + " Intercepted PostgreSQL 'uuid' column at col "
+              + colIndex
+              + " | Retrieved UUID object: "
+              + uuid
+              + " -> Serialized 16-byte Hex: "
+              + bytesToHex(rawBytes));
+      return rawBytes;
+    }
+    return rs.getBytes(colIndex);
   }
 
   private static Boundary<String> fromStrings(

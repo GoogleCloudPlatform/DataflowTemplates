@@ -28,6 +28,8 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implement {@link PreparedStatementSetter} to set {@link PreparedStatement} parameters for getting
@@ -35,6 +37,9 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
  */
 public class ColumnForBoundaryQueryPreparedStatementSetter
     implements PreparedStatementSetter<ColumnForBoundaryQuery> {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(ColumnForBoundaryQueryPreparedStatementSetter.class);
 
   private final ImmutableMap<TableIdentifier, TableSplitSpecification> tableSplitSpecificationMap;
 
@@ -50,6 +55,40 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
             .collect(
                 ImmutableMap.toImmutableMap(
                     TableSplitSpecification::tableIdentifier, Function.identity()));
+  }
+
+  private static String getCallerInfo() {
+    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+      if (element.getClassName().endsWith("Test")) {
+        return "["
+            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
+            + "."
+            + element.getMethodName()
+            + ":"
+            + element.getLineNumber()
+            + "]";
+      }
+    }
+    return "[Worker/Pipeline]";
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
+  }
+
+  private static java.util.UUID bytesToUuid(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+    return new java.util.UUID(bb.getLong(), bb.getLong());
   }
 
   /**
@@ -86,11 +125,41 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
         preparedStatement.setObject(parameterIdx++, null);
       } else if (parentRanges.containsKey(partitionColumn.columnName())) {
         Range rangeForColumn = parentRanges.get(partitionColumn.columnName());
+        Object start = rangeForColumn.start();
+        if (start instanceof byte[] bytes
+            && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName())) {
+          java.util.UUID uuid = bytesToUuid(bytes);
+          logger.info(
+              "[UUID Partitioning / Stage 5: Boundary Query] "
+                  + getCallerInfo()
+                  + " Table: "
+                  + element.tableIdentifier().tableName()
+                  + " | Parameter Start: Converted 16-byte Hex "
+                  + bytesToHex(bytes)
+                  + " -> Native JDBC java.util.UUID: "
+                  + uuid);
+          start = uuid;
+        }
+        Object end = rangeForColumn.end();
+        if (end instanceof byte[] bytes
+            && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName())) {
+          java.util.UUID uuid = bytesToUuid(bytes);
+          logger.info(
+              "[UUID Partitioning / Stage 5: Boundary Query] "
+                  + getCallerInfo()
+                  + " Table: "
+                  + element.tableIdentifier().tableName()
+                  + " | Parameter End: Converted 16-byte Hex "
+                  + bytesToHex(bytes)
+                  + " -> Native JDBC java.util.UUID: "
+                  + uuid);
+          end = uuid;
+        }
         preparedStatement.setObject(parameterIdx++, true); // Enabled
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.start());
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+        preparedStatement.setObject(parameterIdx++, start);
+        preparedStatement.setObject(parameterIdx++, end);
         preparedStatement.setObject(parameterIdx++, rangeForColumn.isLast());
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+        preparedStatement.setObject(parameterIdx++, end);
       } else {
         // For other partition columns outside the parent path, they are effectively disabled.
         preparedStatement.setObject(parameterIdx++, false); // Disabled

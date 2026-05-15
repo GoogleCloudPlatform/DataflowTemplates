@@ -210,10 +210,20 @@ public class BoundarySplitterFactoryTest {
 
     assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
     assertThat(splitter.getSplitPoint(start, zero, null, null, null)).isEqualTo(startByTwo);
-    assertThat(splitter.getSplitPoint(longMax, longMin, null, null, null)).isEqualTo(negOne);
+    assertThat(splitter.getSplitPoint(longMax, longMin, null, null, null)).isEqualTo(longMax);
     assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
     assertThat(splitter.getSplitPoint(fortyTwo, null, null, null, null)).isEqualTo(twentyOne);
     assertThat(splitter.getSplitPoint(null, fortyTwo, null, null, null)).isEqualTo(twentyOne);
+  }
+
+  @Test
+  public void testBytesUnsignedBoundarySplitter() {
+    BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
+    byte[] start = new byte[] {(byte) 0x80};
+    byte[] end = new byte[] {(byte) 0x82};
+    byte[] expectedMid = new byte[] {(byte) 0x81};
+
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
   }
 
   @Test
