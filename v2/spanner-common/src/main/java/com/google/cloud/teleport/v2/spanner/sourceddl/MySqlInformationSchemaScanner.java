@@ -108,7 +108,7 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
     List<SourceColumn> columns = new ArrayList<>();
     String query =
         String.format(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = '%s' AND table_name = '%s' "
@@ -118,10 +118,11 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
     try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(query)) {
       while (rs.next()) {
+        String colType = rs.getString("column_type");
         SourceColumn.Builder columnBuilder =
             SourceColumn.builder(sourceType)
                 .name(rs.getString("column_name"))
-                .type(rs.getString("data_type"))
+                .type(colType != null ? colType : rs.getString("data_type"))
                 .isNullable("YES".equals(rs.getString("is_nullable")))
                 .isPrimaryKey("PRI".equals(rs.getString("column_key")));
         String generationExpression = rs.getString("generation_expression");
@@ -131,6 +132,8 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
         String maxLength = rs.getString("character_maximum_length");
         if (maxLength != null) {
           columnBuilder.size(Long.parseLong(maxLength));
+        } else if (colType != null && colType.toLowerCase().contains("tinyint(1)")) {
+          columnBuilder.size(1L);
         }
 
         String precision = rs.getString("numeric_precision");

@@ -98,19 +98,6 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
       @Element DataGeneratorTable table, OutputReceiver<KV<String, Row>> out) {
     List<DataGeneratorColumn> pkColumns = primaryKeyColumns(table);
 
-    if (pkColumns.isEmpty()) {
-      // A table without a PK cannot have a unique row key synthesised for it. This is
-      // a
-      // schema-definition problem, so log + skip rather than emit an empty Row (which
-      // would
-      // corrupt downstream joins on the PK).
-      LOG.error(
-          "Table {} has no primary-key columns, or its PK list references unknown columns — "
-              + "skipping PK generation.",
-          table.name());
-      return;
-    }
-
     Schema schema = schemaCache.computeIfAbsent(table.name(), k -> buildSchema(pkColumns));
     Row.Builder rowBuilder = Row.withSchema(schema);
 
@@ -133,17 +120,7 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
             .collect(ImmutableMap.toImmutableMap(DataGeneratorColumn::name, col -> col));
 
     return table.primaryKeys().stream()
-        .filter(
-            pkName -> {
-              if (!byName.containsKey(pkName)) {
-                LOG.error(
-                    "PK column {} declared on table {} not present in columns list — dropping.",
-                    pkName,
-                    table.name());
-                return false;
-              }
-              return true;
-            })
+        .filter(byName::containsKey)
         .map(byName::get)
         .collect(Collectors.toList());
   }
