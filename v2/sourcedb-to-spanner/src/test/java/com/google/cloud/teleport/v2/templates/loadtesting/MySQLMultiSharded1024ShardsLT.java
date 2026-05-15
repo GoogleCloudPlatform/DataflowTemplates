@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
-import static com.google.cloud.teleport.v2.templates.loadtesting.CloudSqlShardOrchestrator.MYSQL_8_0;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.MYSQL_8_0;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
@@ -45,6 +45,8 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -101,7 +103,7 @@ public class MySQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase {
 
     orchestrator =
         new CloudSqlShardOrchestrator(
-            SQLDialect.MYSQL, MYSQL_8_0, project, region, gcsResourceManager);
+            DatabaseType.MYSQL, MYSQL_8_0, project, region, gcsResourceManager);
   }
 
   @After
