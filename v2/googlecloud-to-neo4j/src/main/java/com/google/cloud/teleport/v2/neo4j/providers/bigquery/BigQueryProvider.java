@@ -36,7 +36,6 @@ public class BigQueryProvider implements SourceProvider {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryProvider.class);
   private final BigQuerySource source;
   private final StepSequence targetSequence;
-  private OverlayTokens overlayTokens;
 
   public BigQueryProvider(BigQuerySource source, StepSequence targetSequence) {
     this.source = source;
@@ -44,9 +43,7 @@ public class BigQueryProvider implements SourceProvider {
   }
 
   @Override
-  public void configure(OverlayTokens overlayTokens) {
-    this.overlayTokens = overlayTokens;
-  }
+  public void configure(OverlayTokens overlayTokens) {}
 
   @Override
   public boolean supportsSqlPushDown() {
@@ -75,7 +72,6 @@ public class BigQueryProvider implements SourceProvider {
    * @return helper object includes metadata and SQL
    */
   public BigQuerySpec getMetadataQueryBeamSpec() {
-
     String baseQuery = source.getQuery();
 
     ////////////////////////////
@@ -115,17 +111,12 @@ public class BigQueryProvider implements SourceProvider {
    */
   private BigQuerySpec getTargetQueryBeamSpec(TargetQuerySpec spec) {
     var sourceFields = ModelUtils.getBeamFieldSet(spec.getSourceBeamSchema());
-    var target = spec.getTarget();
-    var startNodeTarget = spec.getStartNodeTarget();
-    var endNodeTarget = spec.getEndNodeTarget();
-    String sql =
-        ModelUtils.getTargetSql(
-            target, startNodeTarget, endNodeTarget, sourceFields, true, source.getQuery());
+    var step = spec.getTargetStep();
+    String sql = ModelUtils.getTargetSql(step, sourceFields, true, source.getQuery());
     return new BigQuerySpecBuilder()
-        .readDescription(
-            targetSequence.getSequenceNumber(target) + ": Read from BQ " + target.getName())
+        .readDescription(targetSequence.getSequenceNumber(step) + ": Read from BQ " + step.name())
         .castDescription(
-            targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
+            targetSequence.getSequenceNumber(step) + ": Cast to BeamRow " + step.name())
         .sql(sql)
         .queryTempProject(source.getQueryTempProject())
         .queryTempDataset(source.getQueryTempDataset())

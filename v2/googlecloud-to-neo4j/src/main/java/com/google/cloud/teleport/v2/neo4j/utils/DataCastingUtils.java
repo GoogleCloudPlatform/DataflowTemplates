@@ -48,8 +48,7 @@ import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.ReadableInstant;
-import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,10 +75,9 @@ public class DataCastingUtils {
    */
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
-  public static List<Object> sourceTextToTargetObjects(
-      Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
+  public static List<Object> sourceTextToTargetObjects(Row row, TargetStep step) {
     List<Object> castVals = new ArrayList<>();
-    Schema targetSchema = BeamUtils.toBeamSchema(target, startNodeTarget, endNodeTarget);
+    Schema targetSchema = BeamUtils.toBeamSchema(step);
 
     List<String> missingFields = new ArrayList<>();
 
@@ -183,7 +181,7 @@ public class DataCastingUtils {
     return castVals;
   }
 
-  public static Map<String, Object> rowToNeo4jDataMap(Row row, Target target) {
+  public static Map<String, Object> rowToNeo4jDataMap(Row row) {
     Map<String, Object> map = new HashMap<>();
     for (Schema.Field field : row.getSchema().getFields()) {
       String fieldName = field.getName();

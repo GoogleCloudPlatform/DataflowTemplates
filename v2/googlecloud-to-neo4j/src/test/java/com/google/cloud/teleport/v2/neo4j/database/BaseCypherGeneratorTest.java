@@ -22,7 +22,10 @@ import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.neo4j.importer.v1.ImportSpecification;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.ImportPipeline;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.TargetType;
 
@@ -47,19 +50,26 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
     return JobSpecMapper.parse(SPEC_PATH + specFile, new OverlayTokens(Map.of()));
   }
 
-  protected void assertImportStatementOf(ImportSpecification spec, String expectedCypher) {
+  protected void assertImportOfSingleRelationship(ImportSpecification spec, String expectedCypher) {
     final Neo4jCapabilities beforeCypher5Possibility = new Neo4jCapabilities("5.20", "community");
-    var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
+    var relationships = spec.getTargets().getRelationships();
+    assertThat(relationships).hasSize(1);
+    var relationshipTarget = relationships.iterator().next();
     var actualCypher =
-        CypherGenerator.getImportStatement(spec, relationshipTarget, beforeCypher5Possibility);
+        CypherGenerator.getImportStatement(
+            matchingStep(spec, relationshipTarget), beforeCypher5Possibility);
     assertThat(actualCypher).isEqualTo(expectedCypher);
   }
 
-  protected void assertCypherPrefixOf(ImportSpecification spec, String expectedCypherPrefix) {
+  protected void assertCypherPrefixOfSingleRelationship(
+      ImportSpecification spec, String expectedCypherPrefix) {
     final Neo4jCapabilities afterCypher5Possibility = new Neo4jCapabilities("5.21", "community");
-    var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
+    var relationships = spec.getTargets().getRelationships();
+    assertThat(relationships).hasSize(1);
+    var relationshipTarget = relationships.iterator().next();
     var actualCypher =
-        CypherGenerator.getImportStatement(spec, relationshipTarget, afterCypher5Possibility);
+        CypherGenerator.getImportStatement(
+            matchingStep(spec, relationshipTarget), afterCypher5Possibility);
     assertThat(actualCypher).startsWith(expectedCypherPrefix);
   }
 
@@ -72,7 +82,10 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
                     target.getTargetType() == TargetType.NODE
                         || target.getTargetType() == TargetType.RELATIONSHIP)
             .map(target -> (EntityTarget) target)
-            .flatMap(target -> CypherGenerator.getSchemaStatements(target, capabilities).stream())
+            .flatMap(
+                target ->
+                    CypherGenerator.getSchemaStatements(matchingStep(spec, target), capabilities)
+                        .stream())
             .collect(Collectors.toSet());
 
     assertThat(statements).isEqualTo(expectedStatements);
@@ -80,5 +93,16 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
 
   protected Neo4jCapabilities capabilitiesFor(String neo4jVersion, String neo4jEdition) {
     return new Neo4jCapabilities(neo4jVersion, neo4jEdition);
+  }
+
+  protected static EntityTargetStep matchingStep(ImportSpecification spec, EntityTarget target) {
+    var result =
+        StreamSupport.stream(ImportPipeline.of(spec).spliterator(), false)
+            .filter(step -> step.name().equals(target.getName()))
+            .filter(step -> step instanceof EntityTargetStep)
+            .map(step -> (EntityTargetStep) step)
+            .findFirst();
+    assertThat(result).isPresent();
+    return result.get();
   }
 }

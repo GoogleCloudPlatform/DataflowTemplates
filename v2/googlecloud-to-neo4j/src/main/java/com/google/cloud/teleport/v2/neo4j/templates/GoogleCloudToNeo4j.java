@@ -32,6 +32,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.importer.v1.pipeline.ImportPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,8 +107,12 @@ public class GoogleCloudToNeo4j {
     var neo4jConnectionConfig = readConnectionConfiguration(options);
     var importSpecification = JobSpecMapper.parse(options.getJobSpecUri(), overlayTokens);
     var importPipeline =
-        new Neo4jImportPipeline(
-            options, templateVersion, neo4jConnectionConfig, overlayTokens, importSpecification);
+        new Neo4jImportPipelineRunner(
+            options,
+            templateVersion,
+            neo4jConnectionConfig,
+            overlayTokens,
+            ImportPipeline.of(importSpecification));
     importPipeline.run();
   }
 
