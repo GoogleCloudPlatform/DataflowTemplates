@@ -36,7 +36,7 @@ public class OverlayTokenParser {
   }
 
   private static Map<String, String> doParse(String jsonTokens) {
-    if (StringUtils.isEmpty(jsonTokens)) {
+    if (StringUtils.isBlank(jsonTokens)) {
       return Map.of();
     }
     LOG.debug("Parsing overlay tokens: {}", jsonTokens);
