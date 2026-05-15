@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
-import static com.google.cloud.teleport.v2.templates.loadtesting.CloudSqlShardOrchestrator.POSTGRES_14;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.POSTGRES_14;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
@@ -45,6 +45,8 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -102,7 +104,7 @@ public class PostgreSQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase 
 
     orchestrator =
         new CloudSqlShardOrchestrator(
-            SQLDialect.POSTGRESQL, POSTGRES_14, project, region, gcsResourceManager);
+            DatabaseType.POSTGRESQL, POSTGRES_14, project, region, gcsResourceManager);
   }
 
   @After
