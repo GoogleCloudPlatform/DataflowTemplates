@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.transforms.VerifyOrResetDatabaseFn;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
