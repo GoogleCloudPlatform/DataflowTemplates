@@ -259,7 +259,7 @@ public class Neo4jImportPipelineRunner {
     }
   }
 
-  static final class SourceContext implements Serializable {
+  static final class SourceContext {
 
     private final SourceStep step;
 
