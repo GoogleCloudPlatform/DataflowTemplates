@@ -407,6 +407,68 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
+  public void testFromUuidBinary() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col_uuid")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .setColumnTypeName("uuid")
+            .build();
+    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
+
+    // 1. Standard UUID Strings
+    when(mockResultSet.next()).thenReturn(true);
+    String minUuidStr = "00000000-0000-0000-0000-000000000000";
+    String maxUuidStr = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+    doReturn(minUuidStr).when(mockResultSet).getObject(1);
+    doReturn(minUuidStr).when(mockResultSet).getString(1);
+    doReturn(maxUuidStr).when(mockResultSet).getObject(2);
+    doReturn(maxUuidStr).when(mockResultSet).getString(2);
+
+    Boundary<byte[]> boundaryStr =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    byte[] expectedZero = new byte[16];
+    byte[] expectedMax = new byte[16];
+    java.util.Arrays.fill(expectedMax, (byte) 0xFF);
+    assertThat(java.util.Arrays.equals(boundaryStr.start(), expectedZero)).isTrue();
+    assertThat(java.util.Arrays.equals(boundaryStr.end(), expectedMax)).isTrue();
+
+    // 2. PGobject UUIDs
+    when(mockResultSet.next()).thenReturn(true);
+    org.postgresql.util.PGobject pgObjMin = new org.postgresql.util.PGobject();
+    pgObjMin.setType("uuid");
+    pgObjMin.setValue(minUuidStr);
+    org.postgresql.util.PGobject pgObjMax = new org.postgresql.util.PGobject();
+    pgObjMax.setType("uuid");
+    pgObjMax.setValue(maxUuidStr);
+
+    doReturn(pgObjMin).when(mockResultSet).getObject(1);
+    doReturn(minUuidStr).when(mockResultSet).getString(1);
+    doReturn(pgObjMax).when(mockResultSet).getObject(2);
+    doReturn(maxUuidStr).when(mockResultSet).getString(2);
+
+    Boundary<byte[]> boundaryPgObj =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(java.util.Arrays.equals(boundaryPgObj.start(), expectedZero)).isTrue();
+    assertThat(java.util.Arrays.equals(boundaryPgObj.end(), expectedMax)).isTrue();
+
+    // 3. Null boundaries
+    when(mockResultSet.next()).thenReturn(true);
+    doReturn(null).when(mockResultSet).getObject(1);
+    doReturn(null).when(mockResultSet).getObject(2);
+    Boundary<byte[]> boundaryNull =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+  }
+
+  @Test
   public void testFromTimestamp() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();

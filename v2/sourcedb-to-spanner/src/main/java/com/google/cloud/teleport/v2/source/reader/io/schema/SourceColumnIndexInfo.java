@@ -95,8 +95,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer datetimePrecision();
 
-  /** Original database column type name (e.g. 'uuid'). Defaults to null. */
-  @Nullable
+  /** Original database column type name (e.g. 'uuid'). Defaults to empty string. */
   public abstract String columnTypeName();
 
   /**
@@ -105,7 +104,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
    * @return builder.
    */
   public static Builder builder() {
-    return new AutoValue_SourceColumnIndexInfo.Builder().setCardinality(0L).setColumnTypeName(null);
+    return new AutoValue_SourceColumnIndexInfo.Builder().setCardinality(0L).setColumnTypeName("");
   }
 
   @Override
@@ -150,7 +149,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setDatetimePrecision(@Nullable Integer value);
 
-    public abstract Builder setColumnTypeName(@Nullable String value);
+    public abstract Builder setColumnTypeName(String value);
 
     abstract SourceColumnIndexInfo autoBuild();
 

@@ -119,6 +119,9 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
     for (long i = 0; i < rangeColumns; i++) {
       PartitionColumn pc = partitionColumns.get((int) i);
       Object start = range.start();
+      // Convert raw byte[] back to native java.util.UUID before setting parameter.
+      // Binding a raw byte[] directly causes PostgreSQL JDBC to send BYTEA, triggering
+      // SQL type mismatch errors (ERROR: operator does not exist: uuid >= bytea).
       if (start instanceof byte[] bytes && "uuid".equalsIgnoreCase(pc.columnTypeName())) {
         java.util.UUID uuid = bytesToUuid(bytes);
         logger.info(

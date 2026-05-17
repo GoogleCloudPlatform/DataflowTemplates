@@ -61,8 +61,7 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer datetimePrecision();
 
-  /** Original database column type name (e.g. 'uuid'). Defaults to null. */
-  @Nullable
+  /** Original database column type name (e.g. 'uuid'). Defaults to empty string. */
   public abstract String columnTypeName();
 
   public static Builder builder() {
@@ -72,7 +71,7 @@ public abstract class PartitionColumn implements Serializable {
         .setNumericScale(null)
         .setDecimalStepSize(null)
         .setDatetimePrecision(null)
-        .setColumnTypeName(null);
+        .setColumnTypeName("");
   }
 
   public abstract Builder toBuilder();
@@ -94,7 +93,7 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setDatetimePrecision(Integer value);
 
-    public abstract Builder setColumnTypeName(@Nullable String value);
+    public abstract Builder setColumnTypeName(String value);
 
     abstract PartitionColumn autoBuild();
 

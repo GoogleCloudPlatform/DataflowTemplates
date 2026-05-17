@@ -35,7 +35,6 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.util.Arrays;
 import javax.sql.DataSource;
 import org.junit.FixMethodOrder;
@@ -359,12 +358,8 @@ public class BinaryUUIDBehaviorTest {
   @Test
   public void testStage3BoundaryExtraction() throws Exception {
     ResultSet mockResultSet = mock(ResultSet.class);
-    ResultSetMetaData mockMetaData = mock(ResultSetMetaData.class);
 
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getMetaData()).thenReturn(mockMetaData);
-    when(mockMetaData.getColumnTypeName(1)).thenReturn("uuid");
-    when(mockMetaData.getColumnTypeName(2)).thenReturn("uuid");
 
     java.util.UUID minUuid = new java.util.UUID(0L, 0L);
     java.util.UUID maxUuid = new java.util.UUID(-1L, -1L);

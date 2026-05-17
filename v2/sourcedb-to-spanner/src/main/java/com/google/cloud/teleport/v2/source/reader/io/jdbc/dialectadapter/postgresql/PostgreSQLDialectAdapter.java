@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -43,7 +44,9 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -82,6 +85,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
   private final PostgreSQLVersion version;
+  private final Set<ColumnKey> uuidColumnKeys = ConcurrentHashMap.newKeySet();
 
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
@@ -202,6 +206,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
+          if ("uuid".equalsIgnoreCase(columnType)) {
+            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+          }
           final long characterMaximumLength = resultSet.getLong("character_maximum_length");
           boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
           final long numericPrecision = resultSet.getLong("numeric_precision");
@@ -360,35 +367,33 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
           final String typeCategory = resultSet.getString("type_category");
-          // Only query 'type_name' when category is 'U' (user-defined) to preserve exact mock
-          // sequence in tests
-          final String uuidTypeName =
-              "U".equalsIgnoreCase(typeCategory) ? resultSet.getString("type_name") : null;
-          final String columnTypeName = "uuid".equalsIgnoreCase(uuidTypeName) ? "uuid" : null;
-          if ("uuid".equals(columnTypeName)) {
+          final String typeName = resultSet.getString("type_name");
+          final String columnTypeName = "U".equalsIgnoreCase(typeCategory) ? typeName : "";
+          final String columnName = resultSet.getString("column_name");
+          if ("uuid".equalsIgnoreCase(typeName)) {
             logger.info(
                 "[UUID Partitioning / Stage 1: Discovery] "
                     + getCallerInfo()
                     + " Discovered PostgreSQL 'uuid' column: "
-                    + resultSet.getString("column_name")
+                    + columnName
                     + " on table "
                     + tableName);
+            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
-                  .setColumnName(resultSet.getString("column_name"))
+                  .setColumnName(columnName)
                   .setIndexName(resultSet.getString("index_name"))
                   .setIsUnique(resultSet.getBoolean("is_unique"))
                   .setIsPrimary(resultSet.getBoolean("is_primary"))
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
                   .setColumnTypeName(columnTypeName)
-                  .setIndexType(indexTypeFrom(typeCategory, uuidTypeName));
+                  .setIndexType(indexTypeFrom(typeCategory, columnTypeName));
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
             String charset = resultSet.getString("charset");
-            String typeName = resultSet.getString("type_name");
             Integer typeLength = resultSet.getInt("type_length");
             if (resultSet.wasNull()) {
               typeLength = null;
@@ -494,8 +499,12 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    String selectCol = colName;
+    if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      selectCol = String.format("CAST(%s AS TEXT)", colName);
+    }
     return addWhereClause(
-        String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, tableName),
+        String.format("SELECT MIN(%s), MAX(%s) FROM %s", selectCol, selectCol, tableName),
         partitionColumns);
   }
 
@@ -595,5 +604,39 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         && (upperTypeName.equals("CHARACTER")
             || upperTypeName.equals("CHAR")
             || upperTypeName.equals("BPCHAR"));
+  }
+
+  private static final class ColumnKey implements Serializable {
+    private final String tableName;
+    private final String columnName;
+
+    public ColumnKey(String tableName, String columnName) {
+      this.tableName = clean(tableName);
+      this.columnName = clean(columnName);
+    }
+
+    private static String clean(String identifier) {
+      if (identifier == null) {
+        return "";
+      }
+      return identifier.replace("\"", "").toLowerCase();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ColumnKey)) {
+        return false;
+      }
+      ColumnKey that = (ColumnKey) o;
+      return tableName.equals(that.tableName) && columnName.equals(that.columnName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tableName, columnName);
+    }
   }
 }

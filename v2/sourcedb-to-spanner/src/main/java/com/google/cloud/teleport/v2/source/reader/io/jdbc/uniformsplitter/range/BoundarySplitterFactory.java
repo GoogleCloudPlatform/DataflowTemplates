@@ -272,42 +272,34 @@ public class BoundarySplitterFactory {
         partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
 
     if (isUuid) {
-      int targetLength = (start != null) ? start.length : ((end != null) ? end.length : 16);
-      byte[] actualStart = start;
-      if (actualStart == null) {
-        actualStart = new byte[targetLength];
-      }
-
-      byte[] actualEnd = end;
-      if (actualEnd == null) {
+      final int targetLength = (start != null) ? start.length : ((end != null) ? end.length : 16);
+      final byte[] actualStart = (start != null) ? start : new byte[targetLength];
+      final byte[] actualEnd;
+      if (end != null) {
+        actualEnd = end;
+      } else {
         actualEnd = new byte[targetLength];
         java.util.Arrays.fill(actualEnd, (byte) 0xFF);
       }
 
-      BigInteger startBigInt = new BigInteger(1, actualStart);
-      BigInteger endBigInt = new BigInteger(1, actualEnd);
-      BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+      final BigInteger startBigInt = new BigInteger(1, actualStart);
+      final BigInteger endBigInt = new BigInteger(1, actualEnd);
+      final BigInteger split = splitBigIntegers(startBigInt, endBigInt);
       if (split == null) {
         return null;
       }
-      logger.info(
-          "[UUID Partitioning / Stage 4: Splitting] "
-              + getCallerInfo()
-              + " Calculating midpoint for UUID | Target Length: "
-              + targetLength
-              + " | Start Hex: "
-              + bytesToHex(actualStart)
-              + " | End Hex: "
-              + bytesToHex(actualEnd));
-      byte[] alignedResult = toFixedLengthByteArray(split, targetLength);
-      logger.info(
-          "[UUID Partitioning / Stage 4: Splitting] "
-              + getCallerInfo()
-              + " Successfully generated midpoint Hex: "
-              + bytesToHex(alignedResult)
-              + " (Length "
-              + alignedResult.length
-              + ")");
+      logger.debug(
+          "[UUID Partitioning / Stage 4: Splitting] {} Calculating midpoint for UUID | Target Length: {} | Start Hex: {} | End Hex: {}",
+          getCallerInfo(),
+          targetLength,
+          bytesToHex(actualStart),
+          bytesToHex(actualEnd));
+      final byte[] alignedResult = toFixedLengthByteArray(split, targetLength);
+      logger.debug(
+          "[UUID Partitioning / Stage 4: Splitting] {} Successfully generated midpoint Hex: {} (Length {})",
+          getCallerInfo(),
+          bytesToHex(alignedResult),
+          alignedResult.length);
       return alignedResult;
     }
 
@@ -324,43 +316,64 @@ public class BoundarySplitterFactory {
     return split.toByteArray();
   }
 
+  /**
+   * Formats a {@link BigInteger} into a byte array of exactly {@code expectedLength}, handling
+   * two's complement serialization edge cases to maintain precise lexicographical byte alignment.
+   *
+   * <p>Specifically, this method handles the following critical edge cases:
+   *
+   * <ul>
+   *   <li><b>The Sign-Byte Extension (e.g., 17-byte array for UUIDs):</b> When the calculated
+   *       midpoint has its highest bit set to 1 (e.g., start =
+   *       80000000-0000-0000-0000-000000000000, end = ffffffff-ffff-ffff-ffff-ffffffffffff), {@code
+   *       BigInteger.toByteArray()} prepends a {@code 0x00} sign byte to prevent it from being
+   *       interpreted as a negative number. This logic safely truncates this leading sign byte to
+   *       extract the remaining 16 bytes perfectly.
+   *   <li><b>The Leading Zeros Truncation (Under 16 bytes):</b> For a midpoint very close to zero
+   *       (e.g., start = 00000000-0000-0000-0000-000000000000, end =
+   *       00000000-0000-0000-0000-000000000020, midpoint = ...10), {@code BigInteger.toByteArray()}
+   *       strips leading zeros, returning an array as short as 1 byte. This logic prepends leading
+   *       zero-bytes to reconstruct the 16-byte UUID safely and prevent downstream {@link
+   *       java.nio.BufferUnderflowException}.
+   *   <li><b>The Absolute Zero UUID:</b> For start = 00000000-0000-0000-0000-000000000000 and end =
+   *       00000000-0000-0000-0000-000000000000, the resulting byte array length is exactly 1
+   *       (containing {@code 0x00}). This logic correctly pads it out to 16 bytes of zeros.
+   * </ul>
+   */
   private static byte[] toFixedLengthByteArray(BigInteger bigInt, int expectedLength) {
-    byte[] array = bigInt.toByteArray();
+    final byte[] array = bigInt.toByteArray();
     if (array.length == expectedLength) {
       return array;
     }
-    byte[] result = new byte[expectedLength];
     if (array.length > expectedLength) {
-      // Truncate leading bytes (e.g. 0x00 sign byte)
-      System.arraycopy(array, array.length - expectedLength, result, 0, expectedLength);
-      logger.info(
-          "[UUID Partitioning / Stage 4: Splitting Alignment] "
-              + getCallerInfo()
-              + " Truncated leading sign byte: "
-              + bytesToHex(array)
-              + " ("
-              + array.length
-              + "B) -> "
-              + bytesToHex(result)
-              + " ("
-              + expectedLength
-              + "B)");
-    } else {
-      // Pad leading zero bytes on the left for small numbers
-      System.arraycopy(array, 0, result, expectedLength - array.length, array.length);
-      logger.info(
-          "[UUID Partitioning / Stage 4: Splitting Alignment] "
-              + getCallerInfo()
-              + " Padded leading zero bytes on left: "
-              + bytesToHex(array)
-              + " ("
-              + array.length
-              + "B) -> "
-              + bytesToHex(result)
-              + " ("
-              + expectedLength
-              + "B)");
+      return truncateLeadingSignByte(array, expectedLength);
     }
+    return padLeadingZeroBytes(array, expectedLength);
+  }
+
+  private static byte[] truncateLeadingSignByte(byte[] array, int expectedLength) {
+    final byte[] result = new byte[expectedLength];
+    System.arraycopy(array, array.length - expectedLength, result, 0, expectedLength);
+    logger.debug(
+        "[UUID Partitioning / Stage 4: Splitting Alignment] {} Truncated leading sign byte: {} ({}B) -> {} ({}B)",
+        getCallerInfo(),
+        bytesToHex(array),
+        array.length,
+        bytesToHex(result),
+        expectedLength);
+    return result;
+  }
+
+  private static byte[] padLeadingZeroBytes(byte[] array, int expectedLength) {
+    final byte[] result = new byte[expectedLength];
+    System.arraycopy(array, 0, result, expectedLength - array.length, array.length);
+    logger.debug(
+        "[UUID Partitioning / Stage 4: Splitting Alignment] {} Padded leading zero bytes on left: {} ({}B) -> {} ({}B)",
+        getCallerInfo(),
+        bytesToHex(array),
+        array.length,
+        bytesToHex(result),
+        expectedLength);
     return result;
   }
 

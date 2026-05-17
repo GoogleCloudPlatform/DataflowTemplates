@@ -334,14 +334,8 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(true)
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.STRING)
-                    .setCollationReference(
-                        CollationReference.builder()
-                            .setDbCharacterSet("UTF8")
-                            .setDbCollation("UUID")
-                            .setPadSpace(false)
-                            .build())
-                    .setStringMaxLength(32)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.BINARY)
+                    .setColumnTypeName("uuid")
                     .build()));
 
     SourceColumnIndexInfo info = indexes.get("my_schema.table1").get(0);
@@ -351,14 +345,13 @@ public class PostgreSQLDialectAdapterTest {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
             .setColumnName(info.columnName())
-            .setColumnClass(String.class)
-            .setStringCollation(info.collationReference())
-            .setStringMaxLength(info.stringMaxLength())
+            .setColumnClass(byte[].class)
+            .setColumnTypeName(info.columnTypeName())
             .build();
 
     assertThat(partitionColumn).isNotNull();
-    assertThat(partitionColumn.stringCollation()).isEqualTo(info.collationReference());
-    assertThat(partitionColumn.stringMaxLength()).isEqualTo(32);
+    assertThat(partitionColumn.columnClass()).isEqualTo(byte[].class);
+    assertThat(partitionColumn.columnTypeName()).isEqualTo("uuid");
 
     // 3. Assert that getBoundaryQuery correctly wraps this discovered UUID column in a CAST
     // statement
@@ -369,12 +362,12 @@ public class PostgreSQLDialectAdapterTest {
     // 4. Assert that getReadQuery generates the correct query for UUID column
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_uuid")))
         .isEqualTo(
-            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= CAST(? AS uuid) AND (col_uuid < CAST(? AS uuid) OR (? = TRUE AND col_uuid = CAST(? AS uuid)))))");
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
 
     // 5. Assert that getCountQuery generates the correct query for UUID column
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_uuid"), 1000L))
         .isEqualTo(
-            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= CAST(? AS uuid) AND (col_uuid < CAST(? AS uuid) OR (? = TRUE AND col_uuid = CAST(? AS uuid)))))");
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
   }
 
   @Test

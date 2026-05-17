@@ -176,8 +176,10 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
-    byte[] start = extractBinaryOrUuidBytes(resultSet, 1);
-    byte[] end = extractBinaryOrUuidBytes(resultSet, 2);
+    boolean isUuid =
+        partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
+    byte[] start = isUuid ? extractUuidBytes(resultSet, 1) : resultSet.getBytes(1);
+    byte[] end = isUuid ? extractUuidBytes(resultSet, 2) : resultSet.getBytes(2);
     return Boundary.<byte[]>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
@@ -214,33 +216,53 @@ public class BoundaryExtractorFactory {
     return sb.toString();
   }
 
-  private static byte[] extractBinaryOrUuidBytes(ResultSet rs, int colIndex) throws SQLException {
-    java.sql.ResultSetMetaData metaData = null;
-    try {
-      metaData = rs.getMetaData();
-    } catch (Exception e) {
-      // In mocked unit tests, getMetaData() might not be mocked
+  /**
+   * Extracts exactly 16 raw binary bytes from the ResultSet for PostgreSQL UUID columns.
+   *
+   * <p>In standard JDBC with PostgreSQL wire protocol v3.0, calling {@code rs.getBytes()} on a UUID
+   * column returns 36 ASCII string bytes (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") rather than
+   * the 16 raw binary bytes of the UUID. If treated as raw binary, comparing a 36-byte ASCII
+   * representation against a 16-byte binary midpoint or parameter in queries causes all range
+   * evaluations to fail or corrupts boundary calculations.
+   *
+   * <p>When PostgreSQL returns a UUID column from a boundary query, the underlying JDBC driver may
+   * represent it as a native {@link java.util.UUID}, a plain {@link String}, or wrapped inside a
+   * {@code org.postgresql.util.PGobject}. By using {@code rs.getString(colIndex)}, this method
+   * safely extracts the text representation across all driver modes without triggering {@link
+   * ClassCastException}s.
+   */
+  private static byte[] extractUuidBytes(ResultSet rs, int colIndex) throws SQLException {
+    if (rs.getObject(colIndex) == null) {
+      return null;
     }
-    if (metaData != null && "uuid".equalsIgnoreCase(metaData.getColumnTypeName(colIndex))) {
-      if (rs.getObject(colIndex) == null) {
-        return null;
+    java.util.UUID uuid;
+    if (rs.getObject(colIndex) instanceof java.util.UUID nativeUuid) {
+      uuid = nativeUuid;
+    } else {
+      final String rawUuidString = rs.getString(colIndex);
+      try {
+        uuid = java.util.UUID.fromString(rawUuidString);
+      } catch (IllegalArgumentException e) {
+        logger.error(
+            "[UUID Partitioning / Stage 3: Extraction] {} Failed to parse UUID string from database at colIndex {}: '{}'",
+            getCallerInfo(),
+            colIndex,
+            rawUuidString,
+            e);
+        throw new SQLException(
+            "Failed to parse UUID string from database: '" + rawUuidString + "'", e);
       }
-      java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
-      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
-      bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
-      byte[] rawBytes = bb.array();
-      logger.info(
-          "[UUID Partitioning / Stage 3: Extraction] "
-              + getCallerInfo()
-              + " Intercepted PostgreSQL 'uuid' column at col "
-              + colIndex
-              + " | Retrieved UUID object: "
-              + uuid
-              + " -> Serialized 16-byte Hex: "
-              + bytesToHex(rawBytes));
-      return rawBytes;
     }
-    return rs.getBytes(colIndex);
+    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    byte[] rawBytes = bb.array();
+    logger.debug(
+        "[UUID Partitioning / Stage 3: Extraction] {} Intercepted PostgreSQL 'uuid' column at col {} | Retrieved UUID object: {} -> Serialized 16-byte Hex: {}",
+        getCallerInfo(),
+        colIndex,
+        uuid,
+        bytesToHex(rawBytes));
+    return rawBytes;
   }
 
   private static Boundary<String> fromStrings(

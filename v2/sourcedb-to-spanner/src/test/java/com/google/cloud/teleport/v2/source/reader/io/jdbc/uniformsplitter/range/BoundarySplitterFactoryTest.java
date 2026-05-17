@@ -227,6 +227,63 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testUuidBoundarySplitter() {
+    BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col_uuid")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .setColumnTypeName("uuid")
+            .build();
+
+    // 1. The Sign-Byte Extension (17-byte array)
+    byte[] startSign = new byte[16];
+    startSign[0] = (byte) 0x80;
+    byte[] endSign = new byte[16];
+    java.util.Arrays.fill(endSign, (byte) 0xFF);
+    byte[] expectedMidSign = new byte[16];
+    java.util.Arrays.fill(expectedMidSign, (byte) 0xFF);
+    expectedMidSign[0] = (byte) 0xBF;
+    assertThat(
+            java.util.Arrays.equals(
+                splitter.getSplitPoint(startSign, endSign, partitionColumn, null, null),
+                expectedMidSign))
+        .isTrue();
+
+    // 2. The Leading Zeros Truncation (Under 16 bytes)
+    byte[] startZero = new byte[16];
+    byte[] endSmall = new byte[16];
+    endSmall[15] = 0x20;
+    byte[] expectedMidSmall = new byte[16];
+    expectedMidSmall[15] = 0x10;
+    assertThat(
+            java.util.Arrays.equals(
+                splitter.getSplitPoint(startZero, endSmall, partitionColumn, null, null),
+                expectedMidSmall))
+        .isTrue();
+
+    // 3. Absolute Zero UUID
+    assertThat(
+            java.util.Arrays.equals(
+                splitter.getSplitPoint(startZero, startZero, partitionColumn, null, null),
+                startZero))
+        .isTrue();
+
+    // 4. Null start bounds (defaults to 16 zero bytes)
+    assertThat(
+            java.util.Arrays.equals(
+                splitter.getSplitPoint(null, startZero, partitionColumn, null, null), startZero))
+        .isTrue();
+
+    // 5. Null end bounds (defaults to 16 0xFF bytes)
+    assertThat(
+            java.util.Arrays.equals(
+                splitter.getSplitPoint(startSign, null, partitionColumn, null, null),
+                expectedMidSign))
+        .isTrue();
+  }
+
+  @Test
   public void testStringBoundarySplitter() {
 
     BoundaryTypeMapper mapper = new TestBoundaryTypeMapper();
@@ -370,12 +427,10 @@ public class BoundarySplitterFactoryTest {
     assertThat(BoundarySplitterFactory.bigIntNanosToInstant(null)).isNull();
     assertThat(BoundarySplitterFactory.timeStampToInstant(null)).isNull();
     assertThat(BoundarySplitterFactory.instantToTimestamp(null)).isNull();
-    assertThat(
-            BoundarySplitterFactory.timeStampToInstant(
-                Timestamp.valueOf("1970-01-01 00:00:00.000000000")))
+    assertThat(BoundarySplitterFactory.timeStampToInstant(new Timestamp(0L)))
         .isEqualTo(Instant.EPOCH);
     assertThat(BoundarySplitterFactory.instantToTimestamp(Instant.EPOCH))
-        .isEqualTo(Timestamp.valueOf("1970-01-01 00:00:00.000000000"));
+        .isEqualTo(new Timestamp(0L));
   }
 
   @Test

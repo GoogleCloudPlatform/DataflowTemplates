@@ -126,6 +126,9 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
       } else if (parentRanges.containsKey(partitionColumn.columnName())) {
         Range rangeForColumn = parentRanges.get(partitionColumn.columnName());
         Object start = rangeForColumn.start();
+        // Convert raw byte[] back to native java.util.UUID before setting parameter.
+        // Binding a raw byte[] directly causes PostgreSQL JDBC to send BYTEA, triggering
+        // SQL type mismatch errors (ERROR: operator does not exist: uuid >= bytea).
         if (start instanceof byte[] bytes
             && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName())) {
           java.util.UUID uuid = bytesToUuid(bytes);
