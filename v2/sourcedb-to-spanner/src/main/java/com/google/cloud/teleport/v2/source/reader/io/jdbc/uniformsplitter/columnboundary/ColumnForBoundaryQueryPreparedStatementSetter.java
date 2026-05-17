@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
+
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
@@ -28,8 +30,6 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Implement {@link PreparedStatementSetter} to set {@link PreparedStatement} parameters for getting
@@ -37,9 +37,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ColumnForBoundaryQueryPreparedStatementSetter
     implements PreparedStatementSetter<ColumnForBoundaryQuery> {
-
-  private static final Logger logger =
-      LoggerFactory.getLogger(ColumnForBoundaryQueryPreparedStatementSetter.class);
 
   private final ImmutableMap<TableIdentifier, TableSplitSpecification> tableSplitSpecificationMap;
 
@@ -57,38 +54,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
                     TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
-  private static String getCallerInfo() {
-    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-      if (element.getClassName().endsWith("Test")) {
-        return "["
-            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
-            + "."
-            + element.getMethodName()
-            + ":"
-            + element.getLineNumber()
-            + "]";
-      }
+  private static Object convertIfUuid(Object val, PartitionColumn pc) {
+    if (val instanceof byte[] bytes && UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+      return new java.util.UUID(bb.getLong(), bb.getLong());
     }
-    return "[Worker/Pipeline]";
-  }
-
-  private static String bytesToHex(byte[] bytes) {
-    if (bytes == null) {
-      return "null";
-    }
-    StringBuilder sb = new StringBuilder();
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
-    }
-    return sb.toString();
-  }
-
-  private static java.util.UUID bytesToUuid(byte[] bytes) {
-    if (bytes == null) {
-      return null;
-    }
-    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
-    return new java.util.UUID(bb.getLong(), bb.getLong());
+    return val;
   }
 
   /**
@@ -125,39 +96,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
         preparedStatement.setObject(parameterIdx++, null);
       } else if (parentRanges.containsKey(partitionColumn.columnName())) {
         Range rangeForColumn = parentRanges.get(partitionColumn.columnName());
-        Object start = rangeForColumn.start();
-        // Convert raw byte[] back to native java.util.UUID before setting parameter.
-        // Binding a raw byte[] directly causes PostgreSQL JDBC to send BYTEA, triggering
-        // SQL type mismatch errors (ERROR: operator does not exist: uuid >= bytea).
-        if (start instanceof byte[] bytes
-            && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName())) {
-          java.util.UUID uuid = bytesToUuid(bytes);
-          logger.info(
-              "[UUID Partitioning / Stage 5: Boundary Query] "
-                  + getCallerInfo()
-                  + " Table: "
-                  + element.tableIdentifier().tableName()
-                  + " | Parameter Start: Converted 16-byte Hex "
-                  + bytesToHex(bytes)
-                  + " -> Native JDBC java.util.UUID: "
-                  + uuid);
-          start = uuid;
-        }
-        Object end = rangeForColumn.end();
-        if (end instanceof byte[] bytes
-            && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName())) {
-          java.util.UUID uuid = bytesToUuid(bytes);
-          logger.info(
-              "[UUID Partitioning / Stage 5: Boundary Query] "
-                  + getCallerInfo()
-                  + " Table: "
-                  + element.tableIdentifier().tableName()
-                  + " | Parameter End: Converted 16-byte Hex "
-                  + bytesToHex(bytes)
-                  + " -> Native JDBC java.util.UUID: "
-                  + uuid);
-          end = uuid;
-        }
+        // Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs
+        // UUID).
+        Object start = convertIfUuid(rangeForColumn.start(), partitionColumn);
+        Object end = convertIfUuid(rangeForColumn.end(), partitionColumn);
         preparedStatement.setObject(parameterIdx++, true); // Enabled
         preparedStatement.setObject(parameterIdx++, start);
         preparedStatement.setObject(parameterIdx++, end);

@@ -400,6 +400,11 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return this;
     }
 
+    public Builder setColumnTypeName(String value) {
+      this.boundaryBuilder().setColumnTypeName(value);
+      return this;
+    }
+
     public <T extends Serializable> Builder setStart(@Nullable T start) {
       this.boundaryBuilder().setStart(start);
       return this;

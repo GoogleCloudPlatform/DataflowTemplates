@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
@@ -206,7 +207,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
-          if ("uuid".equalsIgnoreCase(columnType)) {
+          if (UUID_TYPE.equalsIgnoreCase(columnType)) {
+            logger.info(
+                "Discovered UUID column '{}' in table '{}'; enabling text casting for boundary queries",
+                columnName,
+                tableName);
             uuidColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           final long characterMaximumLength = resultSet.getLong("character_maximum_length");
@@ -274,21 +279,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     return tableSchema;
-  }
-
-  private static String getCallerInfo() {
-    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-      if (element.getClassName().endsWith("Test")) {
-        return "["
-            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
-            + "."
-            + element.getMethodName()
-            + ":"
-            + element.getLineNumber()
-            + "]";
-      }
-    }
-    return "[Worker/Pipeline]";
   }
 
   /**
@@ -367,17 +357,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
           final String typeCategory = resultSet.getString("type_category");
-          final String typeName = resultSet.getString("type_name");
-          final String columnTypeName = "U".equalsIgnoreCase(typeCategory) ? typeName : "";
+          final String typeName =
+              Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
           final String columnName = resultSet.getString("column_name");
-          if ("uuid".equalsIgnoreCase(typeName)) {
-            logger.info(
-                "[UUID Partitioning / Stage 1: Discovery] "
-                    + getCallerInfo()
-                    + " Discovered PostgreSQL 'uuid' column: "
-                    + columnName
-                    + " on table "
-                    + tableName);
+          if (UUID_TYPE.equalsIgnoreCase(typeName)) {
             uuidColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           SourceColumnIndexInfo.Builder indexBuilder =
@@ -388,8 +371,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setIsPrimary(resultSet.getBoolean("is_primary"))
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                  .setColumnTypeName(columnTypeName)
-                  .setIndexType(indexTypeFrom(typeCategory, columnTypeName));
+                  .setColumnTypeName(typeName)
+                  .setIndexType(indexTypeFrom(typeCategory, typeName));
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
@@ -495,17 +478,46 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * @param tableName name of the table to read.
    * @param partitionColumns if not-empty, partition columns. Set empty for first column of
    *     partitioning.
+   * @param colName the column to evaluate for boundaries.
+   * @return The optimized SQL string.
    */
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
-    String selectCol = colName;
     if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
-      selectCol = String.format("CAST(%s AS TEXT)", colName);
+      return getUuidBoundaryQuery(tableName, partitionColumns, colName);
     }
+
     return addWhereClause(
-        String.format("SELECT MIN(%s), MAX(%s) FROM %s", selectCol, selectCol, tableName),
+        String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, tableName),
         partitionColumns);
+  }
+
+  /**
+   * Constructs an optimized boundary query for PostgreSQL UUID columns.
+   *
+   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID types. Instead, we use
+   * subqueries with ORDER BY and LIMIT 1.
+   *
+   * <p>For compound/partitioned keys, we wrap the query in a CTE to specify the WHERE clause once,
+   * keeping prepared statement parameter indexes aligned with the generic binder. The 'NOT
+   * MATERIALIZED' hint prevents PostgreSQL from loading the partition into memory, forcing standard
+   * index push-down.
+   */
+  private String getUuidBoundaryQuery(
+      String tableName, ImmutableList<String> partitionColumns, String colName) {
+    String queryTemplate =
+        "SELECT (SELECT %1$s FROM %2$s ORDER BY %1$s ASC NULLS LAST LIMIT 1), "
+            + "(SELECT %1$s FROM %2$s ORDER BY %1$s DESC NULLS LAST LIMIT 1)";
+
+    if (partitionColumns.isEmpty()) {
+      return String.format(queryTemplate, colName, tableName);
+    }
+    String whereClause = addWhereClause("", partitionColumns);
+    String selectClause = String.format(queryTemplate, colName, "filtered_uuid");
+    return String.format(
+        "WITH filtered_uuid AS NOT MATERIALIZED (SELECT %1$s FROM %2$s%3$s) %4$s",
+        colName, tableName, whereClause, selectClause);
   }
 
   /**
@@ -550,13 +562,6 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     StringBuilder queryBuilder = new StringBuilder();
     queryBuilder.append(query);
     if (!partitionColumns.isEmpty()) {
-      if (partitionColumns.stream().anyMatch(col -> col.toLowerCase().contains("uuid"))) {
-        logger.info(
-            "[UUID Partitioning / Stage 6: Query Execution] "
-                + getCallerInfo()
-                + " Formatting WHERE clause for UUID partition column: "
-                + partitionColumns);
-      }
       queryBuilder.append(" WHERE ");
       queryBuilder.append(
           partitionColumns.stream()
@@ -578,11 +583,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
    */
   private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
-    if ("uuid".equalsIgnoreCase(typeName)) {
-      logger.info(
-          "[UUID Partitioning / Stage 1: Discovery] "
-              + getCallerInfo()
-              + " Mapping PostgreSQL 'uuid' column to IndexType.BINARY");
+    if (UUID_TYPE.equalsIgnoreCase(typeName)) {
       return SourceColumnIndexInfo.IndexType.BINARY;
     }
     switch (typeCategory) {

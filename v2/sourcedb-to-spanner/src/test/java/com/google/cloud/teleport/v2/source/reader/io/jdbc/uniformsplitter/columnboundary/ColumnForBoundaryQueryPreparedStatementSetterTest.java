@@ -581,6 +581,61 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     }
   }
 
+  @Test
+  public void testSetParameters_withUuidColumn() throws Exception {
+    byte[] startBytes = new byte[16];
+    byte[] endBytes = new byte[16];
+    java.util.Arrays.fill(endBytes, (byte) 0xFF);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_uuid_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("uuid_col")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uuid")
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    Range parentRange =
+        Range.builder()
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("uuid_col")
+            .setColClass(byte[].class)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    ColumnForBoundaryQuery query =
+        ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(tableId)
+            .setColumnName("col2")
+            .setColumnClass(Integer.class)
+            .setParentRange(parentRange)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    ColumnForBoundaryQueryPreparedStatementSetter setter =
+        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(query, mockStatement);
+
+    verify(mockStatement, times(1)).setObject(2, new java.util.UUID(0L, 0L));
+    verify(mockStatement, times(1)).setObject(3, new java.util.UUID(-1L, -1L));
+  }
+
   @After
   public void exitDerby() throws SQLException {
     try (Statement statement = connection.createStatement()) {

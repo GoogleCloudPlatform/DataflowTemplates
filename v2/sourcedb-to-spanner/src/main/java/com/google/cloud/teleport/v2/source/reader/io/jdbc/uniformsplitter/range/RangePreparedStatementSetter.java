@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
+
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -53,38 +55,15 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
                     specification -> specification.partitionColumns()));
   }
 
-  private static String getCallerInfo() {
-    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-      if (element.getClassName().endsWith("Test")) {
-        return "["
-            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
-            + "."
-            + element.getMethodName()
-            + ":"
-            + element.getLineNumber()
-            + "]";
-      }
+  /**
+   * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID).
+   */
+  private static Object convertIfUuid(Object val, PartitionColumn pc) {
+    if (val instanceof byte[] bytes && UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+      return new java.util.UUID(bb.getLong(), bb.getLong());
     }
-    return "[Worker/Pipeline]";
-  }
-
-  private static String bytesToHex(byte[] bytes) {
-    if (bytes == null) {
-      return "null";
-    }
-    StringBuilder sb = new StringBuilder();
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
-    }
-    return sb.toString();
-  }
-
-  private static java.util.UUID bytesToUuid(byte[] bytes) {
-    if (bytes == null) {
-      return null;
-    }
-    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
-    return new java.util.UUID(bb.getLong(), bb.getLong());
+    return val;
   }
 
   /**
@@ -118,37 +97,8 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
     Range range = element;
     for (long i = 0; i < rangeColumns; i++) {
       PartitionColumn pc = partitionColumns.get((int) i);
-      Object start = range.start();
-      // Convert raw byte[] back to native java.util.UUID before setting parameter.
-      // Binding a raw byte[] directly causes PostgreSQL JDBC to send BYTEA, triggering
-      // SQL type mismatch errors (ERROR: operator does not exist: uuid >= bytea).
-      if (start instanceof byte[] bytes && "uuid".equalsIgnoreCase(pc.columnTypeName())) {
-        java.util.UUID uuid = bytesToUuid(bytes);
-        logger.info(
-            "[UUID Partitioning / Stage 5: Query Binding] "
-                + getCallerInfo()
-                + " Table: "
-                + element.tableIdentifier().tableName()
-                + " | Parameter Start: Converted 16-byte Hex "
-                + bytesToHex(bytes)
-                + " -> Native JDBC java.util.UUID: "
-                + uuid);
-        start = uuid;
-      }
-      Object end = range.end();
-      if (end instanceof byte[] bytes && "uuid".equalsIgnoreCase(pc.columnTypeName())) {
-        java.util.UUID uuid = bytesToUuid(bytes);
-        logger.info(
-            "[UUID Partitioning / Stage 5: Query Binding] "
-                + getCallerInfo()
-                + " Table: "
-                + element.tableIdentifier().tableName()
-                + " | Parameter End: Converted 16-byte Hex "
-                + bytesToHex(bytes)
-                + " -> Native JDBC java.util.UUID: "
-                + uuid);
-        end = uuid;
-      }
+      Object start = convertIfUuid(range.start(), pc);
+      Object end = convertIfUuid(range.end(), pc);
       preparedStatement.setObject(startParameterIdx++, true /* include column */);
       preparedStatement.setObject(startParameterIdx++, start);
       preparedStatement.setObject(startParameterIdx++, end);

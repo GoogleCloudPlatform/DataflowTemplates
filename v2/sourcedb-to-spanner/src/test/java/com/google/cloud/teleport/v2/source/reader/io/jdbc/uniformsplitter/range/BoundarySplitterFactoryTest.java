@@ -226,61 +226,69 @@ public class BoundarySplitterFactoryTest {
     assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
   }
 
+  private static byte[] parseHexBytes(String hexString) {
+    String cleanString = hexString.replace("-", "");
+    byte[] bytes = new byte[cleanString.length() / 2];
+    for (int i = 0; i < bytes.length; i++) {
+      bytes[i] = (byte) Integer.parseInt(cleanString.substring(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+  }
+
   @Test
   public void testUuidBoundarySplitter() {
     BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
-    PartitionColumn partitionColumn =
+    PartitionColumn col =
         PartitionColumn.builder()
-            .setColumnName("col_uuid")
+            .setColumnName("id")
             .setColumnClass(BYTE_ARRAY_CLASS)
             .setColumnTypeName("uuid")
             .build();
 
-    // 1. The Sign-Byte Extension (17-byte array)
-    byte[] startSign = new byte[16];
-    startSign[0] = (byte) 0x80;
-    byte[] endSign = new byte[16];
-    java.util.Arrays.fill(endSign, (byte) 0xFF);
-    byte[] expectedMidSign = new byte[16];
-    java.util.Arrays.fill(expectedMidSign, (byte) 0xFF);
-    expectedMidSign[0] = (byte) 0xBF;
-    assertThat(
-            java.util.Arrays.equals(
-                splitter.getSplitPoint(startSign, endSign, partitionColumn, null, null),
-                expectedMidSign))
-        .isTrue();
+    // 1. BigInteger Serialization Quirks
+    // Case 1a: Sign-Byte Extension (Values >= 0x80...). BigInteger prepends a leading 0x00 byte
+    // to keep numbers positive in two's complement (resulting in 17 bytes). Verifies exact 16-byte
+    // truncation.
+    byte[] start1 = parseHexBytes("80000000-0000-0000-0000-000000000000");
+    byte[] end1 = parseHexBytes("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] expectedMid1 = parseHexBytes("bfffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] mid1 = splitter.getSplitPoint(start1, end1, col, null, null);
+    assertThat(mid1).isEqualTo(expectedMid1);
 
-    // 2. The Leading Zeros Truncation (Under 16 bytes)
-    byte[] startZero = new byte[16];
-    byte[] endSmall = new byte[16];
-    endSmall[15] = 0x20;
-    byte[] expectedMidSmall = new byte[16];
-    expectedMidSmall[15] = 0x10;
-    assertThat(
-            java.util.Arrays.equals(
-                splitter.getSplitPoint(startZero, endSmall, partitionColumn, null, null),
-                expectedMidSmall))
-        .isTrue();
+    // Case 1b: Leading Zeros Truncation (Small Values). BigInteger strips leading 0x00 bytes
+    // to save space (resulting in arrays as short as 1 byte). Verifies left-padding to 16 bytes.
+    byte[] start2 = parseHexBytes("00000000-0000-0000-0000-000000000000");
+    byte[] end2 = parseHexBytes("00000000-0000-0000-0000-000000000020");
+    byte[] expectedMid2 = parseHexBytes("00000000-0000-0000-0000-000000000010");
+    byte[] mid2 = splitter.getSplitPoint(start2, end2, col, null, null);
+    assertThat(mid2).isEqualTo(expectedMid2);
 
-    // 3. Absolute Zero UUID
-    assertThat(
-            java.util.Arrays.equals(
-                splitter.getSplitPoint(startZero, startZero, partitionColumn, null, null),
-                startZero))
-        .isTrue();
+    // Case 1c: Absolute Zero UUID. Verifies correct 16-byte zero padding when start and end are
+    // both 0.
+    byte[] startZero = parseHexBytes("00000000-0000-0000-0000-000000000000");
+    byte[] midZero = splitter.getSplitPoint(startZero, startZero, col, null, null);
+    assertThat(midZero).isEqualTo(startZero);
 
-    // 4. Null start bounds (defaults to 16 zero bytes)
-    assertThat(
-            java.util.Arrays.equals(
-                splitter.getSplitPoint(null, startZero, partitionColumn, null, null), startZero))
-        .isTrue();
+    // 2. Open and Null Boundary Handling
+    // Verifies that if both bounds are null, midpoint is null (empty table/slice).
+    assertThat(splitter.getSplitPoint(null, null, col, null, null)).isNull();
 
-    // 5. Null end bounds (defaults to 16 0xFF bytes)
-    assertThat(
-            java.util.Arrays.equals(
-                splitter.getSplitPoint(startSign, null, partitionColumn, null, null),
-                expectedMidSign))
-        .isTrue();
+    // 3. Mathematical Halving and Rounding
+    // Verifies precise midpoint calculation spanning the entire 128-bit number space.
+    byte[] expectedPerfectHalf = parseHexBytes("7fffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] midPerfectHalf = splitter.getSplitPoint(startZero, end1, col, null, null);
+    assertThat(midPerfectHalf).isEqualTo(expectedPerfectHalf);
+
+    // Verifies floor rounding behavior when splitting two adjacent numbers (start + 1 == end).
+    byte[] startAdjacent = parseHexBytes("00000000-0000-0000-0000-000000000001");
+    byte[] endAdjacent = parseHexBytes("00000000-0000-0000-0000-000000000002");
+    byte[] midAdjacent = splitter.getSplitPoint(startAdjacent, endAdjacent, col, null, null);
+    assertThat(midAdjacent).isEqualTo(startAdjacent);
+
+    // 4. Range Inversion
+    // Verifies robust midpoint calculation when start and end bounds are passed in reverse order.
+    byte[] midInverted = splitter.getSplitPoint(end1, startZero, col, null, null);
+    assertThat(midInverted).isEqualTo(expectedPerfectHalf);
   }
 
   @Test

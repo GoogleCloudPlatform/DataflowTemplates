@@ -190,79 +190,20 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
-  private static String getCallerInfo() {
-    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-      if (element.getClassName().endsWith("Test")) {
-        return "["
-            + element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1)
-            + "."
-            + element.getMethodName()
-            + ":"
-            + element.getLineNumber()
-            + "]";
-      }
-    }
-    return "[Worker/Pipeline]";
-  }
-
-  private static String bytesToHex(byte[] bytes) {
-    if (bytes == null) {
-      return "null";
-    }
-    StringBuilder sb = new StringBuilder();
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
-    }
-    return sb.toString();
-  }
-
   /**
-   * Extracts exactly 16 raw binary bytes from the ResultSet for PostgreSQL UUID columns.
+   * Extracts exactly 16 raw binary bytes from a PostgreSQL UUID column.
    *
-   * <p>In standard JDBC with PostgreSQL wire protocol v3.0, calling {@code rs.getBytes()} on a UUID
-   * column returns 36 ASCII string bytes (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") rather than
-   * the 16 raw binary bytes of the UUID. If treated as raw binary, comparing a 36-byte ASCII
-   * representation against a 16-byte binary midpoint or parameter in queries causes all range
-   * evaluations to fail or corrupts boundary calculations.
-   *
-   * <p>When PostgreSQL returns a UUID column from a boundary query, the underlying JDBC driver may
-   * represent it as a native {@link java.util.UUID}, a plain {@link String}, or wrapped inside a
-   * {@code org.postgresql.util.PGobject}. By using {@code rs.getString(colIndex)}, this method
-   * safely extracts the text representation across all driver modes without triggering {@link
-   * ClassCastException}s.
+   * <p>{@code rs.getBytes()} returns 36 ASCII string bytes instead of 16 raw binary bytes, which
+   * corrupts range calculations.
    */
   private static byte[] extractUuidBytes(ResultSet rs, int colIndex) throws SQLException {
-    if (rs.getObject(colIndex) == null) {
+    java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
+    if (uuid == null) {
       return null;
-    }
-    java.util.UUID uuid;
-    if (rs.getObject(colIndex) instanceof java.util.UUID nativeUuid) {
-      uuid = nativeUuid;
-    } else {
-      final String rawUuidString = rs.getString(colIndex);
-      try {
-        uuid = java.util.UUID.fromString(rawUuidString);
-      } catch (IllegalArgumentException e) {
-        logger.error(
-            "[UUID Partitioning / Stage 3: Extraction] {} Failed to parse UUID string from database at colIndex {}: '{}'",
-            getCallerInfo(),
-            colIndex,
-            rawUuidString,
-            e);
-        throw new SQLException(
-            "Failed to parse UUID string from database: '" + rawUuidString + "'", e);
-      }
     }
     java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
     bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
-    byte[] rawBytes = bb.array();
-    logger.debug(
-        "[UUID Partitioning / Stage 3: Extraction] {} Intercepted PostgreSQL 'uuid' column at col {} | Retrieved UUID object: {} -> Serialized 16-byte Hex: {}",
-        getCallerInfo(),
-        colIndex,
-        uuid,
-        bytesToHex(rawBytes));
-    return rawBytes;
+    return bb.array();
   }
 
   private static Boundary<String> fromStrings(

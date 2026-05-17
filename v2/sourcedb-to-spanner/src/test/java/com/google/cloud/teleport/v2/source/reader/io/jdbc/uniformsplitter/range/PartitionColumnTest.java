@@ -31,7 +31,11 @@ public class PartitionColumnTest {
   @Test
   public void testPartitionColumnBasic() {
     PartitionColumn integerPartitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Integer.class)
+            .setColumnTypeName("INTEGER")
+            .build();
 
     PartitionColumn stringPartitionColumn =
         PartitionColumn.builder()
@@ -52,6 +56,7 @@ public class PartitionColumnTest {
     assertThat(stringPartitionColumn.stringCollation().dbCollation())
         .isEqualTo("latin1_swedish_ci");
     assertThat(stringPartitionColumn.stringMaxLength()).isEqualTo(255);
+    assertThat(integerPartitionColumn.columnTypeName()).isEqualTo("INTEGER");
   }
 
   @Test

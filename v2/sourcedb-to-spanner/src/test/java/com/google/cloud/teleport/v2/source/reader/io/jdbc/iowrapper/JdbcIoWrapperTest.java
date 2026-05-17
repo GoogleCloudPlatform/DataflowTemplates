@@ -794,6 +794,7 @@ public class JdbcIoWrapperTest {
             .setCardinality(100L)
             .setIsUnique(true)
             .setOrdinalPosition(1)
+            .setColumnTypeName("INTEGER")
             .build();
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfoMap =
         ImmutableMap.of(tableName, ImmutableList.of(indexInfo));
@@ -807,6 +808,56 @@ public class JdbcIoWrapperTest {
     assertThat(tableConfig.fetchSize()).isEqualTo(1000);
     assertThat(tableConfig.partitionColumns()).hasSize(1);
     assertThat(tableConfig.partitionColumns().get(0).columnName()).isEqualTo("\"id\"");
+    assertThat(tableConfig.partitionColumns().get(0).columnTypeName()).isEqualTo("INTEGER");
+  }
+
+  @Test
+  public void testGetTableConfigWithUuid() {
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName("testDB").build());
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setShardID("test")
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setMaxPartitions(10)
+            .setMaxFetchSize(1000)
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+    String tableName = "testUuidTable";
+    SourceColumnIndexInfo indexInfo =
+        SourceColumnIndexInfo.builder()
+            .setColumnName("uuid_col")
+            .setIndexType(IndexType.BINARY)
+            .setIndexName("PRIMARY")
+            .setIsPrimary(true)
+            .setCardinality(100L)
+            .setIsUnique(true)
+            .setOrdinalPosition(1)
+            .setColumnTypeName("uuid")
+            .build();
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexInfoMap =
+        ImmutableMap.of(tableName, ImmutableList.of(indexInfo));
+
+    // Verify that a discovered database index for a UUID column (IndexType.BINARY with
+    // columnTypeName 'uuid')
+    // is correctly inferred by JdbcIoWrapper as a valid partitioning column, preserving its byte[]
+    // class and type name.
+    TableConfig tableConfig = JdbcIoWrapper.getTableConfig(tableName, config, indexInfoMap);
+
+    assertThat(tableConfig.tableName()).isEqualTo(tableName);
+    assertThat(tableConfig.partitionColumns()).hasSize(1);
+    assertThat(tableConfig.partitionColumns().get(0).columnName()).isEqualTo("\"uuid_col\"");
+    assertThat(tableConfig.partitionColumns().get(0).columnClass()).isEqualTo(byte[].class);
+    assertThat(tableConfig.partitionColumns().get(0).columnTypeName()).isEqualTo("uuid");
   }
 
   @Test

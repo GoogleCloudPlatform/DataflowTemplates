@@ -41,6 +41,7 @@ public class BoundaryTest {
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setNumericScale(0)
             .setDatetimePrecision(2)
+            .setColumnTypeName("INTEGER")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -54,6 +55,7 @@ public class BoundaryTest {
     assertThat(boundary.numericScale()).isEqualTo(0);
     assertThat(boundary.datetimePrecision()).isEqualTo(2);
     assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
+    assertThat(boundary.partitionColumn().columnTypeName()).isEqualTo("INTEGER");
     assertThat(boundary)
         .isNotEqualTo(
             boundary.toBuilder()
@@ -538,5 +540,138 @@ public class BoundaryTest {
                         .setTableName("testTable")
                         .build())
                 .build());
+  }
+
+  @Test
+  public void testBoundaryAndRangeByteEqualityAndMergability() {
+    byte[] startA =
+        new byte[] {
+          0x00,
+          0x11,
+          0x22,
+          0x33,
+          0x44,
+          0x55,
+          0x66,
+          0x77,
+          (byte) 0x88,
+          (byte) 0x99,
+          (byte) 0xAA,
+          (byte) 0xBB,
+          (byte) 0xCC,
+          (byte) 0xDD,
+          (byte) 0xEE,
+          (byte) 0xFF
+        };
+    byte[] startB = startA.clone(); // Distinct object instance, identical contents
+    byte[] midA =
+        new byte[] {
+          0x7F,
+          0x11,
+          0x22,
+          0x33,
+          0x44,
+          0x55,
+          0x66,
+          0x77,
+          (byte) 0x88,
+          (byte) 0x99,
+          (byte) 0xAA,
+          (byte) 0xBB,
+          (byte) 0xCC,
+          (byte) 0xDD,
+          (byte) 0xEE,
+          (byte) 0xFF
+        };
+    byte[] midB = midA.clone();
+    byte[] endA =
+        new byte[] {
+          (byte) 0xFF,
+          0x11,
+          0x22,
+          0x33,
+          0x44,
+          0x55,
+          0x66,
+          0x77,
+          (byte) 0x88,
+          (byte) 0x99,
+          (byte) 0xAA,
+          (byte) 0xBB,
+          (byte) 0xCC,
+          (byte) 0xDD,
+          (byte) 0xEE,
+          (byte) 0xFF
+        };
+    byte[] endB = endA.clone();
+
+    TableIdentifier tableId =
+        TableIdentifier.builder().setDataSourceId("test_ds").setTableName("test_table").build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("id")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uuid")
+            .build();
+
+    Boundary<byte[]> boundaryA =
+        Boundary.<byte[]>builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumn(col)
+            .setStart(startA)
+            .setEnd(endA)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .build();
+
+    Boundary<byte[]> boundaryB =
+        Boundary.<byte[]>builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumn(col)
+            .setStart(startB)
+            .setEnd(endB)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .build();
+
+    // Prove Boundary equals() evaluates byte[] contents correctly
+    assertThat(boundaryA).isEqualTo(boundaryB);
+    assertThat(boundaryA.hashCode()).isEqualTo(boundaryB.hashCode());
+
+    // Construct left and right ranges to test mergability across distinct array instances
+    Range leftRange =
+        Range.builder()
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("id")
+            .setColClass(byte[].class)
+            .setStart(startA)
+            .setEnd(midA)
+            .setCount(100L)
+            .setIsFirst(true)
+            .setIsLast(false)
+            .build();
+
+    Range rightRange =
+        Range.builder()
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("id")
+            .setColClass(byte[].class)
+            .setStart(midB)
+            .setEnd(endB)
+            .setCount(100L)
+            .setIsFirst(false)
+            .setIsLast(true)
+            .build();
+
+    // Prove Range isMergable() and mergeRange() evaluate byte[] value equality correctly
+    assertThat(leftRange.isMergable(rightRange)).isTrue();
+    Range merged = leftRange.mergeRange(rightRange, null);
+    // Verify that merging two adjacent UUID ranges correctly sums their row counts (100 + 100 =
+    // 200)
+    // and constructs a unified range spanning from the outer start boundary (startA) to the outer
+    // end boundary (endA).
+    assertThat(merged.count()).isEqualTo(200L);
+    assertThat(java.util.Arrays.equals((byte[]) merged.start(), startA)).isTrue();
+    assertThat(java.util.Arrays.equals((byte[]) merged.end(), endA)).isTrue();
   }
 }
