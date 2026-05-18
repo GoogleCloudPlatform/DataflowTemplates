@@ -26,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
+import com.google.cloud.teleport.util.DurationUtils;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -180,6 +181,31 @@ public class BigtableToJson {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+
+    @TemplateParameter.Duration(
+        order = 9,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows attempt timeout",
+        helpText = "Controls the timeout for each remote read rows call.")
+    @Default.String("5m")
+    String getReadRowsAttemptTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsAttemptTimeout(String timeout);
+
+    @TemplateParameter.Duration(
+        order = 10,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows operation timeout",
+        helpText =
+            "Controls the total timeout of each read rows operation, including all attempts.")
+    @Default.String("10m")
+    String getReadRowsOperationTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsOperationTimeout(String timeout);
   }
 
   /**
@@ -207,6 +233,9 @@ public class BigtableToJson {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
+            .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
+            .withOperationTimeout(
+                DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
