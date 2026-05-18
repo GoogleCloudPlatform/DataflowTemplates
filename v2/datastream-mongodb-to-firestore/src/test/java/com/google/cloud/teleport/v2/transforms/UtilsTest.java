@@ -19,6 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.HashSet;
 import java.util.Set;
@@ -210,5 +214,39 @@ public class UtilsTest {
     assertTrue(result.contains("\"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}"));
     assertTrue(result.contains("\"negativeInfiniteNumber\": {\"$numberDouble\": \"-Infinity\"}"));
     assertTrue(result.contains("\"int64Field\": {\"$numberLong\": \"50\"}"));
+  }
+
+  @Test
+  public void testJsonToDocument_fallbackCase() {
+    // data is an object, not a string
+    String jsonString = "{\"data\": {\"name\": \"John\"}}";
+    Document result = Utils.jsonToDocument(jsonString, "id1");
+
+    assertEquals("John", result.get("name"));
+    assertEquals("id1", result.get("_id"));
+  }
+
+  @Test
+  public void testExtractInnerEvent_Document() {
+    // Test case where the document is wrapped in a "changeEvent" field (common for DLQ records)
+    Document inner = new Document("field", "value");
+    Document wrapped = new Document(DatastreamConstants.CHANGE_EVENT, inner);
+
+    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the document is NOT wrapped
+    assertEquals(inner, Utils.extractInnerEvent(inner));
+  }
+
+  @Test
+  public void testExtractInnerEvent_JsonNode() throws Exception {
+    // Test case where the JSON node is wrapped in a "changeEvent" field
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode inner = mapper.readTree("{\"field\":\"value\"}");
+    ObjectNode wrapped = mapper.createObjectNode();
+    wrapped.set(DatastreamConstants.CHANGE_EVENT, inner);
+
+    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the JSON node is NOT wrapped
+    assertEquals(inner, Utils.extractInnerEvent(inner));
   }
 }

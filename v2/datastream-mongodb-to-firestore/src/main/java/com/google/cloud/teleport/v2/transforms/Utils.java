@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext.DATA_COL;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.Base64;
 import java.util.Set;
@@ -76,8 +78,7 @@ public final class Utils {
     return documentId.toString();
   }
 
-  public static String getCanonicalJsonOfDataField(String jsonString) {
-    Document fullEvent = Document.parse(jsonString);
+  public static String getCanonicalJsonOfDataField(Document fullEvent) {
     Object dataVal = fullEvent.get(DATA_COL);
     if (dataVal == null) {
       return null;
@@ -89,5 +90,21 @@ public final class Utils {
       return dataDoc.toJson(CANONICAL_JSON_SETTINGS);
     }
     throw new IllegalArgumentException("Unsupported data field type: " + dataVal.getClass());
+  }
+
+  public static String getCanonicalJsonOfDataField(String jsonString) {
+    return getCanonicalJsonOfDataField(Document.parse(jsonString));
+  }
+
+  public static Document extractInnerEvent(Document doc) {
+    return doc.containsKey(DatastreamConstants.CHANGE_EVENT)
+        ? (Document) doc.get(DatastreamConstants.CHANGE_EVENT)
+        : doc;
+  }
+
+  public static JsonNode extractInnerEvent(JsonNode payload) {
+    return payload.has(DatastreamConstants.CHANGE_EVENT)
+        ? payload.get(DatastreamConstants.CHANGE_EVENT)
+        : payload;
   }
 }

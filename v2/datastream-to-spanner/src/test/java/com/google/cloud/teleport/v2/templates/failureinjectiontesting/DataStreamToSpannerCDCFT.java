@@ -192,12 +192,15 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     // After the 30-minute window expires, failures are no longer injected. The pipeline then
     // rapidly
     // processes the remaining backlog and successfully retries any previously failed events.
+    String jobStartTime = java.time.Instant.now().toString();
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
             .withAdditionalMavenProfile("failureInjectionTest")
             .addParameter(
                 "failureInjectionParameter",
-                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT260S\" }}")
+                String.format(
+                    "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT260S\", \"jobStartTime\": \"%s\" }}",
+                    jobStartTime))
             .addEnvironmentVariable("numWorkers", NUM_WORKERS)
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 

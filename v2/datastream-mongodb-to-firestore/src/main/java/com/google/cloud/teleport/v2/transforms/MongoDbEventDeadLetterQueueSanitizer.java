@@ -44,8 +44,10 @@ public class MongoDbEventDeadLetterQueueSanitizer
       // Serialize the change event to JSON
       ObjectNode jsonNode = OBJECT_MAPPER.createObjectNode();
 
-      // Add the original change event JSON
-      jsonNode.set("changeEvent", changeEvent.getChangeEvent());
+      // Add the original change event JSON. This preserves the raw source data in the
+      // DLQ, ensuring that retry attempts can re-apply updated UDF logic to the original
+      // payload.
+      jsonNode.set("changeEvent", changeEvent.getOriginalChangeEvent());
 
       // Add other important fields
       jsonNode.put("dataCollection", changeEvent.getDataCollection());

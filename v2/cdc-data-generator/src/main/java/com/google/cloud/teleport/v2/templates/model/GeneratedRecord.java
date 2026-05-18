@@ -13,15 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.loadtesting;
+package com.google.cloud.teleport.v2.templates.model;
 
-/** Exception thrown when Cloud SQL shard orchestration fails. */
-public class ShardOrchestrationException extends RuntimeException {
-  public ShardOrchestrationException(String message) {
-    super(message);
-  }
+import com.google.auto.value.AutoValue;
+import java.io.Serializable;
+import org.apache.beam.sdk.values.Row;
 
-  public ShardOrchestrationException(String message, Throwable cause) {
-    super(message, cause);
+/** Type-safe container wrapping table names and primary key values. */
+@AutoValue
+public abstract class GeneratedRecord implements Serializable {
+  public abstract String tableName();
+
+  public abstract Row primaryKeyValues();
+
+  public static GeneratedRecord create(String tableName, Row primaryKeyValues) {
+    return new AutoValue_GeneratedRecord(tableName, primaryKeyValues);
   }
 }

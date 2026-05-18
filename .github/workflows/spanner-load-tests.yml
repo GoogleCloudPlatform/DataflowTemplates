@@ -32,7 +32,7 @@ permissions: write-all
 jobs:
   load_tests:
     name: Spanner Dataflow Templates Load tests
-    timeout-minutes: 1440 # 1 day
+    timeout-minutes: 2100 # 35 hours
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, perf ]
     steps:
