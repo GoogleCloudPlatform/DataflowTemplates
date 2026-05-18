@@ -50,6 +50,7 @@ public class MongoDbChangeEventContext implements Serializable {
   public static final String OID_FIELD_NAME = "$oid";
 
   private final JsonNode changeEvent;
+  private final JsonNode originalChangeEvent;
   private final String dataCollection;
   private final String shadowCollection;
   private final Object documentId;
@@ -87,10 +88,16 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public MongoDbChangeEventContext(JsonNode payload, String shadowCollectionPrefix)
       throws JsonProcessingException {
-    this.changeEvent =
-        payload.has(DatastreamConstants.CHANGE_EVENT)
-            ? payload.get(DatastreamConstants.CHANGE_EVENT)
-            : payload;
+    this(payload, payload, shadowCollectionPrefix);
+  }
+
+  public MongoDbChangeEventContext(
+      JsonNode payload, JsonNode originalPayload, String shadowCollectionPrefix)
+      throws JsonProcessingException {
+    // Extracts the actual change event. If wrapped in a DLQ structure like {"changeEvent": {...}},
+    // it extracts the inner object.
+    this.changeEvent = Utils.extractInnerEvent(payload);
+    this.originalChangeEvent = Utils.extractInnerEvent(originalPayload);
 
     this.retryCount =
         changeEvent.has(DatastreamConstants.RETRY_COUNT)
@@ -117,18 +124,22 @@ public class MongoDbChangeEventContext implements Serializable {
     if (changeEvent.has(DatastreamConstants.MONGODB_DOCUMENT_ID)) {
       JsonNode docIdVal =
           OBJECT_MAPPER.readTree(changeEvent.get(DatastreamConstants.MONGODB_DOCUMENT_ID).asText());
-      if (docIdVal.isIntegralNumber()) {
+      if (docIdVal.isInt()) {
+        this.documentId = docIdVal.asInt();
+      } else if (docIdVal.isIntegralNumber()) {
         this.documentId = docIdVal.asLong();
-        if (this.documentId.equals(0L)) {
-          LOG.error("Unsupported _id value of _id {}.", docIdVal);
-          throw new IllegalArgumentException("Unsupported _id value.");
-        }
+      } else if (docIdVal.isFloatingPointNumber()) {
+        this.documentId = docIdVal.asDouble();
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
-      } else if (docIdVal.isObject()
-          && docIdVal.has(OID_FIELD_NAME)
-          && docIdVal.get(OID_FIELD_NAME).isTextual()) {
-        this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
+      } else if (docIdVal.isObject()) {
+        if (docIdVal.has(OID_FIELD_NAME) && docIdVal.get(OID_FIELD_NAME).isTextual()) {
+          this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
+        } else {
+          // Support for generic Object-typed IDs or other complex BSON types (e.g., Binary)
+          Document wrapper = Document.parse("{ \"val\": " + docIdVal.toString() + " }");
+          this.documentId = wrapper.get("val");
+        }
       } else {
         LOG.error("Unsupported _id type of _id {}.", docIdVal);
         throw new IllegalArgumentException("Unsupported _id type.");
@@ -197,6 +208,10 @@ public class MongoDbChangeEventContext implements Serializable {
     return changeEvent;
   }
 
+  public JsonNode getOriginalChangeEvent() {
+    return originalChangeEvent;
+  }
+
   public String getDataCollection() {
     return dataCollection;
   }
@@ -253,7 +268,7 @@ public class MongoDbChangeEventContext implements Serializable {
         objectIdNode.put(OID_FIELD_NAME, this.documentId.toString());
         jsonNode.put("documentId", objectIdNode);
       } else {
-        jsonNode.putPOJO("documentId", this.documentId);
+        jsonNode.put("documentId", Utils.documentIdToString(this.documentId));
       }
       jsonNode.put("isDeleteEvent", this.isDeleteEvent);
 

@@ -226,6 +226,7 @@ public class SchemaDiscoveryImplTest {
         .isEqualTo(ImmutableMap.of("testTable", ImmutableMap.of()));
     verify(mockRetriableSchemaDiscovery, times(expectedCallsCount))
         .discoverTableSchema(any(), any(), any());
+    assertThat(SchemaDiscoveryImpl.getParallelism()).isEqualTo(4L);
   }
 
   @Test

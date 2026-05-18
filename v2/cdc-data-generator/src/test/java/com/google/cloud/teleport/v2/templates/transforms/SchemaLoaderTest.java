@@ -15,111 +15,94 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
-import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import org.apache.beam.sdk.testing.PAssert;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionView;
-import org.junit.Rule;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/** Unit tests for {@link SchemaLoader}. */
 @RunWith(JUnit4.class)
 public class SchemaLoaderTest {
 
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Test
+  public void testFetchSchemaFn_Spanner() throws IOException {
+    final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    final DataGeneratorSchema schema =
+        DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
 
-  @Rule public final TemporaryFolder tempFolder = new TemporaryFolder();
+    when(mockFetcher.getSchema()).thenReturn(schema);
 
-  /** * A Fake Fetcher that returns a hardcoded schema instead of connecting to a DB. */
-  private static class FakeMySqlSchemaFetcher implements SinkSchemaFetcher {
-    @Override
-    public void init(String path) {}
+    FetchSchemaFn fn =
+        new FetchSchemaFn(SinkType.SPANNER, "options") {
+          @Override
+          protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
+            assertEquals(SinkType.SPANNER, sinkType);
+            return mockFetcher;
+          }
+        };
 
-    @Override
-    public DataGeneratorSchema getSchema() {
-      return DataGeneratorSchema.builder()
-          .tables(
-              ImmutableMap.of(
-                  "users",
-                  DataGeneratorTable.builder()
-                      .name("users")
-                      .isRoot(true)
-                      .columns(ImmutableList.of())
-                      .primaryKeys(ImmutableList.of())
-                      .foreignKeys(ImmutableList.of())
-                      .uniqueKeys(ImmutableList.of())
-                      .updateQps(0)
-                      .insertQps(0)
-                      .deleteQps(0)
-                      .recordsPerTick(1)
-                      .build()))
-          .build();
-    }
-  }
-
-  /** * A Mock DoFn that overrides the fetcher creation logic. */
-  private static class MockFetchSchemaFn extends FetchSchemaFn {
-    public MockFetchSchemaFn(SinkType type, String path) {
-      super(type, path);
-    }
-
-    @Override
-    protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
-      return new FakeMySqlSchemaFetcher();
-    }
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    fn.processElement(receiver);
+    verify(mockFetcher).init("options");
+    verify(receiver).output(schema);
   }
 
   @Test
-  public void testSchemaLoader_verifiesTableKeys() throws IOException {
+  public void testFetchSchemaFn_MySql() throws IOException {
+    final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    final DataGeneratorSchema schema =
+        DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
+    when(mockFetcher.getSchema()).thenReturn(schema);
 
-    File tempFile = tempFolder.newFile("shard.json");
-    String dummyShardJson =
-        "[{"
-            + "\"host\":\"localhost\","
-            + "\"port\":\"3306\","
-            + "\"user\":\"root\","
-            + "\"password\":\"password\","
-            + "\"dbName\":\"test_db\""
-            + "}]";
+    FetchSchemaFn fn =
+        new FetchSchemaFn(SinkType.MYSQL, "options") {
+          @Override
+          protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
+            assertEquals(SinkType.MYSQL, sinkType);
+            return mockFetcher;
+          }
+        };
 
-    Files.writeString(tempFile.toPath(), dummyShardJson, StandardCharsets.UTF_8);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    fn.processElement(receiver);
+    verify(mockFetcher).init("options");
+    verify(receiver).output(schema);
+  }
 
-    String validPath = tempFile.getAbsolutePath();
+  @Test
+  public void testFetchSchemaFn_Unsupported() throws IOException {
+    FetchSchemaFn fn = new FetchSchemaFn(null, "options");
 
-    MockFetchSchemaFn mockFn = new MockFetchSchemaFn(SinkType.MYSQL, validPath);
-    SchemaLoader loader = new SchemaLoader(SinkType.MYSQL, validPath, mockFn);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    assertThrows(IllegalArgumentException.class, () -> fn.processElement(receiver));
+  }
 
-    // Act
-    PCollectionView<DataGeneratorSchema> schemaView = pipeline.apply(loader);
+  @Test
+  public void testFetchSchemaFn_IOException() throws IOException {
+    final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    when(mockFetcher.getSchema()).thenThrow(new IOException("File not found"));
 
-    // Assert
-    PCollection<DataGeneratorSchema> collection =
-        (PCollection<DataGeneratorSchema>) schemaView.getPCollection();
+    FetchSchemaFn fn =
+        new FetchSchemaFn(SinkType.SPANNER, "options") {
+          @Override
+          protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
+            return mockFetcher;
+          }
+        };
 
-    PAssert.thatSingleton(collection)
-        .satisfies(
-            schema -> {
-              assertNotNull(schema);
-              assertTrue(schema.tables().containsKey("users"));
-              return null;
-            });
-
-    pipeline.run().waitUntilFinish();
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    assertThrows(RuntimeException.class, () -> fn.processElement(receiver));
   }
 }

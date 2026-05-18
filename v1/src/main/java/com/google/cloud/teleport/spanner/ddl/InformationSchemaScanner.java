@@ -650,7 +650,8 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listIndexOptions(
+  @VisibleForTesting
+  void listIndexOptions(
       Ddl.Builder builder, Map<String, NavigableMap<String, Index.Builder>> indexes) {
     Statement statement = listIndexOptionsSQL();
 
@@ -662,6 +663,10 @@ public class InformationSchemaScanner {
       String indexName = resultSet.getString(2);
       String indexType = resultSet.getString(3);
       String optionName = resultSet.getString(4);
+      if (optionName.startsWith("internal_updated_")
+          || optionName.startsWith("system_optimized_")) {
+        continue;
+      }
       String optionType = resultSet.getString(5);
       String optionValue = resultSet.getString(6);
 

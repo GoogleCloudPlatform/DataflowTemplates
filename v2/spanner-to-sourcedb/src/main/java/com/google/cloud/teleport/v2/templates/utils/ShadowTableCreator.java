@@ -37,53 +37,46 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Helper class to create shadow tables in the metadata database. */
 public class ShadowTableCreator {
 
-  private final SpannerAccessor spannerAccessor;
+  private static final Logger LOG = LoggerFactory.getLogger(ShadowTableCreator.class);
+
   private final SpannerAccessor metadataSpannerAccessor;
   private final Dialect dialect;
-  private final SpannerConfig spannerConfig;
   private final SpannerConfig metadataConfig;
   private String shadowTablePrefix;
   private Ddl informationSchemaOfPrimaryDb;
   private Ddl informationSchemaOfMetadataDb;
 
-  private enum DatabaseType {
-    PRIMARY,
-    METADATA
-  }
-
   public ShadowTableCreator(
-      SpannerConfig spannerConfig,
       SpannerConfig metadataConfig,
       Dialect dialect,
-      String shadowTablePrefix) {
-    this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    ;
+      String shadowTablePrefix,
+      Ddl informationSchemaOfPrimaryDb) {
     this.metadataSpannerAccessor = SpannerAccessor.getOrCreate(metadataConfig);
     this.dialect = dialect;
-    this.spannerConfig = spannerConfig;
     this.metadataConfig = metadataConfig;
     this.shadowTablePrefix = shadowTablePrefix;
-    setinformationSchema(DatabaseType.PRIMARY);
-    setinformationSchema(DatabaseType.METADATA);
+    this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
+    setInformationSchemaOfMetadataDb();
   }
 
-  private void setinformationSchema(DatabaseType databaseType) {
-    BatchClient batchClient =
-        databaseType.equals(DatabaseType.PRIMARY)
-            ? spannerAccessor.getBatchClient()
-            : metadataSpannerAccessor.getBatchClient();
+  private void setInformationSchemaOfMetadataDb() {
+    BatchClient batchClient = metadataSpannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    if (databaseType.equals(DatabaseType.PRIMARY)) {
-      this.informationSchemaOfPrimaryDb = scanner.scan();
-    } else {
-      this.informationSchemaOfMetadataDb = scanner.scan();
-    }
+    LOG.info("Scanning information schema for {}...", metadataConfig.getDatabaseId().get());
+    long startTime = System.currentTimeMillis();
+    this.informationSchemaOfMetadataDb = scanner.scan();
+    LOG.info(
+        "Scanned information schema for {} in {} ms",
+        metadataConfig.getDatabaseId().get(),
+        System.currentTimeMillis() - startTime);
   }
 
   // for unit testing purposes
@@ -98,9 +91,7 @@ public class ShadowTableCreator {
     this.shadowTablePrefix = shadowTablePrefix;
     this.informationSchemaOfPrimaryDb = informationSchemaOfPrimaryDb;
     this.informationSchemaOfMetadataDb = informationSchemaOfMetadataDb;
-    this.spannerAccessor = null;
     this.metadataSpannerAccessor = metadataSpannerAccessor;
-    this.spannerConfig = null;
     this.metadataConfig = metadataConfig;
   }
 
@@ -116,11 +107,14 @@ public class ShadowTableCreator {
     List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
 
     if (createShadowTableStatements.size() == 0) {
+      LOG.info("No new shadow tables to create.");
       return;
     }
 
     DatabaseAdminClient databaseAdminClient = metadataSpannerAccessor.getDatabaseAdminClient();
 
+    LOG.info("Creating {} shadow tables in Spanner...", createShadowTableStatements.size());
+    long startTime = System.currentTimeMillis();
     OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
         databaseAdminClient.updateDatabaseDdl(
             metadataConfig.getInstanceId().get(),
@@ -130,7 +124,12 @@ public class ShadowTableCreator {
 
     try {
       op.get(5, TimeUnit.MINUTES);
+      LOG.info(
+          "Successfully created {} shadow tables in Spanner in {} ms",
+          createShadowTableStatements.size(),
+          System.currentTimeMillis() - startTime);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      LOG.error("Failed to create shadow tables.", e);
       throw new RuntimeException(e);
     }
     return;
@@ -141,7 +140,7 @@ public class ShadowTableCreator {
    * Note: Shadow tables for interleaved tables are not interleaved to
    * their shadow parent table.
    */
-  Table constructShadowTable(String dataTableName) {
+  public Table constructShadowTable(String dataTableName) {
 
     // Create a new shadow table with the given prefix.
     Table.Builder shadowTableBuilder = Table.builder(dialect);
@@ -200,7 +199,7 @@ public class ShadowTableCreator {
   /*
    * Returns the list of data table names that don't have a corresponding shadow table.
    */
-  List<String> getDataTablesWithNoShadowTables() {
+  public List<String> getDataTablesWithNoShadowTables() {
     // Get the list of shadow tables in the information schema based on the prefix.
     Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfPrimaryDb);
 

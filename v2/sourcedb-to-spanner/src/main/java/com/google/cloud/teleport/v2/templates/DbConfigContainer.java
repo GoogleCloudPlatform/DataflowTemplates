@@ -16,10 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.List;
-import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.Wait;
 
 /**
@@ -29,32 +26,11 @@ import org.apache.beam.sdk.transforms.Wait;
 public interface DbConfigContainer {
 
   /**
-   * Get a Unique id for the physical data source. For Non-sharded migration, the id can be returned
-   * as null.
-   *
-   * @return Unique id.
-   */
-  @Nullable
-  String getShardId();
-
-  /**
-   * For the spanner tables that contain the shard id column, returns the source table to
-   * shardColumn. For non-Sharded Migration, return empty Map.
-   *
-   * @param schemaMapper
-   * @param spannerTables
-   * @return
-   */
-  Map<String, String> getSrcTableToShardIdColumnMap(
-      ISchemaMapper schemaMapper, List<String> spannerTables);
-
-  /**
    * Create an {@link IoWrapper} instance for a list of SourceTables.
    *
-   * @param sourceTables
-   * @param waitOnSignal
-   * @param schemaMapper
-   * @return
+   * @param sourceTables List of Source Table.
+   * @param waitOnSignal Wait on previous level to complete.
+   * @return ioWrapper.
    */
   IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
 }

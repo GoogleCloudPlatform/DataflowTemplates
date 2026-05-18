@@ -95,8 +95,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
+    spannerMetadataResourceManager.ensureUsableAndCreateResources();
     return spannerMetadataResourceManager;
   }
 
@@ -251,7 +250,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
@@ -260,6 +258,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("workerMachineType", "n2-standard-4");
           }
         };
+
+    if (subscriptionName != null) {
+      params.put("dlqGcsPubSubSubscription", subscriptionName);
+    }
+
     if (jobParameters != null) {
       params.putAll(jobParameters);
     }
@@ -280,6 +283,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       params.put(
           "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        params.put("transformationCustomParameters", customTransformation.customParameters());
+      }
     }
 
     // Construct template

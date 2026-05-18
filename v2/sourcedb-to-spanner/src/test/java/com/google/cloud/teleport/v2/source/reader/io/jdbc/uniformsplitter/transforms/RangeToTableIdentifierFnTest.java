@@ -30,7 +30,11 @@ public class RangeToTableIdentifierFnTest {
 
   @Test
   public void testApply() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     Range range =
         Range.builder()
             .setTableIdentifier(tableIdentifier)

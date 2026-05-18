@@ -66,7 +66,9 @@ import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -184,6 +186,17 @@ public class SpannerToSourceDb {
     String getMetadataDatabase();
 
     void setMetadataDatabase(String value);
+
+    @TemplateParameter.Text(
+        order = 36,
+        optional = true,
+        description = "Cloud Spanner Database to store change stream connector metadata",
+        helpText =
+            "This is the database to store the metadata used by the change stream connector. "
+                + "If not provided, it defaults to the metadata database.")
+    String getChangeStreamMetadataDatabase();
+
+    void setChangeStreamMetadataDatabase(String value);
 
     @TemplateParameter.Text(
         order = 7,
@@ -657,6 +670,11 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
+
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+      validateMySQLNotReadOnly(shards);
+    }
+
     SourceSchema sourceSchema = fetchSourceSchema(options, shards);
     LOG.info("Source schema: {}", sourceSchema);
 
@@ -919,12 +937,18 @@ public class SpannerToSourceDb {
     if (!options.getStartTimestamp().equals("")) {
       startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
     }
+    String changeStreamMetadataDb = options.getChangeStreamMetadataDatabase();
+    if (Strings.isNullOrEmpty(changeStreamMetadataDb)) {
+      changeStreamMetadataDb = options.getMetadataDatabase();
+    }
+    LOG.info("Using database {} for change stream metadata.", changeStreamMetadataDb);
+
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()
             .withSpannerConfig(spannerConfig)
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
-            .withMetadataDatabase(options.getMetadataDatabase())
+            .withMetadataDatabase(changeStreamMetadataDb)
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
 
@@ -991,6 +1015,29 @@ public class SpannerToSourceDb {
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
     builder.withConfigLoader(configLoader);
     return builder.build();
+  }
+
+  private static void validateMySQLNotReadOnly(List<Shard> shards) {
+    for (Shard shard : shards) {
+      try (Connection conn =
+          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
+        if (conn != null) {
+          try (Statement stmt = conn.createStatement();
+              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
+            if (rs != null && rs.next() && rs.getInt(1) == 1) {
+              throw new RuntimeException(
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
+            }
+          }
+        }
+      } catch (SQLException e) {
+        LOG.error(
+            "Error checking MySQL read-only status for shard {}: {}",
+            shard.getLogicalShardId(),
+            e.getMessage());
+        throw new RuntimeException("Error checking MySQL read-only status", e);
+      }
+    }
   }
 
   private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {

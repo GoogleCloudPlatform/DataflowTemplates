@@ -66,36 +66,23 @@ public class DeadLetterQueue implements Serializable {
 
   private final Ddl ddl;
 
-  private Map<String, String> srcTableToShardIdColumnMap;
-
   private final SQLDialect sqlDialect;
 
   private final ISchemaMapper schemaMapper;
 
-  private final String shardId;
-
   public static final Counter FAILED_MUTATION_COUNTER =
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
 
+  /**
+   * Creates a {@link DeadLetterQueue} instance.
+   *
+   * <p>Note: Explicit shard ID and table-to-shard-column mappings are no longer required here as
+   * they are now encapsulated within the {@link
+   * com.google.cloud.teleport.v2.source.reader.io.row.SourceRow} and processed dynamically.
+   */
   public static DeadLetterQueue create(
-      String dlqDirectory,
-      Ddl ddl,
-      Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect,
-      ISchemaMapper iSchemaMapper,
-      String shardId) {
-    return new DeadLetterQueue(
-        dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, iSchemaMapper, shardId);
-  }
-
-  public static DeadLetterQueue create(
-      String dlqDirectory,
-      Ddl ddl,
-      Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect,
-      ISchemaMapper iSchemaMapper) {
-    return new DeadLetterQueue(
-        dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, iSchemaMapper, null);
+      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
+    return new DeadLetterQueue(dlqDirectory, ddl, sqlDialect, iSchemaMapper);
   }
 
   public String getDlqDirectory() {
@@ -103,18 +90,11 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private DeadLetterQueue(
-      String dlqDirectory,
-      Ddl ddl,
-      Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect,
-      ISchemaMapper iSchemaMapper,
-      String shardId) {
+      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
     this.ddl = ddl;
-    this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
     this.schemaMapper = iSchemaMapper;
-    this.shardId = shardId;
   }
 
   @VisibleForTesting
@@ -173,7 +153,9 @@ public class DeadLetterQueue implements Serializable {
     filteredRows
         .apply("filteredRowTransformString", ParDo.of(rowContextToString))
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .apply(
+            "SanitizeFilteredRowTransformWriteDLQ",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("FilteredRowsDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added filtering dlq stage after transformer");
@@ -196,7 +178,9 @@ public class DeadLetterQueue implements Serializable {
     failedRows
         .apply("failedRowTransformString", ParDo.of(rowContextToString))
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .apply(
+            "SanitizeFailedRowTransformWriteDLQ",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("TransformerDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after transformer");
@@ -241,9 +225,6 @@ public class DeadLetterQueue implements Serializable {
     if (r.row().shardId() != null) {
       json.put(Constants.EVENT_SHARD_ID, r.row().shardId());
       populateShardIdColumnAndValue(json, spannerTable, r.row().shardId());
-    } else if (this.shardId != null && !this.shardId.isEmpty()) {
-      json.put(Constants.EVENT_SHARD_ID, this.shardId);
-      populateShardIdColumnAndValue(json, spannerTable, this.shardId);
     }
     FailsafeElement<String, String> dlqElement =
         FailsafeElement.of(json.toString(), json.toString());
@@ -385,20 +366,15 @@ public class DeadLetterQueue implements Serializable {
       JSONObject json, Mutation m, Map<String, Value> mutationMap) {
     // Attempt to extract and populate shard ID metadata
     try {
-      if (this.shardId != null && !this.shardId.isEmpty()) {
-        json.put(Constants.EVENT_SHARD_ID, this.shardId);
-        populateShardIdColumnAndValue(json, m.getTable(), this.shardId);
-      } else {
-        // Just try to find if the mutation has the shard id column and populate it in metadata
-        // We know that if the mutation has the shard id column, it must have the shard id value
-        String shardIdColName = getShardIdColumnName(m.getTable());
-        if (mutationMap.containsKey(shardIdColName)) {
-          Value shardIdValue = mutationMap.get(shardIdColName);
-          if (shardIdValue != null && !shardIdValue.isNull()) {
-            String shardIdStr = shardIdValue.toString();
-            json.put(Constants.EVENT_SHARD_ID, shardIdStr);
-            json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
-          }
+      // Just try to find if the mutation has the shard id column and populate it in metadata
+      // We know that if the mutation has the shard id column, it must have the shard id value
+      String shardIdColName = getShardIdColumnName(m.getTable());
+      if (mutationMap.containsKey(shardIdColName)) {
+        Value shardIdValue = mutationMap.get(shardIdColName);
+        if (shardIdValue != null && !shardIdValue.isNull()) {
+          String shardIdStr = shardIdValue.toString();
+          json.put(Constants.EVENT_SHARD_ID, shardIdStr);
+          json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
         }
       }
     } catch (Exception e) {

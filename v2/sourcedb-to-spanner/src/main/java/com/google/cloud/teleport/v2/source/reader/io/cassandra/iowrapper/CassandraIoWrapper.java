@@ -84,7 +84,7 @@ public final class CassandraIoWrapper implements IoWrapper {
 
   /** Discover source schema for Cassandra. */
   @Override
-  public SourceSchema discoverTableSchema() {
-    return sourceSchema;
+  public ImmutableList<SourceSchema> discoverTableSchema() {
+    return ImmutableList.of(sourceSchema);
   }
 }

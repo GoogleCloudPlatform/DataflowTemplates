@@ -44,7 +44,11 @@ public class SplitRangeDoFnTest {
   public void testSplitRangeDoFnBasic() {
     Range splittableRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)

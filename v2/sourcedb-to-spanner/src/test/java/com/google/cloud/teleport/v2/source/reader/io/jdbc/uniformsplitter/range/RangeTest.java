@@ -33,8 +33,16 @@ public class RangeTest {
     long end = 42L;
     Range range =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -73,8 +81,16 @@ public class RangeTest {
   public void testRangeWithChild() {
     Range basicRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -112,8 +128,16 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -129,8 +153,16 @@ public class RangeTest {
     long mid = 21L;
     Range rangeChild =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -179,8 +211,16 @@ public class RangeTest {
   public void testAccumulateCount() {
     Range uncountedRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -203,7 +243,11 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -219,7 +263,11 @@ public class RangeTest {
     long mid = 21L;
     Range leftChild =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -232,7 +280,11 @@ public class RangeTest {
 
     Range rightChild =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_child")
             .setColClass(Long.class)
@@ -255,7 +307,10 @@ public class RangeTest {
             leftRange.isMergable(
                 rightRange.toBuilder()
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("testTable2").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable2")
+                            .build())
                     .build()))
         .isFalse();
 
@@ -263,14 +318,20 @@ public class RangeTest {
             rightRange.isMergable(
                 leftRange.toBuilder()
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("testTable2").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable2")
+                            .build())
                     .build()))
         .isFalse();
     assertThat(
             leftChild.isMergable(
                 rightChild.toBuilder()
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("testTable2").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable2")
+                            .build())
                     .build()))
         .isFalse();
     // Non-Overlapping ranges are not mergable.
@@ -304,7 +365,11 @@ public class RangeTest {
   public void testRangeEquality() {
     Range basicRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_1")
             .setColClass(Long.class)
@@ -328,7 +393,11 @@ public class RangeTest {
     assertThat(basicRange)
         .isNotEqualTo(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable")
+                        .build())
                 .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                 .setColName(basicRange.colName())
                 .setColClass(Integer.class)

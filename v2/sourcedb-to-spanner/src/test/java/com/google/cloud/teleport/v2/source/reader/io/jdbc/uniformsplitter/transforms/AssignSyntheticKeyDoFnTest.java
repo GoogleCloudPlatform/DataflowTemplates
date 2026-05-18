@@ -36,8 +36,16 @@ public class AssignSyntheticKeyDoFnTest {
 
   @Test
   public void testAssignSyntheticKey() {
-    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
+    TableIdentifier table1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier table2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table2")
+            .build();
 
     Range range1 =
         Range.<Long>builder()

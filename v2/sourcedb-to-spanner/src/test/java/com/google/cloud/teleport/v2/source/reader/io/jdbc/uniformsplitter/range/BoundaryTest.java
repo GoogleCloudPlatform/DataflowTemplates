@@ -41,7 +41,11 @@ public class BoundaryTest {
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setNumericScale(0)
             .setDatetimePrecision(2)
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     assertThat(boundary.start()).isEqualTo(0);
     assertThat(boundary.end()).isEqualTo(42);
@@ -53,7 +57,11 @@ public class BoundaryTest {
     assertThat(boundary)
         .isNotEqualTo(
             boundary.toBuilder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("otherTable").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("otherTable")
+                        .build())
                 .build());
   }
 
@@ -69,7 +77,11 @@ public class BoundaryTest {
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setNumericScale(null)
             .setDatetimePrecision(null)
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Boundary<Integer> boundaryNullBoth =
@@ -79,7 +91,11 @@ public class BoundaryTest {
             .setStart(null)
             .setEnd(null)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     assertThat(boundaryNullStart.start()).isNull();
@@ -103,7 +119,11 @@ public class BoundaryTest {
             .setEnd(42)
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     Boundary stringBoundary =
         Boundary.<String>builder()
@@ -121,7 +141,11 @@ public class BoundaryTest {
                     .setPadSpace(true)
                     .build())
             .setStringMaxLength(255)
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     assertThat(integerBoundary.isSplittable(null)).isTrue();
@@ -157,7 +181,11 @@ public class BoundaryTest {
             .setEnd(20)
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Boundary<Integer> secondBoundary =
@@ -168,7 +196,11 @@ public class BoundaryTest {
             .setEnd(42)
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Boundary<Integer> mergedBoundary =
@@ -179,7 +211,11 @@ public class BoundaryTest {
             .setEnd(42)
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     assertThat(firstBoundary.isMergable(secondBoundary)).isTrue();
     assertThat(secondBoundary.isMergable(firstBoundary)).isTrue();
@@ -210,7 +246,11 @@ public class BoundaryTest {
             .setEnd(1.02f)
             .setDecimalStepSize(BigDecimal.valueOf(0.01))
             .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     // float to non-float (double) comparison
@@ -236,7 +276,11 @@ public class BoundaryTest {
             .setEnd(1.02)
             .setDecimalStepSize(BigDecimal.valueOf(0.001))
             .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     // double to non-double (float) comparison
@@ -266,7 +310,11 @@ public class BoundaryTest {
             .setEnd(1.02f)
             .setDecimalStepSize(decimalStepSize)
             .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Boundary<Float> secondBoundary =
@@ -277,7 +325,11 @@ public class BoundaryTest {
             .setEnd(1.03f)
             .setDecimalStepSize(decimalStepSize)
             .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Boundary<Float> mergedBoundary =
@@ -288,7 +340,11 @@ public class BoundaryTest {
             .setEnd(1.03f)
             .setDecimalStepSize(decimalStepSize)
             .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     assertThat(firstBoundary.isMergable(secondBoundary)).isTrue();
     assertThat(secondBoundary.isMergable(firstBoundary)).isTrue();
@@ -318,7 +374,11 @@ public class BoundaryTest {
             .setStart(0)
             .setEnd(32)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     Pair<Boundary<Integer>, Boundary<Integer>> firstLevelSplit = rootBoundary.split(null);
     Boundary<Integer> firstLevelFirstBoundary = firstLevelSplit.getLeft();
@@ -356,12 +416,20 @@ public class BoundaryTest {
             .setStart(0)
             .setEnd(32)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("TableA").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("TableA")
+                    .build())
             .build();
 
     Boundary<Integer> boundaryTableB =
         boundaryTableA.toBuilder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("TableB").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("TableB")
+                    .build())
             .build();
 
     Boundary<Integer> boundaryTableACol2 = boundaryTableA.toBuilder().setColName("col2").build();
@@ -385,7 +453,11 @@ public class BoundaryTest {
             .setStart(0)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
 
     Range parentRange =
@@ -395,7 +467,11 @@ public class BoundaryTest {
             .setStart(42)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .build();
     Range newRangeWithoutParent = newBoundary.toRange(null, null);
     Range newRangeWithParent = newBoundary.toRange(parentRange, null);
@@ -456,7 +532,11 @@ public class BoundaryTest {
                 .setStart(1)
                 .setEnd(10.30)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable")
+                        .build())
                 .build());
   }
 }

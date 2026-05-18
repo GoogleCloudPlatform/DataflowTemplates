@@ -11,16 +11,18 @@ enum ProtoDialect {
 }
 
 // Protobuf schema for the content of the exported table manifest file.
-message TableManifest {
-  message File {
-    // The avro file name. A relative path to the import directory.
-    string name = 1;
-    // Base64 encoded md5 checksum of the file.
-    string md5 = 2;
+  message TableManifest {
+    message File {
+      // The avro file name. A relative path to the import directory.
+      string name = 1;
+      // Base64 encoded md5 checksum of the file.
+      string md5 = 2;
+      // Base64 encoded crc32c checksum of the file.
+      string crc32c = 3;
+    }
+    // Exported Avro files.
+    repeated File files = 1;
   }
-  // Exported Avro files.
-  repeated File files = 1;
-}
 
 // Protobuf schema for the content of the export summary file representing the
 // whole database.

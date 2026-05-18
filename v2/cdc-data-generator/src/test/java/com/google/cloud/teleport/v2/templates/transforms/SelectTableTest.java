@@ -99,7 +99,7 @@ public class SelectTableTest {
             .build();
 
     // Build DAG to populate childTables and isRoot
-    DataGeneratorSchema dagSchema = SchemaUtils.setSchemaDAG(schema);
+    DataGeneratorSchema dagSchema = SchemaUtils.generateSchemaDAG(schema);
 
     EnumeratedDistribution<DataGeneratorTable> distribution =
         SelectTableFn.buildDistribution(dagSchema);

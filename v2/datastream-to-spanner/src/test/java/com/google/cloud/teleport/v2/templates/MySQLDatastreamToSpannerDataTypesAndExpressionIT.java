@@ -188,7 +188,9 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                condition);
     assertThatResult(result).meetsConditions();
 
     validateResult(spannerResourceManager, expectedData);
@@ -253,7 +255,9 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
+                condition);
     assertThatResult(result).meetsConditions();
 
     validateResult(pgDialectSpannerResourceManager, expectedData);

@@ -141,6 +141,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<Boolean> exportRelatedTables;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
   private final ValueProvider<String> avroTempDirectory;
+  private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
+      checksumAlgorithm;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
@@ -154,7 +156,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /* tableNames= */ ValueProvider.StaticValueProvider.of(""),
         /* exportRelatedTables= */ ValueProvider.StaticValueProvider.of(false),
         /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
-        outputDir);
+        outputDir,
+        /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
   }
 
   public ExportTransform(
@@ -166,6 +170,29 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
       ValueProvider<String> avroTempDirectory) {
+    this(
+        spannerConfig,
+        outputDir,
+        testJobId,
+        snapshotTime,
+        tableNames,
+        exportRelatedTables,
+        shouldExportTimestampAsLogicalType,
+        avroTempDirectory,
+        /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+  }
+
+  public ExportTransform(
+      SpannerConfig spannerConfig,
+      ValueProvider<String> outputDir,
+      ValueProvider<String> testJobId,
+      ValueProvider<String> snapshotTime,
+      ValueProvider<String> tableNames,
+      ValueProvider<Boolean> exportRelatedTables,
+      ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
+      ValueProvider<String> avroTempDirectory,
+      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
@@ -174,6 +201,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     this.exportRelatedTables = exportRelatedTables;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
     this.avroTempDirectory = avroTempDirectory;
+    this.checksumAlgorithm = checksumAlgorithm;
   }
 
   /**
@@ -753,7 +781,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =
-        allFiles.apply("Build table manifests", ParDo.of(new BuildTableManifests()));
+        allFiles.apply(
+            "Build table manifests", ParDo.of(new BuildTableManifests(checksumAlgorithm)));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> tableManifestNaming =
         (element, c) ->
@@ -1070,6 +1099,14 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
    */
   static class BuildTableManifests extends DoFn<KV<String, Iterable<String>>, KV<String, String>> {
 
+    private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
+        checksumAlgorithm;
+
+    BuildTableManifests(
+        ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
+      this.checksumAlgorithm = checksumAlgorithm;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) {
       if (Objects.equals(c.element().getKey(), EMPTY_EXPORT_FILE)) {
@@ -1095,9 +1132,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     private TableManifest buildLocalManifest(Iterable<Path> files) {
       TableManifest.Builder result = TableManifest.newBuilder();
+      ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm algorithm = getChecksumAlgorithm();
       for (Path filePath : files) {
-        String hash = FileChecksum.getLocalFileChecksum(filePath);
-        result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
+        if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+          String hash = FileChecksum.getLocalFileChecksum(filePath);
+          result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
+        } else if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.CRC32C) {
+          String hash = FileChecksum.getLocalFileChecksumCrc32c(filePath);
+          result.addFilesBuilder().setName(filePath.getFileName().toString()).setCrc32C(hash);
+        }
       }
       return result.build();
     }
@@ -1110,14 +1153,30 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       List<GcsPath> gcsPaths = new ArrayList<>();
       files.forEach(gcsPaths::add);
 
-      // Fetch object metadata from GCS
-      List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+      ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm algorithm = getChecksumAlgorithm();
+      List<String> checksums;
+      if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+        checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+      } else {
+        checksums = FileChecksum.getGcsFileChecksumsCrc32c(gcsUtil, gcsPaths);
+      }
+
       for (int i = 0; i < gcsPaths.size(); i++) {
         String fileName = gcsPaths.get(i).getFileName().getObject();
         String hash = checksums.get(i);
-        result.addFilesBuilder().setName(fileName).setMd5(hash);
+        if (algorithm == ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5) {
+          result.addFilesBuilder().setName(fileName).setMd5(hash);
+        } else {
+          result.addFilesBuilder().setName(fileName).setCrc32C(hash);
+        }
       }
       return result.build();
+    }
+
+    private ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm getChecksumAlgorithm() {
+      return checksumAlgorithm.get() == null
+          ? ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5
+          : checksumAlgorithm.get();
     }
   }
 }

@@ -32,7 +32,7 @@ permissions: write-all
 jobs:
   load_tests:
     name: Spanner Dataflow Templates Load tests
-    timeout-minutes: 1440 # 1 day
+    timeout-minutes: 2100 # 35 hours
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, perf ]
     steps:
@@ -57,6 +57,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
+        --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@v7
       if: always() # always run even if the previous step fails

@@ -134,7 +134,7 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorTable mapSourceTable(SourceTable table) {
     ImmutableList.Builder<DataGeneratorColumn> columnsBuilder = ImmutableList.builder();
     for (SourceColumn column : table.columns()) {
-      columnsBuilder.add(mapSourceColumn(column));
+      columnsBuilder.add(mapSourceColumn(column, table.primaryKeyColumns()));
     }
 
     ImmutableList.Builder<DataGeneratorForeignKey> foreignKeysBuilder = ImmutableList.builder();
@@ -174,12 +174,13 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
         .build();
   }
 
-  private DataGeneratorColumn mapSourceColumn(SourceColumn column) {
+  private DataGeneratorColumn mapSourceColumn(SourceColumn column, List<String> primaryKeys) {
     return DataGeneratorColumn.builder()
         .name(column.name())
         .logicalType(typeMapper.getLogicalType(column.type(), null, column.size()))
         .isNullable(column.isNullable())
         .isGenerated(column.isGenerated())
+        .isPrimaryKey(primaryKeys.contains(column.name()))
         .size(column.size())
         .precision(column.precision())
         .scale(column.scale())

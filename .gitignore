@@ -29,3 +29,6 @@
 
 # Derby log
 **/derby.log*
+
+# build log
+**/build.log*

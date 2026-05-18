@@ -21,7 +21,10 @@ RUN if ! [ -f requirements.txt ] ; then >&2 echo "error: no requirements.txt fil
 ${airlockConfig}
 
 # Install dependencies to launch the pipeline and download to reduce startup time
-RUN python -m venv /venv \
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    python -m venv /venv \
     && /venv/bin/python -m ensurepip --upgrade \
     && /venv/bin/pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \

@@ -101,7 +101,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withNullParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
@@ -139,7 +142,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withSingleLevelParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
@@ -196,7 +202,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withMultiLevelParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
@@ -273,7 +282,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withSingleLevelParentRange_mockRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("testTable").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
@@ -330,7 +342,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withMultiLevelParentRange_mockRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("testTable").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
@@ -405,7 +420,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withDbIntegration() throws Exception {
     TableIdentifier tableId =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
         new ColumnForBoundaryQueryPreparedStatementSetter(
             ImmutableList.of(
@@ -480,7 +498,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withDbIntegration_literalSql() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)

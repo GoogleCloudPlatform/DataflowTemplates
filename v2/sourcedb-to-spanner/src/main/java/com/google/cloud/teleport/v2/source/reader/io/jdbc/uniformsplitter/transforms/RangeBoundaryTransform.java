@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
@@ -28,7 +29,6 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
@@ -41,7 +41,7 @@ public abstract class RangeBoundaryTransform
     implements Serializable {
 
   /** Provider for {@link DataSource}. */
-  abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
+  abstract DataSourceProvider dataSourceProvider();
 
   /**
    * Implementations of {@link UniformSplitterDBAdapter} to get queries as per the dialect of the
@@ -61,7 +61,7 @@ public abstract class RangeBoundaryTransform
     SingleOutput<ColumnForBoundaryQuery, Range> parDo =
         ParDo.of(
             new RangeBoundaryDoFn(
-                dataSourceProviderFn(),
+                dataSourceProvider(),
                 dbAdapter(),
                 tableSplitSpecifications(),
                 boundaryTypeMapper()));
@@ -78,7 +78,7 @@ public abstract class RangeBoundaryTransform
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setDataSourceProviderFn(SerializableFunction<Void, DataSource> value);
+    public abstract Builder setDataSourceProvider(DataSourceProvider value);
 
     public abstract Builder setDbAdapter(UniformSplitterDBAdapter value);
 

@@ -146,7 +146,7 @@ public class CassandraIOWrapperFactoryTest {
         CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);
     assertThat(cassandraIOWrapperFactory.getIOWrapper(TABLES_TO_READ, null).discoverTableSchema())
-        .isEqualTo(mockSourceSchema);
+        .isEqualTo(ImmutableList.of(mockSourceSchema));
     assertThat(cassandraIOWrapperFactory.cassandraDialect()).isEqualTo(CassandraDialect.OSS);
     assertThat(cassandraIOWrapperFactory.astraDBKeyspace()).isEqualTo("");
     assertThat(cassandraIOWrapperFactory.astraDBRegion()).isEqualTo("");

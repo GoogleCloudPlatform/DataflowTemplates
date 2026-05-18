@@ -16,10 +16,19 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ReadContext;
+import com.google.cloud.spanner.ResultSet;
+import com.google.common.collect.Maps;
+import java.util.Map;
+import java.util.NavigableMap;
 import org.junit.Test;
 
 /** Unit tests for InformationSchemaScanner class. */
@@ -109,6 +118,65 @@ public class InformationSchemaScannerTest {
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
                 + " AND (t.index_type='INDEX' OR t.index_type='SEARCH' OR t.index_type='ScaNN') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name"));
+  }
+
+  @Test
+  public void testListIndexOptions() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any())).thenReturn(mockResultSet);
+
+    when(mockResultSet.next()).thenReturn(true, true, true, false);
+
+    // Row 1: Valid option, Row 2: internal_updated_, Row 3: system_optimized_
+    when(mockResultSet.getString(0)).thenReturn("", "", ""); // schema
+    when(mockResultSet.getString(1)).thenReturn("table1", "table1", "table1"); // table
+    when(mockResultSet.getString(2)).thenReturn("index1", "index1", "index1"); // index
+    when(mockResultSet.getString(3)).thenReturn("INDEX", "INDEX", "INDEX"); // index type
+    when(mockResultSet.getString(4))
+        .thenReturn("valid_option", "internal_updated_opt", "system_optimized_opt"); // option name
+    when(mockResultSet.getString(5)).thenReturn("STRING", "STRING", "STRING"); // option type
+    when(mockResultSet.getString(6)).thenReturn("value1", "value2", "value3"); // option value
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
+
+    Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
+    NavigableMap<String, Index.Builder> tableIndexes = Maps.newTreeMap();
+    Index.Builder indexBuilder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL).name("index1").table("table1");
+    tableIndexes.put("index1", indexBuilder);
+    indexes.put("table1", tableIndexes);
+
+    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
+    scanner.listIndexOptions(builder, indexes);
+
+    Index index = indexBuilder.build();
+    assertEquals(1, index.options().size());
+    assertEquals("valid_option=\"value1\"", index.options().get(0));
+  }
+
+  @Test
+  public void testListIndexOptionsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listIndexOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name"));
+
+    assertThat(
+        postgresSQLInfoScanner.listIndexOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN "
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name"));
   }
 
   @Test

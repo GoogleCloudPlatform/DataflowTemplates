@@ -15,14 +15,14 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.exception;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
 
 /**
  * Exception thrown when a suitable indexed column that can act as the partition column is not
  * found.
  *
  * <p>Please refer to {@link
- * com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper#of(JdbcIOWrapperConfig)}
+ * com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper#of(JdbcIoWrapperConfigGroup)}
  * for details on the cases where this is thrown.
  */
 public class SuitableIndexNotFoundException extends SchemaDiscoveryException {

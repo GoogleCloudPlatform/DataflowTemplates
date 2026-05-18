@@ -108,7 +108,11 @@ public class RangePreparedStatementSetterTest {
   public void testSetParameters_throwsExceptionOnNullElement() throws Exception {
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -129,7 +133,11 @@ public class RangePreparedStatementSetterTest {
   public void testSetRangeParameters_throwsOnUnknownTable() throws Exception {
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("knownTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("knownTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -146,7 +154,11 @@ public class RangePreparedStatementSetterTest {
     Range unknownTableRange =
         Range.<Integer>builder()
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("unknownTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("unknownTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(10)
@@ -164,7 +176,11 @@ public class RangePreparedStatementSetterTest {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()

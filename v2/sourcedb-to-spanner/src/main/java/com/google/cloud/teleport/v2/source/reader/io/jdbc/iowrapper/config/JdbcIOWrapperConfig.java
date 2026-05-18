@@ -29,8 +29,10 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transf
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
@@ -266,10 +268,36 @@ public abstract class JdbcIOWrapperConfig {
   @Nullable
   public abstract Integer workerCores();
 
+  /**
+   * Returns a unique identifier for this configuration instance.
+   *
+   * @return The configuration ID.
+   */
+  public abstract String id();
+
   public abstract Builder toBuilder();
 
+  /**
+   * Returns a new builder for {@link JdbcIOWrapperConfig}.
+   *
+   * @return A new builder instance with a generated ID.
+   */
+  public static Builder builder() {
+    return new AutoValue_JdbcIOWrapperConfig.Builder().setId(generateId());
+  }
+
+  /**
+   * Generates a unique identifier for a configuration.
+   *
+   * @return A random UUID string.
+   */
+  @VisibleForTesting
+  public static String generateId() {
+    return UUID.randomUUID().toString();
+  }
+
   public static Builder builderWithMySqlDefaults() {
-    return new AutoValue_JdbcIOWrapperConfig.Builder()
+    return builder()
         .setSourceDbDialect(SQLDialect.MYSQL)
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
@@ -299,7 +327,7 @@ public abstract class JdbcIOWrapperConfig {
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
-    return new AutoValue_JdbcIOWrapperConfig.Builder()
+    return builder()
         .setSourceDbDialect(SQLDialect.POSTGRESQL)
         .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
@@ -404,6 +432,8 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setWorkerMemoryBytes(Long value);
 
     public abstract Builder setWorkerCores(Integer value);
+
+    public abstract Builder setId(String value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

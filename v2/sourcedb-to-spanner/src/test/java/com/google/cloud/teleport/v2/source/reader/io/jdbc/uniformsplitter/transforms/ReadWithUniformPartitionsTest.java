@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
@@ -81,6 +82,97 @@ public class ReadWithUniformPartitionsTest implements Serializable {
     System.setProperty("derby.locks.waitTimeout", "2");
     System.setProperty("derby.stream.error.file", "build/derby.log");
     TransformTestUtils.createDerbyTable(tableName);
+    TransformTestUtils.createDerbyTable("RWUP_multi_shard1");
+    TransformTestUtils.createDerbyTableShard2("RWUP_multi_shard2");
+  }
+
+  /**
+   * Tests the multi-shard reading capability end-to-end using two different in-memory Derby
+   * databases. This ensures that the transform can correctly route requests to multiple physical
+   * shards and aggregate results.
+   */
+  @Test
+  public void testReadWithUniformPartitions_multiShardEndToEnd() throws Exception {
+    String shard1Id = "shard1";
+    String shard2Id = "shard2";
+    String table1Name = "RWUP_multi_shard1";
+    String table2Name = "RWUP_multi_shard2";
+
+    TableIdentifier id1 =
+        TableIdentifier.builder().setDataSourceId(shard1Id).setTableName(table1Name).build();
+    TableIdentifier id2 =
+        TableIdentifier.builder().setDataSourceId(shard2Id).setTableName(table2Name).build();
+
+    TableSplitSpecification spec1 =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(id1)
+            .setApproxRowCount(6L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .setMaxPartitionsHint(1L) // Force single partition for simplicity
+            .build();
+
+    TableSplitSpecification spec2 =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(id2)
+            .setApproxRowCount(6L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnName("col1")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .setMaxPartitionsHint(1L) // Force single partition for simplicity
+            .build();
+
+    RowMapper<String> rowMapper =
+        new RowMapper<String>() {
+          @Override
+          public String mapRow(ResultSet rs) throws Exception {
+            return rs.getString(3);
+          }
+        };
+
+    TableReadSpecification<String> readSpec1 =
+        TableReadSpecification.<String>builder()
+            .setTableIdentifier(id1)
+            .setRowMapper(rowMapper)
+            .build();
+
+    TableReadSpecification<String> readSpec2 =
+        TableReadSpecification.<String>builder()
+            .setTableIdentifier(id2)
+            .setRowMapper(rowMapper)
+            .build();
+
+    ReadWithUniformPartitions<String> readWithUniformPartitions =
+        ReadWithUniformPartitions.<String>builder()
+            .setTableSplitSpecifications(ImmutableList.of(spec1, spec2))
+            .setTableReadSpecifications(ImmutableMap.of(id1, readSpec1, id2, readSpec2))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource(shard1Id, dataSourceProviderFn)
+                    .addDataSource(shard2Id, ignored -> TransformTestUtils.DATA_SOURCE_SHARD_2)
+                    .build())
+            .setAutoAdjustMaxPartitions(false)
+            .build();
+
+    PCollection<String> output =
+        (PCollection<String>) testPipeline.apply(readWithUniformPartitions);
+
+    // Both shards have 6 rows: "Data A" to "Data F"
+    // So we expect 12 rows total, two of each "Data A" to "Data F"
+    PAssert.that(output)
+        .containsInAnyOrder(
+            "Data A", "Data B", "Data C", "Data D", "Data E", "Data F", "Data A", "Data B",
+            "Data C", "Data D", "Data E", "Data F");
+
+    testPipeline.run().waitUntilFinish();
   }
 
   @Test
@@ -165,7 +257,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     Range firstRead =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName(tableName)
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(25)
@@ -287,7 +383,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
   public void testMaxPartitionAutoInferencePreConditions() {
     Range initialRangeWithWrongColumChild =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName(tableName)
+                    .build())
             .setColName("wrongCol")
             .setColClass(Integer.class)
             .setStart(0)
@@ -296,7 +396,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .build();
     Range initialRange =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName(tableName)
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(42)
@@ -331,7 +435,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
       tableName = ReadWithUniformPartitionsTest.tableName;
     }
 
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName(tableName).build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName(tableName)
+            .build();
 
     TableSplitSpecification.Builder specBuilder =
         TableSplitSpecification.builder()
@@ -371,7 +479,10 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setTableSplitSpecifications(ImmutableList.of(specBuilder.build()))
             .setTableReadSpecifications(ImmutableMap.of(tableIdentifier, readSpec))
             .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-            .setDataSourceProviderFn(dataSourceProviderFn)
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build())
             .setAdditionalOperationsOnRanges(testRangesPeek);
     if (maxPartitionHint != null) {
       // For the purpose of this UT we disable auto adjustment as we try to verify the partitioning
@@ -439,6 +550,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
   @AfterClass
   public static void exitDerby() throws SQLException {
     TransformTestUtils.dropDerbyTable(tableName);
+    TransformTestUtils.dropDerbyTable("RWUP_multi_shard1");
+    try (java.sql.Connection connection = TransformTestUtils.getConnectionShard2()) {
+      java.sql.Statement statement = connection.createStatement();
+      statement.executeUpdate("drop table RWUP_multi_shard2");
+    }
   }
 
   @Test
@@ -526,7 +642,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     TableSplitSpecification spec1 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("table1").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("table1")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -546,7 +666,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     TableSplitSpecification spec2 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("table2").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("table2")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -568,7 +692,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     TableSplitSpecification spec3 =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("table3").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("table3")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
@@ -616,7 +744,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testGetTransformNameWithCustomPrefix() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableIdentifier)
@@ -642,7 +774,10 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setTableSplitSpecifications(ImmutableList.of(spec))
             .setTableReadSpecifications(ImmutableMap.of(tableIdentifier, readSpec))
             .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-            .setDataSourceProviderFn(dataSourceProviderFn)
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build())
             .setTransformPrefix("CustomPrefix")
             .build();
 
@@ -660,7 +795,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
     try {
       TableSplitSpecification spec1 =
           TableSplitSpecification.builder()
-              .setTableIdentifier(TableIdentifier.builder().setTableName(tableName1).build())
+              .setTableIdentifier(
+                  TableIdentifier.builder()
+                      .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                      .setTableName(tableName1)
+                      .build())
               .setApproxRowCount(100L)
               .setPartitionColumns(
                   ImmutableList.of(
@@ -684,7 +823,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
       TableSplitSpecification spec2 =
           TableSplitSpecification.builder()
-              .setTableIdentifier(TableIdentifier.builder().setTableName(tableName2).build())
+              .setTableIdentifier(
+                  TableIdentifier.builder()
+                      .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                      .setTableName(tableName2)
+                      .build())
               .setApproxRowCount(100L)
               .setPartitionColumns(
                   ImmutableList.of(
@@ -731,7 +874,10 @@ public class ReadWithUniformPartitionsTest implements Serializable {
                   ImmutableMap.of(
                       spec1.tableIdentifier(), readSpec1, spec2.tableIdentifier(), readSpec2))
               .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-              .setDataSourceProviderFn(dataSourceProviderFn)
+              .setDataSourceProvider(
+                  DataSourceProviderImpl.builder()
+                      .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                      .build())
               .build();
 
       PCollection<String> output =
@@ -750,7 +896,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testValidateParameters_emptyTableSplitSpecifications() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName(tableName).build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName(tableName)
+            .build();
     TableReadSpecification<String> readSpec =
         TableReadSpecification.<String>builder()
             .setTableIdentifier(tableIdentifier)
@@ -768,7 +918,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testValidateParameters_emptyTableReadSpecifications() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName(tableName).build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName(tableName)
+            .build();
     TableSplitSpecification splitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableIdentifier)
@@ -792,8 +946,16 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testValidateParameters_sizeMismatch() {
-    TableIdentifier tableIdentifier1 = TableIdentifier.builder().setTableName("t1").build();
-    TableIdentifier tableIdentifier2 = TableIdentifier.builder().setTableName("t2").build();
+    TableIdentifier tableIdentifier1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("t1")
+            .build();
+    TableIdentifier tableIdentifier2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("t2")
+            .build();
     TableSplitSpecification splitSpec1 =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableIdentifier1)
@@ -831,7 +993,11 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testValidateParameters_valid() {
-    TableIdentifier tableIdentifier = TableIdentifier.builder().setTableName(tableName).build();
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName(tableName)
+            .build();
     TableSplitSpecification splitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableIdentifier)
@@ -859,8 +1025,16 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
   @Test
   public void testBuild_identifierMismatch() {
-    TableIdentifier tableIdentifier1 = TableIdentifier.builder().setTableName("t1").build();
-    TableIdentifier tableIdentifier2 = TableIdentifier.builder().setTableName("t2").build();
+    TableIdentifier tableIdentifier1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("t1")
+            .build();
+    TableIdentifier tableIdentifier2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("t2")
+            .build();
     TableSplitSpecification splitSpec1 =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableIdentifier1)
@@ -883,7 +1057,10 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setTableSplitSpecifications(ImmutableList.of(splitSpec1))
             .setTableReadSpecifications(ImmutableMap.of(tableIdentifier2, readSpec2))
             .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
-            .setDataSourceProviderFn(dataSourceProviderFn);
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build());
 
     IllegalStateException exception = assertThrows(IllegalStateException.class, builder::build);
     assertThat(exception)

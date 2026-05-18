@@ -28,9 +28,28 @@ import org.apache.beam.sdk.values.PCollection;
 public interface IoWrapper {
 
   /** Get a list of reader transforms. */
+  /**
+   * Returns a mapping of table reference groups to their corresponding reader transforms.
+   *
+   * <p>For legacy single-table reads, the list will contain a single {@link SourceTableReference}.
+   * For optimized multi-table reads, the list will contain all table references handled by that
+   * specific transform.
+   *
+   * <p>Note: The {@link SourceRow} generics are handled by the caller. Ensure that the PCollection
+   * produced by the transform is compatible with the expected pipeline schema to avoid type erasure
+   * issues in Beam.
+   *
+   * @return A map where the key is a list of tables and the value is the transform to read them.
+   */
   ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       getTableReaders();
 
-  /** Discover source schema. */
-  SourceSchema discoverTableSchema();
+  /**
+   * Discover source schema.
+   *
+   * @return List of discovered schemas for all the passed sources. For single shard migration the
+   *     returned list will contain a single element. Note that datasources like Cassandra support
+   *     only single shard migration.
+   */
+  ImmutableList<SourceSchema> discoverTableSchema();
 }
