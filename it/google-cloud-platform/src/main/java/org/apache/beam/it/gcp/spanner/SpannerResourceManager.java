@@ -444,7 +444,11 @@ public final class SpannerResourceManager implements ResourceManager {
     checkIsUsable();
     checkHasInstanceAndDatabase();
 
-    LOG.info("Executing DML statements on database {}.", statements, databaseId);
+    if (suppressVerboseLogs) {
+      LOG.info("Executing {} DML statements on database {}.", statements.size(), databaseId);
+    } else {
+      LOG.info("Executing DML statements '{}' on database {}.", statements, databaseId);
+    }
     List<Statement> statementsList =
         statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
     try {
@@ -458,8 +462,15 @@ public final class SpannerResourceManager implements ResourceManager {
                     transaction.batchUpdate(statementsList);
                     return null;
                   });
-      LOG.debug(
-          "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+      if (suppressVerboseLogs) {
+        LOG.debug(
+            "Successfully executed {} DML statements on database {}.",
+            statements.size(),
+            databaseId);
+      } else {
+        LOG.debug(
+            "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+      }
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
@@ -748,6 +759,12 @@ public final class SpannerResourceManager implements ResourceManager {
       return this;
     }
 
+    /**
+     * Sets whether to suppress verbose logs such as full DDL statements and query strings.
+     *
+     * @param suppressVerboseLogs whether to suppress verbose logs.
+     * @return this builder object with the suppressVerboseLogs option set.
+     */
     public Builder setSuppressVerboseLogs(boolean suppressVerboseLogs) {
       this.suppressVerboseLogs = suppressVerboseLogs;
       return this;
