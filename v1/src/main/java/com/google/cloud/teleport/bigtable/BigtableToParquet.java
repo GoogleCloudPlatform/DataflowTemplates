@@ -25,6 +25,7 @@ import com.google.cloud.teleport.bigtable.BigtableToParquet.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.util.DurationUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -155,6 +156,44 @@ public class BigtableToParquet {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+
+    @TemplateParameter.Integer(
+        order = 8,
+        optional = true,
+        description = "Minimum row count for page size check",
+        helpText =
+            "The minimum number of rows to buffer before checking if the page size threshold is reached. "
+                + "With large rows, the default (100) can cause excessive memory use; set a lower value "
+                + "(for example, 1) to flush pages more frequently. The default is 100.")
+    ValueProvider<Integer> getMinRowCountForPageSizeCheck();
+
+    @SuppressWarnings("unused")
+    void setMinRowCountForPageSizeCheck(ValueProvider<Integer> minRowCountForPageSizeCheck);
+
+    @TemplateParameter.Duration(
+        order = 9,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows attempt timeout",
+        helpText = "Controls the timeout for each remote read rows call.")
+    @Default.String("5m")
+    String getReadRowsAttemptTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsAttemptTimeout(String timeout);
+
+    @TemplateParameter.Duration(
+        order = 10,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows operation timeout",
+        helpText =
+            "Controls the total timeout of each read rows operation, including all attempts.")
+    @Default.String("10m")
+    String getReadRowsOperationTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsOperationTimeout(String timeout);
   }
 
   /**
@@ -185,6 +224,9 @@ public class BigtableToParquet {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
+            .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
+            .withOperationTimeout(
+                DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
@@ -196,9 +238,12 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
+    ParquetIO.Sink parquetSink =
+        ParquetIO.sink(BigtableRow.getClassSchema())
+            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
     FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
-            .via(ParquetIO.sink(BigtableRow.getClassSchema()))
+            .via(parquetSink)
             .to(options.getOutputDirectory())
             .withPrefix(options.getFilenamePrefix())
             .withSuffix(".parquet");

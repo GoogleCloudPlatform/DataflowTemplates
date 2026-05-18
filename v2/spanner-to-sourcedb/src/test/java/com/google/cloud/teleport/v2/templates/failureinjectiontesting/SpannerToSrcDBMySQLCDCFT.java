@@ -150,6 +150,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     // After the 30-minute window expires, failures are no longer injected. The pipeline then
     // rapidly processes the accumulated burst backlog and successfully retries any previously
     // failed events.
+    String jobStartTime = java.time.Instant.now().toString();
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
@@ -164,7 +165,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 "maxShardConnections",
                 MAX_WORKERS,
                 "failureInjectionParameter",
-                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT80S\" }}"),
+                String.format(
+                    "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT80S\", \"jobStartTime\": \"%s\" }}",
+                    jobStartTime)),
             null,
             spannerResourceManager,
             gcsResourceManager,
