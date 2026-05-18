@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 
 /** Runtime options object that coalesces arbitrary options. */
@@ -23,6 +24,13 @@ public record OverlayTokens(Map<String, String> tokens) implements Serializable 
 
   @Override
   public Map<String, String> tokens() {
-    return Map.copyOf(tokens);
+    return copyOf(tokens);
+  }
+
+  // allows nullable keys and value contrary
+  private static <K, V> Map<K, V> copyOf(Map<K, V> original) {
+    var result = new HashMap<K, V>(original.size());
+    result.putAll(original);
+    return result;
   }
 }
