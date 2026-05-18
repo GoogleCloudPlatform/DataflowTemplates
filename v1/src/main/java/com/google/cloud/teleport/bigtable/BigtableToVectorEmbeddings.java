@@ -301,10 +301,10 @@ public class BigtableToVectorEmbeddings {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
-            .withTableId(options.getBigtableTableId())
             .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
             .withOperationTimeout(
                 DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
+            .withTableId(options.getBigtableTableId())
             .withRowFilter(RowFilter.newBuilder().setCellsPerColumnLimitFilter(1).build());
 
     // Do not validate input fields if it is running as a template.
