@@ -36,14 +36,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -260,36 +254,19 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   private boolean checkAllTablesRowCounts(HashMap<String, RowRange> tables) {
-    ExecutorService executor = Executors.newFixedThreadPool(20);
-    try {
-      List<Callable<Boolean>> tasks = new ArrayList<>();
-      for (Map.Entry<String, RowRange> entry : tables.entrySet()) {
-        tasks.add(
-            () -> {
+    return tables.entrySet().parallelStream()
+        .allMatch(
+            entry -> {
               try {
                 long rowCount = spannerResourceManager.getRowCount(entry.getKey());
                 RowRange range = entry.getValue();
                 return rowCount >= range.min && rowCount <= range.max;
               } catch (Exception e) {
+                LOG.warn(
+                    "Error checking row count for table {}: {}", entry.getKey(), e.getMessage());
                 return false;
               }
             });
-      }
-
-      List<Future<Boolean>> futures = executor.invokeAll(tasks);
-      boolean allPassed = true;
-      for (Future<Boolean> future : futures) {
-        if (!future.get()) {
-          allPassed = false;
-        }
-      }
-      return allPassed;
-    } catch (Exception e) {
-      LOG.warn("Error checking row count in Spanner", e);
-    } finally {
-      executor.shutdown();
-    }
-    return false;
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
