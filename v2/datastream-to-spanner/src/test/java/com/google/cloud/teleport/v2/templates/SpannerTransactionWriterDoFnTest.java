@@ -538,9 +538,27 @@ public class SpannerTransactionWriterDoFnTest {
     when(shadowTransactionContext.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false); // For two calls
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
-    when(struct.getLong(0)).thenReturn(10000L); // old timestamp
-    when(struct.getString(1)).thenReturn("mysql-bin.000001");
-    when(struct.getLong(2)).thenReturn(100L);
+    when(struct.getLong(any(String.class)))
+        .thenAnswer(
+            invocation -> {
+              String col = invocation.getArgument(0);
+              if (col.contains("timestamp")) {
+                return 10000L;
+              }
+              if (col.contains("log_position")) {
+                return 100L;
+              }
+              return 0L;
+            });
+    when(struct.getString(any(String.class)))
+        .thenAnswer(
+            invocation -> {
+              String col = invocation.getArgument(0);
+              if (col.contains("log_file")) {
+                return "mysql-bin.000001";
+              }
+              return "";
+            });
 
     com.google.cloud.spanner.ResultSet mainResultSet =
         mock(com.google.cloud.spanner.ResultSet.class);
@@ -874,8 +892,10 @@ public class SpannerTransactionWriterDoFnTest {
     when(resultSet2.next()).thenReturn(true).thenReturn(false);
     when(resultSet2.getCurrentRowAsStruct()).thenReturn(struct2);
 
-    com.google.cloud.spanner.ResultSet mockMainResultSet = mock(com.google.cloud.spanner.ResultSet.class);
-    when(transactionContext.executeQuery(any(com.google.cloud.spanner.Statement.class))).thenReturn(mockMainResultSet);
+    com.google.cloud.spanner.ResultSet mockMainResultSet =
+        mock(com.google.cloud.spanner.ResultSet.class);
+    when(transactionContext.executeQuery(any(com.google.cloud.spanner.Statement.class)))
+        .thenReturn(mockMainResultSet);
     when(mockMainResultSet.next()).thenReturn(false);
 
     when(struct1.getLong(any(String.class)))
@@ -1429,8 +1449,10 @@ public class SpannerTransactionWriterDoFnTest {
     when(databaseId.get()).thenReturn("main-database");
     when(spannerConfig.getInstanceId()).thenReturn(instanceId);
     when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
-    org.apache.beam.sdk.options.ValueProvider<com.google.cloud.spanner.Options.RpcPriority> rpcPriorityValueProviderMock = mock(org.apache.beam.sdk.options.ValueProvider.class);
-    when(rpcPriorityValueProviderMock.get()).thenReturn(com.google.cloud.spanner.Options.RpcPriority.LOW);
+    org.apache.beam.sdk.options.ValueProvider<com.google.cloud.spanner.Options.RpcPriority>
+        rpcPriorityValueProviderMock = mock(org.apache.beam.sdk.options.ValueProvider.class);
+    when(rpcPriorityValueProviderMock.get())
+        .thenReturn(com.google.cloud.spanner.Options.RpcPriority.LOW);
     when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
 
     org.apache.beam.sdk.options.ValueProvider<String> shadowInstanceId =
@@ -1445,7 +1467,8 @@ public class SpannerTransactionWriterDoFnTest {
     com.google.cloud.spanner.DatabaseClient databaseClientMock =
         mock(com.google.cloud.spanner.DatabaseClient.class);
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
-    when(databaseClientMock.readWriteTransaction(any(), any(), any())).thenReturn(transactionRunnerMock);
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionRunnerMock);
     when(transactionRunnerMock.run(any()))
         .thenAnswer(
             invocation -> {
@@ -1514,9 +1537,13 @@ public class SpannerTransactionWriterDoFnTest {
         .thenReturn(org.apache.beam.sdk.values.KV.of(1L, failsafeElement));
     when(processContextMock.sideInput(eq(ddlView))).thenReturn(ddl);
 
-    org.apache.beam.sdk.options.PipelineOptions optionsMock = mock(org.apache.beam.sdk.options.PipelineOptions.class);
-    org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions harnessOptionsMock = mock(org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions.class);
-    when(optionsMock.as(org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions.class)).thenReturn(harnessOptionsMock);
+    org.apache.beam.sdk.options.PipelineOptions optionsMock =
+        mock(org.apache.beam.sdk.options.PipelineOptions.class);
+    org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions harnessOptionsMock =
+        mock(org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions.class);
+    when(optionsMock.as(
+            org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions.class))
+        .thenReturn(harnessOptionsMock);
     when(harnessOptionsMock.getJobId()).thenReturn("123");
     when(processContextMock.getPipelineOptions()).thenReturn(optionsMock);
 
@@ -1531,8 +1558,10 @@ public class SpannerTransactionWriterDoFnTest {
 
     org.mockito.Mockito.doReturn(resultSet).when(shadowTransactionContext).executeQuery(any());
 
-    com.google.cloud.spanner.ResultSet mockMainResultSet = mock(com.google.cloud.spanner.ResultSet.class);
-    when(mainTransactionContext.executeQuery(any(com.google.cloud.spanner.Statement.class))).thenReturn(mockMainResultSet);
+    com.google.cloud.spanner.ResultSet mockMainResultSet =
+        mock(com.google.cloud.spanner.ResultSet.class);
+    when(mainTransactionContext.executeQuery(any(com.google.cloud.spanner.Statement.class)))
+        .thenReturn(mockMainResultSet);
     when(mockMainResultSet.next()).thenReturn(false);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
@@ -1549,7 +1578,8 @@ public class SpannerTransactionWriterDoFnTest {
     verify(mainTransactionContext, times(0))
         .executeUpdate(any(com.google.cloud.spanner.Statement.class));
     verify(mainTransactionContext, times(1)).buffer(any(com.google.cloud.spanner.Mutation.class));
-    verify(processContextMock, times(1)).output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any());
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any());
   }
 
   @Test
