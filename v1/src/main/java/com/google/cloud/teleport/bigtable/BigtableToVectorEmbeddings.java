@@ -26,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
+import com.google.cloud.teleport.util.DurationUtils;
 import com.google.gson.stream.JsonWriter;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
@@ -248,8 +249,30 @@ public class BigtableToVectorEmbeddings {
     @Default.String("default")
     ValueProvider<String> getBigtableAppProfileId();
 
+    @TemplateParameter.Duration(
+        order = 16,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows attempt timeout",
+        helpText = "Controls the timeout for each remote read rows call.")
+    @Default.String("5m")
+    String getReadRowsAttemptTimeout();
+
     @SuppressWarnings("unused")
-    void setBigtableAppProfileId(ValueProvider<String> value);
+    void setReadRowsAttemptTimeout(String timeout);
+
+    @TemplateParameter.Duration(
+        order = 17,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows operation timeout",
+        helpText =
+            "Controls the total timeout of each read rows operation, including all attempts.")
+    @Default.String("10m")
+    String getReadRowsOperationTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsOperationTimeout(String timeout);
   }
 
   /**
@@ -278,6 +301,9 @@ public class BigtableToVectorEmbeddings {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
+            .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
+            .withOperationTimeout(
+                DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
             .withTableId(options.getBigtableTableId())
             .withRowFilter(RowFilter.newBuilder().setCellsPerColumnLimitFilter(1).build());
 

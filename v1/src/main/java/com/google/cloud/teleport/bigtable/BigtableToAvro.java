@@ -25,6 +25,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
+import com.google.cloud.teleport.util.DurationUtils;
 import com.google.protobuf.ByteOutput;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
@@ -142,6 +143,31 @@ public class BigtableToAvro {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+
+    @TemplateParameter.Duration(
+        order = 7,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows attempt timeout",
+        helpText = "Controls the timeout for each remote read rows call.")
+    @Default.String("5m")
+    String getReadRowsAttemptTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsAttemptTimeout(String timeout);
+
+    @TemplateParameter.Duration(
+        order = 8,
+        groupName = "Source",
+        optional = true,
+        description = "Read rows operation timeout",
+        helpText =
+            "Controls the total timeout of each read rows operation, including all attempts.")
+    @Default.String("10m")
+    String getReadRowsOperationTimeout();
+
+    @SuppressWarnings("unused")
+    void setReadRowsOperationTimeout(String timeout);
   }
 
   /**
@@ -168,6 +194,9 @@ public class BigtableToAvro {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
+            .withAttemptTimeout(DurationUtils.parseDuration(options.getReadRowsAttemptTimeout()))
+            .withOperationTimeout(
+                DurationUtils.parseDuration(options.getReadRowsOperationTimeout()))
             .withTableId(options.getBigtableTableId());
 
     // Do not validate input fields if it is running as a template.
