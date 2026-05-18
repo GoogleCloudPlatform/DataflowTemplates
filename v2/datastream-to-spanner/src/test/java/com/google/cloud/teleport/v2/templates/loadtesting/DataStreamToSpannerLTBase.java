@@ -36,8 +36,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -77,6 +83,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   protected GcsResourceManager gcsResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected SecretManagerResourceManager secretClient;
+  private final ExecutorService rowCountExecutor = Executors.newFixedThreadPool(20);
 
   public static class RowRange {
     public final int min;
@@ -105,6 +112,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             .maybeUseStaticInstance()
             .setNodeCount(10)
             .setMonitoringClient(monitoringClient)
+            .setSuppressVerboseLogs(true)
             .build();
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
@@ -129,6 +137,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
               .maybeUseStaticInstance()
               .setNodeCount(10)
               .setMonitoringClient(monitoringClient)
+              .setSuppressVerboseLogs(true)
               .build();
       shadowTableSpannerResourceManager.ensureUsableAndCreateResources();
     }
@@ -254,19 +263,32 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   }
 
   private boolean checkAllTablesRowCounts(HashMap<String, RowRange> tables) {
-    return tables.entrySet().parallelStream()
-        .allMatch(
-            entry -> {
-              try {
-                long rowCount = spannerResourceManager.getRowCount(entry.getKey());
-                RowRange range = entry.getValue();
-                return rowCount >= range.min && rowCount <= range.max;
-              } catch (Exception e) {
-                LOG.warn(
-                    "Error checking row count for table {}: {}", entry.getKey(), e.getMessage());
-                return false;
-              }
-            });
+    List<Callable<Boolean>> tasks = new ArrayList<>();
+    for (Map.Entry<String, RowRange> entry : tables.entrySet()) {
+      tasks.add(
+          () -> {
+            try {
+              long rowCount = spannerResourceManager.getRowCount(entry.getKey());
+              RowRange range = entry.getValue();
+              return rowCount >= range.min && rowCount <= range.max;
+            } catch (Exception e) {
+              LOG.warn("Error checking row count for table {}: {}", entry.getKey(), e.getMessage());
+              return false;
+            }
+          });
+    }
+    try {
+      List<Future<Boolean>> futures = rowCountExecutor.invokeAll(tasks);
+      for (Future<Boolean> future : futures) {
+        if (!future.get()) {
+          return false;
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      LOG.warn("Error checking row count in Spanner", e);
+      return false;
+    }
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
@@ -288,6 +310,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
+    rowCountExecutor.shutdown();
   }
 
   public MySQLSource getMySQLSource(String hostIp, String username, String password) {
