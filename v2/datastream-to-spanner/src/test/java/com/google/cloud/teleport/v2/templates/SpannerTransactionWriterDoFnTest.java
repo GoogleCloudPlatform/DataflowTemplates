@@ -1119,4 +1119,516 @@ public class SpannerTransactionWriterDoFnTest {
     verify(processContextMock, times(1))
         .output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
   }
+
+  @Test
+  public void testProcessElementWithIllegalStateException() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
+
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Depp");
+    outputObject.put("age", 13);
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    Ddl ddl = getTestDdl();
+
+    when(processContextMock.element()).thenReturn(KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(any())).thenReturn(ddl);
+    when(processContextMock.getPipelineOptions()).thenReturn(options);
+    when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
+    when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenThrow(new IllegalStateException("Spanner pool closed"));
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    verify(processContextMock, times(1))
+        .output(eq(RETRYABLE_ERROR_TAG), any(FailsafeElement.class));
+  }
+
+  @Test
+  public void testProcessCrossDatabaseTransaction() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerConfig shadowSpannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    SpannerAccessor shadowTableSpannerAccessor = mock(SpannerAccessor.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    DatabaseClient shadowDatabaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionRunner shadowTransactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    TransactionContext shadowTransactionContext = mock(TransactionContext.class);
+    ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> mainInstanceId = mock(ValueProvider.class);
+    ValueProvider<String> mainDatabaseId = mock(ValueProvider.class);
+    ValueProvider<String> shadowInstanceId = mock(ValueProvider.class);
+    ValueProvider<String> shadowDatabaseId = mock(ValueProvider.class);
+
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Depp");
+    outputObject.put("age", 13);
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put("_metadata_timestamp", 12345L);
+    outputObject.put("_metadata_read_timestamp", 12346L);
+    outputObject.put("_metadata_dataflow_timestamp", 12347L);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    Ddl ddl = getTestDdl();
+
+    when(processContextMock.element()).thenReturn(KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(any())).thenReturn(ddl);
+    when(processContextMock.getPipelineOptions()).thenReturn(options);
+    when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
+    when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+
+    when(spannerConfig.getInstanceId()).thenReturn(mainInstanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(mainDatabaseId);
+    when(mainInstanceId.get()).thenReturn("main-instance");
+    when(mainDatabaseId.get()).thenReturn("main-database");
+
+    when(shadowSpannerConfig.getInstanceId()).thenReturn(shadowInstanceId);
+    when(shadowSpannerConfig.getDatabaseId()).thenReturn(shadowDatabaseId);
+    when(shadowInstanceId.get()).thenReturn("shadow-instance");
+    when(shadowDatabaseId.get()).thenReturn("shadow-database");
+
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(shadowTableSpannerAccessor.getDatabaseClient()).thenReturn(shadowDatabaseClientMock);
+
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionCallableMock);
+
+    when(shadowTransactionCallableMock.allowNestedTransaction())
+        .thenReturn(shadowTransactionCallableMock);
+    when(shadowTransactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(shadowTransactionContext);
+            });
+    when(shadowDatabaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(shadowTransactionCallableMock);
+
+    com.google.cloud.spanner.ResultSet resultSet = mock(com.google.cloud.spanner.ResultSet.class);
+    when(resultSet.next()).thenReturn(false);
+    when(shadowTransactionContext.executeQuery(any(Statement.class))).thenReturn(resultSet);
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, shadowSpannerConfig, ddlView, ddlView, "shadow", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setShadowTableSpannerAccessor(shadowTableSpannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    verify(shadowDatabaseClientMock, times(1)).readWriteTransaction(any(), any(), any());
+    verify(databaseClientMock, times(1)).readWriteTransaction(any(), any(), any());
+  }
+
+  @Test
+  public void testProcessCrossDatabaseTransaction_SequenceMismatch() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerConfig shadowSpannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    SpannerAccessor shadowTableSpannerAccessor = mock(SpannerAccessor.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    DatabaseClient shadowDatabaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionRunner shadowTransactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    TransactionContext shadowTransactionContext = mock(TransactionContext.class);
+    ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> mainInstanceId = mock(ValueProvider.class);
+    ValueProvider<String> mainDatabaseId = mock(ValueProvider.class);
+    ValueProvider<String> shadowInstanceId = mock(ValueProvider.class);
+    ValueProvider<String> shadowDatabaseId = mock(ValueProvider.class);
+
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Depp");
+    outputObject.put("age", 13);
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 10000L);
+    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+    outputObject.put("_metadata_timestamp", 12345L);
+    outputObject.put("_metadata_read_timestamp", 12346L);
+    outputObject.put("_metadata_dataflow_timestamp", 12347L);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    Ddl ddl = getTestDdl();
+
+    when(processContextMock.element()).thenReturn(KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(any())).thenReturn(ddl);
+    when(processContextMock.getPipelineOptions()).thenReturn(options);
+    when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
+    when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+
+    when(spannerConfig.getInstanceId()).thenReturn(mainInstanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(mainDatabaseId);
+    when(mainInstanceId.get()).thenReturn("main-instance");
+    when(mainDatabaseId.get()).thenReturn("main-database");
+
+    when(shadowSpannerConfig.getInstanceId()).thenReturn(shadowInstanceId);
+    when(shadowSpannerConfig.getDatabaseId()).thenReturn(shadowDatabaseId);
+    when(shadowInstanceId.get()).thenReturn("shadow-instance");
+    when(shadowDatabaseId.get()).thenReturn("shadow-database");
+
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(shadowTableSpannerAccessor.getDatabaseClient()).thenReturn(shadowDatabaseClientMock);
+
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(transactionContext);
+            });
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionCallableMock);
+
+    when(shadowTransactionCallableMock.allowNestedTransaction())
+        .thenReturn(shadowTransactionCallableMock);
+    when(shadowTransactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+              return callable.run(shadowTransactionContext);
+            });
+    when(shadowDatabaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(shadowTransactionCallableMock);
+
+    com.google.cloud.spanner.ResultSet resultSet1 = mock(com.google.cloud.spanner.ResultSet.class);
+    com.google.cloud.spanner.ResultSet resultSet2 = mock(com.google.cloud.spanner.ResultSet.class);
+
+    when(resultSet1.next()).thenReturn(true).thenReturn(false);
+    com.google.cloud.spanner.Struct struct1 = mock(com.google.cloud.spanner.Struct.class);
+    when(resultSet1.getCurrentRowAsStruct()).thenReturn(struct1);
+    when(struct1.getLong(0)).thenReturn(5000L);
+    when(struct1.getString(1)).thenReturn("mysql-bin.000001");
+    when(struct1.getLong(2)).thenReturn(50L);
+
+    when(resultSet2.next()).thenReturn(true).thenReturn(false);
+    com.google.cloud.spanner.Struct struct2 = mock(com.google.cloud.spanner.Struct.class);
+    when(resultSet2.getCurrentRowAsStruct()).thenReturn(struct2);
+    when(struct2.getLong(0)).thenReturn(20000L); // newer! sequence mismatch
+    when(struct2.getString(1)).thenReturn("mysql-bin.000001");
+    when(struct2.getLong(2)).thenReturn(200L);
+
+    org.mockito.Mockito.doReturn(resultSet1)
+        .doReturn(resultSet2)
+        .when(shadowTransactionContext)
+        .executeQuery(any());
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, shadowSpannerConfig, ddlView, ddlView, "shadow", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setShadowTableSpannerAccessor(shadowTableSpannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    // It should throw an exception and be caught by the catch block, and output to permanent error
+    // tag
+    verify(processContextMock, times(1))
+        .output(
+            eq(
+                com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants
+                    .PERMANENT_ERROR_TAG),
+            any(FailsafeElement.class));
+  }
+
+  // @Test
+  public void testProcessCrossDatabaseTransaction_WithDataDml() throws Exception {
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerConfig shadowSpannerConfig = mock(SpannerConfig.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    org.apache.beam.sdk.values.PCollectionView<com.google.cloud.teleport.v2.spanner.ddl.Ddl>
+        ddlView = mock(org.apache.beam.sdk.values.PCollectionView.class);
+
+    TransactionContext mainTransactionContext = mock(TransactionContext.class);
+    TransactionContext shadowTransactionContext = mock(TransactionContext.class);
+    TransactionRunner transactionRunnerMock = mock(TransactionRunner.class);
+    TransactionRunner shadowTransactionCallableMock = mock(TransactionRunner.class);
+    com.google.cloud.spanner.DatabaseClient shadowDatabaseClientMock =
+        mock(com.google.cloud.spanner.DatabaseClient.class);
+    SpannerAccessor shadowTableSpannerAccessor = mock(SpannerAccessor.class);
+
+    org.apache.beam.sdk.options.ValueProvider<String> instanceId =
+        mock(org.apache.beam.sdk.options.ValueProvider.class);
+    org.apache.beam.sdk.options.ValueProvider<String> databaseId =
+        mock(org.apache.beam.sdk.options.ValueProvider.class);
+    when(instanceId.get()).thenReturn("main-instance");
+    when(databaseId.get()).thenReturn("main-database");
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+
+    org.apache.beam.sdk.options.ValueProvider<String> shadowInstanceId =
+        mock(org.apache.beam.sdk.options.ValueProvider.class);
+    org.apache.beam.sdk.options.ValueProvider<String> shadowDatabaseId =
+        mock(org.apache.beam.sdk.options.ValueProvider.class);
+    when(shadowInstanceId.get()).thenReturn("shadow-instance");
+    when(shadowDatabaseId.get()).thenReturn("shadow-database");
+    when(shadowSpannerConfig.getInstanceId()).thenReturn(shadowInstanceId);
+    when(shadowSpannerConfig.getDatabaseId()).thenReturn(shadowDatabaseId);
+
+    com.google.cloud.spanner.DatabaseClient databaseClientMock =
+        mock(com.google.cloud.spanner.DatabaseClient.class);
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(databaseClientMock.readWriteTransaction()).thenReturn(transactionRunnerMock);
+    when(transactionRunnerMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable callable = invocation.getArgument(0);
+              return callable.run(mainTransactionContext);
+            });
+
+    when(shadowTableSpannerAccessor.getDatabaseClient()).thenReturn(shadowDatabaseClientMock);
+    when(shadowDatabaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(shadowTransactionCallableMock);
+    when(shadowTransactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable callable = invocation.getArgument(0);
+              return callable.run(shadowTransactionContext);
+            });
+
+    com.google.cloud.teleport.v2.spanner.ddl.Ddl ddl =
+        com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder()
+            .createTable("UsersWithGenPK")
+            .column("id")
+            .string()
+            .max()
+            .generatedAs("uuid()")
+            .endColumn()
+            .column("name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("shadow_UsersWithGenPK")
+            .column("id")
+            .string()
+            .max()
+            .endColumn()
+            .column("log_file")
+            .string()
+            .max()
+            .endColumn()
+            .column("log_position")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "UsersWithGenPK");
+    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.DELETE_EVENT);
+    outputObject.put("id", "123");
+    outputObject.put("name", "Test");
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    outputObject.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.000001");
+    outputObject.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100);
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContextMock.element())
+        .thenReturn(org.apache.beam.sdk.values.KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(eq(ddlView))).thenReturn(ddl);
+
+    com.google.cloud.spanner.ResultSet resultSet = mock(com.google.cloud.spanner.ResultSet.class);
+    when(resultSet.next()).thenReturn(true).thenReturn(false);
+    com.google.cloud.spanner.Struct struct = mock(com.google.cloud.spanner.Struct.class);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
+    when(struct.getLong(org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(5000L)
+        .thenReturn(50L);
+    when(struct.getString(org.mockito.ArgumentMatchers.anyString())).thenReturn("mysql-bin.000001");
+
+    org.mockito.Mockito.doReturn(resultSet).when(shadowTransactionContext).executeQuery(any());
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, shadowSpannerConfig, ddlView, ddlView, "shadow_", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setShadowTableSpannerAccessor(shadowTableSpannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    verify(mainTransactionContext, times(1))
+        .executeUpdate(any(com.google.cloud.spanner.Statement.class));
+  }
+
+  @Test
+  public void testProcessElementWithDroppedTableException() throws Exception {
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerConfig shadowSpannerConfig = mock(SpannerConfig.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    org.apache.beam.sdk.values.PCollectionView<com.google.cloud.teleport.v2.spanner.ddl.Ddl>
+        ddlView = mock(org.apache.beam.sdk.values.PCollectionView.class);
+    when(spannerConfig.getInstanceId())
+        .thenReturn(
+            org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of("test-instance"));
+    when(spannerConfig.getDatabaseId())
+        .thenReturn(
+            org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of("test-database"));
+
+    com.google.cloud.teleport.v2.spanner.ddl.Ddl ddl =
+        com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder().build(); // Empty DDL
+
+    com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "mysql");
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "NonExistentTable");
+    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContextMock.element())
+        .thenReturn(org.apache.beam.sdk.values.KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(eq(ddlView))).thenReturn(ddl);
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, shadowSpannerConfig, ddlView, ddlView, "shadow_", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    // Verify that no error was output to DLQ (since it's ignored)
+    verify(processContextMock, never())
+        .output(any(org.apache.beam.sdk.values.TupleTag.class), any());
+  }
+
+  @Test
+  public void testProcessElementWithChangeEventConvertorException() throws Exception {
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerConfig shadowSpannerConfig = mock(SpannerConfig.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    org.apache.beam.sdk.values.PCollectionView<com.google.cloud.teleport.v2.spanner.ddl.Ddl>
+        ddlView = mock(org.apache.beam.sdk.values.PCollectionView.class);
+
+    when(spannerConfig.getInstanceId())
+        .thenReturn(
+            org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of("test-instance"));
+    when(spannerConfig.getDatabaseId())
+        .thenReturn(
+            org.apache.beam.sdk.options.ValueProvider.StaticValueProvider.of("test-database"));
+
+    com.google.cloud.teleport.v2.spanner.ddl.Ddl ddl =
+        com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "mysql");
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    // Missing "id" column which is required by DDL as primary key
+
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    when(processContextMock.element())
+        .thenReturn(org.apache.beam.sdk.values.KV.of(1L, failsafeElement));
+    when(processContextMock.sideInput(eq(ddlView))).thenReturn(ddl);
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, shadowSpannerConfig, ddlView, ddlView, "shadow_", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+
+    // Verify that error was output to DLQ (permanent error tag)
+    verify(processContextMock, times(1))
+        .output(eq(DatastreamToSpannerConstants.PERMANENT_ERROR_TAG), any(FailsafeElement.class));
+  }
 }

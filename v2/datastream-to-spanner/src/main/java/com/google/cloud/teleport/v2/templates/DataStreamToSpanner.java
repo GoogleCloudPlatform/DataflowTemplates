@@ -582,7 +582,7 @@ public class DataStreamToSpanner {
     void setFailureInjectionParameter(String value);
   }
 
-  private static void validateSourceType(Options options) {
+  static void validateSourceType(Options options) {
     boolean isRetryMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     if (isRetryMode) {
       // retry mode does not read from Datastream
@@ -979,7 +979,7 @@ public class DataStreamToSpanner {
                 .build());
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  static DeadLetterQueueManager buildDlqManager(Options options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
