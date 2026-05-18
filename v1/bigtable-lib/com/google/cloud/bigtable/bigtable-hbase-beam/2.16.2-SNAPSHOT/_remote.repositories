@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Mon Apr 27 14:51:56 EDT 2026
+bigtable-hbase-beam-2.16.2-SNAPSHOT.pom>=
+bigtable-hbase-beam-2.16.2-SNAPSHOT.jar>=
