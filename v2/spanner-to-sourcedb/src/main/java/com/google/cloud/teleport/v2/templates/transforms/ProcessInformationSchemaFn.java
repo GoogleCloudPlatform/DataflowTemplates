@@ -43,6 +43,8 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
   private transient SpannerAccessor shadowTableSpannerAccessor;
   private transient Dialect dialect;
   private transient Dialect shadowTableDialect;
+  private transient Ddl mainDdl;
+  private transient Ddl shadowTableDdl;
 
   public ProcessInformationSchemaFn(
       SpannerConfig spannerConfig,
@@ -72,6 +74,18 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
                 shadowTableSpannerConfig.getInstanceId().get(),
                 shadowTableSpannerConfig.getDatabaseId().get())
             .getDialect();
+
+    this.mainDdl =
+        getInformationSchemaAsDdl(spannerAccessor, dialect, spannerConfig.getDatabaseId().get());
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix, mainDdl);
+    shadowTableCreator.createShadowTablesInSpanner();
+    this.shadowTableDdl =
+        getInformationSchemaAsDdl(
+            shadowTableSpannerAccessor,
+            shadowTableDialect,
+            shadowTableSpannerConfig.getDatabaseId().get());
   }
 
   @Teardown
@@ -86,18 +100,6 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    Ddl mainDdl =
-        getInformationSchemaAsDdl(spannerAccessor, dialect, spannerConfig.getDatabaseId().get());
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix, mainDdl);
-    shadowTableCreator.createShadowTablesInSpanner();
-    Ddl shadowTableDdl =
-        getInformationSchemaAsDdl(
-            shadowTableSpannerAccessor,
-            shadowTableDialect,
-            shadowTableSpannerConfig.getDatabaseId().get());
-
     c.output(MAIN_DDL_TAG, mainDdl);
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
   }
