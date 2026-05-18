@@ -21,18 +21,21 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import java.util.Map;
+import java.util.HashMap;
 import org.junit.Test;
 
 public class OverlayTokenParserTest {
 
   @Test
-  public void populatesOverlayTokensFromJsonOptions() {
+  public void populates_overlay_tokens_from_json_options() {
     Neo4jFlexTemplateOptions templateOptions = mock(Neo4jFlexTemplateOptions.class);
-    when(templateOptions.getOptionsJson()).thenReturn("{\"foo\": \"bar\"}");
+    when(templateOptions.getOptionsJson()).thenReturn("{\"foo\": \"bar\", \"qix\": null}");
 
     OverlayTokens options = OverlayTokenParser.parse(templateOptions.getOptionsJson());
 
-    assertThat(options.tokens()).isEqualTo(Map.of("foo", "bar"));
+    var expectedMap = new HashMap<String, String>(2, 0.5f);
+    expectedMap.put("foo", "bar");
+    expectedMap.put("qix", null);
+    assertThat(options.tokens()).isEqualTo(expectedMap);
   }
 }
