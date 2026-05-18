@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.templates.dofn.BuildSchemaDagFn;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -37,7 +38,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
 
   private static final Logger LOG = LoggerFactory.getLogger(SchemaLoader.class);
   private final SinkType sinkType;
-  private final String sinkOptionsPath;
+  private final SinkConfig sinkConfig;
   private final Integer insertQps;
   private final Integer updateQps;
   private final Integer deleteQps;
@@ -45,13 +46,13 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
 
   public SchemaLoader(
       SinkType sinkType,
-      String sinkOptionsPath,
+      SinkConfig sinkConfig,
       Integer insertQps,
       Integer updateQps,
       Integer deleteQps,
       SchemaConfig schemaConfig) {
     this.sinkType = sinkType;
-    this.sinkOptionsPath = sinkOptionsPath;
+    this.sinkConfig = sinkConfig;
     this.insertQps = insertQps;
     this.updateQps = updateQps;
     this.deleteQps = deleteQps;
@@ -62,7 +63,7 @@ public class SchemaLoader extends PTransform<PBegin, PCollectionView<DataGenerat
   public PCollectionView<DataGeneratorSchema> expand(PBegin input) {
     return input
         .apply("CreateSinkType", Create.of(sinkType))
-        .apply("FetchSchemaFromDb", ParDo.of(new FetchSchemaFn(sinkType, sinkOptionsPath)))
+        .apply("FetchSchemaFromDb", ParDo.of(new FetchSchemaFn(sinkType, sinkConfig)))
         .apply(
             "ApplyOverrides",
             ParDo.of(new ApplyOverridesFn(schemaConfig, insertQps, updateQps, deleteQps)))

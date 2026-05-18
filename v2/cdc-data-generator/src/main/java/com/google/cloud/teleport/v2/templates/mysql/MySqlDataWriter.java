@@ -20,11 +20,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHel
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.annotations.VisibleForTesting;
@@ -66,23 +65,18 @@ public class MySqlDataWriter implements DataWriter {
     DELETE
   }
 
-  private final String sinkConfigPath;
-  private final ShardFileReader shardFileReader;
+  private final MySqlSinkConfig mySqlSinkConfig;
 
   private transient IConnectionHelper<Connection> connectionHelper;
   private transient Map<String, Shard> shardsByLogicalId;
 
-  public MySqlDataWriter(String sinkConfigPath) {
-    this(sinkConfigPath, new ShardFileReader(new SecretManagerAccessorImpl()), null);
+  public MySqlDataWriter(MySqlSinkConfig mySqlSinkConfig) {
+    this(mySqlSinkConfig, null);
   }
 
   @VisibleForTesting
-  MySqlDataWriter(
-      String sinkConfigPath,
-      ShardFileReader shardFileReader,
-      IConnectionHelper<Connection> connectionHelper) {
-    this.sinkConfigPath = sinkConfigPath;
-    this.shardFileReader = shardFileReader;
+  MySqlDataWriter(MySqlSinkConfig mySqlSinkConfig, IConnectionHelper<Connection> connectionHelper) {
+    this.mySqlSinkConfig = mySqlSinkConfig;
     this.connectionHelper = connectionHelper;
   }
 
@@ -167,7 +161,11 @@ public class MySqlDataWriter implements DataWriter {
       connectionHelper = new JdbcConnectionHelper();
     }
     if (shardsByLogicalId == null) {
-      List<Shard> shards = loadShards();
+      List<Shard> shards =
+          mySqlSinkConfig != null ? mySqlSinkConfig.getShards() : Collections.emptyList();
+      if (shards.isEmpty()) {
+        throw new RuntimeException("No shards found in the provided MySQL sink configuration.");
+      }
       Map<String, Shard> byId = new LinkedHashMap<>();
       for (Shard shard : shards) {
         byId.put(shard.getLogicalShardId(), shard);
@@ -185,18 +183,6 @@ public class MySqlDataWriter implements DataWriter {
               Constants.JDBC_MYSQL_URL_PREFIX);
       connectionHelper.init(request);
     }
-  }
-
-  private List<Shard> loadShards() {
-    if (sinkConfigPath == null || sinkConfigPath.isEmpty()) {
-      throw new IllegalArgumentException(
-          "MySQL sink requires a valid shard configuration file path.");
-    }
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkConfigPath);
-    if (shards == null || shards.isEmpty()) {
-      throw new RuntimeException("No shards found in the provided shard file: " + sinkConfigPath);
-    }
-    return shards;
   }
 
   @VisibleForTesting

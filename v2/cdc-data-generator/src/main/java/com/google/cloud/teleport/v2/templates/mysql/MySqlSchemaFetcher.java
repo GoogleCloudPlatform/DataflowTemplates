@@ -16,8 +16,6 @@
 package com.google.cloud.teleport.v2.templates.mysql;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceForeignKey;
@@ -29,6 +27,8 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -55,16 +55,14 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
 
   private final MySqlTypeMapper typeMapper = new MySqlTypeMapper();
 
-  private final ShardFileReader shardFileReader;
   private final ConnectionProvider connectionProvider;
 
   public MySqlSchemaFetcher() {
-    this(new ShardFileReader(new SecretManagerAccessorImpl()), null);
+    this(null);
   }
 
   @VisibleForTesting
-  MySqlSchemaFetcher(ShardFileReader shardFileReader, ConnectionProvider connectionProvider) {
-    this.shardFileReader = shardFileReader;
+  MySqlSchemaFetcher(ConnectionProvider connectionProvider) {
     this.connectionProvider = connectionProvider;
   }
 
@@ -75,15 +73,14 @@ public class MySqlSchemaFetcher implements SinkSchemaFetcher {
   }
 
   @Override
-  public void init(String sinkConfigPath) {
-    if (sinkConfigPath == null || sinkConfigPath.isEmpty()) {
-      throw new IllegalArgumentException(
-          "MySQL sink requires a valid shard configuration file path.");
+  public void init(SinkConfig sinkConfig) {
+    if (sinkConfig == null) {
+      throw new IllegalArgumentException("SinkConfig cannot be null");
     }
-
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkConfigPath);
+    MySqlSinkConfig mySqlSinkConfig = (MySqlSinkConfig) sinkConfig;
+    List<Shard> shards = mySqlSinkConfig.getShards();
     if (shards == null || shards.isEmpty()) {
-      throw new RuntimeException("No shards found in the provided shard file: " + sinkConfigPath);
+      throw new RuntimeException("No shards found in the provided MySQL sink configuration.");
     }
     // Use the first shard to extract schema
     Shard firstShard = shards.get(0);

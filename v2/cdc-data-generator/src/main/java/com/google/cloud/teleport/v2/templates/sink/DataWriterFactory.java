@@ -16,30 +16,34 @@
 package com.google.cloud.teleport.v2.templates.sink;
 
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
 
 /**
- * Factory class for creating {@link DataWriter} instances based on the configured {@link SinkType}.
+ * Factory class for creating {@link DataWriter} instances based on {@link SinkType} and {@link
+ * SinkConfig}. Provides cleaner separation of writer construction logic from the DoFn lifecycle.
  */
 public class DataWriterFactory {
 
   private DataWriterFactory() {}
 
   /**
-   * Creates a {@link DataWriter} for the specified sink type and configuration path.
+   * Creates a {@link DataWriter} instance for the specified sink type and configuration.
    *
-   * @param type the sink type to create a writer for
-   * @param configPath the path to the sink configuration document
+   * @param type the target sink type
+   * @param config the parsed sink configuration
    * @return a new {@link DataWriter} instance
    * @throws IllegalArgumentException if the sink type is unsupported
    */
-  public static DataWriter createWriter(SinkType type, String configPath) {
+  public static DataWriter createWriter(SinkType type, SinkConfig config) {
     switch (type) {
       case MYSQL:
-        return new MySqlDataWriter(configPath);
+        return new MySqlDataWriter((MySqlSinkConfig) config);
       case SPANNER:
-        return new SpannerDataWriter(configPath);
+        return new SpannerDataWriter((SpannerSinkConfig) config);
       default:
         throw new IllegalArgumentException("Unsupported sink type: " + type);
     }

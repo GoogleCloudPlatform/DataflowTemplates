@@ -18,31 +18,24 @@ package com.google.cloud.teleport.v2.templates.spanner;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
-import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.annotations.VisibleForTesting;
-import java.io.BufferedReader;
 import java.math.BigDecimal;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.MatchResult;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.ReadableInstant;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +47,6 @@ import org.slf4j.LoggerFactory;
  * (see {@link MutationType}) - both are translated to {@link Mutation#newInsertOrUpdateBuilder} so
  * that transient retries under {@code writeAtLeastOnce} are idempotent - and {@code DELETE} which
  * uses {@link Mutation#delete} with a key constructed from {@link DataGeneratorTable#primaryKeys}.
- *
- * <p>The Spanner connection details are loaded from a JSON configuration file with the shape {@code
- * {"projectId": ..., "instanceId": ..., "databaseId": ...}} - the same format accepted by {@link
- * SpannerSchemaFetcher}.
  */
 public class SpannerDataWriter implements DataWriter {
 
@@ -74,26 +63,26 @@ public class SpannerDataWriter implements DataWriter {
     DELETE
   }
 
-  private final String sinkConfigPath;
+  private final SpannerSinkConfig spannerSinkConfig;
   private final SpannerAccessorFactory accessorFactory;
 
   private transient SpannerConfig spannerConfig;
   private transient SpannerAccessor spannerAccessor;
-  private transient com.google.cloud.spanner.Dialect dialect;
+  private transient Dialect dialect;
 
-  public SpannerDataWriter(String sinkConfigPath) {
-    this(sinkConfigPath, SpannerAccessor::getOrCreate);
+  public SpannerDataWriter(SpannerSinkConfig spannerSinkConfig) {
+    this(spannerSinkConfig, SpannerAccessor::getOrCreate);
   }
 
   @VisibleForTesting
-  SpannerDataWriter(String sinkConfigPath, SpannerAccessorFactory accessorFactory) {
-    this.sinkConfigPath = sinkConfigPath;
+  SpannerDataWriter(SpannerSinkConfig spannerSinkConfig, SpannerAccessorFactory accessorFactory) {
+    this.spannerSinkConfig = spannerSinkConfig;
     this.accessorFactory = accessorFactory;
   }
 
   @VisibleForTesting
   SpannerDataWriter(SpannerConfig spannerConfig, SpannerAccessorFactory accessorFactory) {
-    this.sinkConfigPath = null;
+    this.spannerSinkConfig = null;
     this.accessorFactory = accessorFactory;
     this.spannerConfig = spannerConfig;
   }
@@ -146,46 +135,24 @@ public class SpannerDataWriter implements DataWriter {
   @VisibleForTesting
   synchronized void ensureInitialized() {
     if (spannerConfig == null) {
-      spannerConfig = loadSpannerConfig();
+      if (spannerSinkConfig == null) {
+        throw new IllegalArgumentException("SpannerSinkConfig cannot be null");
+      }
+      spannerConfig =
+          SpannerConfig.create()
+              .withProjectId(StaticValueProvider.of(spannerSinkConfig.getProjectId()))
+              .withInstanceId(StaticValueProvider.of(spannerSinkConfig.getInstanceId()))
+              .withDatabaseId(StaticValueProvider.of(spannerSinkConfig.getDatabaseId()));
     }
     if (spannerAccessor == null) {
       spannerAccessor = accessorFactory.getOrCreate(spannerConfig);
     }
     if (dialect == null) {
-      dialect =
-          spannerAccessor
-              .getDatabaseAdminClient()
-              .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-              .getDialect();
-      LOG.info("Detected Spanner database dialect: {}", dialect);
-    }
-  }
-
-  private SpannerConfig loadSpannerConfig() {
-    if (sinkConfigPath == null || sinkConfigPath.isEmpty()) {
-      throw new IllegalArgumentException("Spanner sink requires a valid configuration file path.");
-    }
-    try {
-      MatchResult match = FileSystems.match(sinkConfigPath);
-      if (match.metadata().isEmpty()) {
-        throw new RuntimeException("Spanner sink config file not found: " + sinkConfigPath);
+      if (spannerSinkConfig != null) {
+        dialect = spannerSinkConfig.getDialect();
+      } else {
+        dialect = Dialect.GOOGLE_STANDARD_SQL;
       }
-      ResourceId resourceId = match.metadata().get(0).resourceId();
-      ReadableByteChannel channel = FileSystems.open(resourceId);
-      String content;
-      try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
-        content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-      }
-      JSONObject json = new JSONObject(content);
-      return SpannerConfig.create()
-          .withProjectId(
-              StaticValueProvider.of(json.getString(Constants.SPANNER_CONFIG_PROJECT_ID_KEY)))
-          .withInstanceId(
-              StaticValueProvider.of(json.getString(Constants.SPANNER_CONFIG_INSTANCE_ID_KEY)))
-          .withDatabaseId(
-              StaticValueProvider.of(json.getString(Constants.SPANNER_CONFIG_DATABASE_ID_KEY)));
-    } catch (java.io.IOException e) {
-      throw new RuntimeException("Error reading Spanner sink config file: " + sinkConfigPath, e);
     }
   }
 

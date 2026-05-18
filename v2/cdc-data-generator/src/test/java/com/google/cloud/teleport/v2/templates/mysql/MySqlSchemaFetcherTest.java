@@ -17,11 +17,9 @@ package com.google.cloud.teleport.v2.templates.mysql;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
@@ -32,6 +30,7 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher.ConnectionProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -52,7 +51,6 @@ public class MySqlSchemaFetcherTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private ShardFileReader mockShardFileReader;
   @Mock private ConnectionProvider mockConnectionProvider;
   @Mock private Connection mockConnection;
   @Mock private MySqlInformationSchemaScanner mockScanner;
@@ -63,7 +61,7 @@ public class MySqlSchemaFetcherTest {
   public void setUp() throws SQLException {
     when(mockConnectionProvider.get()).thenReturn(mockConnection);
     fetcher =
-        new MySqlSchemaFetcher(mockShardFileReader, mockConnectionProvider) {
+        new MySqlSchemaFetcher(mockConnectionProvider) {
           @Override
           protected MySqlInformationSchemaScanner createScanner(
               Connection connection, String databaseName) {
@@ -75,27 +73,22 @@ public class MySqlSchemaFetcherTest {
   @Test
   public void testInit_success() {
     Shard shard = new Shard("id", "host", "user", "pass", "port", "db", null, null, null);
-    when(mockShardFileReader.getOrderedShardDetails(anyString()))
-        .thenReturn(ImmutableList.of(shard));
-
-    fetcher.init("options.json");
+    fetcher.init(new MySqlSinkConfig(ImmutableList.of(shard)));
     // No exception thrown means success
   }
 
   @Test
-  public void testInit_noOptionsFile() {
+  public void testInit_nullConfig() {
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> fetcher.init(null));
-    assertThat(ex).hasMessageThat().contains("requires a valid shard configuration file path");
-
-    ex = assertThrows(IllegalArgumentException.class, () -> fetcher.init(""));
-    assertThat(ex).hasMessageThat().contains("requires a valid shard configuration file path");
+    assertThat(ex).hasMessageThat().contains("SinkConfig cannot be null");
   }
 
   @Test
-  public void testInit_emptyShardFile() {
-    when(mockShardFileReader.getOrderedShardDetails(anyString())).thenReturn(ImmutableList.of());
-    RuntimeException ex = assertThrows(RuntimeException.class, () -> fetcher.init("options.json"));
+  public void testInit_emptyShards() {
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class, () -> fetcher.init(new MySqlSinkConfig(ImmutableList.of())));
     assertThat(ex).hasMessageThat().contains("No shards found");
   }
 

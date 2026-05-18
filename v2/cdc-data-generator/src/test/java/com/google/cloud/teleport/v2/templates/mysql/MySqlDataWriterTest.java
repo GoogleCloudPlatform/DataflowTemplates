@@ -33,10 +33,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelp
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
@@ -67,16 +67,12 @@ public class MySqlDataWriterTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule().strictness(Strictness.LENIENT);
 
-  @Mock private ShardFileReader mockShardFileReader;
-
   @SuppressWarnings("unchecked")
   @Mock
   private IConnectionHelper<Connection> mockConnectionHelper;
 
   @Mock private Connection mockConnection;
   @Mock private PreparedStatement mockStatement;
-
-  private static final String CONFIG_PATH = "shards.json";
 
   private Shard shardA() {
     return new Shard("shardA", "hostA", "3306", "userA", "passA", "dbA", null, null, null);
@@ -88,15 +84,14 @@ public class MySqlDataWriterTest {
 
   @Before
   public void setUp() throws Exception {
-    when(mockShardFileReader.getOrderedShardDetails(anyString()))
-        .thenReturn(ImmutableList.of(shardA(), shardB()));
     when(mockConnectionHelper.isConnectionPoolInitialized()).thenReturn(false);
     when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockStatement);
   }
 
   private MySqlDataWriter writer() {
-    return new MySqlDataWriter(CONFIG_PATH, mockShardFileReader, mockConnectionHelper);
+    return new MySqlDataWriter(
+        new MySqlSinkConfig(ImmutableList.of(shardA(), shardB())), mockConnectionHelper);
   }
 
   private DataGeneratorTable simpleTable() {
@@ -478,22 +473,16 @@ public class MySqlDataWriterTest {
   }
 
   @Test
-  public void testLoadShards_missingPathThrows() {
-    MySqlDataWriter w = new MySqlDataWriter(null, mockShardFileReader, mockConnectionHelper);
+  public void testLoadShards_missingConfigThrows() {
+    MySqlDataWriter w = new MySqlDataWriter((MySqlSinkConfig) null, mockConnectionHelper);
     assertThrows(
-        IllegalArgumentException.class,
-        () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
-
-    MySqlDataWriter w2 = new MySqlDataWriter("", mockShardFileReader, mockConnectionHelper);
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> w2.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+        RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
-  public void testLoadShards_emptyShardFileThrows() {
-    when(mockShardFileReader.getOrderedShardDetails(anyString())).thenReturn(ImmutableList.of());
-    MySqlDataWriter w = writer();
+  public void testLoadShards_emptyShardsThrows() {
+    MySqlDataWriter w =
+        new MySqlDataWriter(new MySqlSinkConfig(Collections.emptyList()), mockConnectionHelper);
     assertThrows(
         RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
@@ -517,9 +506,7 @@ public class MySqlDataWriterTest {
 
   @Test
   public void testConstructor_defaultsToJdbcConnectionHelper() {
-    // Basic sanity: public constructor should not blow up even if the file doesn't exist yet.
-    MySqlDataWriter w = new MySqlDataWriter("not-used.json");
-    // Close is a no-op by contract; calling it should not throw.
+    MySqlDataWriter w = new MySqlDataWriter(new MySqlSinkConfig(ImmutableList.of(shardA())));
     w.close();
   }
 

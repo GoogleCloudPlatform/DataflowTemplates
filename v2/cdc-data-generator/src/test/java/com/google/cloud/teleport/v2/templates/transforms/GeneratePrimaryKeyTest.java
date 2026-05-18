@@ -19,10 +19,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.dofn.GeneratePrimaryKeyFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
@@ -128,7 +130,7 @@ public class GeneratePrimaryKeyTest {
               assertTrue(row.getString("id").length() > 0);
               assertNotNull(row.getInt64("seq"));
               assertNotNull(row.getString(Constants.SHARD_ID_COLUMN_NAME));
-              // Default maxShards=1 → synthesised id "shard0".
+              // Default synthesised id "shard0".
               assertEquals("shard0", row.getString(Constants.SHARD_ID_COLUMN_NAME));
               return null;
             });
@@ -137,7 +139,7 @@ public class GeneratePrimaryKeyTest {
   }
 
   @Test
-  public void testGeneratePrimaryKey_shardIdWithinMaxShardsRange() {
+  public void testGeneratePrimaryKey_defaultShardIdIsShard0() {
     DataGeneratorColumn id = col("id", LogicalType.STRING);
     DataGeneratorTable table =
         DataGeneratorTable.builder()
@@ -264,6 +266,45 @@ public class GeneratePrimaryKeyTest {
               }
               assertEquals(2, t1Rows);
               assertEquals(1, t2Rows);
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testGeneratePrimaryKey_usesMySqlSinkConfigShards() {
+    DataGeneratorColumn id = col("id", LogicalType.STRING);
+    DataGeneratorTable table =
+        DataGeneratorTable.builder()
+            .name("T")
+            .columns(ImmutableList.of(id))
+            .primaryKeys(ImmutableList.of("id"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .isRoot(true)
+            .insertQps(10)
+            .updateQps(0)
+            .deleteQps(0)
+            .recordsPerTick(1.0)
+            .build();
+
+    Shard shardA = new Shard("shardA", "host", "user", "pass", "port", "db", null, null, null);
+    Shard shardB = new Shard("shardB", "host", "user", "pass", "port", "db", null, null, null);
+    MySqlSinkConfig config = new MySqlSinkConfig(ImmutableList.of(shardA, shardB));
+
+    PCollection<KV<String, Row>> out =
+        pipeline
+            .apply("In", Create.of(table, table, table, table, table))
+            .apply("GeneratePK", new GeneratePrimaryKey(config, "MYSQL"));
+
+    PAssert.that(out)
+        .satisfies(
+            iter -> {
+              for (KV<String, Row> kv : iter) {
+                String shard = kv.getValue().getString(Constants.SHARD_ID_COLUMN_NAME);
+                assertTrue(shard.equals("shardA") || shard.equals("shardB"));
+              }
               return null;
             });
 

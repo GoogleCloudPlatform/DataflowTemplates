@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.v2.templates.dofn;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
+import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
 import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -43,9 +43,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The emitted {@link Row} has the table's PK columns followed by a synthesised logical shard id
  * column (name controlled by {@link Constants#SHARD_ID_COLUMN_NAME}). The shard id is either
- * sampled uniformly from {@code [0, maxShards)} or, for MySQL sinks with a shard config file,
- * sampled uniformly from the configured logical shard ids so the same shard ids used by downstream
- * writers are reused here.
+ * sampled uniformly from the configured logical shard ids (for MySQL sinks with a shard config
+ * file), or defaults to {@code shard0}.
  *
  * <p>Randomness: {@link Faker} is constructed with its default no-arg constructor (which seeds
  * itself from {@code System.nanoTime()} plus a per-instance counter and shard-id selection uses
@@ -58,7 +57,7 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
 
   private static final Logger LOG = LoggerFactory.getLogger(GeneratePrimaryKeyFn.class);
 
-  private final String sinkOptionsPath;
+  private final SinkConfig sinkConfig;
   private final String sinkType;
 
   private transient Faker faker;
@@ -67,8 +66,8 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
   /** Per-table PK schema cache. Schemas are static per pipeline run so this is write-once. */
   private transient Map<String, Schema> schemaCache;
 
-  public GeneratePrimaryKeyFn(String sinkOptionsPath, String sinkType) {
-    this.sinkOptionsPath = sinkOptionsPath;
+  public GeneratePrimaryKeyFn(SinkConfig sinkConfig, String sinkType) {
+    this.sinkConfig = sinkConfig;
     this.sinkType = sinkType;
   }
 
@@ -77,18 +76,13 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
     faker = new Faker();
     schemaCache = new HashMap<>();
 
-    if (Constants.SINK_TYPE_MYSQL.equalsIgnoreCase(sinkType)
-        && sinkOptionsPath != null
-        && !sinkOptionsPath.isEmpty()) {
-      try {
-        ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-        List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkOptionsPath);
+    if (sinkConfig instanceof MySqlSinkConfig) {
+      MySqlSinkConfig mySqlSinkConfig = (MySqlSinkConfig) sinkConfig;
+      if (mySqlSinkConfig.getShards() != null) {
         this.logicalShardIds =
-            shards == null || shards.isEmpty()
-                ? null
-                : shards.stream().map(Shard::getLogicalShardId).collect(Collectors.toList());
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to read shards from " + sinkOptionsPath, e);
+            mySqlSinkConfig.getShards().stream()
+                .map(Shard::getLogicalShardId)
+                .collect(Collectors.toList());
       }
     }
   }
@@ -159,7 +153,7 @@ public class GeneratePrimaryKeyFn extends DoFn<DataGeneratorTable, KV<String, Ro
 
   /**
    * Select a shard id for this row. Prefer a configured logical shard id, otherwise synthesise a
-   * placeholder {@code shard<N>}. Bounded at maxShards >= 1 so {@code nextInt} never throws.
+   * placeholder {@code shard0}.
    */
   private String pickShardId() {
     ThreadLocalRandom rng = ThreadLocalRandom.current();

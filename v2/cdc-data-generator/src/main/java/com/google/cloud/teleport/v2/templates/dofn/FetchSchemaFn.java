@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.dofn;
 
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.mysql.MySqlSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher;
@@ -38,11 +39,11 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
           SinkType.MYSQL, MySqlSchemaFetcher::new);
 
   private final SinkType sinkType;
-  private final String sinkConfigPath;
+  private final SinkConfig sinkConfig;
 
-  public FetchSchemaFn(SinkType sinkType, String sinkConfigPath) {
+  public FetchSchemaFn(SinkType sinkType, SinkConfig sinkConfig) {
     this.sinkType = sinkType;
-    this.sinkConfigPath = sinkConfigPath;
+    this.sinkConfig = sinkConfig;
   }
 
   @ProcessElement
@@ -50,7 +51,7 @@ public class FetchSchemaFn extends DoFn<SinkType, DataGeneratorSchema> {
     try {
       SinkSchemaFetcher fetcher = createFetcher(sinkType);
 
-      fetcher.init(sinkConfigPath);
+      fetcher.init(sinkConfig);
       DataGeneratorSchema schema = fetcher.getSchema();
       LOG.info("Fetched Schema: {}", schema);
       receiver.output(schema);

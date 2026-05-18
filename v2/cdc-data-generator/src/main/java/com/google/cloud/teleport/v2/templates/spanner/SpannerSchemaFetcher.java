@@ -24,25 +24,20 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
+import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.MatchResult;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.json.JSONObject;
 
 public class SpannerSchemaFetcher implements SinkSchemaFetcher {
 
@@ -74,25 +69,14 @@ public class SpannerSchemaFetcher implements SinkSchemaFetcher {
   }
 
   @Override
-  public void init(String sinkConfigPath) {
-    try {
-      MatchResult match = FileSystems.match(sinkConfigPath);
-      if (match.metadata().isEmpty()) {
-        throw new RuntimeException("Spanner sink config file not found: " + sinkConfigPath);
-      }
-      ResourceId resourceId = match.metadata().get(0).resourceId();
-      ReadableByteChannel channel = FileSystems.open(resourceId);
-      String content;
-      try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
-        content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-      }
-      JSONObject json = new JSONObject(content);
-      this.projectId = json.getString("projectId");
-      this.instanceId = json.getString("instanceId");
-      this.databaseId = json.getString("databaseId");
-    } catch (java.io.IOException e) {
-      throw new RuntimeException("Error reading Spanner sink config file: " + sinkConfigPath, e);
+  public void init(SinkConfig sinkConfig) {
+    if (sinkConfig == null) {
+      throw new IllegalArgumentException("SinkConfig cannot be null");
     }
+    SpannerSinkConfig spannerConfig = (SpannerSinkConfig) sinkConfig;
+    this.projectId = spannerConfig.getProjectId();
+    this.instanceId = spannerConfig.getInstanceId();
+    this.databaseId = spannerConfig.getDatabaseId();
   }
 
   @Override
