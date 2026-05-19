@@ -76,32 +76,22 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
 
   private boolean hasValidPrimaryKey(DataGeneratorTable table) {
     if (table.primaryKeys() == null || table.primaryKeys().isEmpty()) {
-      LOG.error(
-          "Table {} has no primary-key columns, or its PK list references unknown columns — "
-              + "skipping PK generation.",
-          table.name());
+      LOG.error("Table {} has no primary-key columns defined — skipping table.", table.name());
       return false;
     }
     Map<String, DataGeneratorColumn> byName =
         table.columns().stream().collect(Collectors.toMap(DataGeneratorColumn::name, col -> col));
 
-    boolean hasValidPk = false;
     for (String pkName : table.primaryKeys()) {
       if (!byName.containsKey(pkName)) {
         LOG.error(
-            "PK column {} declared on table {} not present in columns list — dropping.",
-            pkName,
-            table.name());
-      } else {
-        hasValidPk = true;
+            "Table {} has declared primary key columns {} but some are missing from the column list"
+                + " {} — skipping table.",
+            table.name(),
+            table.primaryKeys(),
+            table.columns().stream().map(DataGeneratorColumn::name).collect(Collectors.toList()));
+        return false;
       }
-    }
-    if (!hasValidPk) {
-      LOG.error(
-          "Table {} has no primary-key columns, or its PK list references unknown columns — "
-              + "skipping PK generation.",
-          table.name());
-      return false;
     }
     return true;
   }
