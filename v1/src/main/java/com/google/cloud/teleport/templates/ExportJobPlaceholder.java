@@ -157,6 +157,14 @@ public class ExportJobPlaceholder {
         helpText = "Bigtable read RPC attempt timeout in milliseconds.")
     ValueProvider<String> getBigtableReadRpcAttemptTimeoutMs();
 
+    @TemplateParameter.Integer(
+        order = 13,
+        groupName = "Source",
+        optional = true,
+        description = "Bigtable Max Attempts",
+        helpText = "The maximum number of retry attempts for the Bigtable client.")
+    ValueProvider<Integer> getBigtableMaxAttempts();
+
     @TemplateCreationParameter(value = "false")
     @Description("Wait for pipeline to finish.")
     @Default.Boolean(false)
