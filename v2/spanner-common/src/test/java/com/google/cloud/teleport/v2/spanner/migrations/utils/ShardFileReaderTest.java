@@ -82,12 +82,16 @@ public final class ShardFileReaderTest {
   @Test
   public void shardFileReadingWithSecret() {
 
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretA/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretA/versions/latest", "shardA", "test"))
         .thenReturn("secretA");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretB/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretB", "shardB", "test"))
         .thenReturn("secretB");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretC/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretC/", "shardC", "test"))
         .thenReturn("secretC");
+    when(secretManagerAccessorMockImpl.resolvePassword(null, "shardD", "test")).thenReturn("test");
 
     ShardFileReader shardFileReader = new ShardFileReader(secretManagerAccessorMockImpl);
     List<Shard> shards =
@@ -199,9 +203,11 @@ public final class ShardFileReaderTest {
 
   @Test
   public void readBulkMigrationShardFileWithSecrets() {
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretA/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretA/versions/latest", "1.1.1.1", null))
         .thenReturn("secretA");
-    when(secretManagerAccessorMockImpl.getSecret("projects/123/secrets/secretB/versions/latest"))
+    when(secretManagerAccessorMockImpl.resolvePassword(
+            "projects/123/secrets/secretB/versions/latest", "1.1.1.2", null))
         .thenReturn("secretB");
     ShardFileReader shardFileReader = new ShardFileReader(secretManagerAccessorMockImpl);
     List<Shard> shards =
