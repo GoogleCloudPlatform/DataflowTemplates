@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates.sink;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -24,11 +26,9 @@ import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerConfigFileReader;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.List;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +36,24 @@ import org.slf4j.LoggerFactory;
 public class SinkConfigParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(SinkConfigParser.class);
+
+  @VisibleForTesting
+  interface DialectProvider {
+    Dialect getDialect(String projectId, String instanceId, String databaseId);
+  }
+
+  private static DialectProvider dialectProvider =
+      (projectId, instanceId, databaseId) -> {
+        SpannerOptions options = SpannerOptions.newBuilder().setProjectId(projectId).build();
+        try (Spanner spanner = options.getService()) {
+          return spanner.getDatabaseAdminClient().getDatabase(instanceId, databaseId).getDialect();
+        }
+      };
+
+  @VisibleForTesting
+  static void setDialectProvider(DialectProvider provider) {
+    dialectProvider = provider;
+  }
 
   public static SinkConfig parse(SinkType sinkType, String sinkOptionsPath) throws IOException {
     if (sinkOptionsPath == null || sinkOptionsPath.isEmpty()) {
@@ -49,15 +67,7 @@ public class SinkConfigParser {
       String instanceId = config.getInstanceId();
       String databaseId = config.getDatabaseId();
 
-      SpannerConfig spannerConfig =
-          SpannerConfig.create()
-              .withProjectId(StaticValueProvider.of(projectId))
-              .withInstanceId(StaticValueProvider.of(instanceId))
-              .withDatabaseId(StaticValueProvider.of(databaseId));
-
-      SpannerAccessor accessor = SpannerAccessor.getOrCreate(spannerConfig);
-      Dialect dialect =
-          accessor.getDatabaseAdminClient().getDatabase(instanceId, databaseId).getDialect();
+      Dialect dialect = dialectProvider.getDialect(projectId, instanceId, databaseId);
       LOG.info("Pre-fetched Spanner dialect on driver: {}", dialect);
 
       config.setDialect(dialect);
@@ -67,15 +77,6 @@ public class SinkConfigParser {
       List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkOptionsPath);
       if (shards == null || shards.isEmpty()) {
         throw new RuntimeException("No shards found in shard configuration: " + sinkOptionsPath);
-      }
-
-      for (int i = 0; i < shards.size(); i++) {
-        Shard shard = shards.get(i);
-        if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
-          String defaultId = "shard" + i;
-          shard.setLogicalShardId(defaultId);
-          LOG.info("Assigned default logicalShardId '{}' to shard index {}", defaultId, i);
-        }
       }
 
       return new MySqlSinkConfig(shards);

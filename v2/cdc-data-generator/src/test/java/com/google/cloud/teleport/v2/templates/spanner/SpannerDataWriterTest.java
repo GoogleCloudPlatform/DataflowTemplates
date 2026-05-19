@@ -652,4 +652,35 @@ public class SpannerDataWriterTest {
         NullPointerException.class,
         () -> w.insert(ImmutableList.of(simpleRow(1L, "a")), simpleTable(), "", 10));
   }
+
+  @Test
+  public void testDirectSpannerConfigConstructor() {
+    org.apache.beam.sdk.io.gcp.spanner.SpannerConfig spannerConfig =
+        org.apache.beam.sdk.io.gcp.spanner.SpannerConfig.create()
+            .withProjectId("direct-proj")
+            .withInstanceId("direct-inst")
+            .withDatabaseId("direct-db");
+    SpannerDataWriter w = new SpannerDataWriter(spannerConfig, factory);
+    w.ensureInitialized();
+    assertThat(w).isNotNull();
+  }
+
+  @Test
+  public void testPublicConstructor() {
+    SpannerDataWriter w = new SpannerDataWriter(testConfig());
+    assertThat(w).isNotNull();
+  }
+
+  @Test
+  public void testRowToDeleteMutation_uuidValueUsesDefault() {
+    DataGeneratorColumn c = col("pk", LogicalType.UUID);
+    Mutation m =
+        writer()
+            .rowToMutation(
+                singleColTable(c),
+                rowFor("pk", Schema.FieldType.STRING, "123e4567-e89b-12d3-a456-426614174000"),
+                SpannerDataWriter.MutationType.DELETE);
+    assertThat(m.getOperation()).isEqualTo(Mutation.Op.DELETE);
+    assertThat(m.getTable()).isEqualTo("t");
+  }
 }

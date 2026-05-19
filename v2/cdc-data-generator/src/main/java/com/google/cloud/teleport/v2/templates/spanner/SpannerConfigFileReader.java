@@ -47,6 +47,11 @@ public class SpannerConfigFileReader {
               .create()
               .fromJson(result, SpannerSinkConfig.class);
 
+      if (config == null) {
+        throw new RuntimeException(
+            "Failed to parse Spanner configuration: resulting config is null.");
+      }
+
       if (config.getProjectId() == null || config.getProjectId().isEmpty()) {
         throw new IllegalArgumentException(
             "Missing projectId in Spanner configuration file: " + spannerConfigFilePath);
