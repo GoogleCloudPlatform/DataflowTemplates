@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.slf4j.Logger;
@@ -64,10 +65,35 @@ public class ApplyOverridesFn extends DoFn<DataGeneratorSchema, DataGeneratorSch
 
     ImmutableMap.Builder<String, DataGeneratorTable> updatedTables = ImmutableMap.builder();
     for (DataGeneratorTable table : schema.tables().values()) {
-      updatedTables.put(table.name(), applyTableOverrides(table, configTables.get(table.name())));
+      DataGeneratorTable updatedTable = applyTableOverrides(table, configTables.get(table.name()));
+      if (hasValidPrimaryKey(updatedTable)) {
+        updatedTables.put(table.name(), updatedTable);
+      }
     }
 
     receiver.output(DataGeneratorSchema.builder().tables(updatedTables.build()).build());
+  }
+
+  private boolean hasValidPrimaryKey(DataGeneratorTable table) {
+    if (table.primaryKeys() == null || table.primaryKeys().isEmpty()) {
+      LOG.error("Table {} has no primary-key columns defined — skipping table.", table.name());
+      return false;
+    }
+    Map<String, DataGeneratorColumn> byName =
+        table.columns().stream().collect(Collectors.toMap(DataGeneratorColumn::name, col -> col));
+
+    for (String pkName : table.primaryKeys()) {
+      if (!byName.containsKey(pkName)) {
+        LOG.error(
+            "Table {} has declared primary key columns {} but some are missing from the column list"
+                + " {} — skipping table.",
+            table.name(),
+            table.primaryKeys(),
+            table.columns().stream().map(DataGeneratorColumn::name).collect(Collectors.toList()));
+        return false;
+      }
+    }
+    return true;
   }
 
   private DataGeneratorTable applyTableOverrides(

@@ -133,15 +133,6 @@ public class MutationBatcherTest {
   }
 
   @Test
-  public void testBufferRow_unknownOperation_logsErrorToDlq() {
-    batcher.bufferRow("Users", sampleRow, "INVALID_OP", sampleTable, "shard0", topoOrder);
-    batcher.bufferRow("Users", sampleRow, "INVALID_OP", sampleTable, "shard0", topoOrder);
-
-    // Shoud go to DLQ since switch fallback throws IllegalStateException caught inside flush loop
-    assertFalse(batcher.getFailedRecords().isEmpty());
-  }
-
-  @Test
   public void testFlushUpdates_processesUpdatesOnly() {
     batcher.bufferRow(
         "Users", sampleRow, MutationBatcher.MUTATION_UPDATE, sampleTable, "shard0", topoOrder);

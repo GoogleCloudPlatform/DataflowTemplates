@@ -94,14 +94,14 @@ public class MutationBatcher {
     buffers.computeIfAbsent(bufferKey, k -> new BufferValue(table)).rows.add(row);
 
     if (buffers.get(bufferKey).rows.size() >= batchSize) {
-      if (MUTATION_INSERT.equals(operation)) {
-        flushInsertsInTopoOrder(insertTopoOrder);
-      } else if (MUTATION_DELETE.equals(operation)) {
-        flushDeletesInReverseTopoOrder(insertTopoOrder);
-      } else {
-        flush(bufferKey);
-      }
+      flushAll(insertTopoOrder);
     }
+  }
+
+  public void flushAll(List<String> insertTopoOrder) {
+    flushInsertsInTopoOrder(insertTopoOrder);
+    flushUpdates();
+    flushDeletesInReverseTopoOrder(insertTopoOrder);
   }
 
   public void flushInsertsInTopoOrder(List<String> insertTopoOrder) {

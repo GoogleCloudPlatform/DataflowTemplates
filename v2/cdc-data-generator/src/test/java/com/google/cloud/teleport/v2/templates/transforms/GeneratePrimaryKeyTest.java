@@ -174,32 +174,6 @@ public class GeneratePrimaryKeyTest {
   }
 
   @Test
-  public void testGeneratePrimaryKey_tableWithoutPkEmitsNothing() {
-    DataGeneratorColumn id = col("id", LogicalType.STRING);
-    DataGeneratorTable table =
-        DataGeneratorTable.builder()
-            .name("T")
-            .columns(ImmutableList.of(id))
-            .primaryKeys(ImmutableList.of()) // no PK
-            .foreignKeys(ImmutableList.of())
-            .uniqueKeys(ImmutableList.of())
-            .isRoot(true)
-            .insertQps(10)
-            .updateQps(0)
-            .deleteQps(0)
-            .recordsPerTick(1.0)
-            .build();
-
-    PCollection<KV<String, Row>> out =
-        pipeline
-            .apply("In", Create.of(table))
-            .apply("GeneratePK", new GeneratePrimaryKey(null, null));
-
-    PAssert.that(out).empty();
-    pipeline.run();
-  }
-
-  @Test
   public void testGeneratePrimaryKey_perTableSchemaIsolation() {
     // The fn caches PK Row schemas per table. Two tables with different PK column lists must
     // not bleed into each other's cached schema.

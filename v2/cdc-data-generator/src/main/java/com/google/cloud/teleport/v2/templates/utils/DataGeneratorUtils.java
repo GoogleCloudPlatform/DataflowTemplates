@@ -129,8 +129,8 @@ public final class DataGeneratorUtils {
           return faker.lorem().characters(limitStringLength(size)).getBytes(StandardCharsets.UTF_8);
         case DATE:
           {
-            long minMillis = -2208988800000L; // Year 1900
-            long maxMillis = 4133980799000L; // Year 2100
+            long minMillis = 157766400000L; // Year 1975
+            long maxMillis = 2051222400000L; // Year 2035
             long randomMillis = ThreadLocalRandom.current().nextLong(minMillis, maxMillis);
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(randomMillis);
@@ -143,8 +143,8 @@ public final class DataGeneratorUtils {
           }
         case TIMESTAMP:
           {
-            long minMillis = -2208988800000L; // Year 1900
-            long maxMillis = 4133980799000L; // Year 2100
+            long minMillis = 157766400000L; // Year 1975
+            long maxMillis = 2051222400000L; // Year 2035
             return new Instant(ThreadLocalRandom.current().nextLong(minMillis, maxMillis));
           }
         default:

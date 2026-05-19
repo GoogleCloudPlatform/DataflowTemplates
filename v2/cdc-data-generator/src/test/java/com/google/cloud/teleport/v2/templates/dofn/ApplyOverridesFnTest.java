@@ -44,20 +44,29 @@ public class ApplyOverridesFnTest {
     return mapper.readValue(hoconContent, SchemaConfig.class);
   }
 
+  private DataGeneratorTable.Builder createTableWithDefaultPk(String tableName) {
+    return DataGeneratorTable.builder()
+        .name(tableName)
+        .columns(
+            ImmutableList.of(
+                DataGeneratorColumn.builder()
+                    .name("id")
+                    .logicalType(LogicalType.INT64)
+                    .isNullable(false)
+                    .isPrimaryKey(true)
+                    .isSkipped(false)
+                    .isGenerated(false)
+                    .build()))
+        .primaryKeys(ImmutableList.of("id"))
+        .foreignKeys(ImmutableList.of())
+        .uniqueKeys(ImmutableList.of());
+  }
+
   @Test
   public void testProcessElement_NoConfigPath() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
-            .tables(
-                ImmutableMap.of(
-                    "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
-                        .foreignKeys(ImmutableList.of())
-                        .uniqueKeys(ImmutableList.of())
-                        .build()))
+            .tables(ImmutableMap.of("table1", createTableWithDefaultPk("table1").build()))
             .build();
 
     ApplyOverridesFn fn = new ApplyOverridesFn(null, 100, 10, 1);
@@ -80,16 +89,7 @@ public class ApplyOverridesFnTest {
   public void testProcessElement_ConfigWithNullTables() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
-            .tables(
-                ImmutableMap.of(
-                    "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
-                        .foreignKeys(ImmutableList.of())
-                        .uniqueKeys(ImmutableList.of())
-                        .build()))
+            .tables(ImmutableMap.of("table1", createTableWithDefaultPk("table1").build()))
             .build();
 
     SchemaConfig configWithNullTables = new SchemaConfig();
@@ -111,16 +111,7 @@ public class ApplyOverridesFnTest {
   public void testProcessElement_WithTableOverrides() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
-            .tables(
-                ImmutableMap.of(
-                    "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
-                        .foreignKeys(ImmutableList.of())
-                        .uniqueKeys(ImmutableList.of())
-                        .build()))
+            .tables(ImmutableMap.of("table1", createTableWithDefaultPk("table1").build()))
             .build();
 
     String hoconContent = "tables {\n  table1 {\n    insertQps = 500\n  }\n}\n";
@@ -150,6 +141,14 @@ public class ApplyOverridesFnTest {
             .isPrimaryKey(false)
             .isGenerated(false)
             .build();
+    DataGeneratorColumn pkCol =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isPrimaryKey(true)
+            .isGenerated(false)
+            .build();
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
             .tables(
@@ -157,8 +156,8 @@ public class ApplyOverridesFnTest {
                     "table1",
                     DataGeneratorTable.builder()
                         .name("table1")
-                        .columns(ImmutableList.of(col))
-                        .primaryKeys(ImmutableList.of())
+                        .columns(ImmutableList.of(col, pkCol))
+                        .primaryKeys(ImmutableList.of("id"))
                         .foreignKeys(ImmutableList.of())
                         .uniqueKeys(ImmutableList.of())
                         .build()))
@@ -223,13 +222,7 @@ public class ApplyOverridesFnTest {
             .tables(
                 ImmutableMap.of(
                     "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
-                        .foreignKeys(ImmutableList.of())
-                        .uniqueKeys(ImmutableList.of())
-                        .build()))
+                    createTableWithDefaultPk("table1").foreignKeys(ImmutableList.of()).build()))
             .build();
 
     String hoconContent =
@@ -268,12 +261,8 @@ public class ApplyOverridesFnTest {
             .tables(
                 ImmutableMap.of(
                     "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
+                    createTableWithDefaultPk("table1")
                         .foreignKeys(ImmutableList.of(existingFk))
-                        .uniqueKeys(ImmutableList.of())
                         .build()))
             .build();
 
@@ -302,12 +291,8 @@ public class ApplyOverridesFnTest {
             .tables(
                 ImmutableMap.of(
                     "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
+                    createTableWithDefaultPk("table1")
                         .foreignKeys(ImmutableList.of(existingFk))
-                        .uniqueKeys(ImmutableList.of())
                         .build()))
             .build();
 
@@ -349,16 +334,7 @@ public class ApplyOverridesFnTest {
   public void testProcessElement_WithUpdateAndDeleteQpsOverrides() throws Exception {
     DataGeneratorSchema schema =
         DataGeneratorSchema.builder()
-            .tables(
-                ImmutableMap.of(
-                    "table1",
-                    DataGeneratorTable.builder()
-                        .name("table1")
-                        .columns(ImmutableList.of())
-                        .primaryKeys(ImmutableList.of())
-                        .foreignKeys(ImmutableList.of())
-                        .uniqueKeys(ImmutableList.of())
-                        .build()))
+            .tables(ImmutableMap.of("table1", createTableWithDefaultPk("table1").build()))
             .build();
 
     String hoconContent = "tables {\n  table1 {\n    updateQps = 20\n    deleteQps = 5\n  }\n}\n";
@@ -434,5 +410,68 @@ public class ApplyOverridesFnTest {
     assertNotNull(assignedConfig.getTables());
     assertTrue(assignedConfig.getTables().containsKey("table1"));
     assertEquals(Integer.valueOf(777), assignedConfig.getTables().get("table1").getInsertQps());
+  }
+
+  @Test
+  public void testProcessElement_StrictPrimaryKeyValidation() throws Exception {
+    // Table 1: Valid PK (id) -> should be kept
+    DataGeneratorTable table1 = createTableWithDefaultPk("table1").build();
+
+    // Table 2: No PK defined -> should be skipped
+    DataGeneratorTable table2 =
+        DataGeneratorTable.builder()
+            .name("table2")
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("col1")
+                        .logicalType(LogicalType.STRING)
+                        .isNullable(true)
+                        .isPrimaryKey(false)
+                        .isGenerated(false)
+                        .build()))
+            .primaryKeys(ImmutableList.of())
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    // Table 3: Composite PK (id, type) where "type" column is missing -> should be skipped
+    DataGeneratorTable table3 =
+        DataGeneratorTable.builder()
+            .name("table3")
+            .columns(
+                ImmutableList.of(
+                    DataGeneratorColumn.builder()
+                        .name("id")
+                        .logicalType(LogicalType.INT64)
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .isGenerated(false)
+                        .build()))
+            .primaryKeys(ImmutableList.of("id", "type"))
+            .foreignKeys(ImmutableList.of())
+            .uniqueKeys(ImmutableList.of())
+            .build();
+
+    DataGeneratorSchema schema =
+        DataGeneratorSchema.builder()
+            .tables(ImmutableMap.of("table1", table1, "table2", table2, "table3", table3))
+            .build();
+
+    ApplyOverridesFn fn = new ApplyOverridesFn(null, 100, 10, 1);
+    DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
+    ArgumentCaptor<DataGeneratorSchema> captor = ArgumentCaptor.forClass(DataGeneratorSchema.class);
+
+    fn.processElement(schema, receiver);
+
+    verify(receiver).output(captor.capture());
+    DataGeneratorSchema resolvedSchema = captor.getValue();
+    assertNotNull(resolvedSchema);
+
+    // Assert only table1 is in the resolved schema, while table2 and table3 are skipped
+    assertEquals(1, resolvedSchema.tables().size());
+    assertTrue(resolvedSchema.tables().containsKey("table1"));
+    assertTrue(!resolvedSchema.tables().containsKey("table2"));
+    assertTrue(!resolvedSchema.tables().containsKey("table3"));
   }
 }

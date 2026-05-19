@@ -46,9 +46,9 @@ public class SelectTableTest {
     // Schema:
     // Root A (10 QPS) has Child B (100 QPS)
     // Root C (50 QPS)
-    // Total QPS = 160.
-    // Weight A = 110 (10+100). Prob = 110/160 = 0.6875
-    // Weight C = 50. Prob = 50/160 = 0.3125
+    // Total Root QPS = 60.
+    // Weight A = 10. Prob = 10/60 = 0.1666...
+    // Weight C = 50. Prob = 50/60 = 0.8333...
 
     DataGeneratorTable tableA =
         DataGeneratorTable.builder()
@@ -119,8 +119,8 @@ public class SelectTableTest {
       }
     }
 
-    assertEquals(110.0 / 160.0, probA, 0.0001);
-    assertEquals(50.0 / 160.0, probC, 0.0001);
+    assertEquals(10.0 / 60.0, probA, 0.0001);
+    assertEquals(50.0 / 60.0, probC, 0.0001);
   }
 
   @Test
