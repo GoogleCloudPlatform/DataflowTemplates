@@ -776,7 +776,7 @@ public class MySqlInformationSchemaScannerTest {
     assertEquals(1, table.columns().size());
     SourceColumn column = table.columns().get(0);
     assertEquals("is_active", column.name());
-    assertEquals("tinyint(1)", column.type());
+    assertEquals("TINYINT", column.type());
     assertEquals(Long.valueOf(1L), column.size());
   }
 }

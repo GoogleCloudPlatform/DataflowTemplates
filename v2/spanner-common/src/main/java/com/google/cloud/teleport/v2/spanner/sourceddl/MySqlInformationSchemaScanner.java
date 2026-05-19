@@ -122,7 +122,7 @@ public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
         SourceColumn.Builder columnBuilder =
             SourceColumn.builder(sourceType)
                 .name(rs.getString("column_name"))
-                .type(colType != null ? colType : rs.getString("data_type"))
+                .type(rs.getString("data_type"))
                 .isNullable("YES".equals(rs.getString("is_nullable")))
                 .isPrimaryKey("PRI".equals(rs.getString("column_key")));
         String generationExpression = rs.getString("generation_expression");
