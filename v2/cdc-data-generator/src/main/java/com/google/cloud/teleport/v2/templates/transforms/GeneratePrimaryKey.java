@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.dofn.GeneratePrimaryKeyFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -42,19 +43,18 @@ import org.apache.beam.sdk.values.Row;
 public class GeneratePrimaryKey
     extends PTransform<PCollection<DataGeneratorTable>, PCollection<KV<String, Row>>> {
 
-  private final String sinkOptionsPath;
+  private final SinkConfig sinkConfig;
   private final String sinkType;
 
-  public GeneratePrimaryKey(String sinkOptionsPath, String sinkType) {
-    this.sinkOptionsPath = sinkOptionsPath;
+  public GeneratePrimaryKey(SinkConfig sinkConfig, String sinkType) {
+    this.sinkConfig = sinkConfig;
     this.sinkType = sinkType;
   }
 
   @Override
   public PCollection<KV<String, Row>> expand(PCollection<DataGeneratorTable> input) {
     return input
-        .apply(
-            "GeneratePrimaryKeyFn", ParDo.of(new GeneratePrimaryKeyFn(sinkOptionsPath, sinkType)))
+        .apply("GeneratePrimaryKeyFn", ParDo.of(new GeneratePrimaryKeyFn(sinkConfig, sinkType)))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(Row.class)));
   }
 }

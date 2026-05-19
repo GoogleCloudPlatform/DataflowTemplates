@@ -31,16 +31,13 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
+import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter.SpannerAccessorFactory;
 import com.google.common.collect.ImmutableList;
-import java.io.File;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTime;
@@ -69,11 +66,14 @@ public class SpannerDataWriterTest {
 
   private SpannerAccessorFactory factory;
 
-  private SpannerConfig testConfig() {
-    return SpannerConfig.create()
-        .withProjectId(StaticValueProvider.of("project"))
-        .withInstanceId(StaticValueProvider.of("instance"))
-        .withDatabaseId(StaticValueProvider.of("database"));
+  private SpannerSinkConfig testConfig() {
+    return new SpannerSinkConfig(
+        "project", "instance", "database", com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  private SpannerSinkConfig pgConfig() {
+    return new SpannerSinkConfig(
+        "project", "instance", "database", com.google.cloud.spanner.Dialect.POSTGRESQL);
   }
 
   @Before
@@ -132,6 +132,10 @@ public class SpannerDataWriterTest {
 
   private SpannerDataWriter writer() {
     return new SpannerDataWriter(testConfig(), factory);
+  }
+
+  private SpannerDataWriter pgWriter() {
+    return new SpannerDataWriter(pgConfig(), factory);
   }
 
   @Test
@@ -280,7 +284,7 @@ public class SpannerDataWriterTest {
   public void testRowToMutation_jsonValue_pgDialect() {
     when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
     DataGeneratorColumn c = col("j", LogicalType.JSON);
-    SpannerDataWriter w = writer();
+    SpannerDataWriter w = pgWriter();
     w.ensureInitialized();
     Mutation m =
         w.rowToMutation(
@@ -294,7 +298,7 @@ public class SpannerDataWriterTest {
   public void testRowToMutation_jsonNullValue_pgDialect() {
     when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
     DataGeneratorColumn c = col("j", LogicalType.JSON);
-    SpannerDataWriter w = writer();
+    SpannerDataWriter w = pgWriter();
     w.ensureInitialized();
     Mutation m =
         w.rowToMutation(
@@ -308,7 +312,7 @@ public class SpannerDataWriterTest {
   public void testRowToMutation_numericValue_pgDialect() {
     when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
     DataGeneratorColumn c = col("n", LogicalType.NUMERIC);
-    SpannerDataWriter w = writer();
+    SpannerDataWriter w = pgWriter();
     w.ensureInitialized();
     Mutation m =
         w.rowToMutation(
@@ -322,7 +326,7 @@ public class SpannerDataWriterTest {
   public void testRowToMutation_numericNullValue_pgDialect() {
     when(mockDatabase.getDialect()).thenReturn(com.google.cloud.spanner.Dialect.POSTGRESQL);
     DataGeneratorColumn c = col("n", LogicalType.NUMERIC);
-    SpannerDataWriter w = writer();
+    SpannerDataWriter w = pgWriter();
     w.ensureInitialized();
     Mutation m =
         w.rowToMutation(
@@ -617,34 +621,20 @@ public class SpannerDataWriterTest {
   }
 
   @Test
-  public void testLoadSpannerConfig_readsJsonFile() throws Exception {
-    File f = tempFolder.newFile("spanner.json");
-    String json = "{\"projectId\":\"p\",\"instanceId\":\"i\",\"databaseId\":\"d\"}";
-    Files.write(f.toPath(), json.getBytes(StandardCharsets.UTF_8));
-
-    SpannerDataWriter w = new SpannerDataWriter(f.getAbsolutePath(), factory);
+  public void testLoadSpannerConfig_usesSpannerSinkConfig() throws Exception {
+    SpannerSinkConfig config =
+        new SpannerSinkConfig("p", "i", "d", com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
+    SpannerDataWriter w = new SpannerDataWriter(config, factory);
     w.ensureInitialized();
 
-    // Force a write to prove that the loaded config was used to obtain a Spanner accessor.
     w.insert(ImmutableList.of(simpleRow(1L, "a")), simpleTable(), "", 10);
     verify(mockDatabaseClient).writeAtLeastOnce(any());
   }
 
   @Test
-  public void testLoadSpannerConfig_missingPathThrows() {
-    SpannerDataWriter w = new SpannerDataWriter((String) null, factory);
+  public void testLoadSpannerConfig_nullConfigThrows() {
+    SpannerDataWriter w = new SpannerDataWriter((SpannerSinkConfig) null, factory);
     assertThrows(IllegalArgumentException.class, w::ensureInitialized);
-
-    SpannerDataWriter w2 = new SpannerDataWriter("", factory);
-    assertThrows(IllegalArgumentException.class, w2::ensureInitialized);
-  }
-
-  @Test
-  public void testLoadSpannerConfig_missingFileThrows() {
-    SpannerDataWriter w =
-        new SpannerDataWriter(
-            new File(tempFolder.getRoot(), "does-not-exist.json").getAbsolutePath(), factory);
-    assertThrows(RuntimeException.class, w::ensureInitialized);
   }
 
   @Test
@@ -661,5 +651,36 @@ public class SpannerDataWriterTest {
     assertThrows(
         NullPointerException.class,
         () -> w.insert(ImmutableList.of(simpleRow(1L, "a")), simpleTable(), "", 10));
+  }
+
+  @Test
+  public void testDirectSpannerConfigConstructor() {
+    org.apache.beam.sdk.io.gcp.spanner.SpannerConfig spannerConfig =
+        org.apache.beam.sdk.io.gcp.spanner.SpannerConfig.create()
+            .withProjectId("direct-proj")
+            .withInstanceId("direct-inst")
+            .withDatabaseId("direct-db");
+    SpannerDataWriter w = new SpannerDataWriter(spannerConfig, factory);
+    w.ensureInitialized();
+    assertThat(w).isNotNull();
+  }
+
+  @Test
+  public void testPublicConstructor() {
+    SpannerDataWriter w = new SpannerDataWriter(testConfig());
+    assertThat(w).isNotNull();
+  }
+
+  @Test
+  public void testRowToDeleteMutation_uuidValueUsesDefault() {
+    DataGeneratorColumn c = col("pk", LogicalType.UUID);
+    Mutation m =
+        writer()
+            .rowToMutation(
+                singleColTable(c),
+                rowFor("pk", Schema.FieldType.STRING, "123e4567-e89b-12d3-a456-426614174000"),
+                SpannerDataWriter.MutationType.DELETE);
+    assertThat(m.getOperation()).isEqualTo(Mutation.Op.DELETE);
+    assertThat(m.getTable()).isEqualTo("t");
   }
 }

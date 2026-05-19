@@ -31,19 +31,15 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
+import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerSchemaFetcher.DdlFetcher;
 import com.google.common.collect.ImmutableList;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
@@ -54,54 +50,35 @@ import org.mockito.junit.MockitoRule;
 public class SpannerSchemaFetcherTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
-  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
-
   @Mock private DdlFetcher mockDdlFetcher;
   @Mock private SpannerAccessor mockSpannerAccessor;
   @Mock private Ddl mockDdl;
 
   private SpannerSchemaFetcher fetcher;
-  private JSONObject defaultJson;
+  private SpannerSinkConfig defaultConfig;
 
   @Before
   public void setUp() {
     fetcher = new SpannerSchemaFetcher(mockDdlFetcher);
-    defaultJson = new JSONObject();
-    defaultJson.put("projectId", "test-project");
-    defaultJson.put("instanceId", "test-instance");
-    defaultJson.put("databaseId", "test-database");
+    defaultConfig =
+        new SpannerSinkConfig(
+            "test-project", "test-instance", "test-database", Dialect.GOOGLE_STANDARD_SQL);
   }
 
   @Test
-  public void testInit_success() throws IOException {
-    File configFile = tempFolder.newFile("config.json");
-    Files.writeString(configFile.toPath(), defaultJson.toString());
-    fetcher.init(configFile.getAbsolutePath());
+  public void testInit_success() {
+    fetcher.init(defaultConfig);
     // No assertion needed, success is no exception
   }
 
   @Test
-  public void testInit_missingFields() throws IOException {
-    File configFile = tempFolder.newFile("config.json");
-    JSONObject json = new JSONObject();
-    json.put("projectId", "test-project");
-    Files.writeString(configFile.toPath(), json.toString());
-    assertThrows(JSONException.class, () -> fetcher.init(configFile.getAbsolutePath()));
-  }
-
-  @Test
-  public void testInit_invalidJson() throws IOException {
-    File configFile = tempFolder.newFile("config.json");
-    String invalidJson = "{\"projectId\": \"test-project\",";
-    Files.writeString(configFile.toPath(), invalidJson);
-    assertThrows(JSONException.class, () -> fetcher.init(configFile.getAbsolutePath()));
+  public void testInit_nullConfig() {
+    assertThrows(IllegalArgumentException.class, () -> fetcher.init(null));
   }
 
   @Test
   public void testGetSchema_simpleTable() throws Exception {
-    File configFile = tempFolder.newFile("config.json");
-    Files.writeString(configFile.toPath(), defaultJson.toString());
-    fetcher.init(configFile.getAbsolutePath());
+    fetcher.init(defaultConfig);
 
     Table tableA = Table.builder().name("TableA").build();
     when(mockDdl.allTables()).thenReturn(ImmutableList.of(tableA));
@@ -118,9 +95,7 @@ public class SpannerSchemaFetcherTest {
 
   @Test
   public void testGetSchema_withAllFeatures() throws Exception {
-    File configFile = tempFolder.newFile("config.json");
-    Files.writeString(configFile.toPath(), defaultJson.toString());
-    fetcher.init(configFile.getAbsolutePath());
+    fetcher.init(defaultConfig);
 
     // Mock DDL components
     Table mockTableB = mock(Table.class);
@@ -177,9 +152,7 @@ public class SpannerSchemaFetcherTest {
 
   @Test
   public void testGetSchema_fetchDdlError() throws Exception {
-    File configFile = tempFolder.newFile("config.json");
-    Files.writeString(configFile.toPath(), defaultJson.toString());
-    fetcher.init(configFile.getAbsolutePath());
+    fetcher.init(defaultConfig);
     when(mockDdlFetcher.fetch(any(SpannerConfig.class)))
         .thenThrow(new RuntimeException("Failed to fetch DDL"));
 

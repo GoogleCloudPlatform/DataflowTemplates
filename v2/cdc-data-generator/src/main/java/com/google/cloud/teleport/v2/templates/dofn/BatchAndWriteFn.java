@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.GeneratedRecord;
 import com.google.cloud.teleport.v2.templates.model.LifecycleEvent;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.sink.DataWriterFactory;
 import com.google.cloud.teleport.v2.templates.utils.FailureRecord;
@@ -60,7 +61,7 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
   private static final Logger LOG = LoggerFactory.getLogger(BatchAndWriteFn.class);
 
   private final SinkType sinkType;
-  private final String sinkOptionsPath;
+  private final SinkConfig sinkConfig;
   private final int batchSize;
   private final Integer jdbcPoolSize;
   private final Integer updateInterval;
@@ -96,14 +97,14 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
 
   public BatchAndWriteFn(
       SinkType sinkType,
-      String sinkOptionsPath,
+      SinkConfig sinkConfig,
       Integer batchSize,
       Integer jdbcPoolSize,
       Integer updateInterval,
       Integer deleteInterval,
       PCollectionView<DataGeneratorSchema> schemaView) {
     this.sinkType = sinkType;
-    this.sinkOptionsPath = sinkOptionsPath;
+    this.sinkConfig = sinkConfig;
     this.batchSize = batchSize;
     this.jdbcPoolSize = jdbcPoolSize;
     this.updateInterval = updateInterval;
@@ -116,7 +117,7 @@ public class BatchAndWriteFn extends DoFn<KV<Integer, GeneratedRecord>, String> 
     this.schema = null;
     this.insertTopoOrder = null;
     if (writer == null) {
-      writer = DataWriterFactory.createWriter(sinkType, sinkOptionsPath);
+      writer = DataWriterFactory.createWriter(sinkType, sinkConfig);
     }
     if (faker == null) {
       faker = new Faker();

@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import com.google.cloud.teleport.v2.templates.dofn.FetchSchemaFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -39,13 +40,14 @@ public class SchemaLoaderTest {
   @Test
   public void testFetchSchemaFn_Spanner() throws IOException {
     final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    final SinkConfig mockConfig = mock(SinkConfig.class);
     final DataGeneratorSchema schema =
         DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
 
     when(mockFetcher.getSchema()).thenReturn(schema);
 
     FetchSchemaFn fn =
-        new FetchSchemaFn(SinkType.SPANNER, "options") {
+        new FetchSchemaFn(SinkType.SPANNER, mockConfig) {
           @Override
           protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
             assertEquals(SinkType.SPANNER, sinkType);
@@ -55,19 +57,20 @@ public class SchemaLoaderTest {
 
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     fn.processElement(receiver);
-    verify(mockFetcher).init("options");
+    verify(mockFetcher).init(mockConfig);
     verify(receiver).output(schema);
   }
 
   @Test
   public void testFetchSchemaFn_MySql() throws IOException {
     final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    final SinkConfig mockConfig = mock(SinkConfig.class);
     final DataGeneratorSchema schema =
         DataGeneratorSchema.builder().tables(ImmutableMap.of()).build();
     when(mockFetcher.getSchema()).thenReturn(schema);
 
     FetchSchemaFn fn =
-        new FetchSchemaFn(SinkType.MYSQL, "options") {
+        new FetchSchemaFn(SinkType.MYSQL, mockConfig) {
           @Override
           protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
             assertEquals(SinkType.MYSQL, sinkType);
@@ -77,13 +80,13 @@ public class SchemaLoaderTest {
 
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     fn.processElement(receiver);
-    verify(mockFetcher).init("options");
+    verify(mockFetcher).init(mockConfig);
     verify(receiver).output(schema);
   }
 
   @Test
   public void testFetchSchemaFn_Unsupported() throws IOException {
-    FetchSchemaFn fn = new FetchSchemaFn(null, "options");
+    FetchSchemaFn fn = new FetchSchemaFn(null, mock(SinkConfig.class));
 
     DoFn.OutputReceiver<DataGeneratorSchema> receiver = mock(DoFn.OutputReceiver.class);
     assertThrows(IllegalArgumentException.class, () -> fn.processElement(receiver));
@@ -92,10 +95,11 @@ public class SchemaLoaderTest {
   @Test
   public void testFetchSchemaFn_IOException() throws IOException {
     final SinkSchemaFetcher mockFetcher = mock(SinkSchemaFetcher.class);
+    final SinkConfig mockConfig = mock(SinkConfig.class);
     when(mockFetcher.getSchema()).thenThrow(new IOException("File not found"));
 
     FetchSchemaFn fn =
-        new FetchSchemaFn(SinkType.SPANNER, "options") {
+        new FetchSchemaFn(SinkType.SPANNER, mockConfig) {
           @Override
           protected SinkSchemaFetcher createFetcher(SinkType sinkType) {
             return mockFetcher;
