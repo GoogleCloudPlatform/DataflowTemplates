@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,12 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.migrations.utils;
+package com.google.cloud.teleport.v2.spanner.migrations.source.config;
 
-/** Interface to access secret from Secret Manager. */
-public interface ISecretManagerAccessor {
-
-  String getSecret(String secretName);
-
-  String resolvePassword(String secretManagerUri, String logicalShardId, String password);
-}
+/**
+ * Interface representing the connection configuration for a migration source database.
+ *
+ * <p>Implementing classes provide specific configuration details for different database engines
+ * (e.g., Cassandra, Astra DB, JDBC/MySQL/PostgreSQL).
+ *
+ * <p>This interface will be expanded in Phase 2 during the platformization phase.
+ */
+public interface SourceConnectionConfig {}
