@@ -48,11 +48,13 @@ public class RangeTest {
             .setColClass(Long.class)
             .setStart(start)
             .setEnd(end)
+            .setColumnTypeName("INTEGER")
             .build();
 
     assertThat(range.boundary().tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(range.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(range.colName()).isEqualTo(colName);
+    assertThat(range.boundary().partitionColumn().columnTypeName()).isEqualTo("INTEGER");
     assertThat(range.start()).isEqualTo(start);
     assertThat(range.end()).isEqualTo(end);
     assertThat(range.isSplittable(null)).isTrue();
@@ -417,4 +419,52 @@ public class RangeTest {
 
   @Test
   public void testRangeWithChildPrecondition() {}
+
+  @Test
+  public void testByteRangeMerge() {
+    TableIdentifier tableId =
+        TableIdentifier.builder().setDataSourceId("test_ds").setTableName("test_table").build();
+    byte[] startA = new byte[16];
+    byte[] midA = new byte[16];
+    midA[0] = (byte) 0x80;
+    byte[] midB = midA.clone(); // Distinct byte[] object in memory with identical contents
+    byte[] endB = new byte[16];
+    java.util.Arrays.fill(endB, (byte) 0xFF);
+
+    Range leftRange =
+        Range.builder()
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("id")
+            .setColClass(byte[].class)
+            .setStart(startA)
+            .setEnd(midA)
+            .setCount(100L)
+            .setIsFirst(true)
+            .setIsLast(false)
+            .build();
+
+    Range rightRange =
+        Range.builder()
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("id")
+            .setColClass(byte[].class)
+            .setStart(midB)
+            .setEnd(endB)
+            .setCount(150L)
+            .setIsFirst(false)
+            .setIsLast(true)
+            .build();
+
+    assertThat(leftRange.isMergable(rightRange)).isTrue();
+    assertThat(rightRange.isMergable(leftRange)).isTrue();
+
+    Range merged = leftRange.mergeRange(rightRange, null);
+    assertThat(merged.count()).isEqualTo(250L);
+    assertThat(java.util.Arrays.equals((byte[]) merged.start(), startA)).isTrue();
+    assertThat(java.util.Arrays.equals((byte[]) merged.end(), endB)).isTrue();
+    assertThat(merged.isFirst()).isTrue();
+    assertThat(merged.isLast()).isTrue();
+  }
 }

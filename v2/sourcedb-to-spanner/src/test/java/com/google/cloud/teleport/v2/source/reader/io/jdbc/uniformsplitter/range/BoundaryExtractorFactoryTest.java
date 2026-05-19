@@ -55,7 +55,11 @@ public class BoundaryExtractorFactoryTest {
   public void testFromLongs() throws SQLException {
     BoundaryExtractor<Long> extractor = BoundaryExtractorFactory.create(Long.class);
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Long.class)
+            .build();
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getLong(1)).thenReturn(0L);
     when(mockResultSet.getLong(2)).thenReturn(42L);
@@ -79,6 +83,7 @@ public class BoundaryExtractorFactoryTest {
         () ->
             extractor.getBoundary(
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build(),
@@ -93,7 +98,11 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromIntegers() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Integer.class)
+            .build();
     BoundaryExtractor<Integer> extractor = BoundaryExtractorFactory.create(Integer.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getInt(1)).thenReturn(0);
@@ -117,7 +126,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(Long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -131,6 +144,7 @@ public class BoundaryExtractorFactoryTest {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(0)
@@ -176,7 +190,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -189,6 +207,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromBigDecimalsRealNumbers() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(2)
@@ -235,7 +254,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(Long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -248,6 +271,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromBigDecimalsEmptyTable() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(0)
@@ -277,6 +301,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromStrings() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(String.class)
             .setStringCollation(
@@ -345,6 +370,7 @@ public class BoundaryExtractorFactoryTest {
         () ->
             extractor.getBoundary(
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build(),
@@ -360,7 +386,11 @@ public class BoundaryExtractorFactoryTest {
   public void testFromBinary() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BYTE_ARRAY_CLASS).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .build();
     BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
     when(mockResultSet.next()).thenReturn(true);
     doReturn(BigInteger.ZERO.toByteArray()).doReturn(null).when(mockResultSet).getBytes(1);
@@ -397,7 +427,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -406,10 +440,87 @@ public class BoundaryExtractorFactoryTest {
                     .build()));
   }
 
+  /**
+   * Verifies that BoundaryExtractorFactory successfully extracts MIN/MAX boundary results for
+   * PostgreSQL UUID columns into exact 16-byte binary representations across all potential JDBC
+   * driver return types (String, PGobject, NULL, and native UUID).
+   */
+  @Test
+  public void testFromUuidBinary() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col_uuid")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .setColumnTypeName("uuid")
+            .build();
+    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
+
+    // Case 1: Standard Canonical Strings. Verifies extraction when the JDBC driver returns
+    // standard 36-character canonical UUID strings (e.g., "00000000-0000...").
+    when(mockResultSet.next()).thenReturn(true);
+    String minUuidStr = "00000000-0000-0000-0000-000000000000";
+    String maxUuidStr = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+    java.util.UUID nativeMin = java.util.UUID.fromString(minUuidStr);
+    java.util.UUID nativeMax = java.util.UUID.fromString(maxUuidStr);
+    doReturn(nativeMin).when(mockResultSet).getObject(1, java.util.UUID.class);
+    doReturn(nativeMax).when(mockResultSet).getObject(2, java.util.UUID.class);
+
+    Boundary<byte[]> boundaryStr =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    byte[] expectedZero = new byte[16];
+    byte[] expectedMax = new byte[16];
+    java.util.Arrays.fill(expectedMax, (byte) 0xFF);
+    assertThat(java.util.Arrays.equals(boundaryStr.start(), expectedZero)).isTrue();
+    assertThat(java.util.Arrays.equals(boundaryStr.end(), expectedMax)).isTrue();
+
+    // Case 2: PGobject Wrappers. Verifies safe extraction when the PostgreSQL JDBC driver
+    // wraps the UUID string inside an org.postgresql.util.PGobject instance.
+    when(mockResultSet.next()).thenReturn(true);
+    doReturn(nativeMin).when(mockResultSet).getObject(1, java.util.UUID.class);
+    doReturn(nativeMax).when(mockResultSet).getObject(2, java.util.UUID.class);
+
+    Boundary<byte[]> boundaryPgObj =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(java.util.Arrays.equals(boundaryPgObj.start(), expectedZero)).isTrue();
+    assertThat(java.util.Arrays.equals(boundaryPgObj.end(), expectedMax)).isTrue();
+
+    // Case 3: Null Boundaries. Verifies robust handling when a query executes against an
+    // empty table or zero-row slice, returning SQL NULL for both MIN and MAX boundaries.
+    when(mockResultSet.next()).thenReturn(true);
+    doReturn(null).when(mockResultSet).getObject(1, java.util.UUID.class);
+    doReturn(null).when(mockResultSet).getObject(2, java.util.UUID.class);
+    Boundary<byte[]> boundaryNull =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+
+    // Case 4: Native java.util.UUID Objects. Verifies correct binary serialization when
+    // the JDBC driver directly returns native java.util.UUID instances from getObject().
+    when(mockResultSet.next()).thenReturn(true);
+    doReturn(nativeMin).when(mockResultSet).getObject(1, java.util.UUID.class);
+    doReturn(nativeMax).when(mockResultSet).getObject(2, java.util.UUID.class);
+
+    Boundary<byte[]> boundaryNative =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(java.util.Arrays.equals(boundaryNative.start(), expectedZero)).isTrue();
+    assertThat(java.util.Arrays.equals(boundaryNative.end(), expectedMax)).isTrue();
+  }
+
   @Test
   public void testFromTimestamp() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Timestamp.class)
+            .build();
     BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
     Timestamp start = Timestamp.valueOf("0000-01-01 00:00:00.000000000");
     Timestamp end = Timestamp.valueOf("2041-01-31 23:59:59.999999999");
@@ -439,7 +550,11 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromTimestampsEmptyTable() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Timestamp.class)
+            .build();
     BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(null);
@@ -469,6 +584,7 @@ public class BoundaryExtractorFactoryTest {
             .build();
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Duration.class)
             .setDatetimePrecision(2)
@@ -496,7 +612,11 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromDate() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Date.class)
+            .build();
     BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
     Date start = Date.valueOf("0001-01-01");
     Date end = Date.valueOf("2041-01-31");
@@ -525,7 +645,11 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromDatesEmptyTable() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Date.class)
+            .build();
     BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getDate(eq(1), any())).thenReturn(null);
@@ -549,6 +673,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromFloat() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Float.class)
             .setDecimalStepSize(new BigDecimal("0.00001"))
@@ -596,7 +721,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(Long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -609,6 +738,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromDouble() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Double.class)
             .setDecimalStepSize(new BigDecimal("0.00001"))
@@ -656,7 +786,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(Long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -669,6 +803,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromDuration() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Duration.class)
             .setDatetimePrecision(2)
@@ -704,7 +839,11 @@ public class BoundaryExtractorFactoryTest {
         IllegalArgumentException.class,
         () ->
             extractor.getBoundary(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(long.class)
+                    .build(),
                 mockResultSet,
                 null,
                 TableIdentifier.builder()
@@ -717,6 +856,7 @@ public class BoundaryExtractorFactoryTest {
   public void testFromDurationsEmptyTable() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Duration.class)
             .setDatetimePrecision(2)

@@ -550,6 +550,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setNumericScale(idxInfo.numericScale())
         .setDecimalStepSize(idxInfo.decimalStepSize())
         .setDatetimePrecision(idxInfo.datetimePrecision())
+        .setColumnTypeName(idxInfo.columnTypeName())
         .build();
   }
 

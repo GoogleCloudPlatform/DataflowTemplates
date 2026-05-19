@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
+
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
@@ -52,6 +54,14 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
                     TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
+  private static Object convertIfUuid(Object val, PartitionColumn pc) {
+    if (val instanceof byte[] bytes && UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+      return new java.util.UUID(bb.getLong(), bb.getLong());
+    }
+    return val;
+  }
+
   /**
    * Set statement parameters.
    *
@@ -86,11 +96,15 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
         preparedStatement.setObject(parameterIdx++, null);
       } else if (parentRanges.containsKey(partitionColumn.columnName())) {
         Range rangeForColumn = parentRanges.get(partitionColumn.columnName());
+        // Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs
+        // UUID).
+        Object start = convertIfUuid(rangeForColumn.start(), partitionColumn);
+        Object end = convertIfUuid(rangeForColumn.end(), partitionColumn);
         preparedStatement.setObject(parameterIdx++, true); // Enabled
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.start());
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+        preparedStatement.setObject(parameterIdx++, start);
+        preparedStatement.setObject(parameterIdx++, end);
         preparedStatement.setObject(parameterIdx++, rangeForColumn.isLast());
-        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+        preparedStatement.setObject(parameterIdx++, end);
       } else {
         // For other partition columns outside the parent path, they are effectively disabled.
         preparedStatement.setObject(parameterIdx++, false); // Disabled
