@@ -2,14 +2,14 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.0"
+      version = ">= 4.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.0"
+      version = ">= 3.0"
     }
   }
-  required_version = "~>1.2"
+  required_version = ">=1.2"
 }
 
 provider "google" {
@@ -97,6 +97,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     fetchSize                      = var.fetch_size
     gcsOutputDirectory             = var.gcs_output_directory
     sourceDbDialect                = var.source_db_dialect
+    tables                         = var.tables
   }
 
   service_account_email       = var.service_account_email

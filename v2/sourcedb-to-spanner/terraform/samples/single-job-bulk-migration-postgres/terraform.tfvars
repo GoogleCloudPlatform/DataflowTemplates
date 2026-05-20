@@ -1,6 +1,6 @@
 job_name                 = "test-job"
 project                  = "project-name"
-host_project             = "host-project"
+host_project             = null
 region                   = "us-central1"               # Or your desired region
 working_directory_bucket = "bucket-name"               # example "test-bucket"
 working_directory_prefix = "path/to/working/directory" # should not start or end with a '/'
@@ -24,6 +24,6 @@ launcher_machine_type = "n1-highmem-32" # Recommend using larger launcher VMs
 machine_type          = "n1-highmem-4"
 max_workers           = 50
 #ip_configuration      = "WORKER_IP_PRIVATE"
-num_workers           = 1
-default_log_level     = "INFO"
+num_workers       = 1
+default_log_level = "INFO"
 
