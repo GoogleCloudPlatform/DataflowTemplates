@@ -337,8 +337,7 @@ public abstract class TemplateTestBase {
 
       String identifier = flex ? template.flexContainerName() : templateMetadata.name();
 
-      stagedTemplates.get(
-          identifier,
+      java.util.concurrent.Callable<String> stageCallable =
           () -> {
             LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
 
@@ -376,7 +375,15 @@ public abstract class TemplateTestBase {
             } catch (Exception e) {
               throw new IllegalArgumentException("Error staging template", e);
             }
-          });
+          };
+
+      if (!flex) {
+        synchronized (stagedTemplates) {
+          stagedTemplates.get(identifier, stageCallable);
+        }
+      } else {
+        stagedTemplates.get(identifier, stageCallable);
+      }
       return stagePath;
     }
   }
