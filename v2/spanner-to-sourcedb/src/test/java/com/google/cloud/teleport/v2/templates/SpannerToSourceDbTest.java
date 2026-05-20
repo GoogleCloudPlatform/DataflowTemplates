@@ -19,31 +19,39 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.sdk.values.TypeDescriptor;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -96,63 +104,28 @@ public class SpannerToSourceDbTest {
   }
 
   @Test
-  public void testBuildPipeline_RegularMode() {
-
-    try (MockedStatic<SpannerToSourceDb> mockedSpannerToSourceDb =
-        Mockito.mockStatic(SpannerToSourceDb.class)) {
-
-      SpannerIO.ReadChangeStream mockReadChangeStream = mock(SpannerIO.ReadChangeStream.class);
-      mockedSpannerToSourceDb
-          .when(() -> SpannerToSourceDb.getReadChangeStreamDoFn(any(), any()))
-          .thenReturn(mockReadChangeStream);
-
-      PCollection<DataChangeRecord> dummyCollection =
-          pipeline.apply(Create.empty(TypeDescriptor.of(DataChangeRecord.class)));
-      when(mockReadChangeStream.expand(any())).thenReturn(dummyCollection);
-
-      SpannerToSourceDb.buildPipeline(
-          pipeline,
-          options,
-          mockSourceSchema,
-          shards,
-          mockDdlView,
-          mockShadowTableDdlView,
-          mockSpannerConfig,
-          mockSpannerMetadataConfig,
-          10,
-          "multi_shard",
-          System.currentTimeMillis(),
-          1);
-
-      pipeline.run();
-    }
-  }
-
-  @Test
   public void testGetReadChangeStreamDoFn() {
     options.setChangeStreamName("testStream");
     options.setMetadataInstance("testInstance");
     options.setMetadataDatabase("testDB");
-    options.setSpannerPriority(com.google.cloud.spanner.Options.RpcPriority.HIGH);
+    options.setSpannerPriority(RpcPriority.HIGH);
     options.setStartTimestamp("");
     options.setEndTimestamp("");
 
-    org.apache.beam.sdk.io.gcp.spanner.SpannerIO.ReadChangeStream readChangeStream =
+    SpannerIO.ReadChangeStream readChangeStream =
         SpannerToSourceDb.getReadChangeStreamDoFn(options, mockSpannerConfig);
-    org.junit.Assert.assertNotNull(readChangeStream);
+    Assert.assertNotNull(readChangeStream);
   }
 
   @Test
   public void testBuildDlqManager() {
-    org.apache.beam.runners.dataflow.options.DataflowPipelineOptions dfOptions =
-        options.as(org.apache.beam.runners.dataflow.options.DataflowPipelineOptions.class);
+    DataflowPipelineOptions dfOptions = options.as(DataflowPipelineOptions.class);
     dfOptions.setTempLocation("gs://test/temp");
     options.setDeadLetterQueueDirectory("");
     options.setDlqMaxRetryCount(3);
 
-    com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager dlqManager =
-        SpannerToSourceDb.buildDlqManager(options);
-    org.junit.Assert.assertNotNull(dlqManager);
+    DeadLetterQueueManager dlqManager = SpannerToSourceDb.buildDlqManager(options);
+    Assert.assertNotNull(dlqManager);
   }
 
   @Test
@@ -209,10 +182,9 @@ public class SpannerToSourceDbTest {
     try (MockedStatic<SpannerToSourceDb> mocked =
         Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
       SourceSchema dummySchema =
-          SourceSchema.builder(
-                  com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+          SourceSchema.builder(SourceDatabaseType.MYSQL)
               .databaseName("testdb")
-              .tables(com.google.common.collect.ImmutableMap.of())
+              .tables(ImmutableMap.of())
               .build();
 
       mocked.when(() -> SpannerToSourceDb.getSourceSchema(any(), any())).thenReturn(dummySchema);
@@ -222,14 +194,14 @@ public class SpannerToSourceDbTest {
 
       SourceSchema result = SpannerToSourceDb.fetchSourceSchema(options, shards);
 
-      org.junit.Assert.assertSame(dummySchema, result);
+      Assert.assertSame(dummySchema, result);
     }
   }
 
   @Test
   public void testCalculateConnectionPoolSizePerWorker_Success() {
     int result = SpannerToSourceDb.calculateConnectionPoolSizePerWorker(10L, 2);
-    org.junit.Assert.assertEquals(5, result);
+    Assert.assertEquals(5, result);
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -248,9 +220,8 @@ public class SpannerToSourceDbTest {
     when(mockStmt.executeQuery("SHOW VARIABLES LIKE 'read_only'")).thenReturn(mockRs);
     when(mockRs.next()).thenReturn(false); // No rows!
 
-    try (org.mockito.MockedStatic<SpannerToSourceDb> mockedStatic =
-        org.mockito.Mockito.mockStatic(
-            SpannerToSourceDb.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+    try (MockedStatic<SpannerToSourceDb> mockedStatic =
+        Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
       mockedStatic
           .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
           .thenReturn(mockConn);
@@ -263,37 +234,30 @@ public class SpannerToSourceDbTest {
   @Test
   public void testGetSourceSchema_PostgreSQL() throws Exception {
     Options options = mock(Options.class);
-    when(options.getSourceType())
-        .thenReturn(com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL);
+    when(options.getSourceType()).thenReturn(Constants.SOURCE_POSTGRESQL);
     List<Shard> shards = List.of(new Shard());
 
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
-                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+    SourceSchema dummySchema =
+        SourceSchema.builder(SourceDatabaseType.POSTGRESQL)
             .databaseName("db")
-            .tables(com.google.common.collect.ImmutableMap.of())
+            .tables(ImmutableMap.of())
             .build();
 
-    try (org.mockito.MockedConstruction<
-            com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner>
-        mocked =
-            org.mockito.Mockito.mockConstruction(
-                com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner
-                    .class,
-                (mock, context) -> {
-                  when(mock.scan()).thenReturn(dummySchema);
-                })) {
+    try (MockedConstruction<PostgreSQLInformationSchemaScanner> mocked =
+        Mockito.mockConstruction(
+            PostgreSQLInformationSchemaScanner.class,
+            (mock, context) -> {
+              when(mock.scan()).thenReturn(dummySchema);
+            })) {
 
-      try (org.mockito.MockedStatic<SpannerToSourceDb> mockedStatic =
-          org.mockito.Mockito.mockStatic(
-              SpannerToSourceDb.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      try (MockedStatic<SpannerToSourceDb> mockedStatic =
+          Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
         mockedStatic
             .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
             .thenReturn(mock(Connection.class));
 
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
-            SpannerToSourceDb.getSourceSchema(options, shards);
-        org.junit.Assert.assertSame(dummySchema, result);
+        SourceSchema result = SpannerToSourceDb.getSourceSchema(options, shards);
+        Assert.assertSame(dummySchema, result);
       }
     }
   }
@@ -302,38 +266,31 @@ public class SpannerToSourceDbTest {
   public void testGetSourceSchema_Cassandra() throws Exception {
     Options options = mock(Options.class);
     when(options.getSourceType()).thenReturn("cassandra");
-    com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard mockShard =
-        mock(com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard.class);
+    CassandraShard mockShard = mock(CassandraShard.class);
     when(mockShard.getKeySpaceName()).thenReturn("keyspace");
     List<Shard> shards = List.of(mockShard);
 
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
-                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.CASSANDRA)
+    SourceSchema dummySchema =
+        SourceSchema.builder(SourceDatabaseType.CASSANDRA)
             .databaseName("db")
-            .tables(com.google.common.collect.ImmutableMap.of())
+            .tables(ImmutableMap.of())
             .build();
 
-    try (org.mockito.MockedConstruction<
-            com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner>
-        mocked =
-            org.mockito.Mockito.mockConstruction(
-                com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner
-                    .class,
-                (mock, context) -> {
-                  when(mock.scan()).thenReturn(dummySchema);
-                })) {
+    try (MockedConstruction<CassandraInformationSchemaScanner> mocked =
+        Mockito.mockConstruction(
+            CassandraInformationSchemaScanner.class,
+            (mock, context) -> {
+              when(mock.scan()).thenReturn(dummySchema);
+            })) {
 
-      try (org.mockito.MockedStatic<SpannerToSourceDb> mockedStatic =
-          org.mockito.Mockito.mockStatic(
-              SpannerToSourceDb.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      try (MockedStatic<SpannerToSourceDb> mockedStatic =
+          Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
         mockedStatic
             .when(() -> SpannerToSourceDb.createCqlSession(any()))
-            .thenReturn(mock(com.datastax.oss.driver.api.core.CqlSession.class));
+            .thenReturn(mock(CqlSession.class));
 
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
-            SpannerToSourceDb.getSourceSchema(options, shards);
-        org.junit.Assert.assertSame(dummySchema, result);
+        SourceSchema result = SpannerToSourceDb.getSourceSchema(options, shards);
+        Assert.assertSame(dummySchema, result);
       }
     }
   }

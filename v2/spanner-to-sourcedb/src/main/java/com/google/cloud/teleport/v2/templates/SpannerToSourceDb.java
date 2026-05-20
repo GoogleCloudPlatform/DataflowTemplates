@@ -118,6 +118,14 @@ public class SpannerToSourceDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb.class);
 
+  // JDBC Drivers
+  private static final String MYSQL_DRIVER = "com.mysql.cj.jdbc.Driver";
+  private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
+
+  // JDBC URL Prefixes
+  private static final String MYSQL_JDBC_PREFIX = "jdbc:mysql://";
+  private static final String POSTGRESQL_JDBC_PREFIX = "jdbc:postgresql://";
+
   /**
    * Options supported by the pipeline.
    *
@@ -1032,8 +1040,7 @@ public class SpannerToSourceDb {
 
   static void validateMySQLNotReadOnly(List<Shard> shards) {
     for (Shard shard : shards) {
-      try (Connection conn =
-          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
+      try (Connection conn = createJdbcConnection(shard, MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
         if (conn != null) {
           try (Statement stmt = conn.createStatement();
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
@@ -1064,12 +1071,12 @@ public class SpannerToSourceDb {
   static SourceSchema getSourceSchema(Options options, List<Shard> shards) throws SQLException {
     if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
       try (Connection connection =
-          createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
+          createJdbcConnection(shards.get(0), MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
         return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
       }
     } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
       try (Connection connection =
-          createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://")) {
+          createJdbcConnection(shards.get(0), POSTGRESQL_DRIVER, POSTGRESQL_JDBC_PREFIX)) {
         return new PostgreSQLInformationSchemaScanner(
                 connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
             .scan();
