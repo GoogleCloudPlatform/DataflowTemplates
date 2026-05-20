@@ -17,14 +17,19 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
 import com.google.common.io.Resources;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Rule;
@@ -154,6 +159,37 @@ public class DataStreamToSpannerTest {
   }
 
   @Test
+  public void testValidateSourceType_validSource() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getRunMode()).thenReturn("");
+    when(options.getDatastreamSourceType()).thenReturn("mysql");
+
+    DataStreamToSpanner.validateSourceType(options);
+
+    verify(options).setDatastreamSourceType("mysql");
+  }
+
+  @Test
+  public void testValidateSourceType_invalidSource() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getRunMode()).thenReturn("");
+    when(options.getDatastreamSourceType()).thenReturn("invalid_source");
+
+    assertThrows(
+        IllegalArgumentException.class, () -> DataStreamToSpanner.validateSourceType(options));
+  }
+
+  @Test
+  public void testValidateSourceType_retryMode() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getRunMode()).thenReturn(Constants.RUN_MODE_RETRY_DLQ);
+
+    DataStreamToSpanner.validateSourceType(options);
+
+    verify(options, times(0)).setDatastreamSourceType(anyString());
+  }
+
+  @Test
   public void testGetShadowTableSpannerConfig_validInput() {
     DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
     when(options.getShadowTableSpannerInstanceId()).thenReturn("shadow-instance-id");
@@ -203,5 +239,19 @@ public class DataStreamToSpannerTest {
     assertEquals("main-instance-id", spannerConfig.getInstanceId().get());
     assertEquals("main-database-id", spannerConfig.getDatabaseId().get());
     assertEquals("project-id", spannerConfig.getProjectId().get());
+  }
+
+  @Test
+  public void testBuildDlqManager_defaultTempLocation() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    DataflowPipelineOptions dfOptions = mock(DataflowPipelineOptions.class);
+    when(options.as(DataflowPipelineOptions.class)).thenReturn(dfOptions);
+    when(dfOptions.getTempLocation()).thenReturn("/tmp/test-bucket/temp");
+    when(options.getDeadLetterQueueDirectory()).thenReturn("");
+    when(options.getDlqMaxRetryCount()).thenReturn(500);
+
+    DataStreamToSpanner.buildDlqManager(options);
+
+    verify(options).setDeadLetterQueueDirectory("/tmp/test-bucket/temp/dlq/");
   }
 }

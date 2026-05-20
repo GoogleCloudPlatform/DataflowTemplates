@@ -21,6 +21,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,7 +42,9 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 /** Unit tests for ProcessInformationSchema class. */
 public class ProcessInformationSchemaTest {
@@ -666,5 +670,37 @@ public class ProcessInformationSchemaTest {
     assertThat(
         cleanedShadowDdl.allTables().stream().map(t -> t.name()).collect(Collectors.toSet()),
         is(new HashSet<>(Collections.singletonList("shadow_users"))));
+  }
+
+  @Test
+  public void testProcessElement() throws Exception {
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    ProcessInformationSchema.ProcessInformationSchemaFn processInformationSchema =
+        new ProcessInformationSchema.ProcessInformationSchemaFn(
+            spannerConfig, spannerConfig, true, "shadow_", "mysql");
+
+    ProcessInformationSchema.ProcessInformationSchemaFn spyFn =
+        Mockito.spy(processInformationSchema);
+
+    Ddl mainDdl = getMiniMainDdl();
+    Ddl shadowDdl = getMiniShadowDdl();
+
+    doReturn(mainDdl)
+        .doReturn(shadowDdl)
+        .doReturn(shadowDdl)
+        .when(spyFn)
+        .getInformationSchemaAsDdl(any());
+
+    doNothing().when(spyFn).createShadowTablesInSpanner(any(), any());
+
+    DoFn.ProcessContext mockProcessContext = mock(DoFn.ProcessContext.class);
+
+    spyFn.setDialect(Dialect.GOOGLE_STANDARD_SQL);
+
+    spyFn.processElement(mockProcessContext);
+
+    verify(mockProcessContext).output(eq(ProcessInformationSchema.MAIN_DDL_TAG), any(Ddl.class));
+    verify(mockProcessContext)
+        .output(eq(ProcessInformationSchema.SHADOW_TABLE_DDL_TAG), any(Ddl.class));
   }
 }
