@@ -96,7 +96,8 @@ public class RangeBoundaryDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -107,7 +108,8 @@ public class RangeBoundaryDoFnTest {
                     .build()),
             null);
     ColumnForBoundaryQuery input =
-        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
+        ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -125,7 +127,8 @@ public class RangeBoundaryDoFnTest {
     Range newRange = rangeCaptor.getValue();
     assertThat(newRange)
         .isEqualTo(
-            Range.builder().setColumnTypeName("LONGVARCHAR")
+            Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -164,7 +167,8 @@ public class RangeBoundaryDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -175,7 +179,8 @@ public class RangeBoundaryDoFnTest {
                     .build()),
             null);
     ColumnForBoundaryQuery input =
-        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
+        ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -221,7 +226,8 @@ public class RangeBoundaryDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -238,7 +244,8 @@ public class RangeBoundaryDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -249,7 +256,8 @@ public class RangeBoundaryDoFnTest {
                     .build()),
             null);
     ColumnForBoundaryQuery input =
-        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
+        ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -267,7 +275,8 @@ public class RangeBoundaryDoFnTest {
     Range newRange = rangeCaptor.getValue();
     assertThat(newRange)
         .isEqualTo(
-            Range.builder().setColumnTypeName("LONGVARCHAR")
+            Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

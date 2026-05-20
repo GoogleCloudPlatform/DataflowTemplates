@@ -71,7 +71,8 @@ public class BoundaryTest {
   public void testBoundaryWithNulls() {
 
     Boundary<Integer> boundaryNullStart =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(null)
@@ -87,7 +88,8 @@ public class BoundaryTest {
             .build();
 
     Boundary<Integer> boundaryNullBoth =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(null)
@@ -114,7 +116,8 @@ public class BoundaryTest {
   public void testBoundarySplit() {
 
     Boundary<Integer> integerBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)
@@ -128,7 +131,8 @@ public class BoundaryTest {
                     .build())
             .build();
     Boundary stringBoundary =
-        Boundary.<String>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<String>builder()
+            .setColumnTypeName("dummy")
             .setStart("abc")
             .setEnd("def")
             .setColName("col1")
@@ -176,7 +180,8 @@ public class BoundaryTest {
   public void testBoundaryMerge() {
 
     Boundary<Integer> firstBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)
@@ -191,7 +196,8 @@ public class BoundaryTest {
             .build();
 
     Boundary<Integer> secondBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(20)
@@ -206,7 +212,8 @@ public class BoundaryTest {
             .build();
 
     Boundary<Integer> mergedBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)
@@ -241,7 +248,8 @@ public class BoundaryTest {
   public void testAreValuesEqual() {
     // Test special handling for float equality
     Boundary<Float> floatBoundary =
-        Boundary.<Float>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Float>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Float.class)
             .setStart(1.01f)
@@ -271,7 +279,8 @@ public class BoundaryTest {
 
     // Test special handling for double equality
     Boundary<Double> doubleBoundary =
-        Boundary.<Double>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Double>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Double.class)
             .setStart(1.01)
@@ -305,7 +314,8 @@ public class BoundaryTest {
     BigDecimal decimalStepSize = BigDecimal.valueOf(0.01);
 
     Boundary<Float> firstBoundary =
-        Boundary.<Float>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Float>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Float.class)
             .setStart(1.01f)
@@ -320,7 +330,8 @@ public class BoundaryTest {
             .build();
 
     Boundary<Float> secondBoundary =
-        Boundary.<Float>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Float>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Float.class)
             .setStart(1.02f)
@@ -335,7 +346,8 @@ public class BoundaryTest {
             .build();
 
     Boundary<Float> mergedBoundary =
-        Boundary.<Float>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Float>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Float.class)
             .setStart(1.01f)
@@ -370,7 +382,8 @@ public class BoundaryTest {
   public void testBoundaryOrdering() {
 
     Boundary<Integer> rootBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)
@@ -412,7 +425,8 @@ public class BoundaryTest {
   @Test
   public void testBoundaryOrderingWithTableIdentifier() {
     Boundary<Integer> boundaryTableA =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)
@@ -449,7 +463,8 @@ public class BoundaryTest {
   public void testBoundaryToRange() {
 
     Boundary<Integer> newBoundary =
-        Boundary.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Boundary.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setColName("col2")
             .setColClass(Integer.class)
             .setStart(0)
@@ -463,7 +478,8 @@ public class BoundaryTest {
             .build();
 
     Range parentRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(42)
@@ -492,7 +508,8 @@ public class BoundaryTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            Boundary.builder().setColumnTypeName("LONGVARCHAR")
+            Boundary.builder()
+                .setColumnTypeName("dummy")
                 .setColName("col1")
                 .setColClass(Integer.class)
                 .setStart(1)
@@ -503,7 +520,8 @@ public class BoundaryTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            Boundary.builder().setColumnTypeName("LONGVARCHAR")
+            Boundary.builder()
+                .setColumnTypeName("dummy")
                 .setColName("col1")
                 .setColClass(Integer.class)
                 .setStart(null)
@@ -514,7 +532,8 @@ public class BoundaryTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            Boundary.builder().setColumnTypeName("LONGVARCHAR")
+            Boundary.builder()
+                .setColumnTypeName("dummy")
                 .setColName("col1")
                 .setColClass(Integer.class)
                 .setStart(11.3)
@@ -527,7 +546,8 @@ public class BoundaryTest {
         () ->
             Boundary.builder()
                 .setPartitionColumn(
-                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Long.class)
                         .build())
@@ -638,7 +658,8 @@ public class BoundaryTest {
 
     // Construct left and right ranges to test mergability across distinct array instances
     Range leftRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")
@@ -651,7 +672,8 @@ public class BoundaryTest {
             .build();
 
     Range rightRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")

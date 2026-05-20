@@ -62,7 +62,8 @@ public class MergeRangesDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -108,7 +109,8 @@ public class MergeRangesDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -156,7 +158,8 @@ public class MergeRangesDoFnTest {
                                 .build())
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                                PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Long.class)
                                     .build()))
@@ -173,7 +176,8 @@ public class MergeRangesDoFnTest {
                                 .build())
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                                PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Long.class)
                                     .build()))
@@ -204,7 +208,8 @@ public class MergeRangesDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -235,7 +240,8 @@ public class MergeRangesDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -276,7 +282,8 @@ public class MergeRangesDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -310,7 +317,8 @@ public class MergeRangesDoFnTest {
                     .setTableIdentifier(table1)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -321,7 +329,8 @@ public class MergeRangesDoFnTest {
             .build();
 
     Range range1 =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setStart(0L)
             .setEnd(10L)
@@ -342,7 +351,8 @@ public class MergeRangesDoFnTest {
 
     Range testRange =
         dummyCounter(
-            Range.builder().setColumnTypeName("LONGVARCHAR")
+            Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

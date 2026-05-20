@@ -48,7 +48,8 @@ public class AssignSyntheticKeyDoFnTest {
             .build();
 
     Range range1 =
-        Range.<Long>builder().setColumnTypeName("LONGVARCHAR")
+        Range.<Long>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("id")
             .setColClass(Long.class)
@@ -58,7 +59,8 @@ public class AssignSyntheticKeyDoFnTest {
             .build();
 
     Range range2 =
-        Range.<Long>builder().setColumnTypeName("LONGVARCHAR")
+        Range.<Long>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("id")
             .setColClass(Long.class)

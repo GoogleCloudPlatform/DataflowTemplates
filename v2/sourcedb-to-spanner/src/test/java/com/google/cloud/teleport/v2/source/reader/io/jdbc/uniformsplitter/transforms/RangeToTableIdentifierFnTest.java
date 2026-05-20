@@ -36,7 +36,8 @@ public class RangeToTableIdentifierFnTest {
             .setTableName("test_table")
             .build();
     Range range =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableIdentifier)
             .setColName("id")
             .setColClass(Long.class)

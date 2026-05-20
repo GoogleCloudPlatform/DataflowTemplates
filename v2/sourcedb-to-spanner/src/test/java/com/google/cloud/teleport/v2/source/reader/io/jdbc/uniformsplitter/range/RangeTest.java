@@ -82,7 +82,8 @@ public class RangeTest {
   @Test
   public void testRangeWithChild() {
     Range basicRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -129,7 +130,8 @@ public class RangeTest {
     long endBase = 42L;
 
     Range rangeBase =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -154,7 +156,8 @@ public class RangeTest {
     long end = 42L;
     long mid = 21L;
     Range rangeChild =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -212,7 +215,8 @@ public class RangeTest {
   @Test
   public void testAccumulateCount() {
     Range uncountedRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -244,7 +248,8 @@ public class RangeTest {
     long endBase = 42L;
 
     Range rangeBase =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -264,7 +269,8 @@ public class RangeTest {
     long end = 42L;
     long mid = 21L;
     Range leftChild =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -281,7 +287,8 @@ public class RangeTest {
             .build();
 
     Range rightChild =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -366,7 +373,8 @@ public class RangeTest {
   @Test
   public void testRangeEquality() {
     Range basicRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -394,7 +402,8 @@ public class RangeTest {
     // Test Class Comparison
     assertThat(basicRange)
         .isNotEqualTo(
-            Range.builder().setColumnTypeName("LONGVARCHAR")
+            Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -432,7 +441,8 @@ public class RangeTest {
     java.util.Arrays.fill(endB, (byte) 0xFF);
 
     Range leftRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")
@@ -445,7 +455,8 @@ public class RangeTest {
             .build();
 
     Range rightRange =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")

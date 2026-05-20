@@ -117,7 +117,8 @@ public class RangePreparedStatementSetterTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -142,7 +143,8 @@ public class RangePreparedStatementSetterTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -154,7 +156,8 @@ public class RangePreparedStatementSetterTest {
         new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
 
     Range unknownTableRange =
-        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(
                 TableIdentifier.builder()
@@ -185,11 +188,13 @@ public class RangePreparedStatementSetterTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -201,7 +206,8 @@ public class RangePreparedStatementSetterTest {
         new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
 
     Range singleColNonLastRange =
-        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setColName("col1")
@@ -245,7 +251,8 @@ public class RangePreparedStatementSetterTest {
     readStmtSingleColLastResultSet.close();
 
     Range bothColRange =
-        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
@@ -255,7 +262,8 @@ public class RangePreparedStatementSetterTest {
             .setIsLast(false)
             .build()
             .withChildRange(
-                Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
+                Range.<Integer>builder()
+                    .setColumnTypeName("dummy")
                     .setTableIdentifier(tableSplitSpecification.tableIdentifier())
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                     .setColName("col2")
@@ -320,7 +328,8 @@ public class RangePreparedStatementSetterTest {
             .build();
 
     Range range =
-        Range.builder().setColumnTypeName("LONGVARCHAR")
+        Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("uuid_col")

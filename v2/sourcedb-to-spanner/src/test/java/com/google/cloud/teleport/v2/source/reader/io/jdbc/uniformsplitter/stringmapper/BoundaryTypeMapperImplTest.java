@@ -81,7 +81,8 @@ public class BoundaryTypeMapperImplTest {
         .thenReturn(ImmutableMap.of(testCollationReference, testCollationMapper));
 
     PartitionColumn testPartitionColumn =
-        PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("strCol")
             .setColumnClass(String.class)
             .setStringMaxLength(1)

@@ -107,6 +107,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -161,6 +162,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -219,6 +221,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("SECONDARY")
                         .setIsPrimary(false)
@@ -269,6 +272,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.OTHER)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -338,6 +342,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -413,6 +418,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -494,6 +500,7 @@ public class JdbcIoWrapperTest {
                 "table1",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -505,6 +512,7 @@ public class JdbcIoWrapperTest {
                 "table2",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -566,6 +574,7 @@ public class JdbcIoWrapperTest {
                 "table1",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -616,6 +625,7 @@ public class JdbcIoWrapperTest {
                 "testTable",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -726,6 +736,7 @@ public class JdbcIoWrapperTest {
     assertThat(
             JdbcIoWrapper.indexTypeToColumnClass(
                 SourceColumnIndexInfo.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setIndexType(IndexType.BIG_INT_UNSIGNED)
                     .setOrdinalPosition(1)
@@ -740,6 +751,7 @@ public class JdbcIoWrapperTest {
         () ->
             JdbcIoWrapper.indexTypeToColumnClass(
                 SourceColumnIndexInfo.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setIndexType(IndexType.OTHER)
                     .setOrdinalPosition(1)
@@ -907,7 +919,11 @@ public class JdbcIoWrapperTest {
         TableConfig.builder("t2")
             .setDataSourceId(legacyConfig2.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("ID")
+                    .setColumnClass(Long.class)
+                    .build())
             .build();
     SourceTableSchema tableSchema2 =
         SourceTableSchema.builder(SQLDialect.MYSQL)
@@ -937,13 +953,21 @@ public class JdbcIoWrapperTest {
         TableConfig.builder("t3a")
             .setDataSourceId(legacyConfig3.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("ID")
+                    .setColumnClass(Long.class)
+                    .build())
             .build();
     TableConfig tableConfig3b =
         TableConfig.builder("t3b")
             .setDataSourceId(legacyConfig3.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("ID")
+                    .setColumnClass(Long.class)
+                    .build())
             .build();
     SourceTableSchema tableSchema3a =
         SourceTableSchema.builder(SQLDialect.MYSQL)
@@ -1121,6 +1145,7 @@ public class JdbcIoWrapperTest {
                 "t1",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("id")
                         .setIndexType(IndexType.NUMERIC)
                         .setOrdinalPosition(1)
@@ -1211,6 +1236,7 @@ public class JdbcIoWrapperTest {
                 "t1",
                 ImmutableList.of(
                     SourceColumnIndexInfo.builder()
+                        .setColumnTypeName("dummy")
                         .setIndexType(IndexType.NUMERIC)
                         .setIndexName("PRIMARY")
                         .setIsPrimary(true)
@@ -1331,7 +1357,11 @@ public class JdbcIoWrapperTest {
             .setApproxRowCount(1000L)
             .setMaxPartitions(10)
             .withPartitionColum(
-                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("ID")
+                    .setColumnClass(Long.class)
+                    .build())
             .build();
 
     SourceTableSchema tableSchema2 =
