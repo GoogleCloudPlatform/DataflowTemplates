@@ -907,7 +907,7 @@ public class JdbcIoWrapperTest {
         TableConfig.builder("t2")
             .setDataSourceId(legacyConfig2.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
             .build();
     SourceTableSchema tableSchema2 =
         SourceTableSchema.builder(SQLDialect.MYSQL)
@@ -937,13 +937,13 @@ public class JdbcIoWrapperTest {
         TableConfig.builder("t3a")
             .setDataSourceId(legacyConfig3.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
             .build();
     TableConfig tableConfig3b =
         TableConfig.builder("t3b")
             .setDataSourceId(legacyConfig3.id())
             .withPartitionColum(
-                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
             .build();
     SourceTableSchema tableSchema3a =
         SourceTableSchema.builder(SQLDialect.MYSQL)
@@ -1331,7 +1331,7 @@ public class JdbcIoWrapperTest {
             .setApproxRowCount(1000L)
             .setMaxPartitions(10)
             .withPartitionColum(
-                PartitionColumn.builder().setColumnName("ID").setColumnClass(Long.class).build())
+                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("ID").setColumnClass(Long.class).build())
             .build();
 
     SourceTableSchema tableSchema2 =

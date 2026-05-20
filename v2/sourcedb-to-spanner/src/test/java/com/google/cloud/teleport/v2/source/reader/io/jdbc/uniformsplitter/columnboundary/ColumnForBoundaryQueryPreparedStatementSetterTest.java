@@ -110,7 +110,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -124,7 +124,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     ColumnForBoundaryQuery initialColumn =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -151,11 +151,11 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -168,7 +168,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     Range parentRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -178,7 +178,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     ColumnForBoundaryQuery query =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -211,15 +211,15 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -232,7 +232,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     Range childRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col2")
             .setColClass(Integer.class)
@@ -242,7 +242,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     Range parentRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -253,7 +253,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .withChildRange(childRange, null);
 
     ColumnForBoundaryQuery query =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -291,11 +291,11 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -316,7 +316,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     when(mockParentRange.colName()).thenReturn("col1");
 
     ColumnForBoundaryQuery columnWithinRange =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -351,15 +351,15 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -388,7 +388,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     when(mockParentRange.colName()).thenReturn("col1");
 
     ColumnForBoundaryQuery columnWithinRange =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -431,11 +431,11 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .setTableIdentifier(tableId)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -444,7 +444,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .setInitialSplitHeight(1L)
                     .build()));
     ColumnForBoundaryQuery initialColumn =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(tableId)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -464,7 +464,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     }
 
     Range parentRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(tableId)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -474,7 +474,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .build();
     ColumnForBoundaryQuery columnWithinRange =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(tableId)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -507,11 +507,11 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -524,7 +524,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     // Test for initial column boundary discovery (no parent range)
     ColumnForBoundaryQuery initialColumn =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -547,7 +547,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     // Test for column boundary discovery within a parent range
     Range parentRange =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
@@ -559,7 +559,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     ColumnForBoundaryQuery columnWithinRange =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -607,7 +607,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     Range parentRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("uuid_col")
@@ -620,7 +620,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     ColumnForBoundaryQuery query =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(tableId)
             .setColumnName("col2")
             .setColumnClass(Integer.class)

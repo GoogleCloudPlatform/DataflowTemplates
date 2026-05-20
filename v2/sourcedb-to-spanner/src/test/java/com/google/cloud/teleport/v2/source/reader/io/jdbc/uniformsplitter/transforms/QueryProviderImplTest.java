@@ -53,7 +53,7 @@ public class QueryProviderImplTest {
             .setTableIdentifier(knownTable)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -66,7 +66,7 @@ public class QueryProviderImplTest {
             .build();
 
     Range knownTableRange =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(knownTable)
             .setColName("col1")
@@ -94,7 +94,7 @@ public class QueryProviderImplTest {
             .setTableIdentifier(knownTable)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -107,7 +107,7 @@ public class QueryProviderImplTest {
             .build();
 
     Range unknownTableRange =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(
                 TableIdentifier.builder()
@@ -132,7 +132,7 @@ public class QueryProviderImplTest {
             .setTableName("testTable")
             .build();
     PartitionColumn col =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("col1").setColumnClass(Integer.class).build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableId)

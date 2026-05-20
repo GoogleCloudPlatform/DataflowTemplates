@@ -52,7 +52,7 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
     Range rangeToRetainDueToCount =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -67,7 +67,7 @@ public class RangeClassifierDoFnTest {
             .setSplitIndex("1-0-0")
             .build();
     Range rangeToSplit =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -82,7 +82,7 @@ public class RangeClassifierDoFnTest {
             .setCount(1000L)
             .build();
     Range rangeToAddColumn =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -98,7 +98,7 @@ public class RangeClassifierDoFnTest {
             .build();
 
     Range rangeToRetainUnSplitable =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -112,7 +112,7 @@ public class RangeClassifierDoFnTest {
             .setSplitIndex("d")
             .build()
             .withChildRange(
-                Range.builder()
+                Range.builder().setColumnTypeName("LONGVARCHAR")
                     .setTableIdentifier(
                         TableIdentifier.builder()
                             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -142,11 +142,11 @@ public class RangeClassifierDoFnTest {
                     .setSplitStagesCount(2L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -170,7 +170,7 @@ public class RangeClassifierDoFnTest {
     assertThat(taggedOutputCaptor.toAddColumnAccumulator.build())
         .isEqualTo(
             ImmutableList.of(
-                ColumnForBoundaryQuery.builder()
+                ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
                     .setTableIdentifier(
                         TableIdentifier.builder()
                             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -192,7 +192,7 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
     Range rangeToRetainDueToCount =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -208,7 +208,7 @@ public class RangeClassifierDoFnTest {
             .build();
     // Here, the code auto-adjusts to 5 partitions
     Range rangeToRetainAndNotSplit =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -223,7 +223,7 @@ public class RangeClassifierDoFnTest {
             .setCount(1000L)
             .build();
     Range rangeToRetainNotAddColumn =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -239,7 +239,7 @@ public class RangeClassifierDoFnTest {
             .build();
 
     Range rangeToRetainUnSplitable =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -253,7 +253,7 @@ public class RangeClassifierDoFnTest {
             .setSplitIndex("1-1-1")
             .build()
             .withChildRange(
-                Range.builder()
+                Range.builder().setColumnTypeName("LONGVARCHAR")
                     .setTableIdentifier(
                         TableIdentifier.builder()
                             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -283,11 +283,11 @@ public class RangeClassifierDoFnTest {
                     .setSplitStagesCount(2L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -320,7 +320,7 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
     Range rangeToCount =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -349,11 +349,11 @@ public class RangeClassifierDoFnTest {
                     .setSplitStagesCount(2L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -384,7 +384,7 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
     Range rangeToCount =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -413,7 +413,7 @@ public class RangeClassifierDoFnTest {
                         .setSplitStagesCount(1L)
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder()
+                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -430,7 +430,7 @@ public class RangeClassifierDoFnTest {
                         .setMaxPartitionsHint(10L)
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder()
+                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -454,7 +454,7 @@ public class RangeClassifierDoFnTest {
   @Test
   public void testRangeClassifierWithUnknownTableIdentifier() {
     Range rangeToCount =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -481,7 +481,7 @@ public class RangeClassifierDoFnTest {
                     .setMaxPartitionsHint(10L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -513,7 +513,7 @@ public class RangeClassifierDoFnTest {
                     .setSplitStagesCount(2L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -537,7 +537,7 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
     Range rangeToAddColumnButNoMoreColumns =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -567,7 +567,7 @@ public class RangeClassifierDoFnTest {
                     .setSplitStagesCount(2L)
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build())) // Only one column
@@ -634,14 +634,14 @@ public class RangeClassifierDoFnTest {
             .setMaxPartitionsHint(10L)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
             .build();
 
     Range range1 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -697,14 +697,14 @@ public class RangeClassifierDoFnTest {
             .setMaxPartitionsHint(10L)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
             .build();
 
     Range rangeToSplit =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -766,11 +766,11 @@ public class RangeClassifierDoFnTest {
             .setMaxPartitionsHint(10L)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -785,11 +785,11 @@ public class RangeClassifierDoFnTest {
             .setMaxPartitionsHint(2L)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("colA")
                         .setColumnClass(Long.class)
                         .build(),
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("colB")
                         .setColumnClass(Long.class)
                         .build()))
@@ -804,14 +804,14 @@ public class RangeClassifierDoFnTest {
             .setMaxPartitionsHint(5L)
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("colX")
                         .setColumnClass(Integer.class)
                         .build()))
             .build();
 
     Range range1Table1 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -822,7 +822,7 @@ public class RangeClassifierDoFnTest {
             .setCount(50L) // Should be retained (mean for table1 is 100/10 = 10, 50 > 2*10)
             .build();
     Range range2Table1 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -834,7 +834,7 @@ public class RangeClassifierDoFnTest {
             .build();
 
     Range range1Table2 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table2)
             .setColName("colA")
             .setColClass(Long.class)
@@ -845,7 +845,7 @@ public class RangeClassifierDoFnTest {
             .setCount(8L) // Should be retained (mean for table2 is 10/2 = 5, 8 > 2*5)
             .build();
     Range range2Table2 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table2)
             .setColName("colA")
             .setColClass(Long.class)
@@ -857,7 +857,7 @@ public class RangeClassifierDoFnTest {
             .build();
 
     Range range1Table3 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table3)
             .setColName("colX")
             .setColClass(Integer.class)
@@ -868,7 +868,7 @@ public class RangeClassifierDoFnTest {
             .setCount(30L) // Should be split (mean for table3 is 50/5 = 10, 30 > 1.25*10)
             .build();
     Range range2Table3 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table3)
             .setColName("colX")
             .setColClass(Integer.class)

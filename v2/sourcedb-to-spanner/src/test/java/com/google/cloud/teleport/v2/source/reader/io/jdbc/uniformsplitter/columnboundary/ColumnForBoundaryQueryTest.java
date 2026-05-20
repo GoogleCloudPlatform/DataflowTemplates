@@ -30,7 +30,7 @@ public class ColumnForBoundaryQueryTest {
   @Test
   public void testColumnForBoundaryQuery() {
     Range parentRange =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -43,7 +43,7 @@ public class ColumnForBoundaryQueryTest {
             .setEnd(42)
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryWithDefaults =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -53,7 +53,7 @@ public class ColumnForBoundaryQueryTest {
             .setColumnClass(Integer.class)
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryRange =
-        ColumnForBoundaryQuery.builder()
+        ColumnForBoundaryQuery.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

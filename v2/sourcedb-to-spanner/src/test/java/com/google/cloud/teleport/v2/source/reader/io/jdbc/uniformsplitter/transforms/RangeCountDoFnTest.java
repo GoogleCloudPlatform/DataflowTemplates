@@ -99,7 +99,7 @@ public class RangeCountDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -109,7 +109,7 @@ public class RangeCountDoFnTest {
                     .setSplitStagesCount(1L)
                     .build()));
     Range input =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -161,7 +161,7 @@ public class RangeCountDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -171,7 +171,7 @@ public class RangeCountDoFnTest {
                     .setSplitStagesCount(1L)
                     .build()));
     Range input =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -220,7 +220,7 @@ public class RangeCountDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -230,7 +230,7 @@ public class RangeCountDoFnTest {
                     .setSplitStagesCount(1L)
                     .build()));
     Range input =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -276,7 +276,7 @@ public class RangeCountDoFnTest {
                             .build())
                     .setPartitionColumns(
                         ImmutableList.of(
-                            PartitionColumn.builder()
+                            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -286,7 +286,7 @@ public class RangeCountDoFnTest {
                     .setSplitStagesCount(1L)
                     .build()));
     Range input =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -316,7 +316,7 @@ public class RangeCountDoFnTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Long.class)
                         .build()))
@@ -336,7 +336,7 @@ public class RangeCountDoFnTest {
             ImmutableList.of(tableSpec1));
 
     Range inputMissingTable =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -371,7 +371,7 @@ public class RangeCountDoFnTest {
         ImmutableMap.of(existingTable, "SELECT COUNT(*) FROM existingTable");
 
     Range inputExistingTable =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(existingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -381,7 +381,7 @@ public class RangeCountDoFnTest {
             .build();
 
     Range inputMissingFromCountQueries =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(missingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -391,7 +391,7 @@ public class RangeCountDoFnTest {
             .build();
 
     Range inputMissingFromNumColumnsMap =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(missingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -439,7 +439,7 @@ public class RangeCountDoFnTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col1")
                         .setColumnClass(Long.class)
                         .build()))
@@ -457,7 +457,7 @@ public class RangeCountDoFnTest {
                     .build())
             .setPartitionColumns(
                 ImmutableList.of(
-                    PartitionColumn.builder()
+                    PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                         .setColumnName("col2")
                         .setColumnClass(Long.class)
                         .build()))
@@ -505,7 +505,7 @@ public class RangeCountDoFnTest {
         .thenReturn(mockPreparedStatement2);
 
     Range input1 =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -518,7 +518,7 @@ public class RangeCountDoFnTest {
             .setEnd(100)
             .build();
     Range input2 =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

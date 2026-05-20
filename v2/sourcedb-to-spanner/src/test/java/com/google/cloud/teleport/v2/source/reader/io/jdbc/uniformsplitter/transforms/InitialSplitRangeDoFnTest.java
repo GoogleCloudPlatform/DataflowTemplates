@@ -51,7 +51,7 @@ public class InitialSplitRangeDoFnTest {
                 .build())
         .setPartitionColumns(
             ImmutableList.of(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build()))
+                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("col1").setColumnClass(Long.class).build()))
         .setApproxRowCount(100L)
         .setMaxPartitionsHint(10L)
         .setInitialSplitHeight(splitHeight)
@@ -60,7 +60,7 @@ public class InitialSplitRangeDoFnTest {
   }
 
   private Range getRange(String tableName, long start, long end) {
-    return Range.builder()
+    return Range.builder().setColumnTypeName("LONGVARCHAR")
         .setTableIdentifier(
             TableIdentifier.builder()
                 .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

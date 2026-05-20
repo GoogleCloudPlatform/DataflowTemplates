@@ -38,7 +38,7 @@ public class PartitionColumnTest {
             .build();
 
     PartitionColumn stringPartitionColumn =
-        PartitionColumn.builder()
+        PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
             .setColumnName("col1")
             .setColumnClass(String.class)
             .setStringCollation(
@@ -63,12 +63,12 @@ public class PartitionColumnTest {
   public void testPartitionColumnPreconditions() {
     assertThrows(
         IllegalStateException.class,
-        () -> PartitionColumn.builder().setColumnName("col1").setColumnClass(String.class).build());
+        () -> PartitionColumn.builder().setColumnTypeName("LONGVARCHAR").setColumnName("col1").setColumnClass(String.class).build());
 
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(Integer.class)
                 .setStringCollation(
@@ -81,7 +81,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(String.class)
                 // NoCollation
@@ -90,7 +90,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(String.class)
                 .setStringCollation(
@@ -104,7 +104,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(BigDecimal.class)
                 // No numeric scale
@@ -112,7 +112,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(Float.class)
                 // No decimal step size
@@ -120,7 +120,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(Double.class)
                 // No decimal step size
@@ -128,7 +128,7 @@ public class PartitionColumnTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PartitionColumn.builder()
+            PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                 .setColumnName("col1")
                 .setColumnClass(Duration.class)
                 // No datetime precision.

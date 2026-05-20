@@ -80,7 +80,7 @@ public class RangeCountTransformTest {
     String table2Name = "RCT_multi_shard2";
 
     Range range1 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard1Id)
@@ -96,7 +96,7 @@ public class RangeCountTransformTest {
             .build();
 
     Range range2 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard2Id)
@@ -124,7 +124,7 @@ public class RangeCountTransformTest {
                                 .build())
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder()
+                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -141,7 +141,7 @@ public class RangeCountTransformTest {
                                 .build())
                         .setPartitionColumns(
                             ImmutableList.of(
-                                PartitionColumn.builder()
+                                PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -170,7 +170,7 @@ public class RangeCountTransformTest {
   public void testRangeCountTransform() throws Exception {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     Range singleColNonLastRange =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -184,7 +184,7 @@ public class RangeCountTransformTest {
             .setIsLast(false)
             .build();
     Range bothColRange =
-        Range.<Integer>builder()
+        Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -198,7 +198,7 @@ public class RangeCountTransformTest {
             .setIsLast(false)
             .build()
             .withChildRange(
-                Range.<Integer>builder()
+                Range.<Integer>builder().setColumnTypeName("LONGVARCHAR")
                     .setTableIdentifier(
                         TableIdentifier.builder()
                             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -228,7 +228,7 @@ public class RangeCountTransformTest {
                             partitionCols.stream()
                                 .map(
                                     c ->
-                                        PartitionColumn.builder()
+                                        PartitionColumn.builder().setColumnTypeName("LONGVARCHAR")
                                             .setColumnName(c)
                                             .setColumnClass(Long.class)
                                             .build())

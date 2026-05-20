@@ -40,7 +40,7 @@ public class RangeCombinerTest {
   public void testGloballyCombine() {
 
     Range rangeBase =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -105,7 +105,7 @@ public class RangeCombinerTest {
             .build();
 
     Range range1 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Long.class)
@@ -118,7 +118,7 @@ public class RangeCombinerTest {
     Range range1b = range1.split(null).getRight();
 
     Range range2 =
-        Range.builder()
+        Range.builder().setColumnTypeName("LONGVARCHAR")
             .setTableIdentifier(table2)
             .setColName("col2")
             .setColClass(Long.class)
