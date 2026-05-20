@@ -1,0 +1,65 @@
+template:
+
+  name: "PostgreSQL_To_Iceberg_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "PostgreSQL to Iceberg (YAML)"
+  description: >
+    The PostgreSQL to Iceberg template is a batch pipeline executes the user provided SQL query to read data from PostgreSQL table
+    and outputs the records to Iceberg table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "PostgreSQLToIceberg.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/postgres_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input PostgreSQL instance and table must exist.",
+      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "postgres_options"
+    - "iceberg_options"
+
+  parameters:
+    - postgres_common_options
+    - postgres_read_options
+    - iceberg_common_options
+    - iceberg_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPostgres
+      name: ReadFromPostgres
+      config:
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        table: {{ postgresTable }}
+        query: {{ query }}
+        connection_properties: {{ connectionProperties }}
+        partition_column: {{ partitionColumn }}
+        num_partitions: {{ numPartitions }}
+        fetch_size: {{ fetchSize }}
+        disable_auto_commit: {{ disableAutoCommit }}
+        output_parallelization: {{ outputParallelization }}
+
+    - type: WriteToIceberg
+      name: WriteToIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        keep: {{ keep }}
+        only: {{ only }}
+        partition_fields: {{ partitionFields }}
+        table_properties: {{ tableProperties }}
+        triggering_frequency_seconds: {{ triggeringFrequencySeconds }}
+
+options:
+  streaming: false

@@ -71,12 +71,13 @@ public class InformationSchemaScanner {
         continue; // Skipping as table does not exist
       }
 
-      ImmutableList.Builder<String> tableIndexes = ImmutableList.builder();
+      ImmutableList.Builder<Index> tableIndexObjects = ImmutableList.builder();
       for (Map.Entry<String, Index.Builder> entry : tableEntry.getValue().entrySet()) {
         Index.Builder indexBuilder = entry.getValue();
-        tableIndexes.add(indexBuilder.build().prettyPrint());
+        Index index = indexBuilder.build();
+        tableIndexObjects.add(index);
       }
-      builder.createTable(tableName).indexes(tableIndexes.build()).endTable();
+      builder.createTable(tableName).indexes(tableIndexObjects.build()).endTable();
     }
 
     Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys = Maps.newHashMap();
@@ -519,7 +520,7 @@ public class InformationSchemaScanner {
                     + " cc.CONSTRAINT_NAME,"
                     + " cc.CHECK_CLAUSE"
                     + " FROM INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE as ctu"
-                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " INNER JOIN @{JOIN_METHOD=HASH_JOIN} INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
                     + " ON ctu.constraint_catalog = cc.constraint_catalog"
                     + " AND ctu.constraint_schema = cc.constraint_schema"
                     + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
@@ -537,7 +538,7 @@ public class InformationSchemaScanner {
                     + " cc.CONSTRAINT_NAME,"
                     + " cc.CHECK_CLAUSE"
                     + " FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS as ctu"
-                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " INNER JOIN /*@ JOIN_METHOD=HASH_JOIN */ INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
                     + " ON ctu.constraint_catalog = cc.constraint_catalog"
                     + " AND ctu.constraint_schema = cc.constraint_schema"
                     + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"

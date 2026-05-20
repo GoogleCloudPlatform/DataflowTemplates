@@ -34,7 +34,6 @@ import java.util.Set;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -123,10 +122,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
           "t_tsvector",
           "t_txid_snapshot",
           "t_varbit_to_bool_array");
-  private static final String PUBLICATION_NAME = "data_types_test_publication";
-  private static final String REPLICATION_SLOT_NAME = "data_types_test_replication_slot";
-  private static final String PG_DIALECT_REPLICATION_SLOT_NAME =
-      "pg_dialect_data_types_test_replication_slot";
+  private static CloudPostgresResourceManager.ReplicationInfo replicationInfo;
+  private static CloudPostgresResourceManager.ReplicationInfo pgDialectReplicationInfo;
 
   private static boolean initialized = false;
   private static CloudPostgresResourceManager postgresResourceManager;
@@ -175,6 +172,9 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
         LOG.info("Executing PostgreSQL DDL script...");
         executeSqlScript(postgresResourceManager, POSTGRESQL_DDL_RESOURCE);
 
+        replicationInfo = postgresResourceManager.createLogicalReplication();
+        pgDialectReplicationInfo = postgresResourceManager.createLogicalReplication();
+
         initialized = true;
       }
     }
@@ -189,24 +189,6 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
 
     // It is important to clean up Datastream before trying to drop the replication slot.
     ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    try {
-      postgresResourceManager.runSQLQuery(
-          "SELECT pg_drop_replication_slot('" + REPLICATION_SLOT_NAME + "')");
-    } catch (Exception e) {
-      LOG.warn("Failed to drop replication slot {}:", REPLICATION_SLOT_NAME, e);
-    }
-    try {
-      postgresResourceManager.runSQLQuery(
-          "SELECT pg_drop_replication_slot('" + PG_DIALECT_REPLICATION_SLOT_NAME + "')");
-    } catch (Exception e) {
-      LOG.warn("Failed to drop replication slot {}:", PG_DIALECT_REPLICATION_SLOT_NAME, e);
-    }
-    try {
-      postgresResourceManager.runSQLUpdate("DROP PUBLICATION IF EXISTS " + PUBLICATION_NAME);
-    } catch (Exception e) {
-      LOG.warn("Failed to drop publication {}:", PUBLICATION_NAME, e);
-    }
 
     ResourceManagerUtils.cleanResources(
         postgresResourceManager,
@@ -228,8 +210,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
                 postgresResourceManager.getPassword(),
                 postgresResourceManager.getPort(),
                 postgresResourceManager.getDatabaseName(),
-                REPLICATION_SLOT_NAME,
-                PUBLICATION_NAME)
+                replicationInfo.getReplicationSlotName(),
+                replicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
             .build();
 
@@ -253,7 +235,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ChainedConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
+    ConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -275,8 +257,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
                 postgresResourceManager.getPassword(),
                 postgresResourceManager.getPort(),
                 postgresResourceManager.getDatabaseName(),
-                PG_DIALECT_REPLICATION_SLOT_NAME,
-                PUBLICATION_NAME)
+                pgDialectReplicationInfo.getReplicationSlotName(),
+                pgDialectReplicationInfo.getPublicationName())
             .setAllowedTables(Map.of("public", getAllowedTables()))
             .build();
 
@@ -300,8 +282,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
 
-    ChainedConditionCheck condition =
-        buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
+    ConditionCheck condition = buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -412,7 +393,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
     return tableNames;
   }
 
-  private ChainedConditionCheck buildConditionCheck(
+  private ConditionCheck buildConditionCheck(
       SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
     // These tables fail to migrate the expected number of rows, ignore them to avoid having to wait
     // for the timeout.
@@ -440,10 +421,8 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
             "t_smallint_array_to_int64_array",
             "t_smallint_array_to_string",
             "t_varbit_to_bool_array");
-    List<ConditionCheck> conditions = new ArrayList<>(expectedData.size());
 
     ConditionCheck combinedCondition = null;
-    int numCombinedConditions = 0;
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       if (ignoredTables.contains(entry.getKey())) {
         continue;
@@ -455,13 +434,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
       if (combinedCondition == null) {
         combinedCondition = c;
       } else {
-        combinedCondition.and(c);
-      }
-      numCombinedConditions += 1;
-      if (numCombinedConditions >= 3) {
-        conditions.add(combinedCondition);
-        combinedCondition = null;
-        numCombinedConditions = 0;
+        combinedCondition = combinedCondition.and(c);
       }
     }
 
@@ -475,12 +448,11 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
       if (unsupportedTableCondition == null) {
         unsupportedTableCondition = c;
       } else {
-        unsupportedTableCondition.and(c);
+        unsupportedTableCondition = unsupportedTableCondition.and(c);
       }
     }
-    conditions.add(unsupportedTableCondition);
 
-    return ChainedConditionCheck.builder(conditions).build();
+    return combinedCondition.and(unsupportedTableCondition);
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {

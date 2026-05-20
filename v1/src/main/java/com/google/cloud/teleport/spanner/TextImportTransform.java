@@ -92,14 +92,17 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private final ValueProvider<String> importManifest;
   private final ValueProvider<String> invalidOutputPath;
+  private final ValueProvider<Integer> maxNumRows;
 
   public TextImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importManifest,
-      ValueProvider<String> invalidOutputPath) {
+      ValueProvider<String> invalidOutputPath,
+      ValueProvider<Integer> maxNumRows) {
     this.spannerConfig = spannerConfig;
     this.importManifest = importManifest;
     this.invalidOutputPath = invalidOutputPath;
+    this.maxNumRows = maxNumRows;
   }
 
   @Override
@@ -196,8 +199,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Reshuffle text files " + depth, Reshuffle.viaRandomKey())
               .apply(
                   "Text files as mutations. Depth: " + depth,
-                  new TextTableFilesAsMutations(ddlView, tableColumnsView));
-
+                  new TextTableFilesAsMutations(ddlView, tableColumnsView, depth));
       SpannerWriteResult result =
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
@@ -209,8 +211,36 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
                       .withMaxNumMutations(10000)
                       .withGroupingFactor(100)
-                      .withDialectView(dialectView));
+                      .withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES)
+                      .withDialectView(dialectView)
+                      .withMaxNumRows(maxNumRows));
       previousComputation = result.getOutput();
+
+      result
+          .getFailedMutations()
+          .apply(
+              "Failed mutations as String " + depth,
+              ParDo.of(
+                  new DoFn<com.google.cloud.teleport.spanner.spannerio.MutationGroup, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      for (com.google.cloud.spanner.Mutation m : c.element()) {
+                        c.output(m.toString());
+                      }
+                    }
+                  }))
+          .apply(
+              "Write failed Spanner records " + depth,
+              TextIO.<String>writeCustomType()
+                  .to(invalidOutputPath)
+                  .withSuffix(
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
+                  .skipIfEmpty()
+                  .withFormatFunction(SerializableFunctions.identity()));
     }
 
     return PDone.in(begin.getPipeline());
@@ -222,12 +252,15 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     private final PCollectionView<Ddl> ddlView;
     private final PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView;
+    private final int depth;
 
     public TextTableFilesAsMutations(
         PCollectionView<Ddl> ddlView,
-        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView) {
+        PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
+        int depth) {
       this.ddlView = ddlView;
       this.tableColumnsView = tableColumnsView;
+      this.depth = depth;
     }
 
     @Override
@@ -293,9 +326,14 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           .apply(
               TextIO.<String>writeCustomType()
                   .to(options.getInvalidOutputPath())
+                  .withSuffix(
+                      "-"
+                          + java.util.UUID.randomUUID().toString()
+                          + "-spanner-depth-"
+                          + depth
+                          + ".csv")
                   .skipIfEmpty()
-                  .withFormatFunction(SerializableFunctions.identity())
-                  .withNumShards(1));
+                  .withFormatFunction(SerializableFunctions.identity()));
 
       return outputCollections.get(mutationTag);
     }

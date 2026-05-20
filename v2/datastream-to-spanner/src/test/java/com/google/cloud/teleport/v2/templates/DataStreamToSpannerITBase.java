@@ -66,6 +66,13 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
   public static final int CUTOVER_MILLIS = 30 * 1000;
 
+  // Time to wait for the job to start processing after pipeline launch.
+  // Context - b/473707986#comment14 - The Job Initialization latency is 5 mins, that is the
+  // time between Job start to when workers start requesting work. Need to account for this
+  // latency in the first condition check after the job start. The subsequent condition check
+  // waits don't need to account for this latency.
+  public static final int JOB_START_PROCESSING_WAIT_MINUTES = 15;
+
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
@@ -315,34 +322,38 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     String gcsPrefix =
         getGcsPath(gcsPathPrefix + "/cdc/", gcsResourceManager)
             .replace("gs://" + gcsResourceManager.getBucket(), "");
-    SubscriptionName subscription =
-        createPubsubResources(
-            identifierSuffix, pubsubResourceManager, gcsPrefix, gcsResourceManager);
+    SubscriptionName subscription = null;
+    if (pubsubResourceManager != null) {
+      subscription =
+          createPubsubResources(
+              identifierSuffix, pubsubResourceManager, gcsPrefix, gcsResourceManager);
+    }
 
     String dlqGcsPrefix =
         getGcsPath(gcsPathPrefix + "/dlq/", gcsResourceManager)
             .replace("gs://" + gcsResourceManager.getBucket(), "");
-    SubscriptionName dlqSubscription =
-        createPubsubResources(
-            identifierSuffix + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
+    SubscriptionName dlqSubscription = null;
+    if (pubsubResourceManager != null) {
+      dlqSubscription =
+          createPubsubResources(
+              identifierSuffix + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
+    }
 
     // default parameters
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("projectId", PROJECT);
-            put(
-                "deadLetterQueueDirectory",
-                getGcsPath(gcsPathPrefix + "/dlq/", gcsResourceManager));
-            put("gcsPubSubSubscription", subscription.toString());
-            put("dlqGcsPubSubSubscription", dlqSubscription.toString());
-            put("inputFileFormat", "avro");
-            put("workerMachineType", "n2-standard-4");
-          }
-        };
+    Map<String, String> params = new HashMap<>();
+    params.put("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/", gcsResourceManager));
+    params.put("instanceId", spannerResourceManager.getInstanceId());
+    params.put("databaseId", spannerResourceManager.getDatabaseId());
+    params.put("projectId", PROJECT);
+    params.put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/", gcsResourceManager));
+    if (subscription != null) {
+      params.put("gcsPubSubSubscription", subscription.toString());
+    }
+    if (dlqSubscription != null) {
+      params.put("dlqGcsPubSubSubscription", dlqSubscription.toString());
+    }
+    params.put("inputFileFormat", "avro");
+    params.put("workerMachineType", "n2-standard-4");
 
     if (jdbcSource != null) {
       if (jdbcSource instanceof PostgresqlSource) {

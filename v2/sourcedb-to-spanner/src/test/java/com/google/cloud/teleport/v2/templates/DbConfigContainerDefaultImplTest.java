@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.source.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.junit.Test;
@@ -45,8 +44,5 @@ public class DbConfigContainerDefaultImplTest {
     DbConfigContainer dbConfigContainer = new DbConfigContainerDefaultImpl(mockIOWrapperFactory);
     assertThat(dbConfigContainer.getIOWrapper(mockTables, mockWaitOnSignal))
         .isEqualTo(mockIoWrapper);
-    assertThat(dbConfigContainer.getShardId()).isNull();
-    assertThat(dbConfigContainer.getSrcTableToShardIdColumnMap(mockIschemaMapper, mockTables))
-        .isEqualTo(new HashMap<>());
   }
 }

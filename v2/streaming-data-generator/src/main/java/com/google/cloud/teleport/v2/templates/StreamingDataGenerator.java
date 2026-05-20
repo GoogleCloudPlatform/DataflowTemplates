@@ -672,7 +672,18 @@ public class StreamingDataGenerator {
 
     @Setup
     public void setup() {
-      dataGenerator = new JsonDataGeneratorImpl();
+      // Use a static singleton to prevent concurrent classpath scanning.
+      // This avoids 'zip file closed' errors when multiple DoFn instances are initialize on the
+      // same worker simultaneously. See
+      // https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/3421 for context.
+      if (dataGenerator == null) {
+        synchronized (MessageGeneratorFn.class) {
+          if (dataGenerator == null) {
+            // The heavy JAR scanning happens here
+            dataGenerator = new JsonDataGeneratorImpl();
+          }
+        }
+      }
     }
 
     @ProcessElement

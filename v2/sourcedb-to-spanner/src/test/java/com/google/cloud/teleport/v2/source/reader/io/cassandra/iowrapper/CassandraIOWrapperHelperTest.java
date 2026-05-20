@@ -244,11 +244,12 @@ public class CassandraIOWrapperHelperTest {
             dataSource,
             cassandraSchemaReference,
             ImmutableList.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE));
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReraders =
-        CassandraIOWrapperHelper.getTableReaders(dataSource, sourceSchema);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        tableReraders = CassandraIOWrapperHelper.getTableReaders(dataSource, sourceSchema);
+    tableReraders.keySet().stream().forEach(tableList -> assertThat(tableList.size()).isEqualTo(1));
     assertThat(
             tableReraders.keySet().stream()
-                .map(t -> t.sourceTableName())
+                .map(t -> t.get(0).sourceTableName())
                 .collect(Collectors.toList()))
         .isEqualTo(List.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE));
   }

@@ -18,31 +18,32 @@ package com.google.cloud.teleport.v2.templates.utils;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 
 public class SchemaMapperUtils {
 
   public static ISchemaMapper getSchemaMapper(
-      String sessionFilePath,
-      String schemaOverridesFilePath,
+      Schema schema,
+      SchemaFileOverridesParser schemaFileOverridesParser,
       String tableOverrides,
       String columnOverrides,
       Ddl ddl) {
     // Check if config types are specified
-    boolean hasSessionFile = sessionFilePath != null && !sessionFilePath.equals("");
-    boolean hasSchemaOverridesFile =
-        schemaOverridesFilePath != null && !schemaOverridesFilePath.equals("");
+    boolean hasSchema = schema != null;
+    boolean hasSchemaFileOverridesParser = schemaFileOverridesParser != null;
     boolean hasStringOverrides =
         (tableOverrides != null && !tableOverrides.equals(""))
             || (columnOverrides != null && !columnOverrides.equals(""));
 
     int overrideTypesCount = 0;
-    if (hasSessionFile) {
+    if (hasSchema) {
       overrideTypesCount++;
     }
-    if (hasSchemaOverridesFile) {
+    if (hasSchemaFileOverridesParser) {
       overrideTypesCount++;
     }
     if (hasStringOverrides) {
@@ -56,10 +57,10 @@ public class SchemaMapperUtils {
     }
 
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (hasSessionFile) {
-      schemaMapper = new SessionBasedMapper(sessionFilePath, ddl);
-    } else if (hasSchemaOverridesFile) {
-      schemaMapper = new SchemaFileOverridesBasedMapper(schemaOverridesFilePath, ddl);
+    if (hasSchema) {
+      schemaMapper = new SessionBasedMapper(schema, ddl);
+    } else if (hasSchemaFileOverridesParser) {
+      schemaMapper = new SchemaFileOverridesBasedMapper(schemaFileOverridesParser, ddl);
     } else if (hasStringOverrides) {
       schemaMapper = new SchemaStringOverridesBasedMapper(tableOverrides, columnOverrides, ddl);
     }

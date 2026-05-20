@@ -40,11 +40,19 @@ public abstract class TableConfig {
   /** Approximate count of the rows in the table. */
   public abstract Long approxRowCount();
 
+  /** Fetch Size for the table. */
+  @Nullable
+  public abstract Integer fetchSize();
+
+  /** Datasource ID for reading this table. */
+  public abstract String dataSourceId();
+
   public static Builder builder(String tableName) {
     return new AutoValue_TableConfig.Builder()
         .setTableName(tableName)
         .setMaxPartitions(null)
-        .setApproxRowCount(0L);
+        .setApproxRowCount(0L)
+        .setFetchSize(null);
   }
 
   @AutoValue.Builder
@@ -57,6 +65,10 @@ public abstract class TableConfig {
     abstract ImmutableList.Builder<PartitionColumn> partitionColumnsBuilder();
 
     public abstract Builder setApproxRowCount(Long value);
+
+    public abstract Builder setFetchSize(Integer value);
+
+    public abstract Builder setDataSourceId(String value);
 
     public Builder withPartitionColum(PartitionColumn column) {
       this.partitionColumnsBuilder().add(column);

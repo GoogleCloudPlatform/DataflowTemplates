@@ -32,10 +32,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.joda.time.Duration;
@@ -132,18 +129,6 @@ public class InputRecordProcessor {
           break;
       }
 
-      Counter numRecProcessedMetric =
-          Metrics.counter(shardId, "records_written_to_source_" + shardId);
-
-      numRecProcessedMetric.inc(1); // update the number of records processed metric
-      Distribution lagMetric =
-          Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
-
-      Instant instTime = Instant.now();
-      Instant commitTsInst = spannerRecord.getCommitTimestamp().toSqlTimestamp().toInstant();
-      long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
-
-      lagMetric.update(replicationLag); // update the lag metric
       return false;
     } catch (Exception e) {
       // Not logging the error here since the error can be retryable error and high number of them

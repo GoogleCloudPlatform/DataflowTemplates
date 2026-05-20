@@ -28,9 +28,15 @@ import static org.mockito.Mockito.withSettings;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -79,20 +85,44 @@ public class RangeCountDoFnTest {
     when(mockResultSet.getLong(1)).thenReturn(42L);
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"));
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
 
     verify(mockOut).output(rangeCaptor.capture());
@@ -119,20 +149,44 @@ public class RangeCountDoFnTest {
                 "Query execution was interrupted, maximum statement execution time exceeded"));
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"));
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
 
@@ -156,20 +210,44 @@ public class RangeCountDoFnTest {
     when(mockPreparedStatemet.executeQuery()).thenThrow(new SQLException("test"));
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"));
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     assertThrows(
         SQLException.class,
         () -> rangeCountDoFn.processElement(input, mockOut, mockProcessContext));
@@ -190,24 +268,293 @@ public class RangeCountDoFnTest {
     when(mockResultSet.wasNull()).thenReturn(true) /* Null ResultSet */;
     RangeCountDoFn rangeCountDoFn =
         new RangeCountDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             2000L,
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
-            "testTable",
-            ImmutableList.of("col1"));
+            ImmutableList.of(
+                TableSplitSpecification.builder()
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
+                    .setPartitionColumns(
+                        ImmutableList.of(
+                            PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
+                                .setColumnName("col1")
+                                .setColumnClass(Long.class)
+                                .build()))
+                    .setApproxRowCount(100L)
+                    .setMaxPartitionsHint(10L)
+                    .setInitialSplitHeight(5L)
+                    .setSplitStagesCount(1L)
+                    .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setStart(0)
             .setEnd(100)
             .build();
-    rangeCountDoFn.setup();
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     rangeCountDoFn.processElement(input, mockOut, mockProcessContext);
     verify(mockOut, times(2)).output(rangeCaptor.capture());
     // The Range remains uncounted with logs.
     assertThat(rangeCaptor.getAllValues()).isEqualTo(ImmutableList.of(input, input));
+  }
+
+  @Test
+  public void testRangeCountDoFnMissingTable() throws Exception {
+    TableSplitSpecification tableSpec1 =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("existingTable")
+                    .build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col1")
+                        .setColumnClass(Long.class)
+                        .build()))
+            .setApproxRowCount(100L)
+            .setMaxPartitionsHint(10L)
+            .setInitialSplitHeight(5L)
+            .setSplitStagesCount(1L)
+            .build();
+
+    RangeCountDoFn rangeCountDoFn =
+        new RangeCountDoFn(
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
+            2000L,
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            ImmutableList.of(tableSpec1));
+
+    Range inputMissingTable =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("missingTable")
+                    .build())
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .build();
+
+    assertThrows(
+        RuntimeException.class,
+        () -> rangeCountDoFn.processElement(inputMissingTable, mockOut, mockProcessContext));
+  }
+
+  @Test
+  public void testIsValidRangeHelperFunction() {
+    TableIdentifier existingTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("existingTable")
+            .build();
+    TableIdentifier missingTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("missingTable")
+            .build();
+
+    ImmutableMap<TableIdentifier, String> countQueries =
+        ImmutableMap.of(existingTable, "SELECT COUNT(*) FROM existingTable");
+
+    Range inputExistingTable =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(existingTable)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .build();
+
+    Range inputMissingFromCountQueries =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(missingTable)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .build();
+
+    Range inputMissingFromNumColumnsMap =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(missingTable)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .build();
+
+    // Case 1: TableIdentifier present in both maps
+    assertThat(RangeCountDoFn.isInvalidValidRange(inputExistingTable, countQueries)).isFalse();
+
+    // Case 2: TableIdentifier missing from countQueries
+    assertThat(RangeCountDoFn.isInvalidValidRange(inputMissingFromCountQueries, countQueries))
+        .isTrue();
+  }
+
+  @Test
+  public void testRangeCountDoFnMultiTable() throws Exception {
+
+    when(mockDataSourceProviderFn.apply(any())).thenReturn(mockDataSource);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    PreparedStatement mockPreparedStatement1 = Mockito.mock(PreparedStatement.class);
+    PreparedStatement mockPreparedStatement2 = Mockito.mock(PreparedStatement.class);
+    ResultSet mockResultSet1 = Mockito.mock(ResultSet.class);
+    ResultSet mockResultSet2 = Mockito.mock(ResultSet.class);
+
+    doNothing().when(mockPreparedStatement1).setQueryTimeout(anyInt());
+    doNothing().when(mockPreparedStatement1).setObject(anyInt(), any());
+    when(mockPreparedStatement1.executeQuery()).thenReturn(mockResultSet1);
+    when(mockResultSet1.next()).thenReturn(true);
+    when(mockResultSet1.getLong(1)).thenReturn(42L);
+
+    doNothing().when(mockPreparedStatement2).setQueryTimeout(anyInt());
+    doNothing().when(mockPreparedStatement2).setObject(anyInt(), any());
+    when(mockPreparedStatement2.executeQuery()).thenReturn(mockResultSet2);
+    when(mockResultSet2.next()).thenReturn(true);
+    when(mockResultSet2.getLong(1)).thenReturn(84L);
+
+    TableSplitSpecification tableSpec1 =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable1")
+                    .build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col1")
+                        .setColumnClass(Long.class)
+                        .build()))
+            .setApproxRowCount(100L)
+            .setMaxPartitionsHint(10L)
+            .setInitialSplitHeight(5L)
+            .setSplitStagesCount(1L)
+            .build();
+    TableSplitSpecification tableSpec2 =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col2")
+                        .setColumnClass(Long.class)
+                        .build()))
+            .setApproxRowCount(200L)
+            .setMaxPartitionsHint(20L)
+            .setInitialSplitHeight(10L)
+            .setSplitStagesCount(1L)
+            .build();
+
+    RangeCountDoFn rangeCountDoFn =
+        new RangeCountDoFn(
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
+            2000L,
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT),
+            ImmutableList.of(tableSpec1, tableSpec2));
+
+    // Use reflection to get the dbAdapter from rangeCountDoFn
+    java.lang.reflect.Field dbAdapterField = RangeCountDoFn.class.getDeclaredField("dbAdapter");
+    dbAdapterField.setAccessible(true);
+    UniformSplitterDBAdapter dbAdapter =
+        (UniformSplitterDBAdapter) dbAdapterField.get(rangeCountDoFn);
+
+    String countQuery1 =
+        dbAdapter.getCountQuery(
+            tableSpec1.tableIdentifier().tableName(),
+            tableSpec1.partitionColumns().stream()
+                .map(pc -> pc.columnName())
+                .collect(ImmutableList.toImmutableList()),
+            2000L);
+    String countQuery2 =
+        dbAdapter.getCountQuery(
+            tableSpec2.tableIdentifier().tableName(),
+            tableSpec2.partitionColumns().stream()
+                .map(pc -> pc.columnName())
+                .collect(ImmutableList.toImmutableList()),
+            2000L);
+
+    when(mockConnection.prepareStatement(
+            countQuery1, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY))
+        .thenReturn(mockPreparedStatement1);
+    when(mockConnection.prepareStatement(
+            countQuery2, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY))
+        .thenReturn(mockPreparedStatement2);
+
+    Range input1 =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable1")
+                    .build())
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(100)
+            .build();
+    Range input2 =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
+            .setColName("col2")
+            .setColClass(Integer.class)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setStart(0)
+            .setEnd(200)
+            .build();
+
+    rangeCountDoFn.processElement(input1, mockOut, mockProcessContext);
+    rangeCountDoFn.processElement(input2, mockOut, mockProcessContext);
+
+    verify(mockOut, times(2)).output(rangeCaptor.capture());
+    assertThat(rangeCaptor.getAllValues().get(0))
+        .isEqualTo(input1.withCount(42L, mockProcessContext));
+    assertThat(rangeCaptor.getAllValues().get(1))
+        .isEqualTo(input2.withCount(84L, mockProcessContext));
   }
 }

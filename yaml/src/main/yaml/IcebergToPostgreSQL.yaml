@@ -1,0 +1,60 @@
+template:
+
+  name: "Iceberg_To_PostgreSQL_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg to PostgreSQL (YAML)"
+  description: >
+    The Iceberg to PostgreSQL template is a batch pipeline that reads data from an Iceberg table
+    and outputs the records to a PostgreSQL database table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergToPostgreSQL.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/postgres_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Iceberg table must exist and be accessible through the provided catalog.",
+     "The Output PostgreSQL instance must exist and the target table must exist or be created."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+    - "postgres_options"
+
+  parameters:
+    - iceberg_common_options
+    - iceberg_read_options
+    - postgres_common_options
+    - postgres_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+
+    - type: WriteToPostgres
+      name: WriteToPostgres
+      config:
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        query: {{ query }}
+        connection_properties: {{ connectionProperties }}
+        table: {{ postgresTable }}
+        batch_size: {{ batchSize }}
+        autosharding: {{ autosharding }}
+
+options:
+  streaming: false
+

@@ -40,7 +40,6 @@ import java.util.Set;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -51,7 +50,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -63,7 +61,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("Reverse migration not supported for PG dialect.")
 public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =
@@ -180,14 +177,21 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
     }
   }
 
-  private ChainedConditionCheck buildConditionCheck(Map<String, List<Value>> spannerTableData) {
+  private ConditionCheck buildConditionCheck(Map<String, List<Value>> spannerTableData) {
     // These tables fail to migrate all expected rows, ignore them to avoid having to wait for the
     // timeout.
-    Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
-    List<ConditionCheck> conditions = new ArrayList<>(spannerTableData.size());
+    Set<String> ignoredTables =
+        Set.of(
+            "binary_to_string",
+            "bit_to_string",
+            "set_to_array",
+            "blob_to_string",
+            "largeblob_to_string",
+            "mediumblob_to_string",
+            "tinyblob_to_string",
+            "varbinary_to_string");
 
     ConditionCheck combinedCondition = null;
-    int numCombinedConditions = 0;
     for (Map.Entry<String, List<Value>> entry : spannerTableData.entrySet()) {
       if (ignoredTables.contains(entry.getKey())) {
         continue;
@@ -209,17 +213,11 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
       if (combinedCondition == null) {
         combinedCondition = c;
       } else {
-        combinedCondition.and(c);
-      }
-      numCombinedConditions += 1;
-      if (numCombinedConditions >= 3) {
-        conditions.add(combinedCondition);
-        combinedCondition = null;
-        numCombinedConditions = 0;
+        combinedCondition = combinedCondition.and(c);
       }
     }
 
-    return ChainedConditionCheck.builder(conditions).build();
+    return combinedCondition;
   }
 
   private void assertRowInMySQL() {

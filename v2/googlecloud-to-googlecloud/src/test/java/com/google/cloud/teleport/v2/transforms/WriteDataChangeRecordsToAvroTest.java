@@ -136,6 +136,63 @@ public class WriteDataChangeRecordsToAvroTest {
     testPipeline.run();
   }
 
+  @Test
+  public void testArrayTypePropagation() {
+    DataChangeRecordToAvroFn converter = new DataChangeRecordToAvroFn.Builder().build();
+    final DataChangeRecord dataChangeRecord = createTestArrayDataChangeRecord();
+
+    com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordAvro =
+        converter.dataChangeRecordToAvro(dataChangeRecord);
+
+    java.util.List<com.google.cloud.teleport.v2.ColumnType> columnTypes =
+        dataChangeRecordAvro.getRowType();
+
+    assertEquals(2, columnTypes.size());
+
+    com.google.cloud.teleport.v2.ColumnType column1 = columnTypes.get(0);
+    assertEquals("column1", column1.getName().toString());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.ARRAY, column1.getType());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.STRING, column1.getArrayElementType());
+
+    com.google.cloud.teleport.v2.ColumnType column2 = columnTypes.get(1);
+    assertEquals("column2", column2.getName().toString());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.ARRAY, column2.getType());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.INT64, column2.getArrayElementType());
+  }
+
+  private DataChangeRecord createTestArrayDataChangeRecord() {
+    return new DataChangeRecord(
+        "partitionToken",
+        Timestamp.ofTimeSecondsAndNanos(10L, 20),
+        "serverTransactionId",
+        true,
+        "1",
+        "tableName",
+        Arrays.asList(
+            new ColumnType(
+                "column1",
+                new TypeCode("{\"code\":\"ARRAY\",\"array_element_type\":{\"code\":\"STRING\"}}"),
+                true,
+                1L),
+            new ColumnType(
+                "column2",
+                new TypeCode("{\"code\":\"ARRAY\",\"array_element_type\":{\"code\":\"INT64\"}}"),
+                false,
+                2L)),
+        Collections.singletonList(
+            new Mod(
+                "{\"column1\": \"[\\\"value1\\\", \\\"value2\\\"]\"}",
+                "{\"oldValue2\": \"[1, 2]\"}",
+                "{\"newValue2\": \"[3, 4]\"}")),
+        ModType.UPDATE,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
+        10L,
+        2L,
+        "transactionTag",
+        /*isSystemTransaction*/ false,
+        null);
+  }
+
   private DataChangeRecord createTestDataChangeRecord() {
     return new DataChangeRecord(
         "partitionToken",

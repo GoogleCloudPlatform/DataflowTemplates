@@ -851,7 +851,7 @@ CREATE TABLE IF NOT EXISTS spatial_linestring (
 );
 
 INSERT INTO spatial_linestring (path)
-VALUES (LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));
+VALUES (LineString(Point(77.5946, 12.9716), Point(77.6100, 12.9600)));  
 
 CREATE TABLE IF NOT EXISTS spatial_polygon (
     id INT AUTO_INCREMENT PRIMARY KEY,

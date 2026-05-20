@@ -21,6 +21,7 @@ import static org.mockito.Mockito.verify;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -43,6 +44,12 @@ public class SplitRangeDoFnTest {
   public void testSplitRangeDoFnBasic() {
     Range splittableRange =
         Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(0)

@@ -302,10 +302,18 @@ public class GenericRecordTypeConvertor {
       Schema fieldSchema = filterNullSchema(field.schema(), fieldName, fieldValue);
       // Handle logical/record types.
       final CassandraAnnotations cassandraAnnotations =
-          schemaMapper.getSpannerColumnCassandraAnnotations(
-              namespace,
-              schemaMapper.getSpannerTableName(namespace, srcTableName),
-              schemaMapper.getSpannerColumnName(namespace, srcTableName, fieldName));
+          ((java.util.function.Supplier<CassandraAnnotations>)
+                  () -> {
+                    try {
+                      return schemaMapper.getSpannerColumnCassandraAnnotations(
+                          namespace,
+                          schemaMapper.getSpannerTableName(namespace, srcTableName),
+                          schemaMapper.getSpannerColumnName(namespace, srcTableName, fieldName));
+                    } catch (NoSuchElementException e) {
+                      return CassandraAnnotations.fromColumnOptions(List.of(), fieldName);
+                    }
+                  })
+              .get();
       fieldValue =
           handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName, cassandraAnnotations);
       // Standardizing the types for custom jar input.

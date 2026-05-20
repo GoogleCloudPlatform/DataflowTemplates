@@ -23,17 +23,19 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 public class AvroDestination {
   public String name;
   public String jsonSchema;
+  public String shardId;
 
   // Needed for serialization
   public AvroDestination() {}
 
-  public AvroDestination(String name, String jsonSchema) {
+  public AvroDestination(String shardId, String name, String jsonSchema) {
+    this.shardId = shardId;
     this.name = name;
     this.jsonSchema = jsonSchema;
   }
 
-  public static AvroDestination of(String name, String jsonSchema) {
-    return new AvroDestination(name, jsonSchema);
+  public static AvroDestination of(String shardId, String name, String jsonSchema) {
+    return new AvroDestination(shardId, name, jsonSchema);
   }
 
   @Override
@@ -45,7 +47,9 @@ public class AvroDestination {
       return false;
     }
     AvroDestination that = (AvroDestination) o;
-    return Objects.equals(name, that.name) && Objects.equals(jsonSchema, that.jsonSchema);
+    return Objects.equals(shardId, that.shardId)
+        && Objects.equals(name, that.name)
+        && Objects.equals(jsonSchema, that.jsonSchema);
   }
 
   @Override

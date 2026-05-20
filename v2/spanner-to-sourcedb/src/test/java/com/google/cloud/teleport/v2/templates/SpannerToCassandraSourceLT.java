@@ -28,7 +28,6 @@ import java.time.Duration;
 import org.apache.beam.it.cassandra.conditions.CassandraRowsCheck;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
 import org.junit.After;
 import org.junit.Before;
@@ -46,7 +45,6 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceLT.class);
   private String generatorSchemaPath;
-  private final String artifactBucket = TestProperties.artifactBucket();
   private final String spannerDdlResource = "SpannerToCassandraSourceLT/spanner-schema.sql";
   private static final String cassandraDdlResource =
       "SpannerToCassandraSourceLT/cassandra-schema.sql";
@@ -60,23 +58,17 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
   @Before
   public void setup() throws IOException {
-    setupResourceManagers(spannerDdlResource, cassandraDdlResource, artifactBucket);
+    setupResourceManagers(spannerDdlResource, cassandraDdlResource);
     generatorSchemaPath =
         getFullGcsPath(
-            artifactBucket,
+            gcsResourceManager.getBucket(),
             gcsResourceManager
                 .uploadArtifact(
                     SCHEMA_FILE_NAME, Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
     jobInfo =
         launchDataflowJob(
-            artifactBucket,
-            numWorkers,
-            maxWorkers,
-            null,
-            CASSANDRA_SOURCE_TYPE,
-            SOURCE_SHARDS_FILE_NAME,
-            null);
+            numWorkers, maxWorkers, null, CASSANDRA_SOURCE_TYPE, SOURCE_SHARDS_FILE_NAME, null);
   }
 
   @After

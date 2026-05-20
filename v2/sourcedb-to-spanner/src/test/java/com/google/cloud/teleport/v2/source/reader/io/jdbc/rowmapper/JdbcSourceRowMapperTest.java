@@ -221,16 +221,20 @@ public class JdbcSourceRowMapperTest {
   public void testTimeStringMapping() throws SQLException {
     var mapping = new MysqlJdbcValueMappings().getMappings().get("TIME");
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
-    when(mockResultSet.getString(anyString())).thenReturn("-838:59:58.999999");
+    when(mockResultSet.getBytes(anyString()))
+        .thenReturn("-838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(-3020398999999L);
 
-    when(mockResultSet.getString(anyString())).thenReturn("838:59:58.999999");
+    when(mockResultSet.getBytes(anyString()))
+        .thenReturn("838:59:58.999999".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(3020398999999L);
 
-    when(mockResultSet.getString(anyString())).thenReturn("00:00:00");
+    when(mockResultSet.getBytes(anyString()))
+        .thenReturn("00:00:00".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     assertThat(mapping.mapValue(mockResultSet, "testField", null)).isEqualTo(0L);
 
-    when(mockResultSet.getString(anyString())).thenReturn("invalid_data");
+    when(mockResultSet.getBytes(anyString()))
+        .thenReturn("invalid_data".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     Assert.assertThrows(
         java.lang.IllegalArgumentException.class,
         () -> mapping.mapValue(mockResultSet, "testField", null));
@@ -432,9 +436,12 @@ public class JdbcSourceRowMapperTest {
                 .build())
         .add(
             Column.builder()
-                .derbyColumnType("TIME")
+                .derbyColumnType("VARCHAR(20) FOR BIT DATA")
                 .sourceColumnType("TIME")
-                .inputValue("23:09:02") // Derby supports only time of the day */
+                .inputValue(
+                    "23:09:02".getBytes(java.nio.charset.StandardCharsets.UTF_8)) // Derby supports
+                // only time of
+                // the day */
                 .mappedValue(83342000000L)
                 .build())
         .add(

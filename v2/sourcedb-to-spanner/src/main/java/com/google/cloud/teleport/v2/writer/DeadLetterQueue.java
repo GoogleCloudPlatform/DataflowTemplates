@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
@@ -65,8 +66,6 @@ public class DeadLetterQueue implements Serializable {
 
   private final Ddl ddl;
 
-  private Map<String, String> srcTableToShardIdColumnMap;
-
   private final SQLDialect sqlDialect;
 
   private final ISchemaMapper schemaMapper;
@@ -74,14 +73,16 @@ public class DeadLetterQueue implements Serializable {
   public static final Counter FAILED_MUTATION_COUNTER =
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
 
+  /**
+   * Creates a {@link DeadLetterQueue} instance.
+   *
+   * <p>Note: Explicit shard ID and table-to-shard-column mappings are no longer required here as
+   * they are now encapsulated within the {@link
+   * com.google.cloud.teleport.v2.source.reader.io.row.SourceRow} and processed dynamically.
+   */
   public static DeadLetterQueue create(
-      String dlqDirectory,
-      Ddl ddl,
-      Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect,
-      ISchemaMapper iSchemaMapper) {
-    return new DeadLetterQueue(
-        dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, iSchemaMapper);
+      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
+    return new DeadLetterQueue(dlqDirectory, ddl, sqlDialect, iSchemaMapper);
   }
 
   public String getDlqDirectory() {
@@ -89,14 +90,9 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private DeadLetterQueue(
-      String dlqDirectory,
-      Ddl ddl,
-      Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect,
-      ISchemaMapper iSchemaMapper) {
+      String dlqDirectory, Ddl ddl, SQLDialect sqlDialect, ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
     this.ddl = ddl;
-    this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
     this.schemaMapper = iSchemaMapper;
   }
@@ -157,7 +153,9 @@ public class DeadLetterQueue implements Serializable {
     filteredRows
         .apply("filteredRowTransformString", ParDo.of(rowContextToString))
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .apply(
+            "SanitizeFilteredRowTransformWriteDLQ",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("FilteredRowsDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added filtering dlq stage after transformer");
@@ -180,7 +178,9 @@ public class DeadLetterQueue implements Serializable {
     failedRows
         .apply("failedRowTransformString", ParDo.of(rowContextToString))
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-        .apply("SanitizeTransformWriteDLQ", MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .apply(
+            "SanitizeFailedRowTransformWriteDLQ",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply("TransformerDLQ", createDLQTransform(dlqDirectory));
     LOG.info("added dlq stage after transformer");
@@ -197,10 +197,8 @@ public class DeadLetterQueue implements Serializable {
       /*
        * We take special care that if GenericRecordTypeConvertor throws an exception,
        * we would still preserve the original record in DLQ.
-       * Also note that here we are calling a static utility from
-       * GenericRecordTypeConvertor
-       * Which just marshals types like logical, record etc. It does not pass the data
-       * via custom transform.
+       * Also note that here we are calling a static utility from GenericRecordTypeConvertor
+       * Which just marshals types like logical, record etc. It does not pass the data via custom transform.
        */
       try {
         value =
@@ -215,12 +213,18 @@ public class DeadLetterQueue implements Serializable {
       }
       putValueToJson(json, f.name(), value);
     }
+
+    String spannerTable = r.row().tableName();
+    try {
+      if (schemaMapper != null) {
+        spannerTable = schemaMapper.getSpannerTableName("", r.row().tableName());
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not map source table {} to Spanner table", r.row().tableName(), e);
+    }
     if (r.row().shardId() != null) {
-      // Added default to not fail in the DLQ flow if the src table is not found in
-      // map
-      json.put(
-          srcTableToShardIdColumnMap.getOrDefault(r.row().tableName(), "migration_shard_id"),
-          r.row().shardId());
+      json.put(Constants.EVENT_SHARD_ID, r.row().shardId());
+      populateShardIdColumnAndValue(json, spannerTable, r.row().shardId());
     }
     FailsafeElement<String, String> dlqElement =
         FailsafeElement.of(json.toString(), json.toString());
@@ -235,8 +239,7 @@ public class DeadLetterQueue implements Serializable {
   public void failedMutationsToDLQ(
       PCollection<@UnknownKeyFor @NonNull @Initialized MutationGroup> failedMutations) {
     // TODO - add the exception message
-    // TODO - Explore windowing with CoGroupByKey to extract source row based on
-    // mutation
+    // TODO - Explore windowing with CoGroupByKey to extract source row based on mutation
     LOG.warn("added mutation output to pipeline");
     failedMutations
         .apply(
@@ -309,6 +312,8 @@ public class DeadLetterQueue implements Serializable {
       putValueToJson(json, entry.getKey(), val);
     }
 
+    populateShardIdMetadataForMutation(json, m, mutationMap);
+
     return FailsafeElement.of(json.toString(), json.toString())
         .setErrorMessage("SpannerWriteFailed");
   }
@@ -339,9 +344,76 @@ public class DeadLetterQueue implements Serializable {
     if (value == null) {
       json.put(key, (Object) null);
     } else if (value instanceof Number || value instanceof java.util.Collection) {
-      json.put(key, value);
+      try {
+        json.put(key, value);
+      } catch (Exception e) {
+        // Fallback to string if putting as-is fails.
+        // json.put fails if NaN and Infinity are passed.
+        // Postgres DB and Spanner contain NaN and Infinity values for Numbers.
+        // When we get here, we don't have any other option than to encode the value as string and
+        // write to json in DLQ file.
+        LOG.warn(
+            "Failure while creating DLQ event JSON. Failed to put a column value in original type, falling back to string",
+            e);
+        json.put(key, value.toString());
+      }
     } else {
       json.put(key, value.toString());
     }
+  }
+
+  private void populateShardIdMetadataForMutation(
+      JSONObject json, Mutation m, Map<String, Value> mutationMap) {
+    // Attempt to extract and populate shard ID metadata
+    try {
+      // Just try to find if the mutation has the shard id column and populate it in metadata
+      // We know that if the mutation has the shard id column, it must have the shard id value
+      String shardIdColName = getShardIdColumnName(m.getTable());
+      if (mutationMap.containsKey(shardIdColName)) {
+        Value shardIdValue = mutationMap.get(shardIdColName);
+        if (shardIdValue != null && !shardIdValue.isNull()) {
+          String shardIdStr = shardIdValue.toString();
+          json.put(Constants.EVENT_SHARD_ID, shardIdStr);
+          json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to populate shard ID metadata for DLQ mutation", e);
+    }
+  }
+
+  private void populateShardIdColumnAndValue(
+      JSONObject json, String spannerTableName, String shardIdValue) {
+    String shardIdColName = getShardIdColumnName(spannerTableName);
+
+    // We want to populate these in the change event only if Spanner has a dedicated shard id
+    // column.
+    if (spannerTableName != null
+        && ddl.table(spannerTableName) != null
+        && ddl.table(spannerTableName).column(shardIdColName) != null) {
+      json.put(shardIdColName, shardIdValue);
+      json.put(Constants.SHARD_ID_COLUMN_NAME, shardIdColName);
+    }
+  }
+
+  private String getShardIdColumnName(String spannerTableName) {
+    String shardIdColName = null;
+    if (schemaMapper != null) {
+      try {
+        if (spannerTableName != null) {
+          shardIdColName = schemaMapper.getShardIdColumnName("", spannerTableName);
+          if (shardIdColName != null && !shardIdColName.isEmpty()) {
+            return shardIdColName;
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not get shard ID column for Spanner table {}", spannerTableName);
+      }
+    }
+    shardIdColName =
+        Constants
+            .DEFAULT_SHARD_ID_COLUMN; // we can fallback to this as we explicitly check the Spanner
+    // DDL
+    return shardIdColName;
   }
 }

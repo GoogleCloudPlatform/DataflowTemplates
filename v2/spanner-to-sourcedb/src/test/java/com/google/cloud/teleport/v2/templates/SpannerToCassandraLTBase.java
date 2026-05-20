@@ -33,15 +33,13 @@ public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
   public CassandraResourceManager cassandraResourceManager;
   public static final String SOURCE_SHARDS_FILE_NAME = "input/cassandra-config.conf";
 
-  public void setupResourceManagers(
-      String spannerDdlResource, String cassandraDdlResource, String artifactBucket)
+  public void setupResourceManagers(String spannerDdlResource, String cassandraDdlResource)
       throws IOException {
     spannerResourceManager = createSpannerDatabase(spannerDdlResource);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
     cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
 
-    gcsResourceManager =
-        GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
+    gcsResourceManager = createSpannerLTGcsResourceManager();
     createCassandraSchema(cassandraResourceManager, cassandraDdlResource);
     createAndUploadCassandraConfigToGcs(gcsResourceManager, cassandraResourceManager);
     pubsubResourceManager = setUpPubSubResourceManager();
@@ -49,8 +47,8 @@ public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath(artifactBucket, "dlq", gcsResourceManager)
-                .replace("gs://" + artifactBucket, ""));
+            getGcsPath("dlq", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket(), ""));
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {

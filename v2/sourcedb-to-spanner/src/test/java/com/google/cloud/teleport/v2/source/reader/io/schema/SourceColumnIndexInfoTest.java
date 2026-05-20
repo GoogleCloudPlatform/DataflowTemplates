@@ -34,6 +34,7 @@ public class SourceColumnIndexInfoTest {
     long testOrdinalPosition = 1L;
     SourceColumnIndexInfo indexInfo =
         SourceColumnIndexInfo.builder()
+            .setColumnTypeName("dummy")
             .setColumnName(testColumn)
             .setIndexName(testIndexName)
             .setIsPrimary(true)
@@ -61,6 +62,7 @@ public class SourceColumnIndexInfoTest {
         IllegalStateException.class,
         () ->
             SourceColumnIndexInfo.builder()
+                .setColumnTypeName("dummy")
                 .setColumnName(testColumn)
                 .setIndexName(testIndexName)
                 .setIsPrimary(true)

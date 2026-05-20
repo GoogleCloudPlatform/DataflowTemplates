@@ -139,6 +139,11 @@ public class DeadLetterQueueManager implements Serializable {
     return FileBasedDeadLetterQueueReconsumer.create(retryDlqDirectory, recheckPeriodMinutes);
   }
 
+  public PTransform<PBegin, PCollection<String>> dlqOneShotReconsumer(long startTimeMillis) {
+    return FileBasedDeadLetterQueueReconsumer.consumeSingleTimeRange(
+        severeDlqDirectory, startTimeMillis);
+  }
+
   public PCollectionTuple getReconsumerDataTransformForFiles(PCollection<Metadata> input) {
     return getReconsumerDataTransform(
         input.apply(

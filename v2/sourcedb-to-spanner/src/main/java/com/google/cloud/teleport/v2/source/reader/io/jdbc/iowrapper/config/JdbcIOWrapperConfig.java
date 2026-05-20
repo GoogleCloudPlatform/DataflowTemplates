@@ -29,12 +29,15 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transf
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -102,9 +105,12 @@ public abstract class JdbcIOWrapperConfig {
   public abstract Integer maxPartitions();
 
   /**
-   * Configures the size of data read in db, per db read call. Defaults to beam's DEFAULT_FETCH_SIZE
-   * of 50_000. For manually fine-tuning this, take into account the read ahead buffer pool settings
-   * (innodb_read_ahead_threshold) and the worker memory.
+   * Configures the size of data read in db, per db read call.
+   *
+   * <p>If explicitly set, this value overrides the auto-inferred fetch size.
+   *
+   * <p>If not set (null), the fetch size is auto-calculated based on the worker memory and
+   * estimated row size to optimize for the available resources.
    */
   @Nullable
   public abstract Integer maxFetchSize();
@@ -163,7 +169,8 @@ public abstract class JdbcIOWrapperConfig {
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
    */
   @Nullable
-  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
+  public abstract PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?>
+      additionalOperationsOnRanges();
 
   /**
    * Sets the {@code testOnBorrow} property. This property determines whether or not the pool will
@@ -253,10 +260,44 @@ public abstract class JdbcIOWrapperConfig {
 
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
+  /** Worker Memory in Bytes. */
+  @Nullable
+  public abstract Long workerMemoryBytes();
+
+  /** Worker Cores. */
+  @Nullable
+  public abstract Integer workerCores();
+
+  /**
+   * Returns a unique identifier for this configuration instance.
+   *
+   * @return The configuration ID.
+   */
+  public abstract String id();
+
   public abstract Builder toBuilder();
 
+  /**
+   * Returns a new builder for {@link JdbcIOWrapperConfig}.
+   *
+   * @return A new builder instance with a generated ID.
+   */
+  public static Builder builder() {
+    return new AutoValue_JdbcIOWrapperConfig.Builder().setId(generateId());
+  }
+
+  /**
+   * Generates a unique identifier for a configuration.
+   *
+   * @return A random UUID string.
+   */
+  @VisibleForTesting
+  public static String generateId() {
+    return UUID.randomUUID().toString();
+  }
+
   public static Builder builderWithMySqlDefaults() {
-    return new AutoValue_JdbcIOWrapperConfig.Builder()
+    return builder()
         .setSourceDbDialect(SQLDialect.MYSQL)
         .setSchemaMapperType(MySqlConfigDefaults.DEFAULT_MYSQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(MySqlConfigDefaults.DEFAULT_MYSQL_DIALECT_ADAPTER)
@@ -268,7 +309,6 @@ public abstract class JdbcIOWrapperConfig {
         .setTableVsPartitionColumns(ImmutableMap.of())
         .setMaxPartitions(null)
         .setWaitOn(null)
-        .setMaxFetchSize(null)
         .setDbParallelizationForReads(null)
         .setDbParallelizationForSplitProcess(DEFAULT_PARALLELIZATION_FOR_SLIT_PROCESS)
         .setReadWithUniformPartitionsFeatureEnabled(true)
@@ -281,11 +321,13 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMemoryBytes(null)
+        .setWorkerCores(null);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
-    return new AutoValue_JdbcIOWrapperConfig.Builder()
+    return builder()
         .setSourceDbDialect(SQLDialect.POSTGRESQL)
         .setSchemaMapperType(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_SCHEMA_MAPPER_TYPE)
         .setDialectAdapter(PostgreSQLConfigDefaults.DEFAULT_POSTGRESQL_DIALECT_ADAPTER)
@@ -312,7 +354,9 @@ public abstract class JdbcIOWrapperConfig {
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
             DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
-        .setSplitStageCountHint(-1L);
+        .setSplitStageCountHint(-1L)
+        .setWorkerMemoryBytes(null)
+        .setWorkerCores(null);
   }
 
   @AutoValue.Builder
@@ -363,7 +407,7 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder setAdditionalOperationsOnRanges(
-        @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
+        PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?> value);
 
     public abstract Builder setTestOnBorrow(Boolean value);
 
@@ -384,6 +428,12 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMaxConnections(Long value);
 
     public abstract Builder setSplitStageCountHint(Long value);
+
+    public abstract Builder setWorkerMemoryBytes(Long value);
+
+    public abstract Builder setWorkerCores(Integer value);
+
+    public abstract Builder setId(String value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

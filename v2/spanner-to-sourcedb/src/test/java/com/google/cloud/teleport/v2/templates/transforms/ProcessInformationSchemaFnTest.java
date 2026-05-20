@@ -109,8 +109,6 @@ public class ProcessInformationSchemaFnTest {
     ProcessInformationSchemaFn fn =
         new ProcessInformationSchemaFn(spannerConfig, shadowTableSpannerConfig, "shadow_");
 
-    fn.setup();
-
     try (MockedConstruction<ShadowTableCreator> mockedShadowTableCreator =
             mockConstruction(
                 ShadowTableCreator.class,
@@ -124,6 +122,8 @@ public class ProcessInformationSchemaFnTest {
                   when(mock.scan()).thenReturn(ddl);
                 })) {
 
+      fn.setup();
+
       fn.processElement(processContext);
 
       verify(processContext).output(SpannerInformationSchemaProcessorTransform.MAIN_DDL_TAG, ddl);
@@ -133,7 +133,7 @@ public class ProcessInformationSchemaFnTest {
       assert (mockedShadowTableCreator.constructed().size() == 1);
       verify(mockedShadowTableCreator.constructed().get(0)).createShadowTablesInSpanner();
 
-      assert (mockedScanner.constructed().size() == 2); // One for main, one for shadow
+      assert (mockedScanner.constructed().size() == 2); // One for main, one for shadow in setup
       verify(mockedScanner.constructed().get(0)).scan();
       verify(mockedScanner.constructed().get(1)).scan();
     }

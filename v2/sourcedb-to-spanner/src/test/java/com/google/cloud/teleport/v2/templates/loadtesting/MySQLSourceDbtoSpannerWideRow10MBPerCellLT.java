@@ -20,7 +20,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -29,11 +28,9 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Disabling flaky LT b/446480465")
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
-  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
-  private static final String FETCH_SIZE = "4000";
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-16";
+  private static final String LAUNCHER_MACHINE_TYPE = "n1-standard-8";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
@@ -60,7 +57,6 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
         new HashMap<>() {
           {
             put("workerMachineType", WORKER_MACHINE_TYPE);
-            put("fetchSize", FETCH_SIZE);
             put("network", VPC_NAME);
             put("subnetwork", SUBNET_NAME);
             put("workerRegion", VPC_REGION);

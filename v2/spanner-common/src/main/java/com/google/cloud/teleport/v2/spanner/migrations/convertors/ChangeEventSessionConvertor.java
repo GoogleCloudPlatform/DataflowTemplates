@@ -125,6 +125,9 @@ public class ChangeEventSessionConvertor {
       Map<String, Map<String, String>> streamToDbAndShardMap =
           shardingContext.getStreamToDbAndShardMap();
       if (streamToDbAndShardMap != null && !streamToDbAndShardMap.isEmpty()) {
+        if (!changeEvent.has(EVENT_STREAM_NAME)) { // relevant for Bulk DLQ
+          return "";
+        }
         String streamName =
             changeEvent
                 .get(EVENT_STREAM_NAME)
@@ -132,14 +135,18 @@ public class ChangeEventSessionConvertor {
                 .substring(changeEvent.get(EVENT_STREAM_NAME).asText().lastIndexOf('/') + 1);
         Map<String, String> schemaToShardId = streamToDbAndShardMap.get(streamName);
         if (schemaToShardId != null && !schemaToShardId.isEmpty()) {
-          String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-          shardId = schemaToShardId.getOrDefault(schemaName, "");
+          if (changeEvent.has(EVENT_SCHEMA_KEY)) {
+            String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+            shardId = schemaToShardId.getOrDefault(schemaName, "");
+          }
         }
       }
     } else {
       Map<String, String> schemaToShardId = transformationContext.getSchemaToShardId();
-      String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
-      shardId = schemaToShardId.get(schemaName);
+      if (changeEvent.has(EVENT_SCHEMA_KEY)) {
+        String schemaName = changeEvent.get(EVENT_SCHEMA_KEY).asText();
+        shardId = schemaToShardId.get(schemaName);
+      }
     }
     return shardId;
   }
@@ -164,6 +171,12 @@ public class ChangeEventSessionConvertor {
     }
     String shardId = getShardId(changeEvent);
     ((ObjectNode) changeEvent).put(SHARD_ID_COLUMN_NAME, shardIdColDef.getName());
+    if (shardId == null || shardId.isEmpty()) {
+      // If shardId is not found in context (e.g. DLQ retry), check if it's already in the event
+      if (changeEvent.has(shardIdColDef.getName())) {
+        return changeEvent;
+      }
+    }
     ((ObjectNode) changeEvent).put(shardIdColDef.getName(), shardId);
     return changeEvent;
   }

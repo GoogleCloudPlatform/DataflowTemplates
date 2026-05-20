@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
+import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -27,13 +28,29 @@ class TransformTestUtils {
   static final DataSourceConfiguration DATA_SOURCE_CONFIGURATION =
       DataSourceConfiguration.create(
           "org.apache.derby.jdbc.EmbeddedDriver", "jdbc:derby:memory:testDB;create=true");
+  static final DataSourceConfiguration DATA_SOURCE_CONFIGURATION_SHARD_2 =
+      DataSourceConfiguration.create(
+          "org.apache.derby.jdbc.EmbeddedDriver", "jdbc:derby:memory:testDB2;create=true");
   static final DataSource DATA_SOURCE = DATA_SOURCE_CONFIGURATION.buildDatasource();
+  static final DataSource DATA_SOURCE_SHARD_2 = DATA_SOURCE_CONFIGURATION_SHARD_2.buildDatasource();
 
   private TransformTestUtils() {}
 
   static void createDerbyTable(String tableName) throws SQLException {
     try (java.sql.Connection connection = getConnection()) {
-      Statement stmtCreateTable = connection.createStatement();
+      createTableForConnection(tableName, connection);
+    }
+  }
+
+  static void createDerbyTableShard2(String tableName) throws SQLException {
+    try (java.sql.Connection connection = getConnectionShard2()) {
+      createTableForConnection(tableName, connection);
+    }
+  }
+
+  private static void createTableForConnection(String tableName, Connection connection)
+      throws SQLException {
+    try (Statement stmtCreateTable = connection.createStatement()) {
       String createTableSQL =
           "CREATE TABLE "
               + tableName
@@ -91,7 +108,28 @@ class TransformTestUtils {
     }
   }
 
+  static void insertValuesIntoTable(
+      String tableName, ImmutableList<Integer> col1, ImmutableList<String> data)
+      throws SQLException {
+    try (java.sql.Connection connection = getConnection()) {
+      String insertSQL = "INSERT INTO " + tableName + " (col1, col2, data) VALUES (?, ?, ?)";
+      try (PreparedStatement stmtInsert = connection.prepareStatement(insertSQL)) {
+        for (int i = 0; i < col1.size(); i++) {
+          stmtInsert.setInt(1, col1.get(i));
+          stmtInsert.setInt(2, col1.get(i)); // Assuming col2 is same as col1 for simplicity
+          stmtInsert.setString(3, data.get(i));
+          stmtInsert.addBatch();
+        }
+        stmtInsert.executeBatch();
+      }
+    }
+  }
+
   static Connection getConnection() throws SQLException {
     return DATA_SOURCE.getConnection();
+  }
+
+  static Connection getConnectionShard2() throws SQLException {
+    return DATA_SOURCE_SHARD_2.getConnection();
   }
 }

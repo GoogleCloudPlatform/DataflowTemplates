@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper;
 
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 
@@ -23,6 +24,14 @@ import java.io.Serializable;
  * for various source types.
  */
 public interface JdbcValueMappingsProvider extends Serializable {
+
+  /**
+   * Estimate the column size in bytes for a given column type.
+   *
+   * @param sourceColumnType The column type to estimate size for.
+   * @return Estimated size in bytes.
+   */
+  int estimateColumnSize(SourceColumnType sourceColumnType);
 
   /**
    * Get Mapping of source types to {@link JdbcValueMapper}.

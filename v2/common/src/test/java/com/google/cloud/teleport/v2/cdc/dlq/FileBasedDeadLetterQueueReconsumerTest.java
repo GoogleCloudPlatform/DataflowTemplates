@@ -137,4 +137,30 @@ public class FileBasedDeadLetterQueueReconsumerTest {
 
     assertThat(text).isEqualTo(expected);
   }
+
+  @Test
+  public void testConsumeSingleTimeRange() throws IOException, InterruptedException {
+    File pastFile = new File(createJsonFile("dlqFilePast.json", JSON_FILE_CONTENTS_1));
+
+    String folderPath = folder.getRoot().getAbsolutePath() + "/";
+
+    // Note: We cannot test the exact filtering flow (e.g., ignoring future files) here because
+    // Apache Beam's LocalFileSystem implementation defaults lastModifiedMillis() to 0 on local
+    // execution. Using 0 means it will always bypass the 'lastModifiedMillis < startTimeMillis'
+    // check regardless of file creation logic. Thus, this test focuses strictly on verifying
+    // that the pattern matching, content parsing, and file deletion mechanisms cleanly execute.
+
+    // Add 1ms buffer to prevent flakiness if the file is created in the exact same millisecond.
+    long baseTime = System.currentTimeMillis() + 1;
+
+    PCollection<String> jsonData =
+        p.apply(FileBasedDeadLetterQueueReconsumer.consumeSingleTimeRange(folderPath, baseTime));
+
+    // Validates the pipeline successfully parsed, bounded, and processed the matched DLQ data!
+    PAssert.that(jsonData).containsInAnyOrder(JSON_RESULTS_1);
+    p.run().waitUntilFinish();
+
+    // Validates the file deletion step cleanly executed!
+    assertFalse(pastFile.exists());
+  }
 }

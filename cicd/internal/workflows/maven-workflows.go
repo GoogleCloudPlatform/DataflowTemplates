@@ -55,6 +55,7 @@ type MavenFlags interface {
 	RunSpannerStagingIntegrationTests() string
 	RunLoadTests() string
 	RunLoadTestObserver() string
+	RunFailureInjectionTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
@@ -136,6 +137,10 @@ func (*mvnFlags) RunLoadTests() string {
 
 func (*mvnFlags) RunLoadTestObserver() string {
 	return "-PtemplatesLoadTestObserve"
+}
+
+func (*mvnFlags) RunFailureInjectionTests() string {
+	return "-PfailureInjectionTest"
 }
 
 // The number of modules Maven is going to build in parallel in a multi-module project.

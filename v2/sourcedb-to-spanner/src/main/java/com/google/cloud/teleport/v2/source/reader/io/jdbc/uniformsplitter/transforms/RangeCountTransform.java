@@ -16,9 +16,11 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import javax.annotation.Nullable;
@@ -26,7 +28,6 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 
 /** PTransform to wrap {@link RangeCountDoFn}. */
@@ -35,7 +36,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
     implements Serializable {
 
   /** Provider for {@link DataSource}. */
-  abstract SerializableFunction<Void, DataSource> dataSourceProviderFn();
+  abstract DataSourceProvider dataSourceProvider();
 
   /**
    * Implementations of {@link UniformSplitterDBAdapter} to get queries as per the dialect of the
@@ -46,11 +47,8 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   /** Timeout of the count query in milliseconds. */
   abstract long timeoutMillis();
 
-  /** Name of the table. */
-  abstract String tableName();
-
-  /** List of partition columns. */
-  abstract ImmutableList<String> partitionColumns();
+  /** Specification for splitting the table. */
+  abstract ImmutableList<TableSplitSpecification> tableSplitSpecifications();
 
   /** Type mapper to help map types like {@link String String.Class}. */
   @Nullable
@@ -61,11 +59,7 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
     SingleOutput<Range, Range> parDo =
         ParDo.of(
             new RangeCountDoFn(
-                dataSourceProviderFn(),
-                timeoutMillis(),
-                dbAdapter(),
-                tableName(),
-                partitionColumns()));
+                dataSourceProvider(), timeoutMillis(), dbAdapter(), tableSplitSpecifications()));
 
     if (boundaryTypeMapper() != null) {
       parDo = parDo.withSideInputs(boundaryTypeMapper().getCollationMapperView());
@@ -80,15 +74,14 @@ public abstract class RangeCountTransform extends PTransform<PCollection<Range>,
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setDataSourceProviderFn(SerializableFunction<Void, DataSource> value);
+    public abstract Builder setDataSourceProvider(DataSourceProvider value);
 
     public abstract Builder setDbAdapter(UniformSplitterDBAdapter value);
 
     public abstract Builder setTimeoutMillis(long value);
 
-    public abstract Builder setTableName(String value);
-
-    public abstract Builder setPartitionColumns(ImmutableList<String> value);
+    public abstract Builder setTableSplitSpecifications(
+        ImmutableList<TableSplitSpecification> value);
 
     public abstract Builder setBoundaryTypeMapper(BoundaryTypeMapper value);
 

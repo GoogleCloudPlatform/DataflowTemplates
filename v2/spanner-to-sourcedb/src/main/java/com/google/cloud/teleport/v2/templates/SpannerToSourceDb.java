@@ -16,6 +16,10 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -37,11 +41,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchemaScanner;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
@@ -61,7 +66,9 @@ import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -75,8 +82,6 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
@@ -181,6 +186,17 @@ public class SpannerToSourceDb {
     String getMetadataDatabase();
 
     void setMetadataDatabase(String value);
+
+    @TemplateParameter.Text(
+        order = 36,
+        optional = true,
+        description = "Cloud Spanner Database to store change stream connector metadata",
+        helpText =
+            "This is the database to store the metadata used by the change stream connector. "
+                + "If not provided, it defaults to the metadata database.")
+    String getChangeStreamMetadataDatabase();
+
+    void setChangeStreamMetadataDatabase(String value);
 
     @TemplateParameter.Text(
         order = 7,
@@ -369,12 +385,15 @@ public class SpannerToSourceDb {
     @TemplateParameter.Enum(
         order = 23,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
+        enumOptions = {
+          @TemplateEnumOption(RUN_MODE_REGULAR),
+          @TemplateEnumOption(RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(RUN_MODE_RETRY_ALL_DLQ)
+        },
         helpText =
-            "This is the run mode type, whether regular or with retryDLQ.Default is regular."
-                + " retryDLQ is used to retry the severe DLQ records only.")
-    @Default.String("regular")
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your reverse migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
+    @Default.String(RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -393,7 +412,11 @@ public class SpannerToSourceDb {
         order = 25,
         optional = true,
         description = "Source database type, ex: mysql",
-        enumOptions = {@TemplateEnumOption("mysql"), @TemplateEnumOption("cassandra")},
+        enumOptions = {
+          @TemplateEnumOption("mysql"),
+          @TemplateEnumOption("cassandra"),
+          @TemplateEnumOption("postgresql")
+        },
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
     String getSourceType();
@@ -544,7 +567,8 @@ public class SpannerToSourceDb {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    options.setStreaming(true);
+    boolean isRetryDLQMode = RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
+    options.setStreaming(!isRetryDLQMode);
 
     run(options);
   }
@@ -556,7 +580,7 @@ public class SpannerToSourceDb {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
-
+    long startTime = System.currentTimeMillis();
     Pipeline pipeline = Pipeline.create(options);
     pipeline
         .getOptions()
@@ -589,7 +613,7 @@ public class SpannerToSourceDb {
 
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
+    DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
@@ -634,7 +658,8 @@ public class SpannerToSourceDb {
 
     List<Shard> shards;
     String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
+        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
       shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
@@ -645,6 +670,11 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
+
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
+      validateMySQLNotReadOnly(shards);
+    }
+
     SourceSchema sourceSchema = fetchSourceSchema(options, shards);
     LOG.info("Source schema: {}", sourceSchema);
 
@@ -658,7 +688,7 @@ public class SpannerToSourceDb {
       }
     }
 
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
@@ -685,9 +715,31 @@ public class SpannerToSourceDb {
                               "/tmp_skip/",
                               "/" + options.getSkipDirectoryName())))));
     } else {
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      if (isRegularMode) {
+        reconsumedElements =
+            dlqManager.getReconsumerDataTransform(
+                pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      } else { // retryDLQ or retryAllDLQ mode
+        PCollection<String> oneShotRecords =
+            pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
+
+        if (RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
+          reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
+        } else {
+          // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
+          PCollection<String> continuousRecords =
+              pipeline.apply(
+                  "Read retry from Continuous",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+
+          PCollection<String> allRecords =
+              PCollectionList.of(continuousRecords)
+                  .and(oneShotRecords)
+                  .apply("Flatten DLQ Records", Flatten.pCollections());
+
+          reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+        }
+      }
     }
 
     PCollection<FailsafeElement<String, String>> dlqJsonStrRecords =
@@ -885,12 +937,18 @@ public class SpannerToSourceDb {
     if (!options.getStartTimestamp().equals("")) {
       startTime = Timestamp.parseTimestamp(options.getStartTimestamp());
     }
+    String changeStreamMetadataDb = options.getChangeStreamMetadataDatabase();
+    if (Strings.isNullOrEmpty(changeStreamMetadataDb)) {
+      changeStreamMetadataDb = options.getMetadataDatabase();
+    }
+    LOG.info("Using database {} for change stream metadata.", changeStreamMetadataDb);
+
     SpannerIO.ReadChangeStream readChangeStreamDoFn =
         SpannerIO.readChangeStream()
             .withSpannerConfig(spannerConfig)
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
-            .withMetadataDatabase(options.getMetadataDatabase())
+            .withMetadataDatabase(changeStreamMetadataDb)
             .withInclusiveStartAt(startTime)
             .withRpcPriority(options.getSpannerPriority());
 
@@ -917,31 +975,30 @@ public class SpannerToSourceDb {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-    } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
-      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
-    }
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
-  private static Connection createJdbcConnection(Shard shard) {
+  private static Connection createJdbcConnection(
+      Shard shard, String driverClassName, String jdbcUrlPrefix) {
     try {
       String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+          new StringBuilder()
+              .append(jdbcUrlPrefix)
+              .append(shard.getHost())
+              .append(":")
+              .append(shard.getPort())
+              .append("/")
+              .append(shard.getDbName())
+              .toString();
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());
       config.setPassword(shard.getPassword());
-      config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+      config.setDriverClassName(driverClassName);
       HikariDataSource ds = new HikariDataSource(config);
       return ds.getConnection();
     } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering mysql schema: {}", e);
+      LOG.error("Sql error while discovering jdbc schema: {}", e);
       throw new RuntimeException(e);
     }
   }
@@ -960,13 +1017,45 @@ public class SpannerToSourceDb {
     return builder.build();
   }
 
+  private static void validateMySQLNotReadOnly(List<Shard> shards) {
+    for (Shard shard : shards) {
+      try (Connection conn =
+          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
+        if (conn != null) {
+          try (Statement stmt = conn.createStatement();
+              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
+            if (rs != null && rs.next() && rs.getInt(1) == 1) {
+              throw new RuntimeException(
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
+            }
+          }
+        }
+      } catch (SQLException e) {
+        LOG.error(
+            "Error checking MySQL read-only status for shard {}: {}",
+            shard.getLogicalShardId(),
+            e.getMessage());
+        throw new RuntimeException("Error checking MySQL read-only status", e);
+      }
+    }
+  }
+
   private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
     SourceSchemaScanner scanner = null;
     SourceSchema sourceSchema = null;
     try {
       if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-        Connection connection = createJdbcConnection(shards.get(0));
+        Connection connection =
+            createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
         scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
+        sourceSchema = scanner.scan();
+        connection.close();
+      } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
+        Connection connection =
+            createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://");
+        scanner =
+            new PostgreSQLInformationSchemaScanner(
+                connection, shards.get(0).getDbName(), shards.get(0).getNamespace());
         sourceSchema = scanner.scan();
         connection.close();
       } else {

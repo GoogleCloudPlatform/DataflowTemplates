@@ -701,6 +701,103 @@ public class GenericRecordTypeConvertorTest {
                 "timeStampArrayCol", Value.timestampArray(expectedTimeStampArray)));
   }
 
+  @Test
+  public void testDroppedColumnHandlingInCustomTransformation()
+      throws InvalidTransformationException {
+    final String tableName = "test_table";
+    final ISchemaMapper schemaMapper = org.mockito.Mockito.mock(ISchemaMapper.class);
+
+    org.mockito.Mockito.when(schemaMapper.getDialect())
+        .thenReturn(com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL);
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerTableName(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(tableName);
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerColumns(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(ImmutableList.of("id"));
+
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerColumnName(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("id")))
+        .thenReturn("id");
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerColumnCassandraAnnotations(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("id")))
+        .thenReturn(getTestCassandraAnnotationNone());
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerColumnType(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("id")))
+        .thenReturn(Type.int64());
+
+    org.mockito.Mockito.when(
+            schemaMapper.getSpannerColumnName(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("dropped_col")))
+        .thenThrow(new java.util.NoSuchElementException("Dropped column"));
+
+    ISpannerMigrationTransformer customTransformer =
+        new ISpannerMigrationTransformer() {
+          @Override
+          public void init(String customParameters) {}
+
+          @Override
+          public MigrationTransformationResponse toSpannerRow(
+              MigrationTransformationRequest request) {
+            Map<String, Object> requestRow = request.getRequestRow();
+            Map<String, Object> responseRow = new HashMap<>();
+            if (requestRow.containsKey("dropped_col")) {
+              responseRow.put("id", 100L);
+            }
+            return new MigrationTransformationResponse(responseRow, false);
+          }
+
+          @Override
+          public MigrationTransformationResponse toSourceRow(
+              MigrationTransformationRequest request) {
+            return new MigrationTransformationResponse(new HashMap<>(), false);
+          }
+
+          @Override
+          public MigrationTransformationResponse transformFailedSpannerMutation(
+              MigrationTransformationRequest request) {
+            return new MigrationTransformationResponse(new HashMap<>(), false);
+          }
+        };
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(schemaMapper, "", null, customTransformer);
+
+    Schema payloadSchema =
+        SchemaBuilder.record("payload")
+            .fields()
+            .name("id")
+            .type(Schema.create(Schema.Type.LONG))
+            .noDefault()
+            .name("dropped_col")
+            .type(Schema.create(Schema.Type.STRING))
+            .noDefault()
+            .endRecord();
+
+    GenericRecord payload =
+        new GenericRecordBuilder(payloadSchema)
+            .set("id", 1L)
+            .set("dropped_col", "some_value")
+            .build();
+
+    Map<String, Value> result = genericRecordTypeConvertor.transformChangeEvent(payload, tableName);
+
+    assertThat(result.get("id")).isEqualTo(Value.int64(100L));
+  }
+
   /*
    * Test conversion of Interval Nano to String for various cases.
    */

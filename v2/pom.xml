@@ -42,9 +42,12 @@
         <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
         <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
-        <astra-sdk.version>2.1.4</astra-sdk.version>
+        <astra-sdk.version>2.2.0</astra-sdk.version>
         <astra-io.version>4.18.1</astra-io.version>
-
+        <dataplex.api.version>v1-rev20251113-2.0.0</dataplex.api.version>
+        <!-- ActiveMQ uses JMS 1.1 for versions < 5.18.0 -->
+        <!-- This can only be upgraded after Beam moves to JMS 2.0 -->
+        <activemq.version>5.17.7</activemq.version>
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
 
@@ -166,7 +169,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>4.33.1</version>
+            <version>4.34.0</version>
         </dependency>
     </dependencies>
 
@@ -244,7 +247,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>3.6.2</version>
+                    <version>3.6.3</version>
                     <configuration>
                         <cleanupDaemonThreads>false</cleanupDaemonThreads>
                     </configuration>
@@ -698,6 +701,7 @@
         <module>bigquery-to-parquet</module>
         <module>cdc-parent</module>
         <module>common</module>
+        <module>cdc-data-generator</module>
         <module>dataplex</module>
         <module>datastream-common</module>
         <module>datastream-to-bigquery</module>
@@ -707,6 +711,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>firestore-to-firestore</module>
         <module>gcs-to-sourcedb</module>
         <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
@@ -726,6 +731,7 @@
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>managed-io-to-managed-io</module>
+        <module>mongodb-to-mongodb</module>
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>

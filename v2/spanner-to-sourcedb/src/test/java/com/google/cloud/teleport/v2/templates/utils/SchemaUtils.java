@@ -56,6 +56,8 @@ public final class SchemaUtils {
   private static final String KEY_SCHEMA = "Schema";
   private static final String KEY_LEN = "Len";
   private static final String KEY_NOT_NULL = "NotNull";
+  private static final String KEY_GENERATED = "GeneratedColumn";
+  private static final String KEY_GENERATED_IS_PRESENT = "IsPresent";
 
   // Defines constants for Spanner data types found in the session file.
   private static final String SPANNER_TYPE_STRING = "STRING";
@@ -68,6 +70,20 @@ public final class SchemaUtils {
   private static final String SPANNER_TYPE_DATE = "DATE";
   private static final String SPANNER_TYPE_NUMERIC = "NUMERIC";
   private static final String SPANNER_TYPE_JSON = "JSON";
+
+  // Defines constants for PG dialect Spanner data types found in the session
+  // file.
+  private static final String SPANNER_TYPE_PG_VARCHAR = "PG_VARCHAR";
+  private static final String SPANNER_TYPE_PG_TEXT = "PG_TEXT";
+  private static final String SPANNER_TYPE_PG_INT8 = "PG_INT8";
+  private static final String SPANNER_TYPE_PG_FLOAT4 = "PG_FLOAT4";
+  private static final String SPANNER_TYPE_PG_FLOAT8 = "PG_FLOAT8";
+  private static final String SPANNER_TYPE_PG_BOOL = "PG_BOOL";
+  private static final String SPANNER_TYPE_PG_BYTEA = "PG_BYTEA";
+  private static final String SPANNER_TYPE_PG_TIMESTAMPTZ = "PG_TIMESTAMPTZ";
+  private static final String SPANNER_TYPE_PG_DATE = "PG_DATE";
+  private static final String SPANNER_TYPE_PG_NUMERIC = "PG_NUMERIC";
+  private static final String SPANNER_TYPE_PG_JSONB = "PG_JSONB";
 
   /**
    * Builds a Spanner {@link Ddl} object from a HarbourBridge session file.
@@ -130,6 +146,47 @@ public final class SchemaUtils {
               break;
             case SPANNER_TYPE_JSON:
               tableBuilder.column(colName).json().endColumn();
+              break;
+            case SPANNER_TYPE_PG_VARCHAR:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgVarchar())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgVarchar().max().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_TEXT:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).type(Type.pgArray(Type.pgText())).endColumn();
+              } else {
+                tableBuilder.column(colName).pgText().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_PG_INT8:
+              tableBuilder.column(colName).pgInt8().endColumn();
+              break;
+            case SPANNER_TYPE_PG_FLOAT4:
+              tableBuilder.column(colName).type(Type.pgFloat4()).endColumn();
+              break;
+            case SPANNER_TYPE_PG_FLOAT8:
+              tableBuilder.column(colName).pgFloat8().endColumn();
+              break;
+            case SPANNER_TYPE_PG_BOOL:
+              tableBuilder.column(colName).pgBool().endColumn();
+              break;
+            case SPANNER_TYPE_PG_BYTEA:
+              tableBuilder.column(colName).pgBytea().max().endColumn();
+              break;
+            case SPANNER_TYPE_PG_TIMESTAMPTZ:
+              tableBuilder.column(colName).pgTimestamptz().endColumn();
+              break;
+            case SPANNER_TYPE_PG_DATE:
+              tableBuilder.column(colName).pgDate().endColumn();
+              break;
+            case SPANNER_TYPE_PG_NUMERIC:
+              tableBuilder.column(colName).pgNumeric().endColumn();
+              break;
+            case SPANNER_TYPE_PG_JSONB:
+              tableBuilder.column(colName).pgJsonb().endColumn();
               break;
             default:
               throw new IllegalArgumentException(
@@ -194,12 +251,19 @@ public final class SchemaUtils {
               if (len instanceof Number) {
                 size = ((Number) len).longValue();
               }
+              boolean isGenerated = false;
+              if (colMap.get(KEY_GENERATED) != null) {
+                Map<String, Object> generatedColDefinition =
+                    (Map<String, Object>) colMap.get(KEY_GENERATED);
+                isGenerated = generatedColDefinition.containsKey(KEY_GENERATED_IS_PRESENT);
+              }
               SourceColumn.Builder colBuilder =
                   SourceColumn.builder(dbType)
                       .name((String) colMap.get(KEY_NAME))
                       .type(typeName)
                       .isNullable(
                           !(colMap.get(KEY_NOT_NULL) != null && (Boolean) colMap.get(KEY_NOT_NULL)))
+                      .isGenerated(isGenerated)
                       .size(size);
               columnsBuilder.add(colBuilder.build());
             }

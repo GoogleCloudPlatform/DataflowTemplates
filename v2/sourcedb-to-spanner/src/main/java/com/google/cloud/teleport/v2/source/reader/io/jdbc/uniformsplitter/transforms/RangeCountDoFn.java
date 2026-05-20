@@ -15,23 +15,23 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
-import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
-import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,38 +49,46 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
   private static final long TIMEOUT_GRACE_MILLIS = 1500;
 
   private static final Logger logger = LoggerFactory.getLogger(RangeCountDoFn.class);
-  private final SerializableFunction<Void, DataSource> dataSourceProviderFn;
+  private final DataSourceProvider dataSourceProvider;
   private final long timeoutMillis;
 
   private final UniformSplitterDBAdapter dbAdapter;
 
-  private final String countQuery;
+  private final ImmutableMap<TableIdentifier, String> countQueries;
 
-  private final long numColumns;
+  private final RangePreparedStatementSetter rangePreparedStatementSetter;
 
-  @JsonIgnore private transient @Nullable DataSource dataSource;
+  private transient DataSourceManager dataSourceManager;
 
   RangeCountDoFn(
-      SerializableFunction<Void, DataSource> dataSourceProviderFn,
+      DataSourceProvider dataSourceProvider,
       long timeoutMillis,
       UniformSplitterDBAdapter dbAdapter,
-      String tableNme,
-      ImmutableList<String> partitionColumns) {
-    this.dataSourceProviderFn = dataSourceProviderFn;
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications) {
+    this.dataSourceProvider = dataSourceProvider;
     this.timeoutMillis = timeoutMillis;
     this.dbAdapter = dbAdapter;
-    this.countQuery = dbAdapter.getCountQuery(tableNme, partitionColumns, timeoutMillis);
-    this.numColumns = partitionColumns.size();
-    this.dataSource = null;
+    ImmutableMap.Builder<TableIdentifier, String> countQueriesBuilder = ImmutableMap.builder();
+    for (TableSplitSpecification tableSplitSpecification : tableSplitSpecifications) {
+      countQueriesBuilder.put(
+          tableSplitSpecification.tableIdentifier(),
+          dbAdapter.getCountQuery(
+              tableSplitSpecification.tableIdentifier().tableName(),
+              tableSplitSpecification.partitionColumns().stream()
+                  .map(pc -> pc.columnName())
+                  .collect(ImmutableList.toImmutableList()),
+              timeoutMillis));
+    }
+    this.countQueries = countQueriesBuilder.build();
+    this.rangePreparedStatementSetter = new RangePreparedStatementSetter(tableSplitSpecifications);
+    this.dataSourceManager =
+        DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }
 
-  @Setup
-  public void setup() throws Exception {
-    dataSource = dataSourceProviderFn.apply(null);
-  }
-
-  private Connection acquireConnection() throws SQLException {
-    return checkStateNotNull(this.dataSource).getConnection();
+  @StartBundle
+  public void startBundle() throws Exception {
+    this.dataSourceManager =
+        DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }
 
   /**
@@ -97,12 +105,22 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
       throws SQLException {
 
     long count = Range.INDETERMINATE_COUNT;
-    try (Connection conn = acquireConnection()) {
+    if (isInvalidValidRange(input, countQueries)) {
+      logger.error(
+          "Got Range {} for unknown tableIdentifier. Known Identifiers are {} and {}",
+          input,
+          countQueries);
+      throw new RuntimeException("Invalid Range");
+    }
+
+    DataSource dataSource = dataSourceManager.getDatasource(input.tableIdentifier().dataSourceId());
+    String countQuery = countQueries.get(input.tableIdentifier());
+    try (Connection conn = dataSource.getConnection()) {
       PreparedStatement stmt =
           conn.prepareStatement(
-              this.countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+              countQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       stmt.setQueryTimeout((int) ((this.timeoutMillis + TIMEOUT_GRACE_MILLIS) / 1000));
-      new RangePreparedStatementSetter(numColumns).setParameters(input, stmt);
+      rangePreparedStatementSetter.setParameters(input, stmt);
       ResultSet rs = stmt.executeQuery();
       if (rs.next()) {
         count = rs.getLong(1);
@@ -164,10 +182,39 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
     out.output(output); // Output the counted Range.
   }
 
+  @VisibleForTesting
+  protected static boolean isInvalidValidRange(
+      Range input, ImmutableMap<TableIdentifier, String> countQueries) {
+    return !countQueries.containsKey(input.tableIdentifier());
+  }
+
   private boolean checkTimeout(SQLException e) {
     if (e instanceof SQLTimeoutException) {
       return true;
     }
     return dbAdapter.checkForTimeout(e);
+  }
+
+  @FinishBundle
+  public void finishBundle() throws Exception {
+    cleanupDataSource();
+  }
+
+  @Teardown
+  public void tearDown() throws Exception {
+    cleanupDataSource();
+  }
+
+  /**
+   * Closes all active data source connections.
+   *
+   * <p>This method ensures that the {@link DataSourceManager} releases all resources, preventing
+   * connection pool leaks during bundle finish or worker teardown.
+   */
+  void cleanupDataSource() {
+    if (this.dataSourceManager != null) {
+      this.dataSourceManager.closeAll();
+      this.dataSourceManager = null;
+    }
   }
 }

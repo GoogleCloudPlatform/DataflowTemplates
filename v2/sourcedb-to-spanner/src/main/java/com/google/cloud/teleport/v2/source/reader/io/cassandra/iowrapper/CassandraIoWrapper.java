@@ -36,7 +36,8 @@ import org.apache.beam.sdk.values.PCollection;
 /** IOWrapper for Cassandra Source. */
 public final class CassandraIoWrapper implements IoWrapper {
   private SourceSchema sourceSchema;
-  private ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  private ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
 
   public CassandraIoWrapper(
@@ -75,14 +76,15 @@ public final class CassandraIoWrapper implements IoWrapper {
 
   /** Get a list of reader transforms for Cassandra source. */
   @Override
-  public ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
+  public ImmutableMap<
+          ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
       getTableReaders() {
     return tableReaders;
   }
 
   /** Discover source schema for Cassandra. */
   @Override
-  public SourceSchema discoverTableSchema() {
-    return sourceSchema;
+  public ImmutableList<SourceSchema> discoverTableSchema() {
+    return ImmutableList.of(sourceSchema);
   }
 }

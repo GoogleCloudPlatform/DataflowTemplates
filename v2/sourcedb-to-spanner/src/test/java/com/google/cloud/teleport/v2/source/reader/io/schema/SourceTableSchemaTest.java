@@ -81,7 +81,11 @@ public class SourceTableSchemaTest extends TestCase {
     // Miss Adding any fields to schema.
     Assert.assertThrows(
         java.lang.IllegalStateException.class,
-        () -> SourceTableSchema.builder(SQLDialect.MYSQL).setTableName(tableName).build());
+        () ->
+            SourceTableSchema.builder(SQLDialect.MYSQL)
+                .setTableName(tableName)
+                .setEstimatedRowSize(0L)
+                .build());
   }
 
   @Test

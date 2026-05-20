@@ -1,5 +1,3 @@
-ALTER USER CURRENT_USER WITH REPLICATION;
-
 CREATE TYPE myenum AS ENUM ('enum1', 'enum2', 'enum3');
 
 CREATE TABLE t_bigint (id serial primary key, col bigint);
@@ -281,7 +279,3 @@ INSERT INTO t_varbit_to_string (col) VALUES ('1100'::varbit(32)), (NULL);
 INSERT INTO t_varbit_to_bool_array (col) VALUES ('1100'::varbit(32)), (NULL);
 INSERT INTO t_varchar (col) VALUES ('testing varchar'), (NULL);
 INSERT INTO t_xml (col) VALUES ('<test>123</test>'::xml), (NULL);
-
-CREATE PUBLICATION data_types_test_publication FOR ALL TABLES;
-SELECT pg_create_logical_replication_slot('data_types_test_replication_slot', 'pgoutput');
-SELECT pg_create_logical_replication_slot('pg_dialect_data_types_test_replication_slot', 'pgoutput');

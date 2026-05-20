@@ -86,8 +86,9 @@ public class CassandraIoWrapperTest {
     SourceSchema mockSourceSchema = Mockito.mock(SourceSchema.class);
     SourceTableReference mockSourceTableReference = Mockito.mock(SourceTableReference.class);
     CassandraIO.Read<SourceRow> mockTableReader = Mockito.mock(CassandraIO.Read.class);
-    ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
-        mockTableReaders = ImmutableMap.of(mockSourceTableReference, mockTableReader);
+    ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
+        mockTableReaders =
+            ImmutableMap.of(ImmutableList.of(mockSourceTableReference), mockTableReader);
 
     try (MockedStatic mockCassandraIoWrapperHelper = mockStatic(CassandraIOWrapperHelper.class)) {
       mockCassandraIoWrapperHelper
@@ -158,7 +159,8 @@ public class CassandraIoWrapperTest {
               "",
               "",
               "");
-      assertThat(cassandraIoWrapper.discoverTableSchema()).isEqualTo(mockSourceSchema);
+      assertThat(cassandraIoWrapper.discoverTableSchema())
+          .isEqualTo(ImmutableList.of(mockSourceSchema));
       assertThat(cassandraIoWrapper.getTableReaders()).isEqualTo(mockTableReaders);
 
       CassandraIoWrapper cassandraIoWrapperAstra =
@@ -171,7 +173,8 @@ public class CassandraIoWrapperTest {
               astraDataSource.cassandra().astra().databaseId(),
               astraDataSource.cassandra().astra().keySpace(),
               astraDataSource.cassandra().astra().astraDbRegion());
-      assertThat(cassandraIoWrapperAstra.discoverTableSchema()).isEqualTo(mockSourceSchema);
+      assertThat(cassandraIoWrapperAstra.discoverTableSchema())
+          .isEqualTo(ImmutableList.of(mockSourceSchema));
       assertThat(cassandraIoWrapperAstra.getTableReaders()).isEqualTo(mockTableReaders);
     }
   }

@@ -17,21 +17,37 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.trans
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A {@link DoFn} that merges consecutive small ranges to approach a target mean count.
+ *
+ * <p>This transform is applied at the end of the splitting process to optimize the final number of
+ * partitions. It handles ranges from multiple tables independently, ensuring that each table's
+ * ranges are merged based on its specific {@link TableSplitSpecification#maxPartitionsHint()} and
+ * actual data density.
+ */
 @AutoValue
-public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, ImmutableList<Range>> {
+public abstract class MergeRangesDoFn
+    extends DoFn<KV<Integer, ImmutableList<Range>>, KV<Integer, ImmutableList<Range>>> {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeRangesDoFn.class);
 
-  /** Approximate row count of the table. */
-  abstract Long approxTotalRowCount();
-
-  /** Max partitions hint as set or auto-inferred by {@link ReadWithUniformPartitions}. */
-  abstract Long maxPartitionHint();
+  /** Table Split Specification. */
+  abstract ImmutableMap<TableIdentifier, TableSplitSpecification> tableSplitSpecifications();
 
   /**
    * If true, MaxPartitions will be inferred again after total counts of all ranges is not
@@ -39,35 +55,59 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
    */
   abstract Boolean autoAdjustMaxPartitions();
 
-  /** Name of the table. */
-  abstract String tableName();
-
   /**
-   * Merge the ranges to get closer to the mean if possible. This DoFn applied at the end of the
-   * split process tries to give number of ranges closer to maxPartitions, to avoid unintented
-   * partitions. Note: In case of composite keys, it is possible to end up with more ranges than the
-   * maxPartitions, for example a range with first column along can not merge with a consecutive
-   * range that spans first and second column both.
+   * Processes a batch of ranges, grouping them by table and merging them independently.
    *
-   * @param input list of ranges to merge.
+   * @param input the batch of ranges keyed by a synthetic bucket ID.
    * @param out output receiver for the merged ranges.
    * @param c process context.
    */
   @ProcessElement
   public void processElement(
-      @Element ImmutableList<Range> input,
-      OutputReceiver<ImmutableList<Range>> out,
+      @Element KV<Integer, ImmutableList<Range>> input,
+      OutputReceiver<KV<Integer, ImmutableList<Range>>> out,
       ProcessContext c) {
-    out.output(mergeRanges(input, c));
+
+    if (input.getValue().isEmpty()) {
+      return;
+    }
+
+    // Group ranges by TableIdentifier to process tables independently.
+    Map<TableIdentifier, List<Range>> rangesByTable = new HashMap<>();
+    for (Range range : input.getValue()) {
+      rangesByTable.computeIfAbsent(range.tableIdentifier(), k -> new ArrayList<>()).add(range);
+    }
+
+    ImmutableList.Builder<Range> allMergedRanges = ImmutableList.builder();
+
+    for (Map.Entry<TableIdentifier, List<Range>> tableEntry : rangesByTable.entrySet()) {
+      List<Range> tableRanges = tableEntry.getValue();
+      // IMPORTANT: Sort ranges before merging
+      Collections.sort(tableRanges);
+      allMergedRanges.addAll(mergeRangesForTable(ImmutableList.copyOf(tableRanges), c));
+    }
+
+    out.output(KV.of(input.getKey(), allMergedRanges.build()));
   }
 
   public static Builder builder() {
     return new AutoValue_MergeRangesDoFn.Builder();
   }
 
-  private ImmutableList<Range> mergeRanges(ImmutableList<Range> input, ProcessContext c) {
+  @VisibleForTesting
+  protected ImmutableList<Range> mergeRangesForTable(ImmutableList<Range> input, ProcessContext c) {
 
-    long totalCount = approxTotalRowCount();
+    if (!tableSplitSpecifications().containsKey(input.get(0).tableIdentifier())) {
+      logger.error(
+          "Got Range {} for unknown tableIdentifier. Known Identifiers are {}",
+          input,
+          tableSplitSpecifications());
+      throw new RuntimeException("Invalid Range");
+    }
+    TableSplitSpecification tableSplitSpecification =
+        tableSplitSpecifications().get(input.get(0).tableIdentifier());
+
+    long totalCount = tableSplitSpecification.approxRowCount();
 
     long mean = 0;
 
@@ -75,22 +115,27 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
 
     logger.info(
         "RWUPT - Began merging split-ranges for table {} initial split range count as {}",
-        tableName(),
+        tableSplitSpecification.tableIdentifier(),
         input.size());
 
     // TODO(vardhanvthigle): moving the total count clcuation to combiner will remove code
     // duplication with {@link RangeClassifierDoFn}.
     // Refine the Count.
     for (Range range : input) {
+      if (!range.tableIdentifier().equals(tableSplitSpecification.tableIdentifier())) {
+        logger.error(
+            "Got mismatched Range {} for tableSpecification {}.", range, tableSplitSpecification);
+        throw new RuntimeException("Mismatched Range");
+      }
       accumulatedCount = range.accumulateCount(accumulatedCount);
     }
     if (accumulatedCount != Range.INDETERMINATE_COUNT) {
       totalCount = accumulatedCount;
     }
 
-    long maxPartitions = maxPartitionHint();
+    long maxPartitions = tableSplitSpecification.maxPartitionsHint();
     if (autoAdjustMaxPartitions()) {
-      maxPartitions = ReadWithUniformPartitions.inferMaxPartitions(totalCount);
+      maxPartitions = TableSplitSpecification.inferMaxPartitions(totalCount);
     }
     mean = Math.max(1, totalCount / maxPartitions);
 
@@ -119,7 +164,7 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
     // splitting process.
     logger.info(
         "RWUPT - Completed split process (merging) split-ranges for table {} initial split range count {}, final range count as {}",
-        tableName(),
+        tableSplitSpecification.tableIdentifier(),
         input.size(),
         output.size());
 
@@ -129,13 +174,22 @@ public abstract class MergeRangesDoFn extends DoFn<ImmutableList<Range>, Immutab
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setApproxTotalRowCount(Long value);
+    abstract ImmutableMap.Builder<TableIdentifier, TableSplitSpecification>
+        tableSplitSpecificationsBuilder();
 
-    public abstract Builder setMaxPartitionHint(Long value);
+    public Builder setTableSplitSpecification(TableSplitSpecification tableSplitSpecification) {
+      tableSplitSpecificationsBuilder()
+          .put(tableSplitSpecification.tableIdentifier(), tableSplitSpecification);
+      return this;
+    }
+
+    public Builder setTableSplitSpecifications(
+        List<TableSplitSpecification> tableSplitSpecificationList) {
+      tableSplitSpecificationList.forEach(t -> setTableSplitSpecification(t));
+      return this;
+    }
 
     public abstract Builder setAutoAdjustMaxPartitions(Boolean value);
-
-    public abstract Builder setTableName(String value);
 
     public abstract MergeRangesDoFn build();
   }

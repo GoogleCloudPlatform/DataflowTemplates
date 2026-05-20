@@ -11,7 +11,7 @@ template:
     transformation of the data, execution of the UDF, or inserting into the 
     output table are inserted into a separate errors table in BigQuery. 
     If the errors table does not exist prior to execution, then it is created.
-  flex_container_name: "kafka-to-bigquery-yaml"
+  flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "KafkaToBigQuery.yaml"
   filesToCopy: >
     {"main.py", "requirements.txt"}

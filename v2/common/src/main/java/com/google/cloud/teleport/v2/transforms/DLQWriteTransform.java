@@ -93,7 +93,7 @@ public class DLQWriteTransform {
 
     private String getShardTemplate() {
       String paneStr = includePaneInfo() ? "-P" : "";
-      return paneStr + "-SSSSS-of-NNNNN";
+      return "-W" + paneStr + "-SSSSS-of-NNNNN";
     }
 
     /** Builder for {@link WriteDLQ}. */

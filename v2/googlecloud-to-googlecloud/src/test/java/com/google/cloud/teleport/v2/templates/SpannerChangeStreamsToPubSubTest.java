@@ -225,6 +225,25 @@ public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
     p.run();
   }
 
+  @Test(expected = Exception.class)
+  @Category(IntegrationTest.class)
+  public void testSpannerEmulatorHostOptions() {
+    SpannerChangeStreamsToPubSubOptions options =
+        PipelineOptionsFactory.create().as(SpannerChangeStreamsToPubSubOptions.class);
+    options.setSpannerProjectId(TEST_PROJECT);
+    options.setSpannerInstanceId(TEST_INSTANCE);
+    options.setSpannerDatabase(TEST_TABLE);
+    options.setSpannerMetadataInstanceId(TEST_INSTANCE);
+    options.setSpannerMetadataDatabase(TEST_TABLE);
+    options.setSpannerChangeStreamName(TEST_CHANGE_STREAM);
+    options.setPubsubTopic(outputTopicName);
+    options.setOutputDataFormat("JSON");
+
+    options.setUseSpannerEmulatorHost(true);
+    options.setSpannerHost("http://localhost:12345");
+    run(options);
+  }
+
   @Test
   @Category(IntegrationTest.class)
   // This test can only be run locally with the following command:

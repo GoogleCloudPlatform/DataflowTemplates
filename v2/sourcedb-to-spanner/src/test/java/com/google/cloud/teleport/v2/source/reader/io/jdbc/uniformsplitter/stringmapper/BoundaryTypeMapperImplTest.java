@@ -82,6 +82,7 @@ public class BoundaryTypeMapperImplTest {
 
     PartitionColumn testPartitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("strCol")
             .setColumnClass(String.class)
             .setStringMaxLength(1)

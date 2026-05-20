@@ -35,6 +35,10 @@ public abstract class SourceTable implements Serializable {
 
   public abstract ImmutableList<String> primaryKeyColumns();
 
+  public abstract ImmutableList<SourceForeignKey> foreignKeys();
+
+  public abstract ImmutableList<SourceIndex> indexes();
+
   public abstract SourceDatabaseType sourceType();
 
   @Nullable
@@ -44,7 +48,9 @@ public abstract class SourceTable implements Serializable {
     return new AutoValue_SourceTable.Builder()
         .sourceType(sourceType)
         .columns(ImmutableList.of())
-        .primaryKeyColumns(ImmutableList.of());
+        .primaryKeyColumns(ImmutableList.of())
+        .foreignKeys(ImmutableList.of())
+        .indexes(ImmutableList.of());
   }
 
   public abstract Builder toBuilder();
@@ -59,6 +65,10 @@ public abstract class SourceTable implements Serializable {
     public abstract Builder columns(ImmutableList<SourceColumn> columns);
 
     public abstract Builder primaryKeyColumns(ImmutableList<String> primaryKeyColumns);
+
+    public abstract Builder foreignKeys(ImmutableList<SourceForeignKey> foreignKeys);
+
+    public abstract Builder indexes(ImmutableList<SourceIndex> indexes);
 
     public abstract Builder sourceType(SourceDatabaseType sourceType);
 
