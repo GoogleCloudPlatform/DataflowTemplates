@@ -328,7 +328,7 @@ public final class SpannerChangeStreamsToBigQuery {
     String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
     if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
       List<String> tvfNameList = Arrays.asList(tvfNameListString.split(":"));
-      if (tvfNameList != null && !tvfNameList.isEmpty()) {
+      if (!tvfNameList.isEmpty()) {
         readChangeStream = readChangeStream.withTvfNameList(tvfNameList);
       }
     }
