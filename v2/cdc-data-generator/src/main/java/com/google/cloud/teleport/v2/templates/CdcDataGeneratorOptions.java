@@ -55,8 +55,8 @@ public interface CdcDataGeneratorOptions
       optional = true,
       description = "Batch Size",
       helpText =
-          "The batch size for writing to the sink. Crucially, this threshold is evaluated per table (partitioned by table name, shard, and operation type). Default is 100.")
-  @Default.Integer(100)
+          "The maximum batch size for writing to the sink. Batches are partitioned by table name, shard, and operation type, and may be written in smaller sizes depending on Dataflow bundle size and execution context. Default is 1.")
+  @Default.Integer(1)
   Integer getBatchSize();
 
   void setBatchSize(Integer value);

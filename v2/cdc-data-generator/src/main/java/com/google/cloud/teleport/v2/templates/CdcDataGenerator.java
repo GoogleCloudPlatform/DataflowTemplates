@@ -196,7 +196,9 @@ public class CdcDataGenerator {
   static int resolveKeyParallelism(
       CdcDataGeneratorOptions.SinkType sinkType, SinkConfig sinkConfig) {
     if (sinkType == CdcDataGeneratorOptions.SinkType.SPANNER) {
-      // 500 DoFn per workers * 200 (random high number of workers)
+      // High parallelism target for Spanner, representing a baseline of 500 DoFn acr
+      // ss a hypothetical maximum of 200 active workers to maximize horizontal write
+      // scaling.
       return 100000;
     } else if (sinkType == CdcDataGeneratorOptions.SinkType.MYSQL) {
       if (!(sinkConfig instanceof MySqlSinkConfig)) {
@@ -208,7 +210,11 @@ public class CdcDataGenerator {
       if (mySqlConfig.getShards() != null && !mySqlConfig.getShards().isEmpty()) {
         shardCount = mySqlConfig.getShards().size();
       }
-      // Since MySQL is not horizontally scalable unlike Spanner and performs better with low number of large workers, keeping the parallelism low
+      // MySQL is not horizontally scalable like Spanner and performs better with fewer concurrent
+      // write
+      //
+      // operations. We keep key-parallelism low to prevent connection pool exhaustion or lock
+      // contention on the target instance.
       // 500 DoFn per workers * 10 workers per MySQL shard
       return 5000 * shardCount;
     } else {

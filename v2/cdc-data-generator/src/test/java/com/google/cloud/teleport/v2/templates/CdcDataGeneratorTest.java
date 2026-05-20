@@ -43,7 +43,7 @@ public class CdcDataGeneratorTest {
   @Test
   public void testResolveKeyParallelism_spanner() {
     int parallelism = CdcDataGenerator.resolveKeyParallelism(SinkType.SPANNER, null);
-    assertEquals(50000, parallelism);
+    assertEquals(100000, parallelism);
   }
 
   @Test
