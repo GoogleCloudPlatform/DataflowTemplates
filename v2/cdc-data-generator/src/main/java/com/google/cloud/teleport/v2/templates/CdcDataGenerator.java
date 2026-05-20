@@ -196,7 +196,8 @@ public class CdcDataGenerator {
   static int resolveKeyParallelism(
       CdcDataGeneratorOptions.SinkType sinkType, SinkConfig sinkConfig) {
     if (sinkType == CdcDataGeneratorOptions.SinkType.SPANNER) {
-      return 50000;
+      // 500 DoFn per workers * 200 (random high number of workers)
+      return 100000;
     } else if (sinkType == CdcDataGeneratorOptions.SinkType.MYSQL) {
       if (!(sinkConfig instanceof MySqlSinkConfig)) {
         throw new IllegalArgumentException(
@@ -207,6 +208,8 @@ public class CdcDataGenerator {
       if (mySqlConfig.getShards() != null && !mySqlConfig.getShards().isEmpty()) {
         shardCount = mySqlConfig.getShards().size();
       }
+      // Since MySQL is not horizontally scalable unlike Spanner and performs better with low number of large workers, keeping the parallelism low
+      // 500 DoFn per workers * 10 workers per MySQL shard
       return 5000 * shardCount;
     } else {
       throw new IllegalArgumentException("Unsupported sink type: " + sinkType);

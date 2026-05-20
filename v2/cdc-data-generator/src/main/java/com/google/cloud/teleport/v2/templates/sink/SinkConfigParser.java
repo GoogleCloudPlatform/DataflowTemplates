@@ -79,6 +79,15 @@ public class SinkConfigParser {
         throw new RuntimeException("No shards found in shard configuration: " + sinkOptionsPath);
       }
 
+      for (int i = 0; i < shards.size(); i++) {
+        Shard shard = shards.get(i);
+        if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
+          String defaultId = "shard" + i;
+          shard.setLogicalShardId(defaultId);
+          LOG.info("Assigned default logicalShardId '{}' to shard index {}", defaultId, i);
+        }
+      }
+
       return new MySqlSinkConfig(shards);
     } else {
       throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
