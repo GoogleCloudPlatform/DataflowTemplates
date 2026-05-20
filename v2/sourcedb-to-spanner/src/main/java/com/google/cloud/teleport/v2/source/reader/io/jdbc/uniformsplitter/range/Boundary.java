@@ -183,6 +183,11 @@ public abstract class Boundary<T extends Serializable>
         boundaryTypeMapper());
   }
 
+  // Note: Currently, java.util.Arrays.hashCode() is only used for byte arrays (e.g. UUIDs),
+  // which is the only array type supported for partitioning. If support for other primitive
+  // array types (like int[], long[], etc.) is added in the future, this helper method must
+  // be expanded with corresponding instanceof checks to compute their hash codes correctly,
+  // as Objects.hashCode() does not compute deep hashes of arrays.
   private static int hashObjectOrArray(Object a) {
     if (a == null) {
       return 0;
