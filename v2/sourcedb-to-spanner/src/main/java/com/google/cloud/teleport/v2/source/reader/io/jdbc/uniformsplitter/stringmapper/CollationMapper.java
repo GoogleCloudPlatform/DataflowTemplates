@@ -21,11 +21,11 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.Unifor
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CollationQueryResultType;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationIndex.CollationIndexType;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -36,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -246,21 +247,74 @@ public abstract class CollationMapper implements Serializable {
       UniformSplitterDBAdapter dbAdapter,
       CollationReference collationReference)
       throws SQLException {
+
+    // 1. Attempt Java-side codepoint generation
+    Optional<Charset> javaCharsetOpt =
+        CharsetMapper.toJavaCharset(collationReference.dbCharacterSet());
+    if (javaCharsetOpt.isPresent()) {
+      // Limit of 10000 codepoints for Java-side processing to prevent large charset overheads.
+      // If a custom charset is larger than 10000, we fall back to dynamic SQL.
+      Optional<List<Integer>> codepointsOpt =
+          CodepointGenerator.getValidCodepoints(javaCharsetOpt.get(), 10000);
+      if (codepointsOpt.isPresent()) {
+        List<Integer> codepoints = codepointsOpt.get();
+
+        // 1a. MySQL Batch retrieval path
+        if (dbAdapter.supportsBatchedWeightRetrieval()) {
+          try {
+            logger.info(
+                "Running Java-driven batch weight retrieval for collation {}", collationReference);
+            List<UniformSplitterDBAdapter.CharacterWeight> weights =
+                dbAdapter.getWeights(connection, codepoints, collationReference.dbCollation());
+            return fromWeightsCollection(weights, collationReference);
+          } catch (Exception e) {
+            logger.warn(
+                "Java-driven batch weight retrieval failed for {}, falling back to SQL path",
+                collationReference,
+                e);
+          }
+        }
+
+        // 1b. PostgreSQL Direct ranking path
+        if (dbAdapter.supportsDirectRanking()) {
+          try {
+            logger.info("Running Java-driven direct ranking for collation {}", collationReference);
+            List<UniformSplitterDBAdapter.CharacterRank> ranks =
+                dbAdapter.getDirectRanks(connection, codepoints, collationReference.dbCollation());
+            return fromRanksCollection(ranks, collationReference);
+          } catch (Exception e) {
+            logger.warn(
+                "Java-driven direct ranking failed for {}, falling back to SQL path",
+                collationReference,
+                e);
+          }
+        }
+      }
+    }
+
+    // 2. Fallback SQL-driven path
+    logger.info("Using SQL-driven fallback query for collation {}", collationReference);
+    int maxBytes = 3;
+    try {
+      maxBytes =
+          Math.min(
+              dbAdapter.getCharsetMaxLength(connection, collationReference.dbCharacterSet()), 3);
+    } catch (Exception e) {
+      logger.warn("Failed to query max character length, defaulting to 3 bytes", e);
+    }
+
     String query =
         dbAdapter.getCollationsOrderQuery(
             collationReference.dbCharacterSet(),
             collationReference.dbCollation(),
-            collationReference.padSpace());
+            collationReference.padSpace(),
+            maxBytes);
+
     CollationQueryResultType resultType = dbAdapter.collationQueryResultType();
     CollationMapper mapper = null;
     try (Statement statement = connection.createStatement()) {
       statement.setEscapeProcessing(false);
-      // Due to https://bugs.mysql.com/bug.php?id=108195 affecting the version of connector,
-      // we can't use executeQuery for a multi line complex query.
       boolean foundResultSet = statement.execute(query);
-      // The recommended workaround is a while(true) loop, we limit the iterations to number of
-      // lines in the query (as it's impossible to have more resultsets than that as hangs are not
-      // easy to debug in dataflow)
       for (int i = 0; i < query.lines().count() + 1; i++) {
         if (foundResultSet) {
           ResultSet rs = statement.getResultSet();
@@ -278,7 +332,6 @@ public abstract class CollationMapper implements Serializable {
         }
       }
     } catch (SQLException e) {
-      // Beam will auto retry the exceptions in run time.
       logger.error(
           "Exception while getting collation order for {}, exception = {}, query = {}",
           collationReference,
@@ -293,35 +346,77 @@ public abstract class CollationMapper implements Serializable {
     return mapper;
   }
 
-  /**
-   * Build a {@link CollationMapper} from a MySQL result set that returns raw {@code WEIGHT_STRING}
-   * sort-key bytes (columns {@code weight_non_trailing}, {@code weight_trailing}, {@code is_empty},
-   * {@code is_space}) produced by the MySQL collation query ({@link
-   * CollationQueryResultType#WEIGHT_BYTES}).
-   *
-   * <p>All grouping, ranking and equivalent-character resolution is performed here in Java:
-   *
-   * <ol>
-   *   <li>Characters are grouped by their {@code weight_non_trailing} bytes (unsigned lexicographic
-   *       order). Characters in the same group compare equal at non-trailing positions.
-   *   <li>Groups are ordered by their weight bytes, giving the dense rank for the all-positions
-   *       index.
-   *   <li>The equivalent character for each group is the one with the smallest codepoint (first in
-   *       natural char order).
-   *   <li>The same procedure is applied with {@code weight_trailing} bytes for the PAD SPACE
-   *       trailing-position index, excluding space characters (which are not added to that index).
-   * </ol>
-   */
-  private static CollationMapper fromResultSetWithWeights(
-      ResultSet rs, CollationReference collationReference) throws SQLException {
+  private static CollationMapper fromWeightsCollection(
+      List<UniformSplitterDBAdapter.CharacterWeight> rows, CollationReference collationReference) {
 
-    // Comparator for byte[] sort keys: unsigned byte, lexicographic.
     Comparator<String> weightKeyOrder = Comparator.naturalOrder();
 
-    // Phase 1: read all rows.
-    // weight bytes are stored as ISO-8859-1 strings so that String's natural ordering gives
-    // correct unsigned-byte lexicographic comparison without extra allocation.
-    List<WeightRow> rows = new ArrayList<>();
+    // Phase 2a: build all-positions equivalence groups from weightNonTrailing.
+    TreeMap<String, TreeMap<Integer, Integer>> ntGroups = new TreeMap<>(weightKeyOrder);
+    for (UniformSplitterDBAdapter.CharacterWeight row : rows) {
+      if (!row.isEmpty()) {
+        byte[] wNt = row.weightNonTrailing();
+        String keyNt = (wNt != null) ? new String(wNt, StandardCharsets.ISO_8859_1) : "";
+        ntGroups.computeIfAbsent(keyNt, k -> new TreeMap<>()).put(row.codepoint(), row.codepoint());
+      }
+    }
+    Map<Integer, Long> ntRank = new HashMap<>();
+    Map<Integer, Integer> ntEquiv = new HashMap<>();
+    long rank = 0;
+    for (TreeMap<Integer, Integer> group : ntGroups.values()) {
+      int equiv = group.firstEntry().getValue();
+      for (Integer c : group.values()) {
+        ntRank.put(c, rank);
+        ntEquiv.put(c, equiv);
+      }
+      rank++;
+    }
+
+    // Phase 2b: build PAD-SPACE trailing equivalence groups from weightTrailing.
+    TreeMap<String, TreeMap<Integer, Integer>> tGroups = new TreeMap<>(weightKeyOrder);
+    for (UniformSplitterDBAdapter.CharacterWeight row : rows) {
+      if (!row.isEmpty() && !row.isSpace()) {
+        byte[] wT = row.weightTrailing();
+        String keyT = (wT != null) ? new String(wT, StandardCharsets.ISO_8859_1) : "";
+        tGroups.computeIfAbsent(keyT, k -> new TreeMap<>()).put(row.codepoint(), row.codepoint());
+      }
+    }
+    Map<Integer, Long> tRank = new HashMap<>();
+    Map<Integer, Integer> tEquiv = new HashMap<>();
+    long tRankCounter = 0;
+    for (TreeMap<Integer, Integer> group : tGroups.values()) {
+      int equiv = group.firstEntry().getValue();
+      for (Integer c : group.values()) {
+        tRank.put(c, tRankCounter);
+        tEquiv.put(c, equiv);
+      }
+      tRankCounter++;
+    }
+
+    Builder builder = builder(collationReference);
+    for (UniformSplitterDBAdapter.CharacterWeight row : rows) {
+      int equivChar = ntEquiv.getOrDefault(row.codepoint(), row.codepoint());
+      long codepointRank = ntRank.getOrDefault(row.codepoint(), 0L);
+      int equivCharPs = tEquiv.getOrDefault(row.codepoint(), row.codepoint());
+      long codepointRankPs = tRank.getOrDefault(row.codepoint(), 0L);
+
+      builder.addCharacter(
+          CollationOrderRow.builder()
+              .setCharsetChar(row.codepoint())
+              .setEquivalentChar(equivChar)
+              .setCodepointRank(codepointRank)
+              .setEquivalentCharPadSpace(equivCharPs)
+              .setCodepointRankPadSpace(codepointRankPs)
+              .setIsEmpty(row.isEmpty())
+              .setIsSpace(row.isSpace())
+              .build());
+    }
+    return builder.build();
+  }
+
+  private static CollationMapper fromResultSetWithWeights(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    List<UniformSplitterDBAdapter.CharacterWeight> list = new ArrayList<>();
     while (rs.next()) {
       String charsetChar = rs.getString(CollationsOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null || charsetChar.isEmpty()) {
@@ -337,7 +432,6 @@ public abstract class CollationMapper implements Serializable {
       boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
       boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
 
-      // Null weight can occur for characters that WEIGHT_STRING cannot resolve; skip unless empty.
       if (wNt == null && !isEmpty) {
         logger.warn(
             "Skipping character codepoint={} for {} because weight_non_trailing is NULL",
@@ -345,68 +439,40 @@ public abstract class CollationMapper implements Serializable {
             collationReference);
         continue;
       }
-      String keyNt = (wNt != null) ? new String(wNt, StandardCharsets.ISO_8859_1) : "";
-      String keyT = (wT != null) ? new String(wT, StandardCharsets.ISO_8859_1) : "";
-      rows.add(new WeightRow(c, keyNt, keyT, isEmpty, isSpace));
+      list.add(new UniformSplitterDBAdapter.CharacterWeight(c, wNt, wT, isEmpty, isSpace));
     }
+    return fromWeightsCollection(list, collationReference);
+  }
 
-    // Phase 2a: build all-positions equivalence groups from weight_non_trailing.
-    // TreeMap gives groups in sorted weight order (= collation rank order).
-    TreeMap<String, TreeMap<Integer, Integer>> ntGroups = new TreeMap<>(weightKeyOrder);
-    for (WeightRow row : rows) {
+  private static CollationMapper fromRanksCollection(
+      List<UniformSplitterDBAdapter.CharacterRank> rows, CollationReference collationReference) {
+
+    Map<Long, Integer> rankToMinCodepoint = new HashMap<>();
+    Map<Long, Integer> rankPsToMinCodepoint = new HashMap<>();
+    for (UniformSplitterDBAdapter.CharacterRank row : rows) {
       if (!row.isEmpty()) {
-        ntGroups.computeIfAbsent(row.weightNt(), k -> new TreeMap<>()).put(row.c(), row.c());
+        rankToMinCodepoint.merge(row.rank(), row.codepoint(), Math::min);
+        if (!row.isSpace()) {
+          rankPsToMinCodepoint.merge(row.rankPadSpace(), row.codepoint(), Math::min);
+        }
       }
-    }
-    // Assign dense ranks and resolve equivalent characters (min codepoint per group).
-    Map<Integer, Long> ntRank = new HashMap<>();
-    Map<Integer, Integer> ntEquiv = new HashMap<>();
-    long rank = 0;
-    for (TreeMap<Integer, Integer> group : ntGroups.values()) {
-      int equiv = group.firstEntry().getValue(); // smallest codepoint = canonical equivalent
-      for (Integer c : group.values()) {
-        ntRank.put(c, rank);
-        ntEquiv.put(c, equiv);
-      }
-      rank++;
     }
 
-    // Phase 2b: build PAD-SPACE trailing equivalence groups from weight_trailing.
-    // Space characters (is_space=true) are intentionally excluded; they are tracked in
-    // spaceCharacters and stripped before the trailing index is consulted.
-    TreeMap<String, TreeMap<Integer, Integer>> tGroups = new TreeMap<>(weightKeyOrder);
-    for (WeightRow row : rows) {
-      if (!row.isEmpty() && !row.isSpace()) {
-        tGroups.computeIfAbsent(row.weightT(), k -> new TreeMap<>()).put(row.c(), row.c());
-      }
-    }
-    Map<Integer, Long> tRank = new HashMap<>();
-    Map<Integer, Integer> tEquiv = new HashMap<>();
-    long tRankCounter = 0;
-    for (TreeMap<Integer, Integer> group : tGroups.values()) {
-      int equiv = group.firstEntry().getValue();
-      for (Integer c : group.values()) {
-        tRank.put(c, tRankCounter);
-        tEquiv.put(c, equiv);
-      }
-      tRankCounter++;
-    }
-
-    // Phase 3: build CollationOrderRow objects and feed the mapper builder.
     Builder builder = builder(collationReference);
-    for (WeightRow row : rows) {
-      int equivChar = ntEquiv.getOrDefault(row.c(), row.c());
-      long codepointRank = ntRank.getOrDefault(row.c(), 0L);
-      int equivCharPs = tEquiv.getOrDefault(row.c(), row.c());
-      long codepointRankPs = tRank.getOrDefault(row.c(), 0L);
+    for (UniformSplitterDBAdapter.CharacterRank row : rows) {
+      int equivChar = row.isEmpty() ? row.codepoint() : rankToMinCodepoint.get(row.rank());
+      int equivCharPs =
+          (row.isEmpty() || row.isSpace())
+              ? row.codepoint()
+              : rankPsToMinCodepoint.get(row.rankPadSpace());
 
       builder.addCharacter(
           CollationOrderRow.builder()
-              .setCharsetChar(row.c())
+              .setCharsetChar(row.codepoint())
               .setEquivalentChar(equivChar)
-              .setCodepointRank(codepointRank)
+              .setCodepointRank(row.rank())
               .setEquivalentCharPadSpace(equivCharPs)
-              .setCodepointRankPadSpace(codepointRankPs)
+              .setCodepointRankPadSpace(row.rankPadSpace())
               .setIsEmpty(row.isEmpty())
               .setIsSpace(row.isSpace())
               .build());
@@ -414,23 +480,9 @@ public abstract class CollationMapper implements Serializable {
     return builder.build();
   }
 
-  /**
-   * Build a {@link CollationMapper} from a result set that returns pre-computed dense ranks ({@code
-   * codepoint_rank}, {@code codepoint_rank_pad_space}) together with {@code is_empty} and {@code
-   * is_space} (produced by the PostgreSQL collation query, {@link
-   * CollationQueryResultType#WITH_RANKS}).
-   *
-   * <p>The equivalent character for each rank group is resolved here in Java as the character with
-   * the smallest codepoint value among all characters sharing the same rank, removing the need for
-   * the {@code FIRST_VALUE OVER (PARTITION BY … COLLATE …)} window functions that were previously
-   * computed by the database.
-   */
-  @VisibleForTesting
   public static CollationMapper fromResultSetWithRanks(
       ResultSet rs, CollationReference collationReference) throws SQLException {
-
-    // Phase 1: read all rows.
-    List<RankRow> rows = new ArrayList<>();
+    List<UniformSplitterDBAdapter.CharacterRank> list = new ArrayList<>();
     while (rs.next()) {
       String charsetChar = rs.getString(CollationsOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null || charsetChar.isEmpty()) {
@@ -445,44 +497,9 @@ public abstract class CollationMapper implements Serializable {
       long rankPsVal = rs.getLong(CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL);
       boolean isEmpty = rs.getBoolean(CollationsOrderQueryColumns.IS_EMPTY_COL);
       boolean isSpace = rs.getBoolean(CollationsOrderQueryColumns.IS_SPACE_COL);
-      rows.add(new RankRow(c, c, rankVal, rankPsVal, isEmpty, isSpace));
+      list.add(new UniformSplitterDBAdapter.CharacterRank(c, rankVal, rankPsVal, isEmpty, isSpace));
     }
-
-    // Phase 2: compute equivalent characters.
-    // For all-positions: equiv = min codepoint among non-empty chars sharing the same rank.
-    // For trailing PAD-SPACE: equiv = min codepoint among non-empty, non-space chars sharing
-    // the same codepoint_rank_pad_space.
-    Map<Long, Integer> rankToMinCodepoint = new HashMap<>();
-    Map<Long, Integer> rankPsToMinCodepoint = new HashMap<>();
-    for (RankRow row : rows) {
-      if (!row.isEmpty()) {
-        rankToMinCodepoint.merge(row.rank(), row.codepoint(), Math::min);
-        if (!row.isSpace()) {
-          rankPsToMinCodepoint.merge(row.rankPs(), row.codepoint(), Math::min);
-        }
-      }
-    }
-
-    // Phase 3: build CollationOrderRow objects and feed the mapper builder.
-    Builder builder = builder(collationReference);
-    for (RankRow row : rows) {
-      int equivChar = row.isEmpty() ? row.c() : rankToMinCodepoint.get(row.rank());
-      // Space chars are not added to the trailing PAD-SPACE index; use self as placeholder.
-      int equivCharPs =
-          (row.isEmpty() || row.isSpace()) ? row.c() : rankPsToMinCodepoint.get(row.rankPs());
-
-      builder.addCharacter(
-          CollationOrderRow.builder()
-              .setCharsetChar(row.c())
-              .setEquivalentChar(equivChar)
-              .setCodepointRank(row.rank())
-              .setEquivalentCharPadSpace(equivCharPs)
-              .setCodepointRankPadSpace(row.rankPs())
-              .setIsEmpty(row.isEmpty())
-              .setIsSpace(row.isSpace())
-              .build());
-    }
-    return builder.build();
+    return fromRanksCollection(list, collationReference);
   }
 
   private long getCharsetSize(boolean lastCharacter) {
@@ -501,86 +518,6 @@ public abstract class CollationMapper implements Serializable {
     return (firstIteration && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getCharacterFromPosition(ordinalPosition)
         : this.allPositionsIndex().getCharacterFromPosition(ordinalPosition);
-  }
-
-  /** Internal data holder used by {@link #fromResultSetWithWeights}. */
-  private static final class WeightRow {
-    private final int c;
-    private final String weightNt;
-    private final String weightT;
-    private final boolean isEmpty;
-    private final boolean isSpace;
-
-    WeightRow(int c, String weightNt, String weightT, boolean isEmpty, boolean isSpace) {
-      this.c = c;
-      this.weightNt = weightNt;
-      this.weightT = weightT;
-      this.isEmpty = isEmpty;
-      this.isSpace = isSpace;
-    }
-
-    int c() {
-      return c;
-    }
-
-    String weightNt() {
-      return weightNt;
-    }
-
-    String weightT() {
-      return weightT;
-    }
-
-    boolean isEmpty() {
-      return isEmpty;
-    }
-
-    boolean isSpace() {
-      return isSpace;
-    }
-  }
-
-  /** Internal data holder used by {@link #fromResultSetWithRanks}. */
-  private static final class RankRow {
-    private final int codepoint;
-    private final int c;
-    private final long rank;
-    private final long rankPs;
-    private final boolean isEmpty;
-    private final boolean isSpace;
-
-    RankRow(int codepoint, int c, long rank, long rankPs, boolean isEmpty, boolean isSpace) {
-      this.codepoint = codepoint;
-      this.c = c;
-      this.rank = rank;
-      this.rankPs = rankPs;
-      this.isEmpty = isEmpty;
-      this.isSpace = isSpace;
-    }
-
-    int codepoint() {
-      return codepoint;
-    }
-
-    int c() {
-      return c;
-    }
-
-    long rank() {
-      return rank;
-    }
-
-    long rankPs() {
-      return rankPs;
-    }
-
-    boolean isEmpty() {
-      return isEmpty;
-    }
-
-    boolean isSpace() {
-      return isSpace;
-    }
   }
 
   @AutoValue.Builder

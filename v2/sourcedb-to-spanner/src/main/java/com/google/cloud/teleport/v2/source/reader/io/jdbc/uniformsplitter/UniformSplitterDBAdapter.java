@@ -19,9 +19,12 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
+import javax.annotation.Nullable;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -106,7 +109,114 @@ public interface UniformSplitterDBAdapter extends Serializable {
    */
   String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace);
 
+  default String getCollationsOrderQuery(
+      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
+    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace);
+  }
+
   default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  }
+
+  default boolean supportsBatchedWeightRetrieval() {
+    return false;
+  }
+
+  default List<CharacterWeight> getWeights(
+      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
+    throw new UnsupportedOperationException("Batched weight retrieval not supported");
+  }
+
+  default boolean supportsDirectRanking() {
+    return false;
+  }
+
+  default List<CharacterRank> getDirectRanks(
+      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
+    throw new UnsupportedOperationException("Direct ranking not supported");
+  }
+
+  default int getCharsetMaxLength(Connection conn, String charsetName) throws SQLException {
+    return 4; // Default to safe 4 bytes
+  }
+
+  class CharacterWeight implements Serializable {
+    private final int codepoint;
+    @Nullable private final byte[] weightNonTrailing;
+    @Nullable private final byte[] weightTrailing;
+    private final boolean isEmpty;
+    private final boolean isSpace;
+
+    public CharacterWeight(
+        int codepoint,
+        @Nullable byte[] weightNonTrailing,
+        @Nullable byte[] weightTrailing,
+        boolean isEmpty,
+        boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weightNonTrailing = weightNonTrailing;
+      this.weightTrailing = weightTrailing;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+
+    public int codepoint() {
+      return codepoint;
+    }
+
+    @Nullable
+    public byte[] weightNonTrailing() {
+      return weightNonTrailing;
+    }
+
+    @Nullable
+    public byte[] weightTrailing() {
+      return weightTrailing;
+    }
+
+    public boolean isEmpty() {
+      return isEmpty;
+    }
+
+    public boolean isSpace() {
+      return isSpace;
+    }
+  }
+
+  class CharacterRank implements Serializable {
+    private final int codepoint;
+    private final long rank;
+    private final long rankPadSpace;
+    private final boolean isEmpty;
+    private final boolean isSpace;
+
+    public CharacterRank(
+        int codepoint, long rank, long rankPadSpace, boolean isEmpty, boolean isSpace) {
+      this.codepoint = codepoint;
+      this.rank = rank;
+      this.rankPadSpace = rankPadSpace;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+
+    public int codepoint() {
+      return codepoint;
+    }
+
+    public long rank() {
+      return rank;
+    }
+
+    public long rankPadSpace() {
+      return rankPadSpace;
+    }
+
+    public boolean isEmpty() {
+      return isEmpty;
+    }
+
+    public boolean isSpace() {
+      return isSpace;
+    }
   }
 }

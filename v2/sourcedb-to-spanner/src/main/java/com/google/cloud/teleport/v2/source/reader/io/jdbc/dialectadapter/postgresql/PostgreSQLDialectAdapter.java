@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -41,7 +42,9 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -550,5 +553,76 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         && (upperTypeName.equals("CHARACTER")
             || upperTypeName.equals("CHAR")
             || upperTypeName.equals("BPCHAR"));
+  }
+
+  @Override
+  public boolean supportsDirectRanking() {
+    return true;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterRank> getDirectRanks(
+      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
+    String escapedCollation = escapePostgresCollation(collation);
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("WITH t_with_flags AS (");
+    sb.append("  SELECT c, ");
+    sb.append("         (CONCAT('a', c, 'a') = 'aa' COLLATE ")
+        .append(escapedCollation)
+        .append(") AS is_empty, ");
+    sb.append("         (CONCAT('a', c, 'a') = 'a a' COLLATE ")
+        .append(escapedCollation)
+        .append(") AS is_space ");
+    sb.append("  FROM (VALUES ");
+    for (int i = 0; i < codepoints.size(); i++) {
+      if (i > 0) {
+        sb.append(", ");
+      }
+      sb.append("(?::text)");
+    }
+    sb.append(") AS t(c)");
+    sb.append(")");
+    sb.append("SELECT c, is_empty, is_space, ");
+    sb.append(
+            "       DENSE_RANK() OVER (PARTITION BY is_empty ORDER BY (CONCAT('a', c, 'a') COLLATE ")
+        .append(escapedCollation)
+        .append(")) - 1 AS rank, ");
+    sb.append("       DENSE_RANK() OVER (PARTITION BY is_empty, is_space ORDER BY (c COLLATE ")
+        .append(escapedCollation)
+        .append(")) - 1 AS rank_ps ");
+    sb.append("FROM t_with_flags");
+
+    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
+    try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
+      for (int i = 0; i < codepoints.size(); i++) {
+        String s = new String(Character.toChars(codepoints.get(i)));
+        stmt.setString(i + 1, s);
+      }
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String charsetChar = rs.getString("c");
+          if (charsetChar == null || charsetChar.isEmpty()) {
+            continue;
+          }
+          int cp = charsetChar.codePointAt(0);
+          long rank = rs.getLong("rank");
+          long rankPs = rs.getLong("rank_ps");
+          boolean isEmpty = rs.getBoolean("is_empty");
+          boolean isSpace = rs.getBoolean("is_space");
+          result.add(
+              new UniformSplitterDBAdapter.CharacterRank(cp, rank, rankPs, isEmpty, isSpace));
+        }
+      }
+    }
+    return result;
+  }
+
+  private String escapePostgresCollation(String collation) {
+    if (collation == null) {
+      return null;
+    }
+    String clean = collation.replace("\"", "");
+    return "\"" + clean + "\"";
   }
 }

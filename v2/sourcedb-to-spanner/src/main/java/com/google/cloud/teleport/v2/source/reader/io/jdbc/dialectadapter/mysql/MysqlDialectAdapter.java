@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CollationQueryResultType;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -47,8 +48,10 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -741,13 +744,157 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace, 4);
+  }
+
+  @Override
+  public String getCollationsOrderQuery(
+      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    if (maxBytes < 4) {
+      query = removeSegment(query, "4_BYTE");
+    }
+    if (maxBytes < 3) {
+      query = removeSegment(query, "3_BYTE");
+    }
+    if (maxBytes < 2) {
+      query = removeSegment(query, "2_BYTE");
+    }
+
     Map<String, String> tags = new HashMap<>();
     // The SQL template uses bare tags (no surrounding quotes) because the charset and collation
     // names appear in USING and COLLATE clauses which do not accept quoted identifiers.
     tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
     tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
     return replaceTagsAndSanitize(query, tags);
+  }
+
+  private String removeSegment(String sql, String byteSize) {
+    String startTag = "/*START_" + byteSize + "*/";
+    String endTag = "/*END_" + byteSize + "*/";
+    int startIndex = sql.indexOf(startTag);
+    int endIndex = sql.indexOf(endTag);
+    if (startIndex != -1 && endIndex != -1) {
+      return sql.substring(0, startIndex) + sql.substring(endIndex + endTag.length());
+    }
+    return sql;
+  }
+
+  @Override
+  public boolean supportsBatchedWeightRetrieval() {
+    return true;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterWeight> getWeights(
+      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
+    String cleanCollation = cleanBackticks(collation);
+    String cleanCharset = cleanCollation.split("_")[0];
+    String escapedCharset = escapeMySql(cleanCharset);
+    String escapedCollation = escapeMySql(cleanCollation);
+
+    List<UniformSplitterDBAdapter.CharacterWeight> weights = new ArrayList<>();
+    int batchSize = 1000;
+    for (int i = 0; i < codepoints.size(); i += batchSize) {
+      List<Integer> batch = codepoints.subList(i, Math.min(i + batchSize, codepoints.size()));
+      weights.addAll(getWeightsBatch(conn, batch, escapedCharset, escapedCollation));
+    }
+    return weights;
+  }
+
+  private List<UniformSplitterDBAdapter.CharacterWeight> getWeightsBatch(
+      Connection conn, List<Integer> batch, String charset, String collation) throws SQLException {
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("SELECT charset_char, ");
+    sb.append("WEIGHT_STRING(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS weight_non_trailing, ");
+    sb.append("WEIGHT_STRING(charset_char COLLATE ")
+        .append(collation)
+        .append(") AS weight_trailing, ");
+    sb.append("(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) = CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS is_empty, ");
+    sb.append("(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) = CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), CONVERT(' ' USING ")
+        .append(charset)
+        .append("), CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS is_space ");
+    sb.append("FROM (");
+    for (int i = 0; i < batch.size(); i++) {
+      if (i > 0) {
+        sb.append(" UNION ALL ");
+      }
+      sb.append("SELECT ? AS charset_char");
+    }
+    sb.append(") AS t");
+
+    List<UniformSplitterDBAdapter.CharacterWeight> result = new ArrayList<>();
+    try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
+      for (int i = 0; i < batch.size(); i++) {
+        String s = new String(Character.toChars(batch.get(i)));
+        stmt.setString(i + 1, s);
+      }
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String charsetChar = rs.getString("charset_char");
+          if (charsetChar == null || charsetChar.isEmpty()) {
+            continue;
+          }
+          int cp = charsetChar.codePointAt(0);
+          byte[] wNt = rs.getBytes("weight_non_trailing");
+          byte[] wT = rs.getBytes("weight_trailing");
+          boolean isEmpty = rs.getBoolean("is_empty");
+          boolean isSpace = rs.getBoolean("is_space");
+          result.add(new UniformSplitterDBAdapter.CharacterWeight(cp, wNt, wT, isEmpty, isSpace));
+        }
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public int getCharsetMaxLength(Connection conn, String charsetName) throws SQLException {
+    String cleanCharset = cleanBackticks(charsetName);
+    String query =
+        "SELECT MAXLEN FROM INFORMATION_SCHEMA.CHARACTER_SETS WHERE CHARACTER_SET_NAME = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(query)) {
+      stmt.setString(1, cleanCharset);
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return rs.getInt("MAXLEN");
+        }
+      }
+    }
+    return 4; // Fallback
+  }
+
+  private String cleanBackticks(String s) {
+    if (s == null) {
+      return null;
+    }
+    return s.replace("`", "");
   }
 
   @Override
