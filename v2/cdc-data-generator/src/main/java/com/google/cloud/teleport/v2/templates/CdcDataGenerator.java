@@ -40,9 +40,9 @@ import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -79,10 +79,6 @@ public class CdcDataGenerator {
 
   public static PipelineResult run(CdcDataGeneratorOptions options) {
     Pipeline pipeline = Pipeline.create(options);
-
-    // Register SerializableCoder for Row class globally since we use dynamically
-    // constructed schemas at runtime
-    pipeline.getCoderRegistry().registerCoderForClass(Row.class, SerializableCoder.of(Row.class));
 
     SinkConfig sinkConfig;
     try {
@@ -146,8 +142,8 @@ public class CdcDataGenerator {
                       public void processElement(ProcessContext c) {
                         String tableName = c.element().getKey();
                         Row pkValues = c.element().getValue();
-                        int hash = (tableName + pkValues.toString()).hashCode();
-                        int shard = Math.abs(hash % keyParallelism);
+                        int hash = Objects.hash(tableName, pkValues);
+                        int shard = Math.floorMod(hash, keyParallelism);
                         c.output(KV.of(shard, GeneratedRecord.create(tableName, pkValues)));
                       }
                     }))
