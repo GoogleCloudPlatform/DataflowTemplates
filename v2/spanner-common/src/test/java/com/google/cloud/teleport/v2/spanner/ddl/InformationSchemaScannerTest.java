@@ -119,20 +119,20 @@ public class InformationSchemaScannerTest {
   void mockGSQLCheckConstraint(ReadContext context) {
     Statement listCheckConstraints =
         Statement.of(
-            "SELECT ctu.TABLE_NAME,"
-                + " cc.CONSTRAINT_NAME,"
-                + " cc.CHECK_CLAUSE"
-                + " FROM INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE as ctu"
-                + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
-                + " ON ctu.constraint_catalog = cc.constraint_catalog"
-                + " AND ctu.constraint_schema = cc.constraint_schema"
-                + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
-                + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
-                + " AND ctu.table_catalog = ''"
-                + " AND ctu.table_schema = ''"
-                + " AND ctu.constraint_catalog = ''"
-                + " AND ctu.constraint_schema = ''"
-                + " AND cc.SPANNER_STATE = 'COMMITTED';");
+                "SELECT ctu.TABLE_NAME,"
+                    + " cc.CONSTRAINT_NAME,"
+                    + " cc.CHECK_CLAUSE"
+                    + " FROM INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE as ctu"
+                    + " INNER JOIN @{JOIN_METHOD=HASH_JOIN} INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " ON ctu.constraint_catalog = cc.constraint_catalog"
+                    + " AND ctu.constraint_schema = cc.constraint_schema"
+                    + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
+                    + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
+                    + " AND ctu.table_catalog = ''"
+                    + " AND ctu.table_schema = ''"
+                    + " AND ctu.constraint_catalog = ''"
+                    + " AND ctu.constraint_schema = ''"
+                    + " AND cc.SPANNER_STATE = 'COMMITTED';");
     ResultSet listCheckConstraintsResultSet = mock(ResultSet.class);
     when(context.executeQuery(listCheckConstraints)).thenReturn(listCheckConstraintsResultSet);
     when(listCheckConstraintsResultSet.next()).thenReturn(true, false);
@@ -279,20 +279,20 @@ public class InformationSchemaScannerTest {
   void mockPgSQLCheckConstraint(ReadContext context) {
     Statement listCheckConstraints =
         Statement.of(
-            "SELECT ctu.TABLE_NAME,"
-                + " cc.CONSTRAINT_NAME,"
-                + " cc.CHECK_CLAUSE"
-                + " FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS as ctu"
-                + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
-                + " ON ctu.constraint_catalog = cc.constraint_catalog"
-                + " AND ctu.constraint_schema = cc.constraint_schema"
-                + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
-                + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
-                + " AND ctu.table_catalog = ctu.constraint_catalog"
-                + " AND ctu.table_schema NOT IN"
-                + "('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND ctu.table_schema = ctu.constraint_schema"
-                + " AND cc.SPANNER_STATE = 'COMMITTED';");
+                "SELECT ctu.TABLE_NAME,"
+                    + " cc.CONSTRAINT_NAME,"
+                    + " cc.CHECK_CLAUSE"
+                    + " FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS as ctu"
+                    + " INNER JOIN /*@ JOIN_METHOD=HASH_JOIN */ INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " ON ctu.constraint_catalog = cc.constraint_catalog"
+                    + " AND ctu.constraint_schema = cc.constraint_schema"
+                    + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
+                    + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
+                    + " AND ctu.table_catalog = ctu.constraint_catalog"
+                    + " AND ctu.table_schema NOT IN"
+                    + "('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND ctu.table_schema = ctu.constraint_schema"
+                    + " AND cc.SPANNER_STATE = 'COMMITTED';");
     ResultSet listCheckConstraintsResultSet = mock(ResultSet.class);
     when(context.executeQuery(listCheckConstraints)).thenReturn(listCheckConstraintsResultSet);
     when(listCheckConstraintsResultSet.next()).thenReturn(true, false);
