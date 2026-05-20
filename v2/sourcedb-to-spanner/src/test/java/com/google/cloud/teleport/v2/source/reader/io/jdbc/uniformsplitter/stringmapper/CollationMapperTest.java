@@ -34,7 +34,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CharacterRank;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CharacterWeight;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -368,8 +367,7 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv", mockResultSet);
-    CollationMapper collationMapper =
-        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
+    CollationMapper collationMapper = fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -414,8 +412,7 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-as-cs.tsv", mockResultSet);
-    CollationMapper collationMapper =
-        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
+    CollationMapper collationMapper = fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -447,8 +444,7 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-unicode-ci.tsv", mockResultSet);
-    CollationMapper collationMapper =
-        CollationMapper.fromResultSetWithRanks(mockResultSet, collationReference);
+    CollationMapper collationMapper = fromResultSetWithRanks(mockResultSet, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -481,16 +477,15 @@ public class CollationMapperTest {
             .setPadSpace(false)
             .build();
 
-    when(mockDbAdapter.supportsBatchedWeightRetrieval()).thenReturn(true);
+    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
 
-    List<CharacterWeight> weights = new ArrayList<>();
-    // Add weights for Latin-1 codepoints (0 to 255)
+    List<CharacterRank> ranks = new ArrayList<>();
+    // Add ranks for Latin-1 codepoints (0 to 255)
     for (int cp = 0; cp < 256; cp++) {
-      int equiv = (cp >= 'a' && cp <= 'z') ? (cp - 32) : cp;
-      byte[] weight = new byte[] {(byte) equiv, 0};
-      weights.add(new CharacterWeight(cp, weight, weight, false, cp == ' '));
+      long rank = cp;
+      ranks.add(new CharacterRank(cp, rank, rank, false, false));
     }
-    when(mockDbAdapter.getWeights(any(), any(), any())).thenReturn(weights);
+    when(mockDbAdapter.getRanks(any(), any(), any())).thenReturn(ranks);
 
     CollationMapper collationMapper =
         CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
@@ -508,7 +503,7 @@ public class CollationMapperTest {
             .setPadSpace(false)
             .build();
 
-    when(mockDbAdapter.supportsDirectRanking()).thenReturn(true);
+    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
 
     Map<Integer, Integer> cpToEquiv = new HashMap<>();
     for (int cp = 0; cp < 256; cp++) {
@@ -541,7 +536,7 @@ public class CollationMapperTest {
       long rankPs = (cp == ' ') ? 0L : equivToRankPs.get(equiv);
       ranks.add(new CharacterRank(cp, rank, rankPs, false, cp == ' '));
     }
-    when(mockDbAdapter.getDirectRanks(any(), any(), any())).thenReturn(ranks);
+    when(mockDbAdapter.getRanks(any(), any(), any())).thenReturn(ranks);
 
     CollationMapper collationMapper =
         CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
@@ -559,8 +554,8 @@ public class CollationMapperTest {
             .setPadSpace(false)
             .build();
 
-    when(mockDbAdapter.supportsBatchedWeightRetrieval()).thenReturn(true);
-    when(mockDbAdapter.getWeights(any(), any(), any()))
+    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
+    when(mockDbAdapter.getRanks(any(), any(), any()))
         .thenThrow(new SQLException("Mocked connection failure"));
 
     // Fallback mock settings
@@ -574,12 +569,10 @@ public class CollationMapperTest {
     when(mockStatement.execute(any())).thenReturn(true);
     when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
-    when(mockResultSet.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    byte[] weightBytes = new byte[] {0x01, 0x00};
-    when(mockResultSet.getBytes(WEIGHT_NON_TRAILING_COL)).thenReturn(weightBytes);
-    when(mockResultSet.getBytes(WEIGHT_TRAILING_COL)).thenReturn(weightBytes);
-    when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
-    when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
+
+    List<CharacterRank> ranks = new java.util.ArrayList<>();
+    ranks.add(new CharacterRank('a', 0L, 0L, false, false));
+    when(mockDbAdapter.processCollationResultSet(any(), any())).thenReturn(ranks);
 
     CollationMapper collationMapper =
         CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
@@ -597,9 +590,8 @@ public class CollationMapperTest {
             .setPadSpace(false)
             .build();
 
-    // Force fallback by disabling direct ranking/batch weight support
-    when(mockDbAdapter.supportsBatchedWeightRetrieval()).thenReturn(false);
-    when(mockDbAdapter.supportsDirectRanking()).thenReturn(false);
+    // Force fallback by disabling ranks retrieval support
+    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(false);
 
     // Mock 4-byte charset length, but we expect it to be capped at 3
     when(mockDbAdapter.getCharsetMaxLength(any(), eq("utf8mb4"))).thenReturn(4);
@@ -612,17 +604,38 @@ public class CollationMapperTest {
     when(mockStatement.execute(any())).thenReturn(true);
     when(mockStatement.getResultSet()).thenReturn(mockResultSet);
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
-    when(mockResultSet.getString(CHARSET_CHAR_COL)).thenReturn("a");
-    byte[] weightBytes = new byte[] {0x01, 0x00};
-    when(mockResultSet.getBytes(WEIGHT_NON_TRAILING_COL)).thenReturn(weightBytes);
-    when(mockResultSet.getBytes(WEIGHT_TRAILING_COL)).thenReturn(weightBytes);
-    when(mockResultSet.getBoolean(IS_EMPTY_COL)).thenReturn(false);
-    when(mockResultSet.getBoolean(IS_SPACE_COL)).thenReturn(false);
+
+    List<CharacterRank> ranks = new java.util.ArrayList<>();
+    ranks.add(new CharacterRank('a', 0L, 0L, false, false));
+    when(mockDbAdapter.processCollationResultSet(any(), any())).thenReturn(ranks);
 
     CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
 
     // Verify that maxBytes is capped at 3 when querying the database adapter
     verify(mockDbAdapter)
         .getCollationsOrderQuery(eq("utf8mb4"), eq("utf8mb4_unicode_ci"), eq(false), eq(3));
+  }
+
+  private static CollationMapper fromResultSetWithRanks(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    List<UniformSplitterDBAdapter.CharacterRank> list = new ArrayList<>();
+    while (rs.next()) {
+      String charsetChar = rs.getString(CHARSET_CHAR_COL);
+      if (charsetChar == null || charsetChar.isEmpty()) {
+        continue;
+      }
+      int c = charsetChar.codePointAt(0);
+      com.google.common.base.Preconditions.checkArgument(
+          charsetChar.length() == Character.charCount(c),
+          "Expected single character from collation query, got: %s",
+          charsetChar);
+      long rankVal = rs.getLong(CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_COL);
+      long rankPsVal =
+          rs.getLong(CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL);
+      boolean isEmpty = rs.getBoolean(IS_EMPTY_COL);
+      boolean isSpace = rs.getBoolean(IS_SPACE_COL);
+      list.add(new UniformSplitterDBAdapter.CharacterRank(c, rankVal, rankPsVal, isEmpty, isSpace));
+    }
+    return CollationMapper.fromRanksCollection(list, collationReference);
   }
 }

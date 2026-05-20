@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CollationQueryResultType;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -781,28 +780,28 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   }
 
   @Override
-  public boolean supportsBatchedWeightRetrieval() {
+  public boolean supportsRanksRetrieval() {
     return true;
   }
 
   @Override
-  public List<UniformSplitterDBAdapter.CharacterWeight> getWeights(
+  public List<UniformSplitterDBAdapter.CharacterRank> getRanks(
       Connection conn, List<Integer> codepoints, String collation) throws SQLException {
     String cleanCollation = cleanBackticks(collation);
     String cleanCharset = cleanCollation.split("_")[0];
     String escapedCharset = escapeMySql(cleanCharset);
     String escapedCollation = escapeMySql(cleanCollation);
 
-    List<UniformSplitterDBAdapter.CharacterWeight> weights = new ArrayList<>();
+    List<CharacterWeight> weights = new ArrayList<>();
     int batchSize = 1000;
     for (int i = 0; i < codepoints.size(); i += batchSize) {
       List<Integer> batch = codepoints.subList(i, Math.min(i + batchSize, codepoints.size()));
       weights.addAll(getWeightsBatch(conn, batch, escapedCharset, escapedCollation));
     }
-    return weights;
+    return computeRanksFromWeights(weights);
   }
 
-  private List<UniformSplitterDBAdapter.CharacterWeight> getWeightsBatch(
+  private List<CharacterWeight> getWeightsBatch(
       Connection conn, List<Integer> batch, String charset, String collation) throws SQLException {
 
     StringBuilder sb = new StringBuilder();
@@ -850,7 +849,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     }
     sb.append(") AS t");
 
-    List<UniformSplitterDBAdapter.CharacterWeight> result = new ArrayList<>();
+    List<CharacterWeight> result = new ArrayList<>();
     try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
       for (int i = 0; i < batch.size(); i++) {
         String s = new String(Character.toChars(batch.get(i)));
@@ -867,11 +866,131 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           byte[] wT = rs.getBytes("weight_trailing");
           boolean isEmpty = rs.getBoolean("is_empty");
           boolean isSpace = rs.getBoolean("is_space");
-          result.add(new UniformSplitterDBAdapter.CharacterWeight(cp, wNt, wT, isEmpty, isSpace));
+          result.add(new CharacterWeight(cp, wNt, wT, isEmpty, isSpace));
         }
       }
     }
     return result;
+  }
+
+  private List<UniformSplitterDBAdapter.CharacterRank> computeRanksFromWeights(
+      List<CharacterWeight> rows) {
+    java.util.Comparator<String> weightKeyOrder = java.util.Comparator.naturalOrder();
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty) {
+        byte[] wNt = row.weightNonTrailing;
+        String keyNt =
+            (wNt != null) ? new String(wNt, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
+        ntGroups
+            .computeIfAbsent(keyNt, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+    Map<Integer, Long> ntRank = new HashMap<>();
+    long rank = 0;
+    for (java.util.TreeMap<Integer, Integer> group : ntGroups.values()) {
+      for (Integer c : group.values()) {
+        ntRank.put(c, rank);
+      }
+      rank++;
+    }
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty && !row.isSpace) {
+        byte[] wT = row.weightTrailing;
+        String keyT =
+            (wT != null) ? new String(wT, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
+        tGroups
+            .computeIfAbsent(keyT, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+    Map<Integer, Long> tRank = new HashMap<>();
+    long tRankCounter = 0;
+    for (java.util.TreeMap<Integer, Integer> group : tGroups.values()) {
+      for (Integer c : group.values()) {
+        tRank.put(c, tRankCounter);
+      }
+      tRankCounter++;
+    }
+
+    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
+    for (CharacterWeight row : rows) {
+      long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
+      long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
+      result.add(
+          new UniformSplitterDBAdapter.CharacterRank(
+              row.codepoint, codepointRank, codepointRankPs, row.isEmpty, row.isSpace));
+    }
+    return result;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterRank> processCollationResultSet(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    List<CharacterWeight> list = new ArrayList<>();
+    while (rs.next()) {
+      String charsetChar =
+          rs.getString(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
+      if (charsetChar == null || charsetChar.isEmpty()) {
+        continue;
+      }
+      int c = charsetChar.codePointAt(0);
+      byte[] wNt =
+          rs.getBytes(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+      byte[] wT =
+          rs.getBytes(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
+      boolean isEmpty =
+          rs.getBoolean(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace =
+          rs.getBoolean(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
+
+      if (wNt == null && !isEmpty) {
+        logger.warn(
+            "Skipping character codepoint={} for {} because weight_non_trailing is NULL",
+            c,
+            collationReference);
+        continue;
+      }
+      list.add(new CharacterWeight(c, wNt, wT, isEmpty, isSpace));
+    }
+    return computeRanksFromWeights(list);
+  }
+
+  private static class CharacterWeight {
+    private final int codepoint;
+    private final byte[] weightNonTrailing;
+    private final byte[] weightTrailing;
+    private final boolean isEmpty;
+    private final boolean isSpace;
+
+    public CharacterWeight(
+        int codepoint,
+        byte[] weightNonTrailing,
+        byte[] weightTrailing,
+        boolean isEmpty,
+        boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weightNonTrailing = weightNonTrailing;
+      this.weightTrailing = weightTrailing;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
   }
 
   @Override
@@ -895,11 +1014,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       return null;
     }
     return s.replace("`", "");
-  }
-
-  @Override
-  public CollationQueryResultType collationQueryResultType() {
-    return CollationQueryResultType.WEIGHT_BYTES;
   }
 
   /**

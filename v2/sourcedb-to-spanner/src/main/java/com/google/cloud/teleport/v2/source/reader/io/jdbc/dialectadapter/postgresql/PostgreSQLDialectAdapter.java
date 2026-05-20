@@ -556,12 +556,12 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   @Override
-  public boolean supportsDirectRanking() {
+  public boolean supportsRanksRetrieval() {
     return true;
   }
 
   @Override
-  public List<UniformSplitterDBAdapter.CharacterRank> getDirectRanks(
+  public List<UniformSplitterDBAdapter.CharacterRank> getRanks(
       Connection conn, List<Integer> codepoints, String collation) throws SQLException {
     String escapedCollation = escapePostgresCollation(collation);
 
@@ -614,6 +614,21 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
               new UniformSplitterDBAdapter.CharacterRank(cp, rank, rankPs, isEmpty, isSpace));
         }
       }
+    }
+    return result;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterRank> processCollationResultSet(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
+    while (rs.next()) {
+      int cp = rs.getInt("codepoint");
+      long rank = rs.getLong("codepoint_rank");
+      long rankPs = rs.getLong("codepoint_rank_pad_space");
+      boolean isEmpty = rs.getBoolean("is_empty");
+      boolean isSpace = rs.getBoolean("is_space");
+      result.add(new UniformSplitterDBAdapter.CharacterRank(cp, rank, rankPs, isEmpty, isSpace));
     }
     return result;
   }
