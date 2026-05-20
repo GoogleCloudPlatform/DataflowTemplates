@@ -111,6 +111,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -125,6 +126,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -152,10 +154,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -169,6 +173,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -179,6 +184,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery query =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -212,14 +218,17 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -233,6 +242,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range childRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col2")
             .setColClass(Integer.class)
@@ -243,6 +253,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -254,6 +265,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery query =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -292,10 +304,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -317,6 +331,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -352,14 +367,17 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -389,6 +407,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -432,10 +451,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -445,6 +466,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .build()));
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -465,6 +487,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -475,6 +498,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -508,10 +532,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -525,6 +551,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     // Test for initial column boundary discovery (no parent range)
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -548,6 +575,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     // Test for column boundary discovery within a parent range
     Range parentRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
@@ -560,6 +588,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -608,6 +637,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("uuid_col")
@@ -621,6 +651,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery query =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColumnName("col2")
             .setColumnClass(Integer.class)

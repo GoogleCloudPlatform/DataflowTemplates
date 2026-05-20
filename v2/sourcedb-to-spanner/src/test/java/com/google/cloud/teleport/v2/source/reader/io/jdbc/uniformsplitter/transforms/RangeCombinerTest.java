@@ -41,6 +41,7 @@ public class RangeCombinerTest {
 
     Range rangeBase =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -106,6 +107,7 @@ public class RangeCombinerTest {
 
     Range range1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Long.class)
@@ -119,6 +121,7 @@ public class RangeCombinerTest {
 
     Range range2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("col2")
             .setColClass(Long.class)

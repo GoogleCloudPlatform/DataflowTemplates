@@ -70,8 +70,7 @@ public abstract class PartitionColumn implements Serializable {
         .setStringMaxLength(null)
         .setNumericScale(null)
         .setDecimalStepSize(null)
-        .setDatetimePrecision(null)
-        .setColumnTypeName("");
+        .setDatetimePrecision(null);
   }
 
   public abstract Builder toBuilder();

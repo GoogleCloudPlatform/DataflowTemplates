@@ -73,6 +73,7 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery query1 =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard1Id)
@@ -84,6 +85,7 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery query2 =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard2Id)
@@ -95,6 +97,7 @@ public class RangeBoundaryTransformTest {
 
     Range expectedRange1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard1Id)
@@ -111,6 +114,7 @@ public class RangeBoundaryTransformTest {
 
     Range expectedRange2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard2Id)
@@ -139,6 +143,7 @@ public class RangeBoundaryTransformTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -156,6 +161,7 @@ public class RangeBoundaryTransformTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -191,10 +197,12 @@ public class RangeBoundaryTransformTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -207,6 +215,7 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery firstColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -217,6 +226,7 @@ public class RangeBoundaryTransformTest {
             .build();
     Range fullCol1Range =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -233,6 +243,7 @@ public class RangeBoundaryTransformTest {
 
     Range unSplitableCol1Range =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -248,6 +259,7 @@ public class RangeBoundaryTransformTest {
             .build();
     ColumnForBoundaryQuery secondColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -260,6 +272,7 @@ public class RangeBoundaryTransformTest {
     Range col2Range =
         unSplitableCol1Range.withChildRange(
             Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -294,6 +307,7 @@ public class RangeBoundaryTransformTest {
                                 .map(
                                     c ->
                                         PartitionColumn.builder()
+                                            .setColumnTypeName("dummy")
                                             .setColumnName(c)
                                             .setColumnClass(Long.class)
                                             .build())
@@ -322,6 +336,7 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery firstColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -332,6 +347,7 @@ public class RangeBoundaryTransformTest {
             .build();
     Range fullCol1Range =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -348,6 +364,7 @@ public class RangeBoundaryTransformTest {
 
     ColumnForBoundaryQuery secondColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -359,6 +376,7 @@ public class RangeBoundaryTransformTest {
             .build();
     Range fullCol3Range =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -392,6 +410,7 @@ public class RangeBoundaryTransformTest {
                                 .map(
                                     c ->
                                         PartitionColumn.builder()
+                                            .setColumnTypeName("dummy")
                                             .setColumnName(c)
                                             .setColumnClass(Long.class)
                                             .build())
@@ -412,6 +431,7 @@ public class RangeBoundaryTransformTest {
                                 .map(
                                     c ->
                                         PartitionColumn.builder()
+                                            .setColumnTypeName("dummy")
                                             .setColumnName(c)
                                             .setColumnClass(Long.class)
                                             .build())

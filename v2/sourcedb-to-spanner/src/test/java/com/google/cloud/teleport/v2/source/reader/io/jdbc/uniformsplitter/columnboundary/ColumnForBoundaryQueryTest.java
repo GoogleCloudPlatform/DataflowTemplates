@@ -31,6 +31,7 @@ public class ColumnForBoundaryQueryTest {
   public void testColumnForBoundaryQuery() {
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -44,6 +45,7 @@ public class ColumnForBoundaryQueryTest {
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryWithDefaults =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -54,6 +56,7 @@ public class ColumnForBoundaryQueryTest {
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

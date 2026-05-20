@@ -54,6 +54,7 @@ public class QueryProviderImplTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -67,6 +68,7 @@ public class QueryProviderImplTest {
 
     Range knownTableRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(knownTable)
             .setColName("col1")
@@ -95,6 +97,7 @@ public class QueryProviderImplTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -108,6 +111,7 @@ public class QueryProviderImplTest {
 
     Range unknownTableRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(
                 TableIdentifier.builder()
@@ -132,7 +136,11 @@ public class QueryProviderImplTest {
             .setTableName("testTable")
             .build();
     PartitionColumn col =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Integer.class)
+            .build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableId)

@@ -110,6 +110,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -123,6 +124,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -257,6 +259,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
 
     Range firstRead =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -383,6 +386,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
   public void testMaxPartitionAutoInferencePreConditions() {
     Range initialRangeWithWrongColumChild =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -396,6 +400,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .build();
     Range initialRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -449,10 +454,12 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()));
@@ -650,10 +657,12 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("id")
                         .setColumnClass(Long.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("name")
                         .setColumnClass(String.class)
                         .setStringMaxLength(256)
@@ -674,12 +683,14 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("address")
                         .setColumnClass(String.class)
                         .setStringMaxLength(256)
                         .setStringCollation(collation2)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("comment")
                         .setColumnClass(String.class)
                         .setStringMaxLength(256)
@@ -700,6 +711,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("id")
                         .setColumnClass(Long.class)
                         .build())) // No string collation
@@ -756,6 +768,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -804,10 +817,12 @@ public class ReadWithUniformPartitionsTest implements Serializable {
               .setPartitionColumns(
                   ImmutableList.of(
                       PartitionColumn.builder()
+                          .setColumnTypeName("dummy")
                           .setColumnName("col1")
                           .setColumnClass(Integer.class)
                           .build(),
                       PartitionColumn.builder()
+                          .setColumnTypeName("dummy")
                           .setColumnName("col2")
                           .setColumnClass(Integer.class)
                           .build()))
@@ -832,10 +847,12 @@ public class ReadWithUniformPartitionsTest implements Serializable {
               .setPartitionColumns(
                   ImmutableList.of(
                       PartitionColumn.builder()
+                          .setColumnTypeName("dummy")
                           .setColumnName("col1")
                           .setColumnClass(Integer.class)
                           .build(),
                       PartitionColumn.builder()
+                          .setColumnTypeName("dummy")
                           .setColumnName("col2")
                           .setColumnClass(Integer.class)
                           .build()))
@@ -930,6 +947,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -963,6 +981,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -1005,6 +1024,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -1042,6 +1062,7 @@ public class ReadWithUniformPartitionsTest implements Serializable {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col")
                         .setColumnClass(Integer.class)
                         .build()))

@@ -100,6 +100,7 @@ public class RangeCountDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -110,6 +111,7 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -162,6 +164,7 @@ public class RangeCountDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -172,6 +175,7 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -221,6 +225,7 @@ public class RangeCountDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -231,6 +236,7 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -277,6 +283,7 @@ public class RangeCountDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -287,6 +294,7 @@ public class RangeCountDoFnTest {
                     .build()));
     Range input =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -317,6 +325,7 @@ public class RangeCountDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Long.class)
                         .build()))
@@ -337,6 +346,7 @@ public class RangeCountDoFnTest {
 
     Range inputMissingTable =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -372,6 +382,7 @@ public class RangeCountDoFnTest {
 
     Range inputExistingTable =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(existingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -382,6 +393,7 @@ public class RangeCountDoFnTest {
 
     Range inputMissingFromCountQueries =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(missingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -392,6 +404,7 @@ public class RangeCountDoFnTest {
 
     Range inputMissingFromNumColumnsMap =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(missingTable)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -440,6 +453,7 @@ public class RangeCountDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Long.class)
                         .build()))
@@ -458,6 +472,7 @@ public class RangeCountDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Long.class)
                         .build()))
@@ -506,6 +521,7 @@ public class RangeCountDoFnTest {
 
     Range input1 =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -519,6 +535,7 @@ public class RangeCountDoFnTest {
             .build();
     Range input2 =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")

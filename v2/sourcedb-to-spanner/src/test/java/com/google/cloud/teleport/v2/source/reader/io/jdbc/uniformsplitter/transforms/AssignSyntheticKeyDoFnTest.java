@@ -49,6 +49,7 @@ public class AssignSyntheticKeyDoFnTest {
 
     Range range1 =
         Range.<Long>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("id")
             .setColClass(Long.class)
@@ -59,6 +60,7 @@ public class AssignSyntheticKeyDoFnTest {
 
     Range range2 =
         Range.<Long>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("id")
             .setColClass(Long.class)

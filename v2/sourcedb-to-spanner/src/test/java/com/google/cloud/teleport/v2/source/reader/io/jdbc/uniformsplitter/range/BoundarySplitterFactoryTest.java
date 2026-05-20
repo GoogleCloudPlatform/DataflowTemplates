@@ -119,6 +119,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(0)
@@ -147,6 +148,7 @@ public class BoundarySplitterFactoryTest {
                 start,
                 end,
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build()));
@@ -160,6 +162,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(2)
@@ -315,6 +318,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(String.class)
             .setStringCollation(
@@ -396,6 +400,7 @@ public class BoundarySplitterFactoryTest {
                 "Spanner",
                 "branner",
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("intcol")
                     .setColumnClass(Integer.class)
                     // Missing numeric scale
@@ -455,6 +460,7 @@ public class BoundarySplitterFactoryTest {
                 Timestamp.valueOf("1970-01-01 00:00:00.000000000"),
                 Timestamp.valueOf("1980-01-01 00:00:00.000000000"),
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Timestamp.class)
                     .build(),
@@ -586,6 +592,7 @@ public class BoundarySplitterFactoryTest {
     BoundarySplitter<Duration> splitter = BoundarySplitterFactory.create(Duration.class);
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Duration.class)
             .setDatetimePrecision(2)
@@ -618,6 +625,7 @@ public class BoundarySplitterFactoryTest {
                 start,
                 end,
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build()));

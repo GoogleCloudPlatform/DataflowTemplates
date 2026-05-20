@@ -83,6 +83,7 @@ public class RangeTest {
   public void testRangeWithChild() {
     Range basicRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -130,6 +131,7 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -155,6 +157,7 @@ public class RangeTest {
     long mid = 21L;
     Range rangeChild =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -213,6 +216,7 @@ public class RangeTest {
   public void testAccumulateCount() {
     Range uncountedRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -245,6 +249,7 @@ public class RangeTest {
 
     Range rangeBase =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -265,6 +270,7 @@ public class RangeTest {
     long mid = 21L;
     Range leftChild =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -282,6 +288,7 @@ public class RangeTest {
 
     Range rightChild =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -367,6 +374,7 @@ public class RangeTest {
   public void testRangeEquality() {
     Range basicRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -395,6 +403,7 @@ public class RangeTest {
     assertThat(basicRange)
         .isNotEqualTo(
             Range.builder()
+                .setColumnTypeName("dummy")
                 .setTableIdentifier(
                     TableIdentifier.builder()
                         .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -433,6 +442,7 @@ public class RangeTest {
 
     Range leftRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")
@@ -446,6 +456,7 @@ public class RangeTest {
 
     Range rightRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
             .setColName("id")

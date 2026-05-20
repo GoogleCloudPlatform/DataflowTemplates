@@ -307,6 +307,7 @@ public class SchemaDiscoveryImplTest {
             "testTable1",
             ImmutableList.of(
                 SourceColumnIndexInfo.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("testCol")
                     .setIndexName("PRIMARY")
                     .setIsPrimary(true)

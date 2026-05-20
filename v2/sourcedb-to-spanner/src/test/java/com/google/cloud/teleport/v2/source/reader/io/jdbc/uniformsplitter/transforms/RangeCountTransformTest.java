@@ -81,6 +81,7 @@ public class RangeCountTransformTest {
 
     Range range1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard1Id)
@@ -97,6 +98,7 @@ public class RangeCountTransformTest {
 
     Range range2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId(shard2Id)
@@ -125,6 +127,7 @@ public class RangeCountTransformTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -142,6 +145,7 @@ public class RangeCountTransformTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -171,6 +175,7 @@ public class RangeCountTransformTest {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     Range singleColNonLastRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -185,6 +190,7 @@ public class RangeCountTransformTest {
             .build();
     Range bothColRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(
                 TableIdentifier.builder()
                     .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -199,6 +205,7 @@ public class RangeCountTransformTest {
             .build()
             .withChildRange(
                 Range.<Integer>builder()
+                    .setColumnTypeName("dummy")
                     .setTableIdentifier(
                         TableIdentifier.builder()
                             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -229,6 +236,7 @@ public class RangeCountTransformTest {
                                 .map(
                                     c ->
                                         PartitionColumn.builder()
+                                            .setColumnTypeName("dummy")
                                             .setColumnName(c)
                                             .setColumnClass(Long.class)
                                             .build())
