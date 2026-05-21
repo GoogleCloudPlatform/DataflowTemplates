@@ -82,9 +82,9 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 /**
  * This pipeline ingests DataStream data from GCS as events. The events are written to Cloud
@@ -616,6 +616,10 @@ public class DataStreamToSpanner {
       LOG.error("IOException Occurred: DataStreamClient failed initialization.");
       throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
+    return getSourceTypeFromConfig(sourceConfig);
+  }
+
+  static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
     if (sourceConfig.getMysqlSourceConfig() != null) {
       return DatastreamConstants.MYSQL_SOURCE_TYPE;
     } else if (sourceConfig.getOracleSourceConfig() != null) {
@@ -649,6 +653,10 @@ public class DataStreamToSpanner {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
+    return buildPipeline(options).run();
+  }
+
+  static Pipeline buildPipeline(Options options) {
     long startTime = System.currentTimeMillis();
     /*
      * Stages:
@@ -682,13 +690,13 @@ public class DataStreamToSpanner {
             .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
             .withCommitRetrySettings(
                 RetrySettings.newBuilder()
-                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setTotalTimeout(Duration.ofMinutes(4))
+                    .setInitialRetryDelay(Duration.ofMinutes(0))
                     .setRetryDelayMultiplier(1)
-                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxRetryDelay(Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(Duration.ofMinutes(4))
                     .setRpcTimeoutMultiplier(1)
-                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxRpcTimeout(Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
@@ -776,7 +784,8 @@ public class DataStreamToSpanner {
                   .withFileReadConcurrency(options.getFileReadConcurrency())
                   .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes()))
+                      org.joda.time.Duration.standardMinutes(
+                          options.getDirectoryWatchDurationInMinutes()))
                   .withDatastreamSourceType(options.getDatastreamSourceType()));
       int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
@@ -855,7 +864,7 @@ public class DataStreamToSpanner {
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+        .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
         .apply(
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
@@ -928,8 +937,7 @@ public class DataStreamToSpanner {
                 .withTmpDirectory((options).getDeadLetterQueueDirectory() + "/tmp_severe/")
                 .setIncludePaneInfo(true)
                 .build());
-    // Execute the pipeline and return the result.
-    return pipeline.run();
+    return pipeline;
   }
 
   static SpannerConfig getShadowTableSpannerConfig(Options options) {
@@ -968,13 +976,13 @@ public class DataStreamToSpanner {
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
         .withCommitRetrySettings(
             RetrySettings.newBuilder()
-                .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                .setTotalTimeout(Duration.ofMinutes(4))
+                .setInitialRetryDelay(Duration.ofMinutes(0))
                 .setRetryDelayMultiplier(1)
-                .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setMaxRetryDelay(Duration.ofMinutes(0))
+                .setInitialRpcTimeout(Duration.ofMinutes(4))
                 .setRpcTimeoutMultiplier(1)
-                .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setMaxRpcTimeout(Duration.ofMinutes(4))
                 .setMaxAttempts(1)
                 .build());
   }
