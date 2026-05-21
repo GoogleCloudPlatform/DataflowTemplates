@@ -16,11 +16,11 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -213,7 +213,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public void createAndUploadShardConfigToGcs(
       GcsResourceManager gcsResourceManager, List<JDBCResourceManager> jdbcResourceManagers)
       throws IOException {
-    JsonArray ja = new JsonArray();
+    List<Shard> shards = new ArrayList<>();
     for (int i = 0; i < 1; ++i) {
       if (jdbcResourceManagers.get(i) instanceof MySQLResourceManager) {
         MySQLResourceManager resourceManager = (MySQLResourceManager) jdbcResourceManagers.get(i);
@@ -224,15 +224,16 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
         shard.setPassword(jdbcResourceManagers.get(i).getPassword());
         shard.setPort(String.valueOf(resourceManager.getPort()));
         shard.setDbName(jdbcResourceManagers.get(i).getDatabaseName());
-        JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-        jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-        ja.add(jsObj);
+        shards.add(shard);
       } else {
         throw new UnsupportedOperationException(
             jdbcResourceManagers.get(i).getClass().getSimpleName() + " is not supported");
       }
     }
-    String shardFileContents = ja.toString();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }

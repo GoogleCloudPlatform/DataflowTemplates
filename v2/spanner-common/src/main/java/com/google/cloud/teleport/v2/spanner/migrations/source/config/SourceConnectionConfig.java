@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.source.config;
 /**
  * Interface representing the connection configuration for a migration source database.
  *
- * <p>Implementing classes provide specific configuration details for different database engines (e.g.,
- * Cassandra, Astra DB, JDBC/MySQL/PostgreSQL).
+ * <p>Implementing classes provide specific configuration details for different database engines
+ * (e.g., Cassandra, Astra DB, JDBC/MySQL/PostgreSQL).
  */
 public interface SourceConnectionConfig {}
