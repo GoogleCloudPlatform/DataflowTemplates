@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -199,5 +200,11 @@ public class CassandraConnectionHelperTest {
     IllegalArgumentException exception =
         assertThrows(IllegalArgumentException.class, () -> connectionHelper.init(request));
     assertEquals("The options map must contain a profile named default", exception.getMessage());
+  }
+
+  @Test
+  public void testIsConnectionPoolInitialized_NullPool() {
+    connectionHelper.setConnectionPoolMap(null);
+    assertFalse(connectionHelper.isConnectionPoolInitialized());
   }
 }
