@@ -250,4 +250,73 @@ public final class ShadowTableCreatorTest {
             .build();
     return ddl;
   }
+
+  @Test
+  public void testConstructShadowTable_DescKey() {
+    Ddl primaryDbDdl =
+        Ddl.builder()
+            .createTable("table_desc")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .desc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            Ddl.builder().build(), // empty metadata ddl
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    Table shadowTable = shadowTableCreator.constructShadowTable("table_desc");
+    assertThat(shadowTable.name()).isEqualTo("shadow_table_desc");
+    assertThat(shadowTable.primaryKeys().get(0).order()).isEqualTo(IndexColumn.Order.DESC);
+  }
+
+  @Test
+  public void testCreateShadowTables_NoNewTables() {
+    Ddl primaryDbDdl =
+        Ddl.builder()
+            .createTable("table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    Ddl metadataDbDdl =
+        Ddl.builder()
+            .createTable("shadow_table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    shadowTableCreator.createShadowTablesInSpanner();
+
+    // Verify that updateDatabaseDdl was NOT called!
+    verify(mockDatabaseClient, never()).updateDatabaseDdl(any(), any(), any(), any());
+  }
 }
