@@ -205,3 +205,9 @@ variable "source_db_dialect" {
   description = "The dialect of the source database (e.g., MYSQL, POSTGRESQL)."
   default     = "MYSQL"
 }
+
+variable "tables" {
+  type        = string
+  description = "Tables to read from using partitions. Defaults to empty."
+  default     = null
+}

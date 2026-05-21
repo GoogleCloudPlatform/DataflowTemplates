@@ -199,3 +199,9 @@ variable "additional_pipeline_options" {
   description = "Additional Dataflow pipeline options."
   default     = []
 }
+
+variable "source_db_dialect" {
+  type        = string
+  description = "The dialect of the source database (e.g., MYSQL, POSTGRESQL)."
+  default     = "MYSQL"
+}

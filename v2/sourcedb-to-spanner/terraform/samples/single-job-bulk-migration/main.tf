@@ -1,3 +1,47 @@
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 4.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+  required_version = "~>1.2"
+}
+
+provider "google" {
+  project = var.project
+  region  = var.region
+}
+
+provider "google-beta" {
+  project = var.project
+  region  = var.region
+}
+
+# Enable the APIs (Added compute.googleapis.com)
+resource "google_project_service" "enabled_apis" {
+  for_each = toset([
+    "iam.googleapis.com",
+    "dataflow.googleapis.com",
+    "storage.googleapis.com",
+    "spanner.googleapis.com",
+    "compute.googleapis.com"
+  ])
+  service            = each.key
+  project            = var.project
+  disable_on_destroy = false
+}
+
+# Data sources
+data "google_project" "project" {}
+data "google_compute_default_service_account" "gce_account" {
+  depends_on = [google_project_service.enabled_apis]
+}
+
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
   count        = var.local_session_file_path != null ? 1 : 0
@@ -8,23 +52,7 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = var.working_directory_bucket
 }
 
-# Setup network firewalls rules to enable Dataflow access to source.
-resource "google_compute_firewall" "allow-dataflow-to-source" {
-  depends_on  = [google_project_service.enabled_apis]
-  project     = var.host_project != null ? var.host_project : var.project
-  name        = "allow-dataflow-to-source"
-  network     = var.network != null ? var.host_project != null ? "projects/${var.host_project}/global/networks/${var.network}" : "projects/${var.project}/global/networks/${var.network}" : "default"
-  description = "Allow traffic from Dataflow to source databases"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["3306"]
-  }
-  source_tags = ["dataflow"]
-  target_tags = ["databases"]
-}
-
-# Add roles to the service account that will run Dataflow for bulk migration
+# Add roles to the service account
 resource "google_project_iam_member" "live_migration_roles" {
   for_each = var.add_policies_to_service_account ? toset([
     "roles/viewer",
@@ -68,6 +96,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     defaultSdkHarnessLogLevel      = var.default_log_level
     fetchSize                      = var.fetch_size
     gcsOutputDirectory             = var.gcs_output_directory
+    sourceDbDialect                = var.source_db_dialect
   }
 
   service_account_email       = var.service_account_email
