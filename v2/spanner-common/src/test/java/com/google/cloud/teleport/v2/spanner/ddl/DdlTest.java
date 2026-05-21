@@ -927,11 +927,72 @@ public class DdlTest {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
     assertFalse(ddl1.equals(ddl2));
+
     Ddl.Builder ddl1Builder =
         Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable();
-    ddl1Builder.createTable("Users");
-    ddl1 = ddl1Builder.build();
-    assertFalse(ddl1.equals(ddl2));
+    Ddl ddl3 = ddl1Builder.build();
+
+    // Test same object
+    assertTrue(ddl3.equals(ddl3));
+
+    // Test null
+    assertFalse(ddl3.equals(null));
+
+    // Test different class
+    assertFalse(ddl3.equals("string"));
+
+    // Test equal objects
+    Ddl ddl4 =
+        Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable().build();
+    assertTrue(ddl3.equals(ddl4));
+
+    // Test different tables
+    Ddl ddl5 =
+        Ddl.builder()
+            .createTable("DifferentTable")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    assertFalse(ddl3.equals(ddl5));
+
+    // Test different parents (interleaving)
+    Ddl ddl6 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
+            .endTable()
+            .build();
+    Ddl ddl7 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable() // No interleave!
+            .build();
+    assertFalse(ddl6.equals(ddl7));
   }
 
   @Rule public ExpectedException thrown = ExpectedException.none();
