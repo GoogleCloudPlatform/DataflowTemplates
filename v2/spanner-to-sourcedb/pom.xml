@@ -137,6 +137,10 @@
                     <groupId>com.datastax.cassandra</groupId>
                     <artifactId>cassandra-driver-core</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.datastax.oss</groupId>
+                    <artifactId>java-driver-core</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>

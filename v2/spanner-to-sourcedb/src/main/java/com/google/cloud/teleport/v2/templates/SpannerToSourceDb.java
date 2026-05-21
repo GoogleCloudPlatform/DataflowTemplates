@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
@@ -38,12 +39,16 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
@@ -61,6 +66,7 @@ import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchem
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -647,20 +653,14 @@ public class SpannerToSourceDb {
             .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
-    List<Shard> shards;
-    String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
-      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    List<Shard> shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
 
-    } else {
-      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
-      shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
-      LOG.info("Cassandra config is: {}", shards.get(0));
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-    }
+    // cassandra is always a single sharded migration.
+    // for JDBC, shards size and IsShardedMigration option is used below.
+    String shardingMode =
+        options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)
+            ? Constants.SHARDING_MODE_SINGLE_SHARD
+            : Constants.SHARDING_MODE_MULTI_SHARD;
 
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       validateMySQLNotReadOnly(shards);
@@ -949,6 +949,53 @@ public class SpannerToSourceDb {
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
                 .setIncludePaneInfo(true)
                 .build());
+  }
+
+  /**
+   * Returns a list of shards based on the source type and source shards file path. This should be
+   * removed in Phase 2 of Standardizing config.
+   *
+   * @param sourceType The type of the source database.
+   * @param sourceShardsFilePath The GCS path to the source shards configuration file.
+   * @return A list of shards.
+   */
+  public static List<Shard> getShardList(String sourceType, String sourceShardsFilePath) {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig;
+    try {
+      // Parse the source shards configuration file to respective
+      // SourceConnectionConfig.
+      sourceConnectionConfig =
+          sourceConfigParser.parseConfiguration(sourceType, sourceShardsFilePath);
+    } catch (Exception e) {
+      LOG.error("Error parsing source config", e);
+      throw new RuntimeException("Error parsing source config", e);
+    }
+    List<Shard> shards;
+    if (sourceConnectionConfig instanceof JdbcShardConfig) {
+      shards = ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+      LOG.info("JDBC shard config is parsed.");
+    } else if (sourceConnectionConfig instanceof CassandraConnectionConfig) {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      shards =
+          cassandraConfigFileReader.getCassandraShard(
+              ((CassandraConnectionConfig) sourceConnectionConfig).getOptionsMap());
+      LOG.info("Cassandra shard config is parsed.");
+    } else {
+      String errorMessage =
+          "Invalid source config for source type: "
+              + sourceType
+              + ". Source config parsed to: "
+              + sourceConnectionConfig.getClass()
+              + ". Source config file path: "
+              + sourceShardsFilePath;
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage);
+    }
+    Preconditions.checkArgument(
+        shards != null && !shards.isEmpty(), "Shard list should have at least 1 element.");
+    return shards;
   }
 
   public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
