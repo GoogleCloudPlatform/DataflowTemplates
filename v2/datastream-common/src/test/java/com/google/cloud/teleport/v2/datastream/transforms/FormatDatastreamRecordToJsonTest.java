@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -315,6 +316,177 @@ public class FormatDatastreamRecordToJsonTest {
     assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
   }
 
+  @Test
+  public void testGetPrimaryKeys_primaryKeysField() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_pk")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("database")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("primary_keys")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "mydb");
+    sourceMetadata.put("database", "mydb");
+    sourceMetadata.put("table", "users");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put("primary_keys", new GenericData.Array<>(arraySchema, List.of("id")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "mysql-cdc-binlog");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_sqlServerReplicationIndexFallback() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_ri")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("replication_index")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "dbo");
+    sourceMetadata.put("table", "orders");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put(
+        "replication_index", new GenericData.Array<>(arraySchema, List.of("order_id")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "sqlserver-cdc-logbased");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"order_id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_nullWhenNeitherFieldPresent() throws IOException {
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_none")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "HR");
+    sourceMetadata.put("table", "employees");
+    sourceMetadata.put("change_type", "INSERT");
+    sourceMetadata.put("is_deleted", false);
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "oracle-dump");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertTrue(output.get("_metadata_primary_keys").isNull());
+  }
+
+  @Test
+  public void testGetPrimaryKeys_prefersPrimaryKeysWhenBothPresent() throws IOException {
+    Schema arraySchema = Schema.createArray(Schema.create(Schema.Type.STRING));
+    Schema sourceMetadataSchema =
+        SchemaBuilder.record("source_metadata_both")
+            .fields()
+            .name("schema")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("database")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("table")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("change_type")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("is_deleted")
+            .type()
+            .booleanType()
+            .noDefault()
+            .name("primary_keys")
+            .type(arraySchema)
+            .noDefault()
+            .name("replication_index")
+            .type(arraySchema)
+            .noDefault()
+            .endRecord();
+    GenericRecord sourceMetadata = new GenericData.Record(sourceMetadataSchema);
+    sourceMetadata.put("schema", "dbo");
+    sourceMetadata.put("database", "dbo");
+    sourceMetadata.put("table", "items");
+    sourceMetadata.put("change_type", "UPDATE");
+    sourceMetadata.put("is_deleted", false);
+    sourceMetadata.put("primary_keys", new GenericData.Array<>(arraySchema, List.of("id")));
+    sourceMetadata.put(
+        "replication_index", new GenericData.Array<>(arraySchema, List.of("repl_col")));
+
+    GenericRecord record = buildOuterRecord(sourceMetadata, "mysql-cdc-binlog");
+    String json = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    JsonNode output = new ObjectMapper().readTree(json);
+
+    assertEquals("[\"id\"]", output.get("_metadata_primary_keys").toString());
+  }
+
   private GenericRecord generateIntervalNanosRecord(
       Long years, Long months, Long days, Long hours, Long minutes, Long seconds, Long nanos) {
 
@@ -356,5 +528,46 @@ public class FormatDatastreamRecordToJsonTest {
         .type(SchemaBuilder.builder().longType())
         .withDefault(0L)
         .endRecord();
+  }
+
+  private GenericRecord buildOuterRecord(GenericRecord sourceMetadata, String readMethod) {
+    Schema payloadSchema = SchemaBuilder.record("payload").fields().endRecord();
+    GenericRecord payload = new GenericData.Record(payloadSchema);
+
+    Schema outerSchema =
+        SchemaBuilder.record("test_record")
+            .fields()
+            .name("stream_name")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("read_timestamp")
+            .type()
+            .longType()
+            .noDefault()
+            .name("source_timestamp")
+            .type()
+            .longType()
+            .noDefault()
+            .name("read_method")
+            .type()
+            .stringType()
+            .noDefault()
+            .name("source_metadata")
+            .type(sourceMetadata.getSchema())
+            .noDefault()
+            .name("payload")
+            .type(payloadSchema)
+            .noDefault()
+            .endRecord();
+
+    GenericRecord record = new GenericData.Record(outerSchema);
+    record.put("stream_name", "test-stream");
+    record.put("read_timestamp", 1000000L);
+    record.put("source_timestamp", 1000000L);
+    record.put("read_method", readMethod);
+    record.put("source_metadata", sourceMetadata);
+    record.put("payload", payload);
+    return record;
   }
 }
