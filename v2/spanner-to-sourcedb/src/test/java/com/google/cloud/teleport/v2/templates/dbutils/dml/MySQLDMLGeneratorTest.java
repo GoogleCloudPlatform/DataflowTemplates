@@ -19,13 +19,19 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
@@ -47,6 +53,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public final class MySQLDMLGeneratorTest {
@@ -1455,20 +1462,17 @@ public final class MySQLDMLGeneratorTest {
             .primaryKeyColumns(ImmutableList.of("SingerId"))
             .columns(
                 ImmutableList.of(
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("SingerId")
                         .type("bigint")
                         .isGenerated(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("FirstName")
                         .type("varchar")
                         .isPrimaryKey(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("LastName")
                         .type("varchar")
                         .build()))
@@ -1479,54 +1483,25 @@ public final class MySQLDMLGeneratorTest {
             .tables(ImmutableMap.of("GeneratedPKTable", sourceTable))
             .build();
 
-    ISchemaMapper mockSchemaMapper = org.mockito.Mockito.mock(ISchemaMapper.class);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSpannerColumns(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerColumns(any(), eq("GeneratedPKTable")))
         .thenReturn(ImmutableList.of("SingerId", "FirstName", "LastName"));
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSpannerColumnName(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("LastName")))
+    Mockito.when(
+            mockSchemaMapper.getSpannerColumnName(any(), eq("GeneratedPKTable"), eq("LastName")))
         .thenReturn("LastName");
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSourceTableName(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+    Mockito.when(mockSchemaMapper.getSourceTableName(any(), eq("GeneratedPKTable")))
         .thenReturn("GeneratedPKTable");
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("FirstName")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("FirstName")))
         .thenReturn(true);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("SingerId")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("SingerId")))
         .thenReturn(false);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("LastName")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("LastName")))
         .thenReturn(false);
 
     for (String col : new String[] {"SingerId", "FirstName", "LastName"}) {
-      org.mockito.Mockito.when(
-              mockSchemaMapper.colExistsAtSource(
-                  org.mockito.ArgumentMatchers.any(),
-                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                  org.mockito.ArgumentMatchers.eq(col)))
+      Mockito.when(mockSchemaMapper.colExistsAtSource(any(), eq("GeneratedPKTable"), eq(col)))
           .thenReturn(true);
-      org.mockito.Mockito.when(
-              mockSchemaMapper.getSourceColumnName(
-                  org.mockito.ArgumentMatchers.any(),
-                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                  org.mockito.ArgumentMatchers.eq(col)))
+      Mockito.when(mockSchemaMapper.getSourceColumnName(any(), eq("GeneratedPKTable"), eq(col)))
           .thenReturn(col);
     }
 
@@ -1556,5 +1531,142 @@ public final class MySQLDMLGeneratorTest {
     // because it's a generated PK and skipped during DML creation.
     assertEquals(0, countInSQL(sql, "FirstName"));
     assertEquals(0, countInSQL(sql, "SingerId"));
+  }
+
+  @Test
+  public void testBitTypeDML() throws Exception {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("bit_column");
+    Mockito.when(spannerCol.type()).thenReturn(Type.bytes());
+
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.name()).thenReturn("bit_column");
+    Mockito.when(sourceCol.type()).thenReturn("bit");
+
+    JSONObject json = new JSONObject("{\"bit_column\":\"SGVsbG8=\"}"); // "Hello" in base64
+
+    String res = MySQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    assertEquals("x'48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
+  }
+
+  @Test
+  public void testGetDMLStatement_NullRequest() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(null));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSchemaMapper() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(null);
+    Mockito.when(request.getSpannerDdl()).thenReturn(Mockito.mock(Ddl.class));
+    Mockito.when(request.getSourceSchema()).thenReturn(Mockito.mock(SourceSchema.class));
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSpannerDdl() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(Mockito.mock(ISchemaMapper.class));
+    Mockito.when(request.getSpannerDdl()).thenReturn(null);
+    Mockito.when(request.getSourceSchema()).thenReturn(Mockito.mock(SourceSchema.class));
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSourceSchema() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(Mockito.mock(ISchemaMapper.class));
+    Mockito.when(request.getSpannerDdl()).thenReturn(Mockito.mock(Ddl.class));
+    Mockito.when(request.getSourceSchema()).thenReturn(null);
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_SourceTableNotFound() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    try {
+      Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    } catch (Exception e) {
+      // ignore
+    }
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(null); // Not found!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NoPrimaryKeys() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    try {
+      Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    } catch (Exception e) {
+      // ignore
+    }
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of());
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullPrimaryKeys() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    try {
+      Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    } catch (Exception e) {
+      // ignore
+    }
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(null); // NULL!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
   }
 }
