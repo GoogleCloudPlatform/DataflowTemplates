@@ -112,7 +112,7 @@ public class CypherPatterns {
   }
 
   public static String propertyType(PropertyType propertyType) {
-    return switch (propertyType) {
+    return switch (propertyType.getName()) {
       case BOOLEAN -> "BOOLEAN";
       case BOOLEAN_ARRAY -> "LIST<BOOLEAN NOT NULL>";
       case DATE -> "DATE";

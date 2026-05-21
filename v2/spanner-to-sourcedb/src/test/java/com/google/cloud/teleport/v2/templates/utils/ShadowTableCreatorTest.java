@@ -69,7 +69,7 @@ public final class ShadowTableCreatorTest {
     when(mockSpannerAccessor.getDatabaseAdminClient()).thenReturn(mockDatabaseClient);
     when(mockDatabaseClient.updateDatabaseDdl(any(), any(), any(), any()))
         .thenReturn(mockUpdateDatabaseDdlFuture);
-    when(mockUpdateDatabaseDdlFuture.get(5, TimeUnit.MINUTES)).thenReturn(null);
+    when(mockUpdateDatabaseDdlFuture.get(15, TimeUnit.MINUTES)).thenReturn(null);
   }
 
   @Test

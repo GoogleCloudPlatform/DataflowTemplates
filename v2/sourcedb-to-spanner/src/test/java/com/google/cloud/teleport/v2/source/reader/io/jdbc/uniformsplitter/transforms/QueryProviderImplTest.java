@@ -38,7 +38,11 @@ public class QueryProviderImplTest {
 
   @Test
   public void testGetQuery_success() throws Exception {
-    TableIdentifier knownTable = TableIdentifier.builder().setTableName("knownTable").build();
+    TableIdentifier knownTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("knownTable")
+            .build();
     String query = "SELECT * FROM knownTable";
 
     UniformSplitterDBAdapter mockAdapter = mock(UniformSplitterDBAdapter.class);
@@ -50,6 +54,7 @@ public class QueryProviderImplTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -63,6 +68,7 @@ public class QueryProviderImplTest {
 
     Range knownTableRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(knownTable)
             .setColName("col1")
@@ -77,7 +83,11 @@ public class QueryProviderImplTest {
 
   @Test
   public void testGetQuery_throwsOnUnknownTable() throws Exception {
-    TableIdentifier knownTable = TableIdentifier.builder().setTableName("knownTable").build();
+    TableIdentifier knownTable =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("knownTable")
+            .build();
     UniformSplitterDBAdapter mockAdapter = mock(UniformSplitterDBAdapter.class);
     when(mockAdapter.getReadQuery(eq("knownTable"), any())).thenReturn("SELECT * FROM knownTable");
 
@@ -87,6 +97,7 @@ public class QueryProviderImplTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -100,8 +111,13 @@ public class QueryProviderImplTest {
 
     Range unknownTableRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("unknownTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("unknownTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(10)
@@ -114,9 +130,17 @@ public class QueryProviderImplTest {
 
   @Test
   public void testBuilder_setTableSplitSpecifications() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     PartitionColumn col =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Integer.class)
+            .build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(tableId)

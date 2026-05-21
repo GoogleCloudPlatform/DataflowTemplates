@@ -126,7 +126,7 @@ mvn clean package -PtemplatesStage  \
 <#elseif flex>
 -pl v2/${spec.metadata.module!} -am
 <#else>
--f v1
+-pl v1 -am
 </#if>
 ```
 

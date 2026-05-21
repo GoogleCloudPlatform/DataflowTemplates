@@ -110,14 +110,14 @@ abstract class AccumulatingTableReader extends PTransform<PBegin, PCollectionTup
                 "CreateZeroCounts." + groupName,
                 Create.of(
                     tableReferences.stream()
-                        .map(ref -> KV.of(ref.sourceTableName(), 0L))
+                        .map(ref -> KV.of(ref.sourceTableSchemaUUID(), 0L))
                         .collect(Collectors.toList())))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), VarLongCoder.of()));
 
     // 2. Actual counts from the reader.
     PCollection<KV<String, Long>> actualCounts =
         groupRows
-            .apply("ExtractTableNames." + groupName, ParDo.of(new ExtractTableNameFn()))
+            .apply("ExtractTableNames." + groupName, ParDo.of(new ExtractTableIdFn()))
             .apply("CountPerTable." + groupName, Count.perElement());
 
     // 3. Aggregate and Emit Completions.

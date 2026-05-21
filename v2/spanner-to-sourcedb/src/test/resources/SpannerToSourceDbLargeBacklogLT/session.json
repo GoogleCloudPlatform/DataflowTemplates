@@ -1,0 +1,313 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "MigrationLoadTest",
+      "ColIds": [
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "ShardIdColumn": "c4",
+      "ColDefs": {
+        "c2": {
+          "Name": "Id",
+          "T": {
+            "Name": "STRING",
+            "Len": 36,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Id varchar(36)",
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c3": {
+          "Name": "Payload",
+          "T": {
+            "Name": "STRING",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Payload longtext(4294967295)",
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        },
+        "c4": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c4",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table MigrationLoadTest",
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "MigrationLoadTest",
+      "Schema": "shard0",
+      "ColIds": [
+        "c2",
+        "c3"
+      ],
+      "ColDefs": {
+        "c2": {
+          "Name": "Id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              36
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        },
+        "c3": {
+          "Name": "Payload",
+          "Type": {
+            "Name": "longtext",
+            "Mods": [
+              4294967295
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": "",
+            "IdentityOptions": {
+              "SkipRangeMin": "",
+              "SkipRangeMax": "",
+              "StartCounterWith": ""
+            }
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "GeneratedColumn": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            },
+            "Type": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c4": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "MigrationLoadTest": {
+      "Name": "MigrationLoadTest",
+      "Cols": {
+        "Id": "Id",
+        "Payload": "Payload"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r5",
+      "Name": "r5",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": null
+    }
+  ],
+  "IsSharded": true,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": true,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "span-cloud-ck-testing-external",
+  "SpInstanceId": "ea-functional-tests",
+  "Source": "mysql",
+  "DatabaseOptions": {
+    "DbName": "",
+    "DefaultTimezone": ""
+  },
+  "DefaultIdentityOptions": {
+    "SkipRangeMin": "",
+    "SkipRangeMax": "",
+    "StartCounterWith": ""
+  }
+}

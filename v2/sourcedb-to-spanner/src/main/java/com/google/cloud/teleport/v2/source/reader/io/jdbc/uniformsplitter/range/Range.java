@@ -257,7 +257,8 @@ public abstract class Range implements Serializable, Comparable<Range> {
       if (!this.boundary().tableIdentifier().equals(other.boundary().tableIdentifier())) {
         return false;
       }
-      return Objects.equal(this.end(), other.start()) || Objects.equal(this.start(), other.end());
+      return this.boundary().areValuesEqual(this.end(), other.start())
+          || this.boundary().areValuesEqual(this.start(), other.end());
     }
   }
 
@@ -279,7 +280,7 @@ public abstract class Range implements Serializable, Comparable<Range> {
       Range mergedChild = this.childRange().mergeRange(other.childRange(), processContext);
       return this.withChildRange(mergedChild, processContext);
     } else {
-      if (Objects.equal(this.end(), other.start())) {
+      if (this.boundary().areValuesEqual(this.end(), other.start())) {
         return this.toBuilder()
             .setBoundary(this.boundary().merge(other.boundary()))
             .setCount(addCount(this.count(), other.count()))
@@ -396,6 +397,11 @@ public abstract class Range implements Serializable, Comparable<Range> {
 
     public Builder setColClass(Class value) {
       this.boundaryBuilder().setColClass(value);
+      return this;
+    }
+
+    public Builder setColumnTypeName(String value) {
+      this.boundaryBuilder().setColumnTypeName(value);
       return this;
     }
 

@@ -159,7 +159,8 @@ public class CassandraIoWrapperTest {
               "",
               "",
               "");
-      assertThat(cassandraIoWrapper.discoverTableSchema()).isEqualTo(mockSourceSchema);
+      assertThat(cassandraIoWrapper.discoverTableSchema())
+          .isEqualTo(ImmutableList.of(mockSourceSchema));
       assertThat(cassandraIoWrapper.getTableReaders()).isEqualTo(mockTableReaders);
 
       CassandraIoWrapper cassandraIoWrapperAstra =
@@ -172,7 +173,8 @@ public class CassandraIoWrapperTest {
               astraDataSource.cassandra().astra().databaseId(),
               astraDataSource.cassandra().astra().keySpace(),
               astraDataSource.cassandra().astra().astraDbRegion());
-      assertThat(cassandraIoWrapperAstra.discoverTableSchema()).isEqualTo(mockSourceSchema);
+      assertThat(cassandraIoWrapperAstra.discoverTableSchema())
+          .isEqualTo(ImmutableList.of(mockSourceSchema));
       assertThat(cassandraIoWrapperAstra.getTableReaders()).isEqualTo(mockTableReaders);
     }
   }

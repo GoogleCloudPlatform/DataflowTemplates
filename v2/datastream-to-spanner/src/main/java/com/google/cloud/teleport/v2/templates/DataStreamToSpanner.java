@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -61,9 +62,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
@@ -83,9 +82,9 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 /**
  * This pipeline ingests DataStream data from GCS as events. The events are written to Cloud
@@ -123,9 +122,13 @@ import org.slf4j.LoggerFactory;
           + " encountered errors along with the error reason in text format. The errors can be"
           + " transient or permanent and are stored in appropriate Cloud Storage folders in the"
           + " error queue. The transient errors are retried automatically while the permanent"
-          + " errors are not. In case of permanent errors, you have the option of making"
-          + " corrections to the change events and moving them to the retriable bucket while the"
-          + " template is running."
+          + " errors are not. In case of permanent errors, you can run the pipeline in one of"
+          + " two retry modes depending on your pipeline state. Use `retryDLQ` mode when the"
+          + " regular pipeline is concurrently running and pointing to the same DLQ directory."
+          + " This mode consumes only severe errors while the regular mode will consume the retriable errors."
+          + " Use `retryAllDLQ` mode when the regular pipeline is not running or is stopped."
+          + " The `retryAllDLQ` mode consumes errors from both the retry and severe buckets. Do NOT run `retryAllDLQ` concurrently"
+          + " with the regular pipeline as they will conflict."
     },
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
@@ -368,10 +371,15 @@ public class DataStreamToSpanner {
     @TemplateParameter.Enum(
         order = 20,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
-        helpText = "This is the run mode type, whether regular or with retryDLQ.")
-    @Default.String("regular")
+        description = "Run mode - currently supported are : regular, retryDLQ, or retryAllDLQ",
+        enumOptions = {
+          @TemplateEnumOption(Constants.RUN_MODE_REGULAR),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_DLQ),
+          @TemplateEnumOption(Constants.RUN_MODE_RETRY_ALL_DLQ)
+        },
+        helpText =
+            "This is the run mode type. Default is regular. Use `retryDLQ` mode to process exclusively severe error files concurrently with your live migration pipeline. Use `retryAllDLQ` mode only when the regular pipeline is stopped. This mode processes both retry and severe directories. Do NOT run `retryAllDLQ` concurrently with any active pipeline as it will cause conflicts.")
+    @Default.String(Constants.RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -574,8 +582,8 @@ public class DataStreamToSpanner {
     void setFailureInjectionParameter(String value);
   }
 
-  private static void validateSourceType(Options options) {
-    boolean isRetryMode = "retryDLQ".equals(options.getRunMode());
+  static void validateSourceType(Options options) {
+    boolean isRetryMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
     if (isRetryMode) {
       // retry mode does not read from Datastream
       return;
@@ -608,6 +616,10 @@ public class DataStreamToSpanner {
       LOG.error("IOException Occurred: DataStreamClient failed initialization.");
       throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
+    return getSourceTypeFromConfig(sourceConfig);
+  }
+
+  static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
     if (sourceConfig.getMysqlSourceConfig() != null) {
       return DatastreamConstants.MYSQL_SOURCE_TYPE;
     } else if (sourceConfig.getOracleSourceConfig() != null) {
@@ -628,7 +640,8 @@ public class DataStreamToSpanner {
     UncaughtExceptionLogger.register();
     LOG.info("Starting DataStream to Cloud Spanner");
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    options.setStreaming(true);
+    boolean isRetryDLQMode = Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode());
+    options.setStreaming(!isRetryDLQMode);
     validateSourceType(options);
     run(options);
   }
@@ -640,6 +653,11 @@ public class DataStreamToSpanner {
    * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
+    return buildPipeline(options).run();
+  }
+
+  static Pipeline buildPipeline(Options options) {
+    long startTime = System.currentTimeMillis();
     /*
      * Stages:
      *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -672,13 +690,13 @@ public class DataStreamToSpanner {
             .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
             .withCommitRetrySettings(
                 RetrySettings.newBuilder()
-                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setTotalTimeout(Duration.ofMinutes(4))
+                    .setInitialRetryDelay(Duration.ofMinutes(0))
                     .setRetryDelayMultiplier(1)
-                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxRetryDelay(Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(Duration.ofMinutes(4))
                     .setRpcTimeoutMultiplier(1)
-                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxRpcTimeout(Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
@@ -711,7 +729,7 @@ public class DataStreamToSpanner {
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = Constants.RUN_MODE_REGULAR.equals(options.getRunMode());
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
@@ -723,9 +741,31 @@ public class DataStreamToSpanner {
                       new ArrayList<String>(
                           Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
     } else {
-      reconsumedElements =
-          dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      if (isRegularMode) {
+        reconsumedElements =
+            dlqManager.getReconsumerDataTransform(
+                pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+      } else { // retryDLQ or retryAllDLQ mode
+        PCollection<String> oneShotRecords =
+            pipeline.apply("Read severe from OneShot", dlqManager.dlqOneShotReconsumer(startTime));
+
+        if (Constants.RUN_MODE_RETRY_DLQ.equals(options.getRunMode())) {
+          reconsumedElements = dlqManager.getReconsumerDataTransform(oneShotRecords);
+        } else {
+          // retryAllDLQ mode: Drain both the severe (one-shot) and retry (continuous) buckets
+          PCollection<String> continuousRecords =
+              pipeline.apply(
+                  "Read retry from Continuous",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes()));
+
+          PCollection<String> allRecords =
+              PCollectionList.of(continuousRecords)
+                  .and(oneShotRecords)
+                  .apply("Flatten DLQ Records", Flatten.pCollections());
+
+          reconsumedElements = dlqManager.getReconsumerDataTransform(allRecords);
+        }
+      }
     }
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         reconsumedElements
@@ -744,7 +784,8 @@ public class DataStreamToSpanner {
                   .withFileReadConcurrency(options.getFileReadConcurrency())
                   .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes()))
+                      org.joda.time.Duration.standardMinutes(
+                          options.getDirectoryWatchDurationInMinutes()))
                   .withDatastreamSourceType(options.getDatastreamSourceType()));
       int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
@@ -823,7 +864,7 @@ public class DataStreamToSpanner {
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+        .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
         .apply(
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
@@ -896,8 +937,7 @@ public class DataStreamToSpanner {
                 .withTmpDirectory((options).getDeadLetterQueueDirectory() + "/tmp_severe/")
                 .setIncludePaneInfo(true)
                 .build());
-    // Execute the pipeline and return the result.
-    return pipeline.run();
+    return pipeline;
   }
 
   static SpannerConfig getShadowTableSpannerConfig(Options options) {
@@ -936,18 +976,18 @@ public class DataStreamToSpanner {
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
         .withCommitRetrySettings(
             RetrySettings.newBuilder()
-                .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                .setTotalTimeout(Duration.ofMinutes(4))
+                .setInitialRetryDelay(Duration.ofMinutes(0))
                 .setRetryDelayMultiplier(1)
-                .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setMaxRetryDelay(Duration.ofMinutes(0))
+                .setInitialRpcTimeout(Duration.ofMinutes(4))
                 .setRpcTimeoutMultiplier(1)
-                .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setMaxRpcTimeout(Duration.ofMinutes(4))
                 .setMaxAttempts(1)
                 .build());
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  static DeadLetterQueueManager buildDlqManager(Options options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
@@ -958,16 +998,7 @@ public class DataStreamToSpanner {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
-    } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
-      LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0, true);
-    }
+    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
   static ISchemaOverridesParser configureSchemaOverrides(Options options) {

@@ -29,6 +29,7 @@ import com.google.api.gax.rpc.InternalException;
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.ResourceExhaustedException;
 import com.google.api.gax.rpc.UnavailableException;
+import com.google.api.gax.rpc.UnknownException;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.datastream.v1.AvroFileFormat;
 import com.google.cloud.datastream.v1.BigQueryDestinationConfig;
@@ -716,9 +717,11 @@ public final class DatastreamResourceManager implements ResourceManager {
                     || ExceptionUtils.containsType(exception, ResourceExhaustedException.class)
                     || ExceptionUtils.containsType(exception, AbortedException.class)
                     || ExceptionUtils.containsType(exception, InternalException.class)
+                    || ExceptionUtils.containsType(exception, UnknownException.class)
                     || ExceptionUtils.containsMessage(exception, "CONNECTION_TIMEOUT")
                     || ExceptionUtils.containsMessage(exception, "CONNECTIVITY")
-                    || ExceptionUtils.containsMessage(exception, "INTERNAL"))
+                    || ExceptionUtils.containsMessage(exception, "INTERNAL")
+                    || ExceptionUtils.containsMessage(exception, "Unknown Error"))
         .withMaxRetries(FAILSAFE_MAX_RETRIES)
         .withBackoff(FAILSAFE_RETRY_DELAY, FAILSAFE_RETRY_MAX_DELAY)
         .withJitter(FAILSAFE_RETRY_JITTER)

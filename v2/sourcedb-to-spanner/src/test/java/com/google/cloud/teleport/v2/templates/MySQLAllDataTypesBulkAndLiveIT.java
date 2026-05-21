@@ -193,7 +193,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
             .build();
 
     liveJobInfo =
-        launchFwdDataflowJobInRetryDlqMode(
+        launchFwdDataflowJobInDlqRetry(
             spannerResourceManager,
             getGcsPath("output", gcsResourceManager),
             getGcsPath("output/dlq", gcsResourceManager),

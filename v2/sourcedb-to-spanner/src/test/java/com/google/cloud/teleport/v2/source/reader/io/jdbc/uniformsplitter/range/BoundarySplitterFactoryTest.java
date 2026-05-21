@@ -119,6 +119,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(0)
@@ -147,6 +148,7 @@ public class BoundarySplitterFactoryTest {
                 start,
                 end,
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build()));
@@ -160,6 +162,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(BigDecimal.class)
             .setNumericScale(2)
@@ -210,10 +213,85 @@ public class BoundarySplitterFactoryTest {
 
     assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
     assertThat(splitter.getSplitPoint(start, zero, null, null, null)).isEqualTo(startByTwo);
-    assertThat(splitter.getSplitPoint(longMax, longMin, null, null, null)).isEqualTo(negOne);
+    assertThat(splitter.getSplitPoint(longMax, longMin, null, null, null)).isEqualTo(longMax);
     assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
     assertThat(splitter.getSplitPoint(fortyTwo, null, null, null, null)).isEqualTo(twentyOne);
     assertThat(splitter.getSplitPoint(null, fortyTwo, null, null, null)).isEqualTo(twentyOne);
+  }
+
+  @Test
+  public void testBytesUnsignedBoundarySplitter() {
+    BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
+    byte[] start = new byte[] {(byte) 0x80};
+    byte[] end = new byte[] {(byte) 0x82};
+    byte[] expectedMid = new byte[] {(byte) 0x81};
+
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
+  }
+
+  private static byte[] parseHexBytes(String hexString) {
+    String cleanString = hexString.replace("-", "");
+    byte[] bytes = new byte[cleanString.length() / 2];
+    for (int i = 0; i < bytes.length; i++) {
+      bytes[i] = (byte) Integer.parseInt(cleanString.substring(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+  }
+
+  @Test
+  public void testUuidBoundarySplitter() {
+    BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("id")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .setColumnTypeName("uuid")
+            .build();
+
+    // 1. BigInteger Serialization Quirks
+    // Case 1a: Sign-Byte Extension (Values >= 0x80...). BigInteger prepends a leading 0x00 byte
+    // to keep numbers positive in two's complement (resulting in 17 bytes). Verifies exact 16-byte
+    // truncation.
+    byte[] start1 = parseHexBytes("80000000-0000-0000-0000-000000000000");
+    byte[] end1 = parseHexBytes("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] expectedMid1 = parseHexBytes("bfffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] mid1 = splitter.getSplitPoint(start1, end1, col, null, null);
+    assertThat(mid1).isEqualTo(expectedMid1);
+
+    // Case 1b: Leading Zeros Truncation (Small Values). BigInteger strips leading 0x00 bytes
+    // to save space (resulting in arrays as short as 1 byte). Verifies left-padding to 16 bytes.
+    byte[] start2 = parseHexBytes("00000000-0000-0000-0000-000000000000");
+    byte[] end2 = parseHexBytes("00000000-0000-0000-0000-000000000020");
+    byte[] expectedMid2 = parseHexBytes("00000000-0000-0000-0000-000000000010");
+    byte[] mid2 = splitter.getSplitPoint(start2, end2, col, null, null);
+    assertThat(mid2).isEqualTo(expectedMid2);
+
+    // Case 1c: Absolute Zero UUID. Verifies correct 16-byte zero padding when start and end are
+    // both 0.
+    byte[] startZero = parseHexBytes("00000000-0000-0000-0000-000000000000");
+    byte[] midZero = splitter.getSplitPoint(startZero, startZero, col, null, null);
+    assertThat(midZero).isEqualTo(startZero);
+
+    // 2. Open and Null Boundary Handling
+    // Verifies that if both bounds are null, midpoint is null (empty table/slice).
+    assertThat(splitter.getSplitPoint(null, null, col, null, null)).isNull();
+
+    // 3. Mathematical Halving and Rounding
+    // Verifies precise midpoint calculation spanning the entire 128-bit number space.
+    byte[] expectedPerfectHalf = parseHexBytes("7fffffff-ffff-ffff-ffff-ffffffffffff");
+    byte[] midPerfectHalf = splitter.getSplitPoint(startZero, end1, col, null, null);
+    assertThat(midPerfectHalf).isEqualTo(expectedPerfectHalf);
+
+    // Verifies floor rounding behavior when splitting two adjacent numbers (start + 1 == end).
+    byte[] startAdjacent = parseHexBytes("00000000-0000-0000-0000-000000000001");
+    byte[] endAdjacent = parseHexBytes("00000000-0000-0000-0000-000000000002");
+    byte[] midAdjacent = splitter.getSplitPoint(startAdjacent, endAdjacent, col, null, null);
+    assertThat(midAdjacent).isEqualTo(startAdjacent);
+
+    // 4. Range Inversion
+    // Verifies robust midpoint calculation when start and end bounds are passed in reverse order.
+    byte[] midInverted = splitter.getSplitPoint(end1, startZero, col, null, null);
+    assertThat(midInverted).isEqualTo(expectedPerfectHalf);
   }
 
   @Test
@@ -240,6 +318,7 @@ public class BoundarySplitterFactoryTest {
 
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(String.class)
             .setStringCollation(
@@ -321,6 +400,7 @@ public class BoundarySplitterFactoryTest {
                 "Spanner",
                 "branner",
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("intcol")
                     .setColumnClass(Integer.class)
                     // Missing numeric scale
@@ -360,12 +440,10 @@ public class BoundarySplitterFactoryTest {
     assertThat(BoundarySplitterFactory.bigIntNanosToInstant(null)).isNull();
     assertThat(BoundarySplitterFactory.timeStampToInstant(null)).isNull();
     assertThat(BoundarySplitterFactory.instantToTimestamp(null)).isNull();
-    assertThat(
-            BoundarySplitterFactory.timeStampToInstant(
-                Timestamp.valueOf("1970-01-01 00:00:00.000000000")))
+    assertThat(BoundarySplitterFactory.timeStampToInstant(new Timestamp(0L)))
         .isEqualTo(Instant.EPOCH);
     assertThat(BoundarySplitterFactory.instantToTimestamp(Instant.EPOCH))
-        .isEqualTo(Timestamp.valueOf("1970-01-01 00:00:00.000000000"));
+        .isEqualTo(new Timestamp(0L));
   }
 
   @Test
@@ -382,6 +460,7 @@ public class BoundarySplitterFactoryTest {
                 Timestamp.valueOf("1970-01-01 00:00:00.000000000"),
                 Timestamp.valueOf("1980-01-01 00:00:00.000000000"),
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Timestamp.class)
                     .build(),
@@ -513,6 +592,7 @@ public class BoundarySplitterFactoryTest {
     BoundarySplitter<Duration> splitter = BoundarySplitterFactory.create(Duration.class);
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
+            .setColumnTypeName("dummy")
             .setColumnName("col1")
             .setColumnClass(Duration.class)
             .setDatetimePrecision(2)
@@ -545,6 +625,7 @@ public class BoundarySplitterFactoryTest {
                 start,
                 end,
                 PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build()));

@@ -157,7 +157,7 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
 
     // launch forward migration template in retryDLQ mode
     retryLiveJobInfo =
-        launchFwdDataflowJobInRetryDlqMode(
+        launchFwdDataflowJobInDlqRetry(
             spannerResourceManager,
             bulkErrorFolderFullPath,
             bulkErrorFolderFullPath + "/dlq",

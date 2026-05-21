@@ -44,10 +44,18 @@ public class InitialSplitRangeDoFnTest {
 
   private TableSplitSpecification getTableSplitSpecification(String tableName, long splitHeight) {
     return TableSplitSpecification.builder()
-        .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+        .setTableIdentifier(
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName(tableName)
+                .build())
         .setPartitionColumns(
             ImmutableList.of(
-                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build()))
+                PartitionColumn.builder()
+                    .setColumnTypeName("dummy")
+                    .setColumnName("col1")
+                    .setColumnClass(Long.class)
+                    .build()))
         .setApproxRowCount(100L)
         .setMaxPartitionsHint(10L)
         .setInitialSplitHeight(splitHeight)
@@ -57,7 +65,12 @@ public class InitialSplitRangeDoFnTest {
 
   private Range getRange(String tableName, long start, long end) {
     return Range.builder()
-        .setTableIdentifier(TableIdentifier.builder().setTableName(tableName).build())
+        .setColumnTypeName("dummy")
+        .setTableIdentifier(
+            TableIdentifier.builder()
+                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                .setTableName(tableName)
+                .build())
         .setColName("col1")
         .setStart(start)
         .setEnd(end)

@@ -416,6 +416,7 @@ public class MysqlDialectAdapterTest {
             .setIndexType(IndexType.FLOAT)
             // to test default decimal step size when not specified in column definition
             .setDecimalStepSize(isForMock ? null : new BigDecimal("0.00001"))
+            .setColumnTypeName("FLOAT")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColFloat2")
@@ -426,6 +427,7 @@ public class MysqlDialectAdapterTest {
             .setOrdinalPosition(1)
             .setIndexType(IndexType.FLOAT)
             .setDecimalStepSize(new BigDecimal("0.000001")) // FLOAT(p, d = 6)
+            .setColumnTypeName("FLOAT")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testCol1")
@@ -435,6 +437,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(42L)
             .setIndexType(IndexType.NUMERIC)
             .setOrdinalPosition(1)
+            .setColumnTypeName("INTEGER")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColBit")
@@ -444,6 +447,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(42L)
             .setIndexType(IndexType.NUMERIC)
             .setOrdinalPosition(4)
+            .setColumnTypeName("BIT")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testCol2")
@@ -460,6 +464,7 @@ public class MysqlDialectAdapterTest {
                     .setPadSpace(false)
                     .build())
             .setStringMaxLength(42)
+            .setColumnTypeName("CHAR")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColVarBinary")
@@ -469,6 +474,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(42L)
             .setIndexType(IndexType.BINARY)
             .setOrdinalPosition(3)
+            .setColumnTypeName("VARBINARY")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColBinary")
@@ -478,6 +484,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(42L)
             .setIndexType(IndexType.BINARY)
             .setOrdinalPosition(4)
+            .setColumnTypeName("BINARY")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColYear")
@@ -487,6 +494,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(100L)
             .setIndexType(IndexType.NUMERIC)
             .setOrdinalPosition(6)
+            .setColumnTypeName("YEAR")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColBool")
@@ -496,6 +504,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(2L)
             .setIndexType(IndexType.NUMERIC)
             .setOrdinalPosition(5)
+            .setColumnTypeName("BOOL")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColDate")
@@ -505,6 +514,7 @@ public class MysqlDialectAdapterTest {
             .setCardinality(3L)
             .setIndexType(IndexType.DATE)
             .setOrdinalPosition(6)
+            .setColumnTypeName("DATE")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColDecimal")
@@ -515,6 +525,7 @@ public class MysqlDialectAdapterTest {
             .setIndexType(IndexType.DECIMAL)
             .setOrdinalPosition(5)
             .setNumericScale(5)
+            .setColumnTypeName("DECIMAL")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColDouble1")
@@ -526,6 +537,7 @@ public class MysqlDialectAdapterTest {
             .setIndexType(IndexType.DOUBLE)
             // to test default decimal step size when not specified in column definition
             .setDecimalStepSize(isForMock ? null : new BigDecimal("0.0000000001"))
+            .setColumnTypeName("DOUBLE")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColDouble2")
@@ -536,6 +548,7 @@ public class MysqlDialectAdapterTest {
             .setOrdinalPosition(1)
             .setIndexType(IndexType.DOUBLE)
             .setDecimalStepSize(new BigDecimal("0.000001")) // Double(p, d = 6)
+            .setColumnTypeName("DOUBLE")
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColTime")
@@ -546,6 +559,7 @@ public class MysqlDialectAdapterTest {
             .setIndexType(IndexType.DURATION)
             .setOrdinalPosition(6)
             .setDatetimePrecision(6)
+            .setColumnTypeName("TIME")
             .build());
   }
 
@@ -563,6 +577,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setOrdinalPosition(1)
                 .setIndexType(IndexType.NUMERIC)
+                .setColumnTypeName("INTEGER")
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testCol1")
@@ -579,6 +594,7 @@ public class MysqlDialectAdapterTest {
                         .setPadSpace(true)
                         .build())
                 .setStringMaxLength(42)
+                .setColumnTypeName("CHAR")
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColVarBinary")
@@ -588,6 +604,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(3)
+                .setColumnTypeName("VARBINARY")
                 .build());
 
     final JdbcSchemaReference sourceSchemaReference =

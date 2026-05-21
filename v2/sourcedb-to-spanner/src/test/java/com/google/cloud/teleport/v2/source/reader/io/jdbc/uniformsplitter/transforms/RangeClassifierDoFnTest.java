@@ -53,7 +53,12 @@ public class RangeClassifierDoFnTest {
         .output(any(), any());
     Range rangeToRetainDueToCount =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -64,7 +69,12 @@ public class RangeClassifierDoFnTest {
             .build();
     Range rangeToSplit =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -75,7 +85,12 @@ public class RangeClassifierDoFnTest {
             .build();
     Range rangeToAddColumn =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -87,7 +102,12 @@ public class RangeClassifierDoFnTest {
 
     Range rangeToRetainUnSplitable =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -97,7 +117,12 @@ public class RangeClassifierDoFnTest {
             .build()
             .withChildRange(
                 Range.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setColumnTypeName("dummy")
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setColName("col2")
                     .setColClass(Integer.class)
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -110,7 +135,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(2L)
                     .setSplitStagesCount(2L)
                     .setApproxRowCount(10L)
@@ -119,10 +148,12 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -147,7 +178,12 @@ public class RangeClassifierDoFnTest {
         .isEqualTo(
             ImmutableList.of(
                 ColumnForBoundaryQuery.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setColumnTypeName("dummy")
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setColumnName("col2")
                     .setColumnClass(Integer.class)
                     .setParentRange(rangeToAddColumn)
@@ -165,7 +201,12 @@ public class RangeClassifierDoFnTest {
         .output(any(), any());
     Range rangeToRetainDueToCount =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -177,7 +218,12 @@ public class RangeClassifierDoFnTest {
     // Here, the code auto-adjusts to 5 partitions
     Range rangeToRetainAndNotSplit =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -188,7 +234,12 @@ public class RangeClassifierDoFnTest {
             .build();
     Range rangeToRetainNotAddColumn =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -200,7 +251,12 @@ public class RangeClassifierDoFnTest {
 
     Range rangeToRetainUnSplitable =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -210,7 +266,12 @@ public class RangeClassifierDoFnTest {
             .build()
             .withChildRange(
                 Range.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setColumnTypeName("dummy")
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setColName("col2")
                     .setColClass(Integer.class)
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -223,7 +284,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(1L)
                     .setSplitStagesCount(2L)
                     .setApproxRowCount(1L)
@@ -232,10 +297,12 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -269,7 +336,12 @@ public class RangeClassifierDoFnTest {
         .output(any(), any());
     Range rangeToCount =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -281,7 +353,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(1L)
                     .setSplitStagesCount(1L)
                     .setApproxRowCount(10L)
@@ -290,10 +366,12 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -325,7 +403,12 @@ public class RangeClassifierDoFnTest {
         .output(any(), any());
     Range rangeToCount =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -339,7 +422,10 @@ public class RangeClassifierDoFnTest {
                 ImmutableList.of(
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("testTable").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("testTable")
+                                .build())
                         .setInitialSplitHeight(1L)
                         .setApproxRowCount(10L)
                         .setMaxPartitionsHint(10L)
@@ -347,13 +433,17 @@ public class RangeClassifierDoFnTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
                         .build(),
                     TableSplitSpecification.builder()
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("testTable2").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("testTable2")
+                                .build())
                         .setInitialSplitHeight(1L)
                         .setSplitStagesCount(1L)
                         .setApproxRowCount(10L)
@@ -361,6 +451,7 @@ public class RangeClassifierDoFnTest {
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Integer.class)
                                     .build()))
@@ -385,7 +476,12 @@ public class RangeClassifierDoFnTest {
   public void testRangeClassifierWithUnknownTableIdentifier() {
     Range rangeToCount =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("unknownTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("unknownTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -396,7 +492,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(1L)
                     .setSplitStagesCount(1L)
                     .setApproxRowCount(10L)
@@ -404,6 +504,7 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -424,7 +525,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(2L)
                     .setApproxRowCount(10L)
                     .setMaxPartitionsHint(10L)
@@ -432,6 +537,7 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -456,7 +562,12 @@ public class RangeClassifierDoFnTest {
         .output(any(), any());
     Range rangeToAddColumnButNoMoreColumns =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
@@ -469,7 +580,11 @@ public class RangeClassifierDoFnTest {
         RangeClassifierDoFn.builder()
             .setTableSplitSpecification(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setInitialSplitHeight(1L)
                     .setInitialSplitHeight(2L)
                     .setApproxRowCount(10L)
@@ -478,6 +593,7 @@ public class RangeClassifierDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build())) // Only one column
@@ -530,7 +646,11 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
 
-    TableIdentifier table = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(table)
@@ -541,6 +661,7 @@ public class RangeClassifierDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -548,6 +669,7 @@ public class RangeClassifierDoFnTest {
 
     Range range1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -589,7 +711,11 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
 
-    TableIdentifier table = TableIdentifier.builder().setTableName("testTable").build();
+    TableIdentifier table =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification spec =
         TableSplitSpecification.builder()
             .setTableIdentifier(table)
@@ -600,6 +726,7 @@ public class RangeClassifierDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -607,6 +734,7 @@ public class RangeClassifierDoFnTest {
 
     Range rangeToSplit =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -643,9 +771,21 @@ public class RangeClassifierDoFnTest {
         .when(mockProcessContext)
         .output(any(), any());
 
-    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
-    TableIdentifier table3 = TableIdentifier.builder().setTableName("table3").build();
+    TableIdentifier table1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier table2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table2")
+            .build();
+    TableIdentifier table3 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table3")
+            .build();
 
     TableSplitSpecification spec1 =
         TableSplitSpecification.builder()
@@ -657,10 +797,12 @@ public class RangeClassifierDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -676,10 +818,12 @@ public class RangeClassifierDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("colA")
                         .setColumnClass(Long.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("colB")
                         .setColumnClass(Long.class)
                         .build()))
@@ -695,6 +839,7 @@ public class RangeClassifierDoFnTest {
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("colX")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -702,6 +847,7 @@ public class RangeClassifierDoFnTest {
 
     Range range1Table1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -713,6 +859,7 @@ public class RangeClassifierDoFnTest {
             .build();
     Range range2Table1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -725,6 +872,7 @@ public class RangeClassifierDoFnTest {
 
     Range range1Table2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("colA")
             .setColClass(Long.class)
@@ -736,6 +884,7 @@ public class RangeClassifierDoFnTest {
             .build();
     Range range2Table2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("colA")
             .setColClass(Long.class)
@@ -748,6 +897,7 @@ public class RangeClassifierDoFnTest {
 
     Range range1Table3 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table3)
             .setColName("colX")
             .setColClass(Integer.class)
@@ -759,6 +909,7 @@ public class RangeClassifierDoFnTest {
             .build();
     Range range2Table3 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table3)
             .setColName("colX")
             .setColClass(Integer.class)

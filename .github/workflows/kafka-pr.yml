@@ -23,6 +23,7 @@ on:
     paths:
       # Template wide common modules
       - 'pom.xml'
+      - 'v2/pom.xml'
       - 'v2/common/**'
       - 'v2/datastream-common/**'
       - 'it/google-cloud-platform/**'
@@ -119,7 +120,7 @@ jobs:
             **/surefire-reports/html/**
           retention-days: 1
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.5.3
+        uses: codecov/codecov-action@v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates

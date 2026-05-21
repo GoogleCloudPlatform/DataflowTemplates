@@ -20,16 +20,19 @@ import static com.mongodb.client.model.Filters.eq;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
@@ -53,6 +56,29 @@ public class ProcessChangeEventFn
       new TupleTag<>("successfulWrite");
   public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
       failedWriteTag = new TupleTag<>("failedWrite");
+  // Tag for severe failures that should not be retried (e.g. permanent errors or non-transient
+  // transaction errors)
+  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
+
+  // Error code 2 corresponds to BadValue/InvalidArgument, which is treated as a permanent error.
+  public static final int INVALID_ARGUMENT = 2;
+
+  private final Counter successfulWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "successfulWrites");
+  private final Counter retriableFailedWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "retriableFailedWrites");
+  private final Counter severeFailedWrites =
+      Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrites");
+  private final Counter dlqRetries = Metrics.counter(ProcessChangeEventFn.class, "dlqRetries");
+  private final Counter totalProcessedDocuments =
+      Metrics.counter(ProcessChangeEventFn.class, "totalProcessedDocuments");
+  private final Counter retriedDocuments =
+      Metrics.counter(ProcessChangeEventFn.class, "retriedDocuments");
+  private final Counter inMemoryRetries =
+      Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries");
+  private final Counter outOfOrderSkips =
+      Metrics.counter(ProcessChangeEventFn.class, "outOfOrderSkips");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -68,6 +94,15 @@ public class ProcessChangeEventFn
   @ProcessElement
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     MongoDbChangeEventContext element = context.element();
+
+    totalProcessedDocuments.inc();
+    if (element.getRetryCount() > 0) {
+      retriedDocuments.inc();
+    }
+    if (element.getIsDlqReconsumed()) {
+      dlqRetries.inc();
+    }
+
     int retryCount = 0;
     Exception lastException = null;
     while (retryCount <= maxRetries) {
@@ -111,8 +146,10 @@ public class ProcessChangeEventFn
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
           }
+          successfulWrites.inc();
         } else {
           // Existing document has a later timestamp, skip this event
+          outOfOrderSkips.inc();
         }
         session.commitTransaction();
         out.get(successfulWriteTag).output(element);
@@ -134,24 +171,78 @@ public class ProcessChangeEventFn
                 abortException);
           }
         }
+
+        // Check if the error is permanent (e.g. code 2 for InvalidArgument when exceeding nesting
+        // limit)
+        boolean isPermanent = false;
+        if (e instanceof MongoWriteException writeException) {
+          if (writeException.getError().getCode() == INVALID_ARGUMENT) {
+            isPermanent = true;
+          }
+        }
+
+        // Check if the error is transient and safe to retry
+        boolean isTransient = isTransientTransactionError(e);
+
+        // If it's a permanent error or not transient, fail fast and route to severe DLQ
+        if (isPermanent || !isTransient) {
+          LOG.error(
+              "Permanent or non-retryable error for document ID: {}: {}",
+              element.getDocumentId(),
+              e.getMessage());
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(element, element);
+          failedElement.setErrorMessage(e.getMessage());
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
+          out.get(severeFailedWriteTag).output(failedElement);
+
+          String errorIdentifier = "UnknownError";
+          if (e instanceof MongoWriteException writeException) {
+            errorIdentifier = "MongoWriteException_" + writeException.getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException commandException) {
+            errorIdentifier = "MongoCommandException_" + commandException.getCode();
+          } else if (e instanceof MongoException mongoException) {
+            errorIdentifier = mongoException.getClass().getSimpleName();
+          }
+          Metrics.counter(ProcessChangeEventFn.class, "severeFailedWrites_" + errorIdentifier)
+              .inc();
+
+          severeFailedWrites.inc();
+          break; // Exit the retry loop
+        }
+
+        long backoffMs = retryDelayMs * (1 << retryCount);
         if (retryCount < maxRetries) {
-          // Retry regardless of error types till maxRetries before thrown to dlq.
+          inMemoryRetries.inc();
+
+          String errorIdentifier = "UnknownError";
+          if (e instanceof MongoWriteException writeException) {
+            errorIdentifier = "MongoWriteException_" + writeException.getError().getCode();
+          } else if (e instanceof com.mongodb.MongoCommandException commandException) {
+            errorIdentifier = "MongoCommandException_" + commandException.getCode();
+          } else if (e instanceof MongoException mongoException) {
+            errorIdentifier = mongoException.getClass().getSimpleName();
+          }
+          Metrics.counter(ProcessChangeEventFn.class, "inMemoryRetries_" + errorIdentifier).inc();
+
           LOG.warn(
-              "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
+              "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying"
+                  + " in {} ms...",
               element.getDocumentId(),
               retryCount + 1,
-              retryDelayMs * (retryCount + 1),
+              backoffMs,
               e);
           try {
-            TimeUnit.MILLISECONDS.sleep(retryDelayMs * (retryCount + 1));
+            TimeUnit.MILLISECONDS.sleep(backoffMs);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOG.error("Retry sleep interrupted for document ID: {}", element.getDocumentId(), ie);
             FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
                 FailsafeElement.of(element, element);
             failedElement.setErrorMessage(ie.getMessage());
-            failedElement.setStacktrace(Arrays.deepToString(ie.getStackTrace()));
+            failedElement.setStacktrace(Throwables.getStackTraceAsString(ie));
             out.get(failedWriteTag).output(failedElement);
+            retriableFailedWrites.inc();
             break; // Exit the retry loop if interrupted
           }
           retryCount++;
@@ -165,8 +256,9 @@ public class ProcessChangeEventFn
           FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
-          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
           out.get(failedWriteTag).output(failedElement);
+          retriableFailedWrites.inc();
           LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
           break; // Exit the retry loop on non-transient error or max retries
         }

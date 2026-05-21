@@ -115,6 +115,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final int nodeCount;
   private Timestamp startTime;
   private MonitoringClient monitoringClient;
+  private final boolean suppressVerboseLogs;
 
   private SpannerResourceManager(Builder builder) {
     this(
@@ -142,6 +143,7 @@ public final class SpannerResourceManager implements ResourceManager {
     }
     this.projectId = builder.projectId;
     this.databaseId = generateDatabaseId(testId);
+    this.suppressVerboseLogs = builder.suppressVerboseLogs;
 
     if (builder.useStaticInstance) {
       if (builder.instanceId == null) {
@@ -323,7 +325,11 @@ public final class SpannerResourceManager implements ResourceManager {
       throws IllegalStateException {
     ensureUsableAndCreateResources();
 
-    LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
+    if (suppressVerboseLogs) {
+      LOG.info("Executing {} DDL statements on database {}.", statements.size(), databaseId);
+    } else {
+      LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
+    }
     try {
       // executeDdlStatments can fail for spanner staging because of failfast.
       Failsafe.with(retryOnQuotaException())
@@ -333,7 +339,15 @@ public final class SpannerResourceManager implements ResourceManager {
                       .updateDatabaseDdl(
                           instanceId, databaseId, statements, /* operationId= */ null)
                       .get());
-      LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
+      if (suppressVerboseLogs) {
+        LOG.info(
+            "Successfully executed {} DDL statements on database {}.",
+            statements.size(),
+            databaseId);
+      } else {
+        LOG.info(
+            "Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
+      }
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
@@ -430,7 +444,11 @@ public final class SpannerResourceManager implements ResourceManager {
     checkIsUsable();
     checkHasInstanceAndDatabase();
 
-    LOG.info("Executing DML statements on database {}.", statements, databaseId);
+    if (suppressVerboseLogs) {
+      LOG.info("Executing {} DML statements on database {}.", statements.size(), databaseId);
+    } else {
+      LOG.info("Executing DML statements '{}' on database {}.", statements, databaseId);
+    }
     List<Statement> statementsList =
         statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
     try {
@@ -444,8 +462,15 @@ public final class SpannerResourceManager implements ResourceManager {
                     transaction.batchUpdate(statementsList);
                     return null;
                   });
-      LOG.debug(
-          "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+      if (suppressVerboseLogs) {
+        LOG.debug(
+            "Successfully executed {} DML statements on database {}.",
+            statements.size(),
+            databaseId);
+      } else {
+        LOG.debug(
+            "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+      }
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
@@ -467,7 +492,9 @@ public final class SpannerResourceManager implements ResourceManager {
       }
       ImmutableList<Struct> tableRecords = tableRecordsBuilder.build();
 
-      LOG.info("Loaded {} rows from {}", tableRecords.size(), query);
+      if (!suppressVerboseLogs) {
+        LOG.info("Loaded {} rows from {}", tableRecords.size(), query);
+      }
       return tableRecords;
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to read query " + query, e);
@@ -635,6 +662,7 @@ public final class SpannerResourceManager implements ResourceManager {
     private String host;
     private int nodeCount;
     private MonitoringClient monitoringClient;
+    private boolean suppressVerboseLogs;
 
     private Builder(String testId, String projectId, String region, Dialect dialect) {
       this.testId = testId;
@@ -728,6 +756,17 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setMonitoringClient(MonitoringClient monitoringClient) {
       this.monitoringClient = monitoringClient;
+      return this;
+    }
+
+    /**
+     * Sets whether to suppress verbose logs such as full DDL statements and query strings.
+     *
+     * @param suppressVerboseLogs whether to suppress verbose logs.
+     * @return this builder object with the suppressVerboseLogs option set.
+     */
+    public Builder setSuppressVerboseLogs(boolean suppressVerboseLogs) {
+      this.suppressVerboseLogs = suppressVerboseLogs;
       return this;
     }
 

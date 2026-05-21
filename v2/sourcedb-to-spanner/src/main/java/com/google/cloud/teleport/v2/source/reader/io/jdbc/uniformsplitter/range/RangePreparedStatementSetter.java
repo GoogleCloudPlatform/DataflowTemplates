@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
+
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -32,7 +34,8 @@ import org.slf4j.LoggerFactory;
  */
 public class RangePreparedStatementSetter implements PreparedStatementSetter<Range> {
 
-  private ImmutableMap<TableIdentifier, Long> numColumnsMap;
+  private final ImmutableMap<TableIdentifier, Long> numColumnsMap;
+  private final ImmutableMap<TableIdentifier, ImmutableList<PartitionColumn>> partitionColumnsMap;
   private static final Logger logger = LoggerFactory.getLogger(PreparedStatementSetter.class);
 
   public RangePreparedStatementSetter(
@@ -44,6 +47,23 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
                     specification -> specification.tableIdentifier(), // Key Mapper
                     specification -> (long) specification.partitionColumns().size() // Value Mapper
                     ));
+    this.partitionColumnsMap =
+        tableSplitSpecifications.stream()
+            .collect(
+                ImmutableMap.toImmutableMap(
+                    specification -> specification.tableIdentifier(),
+                    specification -> specification.partitionColumns()));
+  }
+
+  /**
+   * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID).
+   */
+  private static Object convertIfUuid(Object val, PartitionColumn pc) {
+    if (val instanceof byte[] bytes && UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
+      return new java.util.UUID(bb.getLong(), bb.getLong());
+    }
+    return val;
   }
 
   /**
@@ -71,14 +91,19 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       throw new RuntimeException("Invalid Range");
     }
     long numColumns = numColumnsMap.get(element.tableIdentifier());
+    ImmutableList<PartitionColumn> partitionColumns =
+        partitionColumnsMap.get(element.tableIdentifier());
     long extraColumns = numColumns - rangeColumns;
     Range range = element;
     for (long i = 0; i < rangeColumns; i++) {
+      PartitionColumn pc = partitionColumns.get((int) i);
+      Object start = convertIfUuid(range.start(), pc);
+      Object end = convertIfUuid(range.end(), pc);
       preparedStatement.setObject(startParameterIdx++, true /* include column */);
-      preparedStatement.setObject(startParameterIdx++, range.start());
-      preparedStatement.setObject(startParameterIdx++, range.end());
+      preparedStatement.setObject(startParameterIdx++, start);
+      preparedStatement.setObject(startParameterIdx++, end);
       preparedStatement.setObject(startParameterIdx++, range.isLast());
-      preparedStatement.setObject(startParameterIdx++, range.end());
+      preparedStatement.setObject(startParameterIdx++, end);
       range = range.childRange();
     }
     for (long i = 0; i < extraColumns; i++) {

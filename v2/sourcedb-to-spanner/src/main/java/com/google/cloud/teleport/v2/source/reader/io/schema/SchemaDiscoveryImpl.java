@@ -137,8 +137,7 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
     return result.build();
   }
 
-  @VisibleForTesting
-  protected static void convertException(Exception e) {
+  public static void convertException(Exception e) {
     Throwable cause = e;
     while (cause != null) {
       if (cause instanceof SchemaDiscoveryException) {
@@ -224,6 +223,10 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
   @VisibleForTesting
   protected static <T> List<List<T>> partitionWork(List<T> items, int batchSize) {
     return Lists.partition(items, batchSize);
+  }
+
+  public static long getParallelism() {
+    return THREAD_POOL_SIZE;
   }
 
   private <T> T doRetries(SchemaDiscoveryOperation<T> operation) throws SchemaDiscoveryException {

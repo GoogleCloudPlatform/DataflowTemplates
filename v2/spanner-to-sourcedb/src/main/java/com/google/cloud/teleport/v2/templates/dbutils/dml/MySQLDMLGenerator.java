@@ -26,21 +26,14 @@ import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationExc
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Creates DML statements. */
 public class MySQLDMLGenerator implements IDMLGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
@@ -93,14 +86,15 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
 
     Map<String, String> pkcolumnNameValues =
-        getPkColumnValues(
+        DMLGeneratorUtils.getPkColumnValues(
             schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            MySQLDMLGenerator::getMappedColumnValue);
     if (pkcolumnNameValues == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -135,9 +129,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
+      String sqlValue = (colValue == null) ? "NULL" : colValue;
       allColumns += "`" + colName + "`";
-      allValues += colValue;
-      updateValues += " `" + colName + "` = " + colValue;
+      allValues += sqlValue;
+      updateValues += " `" + colName + "` = " + sqlValue;
 
       // Add comma if not the last item in this loop
       if (index + 1 < allColumnNameValues.size()) {
@@ -188,209 +183,17 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
-        getColumnValues(
+        DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse());
+            dmlGeneratorRequest.getCustomTransformationResponse(),
+            MySQLDMLGenerator::getMappedColumnValue);
     columnNameValues.putAll(pkcolumnNameValues);
     return getUpsertStatement(sourceTable.name(), columnNameValues);
-  }
-
-  private static Map<String, String> getColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-
-    /*
-    Get all non-primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - continue to next,
-      as the column will be stored with default/null values
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - continue to next,
-      as the column will be stored with default/null values
-    */
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-    for (SourceColumn sourceColDef : sourceTable.columns()) {
-      String colName = sourceColDef.name();
-      if (sourcePKs.contains(colName)) {
-        continue; // we only need non-primary keys
-      }
-      if (sourceColDef.isGenerated()) {
-        continue;
-      }
-      if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customTransformationResponse.get(colName).toString());
-        continue;
-      }
-      String spannerColumnName = "";
-      try {
-        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      Column spannerColDef = spannerTable.column(spannerColumnName);
-      if (spannerColDef == null) {
-        continue;
-      }
-      String columnValue = "";
-      if (keyValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColumnName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColumnName)) {
-          response.put(colName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        continue;
-      }
-
-      response.put(colName, columnValue);
-    }
-
-    return response;
-  }
-
-  private static Map<String, String> getPkColumnValues(
-      ISchemaMapper schemaMapper,
-      Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
-      JSONObject newValuesJson,
-      JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset,
-      Map<String, Object> customTransformationResponse) {
-    Map<String, String> response = new HashMap<>();
-    /*
-    Get all primary key col ids from source table
-    For each - get the corresponding column name from spanner Schema
-    if the column cannot be found in spanner schema - return null
-    check if the column name found in Spanner schema exists in keyJson -
-      if so, get the string value
-    else
-    check if the column name found in Spanner schema exists in valuesJson -
-      if so, get the string value
-    if the column does not exist in any of the JSON - return null
-    */
-    List<String> sourcePKs = sourceTable.primaryKeyColumns();
-    Set<String> customTransformColumns = null;
-    if (customTransformationResponse != null) {
-      customTransformColumns = customTransformationResponse.keySet();
-    }
-
-    boolean doesGeneratedColumnExist = false;
-
-    for (int i = 0; i < sourcePKs.size(); i++) {
-      String sourceColName = sourcePKs.get(i);
-      SourceColumn sourceColDef = sourceTable.column(sourceColName);
-      if (sourceColDef == null) {
-        LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
-        return null;
-      }
-
-      if (sourceColDef.isGenerated()) {
-        doesGeneratedColumnExist = true;
-        continue;
-      }
-
-      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-        continue;
-      }
-
-      String spannerColName = "";
-      try {
-        spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
-      } catch (NoSuchElementException e) {
-        continue;
-      }
-      if (spannerColName == null) {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
-      }
-      Column spannerColDef = spannerTable.column(spannerColName);
-      if (spannerColDef == null) {
-        LOG.warn(
-            "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
-      }
-      String columnValue = "";
-      if (keyValuesJson.has(spannerColName)) {
-        // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColName)) {
-          response.put(sourceColName, "NULL");
-          continue;
-        }
-        columnValue =
-            getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
-      } else {
-        LOG.warn("The column {} was not found in input record", spannerColName);
-        return null;
-      }
-
-      response.put(sourceColName, columnValue);
-    }
-
-    if (doesGeneratedColumnExist) {
-      // Generated column expression between source DB and spanner can have
-      // differences. Hence, values of generated column cannot be used from the change
-      // stream. If Primary key is generated column, then the DML statement need to
-      // have the respective dependent column values. Since we cannot identify the
-      // dependent columns, we are adding all the non-generated columns to the
-      // response.
-      Map<String, String> generatedColumnValues =
-          getColumnValues(
-              schemaMapper,
-              spannerTable,
-              sourceTable,
-              newValuesJson,
-              keyValuesJson,
-              sourceDbTimezoneOffset,
-              customTransformationResponse);
-      response.putAll(generatedColumnValues);
-    }
-
-    return response;
   }
 
   private static String getMappedColumnValue(
@@ -403,18 +206,26 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
     if (colType.getCode().equals(Type.Code.FLOAT64)
-        || colType.getCode().equals(Type.Code.FLOAT32)) {
+        || colType.getCode().equals(Type.Code.FLOAT32)
+        || colType.getCode().equals(Type.Code.PG_FLOAT4)
+        || colType.getCode().equals(Type.Code.PG_FLOAT8)
+        || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
       // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
-    } else if (colType.getCode().equals(Type.Code.BOOL)) {
+    } else if (colType.getCode().equals(Type.Code.BOOL)
+        || colType.getCode().equals(Type.Code.PG_BOOL)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
-    } else if (colType.getCode().equals(Type.Code.ARRAY)
-        && colType.getArrayElementType().getCode().equals(Type.Code.STRING)) {
+    } else if ((colType.getCode().equals(Type.Code.ARRAY)
+            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+        || (colType.getCode().equals(Type.Code.PG_ARRAY)
+            && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
               .collect(Collectors.joining(","));
-    } else if (colType.getCode().equals(Type.Code.BYTES)) {
+    } else if (colType.getCode().equals(Type.Code.BYTES)
+        || colType.getCode().equals(Type.Code.PG_BYTEA)) {
       if (sourceColDef.type().toLowerCase().equals("bit")) {
         colInputValue = convertBase64ToHex(valuesJson.getString(colName));
       } else {
@@ -440,35 +251,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
    */
   @VisibleForTesting
   protected static String convertBase64ToHex(String base64EncodedString) {
-    if (base64EncodedString == null) {
+    String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
+    if (rawHex == null) {
       return null;
     }
-    if (StringUtils.isEmpty(base64EncodedString)) {
-      return "x''";
-    }
-
-    try {
-      // 1. Decode the Base64 string into bytes
-      byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
-
-      // 2. Convert the bytes to a hexadecimal string
-      StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
-      for (byte b : decodedBytes) {
-        // Use Integer.toHexString to get the hex representation of each byte.
-        // & 0xFF ensures that the byte is treated as an unsigned value
-        // (otherwise, negative bytes would get a longer hex string like "ffffffxx").
-        // We then format it to always be two characters, padding with '0' if necessary.
-        hexStringBuilder.append(String.format("%02x", b & 0xFF));
-      }
-
-      // 3. Prefix with x' and suffix with '
-      return "x'" + hexStringBuilder.toString() + "'";
-
-    } catch (IllegalArgumentException e) {
-      // Re-throw or wrap the exception if Base64 decoding fails.
-      throw new IllegalArgumentException(
-          "Invalid Base64 encoded string provided: " + e.getMessage(), e);
-    }
+    return rawHex.isEmpty() ? "x''" : "x'" + rawHex + "'";
   }
 
   private static String getColumnValueByType(
@@ -532,7 +319,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static String getQuotedEscapedString(String input, String spannerColType) {
-    if ("BYTES".equals(spannerColType)) {
+    if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
       return input;
     }
     String cleanedString = escapeString(input);

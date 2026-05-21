@@ -41,6 +41,9 @@ v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
 # GCS Spanner Validation template
 v2/gcs-spanner-dv/ @GoogleCloudPlatform/spanner-migrations-team
 
+# CDC data generation template
+v2/cdc-data-generator/ @GoogleCloudPlatform/spanner-migrations-team
+
 # Bigtable Import Export templates
 v1/src/main/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team
 v1/src/test/java/com/google/cloud/teleport/bigtable @GoogleCloudPlatform/bigtable-migrations-team

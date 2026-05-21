@@ -61,6 +61,11 @@
             <artifactId>google-api-services-dataflow</artifactId>
             <version>${dataflow-api.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-sqladmin</artifactId>
+            <version>${sqladmin-api.version}</version>
+        </dependency>
 
         <!-- JDBC dependencies for CloudSQL -->
         <dependency>
@@ -104,7 +109,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner</artifactId>
-            <version>6.104.0</version>
+            <version>6.113.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>

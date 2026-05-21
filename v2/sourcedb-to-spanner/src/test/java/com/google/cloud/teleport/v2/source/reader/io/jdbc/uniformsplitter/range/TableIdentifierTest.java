@@ -27,9 +27,21 @@ public class TableIdentifierTest {
 
   @Test
   public void testTableIdentifierEquality() {
-    TableIdentifier identifier1 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier identifier2 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier identifier3 = TableIdentifier.builder().setTableName("table2").build();
+    TableIdentifier identifier1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier identifier2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier identifier3 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table2")
+            .build();
 
     // Test for self-equality and equality with another identical object
     assertThat(identifier1).isEqualTo(identifier1);
@@ -46,12 +58,31 @@ public class TableIdentifierTest {
 
   @Test
   public void testTableIdentifierComparison() {
-    TableIdentifier identifierA = TableIdentifier.builder().setTableName("tableA").build();
-    TableIdentifier identifierB = TableIdentifier.builder().setTableName("tableB").build();
-    TableIdentifier anotherIdentifierA = TableIdentifier.builder().setTableName("tableA").build();
+    TableIdentifier identifierA =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("tableA")
+            .build();
+    TableIdentifier identifierB =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("tableB")
+            .build();
+    TableIdentifier identifierC =
+        TableIdentifier.builder()
+            .setDataSourceId("a1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("tableB")
+            .build();
+    TableIdentifier anotherIdentifierA =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("tableA")
+            .build();
 
     assertThat(identifierA).isEquivalentAccordingToCompareTo(anotherIdentifierA);
     assertThat(identifierA).isLessThan(identifierB);
     assertThat(identifierB).isGreaterThan(identifierA);
+    assertThat(identifierC).isLessThan(identifierA);
+    assertThat(identifierC).isLessThan(identifierB);
   }
 }

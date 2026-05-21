@@ -30,7 +30,14 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
         "[Experimental] Real-time anomaly detection on BigQuery change data (CDC). "
             + "Reads streaming APPENDS/CHANGES data from a BigQuery table, "
             + "computes a configurable windowed metric, runs anomaly detection "
-            + "(ZScore, IQR, or RobustZScore), and publishes anomalies to Pub/Sub.",
+            + "(ZScore, IQR, or RobustZScore), and emits anomalies to Pub/Sub "
+            + "and/or a REST webhook. "
+            + "Alerts to Pub/Sub and the REST webhook are rate-limited by "
+            + "default: per anomaly key, after the first alert fires further "
+            + "anomalies are suppressed until a 10-minute gap between "
+            + "consecutive anomalies elapses. Tune or disable via "
+            + "alert_cooldown_seconds (set to 0 to disable). The BigQuery "
+            + "sink table is unaffected and records every anomaly.",
     preview = true,
     flexContainerName = "bigquery-anomaly-detection",
     filesToCopy = {"main.py", "setup.py", "pyproject.toml", "requirements_all.txt", "src"},
@@ -63,17 +70,21 @@ public interface BigQueryAnomalyDetection {
       description = "Detector Specification (JSON)",
       helpText =
           "JSON string defining the anomaly detector. "
-              + "Example: {\"type\":\"ZScore\"} or "
-              + "{\"type\":\"ZScore\",\"config\":{\"threshold_criterion\":{\"type\":\"FixedThreshold\","
-              + "\"config\":{\"cutoff\":10}}}}")
+              + "Statistical: {\"type\":\"ZScore\"}, {\"type\":\"IQR\"}, {\"type\":\"RobustZScore\"}. "
+              + "Threshold: {\"type\":\"Threshold\",\"expression\":\"value >= 100\"}. "
+              + "RelativeChange: {\"type\":\"RelativeChange\",\"direction\":\"decrease\","
+              + "\"threshold_pct\":20,\"lookback_windows\":1}.")
   String getDetectorSpec();
 
   @TemplateParameter.Text(
       order = 4,
+      optional = true,
       name = "topic",
       description = "Pub/Sub Topic",
       helpText =
-          "Pub/Sub topic for anomaly results. " + "Full path: projects/<project>/topics/<topic>.",
+          "Pub/Sub topic for anomaly results. "
+              + "Full path: projects/<project>/topics/<topic>. "
+              + "Optional: at least one of topic or webhook_spec must be set.",
       regexes = {"^projects/[^/]+/topics/[^/]+$"})
   String getTopic();
 
@@ -147,19 +158,8 @@ public interface BigQueryAnomalyDetection {
       regexes = {"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"})
   String getSinkTable();
 
-  @TemplateParameter.Integer(
-      order = 13,
-      optional = true,
-      name = "decompress_shards",
-      description = "Decompress Shards",
-      helpText =
-          "Number of shards for CDC Arrow batch decompression fan-out. "
-              + "Spreads decompression CPU across workers. "
-              + "0 disables fan-out (decode inline). Default: 400.")
-  Integer getDecompressShards();
-
   @TemplateParameter.Text(
-      order = 14,
+      order = 13,
       optional = true,
       name = "fanout_strategy",
       description = "Fanout Strategy",
@@ -170,7 +170,7 @@ public interface BigQueryAnomalyDetection {
   String getFanoutStrategy();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 14,
       optional = true,
       name = "fanout",
       description = "Fanout Shards",
@@ -178,4 +178,66 @@ public interface BigQueryAnomalyDetection {
           "Number of shards for sharded or hotkey_fanout strategies. "
               + "Ignored for none and precombine. Default: 400.")
   Integer getFanout();
+
+  @TemplateParameter.Text(
+      order = 15,
+      optional = true,
+      name = "message_format",
+      description = "Pub/Sub Message Format",
+      helpText =
+          "Python format string for Pub/Sub anomaly messages. "
+              + "Available fields: {value}, {score}, {label}, {threshold}, "
+              + "{model_id}, {info}, {key}, {window_start}, {window_end}, "
+              + "plus any keys from message_metadata. "
+              + "If unset, a default JSON payload is used.")
+  String getMessageFormat();
+
+  @TemplateParameter.Text(
+      order = 16,
+      optional = true,
+      name = "message_metadata",
+      description = "Pub/Sub Message Metadata",
+      helpText =
+          "JSON object of static key-value pairs available as additional "
+              + "fields in message_format. "
+              + "Example: {\"job_id\": \"pipeline-123\", \"env\": \"prod\"}. "
+              + "Anomaly fields take precedence on key collision.")
+  String getMessageMetadata();
+
+  @TemplateParameter.Text(
+      order = 17,
+      optional = true,
+      name = "webhook_spec",
+      description = "REST Webhook Specification (JSON)",
+      helpText =
+          "JSON object configuring a REST webhook for anomaly results. "
+              + "Required keys: endpoint (http/https URL), body (JSON object/array). "
+              + "Optional keys: method (POST/PUT/PATCH, default POST), "
+              + "headers (object), scopes (list of OAuth scopes; default "
+              + "cloud-platform), timeout_seconds (default 600, i.e. 10 min), "
+              + "parallelism (max concurrent in-flight POSTs per worker, "
+              + "default 5), callback_frequency_seconds (how often the "
+              + "AsyncWrapper sweeps finished futures, default 30). "
+              + "String leaves in body and headers are Python-format-substituted "
+              + "against anomaly fields, message_metadata keys, and the "
+              + "{anomaly_message} field (which equals message_format output, "
+              + "or a default natural-language summary). "
+              + "At least one of topic or webhook_spec must be set.")
+  String getWebhookSpec();
+
+  @TemplateParameter.Double(
+      order = 18,
+      optional = true,
+      name = "alert_cooldown_seconds",
+      description = "Alert Cooldown (seconds)",
+      helpText =
+          "Session-window gap for debouncing alerts to external systems "
+              + "(Pub/Sub, webhook). Per anomaly key, the first anomaly fires "
+              + "immediately; subsequent anomalies are suppressed (logged as "
+              + "\"still active\") until a gap of at least this many seconds "
+              + "passes between consecutive anomalies. Continuous anomalies "
+              + "extend the active-alert window. The BigQuery sink table is "
+              + "unaffected and records every anomaly. Set to 0 to disable "
+              + "rate limiting. Default: 600 (10 minutes).")
+  Double getAlertCooldownSeconds();
 }

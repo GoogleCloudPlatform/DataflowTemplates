@@ -108,16 +108,29 @@ public class PostgreSQLWithUniformizationIT extends SourceDbToSpannerITBase {
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
     HashMap<String, List<Map<String, Object>>> result = new HashMap<>();
-    result.put("bigint", createRows("-9223372036854775808", "9223372036854775807", "42", "NULL"));
-    result.put("bigserial", createRows("-9223372036854775808", "9223372036854775807", "42"));
+    result.put(
+        "bigint",
+        createRows("bigint", "-9223372036854775808", "9223372036854775807", "42", "NULL"));
+    result.put(
+        "bigserial", createRows("bigserial", "-9223372036854775808", "9223372036854775807", "42"));
+    result.put(
+        "uuid_pk",
+        createRows(
+            "uuid_pk",
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22"));
     return result;
   }
 
-  private List<Map<String, Object>> createRows(Object... values) {
+  private List<Map<String, Object>> createRows(String colPrefix, Object... values) {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < values.length; i++) {
       Map<String, Object> row = new HashMap<>();
-      row.put("id", i + 1);
+      if (colPrefix.toLowerCase().contains("_pk")) {
+        row.put("id", values[i]);
+      } else {
+        row.put("id", i + 1);
+      }
       row.put("col", values[i]);
       rows.add(row);
     }

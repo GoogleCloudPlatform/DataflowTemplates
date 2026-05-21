@@ -101,13 +101,17 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withNullParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -122,6 +126,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -139,17 +144,22 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withSingleLevelParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -163,6 +173,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -173,6 +184,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery query =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -196,21 +208,27 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withMultiLevelParentRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -224,6 +242,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range childRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col2")
             .setColClass(Integer.class)
@@ -234,6 +253,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -245,6 +265,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery query =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -273,17 +294,22 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withSingleLevelParentRange_mockRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("testTable").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -305,6 +331,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -330,21 +357,27 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withMultiLevelParentRange_mockRange() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("testTable").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col3")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -374,6 +407,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col3")
             .setColumnClass(Integer.class)
@@ -405,7 +439,10 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withDbIntegration() throws Exception {
     TableIdentifier tableId =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
         new ColumnForBoundaryQueryPreparedStatementSetter(
             ImmutableList.of(
@@ -414,10 +451,12 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Integer.class)
                                 .build(),
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Integer.class)
                                 .build()))
@@ -427,6 +466,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .build()));
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -447,6 +487,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     Range parentRange =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColName("col1")
             .setColClass(Integer.class)
@@ -457,6 +498,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableId)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -480,17 +522,22 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
   @Test
   public void testSetParameters_withDbIntegration_literalSql() throws Exception {
     TableIdentifier testTableIdentifier =
-        TableIdentifier.builder().setTableName("test_table_column_boundary").build();
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table_column_boundary")
+            .build();
     TableSplitSpecification tableSplitSpec =
         TableSplitSpecification.builder()
             .setTableIdentifier(testTableIdentifier)
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -504,6 +551,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     // Test for initial column boundary discovery (no parent range)
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col1")
             .setColumnClass(Integer.class)
@@ -527,6 +575,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     // Test for column boundary discovery within a parent range
     Range parentRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
@@ -539,6 +588,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     ColumnForBoundaryQuery columnWithinRange =
         ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(testTableIdentifier)
             .setColumnName("col2")
             .setColumnClass(Integer.class)
@@ -558,6 +608,63 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
         assertThat(columnWithinRangeBoundary).isEqualTo(Pair.of(135, 140));
       }
     }
+  }
+
+  @Test
+  public void testSetParameters_withUuidColumn() throws Exception {
+    byte[] startBytes = new byte[16];
+    byte[] endBytes = new byte[16];
+    java.util.Arrays.fill(endBytes, (byte) 0xFF);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_uuid_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("uuid_col")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uuid")
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    Range parentRange =
+        Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("uuid_col")
+            .setColClass(byte[].class)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    ColumnForBoundaryQuery query =
+        ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(tableId)
+            .setColumnName("col2")
+            .setColumnClass(Integer.class)
+            .setParentRange(parentRange)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    ColumnForBoundaryQueryPreparedStatementSetter setter =
+        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(query, mockStatement);
+
+    verify(mockStatement, times(1)).setObject(2, new java.util.UUID(0L, 0L));
+    verify(mockStatement, times(1)).setObject(3, new java.util.UUID(-1L, -1L));
   }
 
   @After
