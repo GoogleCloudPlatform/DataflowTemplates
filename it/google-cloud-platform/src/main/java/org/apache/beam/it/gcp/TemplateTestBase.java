@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -105,6 +106,10 @@ public abstract class TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTestBase.class);
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
+  static {
+    java.util.logging.Logger.getLogger("com.google.cloud.gcsio").setLevel(Level.SEVERE);
+    java.util.logging.Logger.getLogger("com.google.cloud.hadoop.gcsio").setLevel(Level.SEVERE);
+  }
   public String testName;
 
   @Rule
