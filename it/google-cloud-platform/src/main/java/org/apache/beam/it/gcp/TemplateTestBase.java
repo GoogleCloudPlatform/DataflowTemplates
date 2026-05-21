@@ -110,6 +110,7 @@ public abstract class TemplateTestBase {
     java.util.logging.Logger.getLogger("com.google.cloud.gcsio").setLevel(Level.SEVERE);
     java.util.logging.Logger.getLogger("com.google.cloud.hadoop.gcsio").setLevel(Level.SEVERE);
   }
+
   public String testName;
 
   @Rule
