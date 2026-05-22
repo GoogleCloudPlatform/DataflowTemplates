@@ -22,13 +22,21 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
@@ -37,13 +45,16 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Test class for {@link MigrateTableTransform}. */
 @RunWith(JUnit4.class)
 public class MigrateTableTransformTest {
+  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
   /** Tests that metric names are correctly generated, optionally including the shard ID. */
   @Test
@@ -131,5 +142,75 @@ public class MigrateTableTransformTest {
     // This avoids the need to mock execution-time dependencies like SpannerWriter.
     Pipeline p = Pipeline.create();
     migrateTableTransform.expand(PBegin.in(p));
+  }
+
+  /**
+   * Tests the writeToGCS method end-to-end to ensure that records are serialized correctly using
+   * the wrapper schema without throwing UnresolvedUnionException.
+   */
+  @Test
+  public void testWriteToGCS() throws Exception {
+    TestPipeline pipeline = TestPipeline.create().enableAbandonedNodeEnforcement(false);
+
+    final String testTable = "table1";
+    final String shardId = "id1";
+    final long testReadTime = 1712751118L;
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    var schema =
+        SourceTableSchema.builder(UnifiedTypeMapper.MapperType.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "id", new SourceColumnType("INTEGER", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "firstName", new SourceColumnType("varchar", new Long[] {20L}, null))
+            .build();
+    SourceRow sourceRow =
+        SourceRow.builder(schemaRef, schema, shardId, testReadTime)
+            .setField("id", 123)
+            .setField("firstName", "abc")
+            .build();
+
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
+    String tempDirPath = tempFolder.getRoot().getAbsolutePath();
+
+    SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    options.setSourceDbDialect("MYSQL");
+    options.setGcsOutputDirectory(tempDirPath);
+
+    SpannerConfig mockSpannerConfig = mock(SpannerConfig.class);
+    Ddl mockDdl = mock(Ddl.class);
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    ReaderImpl mockReader = mock(ReaderImpl.class);
+
+    MigrateTableTransform migrateTableTransform =
+        new MigrateTableTransform(
+            options, mockSpannerConfig, mockDdl, mockSchemaMapper, mockReader);
+
+    migrateTableTransform.writeToGCS(sourceRows, tempDirPath);
+
+    // Run the pipeline to execute the Avro write logic on actual data
+    pipeline.run().waitUntilFinish();
+
+    // Verify Avro File was written and matches wrapper schema
+    java.io.File avroSubDir = new java.io.File(tempDirPath, "table1/id1");
+    java.io.File[] avroFiles = avroSubDir.listFiles((dir, name) -> name.endsWith(".avro"));
+    org.junit.Assert.assertNotNull(avroFiles);
+    org.junit.Assert.assertEquals(1, avroFiles.length);
+    java.io.File avroFile = avroFiles[0];
+
+    try (DataFileReader<GenericRecord> fileReader =
+        new DataFileReader<>(avroFile, new GenericDatumReader<>())) {
+      org.junit.Assert.assertTrue(fileReader.hasNext());
+      GenericRecord record = fileReader.next();
+
+      org.junit.Assert.assertEquals("table1", record.get("tableName").toString());
+      org.junit.Assert.assertEquals("id1", record.get("shardId").toString());
+
+      GenericRecord payloadRecord = (GenericRecord) record.get("payload");
+      org.junit.Assert.assertEquals(123, payloadRecord.get("id"));
+      org.junit.Assert.assertEquals("abc", payloadRecord.get("firstName").toString());
+
+      org.junit.Assert.assertFalse(fileReader.hasNext());
+    }
   }
 }
