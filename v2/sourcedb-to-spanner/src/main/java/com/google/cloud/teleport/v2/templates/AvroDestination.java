@@ -23,7 +23,7 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 public class AvroDestination {
   public String name;
   public String jsonSchema;
-  public String shardId;
+  @org.apache.avro.reflect.Nullable public String shardId;
 
   // Needed for serialization
   public AvroDestination() {}

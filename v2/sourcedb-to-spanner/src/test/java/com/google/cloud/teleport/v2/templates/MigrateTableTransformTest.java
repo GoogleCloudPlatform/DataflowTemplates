@@ -153,7 +153,7 @@ public class MigrateTableTransformTest {
     TestPipeline pipeline = TestPipeline.create().enableAbandonedNodeEnforcement(false);
 
     final String testTable = "table1";
-    final String shardId = "id1";
+    final String shardId = null;
     final long testReadTime = 1712751118L;
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema =
@@ -192,25 +192,25 @@ public class MigrateTableTransformTest {
     pipeline.run().waitUntilFinish();
 
     // Verify Avro File was written and matches wrapper schema
-    java.io.File avroSubDir = new java.io.File(tempDirPath, "table1/id1");
+    java.io.File avroSubDir = new java.io.File(tempDirPath, "table1");
     java.io.File[] avroFiles = avroSubDir.listFiles((dir, name) -> name.endsWith(".avro"));
-    org.junit.Assert.assertNotNull(avroFiles);
-    org.junit.Assert.assertEquals(1, avroFiles.length);
+    assertThat(avroFiles).isNotNull();
+    assertThat(avroFiles).hasLength(1);
     java.io.File avroFile = avroFiles[0];
 
     try (DataFileReader<GenericRecord> fileReader =
         new DataFileReader<>(avroFile, new GenericDatumReader<>())) {
-      org.junit.Assert.assertTrue(fileReader.hasNext());
+      assertThat(fileReader.hasNext()).isTrue();
       GenericRecord record = fileReader.next();
 
-      org.junit.Assert.assertEquals("table1", record.get("tableName").toString());
-      org.junit.Assert.assertEquals("id1", record.get("shardId").toString());
+      assertThat(record.get("tableName").toString()).isEqualTo("table1");
+      assertThat(record.get("shardId")).isNull();
 
       GenericRecord payloadRecord = (GenericRecord) record.get("payload");
-      org.junit.Assert.assertEquals(123, payloadRecord.get("id"));
-      org.junit.Assert.assertEquals("abc", payloadRecord.get("firstName").toString());
+      assertThat(payloadRecord.get("id")).isEqualTo(123);
+      assertThat(payloadRecord.get("firstName").toString()).isEqualTo("abc");
 
-      org.junit.Assert.assertFalse(fileReader.hasNext());
+      assertThat(fileReader.hasNext()).isFalse();
     }
   }
 }
