@@ -196,7 +196,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     return getUpsertStatement(sourceTable.name(), columnNameValues);
   }
 
-  private static String getMappedColumnValue(
+  static String getMappedColumnValue(
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,
@@ -216,10 +216,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         || colType.getCode().equals(Type.Code.PG_BOOL)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
     } else if ((colType.getCode().equals(Type.Code.ARRAY)
-            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+            && (colType.getArrayElementType().getCode().equals(Type.Code.STRING)
+                || colType.getArrayElementType().getCode().equals(Type.Code.UUID)))
         || (colType.getCode().equals(Type.Code.PG_ARRAY)
             && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
-                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_UUID)))) {
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)

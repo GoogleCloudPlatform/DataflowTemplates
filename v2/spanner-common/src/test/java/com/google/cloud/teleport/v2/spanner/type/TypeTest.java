@@ -34,6 +34,7 @@ public class TypeTest {
     assertEquals("BYTES", Type.bytes().toString());
     assertEquals("TIMESTAMP", Type.timestamp().toString());
     assertEquals("DATE", Type.date().toString());
+    assertEquals("UUID", Type.uuid().toString());
 
     // Array types
     assertEquals("ARRAY<INT64>", Type.array(Type.int64()).toString());
@@ -59,7 +60,9 @@ public class TypeTest {
     assertEquals("PG_BYTEA", Type.pgBytea().toString());
     assertEquals("PG_TIMESTAMPTZ", Type.pgTimestamptz().toString());
     assertEquals("PG_DATE", Type.pgDate().toString());
+    assertEquals("PG_UUID", Type.pgUuid().toString());
     assertEquals("PG_TEXT[]", Type.pgArray(Type.pgText()).toString());
+    assertEquals("PG_UUID[]", Type.pgArray(Type.pgUuid()).toString());
     assertEquals("PG_COMMIT_TIMESTAMP", Type.pgCommitTimestamp().toString());
   }
 }

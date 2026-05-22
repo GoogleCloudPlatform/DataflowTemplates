@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -1666,5 +1667,101 @@ public class GenericRecordTypeConvertorTest {
     assertThat(result).containsEntry("id", Value.int64(100L));
     assertThat(result).containsEntry("val_col", Value.string("test"));
     assertThat(result).doesNotContainKey("gen_col");
+  }
+
+  @Test
+  public void transformChangeEventTest_ShardIdPopulation_UuidType()
+      throws InvalidTransformationException {
+    Ddl shardedDdl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("new_people")
+            .column("migration_shard_id")
+            .uuid()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(20)
+            .endColumn()
+            .primaryKey()
+            .asc("migration_shard_id")
+            .asc("new_name")
+            .end()
+            .endTable()
+            .build();
+
+    String shardedSessionFilePath =
+        Paths.get(Resources.getResource("session-file-sharded.json").getPath()).toString();
+
+    ISchemaMapper shardedMapper = new SessionBasedMapper(shardedSessionFilePath, shardedDdl);
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("people")
+                .namespace("com.test.schema")
+                .fields()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("name", "name1");
+
+    String validUuidStr = "d1a0ce61-b9dd-4169-96a8-d0d7789b61d9";
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(shardedMapper, "", validUuidStr, null);
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+
+    Map<String, Value> expected =
+        Map.of(
+            "new_name", Value.string("name1"),
+            "migration_shard_id", Value.uuid(java.util.UUID.fromString(validUuidStr)));
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void transformChangeEventTest_SynthPKPopulation_UuidType()
+      throws InvalidTransformationException {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("new_people")
+            .column("synth_id")
+            .uuid()
+            .notNull()
+            .endColumn()
+            .column("new_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .primaryKey()
+            .asc("synth_id")
+            .end()
+            .endTable()
+            .build();
+
+    ISchemaMapper sessionMapper = new SessionBasedMapper(sessionFilePath, ddl);
+
+    GenericRecord genericRecord =
+        new GenericData.Record(
+            SchemaBuilder.record("people")
+                .namespace("com.test.schema")
+                .fields()
+                .name("name")
+                .type(unionNullType(Schema.create(Schema.Type.STRING)))
+                .noDefault()
+                .endRecord());
+    genericRecord.put("name", "name1");
+
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(sessionMapper, "", null, null);
+    Map<String, Value> actual =
+        genericRecordTypeConvertor.transformChangeEvent(genericRecord, "people");
+
+    assertTrue(actual.containsKey("synth_id"));
+    Value synthValue = actual.get("synth_id");
+    assertEquals(com.google.cloud.spanner.Type.Code.UUID, synthValue.getType().getCode());
+    assertNotNull(synthValue.getUuid());
+    assertEquals(Value.string("name1"), actual.get("new_name"));
   }
 }

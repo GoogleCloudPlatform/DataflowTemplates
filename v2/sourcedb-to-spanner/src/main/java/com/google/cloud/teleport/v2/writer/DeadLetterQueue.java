@@ -283,6 +283,9 @@ public class DeadLetterQueue implements Serializable {
           case BYTES:
             val = Hex.encodeHexString(value.getBytes().toByteArray());
             break;
+          case UUID:
+            val = value.getUuid().toString();
+            break;
           case INT64:
             val = value.getInt64();
             break;
@@ -300,6 +303,11 @@ public class DeadLetterQueue implements Serializable {
               val =
                   value.getBytesArray().stream()
                       .map(v -> v == null ? null : Hex.encodeHexString(v.toByteArray()))
+                      .collect(Collectors.toList());
+            } else if (value.getType().getArrayElementType().getCode() == Type.Code.UUID) {
+              val =
+                  value.getUuidArray().stream()
+                      .map(v -> v == null ? null : v.toString())
                       .collect(Collectors.toList());
             } else {
               val = value.toString();

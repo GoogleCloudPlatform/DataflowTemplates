@@ -76,6 +76,9 @@ public class DdlTest {
         .int64()
         .notNull()
         .endColumn()
+        .column("uuid_col")
+        .uuid()
+        .endColumn()
         .column("first_name")
         .string()
         .size(10)
@@ -117,6 +120,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `uuid_col` UUID,"
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
@@ -133,6 +137,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `uuid_col` UUID,"
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
@@ -198,6 +203,9 @@ public class DdlTest {
         .pgInt8()
         .notNull()
         .endColumn()
+        .column("uuid_col")
+        .pgUuid()
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -240,6 +248,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
+                + " \"uuid_col\" uuid,"
                 + " \"first_name\" character varying(10),"
                 + " \"last_name\" character varying,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"

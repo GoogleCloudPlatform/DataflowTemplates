@@ -200,6 +200,16 @@ public class AvroToValueMapper {
                 avroArrayFieldToSpannerArray(
                     recordValue, fieldSchema, AvroToValueMapper::avroFieldToDate)));
 
+    gsqlFunctions.put(
+        Type.uuid(),
+        (recordValue, fieldSchema) -> Value.uuid(avroFieldToUuid(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.uuid()),
+        (recordValue, fieldSchema) ->
+            Value.uuidArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToUuid)));
+
     return gsqlFunctions;
   }
 
@@ -242,6 +252,16 @@ public class AvroToValueMapper {
     pgFunctions.put(
         Type.pgDate(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgUuid(),
+        (recordValue, fieldSchema) -> Value.uuid(avroFieldToUuid(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgArray(Type.pgUuid()),
+        (recordValue, fieldSchema) ->
+            Value.uuidArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToUuid)));
+
     return pgFunctions;
   }
 
@@ -249,6 +269,40 @@ public class AvroToValueMapper {
    * This method tries to map different kinds of source types to a boolean. This could be longs,
    * string as well as booleans.
    */
+  static java.util.UUID avroFieldToUuid(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      if (recordValue instanceof java.util.UUID) {
+        return (java.util.UUID) recordValue;
+      }
+      if (recordValue instanceof ByteBuffer) {
+        byte[] bytes = ((ByteBuffer) recordValue).array();
+        if (bytes.length == 16) {
+          ByteBuffer bb = ByteBuffer.wrap(bytes);
+          return new java.util.UUID(bb.getLong(), bb.getLong());
+        }
+      }
+      if (recordValue instanceof byte[]) {
+        byte[] bytes = (byte[]) recordValue;
+        if (bytes.length == 16) {
+          ByteBuffer bb = ByteBuffer.wrap(bytes);
+          return new java.util.UUID(bb.getLong(), bb.getLong());
+        }
+      }
+      return java.util.UUID.fromString(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to UUID, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
   static Boolean avroFieldToBoolean(Object recordValue, Schema fieldSchema) {
     if (recordValue == null) {
       return null;

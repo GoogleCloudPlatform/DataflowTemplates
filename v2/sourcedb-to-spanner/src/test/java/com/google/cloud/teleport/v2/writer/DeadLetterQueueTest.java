@@ -799,6 +799,54 @@ public class DeadLetterQueueTest {
         .contains("\"_metadata_shard_id_column_name\":\"migration_shard_id\"");
   }
 
+  @Test
+  public void testMutationToDlqElement_UuidType() {
+    Ddl ddlWithUuid =
+        Ddl.builder()
+            .createTable("uuid_table")
+            .column("id")
+            .type(com.google.cloud.teleport.v2.spanner.type.Type.uuid())
+            .endColumn()
+            .column("uuid_array")
+            .type(
+                com.google.cloud.teleport.v2.spanner.type.Type.array(
+                    com.google.cloud.teleport.v2.spanner.type.Type.uuid()))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "LOG", ddlWithUuid, SQLDialect.MYSQL, getIdentityMapper(ddlWithUuid));
+
+    java.util.UUID idUuid = java.util.UUID.randomUUID();
+    java.util.UUID elementUuid1 = java.util.UUID.randomUUID();
+    java.util.UUID elementUuid2 = java.util.UUID.randomUUID();
+
+    Mutation m =
+        Mutation.newInsertBuilder("uuid_table")
+            .set("id")
+            .to(Value.uuid(idUuid))
+            .set("uuid_array")
+            .to(Value.uuidArray(java.util.Arrays.asList(elementUuid1, elementUuid2)))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    String payload = dlqElement.getPayload();
+
+    assertThat(payload).contains("\"id\":\"" + idUuid.toString() + "\"");
+    assertThat(payload)
+        .contains(
+            "\"uuid_array\":[\""
+                + elementUuid1.toString()
+                + "\",\""
+                + elementUuid2.toString()
+                + "\"]");
+  }
+
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
     return new IdentityMapper(spannerDdl);
   }

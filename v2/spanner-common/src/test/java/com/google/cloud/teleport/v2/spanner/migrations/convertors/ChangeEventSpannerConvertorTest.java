@@ -95,6 +95,12 @@ public class ChangeEventSpannerConvertorTest {
             .column("date_field2")
             .date()
             .endColumn()
+            .column("uuid_col")
+            .uuid()
+            .endColumn()
+            .column("pg_uuid_col")
+            .pgUuid()
+            .endColumn()
             .primaryKey()
             .asc("first_name")
             .desc("last_name")
@@ -122,6 +128,9 @@ public class ChangeEventSpannerConvertorTest {
         "timestamp_field2", Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
     changeEvent.put("date_field", "2020-12-30T00:00:00Z");
     changeEvent.put("date_field2", "2020-12-30");
+    String testUuidStr = "d1a0ce61-b9dd-4169-96a8-d0d7789b61d9";
+    changeEvent.put("uuid_col", testUuidStr);
+    changeEvent.put("pg_uuid_col", testUuidStr);
     changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, tableName);
     return changeEvent;
   }
@@ -149,6 +158,10 @@ public class ChangeEventSpannerConvertorTest {
                 Value.timestamp(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1"))));
             put("date_field", Value.date(Date.parseDate("2020-12-30")));
             put("date_field2", Value.date(Date.parseDate("2020-12-30")));
+            java.util.UUID expectedUuid =
+                java.util.UUID.fromString("d1a0ce61-b9dd-4169-96a8-d0d7789b61d9");
+            put("uuid_col", Value.uuid(expectedUuid));
+            put("pg_uuid_col", Value.uuid(expectedUuid));
           }
         };
     return expected;
@@ -219,6 +232,12 @@ public class ChangeEventSpannerConvertorTest {
             .column("date_field2")
             .date()
             .endColumn()
+            .column("uuid_col")
+            .uuid()
+            .endColumn()
+            .column("pg_uuid_col")
+            .pgUuid()
+            .endColumn()
             .primaryKey()
             .asc("first_name")
             .desc("last_name")
@@ -233,6 +252,8 @@ public class ChangeEventSpannerConvertorTest {
             .asc("timestamp_field2")
             .asc("date_field")
             .asc("date_field2")
+            .asc("uuid_col")
+            .asc("pg_uuid_col")
             .end()
             .endTable()
             .build();
@@ -261,7 +282,9 @@ public class ChangeEventSpannerConvertorTest {
             "timestamp_field",
             "timestamp_field2",
             "date_field",
-            "date_field2");
+            "date_field2",
+            "uuid_col",
+            "pg_uuid_col");
     Set<String> keyNames = new HashSet<>(Arrays.asList("first_name", "last_name"));
     Mutation mutation =
         ChangeEventSpannerConvertor.mutationFromEvent(table, ce, colNames, keyNames);
@@ -294,6 +317,9 @@ public class ChangeEventSpannerConvertorTest {
     expectedKeyParts.add(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
     expectedKeyParts.add(Date.parseDate("2020-12-30"));
     expectedKeyParts.add(Date.parseDate("2020-12-30"));
+    java.util.UUID expectedUuid = java.util.UUID.fromString("d1a0ce61-b9dd-4169-96a8-d0d7789b61d9");
+    expectedKeyParts.add(expectedUuid);
+    expectedKeyParts.add(expectedUuid);
 
     assertThat(keyParts, is(expectedKeyParts));
   }
