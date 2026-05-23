@@ -47,6 +47,12 @@ jobs:
           branch: chore/update-generated-docs
           base: main
 
+      - name: Verify PR Creation
+        if: steps.cpr.outputs.pull-request-number == ''
+        run: |
+          echo "::error::pull request was not created. This is normal when there are no doc changes."
+          exit 1
+
       - name: Add ignore-for-release label to PR
         uses: actions-ecosystem/action-add-labels@v1.1.3
         with:
