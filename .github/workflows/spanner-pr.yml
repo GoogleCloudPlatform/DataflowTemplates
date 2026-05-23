@@ -132,12 +132,16 @@ jobs:
             **/surefire-reports/*.html
             **/surefire-reports/html/**
         retention-days: 1
+    # The 'spanner' flag identifies reports from this workflow.
+    # Combined with 'carryforward: true' in codecov.yml, it allows Codecov to reuse
+    # reports from previous commits when this workflow is skipped by path-based triggers.
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
+        flags: spanner
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:

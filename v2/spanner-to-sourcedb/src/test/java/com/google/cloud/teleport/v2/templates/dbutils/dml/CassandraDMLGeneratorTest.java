@@ -16,29 +16,36 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -868,6 +875,139 @@ public class CassandraDMLGeneratorTest {
                         modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                     .setSchemaMapper(schemaMapper)
                     .setCommitTimestamp(Timestamp.now())
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build()));
+  }
+
+  @Test
+  public void testGetDeleteStatementCQL_NullTimestamp() {
+    Map<String, PreparedStatementValueObject<?>> pkValues =
+        Map.of("id", PreparedStatementValueObject.create("int", 1));
+    DMLGeneratorResponse response =
+        CassandraDMLGenerator.getDeleteStatementCQL("my_table", null, pkValues);
+
+    assertEquals("DELETE FROM \"my_table\" WHERE \"id\" = ?", response.getDmlStatement());
+  }
+
+  @Test
+  public void testGetColumnValues_MissingSpannerColumnMapping() throws Exception {
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of());
+    Mockito.when(sourceTable.columns()).thenReturn(ImmutableList.of(sourceCol));
+    Mockito.when(sourceCol.name()).thenReturn("col1");
+    Mockito.when(mockSchemaMapper.getSpannerColumnName("", "my_table", "col1"))
+        .thenThrow(new NoSuchElementException());
+    Mockito.when(sourceTable.name()).thenReturn("my_table");
+
+    Map<String, PreparedStatementValueObject<?>> result =
+        CassandraDMLGenerator.getColumnValues(
+            mockSchemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null);
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void testGetPkColumnValues_MissingSourceColumnDefinition() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("id"));
+    Mockito.when(sourceTable.column("id")).thenReturn(null); // Missing!
+
+    Map<String, PreparedStatementValueObject<?>> result =
+        CassandraDMLGenerator.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null);
+
+    assertNull(result);
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSpannerDdl() {
+    CassandraDMLGenerator generator = new CassandraDMLGenerator();
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "tableName", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(Mockito.mock(ISchemaMapper.class))
+                    .setSourceSchema(Mockito.mock(SourceSchema.class))
+                    .setDdl(null)
+                    .build()));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSourceSchema() {
+    CassandraDMLGenerator generator = new CassandraDMLGenerator();
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "tableName", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(Mockito.mock(ISchemaMapper.class))
+                    .setDdl(Mockito.mock(Ddl.class))
+                    .setSourceSchema(null)
+                    .build()));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSpannerTable() {
+    CassandraDMLGenerator generator = new CassandraDMLGenerator();
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Mockito.when(ddl.table("tableName")).thenReturn(null);
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "tableName", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(Mockito.mock(ISchemaMapper.class))
+                    .setDdl(ddl)
+                    .setSourceSchema(Mockito.mock(SourceSchema.class))
+                    .build()));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSourceTable() {
+    CassandraDMLGenerator generator = new CassandraDMLGenerator();
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table table = Mockito.mock(Table.class);
+    Mockito.when(ddl.table("tableName")).thenReturn(table);
+
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    Mockito.when(sourceSchema.table(Mockito.anyString())).thenReturn(null);
+
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(schemaMapper.getSourceTableName(Mockito.anyString(), Mockito.anyString()))
+        .thenReturn("src_table");
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            generator.getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "tableName", new JSONObject(), new JSONObject(), "+00:00")
+                    .setSchemaMapper(schemaMapper)
                     .setDdl(ddl)
                     .setSourceSchema(sourceSchema)
                     .build()));

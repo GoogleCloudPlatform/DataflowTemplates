@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.spanner.type;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -61,5 +63,85 @@ public class TypeTest {
     assertEquals("PG_DATE", Type.pgDate().toString());
     assertEquals("PG_TEXT[]", Type.pgArray(Type.pgText()).toString());
     assertEquals("PG_COMMIT_TIMESTAMP", Type.pgCommitTimestamp().toString());
+  }
+
+  @Test
+  public void testEqualsAndHashCode() {
+    Type t1 = Type.int64();
+    Type t2 = Type.int64();
+    Type t3 = Type.string();
+
+    assertTrue(t1.equals(t1));
+    assertTrue(t1.equals(t2));
+    assertFalse(t1.equals(t3));
+    assertFalse(t1.equals(null));
+    assertFalse(t1.equals("string"));
+
+    assertEquals(t1.hashCode(), t2.hashCode());
+
+    // Test with array types
+    Type a1 = Type.array(Type.int64());
+    Type a2 = Type.array(Type.int64());
+    Type a3 = Type.array(Type.string());
+    assertTrue(a1.equals(a2));
+    assertFalse(a1.equals(a3));
+
+    // Test with struct types
+    Type s1 = Type.struct(Type.StructField.of("f1", Type.int64()));
+    Type s2 = Type.struct(Type.StructField.of("f1", Type.int64()));
+    Type s3 = Type.struct(Type.StructField.of("f2", Type.int64()));
+    assertTrue(s1.equals(s2));
+    assertFalse(s1.equals(s3));
+  }
+
+  @Test
+  public void testStructFieldEqualsAndHashCode() {
+    Type.StructField f1 = Type.StructField.of("f1", Type.int64());
+    Type.StructField f2 = Type.StructField.of("f1", Type.int64());
+    Type.StructField f3 = Type.StructField.of("f2", Type.int64());
+    Type.StructField f4 = Type.StructField.of("f1", Type.string());
+
+    assertTrue(f1.equals(f1));
+    assertTrue(f1.equals(f2));
+    assertFalse(f1.equals(f3));
+    assertFalse(f1.equals(f4));
+    assertFalse(f1.equals(null));
+    assertFalse(f1.equals("string"));
+
+    assertEquals(f1.hashCode(), f2.hashCode());
+  }
+
+  @Test
+  public void testGetArrayElementType() {
+    Type a1 = Type.array(Type.int64());
+    assertEquals(Type.int64(), a1.getArrayElementType());
+
+    Type a2 = Type.pgArray(Type.pgInt8());
+    assertEquals(Type.pgInt8(), a2.getArrayElementType());
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testGetArrayElementType_Exception() {
+    Type.int64().getArrayElementType();
+  }
+
+  @Test
+  public void testPgArray_AllTypes() {
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgBool()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgInt8()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgFloat4()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgFloat8()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgNumeric()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgJsonb()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgVarchar()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgText()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgBytea()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgTimestamptz()).getCode());
+    assertEquals(Type.Code.PG_ARRAY, Type.pgArray(Type.pgDate()).getCode());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testPgArray_UnknownType() {
+    Type.pgArray(Type.int64()); // int64 is not a PG type in this context!
   }
 }

@@ -129,6 +129,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
           files: 'target/site/jacoco-aggregate/jacoco.xml'
+          flags: java
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
         if: always()

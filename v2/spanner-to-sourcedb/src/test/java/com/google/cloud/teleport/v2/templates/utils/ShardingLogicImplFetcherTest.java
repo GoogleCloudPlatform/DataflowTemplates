@@ -20,8 +20,12 @@ import static org.mockito.Mockito.mock;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
+import java.io.File;
+import java.io.IOException;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class ShardingLogicImplFetcherTest {
 
@@ -44,5 +48,16 @@ public class ShardingLogicImplFetcherTest {
     // This should fail because the jar path and class name are invalid
     ShardingLogicImplFetcher.getShardingLogicImpl(
         "invalid.jar", "InvalidClass", "", mockSchemaMapper, "skip");
+  }
+
+  @Rule public TemporaryFolder tmpFolder = new TemporaryFolder();
+
+  @Test(expected = RuntimeException.class)
+  public void testGetShardingLogicImpl_Custom_WithRealFile_Failure() throws IOException {
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    File dummyJar = tmpFolder.newFile("dummy.jar");
+
+    ShardingLogicImplFetcher.getShardingLogicImpl(
+        dummyJar.getAbsolutePath(), "InvalidClass", "", mockSchemaMapper, "skip");
   }
 }
