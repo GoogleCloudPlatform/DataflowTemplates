@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.dto.Column;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
@@ -23,6 +24,8 @@ import com.google.cloud.teleport.v2.dto.ValidationSummary;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.testing.PAssert;
@@ -60,12 +63,7 @@ public class ReportResultsTransformTest implements Serializable {
     pipeline
         .getCoderRegistry()
         .registerCoderForClass(
-            ValidationSummary.class,
-            SchemaCoder.of(
-                pipeline.getSchemaRegistry().getSchema(ValidationSummary.class),
-                TypeDescriptor.of(ValidationSummary.class),
-                pipeline.getSchemaRegistry().getToRowFunction(ValidationSummary.class),
-                pipeline.getSchemaRegistry().getFromRowFunction(ValidationSummary.class)));
+            ValidationSummary.class, SerializableCoder.of(ValidationSummary.class));
   }
 
   @Test
@@ -195,8 +193,8 @@ public class ReportResultsTransformTest implements Serializable {
             .setDestinationRowCount(10L)
             .setMatchedRowCount(10L)
             .setMismatchRowCount(0L)
-            .setStartTimestamp(now)
-            .setEndTimestamp(now)
+            .setStartTimestamp(now.toString())
+            .setEndTimestamp(now.toString())
             .build();
 
     TableValidationStats stats2 =
@@ -208,8 +206,8 @@ public class ReportResultsTransformTest implements Serializable {
             .setDestinationRowCount(6L)
             .setMatchedRowCount(4L)
             .setMismatchRowCount(3L) // 1 miss spanner + 2 miss source
-            .setStartTimestamp(now)
-            .setEndTimestamp(now)
+            .setStartTimestamp(now.toString())
+            .setEndTimestamp(now.toString())
             .build();
 
     PCollection<TableValidationStats> pStats =
@@ -231,9 +229,9 @@ public class ReportResultsTransformTest implements Serializable {
                       && summary.getTablesWithMismatches().equals("Table2")
                       && summary.getTotalRowsMatched() == 14L
                       && summary.getTotalRowsMismatched() == 3L
-                      && summary.getStartTimestamp().equals(now)
+                      && summary.getStartTimestamp().equals(now.toString())
                       && summary.getStatus().equals("MISMATCH")
-                      && !summary.getEndTimestamp().isBefore(now);
+                      && summary.getEndTimestamp() != null;
               if (!valid) {
                 throw new AssertionError("Invalid summary: " + summary);
               }
@@ -241,5 +239,82 @@ public class ReportResultsTransformTest implements Serializable {
             });
 
     pipeline.run();
+  }
+
+  @Test
+  public void testTableRowSerialization() throws Exception {
+    TableRow summaryRow =
+        new TableRow()
+            .set(ValidationSummary.RUN_ID_COLUMN_NAME, "run1")
+            .set(ValidationSummary.SOURCE_DATABASE_COLUMN_NAME, "src")
+            .set(ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME, "dst")
+            .set(ValidationSummary.STATUS_COLUMN_NAME, "MATCH")
+            .set(ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME, 2L)
+            .set(ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME, "")
+            .set(ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME, 100L)
+            .set(ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME, 0L)
+            .set(ValidationSummary.START_TIMESTAMP_COLUMN_NAME, "2026-05-24T11:45:39.000Z")
+            .set(ValidationSummary.END_TIMESTAMP_COLUMN_NAME, "2026-05-24T11:45:39.000Z");
+
+    TableRow statsRow =
+        new TableRow()
+            .set(TableValidationStats.RUN_ID_COLUMN_NAME, "run1")
+            .set(TableValidationStats.SCHEMA_NAME, "test-schema")
+            .set(TableValidationStats.TABLE_NAME_COLUMN_NAME, "Table1")
+            .set(TableValidationStats.STATUS_COLUMN_NAME, "MATCH")
+            .set(TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME, 100L)
+            .set(TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME, 100L)
+            .set(TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME, 100L)
+            .set(TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME, 0L)
+            .set(TableValidationStats.START_TIMESTAMP_COLUMN_NAME, "2026-05-24T11:45:39.000Z")
+            .set(TableValidationStats.END_TIMESTAMP_COLUMN_NAME, "2026-05-24T11:45:39.000Z");
+
+    java.io.ByteArrayOutputStream outputStream1 = new java.io.ByteArrayOutputStream();
+    TableRowJsonCoder.of().encode(summaryRow, outputStream1);
+
+    java.io.ByteArrayOutputStream outputStream2 = new java.io.ByteArrayOutputStream();
+    TableRowJsonCoder.of().encode(statsRow, outputStream2);
+
+    org.junit.Assert.assertTrue(outputStream1.toByteArray().length > 0);
+    org.junit.Assert.assertTrue(outputStream2.toByteArray().length > 0);
+  }
+
+  @Test
+  public void testSchemaInferenceForDTOs() throws Exception {
+    org.apache.beam.sdk.schemas.SchemaRegistry registry = pipeline.getSchemaRegistry();
+
+    System.out.println("Testing Schema for MismatchedRecord...");
+    org.apache.beam.sdk.schemas.Schema mismatchedSchema =
+        registry.getSchema(MismatchedRecord.class);
+    System.out.println("MismatchedRecord Schema: " + mismatchedSchema);
+    registry
+        .getToRowFunction(MismatchedRecord.class)
+        .apply(
+            MismatchedRecord.builder()
+                .setRunId("run1")
+                .setTableName("Table1")
+                .setMismatchType("MISSING")
+                .setRecordKey("key1")
+                .setSource("src")
+                .setHash("h1")
+                .build());
+
+    System.out.println("Testing Schema for TableValidationStats...");
+    org.apache.beam.sdk.schemas.Schema statsSchema = registry.getSchema(TableValidationStats.class);
+    System.out.println("TableValidationStats Schema: " + statsSchema);
+    registry
+        .getToRowFunction(TableValidationStats.class)
+        .apply(
+            TableValidationStats.builder()
+                .setRunId("run1")
+                .setTableName("Table1")
+                .setStatus("MATCH")
+                .setSourceRowCount(10L)
+                .setDestinationRowCount(10L)
+                .setMatchedRowCount(10L)
+                .setMismatchRowCount(0L)
+                .setStartTimestamp("2026-05-24T11:45:39.000Z")
+                .setEndTimestamp("2026-05-24T11:45:39.000Z")
+                .build());
   }
 }

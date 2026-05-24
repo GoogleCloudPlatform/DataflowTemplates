@@ -17,14 +17,10 @@ package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.schemas.AutoValueSchema;
-import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
-import org.joda.time.Instant;
 
 /** Represents a row in the ValidationSummary table in BigQuery. */
 @AutoValue
-@DefaultSchema(AutoValueSchema.class)
-public abstract class ValidationSummary {
+public abstract class ValidationSummary implements java.io.Serializable {
 
   public static final String RUN_ID_COLUMN_NAME = "run_id";
   public static final String SOURCE_DATABASE_COLUMN_NAME = "source_database";
@@ -56,9 +52,9 @@ public abstract class ValidationSummary {
 
   public abstract Long getTotalRowsMismatched();
 
-  public abstract Instant getStartTimestamp();
+  public abstract String getStartTimestamp();
 
-  public abstract Instant getEndTimestamp();
+  public abstract String getEndTimestamp();
 
   public static Builder builder() {
     return new AutoValue_ValidationSummary.Builder();
@@ -82,9 +78,9 @@ public abstract class ValidationSummary {
 
     public abstract Builder setTotalRowsMismatched(Long totalRowsMismatched);
 
-    public abstract Builder setStartTimestamp(Instant startTimestamp);
+    public abstract Builder setStartTimestamp(String startTimestamp);
 
-    public abstract Builder setEndTimestamp(Instant endTimestamp);
+    public abstract Builder setEndTimestamp(String endTimestamp);
 
     public abstract ValidationSummary build();
   }

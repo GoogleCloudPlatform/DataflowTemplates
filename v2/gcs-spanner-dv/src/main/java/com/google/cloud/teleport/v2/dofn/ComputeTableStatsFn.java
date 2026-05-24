@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.dofn;
 
 import com.google.cloud.teleport.v2.dto.TableValidationStats;
+import com.google.cloud.teleport.v2.dto.ValidationSummary;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.values.KV;
@@ -26,14 +27,116 @@ import org.joda.time.Instant;
 public class ComputeTableStatsFn extends DoFn<KV<String, CoGbkResult>, TableValidationStats> {
 
   private final String runId;
-  private final Instant startTimestamp;
+  private final String startTimestamp;
   private final TupleTag<Long> matchedTag;
   private final TupleTag<Long> missInSpannerTag;
   private final TupleTag<Long> missInSourceTag;
 
+  @StartBundle
+  public void startBundle() {
+    try {
+      System.out.println("Worker: manual class inspection started.");
+
+      System.out.println("Worker: TableValidationStats methods:");
+      for (java.lang.reflect.Method m : TableValidationStats.class.getDeclaredMethods()) {
+        System.out.println(
+            "TableValidationStats Method: " + m.getReturnType().getName() + " " + m.getName());
+      }
+
+      System.out.println("Worker: ValidationSummary methods:");
+      for (java.lang.reflect.Method m : ValidationSummary.class.getDeclaredMethods()) {
+        System.out.println(
+            "Worker: ValidationSummary Method: " + m.getReturnType().getName() + " " + m.getName());
+      }
+
+      System.out.println("=== WORKER PRE-FLIGHT DIAGNOSTIC CHECK START ===");
+      org.apache.beam.sdk.schemas.SchemaRegistry registry =
+          org.apache.beam.sdk.schemas.SchemaRegistry.createDefault();
+
+      // 1. Test TableValidationStats Coder
+      try {
+        System.out.println("Worker Pre-flight: Testing TableValidationStats Coder...");
+        org.apache.beam.sdk.coders.Coder<TableValidationStats> statsCoder =
+            org.apache.beam.sdk.schemas.SchemaCoder.of(
+                registry.getSchema(TableValidationStats.class),
+                org.apache.beam.sdk.values.TypeDescriptor.of(TableValidationStats.class),
+                registry.getToRowFunction(TableValidationStats.class),
+                registry.getFromRowFunction(TableValidationStats.class));
+
+        TableValidationStats stats =
+            TableValidationStats.builder()
+                .setRunId("diagnostic-run-worker")
+                .setTableName("test-table")
+                .setStatus("MATCH")
+                .setSourceRowCount(10L)
+                .setDestinationRowCount(10L)
+                .setMatchedRowCount(10L)
+                .setMismatchRowCount(0L)
+                .setStartTimestamp("2026-05-24T11:45:39.000Z")
+                .setEndTimestamp("2026-05-24T11:45:39.000Z")
+                .build();
+
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        statsCoder.encode(stats, out);
+        byte[] bytes = out.toByteArray();
+        System.out.println(
+            "Worker Pre-flight: Successfully encoded TableValidationStats ("
+                + bytes.length
+                + " bytes).");
+
+        TableValidationStats decoded = statsCoder.decode(new java.io.ByteArrayInputStream(bytes));
+        System.out.println(
+            "Worker Pre-flight: Successfully decoded TableValidationStats: " + decoded);
+      } catch (Exception e) {
+        System.err.println("Worker Pre-flight ERROR: TableValidationStats coder test failed!");
+        e.printStackTrace(System.err);
+      }
+
+      // 2. Test ValidationSummary Coder
+      try {
+        System.out.println("Worker Pre-flight: Testing ValidationSummary Coder...");
+        org.apache.beam.sdk.coders.Coder<ValidationSummary> summaryCoder =
+            org.apache.beam.sdk.coders.SerializableCoder.of(ValidationSummary.class);
+
+        ValidationSummary summary =
+            ValidationSummary.builder()
+                .setRunId("diagnostic-run-worker")
+                .setSourceDatabase("GCS")
+                .setDestinationDatabase("Spanner")
+                .setStatus("MATCH")
+                .setTotalTablesValidated(1L)
+                .setTablesWithMismatches("")
+                .setTotalRowsMatched(10L)
+                .setTotalRowsMismatched(0L)
+                .setStartTimestamp("2026-05-24T11:45:39.000Z")
+                .setEndTimestamp("2026-05-24T11:45:39.000Z")
+                .build();
+
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        summaryCoder.encode(summary, out);
+        byte[] bytes = out.toByteArray();
+        System.out.println(
+            "Worker Pre-flight: Successfully encoded ValidationSummary ("
+                + bytes.length
+                + " bytes).");
+
+        ValidationSummary decoded = summaryCoder.decode(new java.io.ByteArrayInputStream(bytes));
+        System.out.println("Worker Pre-flight: Successfully decoded ValidationSummary: " + decoded);
+      } catch (Exception e) {
+        System.err.println("Worker Pre-flight ERROR: ValidationSummary coder test failed!");
+        e.printStackTrace(System.err);
+      }
+
+      System.out.println("=== WORKER PRE-FLIGHT DIAGNOSTIC CHECK END ===");
+    } catch (Exception e) {
+      System.out.println("Worker: Error during manual diagnostic execution: " + e);
+      e.printStackTrace();
+    }
+  }
+
   public ComputeTableStatsFn(
       String runId,
-      Instant startTimestamp,
+      String startTimestamp,
       TupleTag<Long> matchedTag,
       TupleTag<Long> missInSpannerTag,
       TupleTag<Long> missInSourceTag) {
@@ -57,7 +160,7 @@ public class ComputeTableStatsFn extends DoFn<KV<String, CoGbkResult>, TableVali
     String status = mismatch == 0 ? "MATCH" : "MISMATCH";
     Instant now = Instant.now();
 
-    c.output(
+    TableValidationStats stats =
         TableValidationStats.builder()
             .setRunId(runId)
             .setTableName(tableName)
@@ -67,7 +170,9 @@ public class ComputeTableStatsFn extends DoFn<KV<String, CoGbkResult>, TableVali
             .setMatchedRowCount(matched)
             .setMismatchRowCount(mismatch)
             .setStartTimestamp(startTimestamp)
-            .setEndTimestamp(now)
-            .build());
+            .setEndTimestamp(now.toString())
+            .build();
+    System.out.println("ComputeTableStatsFn: outputting stats: " + stats);
+    c.output(stats);
   }
 }

@@ -54,12 +54,12 @@ public class ValidationSummaryCombineFn
         TableValidationStats, ValidationSummaryAccumulator, ValidationSummary> {
 
   private final String runId;
-  private final Instant startTimestamp;
+  private final String startTimestamp;
   private final String sourceDatabase;
   private final String destinationDatabase;
 
   public ValidationSummaryCombineFn(
-      String runId, Instant startTimestamp, String sourceDatabase, String destinationDatabase) {
+      String runId, String startTimestamp, String sourceDatabase, String destinationDatabase) {
     this.runId = runId;
     this.startTimestamp = startTimestamp;
     this.sourceDatabase = sourceDatabase;
@@ -99,17 +99,20 @@ public class ValidationSummaryCombineFn
   @Override
   public ValidationSummary extractOutput(ValidationSummaryAccumulator accumulator) {
     String status = accumulator.totalMismatched == 0 ? "MATCH" : "MISMATCH";
-    return ValidationSummary.builder()
-        .setRunId(runId)
-        .setSourceDatabase(sourceDatabase)
-        .setDestinationDatabase(destinationDatabase)
-        .setStatus(status)
-        .setTotalTablesValidated(accumulator.totalTables)
-        .setTablesWithMismatches(String.join(",", accumulator.tablesWithMismatches))
-        .setTotalRowsMatched(accumulator.totalMatched)
-        .setTotalRowsMismatched(accumulator.totalMismatched)
-        .setStartTimestamp(startTimestamp)
-        .setEndTimestamp(Instant.now())
-        .build();
+    ValidationSummary summary =
+        ValidationSummary.builder()
+            .setRunId(runId)
+            .setSourceDatabase(sourceDatabase)
+            .setDestinationDatabase(destinationDatabase)
+            .setStatus(status)
+            .setTotalTablesValidated(accumulator.totalTables)
+            .setTablesWithMismatches(String.join(",", accumulator.tablesWithMismatches))
+            .setTotalRowsMatched(accumulator.totalMatched)
+            .setTotalRowsMismatched(accumulator.totalMismatched)
+            .setStartTimestamp(startTimestamp)
+            .setEndTimestamp(Instant.now().toString())
+            .build();
+    System.out.println("ValidationSummaryCombineFn: extracted output: " + summary);
+    return summary;
   }
 }

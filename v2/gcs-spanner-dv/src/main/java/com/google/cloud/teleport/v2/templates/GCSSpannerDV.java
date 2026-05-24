@@ -24,6 +24,9 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.dto.MismatchedRecord;
+import com.google.cloud.teleport.v2.dto.TableValidationStats;
+import com.google.cloud.teleport.v2.dto.ValidationSummary;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -271,7 +274,121 @@ public class GCSSpannerDV {
         "ReportResults",
         new ReportResultsTransform(options.getBigQueryDataset(), runId, startTimestamp));
 
+    runPreFlightCheck(pipeline);
+
     return pipeline.run();
+  }
+
+  public static void runPreFlightCheck(org.apache.beam.sdk.Pipeline pipeline) {
+    try {
+      System.out.println("=== PRE-FLIGHT DIAGNOSTIC CHECK START ===");
+      org.apache.beam.sdk.coders.CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+
+      // 1. Check TableValidationStats Coder
+      try {
+        org.apache.beam.sdk.coders.Coder<TableValidationStats> coder =
+            coderRegistry.getCoder(
+                org.apache.beam.sdk.values.TypeDescriptor.of(TableValidationStats.class));
+        System.out.println(
+            "Pre-flight: TableValidationStats Coder class: " + coder.getClass().getName());
+
+        TableValidationStats stats =
+            TableValidationStats.builder()
+                .setRunId("diagnostic-run")
+                .setTableName("test-table")
+                .setStatus("MATCH")
+                .setSourceRowCount(10L)
+                .setDestinationRowCount(10L)
+                .setMatchedRowCount(10L)
+                .setMismatchRowCount(0L)
+                .setStartTimestamp("2026-05-24T11:45:39.000Z")
+                .setEndTimestamp("2026-05-24T11:45:39.000Z")
+                .build();
+
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        coder.encode(stats, out);
+        byte[] bytes = out.toByteArray();
+        System.out.println(
+            "Pre-flight: Successfully encoded TableValidationStats (" + bytes.length + " bytes).");
+
+        TableValidationStats decoded = coder.decode(new java.io.ByteArrayInputStream(bytes));
+        System.out.println("Pre-flight: Successfully decoded TableValidationStats: " + decoded);
+      } catch (Exception e) {
+        System.err.println("Pre-flight ERROR: TableValidationStats coder test failed! Details:");
+        e.printStackTrace(System.err);
+      }
+
+      // 2. Check ValidationSummary Coder
+      try {
+        org.apache.beam.sdk.coders.Coder<ValidationSummary> coder =
+            coderRegistry.getCoder(
+                org.apache.beam.sdk.values.TypeDescriptor.of(ValidationSummary.class));
+        System.out.println(
+            "Pre-flight: ValidationSummary Coder class: " + coder.getClass().getName());
+
+        ValidationSummary summary =
+            ValidationSummary.builder()
+                .setRunId("diagnostic-run")
+                .setSourceDatabase("GCS")
+                .setDestinationDatabase("Spanner")
+                .setStatus("MATCH")
+                .setTotalTablesValidated(1L)
+                .setTablesWithMismatches("")
+                .setTotalRowsMatched(10L)
+                .setTotalRowsMismatched(0L)
+                .setStartTimestamp("2026-05-24T11:45:39.000Z")
+                .setEndTimestamp("2026-05-24T11:45:39.000Z")
+                .build();
+
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        coder.encode(summary, out);
+        byte[] bytes = out.toByteArray();
+        System.out.println(
+            "Pre-flight: Successfully encoded ValidationSummary (" + bytes.length + " bytes).");
+
+        ValidationSummary decoded = coder.decode(new java.io.ByteArrayInputStream(bytes));
+        System.out.println("Pre-flight: Successfully decoded ValidationSummary: " + decoded);
+      } catch (Exception e) {
+        System.err.println("Pre-flight ERROR: ValidationSummary coder test failed! Details:");
+        e.printStackTrace(System.err);
+      }
+
+      // 3. Check MismatchedRecord Coder
+      try {
+        org.apache.beam.sdk.coders.Coder<MismatchedRecord> coder =
+            coderRegistry.getCoder(
+                org.apache.beam.sdk.values.TypeDescriptor.of(MismatchedRecord.class));
+        System.out.println(
+            "Pre-flight: MismatchedRecord Coder class: " + coder.getClass().getName());
+
+        MismatchedRecord record =
+            MismatchedRecord.builder()
+                .setRunId("diagnostic-run")
+                .setTableName("test-table")
+                .setMismatchType("MISSING")
+                .setRecordKey("key1")
+                .setSource("GCS")
+                .setHash("hash1")
+                .build();
+
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        coder.encode(record, out);
+        byte[] bytes = out.toByteArray();
+        System.out.println(
+            "Pre-flight: Successfully encoded MismatchedRecord (" + bytes.length + " bytes).");
+
+        MismatchedRecord decoded = coder.decode(new java.io.ByteArrayInputStream(bytes));
+        System.out.println("Pre-flight: Successfully decoded MismatchedRecord: " + decoded);
+      } catch (Exception e) {
+        System.err.println("Pre-flight ERROR: MismatchedRecord coder test failed! Details:");
+        e.printStackTrace(System.err);
+      }
+
+      System.out.println("=== PRE-FLIGHT DIAGNOSTIC CHECK END ===");
+    } catch (Exception e) {
+      System.err.println("Pre-flight: Global execution failed: " + e);
+      e.printStackTrace(System.err);
+    }
   }
 
   @VisibleForTesting
