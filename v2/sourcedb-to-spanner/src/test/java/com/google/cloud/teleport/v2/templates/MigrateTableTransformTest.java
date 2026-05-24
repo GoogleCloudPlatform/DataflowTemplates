@@ -146,14 +146,26 @@ public class MigrateTableTransformTest {
 
   /**
    * Tests the writeToGCS method end-to-end to ensure that records are serialized correctly using
-   * the wrapper schema without throwing UnresolvedUnionException.
+   * the wrapper schema in a non-sharded flow, where shardId is null.
    */
   @Test
-  public void testWriteToGCS() throws Exception {
+  public void testWriteToGCSForNonShardedFlow() throws Exception {
+    runGcsWriteTest(null, "table1");
+  }
+
+  /**
+   * Tests the writeToGCS method end-to-end to ensure that records are serialized correctly using
+   * the wrapper schema in a sharded flow, where shardId is present.
+   */
+  @Test
+  public void testWriteToGCSForShardedFlow() throws Exception {
+    runGcsWriteTest("shard1", "table1/shard1");
+  }
+
+  private void runGcsWriteTest(String shardId, String expectedRelativeSubDir) throws Exception {
     TestPipeline pipeline = TestPipeline.create().enableAbandonedNodeEnforcement(false);
 
     final String testTable = "table1";
-    final String shardId = null;
     final long testReadTime = 1712751118L;
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     var schema =
@@ -192,7 +204,7 @@ public class MigrateTableTransformTest {
     pipeline.run().waitUntilFinish();
 
     // Verify Avro File was written and matches wrapper schema
-    java.io.File avroSubDir = new java.io.File(tempDirPath, "table1");
+    java.io.File avroSubDir = new java.io.File(tempDirPath, expectedRelativeSubDir);
     java.io.File[] avroFiles = avroSubDir.listFiles((dir, name) -> name.endsWith(".avro"));
     assertThat(avroFiles).isNotNull();
     assertThat(avroFiles).hasLength(1);
@@ -204,7 +216,11 @@ public class MigrateTableTransformTest {
       GenericRecord record = fileReader.next();
 
       assertThat(record.get("tableName").toString()).isEqualTo("table1");
-      assertThat(record.get("shardId")).isNull();
+      if (shardId == null) {
+        assertThat(record.get("shardId")).isNull();
+      } else {
+        assertThat(record.get("shardId").toString()).isEqualTo(shardId);
+      }
 
       GenericRecord payloadRecord = (GenericRecord) record.get("payload");
       assertThat(payloadRecord.get("id")).isEqualTo(123);
