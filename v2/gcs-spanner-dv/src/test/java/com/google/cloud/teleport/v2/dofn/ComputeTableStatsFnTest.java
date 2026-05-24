@@ -37,7 +37,7 @@ public class ComputeTableStatsFnTest {
   @Test
   public void testComputeTableStats_Match() {
     String runId = "test-run";
-    String startTimestamp = Instant.now().minus(1000).toString();
+    Instant startTimestamp = Instant.now().minus(1000);
     TupleTag<Long> matchedTag = new TupleTag<>();
     TupleTag<Long> missInSpannerTag = new TupleTag<>();
     TupleTag<Long> missInSourceTag = new TupleTag<>();
@@ -98,7 +98,7 @@ public class ComputeTableStatsFnTest {
   @Test
   public void testComputeTableStats_Mismatch() {
     String runId = "test-run";
-    String startTimestamp = Instant.now().minus(1000).toString();
+    Instant startTimestamp = Instant.now().minus(1000);
     TupleTag<Long> matchedTag = new TupleTag<>();
     TupleTag<Long> missInSpannerTag = new TupleTag<>();
     TupleTag<Long> missInSourceTag = new TupleTag<>();

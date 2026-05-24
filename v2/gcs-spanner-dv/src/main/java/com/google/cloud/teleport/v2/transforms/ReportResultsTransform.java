@@ -29,10 +29,12 @@ import com.google.cloud.teleport.v2.dto.ValidationSummary;
 import com.google.cloud.teleport.v2.fn.ValidationSummaryCombineFn;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.schemas.NoSuchSchemaException;
+import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -53,8 +55,6 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.Instant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that takes a {@link PCollectionTuple} of {@link ComparisonRecord}s and
@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ReportResultsTransform.class);
   private static final String TABLE_VALIDATION_STATS_TABLE = "TableValidationStats";
   private static final String MISMATCHED_RECORDS_TABLE = "MismatchedRecords";
   private static final String VALIDATION_SUMMARY_TABLE = "ValidationSummary";
@@ -83,13 +82,6 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
 
   @Override
   public @NotNull PDone expand(PCollectionTuple input) {
-    LOG.info(
-        "GCS Spanner Data Validator: Executing ReportResultsTransform with NULLABLE schema_name and String timestamps.");
-    input
-        .getPipeline()
-        .getCoderRegistry()
-        .registerCoderForClass(
-            ValidationSummary.class, SerializableCoder.of(ValidationSummary.class));
     PCollection<ComparisonRecord> matched = input.get(MATCHED_TAG);
     PCollection<ComparisonRecord> missingInSpanner = input.get(MISSING_IN_SPANNER_TAG);
     PCollection<ComparisonRecord> missingInSource = input.get(MISSING_IN_SOURCE_TAG);
@@ -151,10 +143,10 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                                 stats.getMismatchRowCount())
                             .set(
                                 TableValidationStats.START_TIMESTAMP_COLUMN_NAME,
-                                stats.getStartTimestamp())
+                                stats.getStartTimestamp().toString())
                             .set(
                                 TableValidationStats.END_TIMESTAMP_COLUMN_NAME,
-                                stats.getEndTimestamp())));
+                                stats.getEndTimestamp().toString())));
 
     tableStatsRows.apply(
         "WriteTableStats",
@@ -178,9 +170,16 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
      * {@link CoderRegistry} as the "product". The recipe is always registered, but the "automated"
      * product creation may fail in certain scenarios such as this.
      */
-    PCollection<ValidationSummary> validationSummary =
-        calculateValidationSummary(tableStats)
-            .setCoder(SerializableCoder.of(ValidationSummary.class));
+    try {
+      SchemaCoder<ValidationSummary> validationSummaryCoder =
+          input.getPipeline().getSchemaRegistry().getSchemaCoder(ValidationSummary.class);
+      CoderRegistry coderRegistry = input.getPipeline().getCoderRegistry();
+      coderRegistry.registerCoderForClass(ValidationSummary.class, validationSummaryCoder);
+    } catch (NoSuchSchemaException e) {
+      throw new RuntimeException("Unable to retrieve SchemaCoder for ValidationSummary", e);
+    }
+
+    PCollection<ValidationSummary> validationSummary = calculateValidationSummary(tableStats);
 
     PCollection<TableRow> validationSummaryRows =
         validationSummary.apply(
@@ -211,9 +210,10 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                                 s.getTotalRowsMismatched())
                             .set(
                                 ValidationSummary.START_TIMESTAMP_COLUMN_NAME,
-                                s.getStartTimestamp())
+                                s.getStartTimestamp().toString())
                             .set(
-                                ValidationSummary.END_TIMESTAMP_COLUMN_NAME, s.getEndTimestamp())));
+                                ValidationSummary.END_TIMESTAMP_COLUMN_NAME,
+                                s.getEndTimestamp().toString())));
 
     validationSummaryRows.apply(
         "WriteValidationSummary",
@@ -302,11 +302,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
             "ComputeTableStats",
             ParDo.of(
                 new ComputeTableStatsFn(
-                    runId,
-                    startTimestamp.toString(),
-                    matchedTag,
-                    missInSpannerTag,
-                    missInSourceTag)));
+                    runId, startTimestamp, matchedTag, missInSpannerTag, missInSourceTag)));
   }
 
   PCollection<ValidationSummary> calculateValidationSummary(
@@ -317,12 +313,8 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
             "CombineSummary",
             Combine.globally(
                     new ValidationSummaryCombineFn(
-                        this.runId,
-                        this.startTimestamp.toString(),
-                        GCS_SOURCE,
-                        SPANNER_DESTINATION))
-                .withoutDefaults())
-        .setCoder(SerializableCoder.of(ValidationSummary.class));
+                        this.runId, this.startTimestamp, GCS_SOURCE, SPANNER_DESTINATION))
+                .withoutDefaults());
   }
 
   private String formatRecordKey(List<com.google.cloud.teleport.v2.dto.Column> columns) {

@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.joda.time.Instant;
 
 /** Represents a row in the TableValidationStats table in BigQuery. */
 @AutoValue
@@ -52,9 +53,9 @@ public abstract class TableValidationStats {
 
   public abstract Long getMismatchRowCount();
 
-  public abstract String getStartTimestamp();
+  public abstract Instant getStartTimestamp();
 
-  public abstract String getEndTimestamp();
+  public abstract Instant getEndTimestamp();
 
   public static Builder builder() {
     return new AutoValue_TableValidationStats.Builder();
@@ -78,9 +79,9 @@ public abstract class TableValidationStats {
 
     public abstract Builder setMismatchRowCount(Long mismatchRowCount);
 
-    public abstract Builder setStartTimestamp(String startTimestamp);
+    public abstract Builder setStartTimestamp(Instant startTimestamp);
 
-    public abstract Builder setEndTimestamp(String endTimestamp);
+    public abstract Builder setEndTimestamp(Instant endTimestamp);
 
     public abstract TableValidationStats build();
   }
