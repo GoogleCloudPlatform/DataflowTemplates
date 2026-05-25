@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,37 +45,38 @@ public class OptionsToConfigBuilderTest {
   public void testConfigWithMySqlDefaultsFromOptions() {
     final String testDriverClassName = "org.apache.derby.jdbc.EmbeddedDriver";
     final String testUrl = "jdbc:mysql://localhost:3306/testDB";
-    final String testUser = "user";
-    final String testPassword = "password";
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
-    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
+    Shard shard = new Shard("", "localhost", "3306", "user", "password", "testDB", "", "", "");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-            sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
+            sourceDbToSpannerOptions,
+            shard,
+            List.of("table1", "table2"),
+            null,
+            Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
     assertThat(config.sourceDbURL())
         .isEqualTo(
             testUrl
                 + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10&useCursorFetch=true");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
-    assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
-    assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
+    assertThat(config.dbAuth().getUserName().get()).isEqualTo(shard.getUserName());
+    assertThat(config.dbAuth().getPassword().get()).isEqualTo(shard.getPassword());
     assertThat(config.waitOn()).isNotNull();
     assertThat(config.maxFetchSize()).isNull();
     sourceDbToSpannerOptions.setFetchSize(42);
     assertThat(
             OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
                     sourceDbToSpannerOptions,
+                    shard,
                     List.of("table1", "table2"),
                     null,
                     Wait.on(dummyPCollection))
@@ -90,7 +92,6 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
             List.of("table1", "table2"),
-            null,
             "myhost",
             "testParam=testValue",
             3306,
@@ -114,7 +115,6 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
             List.of("table1", "table2"),
-            null,
             "myhost",
             null,
             3306,
@@ -151,18 +151,17 @@ public class OptionsToConfigBuilderTest {
     SourceDbToSpannerOptions sourceDbToSpannerOptions =
         PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.POSTGRESQL.name());
-    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2,table3");
+    Shard shard = new Shard("", "localhost", "5432", "user", "password", "testDB", "", "", "");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions,
+            shard,
             List.of("table1", "table2", "table3"),
             null,
             Wait.on(dummyPCollection));
@@ -183,7 +182,6 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            null,
             "myhost",
             "testParam=testValue",
             5432,
@@ -206,7 +204,6 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            null,
             "myhost",
             "",
             5432,
@@ -241,7 +238,6 @@ public class OptionsToConfigBuilderTest {
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
             List.of("table1", "table2"),
-            null,
             "myhost",
             "",
             5432,
@@ -262,20 +258,6 @@ public class OptionsToConfigBuilderTest {
             null);
     assertThat(configWithNamespace.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
-  }
-
-  @Test
-  public void testURIParsingException() {
-    final String testUrl = "jd#bc://localhost";
-    SourceDbToSpannerOptions sourceDbToSpannerOptions =
-        PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
-    sourceDbToSpannerOptions.setSourceDbDialect(SQLDialect.MYSQL.name());
-    sourceDbToSpannerOptions.setSourceConfigURL(testUrl);
-    assertThrows(
-        RuntimeException.class,
-        () ->
-            OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                sourceDbToSpannerOptions, new ArrayList<>(), null, null));
   }
 
   @Test
@@ -340,13 +322,13 @@ public class OptionsToConfigBuilderTest {
   public void testFetchSizeMinusOneBehavesLikeNull() {
     SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
     options.setSourceDbDialect(SQLDialect.MYSQL.name());
-    options.setSourceConfigURL("jdbc:mysql://localhost:3306/testDB");
     options.setJdbcDriverClassName("com.mysql.jdbc.Driver");
     options.setFetchSize(-1); // Should be normalized to null
 
+    Shard shard = new Shard("", "localhost", "5432", "user", "password", "testDB", "", "", "");
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-            options, List.of("table1"), null, null);
+            options, shard, List.of("table1"), null, null);
 
     assertThat(config.maxFetchSize()).isNull();
   }
