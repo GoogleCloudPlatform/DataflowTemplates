@@ -282,6 +282,9 @@ public class AvroToValueMapper {
         if (bytes.length == 16) {
           ByteBuffer bb = ByteBuffer.wrap(bytes);
           return new java.util.UUID(bb.getLong(), bb.getLong());
+        } else {
+          throw new IllegalArgumentException(
+              "ByteBuffer array length must be exactly 16, but was: " + bytes.length);
         }
       }
       if (recordValue instanceof byte[]) {
@@ -289,6 +292,9 @@ public class AvroToValueMapper {
         if (bytes.length == 16) {
           ByteBuffer bb = ByteBuffer.wrap(bytes);
           return new java.util.UUID(bb.getLong(), bb.getLong());
+        } else {
+          throw new IllegalArgumentException(
+              "Byte array length must be exactly 16, but was: " + bytes.length);
         }
       }
       return java.util.UUID.fromString(recordValue.toString());

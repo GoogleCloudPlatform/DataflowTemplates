@@ -1091,4 +1091,13 @@ public class DdlTest {
     CheckConstraint checkConstraint1 = checkConstraintBuilder.name("ck").expression("1<2").build();
     assertTrue(checkConstraint.equals(checkConstraint1));
   }
+
+  @Test
+  public void testColumnTypeString_Uuid() {
+    Column gsqlUuid = Column.builder(Dialect.GOOGLE_STANDARD_SQL).name("c").uuid().autoBuild();
+    assertEquals("UUID", gsqlUuid.typeString());
+
+    Column pgUuid = Column.builder(Dialect.POSTGRESQL).name("c").pgUuid().autoBuild();
+    assertEquals("uuid", pgUuid.typeString());
+  }
 }

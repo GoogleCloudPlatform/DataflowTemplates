@@ -945,4 +945,72 @@ public class AvroToValueMapperTest {
             .apply(originalUuid.toString(), SchemaBuilder.builder().stringType());
     assertEquals(Value.uuid(originalUuid), value);
   }
+
+  @Test
+  public void testAvroValueToUuidArray() {
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    String[] uuidValues = new String[] {uuid1.toString(), uuid2.toString()};
+
+    Schema schemaUuidArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+
+    GenericRecord genericRecordUuidArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaUuidArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", uuidValues)
+            .build();
+
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.uuid()))
+                .apply(
+                    genericRecordUuidArray.get("arrayField"),
+                    genericRecordUuidArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.uuidArray(java.util.Arrays.asList(uuid1, uuid2)));
+  }
+
+  @Test
+  public void testAvroValueToPgUuidArray() {
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    String[] uuidValues = new String[] {uuid1.toString(), uuid2.toString()};
+
+    Schema schemaUuidArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+
+    GenericRecord genericRecordUuidArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaUuidArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", uuidValues)
+            .build();
+
+    assertThat(
+            AvroToValueMapper.getPgMap()
+                .get(Type.pgArray(Type.pgUuid()))
+                .apply(
+                    genericRecordUuidArray.get("arrayField"),
+                    genericRecordUuidArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.uuidArray(java.util.Arrays.asList(uuid1, uuid2)));
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_InvalidByteBufferLength() {
+    ByteBuffer bb = ByteBuffer.wrap(new byte[10]);
+    AvroToValueMapper.avroFieldToUuid(bb, SchemaBuilder.builder().bytesType());
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_InvalidByteArrayLength() {
+    byte[] bytes = new byte[20];
+    AvroToValueMapper.avroFieldToUuid(bytes, SchemaBuilder.builder().bytesType());
+  }
 }

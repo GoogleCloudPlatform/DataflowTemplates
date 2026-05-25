@@ -1561,7 +1561,7 @@ public final class MySQLDMLGeneratorTest {
   }
 
   @Test
-  public void testGetMappedColumnValue_UuidArray() {
+  public void testGetMappedColumnValue_GsqlUuidArray() {
     com.google.cloud.teleport.v2.spanner.ddl.Column spannerColDef =
         mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
     when(spannerColDef.name()).thenReturn("uuid_array");
@@ -1569,6 +1569,37 @@ public final class MySQLDMLGeneratorTest {
         .thenReturn(
             com.google.cloud.teleport.v2.spanner.type.Type.array(
                 com.google.cloud.teleport.v2.spanner.type.Type.uuid()));
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceColDef =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("uuid_array")
+            .type("varchar")
+            .build();
+
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    JSONObject valuesJson = new JSONObject();
+    org.json.JSONArray jsonArray = new org.json.JSONArray();
+    jsonArray.put(uuid1.toString());
+    jsonArray.put(uuid2.toString());
+    valuesJson.put("uuid_array", jsonArray);
+
+    String mappedValue =
+        MySQLDMLGenerator.getMappedColumnValue(spannerColDef, sourceColDef, valuesJson, "+00:00");
+
+    assertEquals("'" + uuid1.toString() + "," + uuid2.toString() + "'", mappedValue);
+  }
+
+  @Test
+  public void testGetMappedColumnValue_PgUuidArray() {
+    com.google.cloud.teleport.v2.spanner.ddl.Column spannerColDef =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(spannerColDef.name()).thenReturn("uuid_array");
+    when(spannerColDef.type())
+        .thenReturn(
+            com.google.cloud.teleport.v2.spanner.type.Type.pgArray(
+                com.google.cloud.teleport.v2.spanner.type.Type.pgUuid()));
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceColDef =
         com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
