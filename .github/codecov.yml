@@ -17,12 +17,12 @@ component_management:
     name: spanner-templates
     paths:
     - "v2/datastream-to-spanner/**"
-    - "v2/spanner-common/**"
-    - "v2/spanner-migrations-sdk/**"
-    - "v2/spanner-custom-shard/**"
-    - "v2/sourcedb-to-spanner/**"
-    - "v2/spanner-to-sourcedb/**"
     - "v2/gcs-spanner-dv/**"
+    - "v2/sourcedb-to-spanner/**"
+    - "v2/spanner-common/**"
+    - "v2/spanner-custom-shard/**"
+    - "v2/spanner-migrations-sdk/**"
+    - "v2/spanner-to-sourcedb/**"
     statuses:
     - type: project
       informational: true
