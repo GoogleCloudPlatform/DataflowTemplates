@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.JdbcIOWrappe
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -63,15 +64,11 @@ public final class OptionsToConfigBuilder {
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
+      Shard shard,
       List<String> tables,
       String shardId,
       Wait.OnSignal<?> waitOn) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-    String sourceDbURL = options.getSourceConfigURL();
-    String dbName = extractDbFromURL(sourceDbURL);
-    String username = options.getUsername();
-    String password = options.getPassword();
-    String namespace = options.getNamespace();
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
     String jdbcDriverJars = options.getJdbcDriverJars();
@@ -88,14 +85,13 @@ public final class OptionsToConfigBuilder {
     return getJdbcIOWrapperConfig(
         sqlDialect,
         tables,
-        sourceDbURL,
-        null,
-        null,
-        0,
-        username,
-        password,
-        dbName,
-        namespace,
+        shard.getHost(),
+        shard.getConnectionProperties(),
+        Integer.parseInt(shard.getPort()),
+        shard.getUserName(),
+        shard.getPassword(),
+        shard.getDbName(),
+        shard.getNamespace(),
         shardId,
         jdbcDriverClassName,
         jdbcDriverJars,
@@ -112,7 +108,6 @@ public final class OptionsToConfigBuilder {
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
       SQLDialect sqlDialect,
       List<String> tables,
-      String sourceDbURL,
       String host,
       String connectionProperties,
       int port,
@@ -157,13 +152,12 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
+    String sourceDbURL = "";
     switch (sqlDialect) {
       case MYSQL:
-        if (sourceDbURL == null) {
-          sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
-          if (StringUtils.isNotBlank(connectionProperties)) {
-            sourceDbURL = sourceDbURL + "?" + connectionProperties;
-          }
+        sourceDbURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+        if (StringUtils.isNotBlank(connectionProperties)) {
+          sourceDbURL = sourceDbURL + "?" + connectionProperties;
         }
         for (Entry<String, String> entry :
             MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
@@ -172,14 +166,14 @@ public final class OptionsToConfigBuilder {
         sourceDbURL = mysqlSetCursorModeIfNeeded(sqlDialect, sourceDbURL, fetchSize);
         break;
       case POSTGRESQL:
-        if (sourceDbURL == null) {
-          sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
-        }
+        sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
         sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.jdbc().namespace();
         if (StringUtils.isNotBlank(connectionProperties)) {
           sourceDbURL = sourceDbURL + "&" + connectionProperties;
         }
         break;
+      default:
+        throw new IllegalArgumentException("Unsupported SQL Dialect: " + sqlDialect);
     }
 
     builder.setSourceDbURL(sourceDbURL);
