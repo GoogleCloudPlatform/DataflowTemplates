@@ -31,8 +31,14 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverride
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,10 +92,32 @@ public class PipelineController {
   }
 
   static PipelineResult executeJdbcSingleInstanceMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-    JdbcDbConfigContainer jdbcDbConfigContainer = new SingleInstanceJdbcDbConfigContainer(options);
+      SourceDbToSpannerOptions options,
+      Shard shard,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig) {
+    JdbcDbConfigContainer jdbcDbConfigContainer =
+        new SingleInstanceJdbcDbConfigContainer(options, shard);
     return executeSingleInstanceMigrationForDbConfigContainer(
         options, pipeline, spannerConfig, jdbcDbConfigContainer);
+  }
+
+  static PipelineResult executeJdbcMigration(
+      SourceDbToSpannerOptions options,
+      JdbcShardConfig jdbcShardConfig,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig) {
+    Preconditions.checkArgument(
+        (jdbcShardConfig.getShardConfigs() != null && !jdbcShardConfig.getShardConfigs().isEmpty()),
+        "Shard list should have at least one shard.");
+    if (jdbcShardConfig.getShardConfigs().size() > 1) {
+      List<Shard> shards = jdbcShardConfig.getShardConfigs();
+      return PipelineController.executeJdbcShardedMigration(
+          options, pipeline, shards, spannerConfig);
+    } else {
+      return PipelineController.executeJdbcSingleInstanceMigration(
+          options, jdbcShardConfig.getShardConfigs().get(0), pipeline, spannerConfig);
+    }
   }
 
   static PipelineResult executeJdbcShardedMigration(
@@ -355,7 +383,6 @@ public class PipelineController {
               OptionsToConfigBuilder.getJdbcIOWrapperConfig(
                   sqlDialect,
                   sourceTables,
-                  null,
                   shard.getHost(),
                   shard.getConnectionProperties(),
                   Integer.parseInt(shard.getPort()),
@@ -382,10 +409,12 @@ public class PipelineController {
   }
 
   static class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
-    private SourceDbToSpannerOptions options;
+    private final SourceDbToSpannerOptions options;
+    private final Shard shard;
 
-    public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options) {
+    public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options, Shard shard) {
       this.options = options;
+      this.shard = shard;
     }
 
     @Override
@@ -394,8 +423,24 @@ public class PipelineController {
       return JdbcIoWrapperConfigGroup.builder()
           .addShardConfig(
               OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                  options, sourceTables, null, waitOnSignal))
+                  options, shard, sourceTables, null, waitOnSignal))
           .build();
+    }
+  }
+
+  public static SourceConnectionConfig getSourceConnectionConfig(
+      String sourceType, String sourceShardsFilePath) {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig;
+    try {
+      // Parse the source shards configuration file to respective
+      // SourceConnectionConfig.
+      LOG.info("Parsing source shards configuration file: {}", sourceShardsFilePath);
+      return sourceConfigParser.parseConfiguration(sourceType, sourceShardsFilePath);
+    } catch (Exception e) {
+      LOG.error("Error parsing source config", e);
+      throw new RuntimeException("Error parsing source config", e);
     }
   }
 }
