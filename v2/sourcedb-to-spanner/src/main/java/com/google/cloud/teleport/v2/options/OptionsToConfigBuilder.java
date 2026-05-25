@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -58,15 +59,11 @@ public final class OptionsToConfigBuilder {
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfigWithDefaults(
       SourceDbToSpannerOptions options,
+      Shard shard,
       List<String> tables,
       String shardId,
       Wait.OnSignal<?> waitOn) {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-    String sourceDbURL = options.getSourceConfigURL();
-    String dbName = extractDbFromURL(sourceDbURL);
-    String username = options.getUsername();
-    String password = options.getPassword();
-    String namespace = options.getNamespace();
 
     String jdbcDriverClassName = options.getJdbcDriverClassName();
     String jdbcDriverJars = options.getJdbcDriverJars();
@@ -83,14 +80,13 @@ public final class OptionsToConfigBuilder {
     return getJdbcIOWrapperConfig(
         sqlDialect,
         tables,
-        sourceDbURL,
-        null,
-        null,
-        0,
-        username,
-        password,
-        dbName,
-        namespace,
+        shard.getHost(),
+        shard.getConnectionProperties(),
+        Integer.parseInt(shard.getPort()),
+        shard.getUserName(),
+        shard.getPassword(),
+        shard.getDbName(),
+        shard.getNamespace(),
         shardId,
         jdbcDriverClassName,
         jdbcDriverJars,
@@ -107,7 +103,6 @@ public final class OptionsToConfigBuilder {
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
       SQLDialect sqlDialect,
       List<String> tables,
-      String sourceDbURL,
       String host,
       String connectionProperties,
       int port,
@@ -154,7 +149,7 @@ public final class OptionsToConfigBuilder {
       builder = builder.setMaxConnections(maxConnections);
     }
 
-    sourceDbURL =
+    String sourceDbURL =
         connector.getJdbcUrl(
             sourceDbURL, host, port, dbName, connectionProperties, namespace, fetchSize);
 
