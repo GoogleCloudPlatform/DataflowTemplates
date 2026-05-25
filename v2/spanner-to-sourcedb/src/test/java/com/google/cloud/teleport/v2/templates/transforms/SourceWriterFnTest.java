@@ -22,6 +22,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,9 +54,11 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
@@ -65,6 +69,7 @@ import java.sql.SQLDataException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
@@ -80,6 +85,7 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -833,6 +839,58 @@ public class SourceWriterFnTest {
   }
 
   @Test
+  public void testProcessElementTransactionalCheckException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    try (MockedStatic<InputRecordProcessor> mockedInputRecordProcessor =
+        mockStatic(InputRecordProcessor.class)) {
+      mockedInputRecordProcessor
+          .when(
+              () ->
+                  InputRecordProcessor.processRecord(
+                      any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+          .thenThrow(
+              new TransactionalCheckException("Shadow table sequence changed during transaction"));
+
+      sourceWriterFn.processElement(processContext);
+    }
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(
+        actualError.getErrorMessage().contains("Shadow table sequence changed during transaction"));
+  }
+
+  @Test
   public void testRetryableSentinelShardId() throws Exception {
     TrimmedShardedDataChangeRecord record =
         getParent1TrimmedDataChangeRecord(Constants.RETRYABLE_ERROR_SHARD_ID);
@@ -1343,5 +1401,61 @@ public class SourceWriterFnTest {
             .endTable()
             .build();
     return ddl;
+  }
+
+  @Test
+  public void testSetup_NullSessionFilePath() throws Exception {
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            null,
+            "",
+            "",
+            "");
+
+    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
+      mockedSpannerAccessor
+          .when(() -> SpannerAccessor.getOrCreate(any()))
+          .thenReturn(mock(SpannerAccessor.class));
+      sourceWriterFn.setup();
+    }
+  }
+
+  @Test
+  public void testSetup_EmptySessionFilePath() throws Exception {
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "",
+            "",
+            "",
+            "");
+
+    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
+      mockedSpannerAccessor
+          .when(() -> SpannerAccessor.getOrCreate(any()))
+          .thenReturn(mock(SpannerAccessor.class));
+      sourceWriterFn.setup();
+    }
   }
 }
