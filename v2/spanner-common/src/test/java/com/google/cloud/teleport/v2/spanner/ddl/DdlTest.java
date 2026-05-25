@@ -150,7 +150,7 @@ public class DdlTest {
                 + " `AllowedNames` (`first_name`)"));
     assertNotNull(ddl.hashCode());
     assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
-    assertTrue(ddl.tablesReferenced("Users").size() == 1);
+    assertEquals(1, ddl.tablesReferenced("Users").size());
   }
 
   @Test
@@ -253,7 +253,7 @@ public class DdlTest {
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"));
     assertNotNull(ddl.hashCode());
     assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
-    assertTrue(ddl.tablesReferenced("Users").size() == 1);
+    assertEquals(1, ddl.tablesReferenced("Users").size());
   }
 
   @Test
@@ -325,7 +325,7 @@ public class DdlTest {
 
     List<String> tablesReferenced = ddl.tablesReferenced("Account");
     assertTrue(tablesReferenced.contains("Users"));
-    assertTrue(tablesReferenced.size() == 1);
+    assertEquals(1, tablesReferenced.size());
   }
 
   @Test
@@ -579,7 +579,7 @@ public class DdlTest {
     List<String> actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#1: basic dag", actualOrder, dependencies);
     assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t1", "t4", "t2")));
-    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
+    assertFalse(ddl.getAllReferencedTables("t3").contains("t3"));
 
     final Ddl ddl2 = ddl;
     assertThrows(IllegalStateException.class, () -> ddl2.getAllReferencedTables("t5"));
@@ -595,9 +595,9 @@ public class DdlTest {
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#2: diamond dag", actualOrder, dependencies);
     assertTrue(ddl.getAllReferencedTables("t1").containsAll(Arrays.asList("t2", "t3", "t4")));
-    assertTrue(!ddl.getAllReferencedTables("t1").contains("t1"));
+    assertFalse(ddl.getAllReferencedTables("t1").contains("t1"));
     assertTrue(ddl.getAllReferencedTables("t3").containsAll(Arrays.asList("t4")));
-    assertTrue(!ddl.getAllReferencedTables("t3").contains("t3"));
+    assertFalse(ddl.getAllReferencedTables("t3").contains("t3"));
 
     // Test 3: Empty Dependency List
     ddl = generateDdlFromDAG(Arrays.asList("t1", "t2"), List.of());
@@ -616,7 +616,7 @@ public class DdlTest {
     actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("#5: Disconnected components", actualOrder, dependencies);
     assertTrue(ddl.getAllReferencedTables("t2").containsAll(Arrays.asList("t1")));
-    assertTrue(!ddl.getAllReferencedTables("t2").contains("t2"));
+    assertFalse(ddl.getAllReferencedTables("t2").contains("t2"));
     assertTrue(ddl.getAllReferencedTables("t1").isEmpty());
     assertTrue(ddl.getAllReferencedTables("t3").isEmpty());
 
@@ -672,7 +672,7 @@ public class DdlTest {
     List<String> actualOrder = ddl.getTablesOrderedByReference();
     verifyOrderingFromDependencies("basic dag with capitals", actualOrder, dependencies);
     assertTrue(ddl.getAllReferencedTables("T3").containsAll(Arrays.asList("t1", "T4", "T2")));
-    assertTrue(!ddl.getAllReferencedTables("T3").contains("T3"));
+    assertFalse(ddl.getAllReferencedTables("T3").contains("T3"));
   }
 
   private void verifyOrderingFromDependencies(
@@ -753,7 +753,7 @@ public class DdlTest {
 
     List<String> accountTablesReferenced = ddl.tablesReferenced("Account");
     assertTrue(accountTablesReferenced.containsAll(List.of("Users", "BalanceNames")));
-    assertTrue(accountTablesReferenced.size() == 2);
+    assertEquals(2, accountTablesReferenced.size());
 
     assertThrows(IllegalStateException.class, () -> ddl.tablesReferenced("unknown_table"));
   }
@@ -927,11 +927,72 @@ public class DdlTest {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
     assertFalse(ddl1.equals(ddl2));
+
     Ddl.Builder ddl1Builder =
         Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable();
-    ddl1Builder.createTable("Users");
-    ddl1 = ddl1Builder.build();
-    assertFalse(ddl1.equals(ddl2));
+    Ddl ddl3 = ddl1Builder.build();
+
+    // Test same object
+    assertTrue(ddl3.equals(ddl3));
+
+    // Test null
+    assertFalse(ddl3.equals(null));
+
+    // Test different class
+    assertFalse(ddl3.equals("string"));
+
+    // Test equal objects
+    Ddl ddl4 =
+        Ddl.builder().createTable("Users").column("id").int64().endColumn().endTable().build();
+    assertTrue(ddl3.equals(ddl4));
+
+    // Test different tables
+    Ddl ddl5 =
+        Ddl.builder()
+            .createTable("DifferentTable")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    assertFalse(ddl3.equals(ddl5));
+
+    // Test different parents (interleaving)
+    Ddl ddl6 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
+            .endTable()
+            .build();
+    Ddl ddl7 =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .endColumn()
+            .endTable() // No interleave!
+            .build();
+    assertFalse(ddl6.equals(ddl7));
   }
 
   @Rule public ExpectedException thrown = ExpectedException.none();

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.convertors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -83,7 +84,7 @@ public class ChangeEventSessionConvertorTest {
     queryResultSet = mock(ResultSet.class);
     when(databaseClient.singleUse()).thenReturn(queryReadContext);
     when(queryReadContext.executeQuery(any(Statement.class))).thenReturn(queryResultSet);
-    when(queryResultSet.next()).thenReturn(true, false); // only return one row
+    when(queryResultSet.next()).thenReturn(true, false);
     when(queryResultSet.getJson(any(String.class)))
         .thenReturn("{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
   }
@@ -147,8 +148,30 @@ public class ChangeEventSessionConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}");
+    changeEvent.put("pg_json_col", "{\"pg\": 1.0}");
     changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    // Set up specific mocks based on statement content!
+    Statement stmt1 =
+        Statement.newBuilder("SELECT PARSE_JSON(@jsonStr, wide_number_mode=>'round') as newJson")
+            .bind("jsonStr")
+            .to("{\"a\": 1.3542, \"b\": {\"c\": 48.19813667631011}}")
+            .build();
+    ResultSet rs1 = mock(ResultSet.class);
+    when(rs1.next()).thenReturn(true, false);
+    when(rs1.getJson("newJson")).thenReturn("{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
+    when(queryReadContext.executeQuery(stmt1)).thenReturn(rs1);
+
+    Statement stmt2 =
+        Statement.newBuilder("SELECT PARSE_JSON(@jsonStr, wide_number_mode=>'round') as newJson")
+            .bind("jsonStr")
+            .to("{\"pg\": 1.0}")
+            .build();
+    ResultSet rs2 = mock(ResultSet.class);
+    when(rs2.next()).thenReturn(true, false);
+    when(rs2.getJson("newJson")).thenReturn("{\"pg\": 1}");
+    when(queryReadContext.executeQuery(stmt2)).thenReturn(rs2);
 
     JsonNode actualEvent =
         changeEventSessionConvertor.transformChangeEventData(ce, databaseClient, getTestDdl());
@@ -156,6 +179,7 @@ public class ChangeEventSessionConvertorTest {
     changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "{\"a\": 1.3542, \"b\": {\"c\": 48.198136676310106}}");
+    changeEvent.put("pg_json_col", "{\"pg\": 1}");
     changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode expectedEvent = parseChangeEvent(changeEvent.toString());
 
@@ -172,6 +196,9 @@ public class ChangeEventSessionConvertorTest {
             .endColumn()
             .column("last_name")
             .json()
+            .endColumn()
+            .column("pg_json_col")
+            .pgJsonb()
             .endColumn()
             .endTable()
             .build();
@@ -712,5 +739,122 @@ public class ChangeEventSessionConvertorTest {
 
     assertEquals("", actualEvent.get("migration_shard_id").asText());
     assertEquals("migration_shard_id", actualEvent.get(Constants.SHARD_ID_COLUMN_NAME).asText());
+  }
+
+  @Test
+  public void testGetShardId_MissingSchemaKey_ShardingContext() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    String shardId = changeEventSessionConvertor.getShardId(ce);
+    assertEquals("", shardId);
+  }
+
+  @Test
+  public void testGetShardId_MissingSchemaKey_TransformationContext() {
+    Schema schema = getShardedSchemaObject();
+    TransformationContext transformationContext = getTransformationContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, transformationContext, new ShardingContext(), "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    String shardId = changeEventSessionConvertor.getShardId(ce);
+    assertEquals("", shardId);
+  }
+
+  @Test(expected = Exception.class)
+  public void testTransformChangeEventData_TableNotFound() throws Exception {
+    ChangeEventSessionConvertor convertor =
+        new ChangeEventSessionConvertor(null, null, null, null, "", true);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "MissingTable");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    convertor.transformChangeEventData(ce, databaseClient, Ddl.builder().build());
+  }
+
+  @Test
+  public void testTransformChangeEventData_NullJsonStr() throws Exception {
+    ChangeEventSessionConvertor convertor =
+        new ChangeEventSessionConvertor(null, null, null, null, "", true);
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    // Do NOT put "last_name" column!
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    Ddl ddl = getTestDdl(); // Users table has "last_name" as JSON
+    JsonNode actual = convertor.transformChangeEventData(ce, databaseClient, ddl);
+    assertEquals(ce, actual); // No change
+  }
+
+  @Test
+  public void testTransformViaSessionFile_NullShardingMap() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = new ShardingContext(null);
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "cart");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actual = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+    assertFalse(actual.has(Constants.SHARD_ID_COLUMN_NAME));
+  }
+
+  @Test
+  public void testPopulateShardId_NullShardIdColumn() {
+    Schema schema = getShardedSchemaObject();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), getShardingContext(), "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "cart");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actual = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+    assertFalse(actual.has(Constants.SHARD_ID_COLUMN_NAME));
+  }
+
+  @Test
+  public void testPopulateShardId_MissingShardIdColDef() {
+    Schema schema = getShardedSchemaObject();
+    SpannerTable table = schema.getSpSchema().get("t2");
+    Map<String, SpannerColumnDefinition> colDefs = new HashMap<>(table.getColDefs());
+    colDefs.remove("c6");
+    SpannerTable malformedTable =
+        new SpannerTable(
+            table.getName(),
+            table.getColIds(),
+            colDefs,
+            table.getPrimaryKeys(),
+            table.getShardIdColumn());
+    schema.getSpSchema().put("t2", malformedTable);
+
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), getShardingContext(), "mysql", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actual = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+    assertFalse(actual.has(Constants.SHARD_ID_COLUMN_NAME));
   }
 }
