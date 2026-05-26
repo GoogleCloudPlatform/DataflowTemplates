@@ -55,6 +55,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Template(
     name = "Cdc_Data_Generator",
@@ -67,6 +69,8 @@ import org.joda.time.Duration;
     streaming = true,
     supportsAtLeastOnce = true)
 public class CdcDataGenerator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CdcDataGenerator.class);
 
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
@@ -115,7 +119,11 @@ public class CdcDataGenerator {
                 options.getDeleteQps(),
                 schemaConfig));
 
-    int keyParallelism = resolveKeyParallelism(options.getSinkType(), sinkConfig);
+    int keyParallelism =
+        options.getMaxParallelism() != null
+            ? options.getMaxParallelism()
+            : resolveKeyParallelism(options.getSinkType(), sinkConfig);
+    LOG.info("Using keyParallelism / maxParallelism value of {}", keyParallelism);
 
     // Generate ticks based on schema QPS
     PCollection<DataGeneratorTable> ticks =

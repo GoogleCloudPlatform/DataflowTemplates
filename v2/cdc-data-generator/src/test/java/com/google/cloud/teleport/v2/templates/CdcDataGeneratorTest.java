@@ -41,6 +41,32 @@ public class CdcDataGeneratorTest {
   }
 
   @Test
+  public void testOptionsParsing_withMaxParallelism() {
+    String[] args = {
+      "--sinkType=SPANNER", "--sinkOptions={\"projectId\": \"p\"}", "--maxParallelism=500"
+    };
+
+    CdcDataGeneratorOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(CdcDataGeneratorOptions.class);
+
+    assertEquals(SinkType.SPANNER, options.getSinkType());
+    assertEquals("{\"projectId\": \"p\"}", options.getSinkOptions());
+    assertEquals(Integer.valueOf(500), options.getMaxParallelism());
+  }
+
+  @Test
+  public void testOptionsParsing_withoutMaxParallelism() {
+    String[] args = {"--sinkType=SPANNER", "--sinkOptions={\"projectId\": \"p\"}"};
+
+    CdcDataGeneratorOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(CdcDataGeneratorOptions.class);
+
+    assertEquals(SinkType.SPANNER, options.getSinkType());
+    assertEquals("{\"projectId\": \"p\"}", options.getSinkOptions());
+    assertEquals(null, options.getMaxParallelism());
+  }
+
+  @Test
   public void testResolveKeyParallelism_spanner() {
     int parallelism = CdcDataGenerator.resolveKeyParallelism(SinkType.SPANNER, null);
     assertEquals(100000, parallelism);

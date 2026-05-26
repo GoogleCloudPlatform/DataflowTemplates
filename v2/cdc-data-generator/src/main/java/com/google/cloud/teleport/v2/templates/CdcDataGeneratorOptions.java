@@ -144,6 +144,16 @@ public interface CdcDataGeneratorOptions
 
   void setDlqDirectory(String value);
 
+  @TemplateParameter.Integer(
+      order = 12,
+      optional = true,
+      description = "Maximum Parallelism",
+      helpText =
+          "The maximum parallelism (shards) for key-based redistribution. If not specified, default values are resolved based on the sink type.")
+  Integer getMaxParallelism();
+
+  void setMaxParallelism(Integer value);
+
   enum SinkType {
     SPANNER,
     MYSQL
