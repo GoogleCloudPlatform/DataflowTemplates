@@ -401,8 +401,8 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
-      // For type check at compile time, the type of x has to be specified (as cast) so that
-      // convertability to float can be verified.
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to float can be verified.
       case FLOAT:
         return Optional.of((List<Float>) fieldValue);
       case STRING:
@@ -413,9 +413,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                   .map(x -> x == null ? null : Float.valueOf(x.toString()))
                   .collect(Collectors.toList()));
         }
-      // Avoid decoding integers as not all 32 bit integers can be represented in float32.
+        // Avoid decoding integers as not all 32 bit integers can be represented in float32.
       case INT:
-      // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
+        // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
       case LONG:
       case DOUBLE:
       default:
@@ -432,8 +432,8 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
-      // For type check at compile time, the type of x has to be specified (as cast) so that
-      // convertability to double can be verified.
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to double can be verified.
       case DOUBLE:
         return Optional.of((List<Double>) fieldValue);
       case FLOAT:
@@ -482,8 +482,8 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
-      // For type check at compile time, the type of x has to be specified (as cast) so that
-      // convertability to long can be verified.
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to long can be verified.
       case LONG:
         return Optional.of((List<Long>) fieldValue);
       case INT:
@@ -637,9 +637,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         return Optional.ofNullable((Utf8) record.get(fieldName))
             .map(Utf8::toString)
             .map(Float::valueOf);
-      // Avoid decoding integers as not all 32 bit integers can be represented in float32.
+        // Avoid decoding integers as not all 32 bit integers can be represented in float32.
       case INT:
-      // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
+        // Avoid decoding 64 bit values into 32 bit space as this will cause a precision loss.
       case LONG:
       case DOUBLE:
       default:
