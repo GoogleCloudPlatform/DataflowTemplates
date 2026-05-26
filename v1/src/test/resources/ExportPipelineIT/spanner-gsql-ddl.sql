@@ -42,7 +42,7 @@ CREATE MODEL `%PREFIX%ModelStruct`
 CREATE SCHEMA `%PREFIX%UdfSchema`;
 
 CREATE FUNCTION `%PREFIX%UdfSchema`.`Remote`(x INT64, y INT64) RETURNS INT64 NOT DETERMINISTIC LANGUAGE REMOTE OPTIONS (
-  endpoint = `https://us-central1-myproject.cloudfunctions.net/myfunc`,
+  endpoint = "https://us-central1-myproject.cloudfunctions.net/myfunc",
   max_batching_rows = 10
 );
 

@@ -151,10 +151,8 @@ public class DdlToAvroSchemaConverter {
       for (UdfParameter udfParameter : udf.parameters()) {
         recordBuilder.prop(SPANNER_UDF_PARAMETER + i++, udfParameter.prettyPrint());
       }
-      if (udf.options() != null) {
-        for (int j = 0; j < udf.options().size(); j++) {
-          recordBuilder.prop(SPANNER_OPTION + j, udf.options().get(j));
-        }
+      for (int j = 0; j < udf.options().size(); j++) {
+        recordBuilder.prop(SPANNER_OPTION + j, udf.options().get(j));
       }
 
       schemas.add(recordBuilder.fields().endRecord());

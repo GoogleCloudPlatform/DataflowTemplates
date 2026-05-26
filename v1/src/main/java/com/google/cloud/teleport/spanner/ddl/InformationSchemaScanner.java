@@ -1128,9 +1128,9 @@ public class InformationSchemaScanner {
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
     while (resultSet.next()) {
       String specificName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
-      String optionName = resultSet.getString(2);
-      String optionType = resultSet.getString(3);
-      String optionValue = resultSet.getString(4);
+      String optionName = resultSet.isNull(2) ? "" : resultSet.getString(2);
+      String optionType = resultSet.isNull(3) ? "" : resultSet.getString(3);
+      String optionValue = resultSet.isNull(4) ? "" : resultSet.getString(4);
 
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(specificName, k -> ImmutableList.builder());

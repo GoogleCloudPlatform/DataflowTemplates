@@ -263,7 +263,11 @@ public abstract class RandomDdlGenerator {
                 "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
       } else {
         udfBuilder.definition(
+<<<<<<< HEAD
+            "\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"");
+=======
             "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"}");
+>>>>>>> ff46924a7 (Add support for REMOTE UDFs.)
       }
     }
 
