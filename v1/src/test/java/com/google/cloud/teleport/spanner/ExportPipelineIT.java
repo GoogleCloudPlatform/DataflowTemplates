@@ -321,7 +321,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
     spannerResourceManager.executeDdlStatements(ddls);
 
-    List<Mutation> expectedData = generateTableRows(String.format("%Singers", prefix));
+    List<Mutation> expectedData = generateTableRows(String.format("%sSingers", prefix));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
