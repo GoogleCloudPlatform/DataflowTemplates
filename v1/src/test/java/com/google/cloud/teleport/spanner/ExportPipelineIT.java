@@ -207,18 +207,19 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     // an empty database without any tables.
     spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
 
+    String prefix = testName + "_";
     String resourceFileName = "ExportPipelineIT/spanner-gsql-ddl.sql";
     String ddl =
         String.join(
                 " ",
                 Resources.readLines(
                     Resources.getResource(resourceFileName), StandardCharsets.UTF_8))
-            .replaceAll("%PREFIX%", testName);
+            .replaceAll("%PREFIX%", prefix);
     ddl = ddl.trim();
     List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
     spannerResourceManager.executeDdlStatements(ddls);
 
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+    List<Mutation> expectedData = generateTableRows(String.format("%sSingers", prefix));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -238,31 +239,37 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Singers")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Empty")));
     List<Artifact> modelStructArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "ModelStruct")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "ModelStruct")));
+    List<Artifact> udfRemoteArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "UdfSchema.Remote")));
     List<Artifact> searchIndexArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "SearchIndex")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
     List<Artifact> identityArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Identity")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence1")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence2")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
+
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
+    assertThat(udfRemoteArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();
     assertThat(sequenceArtifacts).isNotEmpty();
@@ -297,8 +304,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
       Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
           paramsAdder)
       throws IOException {
-    String tableNamePrefix = testName.substring(0, 15);
-
+    String prefix = testName.substring(0, 15) + "_";
     String setDefaultTimeZoneStatement = "ALTER DATABASE db SET spanner.default_time_zone = 'UTC'";
     // Setting default time zone needs to be the first statement because it requires
     // an empty database without any tables.
@@ -310,12 +316,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 " ",
                 Resources.readLines(
                     Resources.getResource(resourceFileName), StandardCharsets.UTF_8))
-            .replaceAll("%PREFIX%", tableNamePrefix);
+            .replaceAll("%PREFIX%", prefix);
     ddl = ddl.trim();
     List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
     spannerResourceManager.executeDdlStatements(ddls);
 
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", tableNamePrefix));
+    List<Mutation> expectedData = generateTableRows(String.format("%Singers", prefix));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -336,27 +342,27 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Singers")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Singers")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Empty")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Empty")));
     List<Artifact> searchIndexArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "SearchIndex")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
     List<Artifact> identityArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Identity")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Sequence1")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/",
-            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Sequence2")));
+            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();

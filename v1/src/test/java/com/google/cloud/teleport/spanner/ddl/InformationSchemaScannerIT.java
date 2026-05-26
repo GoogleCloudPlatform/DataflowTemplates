@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTE
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -635,14 +636,17 @@ public class InformationSchemaScannerIT {
             + "C STRING DEFAULT 'NULL', "
             + "D STRING DEFAULT '') "
             + "RETURNS STRING AS (CONCAT(A, '::', B, '::', C, '::', D))";
+    String udfDef3 = "CREATE FUNCTION s1.remote_udf(x INT64, y INT64) "
+            + "RETURNS INT64 NOT DETERMINISTIC LANGUAGE REMOTE "
+            + "OPTIONS ( endpoint = 'https://us-central1-myproject.cloudfunctions.net/myfunc' )";
 
-    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2));
+    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2, udfDef3));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.schemas(), hasSize(1));
     assertThat(ddl.schema("s1"), notNullValue());
 
-    assertThat(ddl.udfs(), hasSize(2));
+    assertThat(ddl.udfs(), hasSize(3));
     Udf udf1 = ddl.udf("s1.foo");
     assertThat(udf1, notNullValue());
     assertThat(ddl.udf("S1.FOO"), sameInstance(udf1));
@@ -651,13 +655,21 @@ public class InformationSchemaScannerIT {
     assertThat(udf2, notNullValue());
     assertThat(ddl.udf("S1.DEFault_values"), sameInstance(udf2));
 
+    Udf udf3 = ddl.udf("s1.remote_udf");
+    assertThat(udf3, notNullValue());
+    assertThat(ddl.udf("S1.REMOTE_UDF"), sameInstance(udf3));
+
     assertThat(udf1.name(), equalTo("s1.foo"));
     assertThat(udf1.type(), equalTo("INT64"));
+    assertEquals(udf1.language(), "SQL");
+    assertThat(udf1.options(), empty());
     assertThat(udf1.definition(), equalTo("1"));
     assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
 
     assertThat(udf2.name(), equalTo("s1.default_values"));
     assertThat(udf2.type(), equalTo("STRING"));
+    assertEquals(udf2.language(), "SQL");
+    assertThat(udf2.options(), empty());
     assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
     assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
     assertThat(
@@ -687,6 +699,43 @@ public class InformationSchemaScannerIT {
                 .type("STRING")
                 .defaultExpression("''")
                 .autoBuild()));
+
+
+    assertThat(udf3.name(), equalTo("s1.remote_udf"));
+    assertThat(udf3.type(), equalTo("INT64"));
+    assertEquals(udf3.language(), "REMOTE");
+    assertThat(udf3.options(), hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+    assertEquals(udf3.definition(), "");
+    assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
+    assertThat(
+        udf3.parameters(),
+        hasItems(
+            UdfParameter.builder()
+                .functionSpecificName("s1.remote_udf")
+                .name("x")
+                .type("INT64")
+                .defaultExpression(null)
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.remote_udf")
+                .name("y")
+                .type("INT64")
+                .defaultExpression(null)
+                .autoBuild()));
+
+  }
+
+  @Test
+  public void pgSimpleUdf() throws Exception {
+    String namedSchemaDef = "CREATE SCHEMA s1";
+
+    SPANNER_SERVER.createPgDatabase(dbId, Arrays.asList(namedSchemaDef));
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.schema("s1"), notNullValue());
+
+    assertThat(ddl.udfs(), hasSize(0));
   }
 
   @Test

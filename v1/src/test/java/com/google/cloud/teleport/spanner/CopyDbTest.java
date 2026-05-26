@@ -1101,6 +1101,64 @@ public class CopyDbTest {
                 UdfParameter.parse(
                     "arg1 STRING DEFAULT 'bar'", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
             .endUdf()
+            .createUdf("s1.Foo2")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("s1.Foo3")
+            .language("REMOTE")
+            .type("INT64")
+            .addParameter(
+                UdfParameter.parse("arg0 INT64", "s1.Foo3", Dialect.GOOGLE_STANDARD_SQL))
+            .options(
+                ImmutableList.of(
+                    "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""))
+            .endUdf()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+
+  @Test
+  public void pgUdfs() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl =
+        ddlBuilder
+            .createSchema("s1")
+            .endNamedSchema()
+            .createUdf("s1.Foo1")
+            .dialect(Dialect.POSTGRESQL)
+            .name("s1.Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("s1.Foo2")
+            .dialect(Dialect.POSTGRESQL)
+            .name("s1.Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("TEXT")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "s1.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 TEXT DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .createUdf("s1.Foo3")
+            .dialect(Dialect.POSTGRESQL)
+            .name("s1.Foo2")
+            .language("REMOTE")
+            .type("BIGINT")
+            .addParameter(
+                UdfParameter.parse("arg0 BIGINT", "s1.Foo3", Dialect.POSTGRESQL))
+            .options(
+                ImmutableList.of(
+                    "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""))
+            .endUdf()
             .build();
     createAndPopulate(ddl, 0);
     runTest();

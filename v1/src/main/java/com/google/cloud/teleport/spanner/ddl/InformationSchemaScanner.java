@@ -90,6 +90,7 @@ public class InformationSchemaScanner {
     if (isUdfSupported()) {
       listUdfs(builder);
       listUdfParameters(builder);
+      listUdfOptions(builder);
     }
     listColumns(builder);
     listColumnOptions(builder);
@@ -1032,13 +1033,20 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         queryStatement =
             Statement.of(
-                "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name, "
-                    + "r.data_type, r.routine_definition, r.security_type"
+                "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name,"
+                    + " r.data_type, r.routine_body, r.routine_definition, r.security_type"
                     + " FROM information_schema.routines AS r"
-                    + " WHERE r.routine_schema NOT IN"
-                    + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
-                    + " AND r.routine_type = 'FUNCTION'"
-                    + " AND r.routine_body = 'SQL'");
+                    + " WHERE r.routine_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                    + " AND r.routine_type = 'FUNCTION'");
+        break;
+      case POSTGRESQL:
+        queryStatement =
+            Statement.of(
+                "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name,"
+                    + " r.data_type, r.routine_body, r.routine_definition, r.security_type"
+                    + " FROM information_schema.routines AS r WHERE"
+                    + " r.routine_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
+                    + " AND r.routine_type = 'FUNCTION'");
         break;
       default:
         throw new IllegalArgumentException(
@@ -1055,13 +1063,22 @@ public class InformationSchemaScanner {
       String functionSpecificName =
           getQualifiedName(resultSet.getString(2), resultSet.getString(3));
       String functionType = resultSet.isNull(4) ? null : resultSet.getString(4);
-      String functionDefinition = resultSet.isNull(5) ? null : resultSet.getString(5);
-      String functionSecurityType = resultSet.isNull(6) ? null : resultSet.getString(6);
+      String language = resultSet.isNull(5) ? null : resultSet.getString(5);
+      String functionDefinition = resultSet.isNull(6) ? null : resultSet.getString(6);
+      String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
+
+      // The routine_body is SQL or EXTERNAL and the external_language is not available yet.
+      // Assume that only available EXTERNAL language is REMOTE.
+      if (dialect == Dialect.POSTGRESQL && "EXTERNAL".equalsIgnoreCase(language)) {
+          language = "REMOTE";
+      }
+
       LOG.debug("Schema user-defined function {}", functionName);
       builder
           .createUdf(functionSpecificName)
           .name(functionName)
           .type(functionType)
+          .language(language)
           .definition(functionDefinition)
           .security(Udf.SqlSecurity.valueOf(functionSecurityType))
           .endUdf();
@@ -1095,16 +1112,59 @@ public class InformationSchemaScanner {
     }
   }
 
+  private void listUdfOptions(Ddl.Builder builder) {
+    // PostgreSQL doesn't have ROUTINE_OPTIONS table. It uses AS DEFINITION for options.
+    if (dialect == Dialect.POSTGRESQL) {
+      return;
+    }
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.SPECIFIC_SCHEMA, t.SPECIFIC_NAME, t.OPTION_NAME, t.OPTION_TYPE,"
+                    + " t.OPTION_VALUE  FROM information_schema.routine_options AS t WHERE"
+                    + " t.SPECIFIC_SCHEMA NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY"
+                    + " t.SPECIFIC_NAME, t.OPTION_NAME"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String specificName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+      String optionName = resultSet.getString(2);
+      String optionType = resultSet.getString(3);
+      String optionValue = resultSet.getString(4);
+
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(specificName, k -> ImmutableList.builder());
+
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "="
+                + GSQL_LITERAL_QUOTE
+                + OPTION_STRING_ESCAPER.escape(optionValue)
+                + GSQL_LITERAL_QUOTE);
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String specificName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createUdf(specificName).options(options).endUdf();
+    }
+  }
+
   @VisibleForTesting
   Statement listFunctionParametersSQL() {
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
-                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
-                + " p.specific_name, p.ordinal_position");
+                + " p.parameter_default  FROM information_schema.parameters AS p,"
+                + " information_schema.routines AS r WHERE p.specific_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name = r.specific_name and"
+                + " r.routine_type = 'FUNCTION' ORDER BY"
+                + " p.specific_schema, p.specific_name, p.ordinal_position");
 
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);

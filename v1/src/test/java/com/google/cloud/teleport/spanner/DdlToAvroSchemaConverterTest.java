@@ -38,6 +38,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
@@ -51,6 +52,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
@@ -67,6 +69,16 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.avro.LogicalTypes;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+import org.junit.Test;
+
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
@@ -82,14 +94,7 @@ import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import org.apache.avro.LogicalTypes;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.junit.Test;
+
 
 /** Test for {@link DdlToAvroSchemaConverter}. */
 public class DdlToAvroSchemaConverterTest {
@@ -731,6 +736,87 @@ public class DdlToAvroSchemaConverterTest {
         avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("`arg1` STRING DEFAULT \"bar\""));
 
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
+  }
+
+  @Test
+  public void udfRemote() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+                    .createUdf("UdfSchema.Foo")
+                    .name("UdfSchema.Foo")
+            .type("STRING")
+            .language("REMOTE")
+                    .addParameter(UdfParameter.parse("arg0 STRING", "UdfSchema.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(
+                UdfParameter.parse(
+                                    "arg1 STRING DEFAULT \"bar\"", "UdfSchema.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .options(ImmutableList.of("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"", "max_batching_rows=50"))
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getName(), equalTo("UdfSchema_Foo"));
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroUdf.getProp(SPANNER_NAME), equalTo("UdfSchema.Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("UdfSchema.Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), nullValue());
+    assertThat(avroUdf.getProp(SPANNER_UDF_SECURITY), nullValue());
+    assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("STRING"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_LANGUAGE), equalTo("REMOTE"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 0), equalTo("`arg0` STRING"));
+    assertThat(
+        avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("`arg1` STRING DEFAULT \"bar\""));
+    assertThat(
+        avroUdf.getProp(SPANNER_OPTION + 0),
+        equalTo("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+    assertThat(avroUdf.getProp(SPANNER_OPTION + 1), equalTo("max_batching_rows=50"));
+}
+
+@Test
+public void pgUdfRemote() {
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl = Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("UdfSchema.Foo")
+            .name("UdfSchema.Foo")
+            .type("TEXT")
+            .language("REMOTE")
+            .definition(
+                    "{\"endpoint\":\"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\":50}")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "UdfSchema.Foo", Dialect.POSTGRESQL))
+            .addParameter(
+                    UdfParameter.parse(
+                            "arg1 TEXT DEFAULT \"bar\"", "spanner.Foo", Dialect.POSTGRESQL))
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getName(), equalTo("UdfSchema_Foo"));
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroUdf.getProp(SPANNER_NAME), equalTo("UdfSchema.Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("UdfSchema.Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("{\"endpoint\":\"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\":50}"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_SECURITY), nullValue());
+    assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("TEXT"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_LANGUAGE), equalTo("REMOTE"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 0), equalTo("\"arg0\" TEXT"));
+    assertThat(
+        avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("\"arg1\" TEXT DEFAULT \"bar\""));
   }
 
   @Test
