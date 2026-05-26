@@ -636,7 +636,8 @@ public class InformationSchemaScannerIT {
             + "C STRING DEFAULT 'NULL', "
             + "D STRING DEFAULT '') "
             + "RETURNS STRING AS (CONCAT(A, '::', B, '::', C, '::', D))";
-    String udfDef3 = "CREATE FUNCTION s1.remote_udf(x INT64, y INT64) "
+    String udfDef3 =
+        "CREATE FUNCTION s1.remote_udf(x INT64, y INT64) "
             + "RETURNS INT64 NOT DETERMINISTIC LANGUAGE REMOTE "
             + "OPTIONS ( endpoint = 'https://us-central1-myproject.cloudfunctions.net/myfunc' )";
 
@@ -700,11 +701,12 @@ public class InformationSchemaScannerIT {
                 .defaultExpression("''")
                 .autoBuild()));
 
-
     assertThat(udf3.name(), equalTo("s1.remote_udf"));
     assertThat(udf3.type(), equalTo("INT64"));
     assertEquals(udf3.language(), "REMOTE");
-    assertThat(udf3.options(), hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+    assertThat(
+        udf3.options(),
+        hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
     assertEquals(udf3.definition(), "");
     assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
     assertThat(
@@ -722,7 +724,6 @@ public class InformationSchemaScannerIT {
                 .type("INT64")
                 .defaultExpression(null)
                 .autoBuild()));
-
   }
 
   @Test

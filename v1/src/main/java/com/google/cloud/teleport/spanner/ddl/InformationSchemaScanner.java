@@ -1070,7 +1070,7 @@ public class InformationSchemaScanner {
       // The routine_body is SQL or EXTERNAL and the external_language is not available yet.
       // Assume that only available EXTERNAL language is REMOTE.
       if (dialect == Dialect.POSTGRESQL && "EXTERNAL".equalsIgnoreCase(language)) {
-          language = "REMOTE";
+        language = "REMOTE";
       }
 
       LOG.debug("Schema user-defined function {}", functionName);

@@ -1106,8 +1106,7 @@ public class CopyDbTest {
             .name("s1.Foo3")
             .language("REMOTE")
             .type("INT64")
-            .addParameter(
-                UdfParameter.parse("arg0 INT64", "s1.Foo3", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(UdfParameter.parse("arg0 INT64", "s1.Foo3", Dialect.GOOGLE_STANDARD_SQL))
             .options(
                 ImmutableList.of(
                     "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""))
@@ -1116,7 +1115,6 @@ public class CopyDbTest {
     createAndPopulate(ddl, 0);
     runTest();
   }
-
 
   @Test
   public void pgUdfs() throws Exception {
@@ -1145,16 +1143,14 @@ public class CopyDbTest {
             .type("TEXT")
             .addParameter(UdfParameter.parse("arg0 TEXT", "s1.Foo2", Dialect.POSTGRESQL))
             .addParameter(
-                UdfParameter.parse(
-                    "arg1 TEXT DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+                UdfParameter.parse("arg1 TEXT DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
             .endUdf()
             .createUdf("s1.Foo3")
             .dialect(Dialect.POSTGRESQL)
             .name("s1.Foo2")
             .language("REMOTE")
             .type("BIGINT")
-            .addParameter(
-                UdfParameter.parse("arg0 BIGINT", "s1.Foo3", Dialect.POSTGRESQL))
+            .addParameter(UdfParameter.parse("arg0 BIGINT", "s1.Foo3", Dialect.POSTGRESQL))
             .options(
                 ImmutableList.of(
                     "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""))

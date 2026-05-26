@@ -1431,21 +1431,18 @@ public class DdlTest {
             .definition("(SELECT 'bar')")
             .security(SqlSecurity.INVOKER)
             .type("STRING")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo", Dialect.POSTGRESQL))
             .addParameter(
-                UdfParameter.parse("arg0 TEXT", "spanner.Foo", Dialect.POSTGRESQL))
-            .addParameter(
-                UdfParameter.parse(
-                    "arg1 TEXT DEFAULT 'bar'", "spanner.Foo", Dialect.POSTGRESQL))
+                UdfParameter.parse("arg1 TEXT DEFAULT 'bar'", "spanner.Foo", Dialect.POSTGRESQL))
             .endUdf()
             .createUdf("spanner.Foo3")
             .dialect(Dialect.POSTGRESQL)
             .name("Foo3")
             .type("STRING")
             .language("REMOTE")
-            .addParameter(
-                UdfParameter.parse("arg0 BIGINT", "spanner.Foo3", Dialect.POSTGRESQL))
-                    .definition(
-                            "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}")
+            .addParameter(UdfParameter.parse("arg0 BIGINT", "spanner.Foo3", Dialect.POSTGRESQL))
+            .definition(
+                "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}")
             .endUdf();
     assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
     assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
@@ -1479,7 +1476,6 @@ public class DdlTest {
     assertThat(
         ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
-
 
   @Test
   public void sequences() {

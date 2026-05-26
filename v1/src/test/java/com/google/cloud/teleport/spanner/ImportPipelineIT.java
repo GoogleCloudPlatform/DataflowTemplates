@@ -111,8 +111,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .getPath());
     gcsClient.uploadArtifact(
         "input/UdfSchema.avro-00000-of-00001",
-        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema.avro")
-            .getPath());
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema.avro").getPath());
     gcsClient.uploadArtifact(
         "input/UdfSchema-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema-manifest.json")
@@ -125,7 +124,8 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
               .getPath());
       gcsClient.uploadArtifact(
           "input/UdfSchema.Remote-manifest.json",
-          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UdfSchema.Remote-manifest.json")
+          Resources.getResource(
+                  "ImportPipelineIT/" + subdirectory + "/UdfSchema.Remote-manifest.json")
               .getPath());
       gcsClient.uploadArtifact(
           "input/ModelStruct.avro-00000-of-00001",

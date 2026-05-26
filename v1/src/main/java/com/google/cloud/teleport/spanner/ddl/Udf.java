@@ -37,7 +37,8 @@ public abstract class Udf implements Serializable {
   // Remote function body is printed using $$ strings, which are
   // unlikely but possible to be  present in the function definition.
   // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE
-  public static final Escaper PG_REMOTE_UDF_BODY_ESCAPER = Escapers.builder().addEscape('$', "\\044").build();
+  public static final Escaper PG_REMOTE_UDF_BODY_ESCAPER =
+      Escapers.builder().addEscape('$', "\\044").build();
 
   /** The access rights used by the UDF for underlying data: invoker-rights or definer-rights. */
   public enum SqlSecurity {
@@ -128,7 +129,7 @@ public abstract class Udf implements Serializable {
           break;
         case POSTGRESQL:
           throw new IllegalArgumentException(
-              "Options are not supported in PostgreSQL dialect for non-remote UDFs.");
+              "Options are not supported in PostgreSQL dialect for UDFs.");
         default:
           throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
       }
@@ -143,8 +144,11 @@ public abstract class Udf implements Serializable {
           if (language() == null || language().isEmpty() || "SQL".equalsIgnoreCase(language())) {
             appendable.append(" RETURN ").append(definition());
           } else {
-            // Other langugges use AS definition instead of sql body. 
-            appendable.append(" AS $$").append(PG_REMOTE_UDF_BODY_ESCAPER.escape(definition())).append("$$");
+            // Other langugges use AS definition instead of sql body.
+            appendable
+                .append(" AS $$")
+                .append(PG_REMOTE_UDF_BODY_ESCAPER.escape(definition()))
+                .append("$$");
           }
           break;
         default:
@@ -195,7 +199,10 @@ public abstract class Udf implements Serializable {
   }
 
   public static Builder builder(Dialect dialect) {
-    return new AutoValue_Udf.Builder().dialect(dialect).parameters(ImmutableList.of()).options(ImmutableList.of());
+    return new AutoValue_Udf.Builder()
+        .dialect(dialect)
+        .parameters(ImmutableList.of())
+        .options(ImmutableList.of());
   }
 
   public static Builder builder() {

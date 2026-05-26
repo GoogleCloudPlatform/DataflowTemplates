@@ -114,7 +114,8 @@ public class UdfTest {
             .type("TEXT")
             .language("REMOTE")
             .addParameter(UdfParameter.parse("p1 BIGINT", "s1.foo", Dialect.POSTGRESQL))
-            .definition("{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/$myfunc\"}")
+            .definition(
+                "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/$myfunc\"}")
             .build();
 
     assertThat(

@@ -245,27 +245,23 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Empty")));
     List<Artifact> modelStructArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "ModelStruct")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "ModelStruct")));
     List<Artifact> udfRemoteArtifacts =
         gcsClient.listArtifacts(
             "output/",
             Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "UdfSchema.Remote")));
     List<Artifact> searchIndexArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
     List<Artifact> identityArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
 
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
@@ -341,28 +337,22 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Singers")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Singers")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Empty")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Empty")));
     List<Artifact> searchIndexArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "SearchIndex")));
     List<Artifact> identityArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Identity")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence1")));
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
-            "output/",
-            Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();

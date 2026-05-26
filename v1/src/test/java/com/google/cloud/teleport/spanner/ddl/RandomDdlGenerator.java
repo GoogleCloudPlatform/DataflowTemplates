@@ -102,9 +102,7 @@ public abstract class RandomDdlGenerator {
               Type.Code.PG_NUMERIC,
               Type.Code.PG_DATE));
 
-  private static final String[] UDF_LANGUAGES = new String[] {
-      "SQL", "REMOTE"
-  };
+  private static final String[] UDF_LANGUAGES = new String[] {"SQL", "REMOTE"};
 
   private static final int MAX_PKS = 16;
 
@@ -245,7 +243,8 @@ public abstract class RandomDdlGenerator {
             .dialect(Dialect.GOOGLE_STANDARD_SQL)
             .name(name);
     if (getRandom().nextBoolean()) {
-      Type type = generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
+      Type type =
+          generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
       udfBuilder.type(type.getCode().getName());
     }
 
@@ -255,20 +254,24 @@ public abstract class RandomDdlGenerator {
 
     if (!"REMOTE".equals(udfBuilder.language())) {
       if (getRandom().nextBoolean()) {
-          udfBuilder.security(SqlSecurity.INVOKER);
-        }
+        udfBuilder.security(SqlSecurity.INVOKER);
+      }
     } else {
       if (getDialect() == Dialect.GOOGLE_STANDARD_SQL) {
-        udfBuilder.options(ImmutableList.of("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+        udfBuilder.options(
+            ImmutableList.of(
+                "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
       } else {
-        udfBuilder.definition("\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"");
+        udfBuilder.definition(
+            "\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\"");
       }
     }
 
     int numUdfParameters = getRandom().nextInt(getMaxUdfParameters() + 1);
     for (int i = 0; i < numUdfParameters; i++) {
       String paramName = generateIdentifier(getMaxIdLength());
-      Type type = generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
+      Type type =
+          generateType((getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? PK_TYPES : PG_PK_TYPES, -1);
       UdfParameter.Builder udfParameterBuilder =
           udfBuilder.parameter(paramName).type(type.getCode().getName());
       if (getRandom().nextBoolean()) {

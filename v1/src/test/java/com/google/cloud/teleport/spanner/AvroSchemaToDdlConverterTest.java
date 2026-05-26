@@ -21,16 +21,14 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-
-import org.apache.avro.Schema;
-import org.junit.Test;
-
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import org.apache.avro.Schema;
+import org.junit.Test;
 
 /** Tests {@link AvroSchemaToDdlConverter}. */
 public class AvroSchemaToDdlConverterTest {
