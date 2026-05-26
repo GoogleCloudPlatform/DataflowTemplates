@@ -265,7 +265,7 @@ public class DirectRunnerClient implements PipelineLauncher {
       currentJob.setCurrentState(JobState.CANCELLED.toString());
 
       try {
-        this.interrupt();
+        this.stop();
       } catch (Exception e) {
         LOG.warn("Error cancelling job", e);
       }
