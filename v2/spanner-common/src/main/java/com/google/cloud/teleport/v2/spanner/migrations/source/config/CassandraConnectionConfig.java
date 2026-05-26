@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,12 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.migrations.utils;
+package com.google.cloud.teleport.v2.spanner.migrations.source.config;
 
-/** Interface to access secret from Secret Manager. */
-public interface ISecretManagerAccessor {
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 
-  String getSecret(String secretName);
+/** Represents the connection configuration for a Cassandra source. */
+public class CassandraConnectionConfig implements SourceConnectionConfig {
 
-  String resolvePassword(String secretManagerUri, String logicalShardId, String password);
+  private final OptionsMap optionsMap;
+
+  public CassandraConnectionConfig(OptionsMap optionsMap) {
+    this.optionsMap = optionsMap;
+  }
+
+  public OptionsMap getOptionsMap() {
+    return optionsMap;
+  }
 }
