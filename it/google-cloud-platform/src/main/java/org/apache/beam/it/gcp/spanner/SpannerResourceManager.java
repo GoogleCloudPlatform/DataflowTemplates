@@ -50,7 +50,6 @@ import com.google.monitoring.v3.Aggregation.Aligner;
 import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.Timestamp;
 import com.google.spanner.admin.instance.v1.Instance.Edition;
-
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;

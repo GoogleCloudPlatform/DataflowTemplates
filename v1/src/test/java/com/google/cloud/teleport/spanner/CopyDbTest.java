@@ -1101,7 +1101,7 @@ public class CopyDbTest {
                 UdfParameter.parse(
                     "arg1 STRING DEFAULT 'bar'", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
             .endUdf()
-            .createUdf("s1.Foo2")
+            .createUdf("s1.Foo3")
             .dialect(Dialect.GOOGLE_STANDARD_SQL)
             .name("s1.Foo3")
             .language("REMOTE")
