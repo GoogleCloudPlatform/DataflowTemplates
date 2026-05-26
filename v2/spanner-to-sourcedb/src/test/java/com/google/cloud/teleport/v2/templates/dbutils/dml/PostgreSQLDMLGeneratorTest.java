@@ -509,4 +509,106 @@ public final class PostgreSQLDMLGeneratorTest {
 
     assertEquals(uuid1.toString() + "," + uuid2.toString(), mappedValue);
   }
+
+  @Test
+  public void testGetMappedColumnValue_BasicTypes() {
+    // 1. Test INT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column intCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(intCol.name()).thenReturn("int_col");
+    when(intCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.int64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceIntCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .name("int_col")
+            .type("integer")
+            .build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("int_col", "12345");
+
+    String mappedInt =
+        PostgreSQLDMLGenerator.getMappedColumnValue(intCol, sourceIntCol, valuesJson, "+00:00");
+    assertEquals("12345", mappedInt);
+
+    // 2. Test BOOL mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column boolCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(boolCol.name()).thenReturn("bool_col");
+    when(boolCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.bool());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceBoolCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .name("bool_col")
+            .type("boolean")
+            .build();
+
+    valuesJson.put("bool_col", true);
+
+    String mappedBool =
+        PostgreSQLDMLGenerator.getMappedColumnValue(boolCol, sourceBoolCol, valuesJson, "+00:00");
+    assertEquals("true", mappedBool);
+
+    // 3. Test FLOAT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column floatCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(floatCol.name()).thenReturn("float_col");
+    when(floatCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.float64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceFloatCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .name("float_col")
+            .type("double precision")
+            .build();
+
+    valuesJson.put("float_col", "12.345");
+
+    String mappedFloat =
+        PostgreSQLDMLGenerator.getMappedColumnValue(floatCol, sourceFloatCol, valuesJson, "+00:00");
+    assertEquals("12.345", mappedFloat);
+
+    // 4. Test Standard Scalar UUID mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column uuidCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(uuidCol.name()).thenReturn("uuid_col");
+    when(uuidCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.uuid());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceUuidCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .name("uuid_col")
+            .type("uuid")
+            .build();
+
+    java.util.UUID testUuid = java.util.UUID.randomUUID();
+    valuesJson.put("uuid_col", testUuid.toString());
+
+    String mappedUuid =
+        PostgreSQLDMLGenerator.getMappedColumnValue(uuidCol, sourceUuidCol, valuesJson, "+00:00");
+    assertEquals("'" + testUuid.toString() + "'", mappedUuid);
+
+    // 5. Test PG Scalar UUID mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column pgUuidCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(pgUuidCol.name()).thenReturn("pg_uuid_col");
+    when(pgUuidCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.pgUuid());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourcePgUuidCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .name("pg_uuid_col")
+            .type("uuid")
+            .build();
+
+    java.util.UUID testPgUuid = java.util.UUID.randomUUID();
+    valuesJson.put("pg_uuid_col", testPgUuid.toString());
+
+    String mappedPgUuid =
+        PostgreSQLDMLGenerator.getMappedColumnValue(
+            pgUuidCol, sourcePgUuidCol, valuesJson, "+00:00");
+    assertEquals("'" + testPgUuid.toString() + "'", mappedPgUuid);
+  }
 }

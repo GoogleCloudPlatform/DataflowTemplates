@@ -1621,4 +1621,65 @@ public final class MySQLDMLGeneratorTest {
 
     assertEquals("'" + uuid1.toString() + "," + uuid2.toString() + "'", mappedValue);
   }
+
+  @Test
+  public void testGetMappedColumnValue_BasicTypes() {
+    // 1. Test INT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column intCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(intCol.name()).thenReturn("int_col");
+    when(intCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.int64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceIntCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("int_col")
+            .type("int")
+            .build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("int_col", "12345");
+
+    String mappedInt =
+        MySQLDMLGenerator.getMappedColumnValue(intCol, sourceIntCol, valuesJson, "+00:00");
+    assertEquals("12345", mappedInt);
+
+    // 2. Test BOOL mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column boolCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(boolCol.name()).thenReturn("bool_col");
+    when(boolCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.bool());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceBoolCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("bool_col")
+            .type("tinyint")
+            .build();
+
+    valuesJson.put("bool_col", true);
+
+    String mappedBool =
+        MySQLDMLGenerator.getMappedColumnValue(boolCol, sourceBoolCol, valuesJson, "+00:00");
+    assertEquals("true", mappedBool);
+
+    // 3. Test FLOAT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column floatCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(floatCol.name()).thenReturn("float_col");
+    when(floatCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.float64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceFloatCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("float_col")
+            .type("double")
+            .build();
+
+    valuesJson.put("float_col", "12.345");
+
+    String mappedFloat =
+        MySQLDMLGenerator.getMappedColumnValue(floatCol, sourceFloatCol, valuesJson, "+00:00");
+    assertEquals("12.345", mappedFloat);
+  }
 }

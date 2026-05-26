@@ -21,6 +21,7 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -1099,5 +1100,38 @@ public class DdlTest {
 
     Column pgUuid = Column.builder(Dialect.POSTGRESQL).name("c").pgUuid().autoBuild();
     assertEquals("uuid", pgUuid.typeString());
+  }
+
+  @Test
+  public void testColumnParseType() {
+    // Google Standard SQL parsing tests
+    Column.Builder gsqlBuilder = Column.builder(Dialect.GOOGLE_STANDARD_SQL).name("col");
+
+    Column gsqlUuid = gsqlBuilder.parseType("UUID").autoBuild();
+    assertEquals(Type.uuid(), gsqlUuid.type());
+    assertNull(gsqlUuid.size());
+
+    Column gsqlString = gsqlBuilder.parseType("STRING(100)").autoBuild();
+    assertEquals(Type.string(), gsqlString.type());
+    assertEquals(Integer.valueOf(100), gsqlString.size());
+
+    Column gsqlInt = gsqlBuilder.parseType("INT64").autoBuild();
+    assertEquals(Type.int64(), gsqlInt.type());
+    assertNull(gsqlInt.size());
+
+    // PostgreSQL parsing tests
+    Column.Builder pgBuilder = Column.builder(Dialect.POSTGRESQL).name("col");
+
+    Column pgUuid = pgBuilder.parseType("uuid").autoBuild();
+    assertEquals(Type.pgUuid(), pgUuid.type());
+    assertNull(pgUuid.size());
+
+    Column pgVarchar = pgBuilder.parseType("character varying(100)").autoBuild();
+    assertEquals(Type.pgVarchar(), pgVarchar.type());
+    assertEquals(Integer.valueOf(100), pgVarchar.size());
+
+    Column pgInt = pgBuilder.parseType("bigint").autoBuild();
+    assertEquals(Type.pgInt8(), pgInt.type());
+    assertNull(pgInt.size());
   }
 }

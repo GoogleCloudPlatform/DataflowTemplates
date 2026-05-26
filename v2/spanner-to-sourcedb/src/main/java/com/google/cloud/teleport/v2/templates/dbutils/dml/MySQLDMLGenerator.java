@@ -196,7 +196,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     return getUpsertStatement(sourceTable.name(), columnNameValues);
   }
 
-  static String getMappedColumnValue(
+  @VisibleForTesting
+  protected static String getMappedColumnValue(
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,

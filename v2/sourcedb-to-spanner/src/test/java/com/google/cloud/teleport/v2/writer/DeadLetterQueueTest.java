@@ -847,6 +847,54 @@ public class DeadLetterQueueTest {
                 + "\"]");
   }
 
+  @Test
+  public void testMutationToDlqElement_PgUuidType() {
+    Ddl ddlWithPgUuid =
+        Ddl.builder(com.google.cloud.spanner.Dialect.POSTGRESQL)
+            .createTable("new_cart")
+            .column("new_user_id")
+            .type(com.google.cloud.teleport.v2.spanner.type.Type.pgUuid())
+            .endColumn()
+            .column("uuid_array")
+            .type(
+                com.google.cloud.teleport.v2.spanner.type.Type.pgArray(
+                    com.google.cloud.teleport.v2.spanner.type.Type.pgUuid()))
+            .endColumn()
+            .primaryKey()
+            .asc("new_user_id")
+            .end()
+            .endTable()
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "LOG", ddlWithPgUuid, SQLDialect.MYSQL, getIdentityMapper(ddlWithPgUuid));
+
+    java.util.UUID idUuid = java.util.UUID.randomUUID();
+    java.util.UUID elementUuid1 = java.util.UUID.randomUUID();
+    java.util.UUID elementUuid2 = java.util.UUID.randomUUID();
+
+    Mutation m =
+        Mutation.newInsertBuilder("new_cart")
+            .set("new_user_id")
+            .to(Value.uuid(idUuid))
+            .set("uuid_array")
+            .to(Value.uuidArray(java.util.Arrays.asList(elementUuid1, elementUuid2)))
+            .build();
+
+    FailsafeElement<String, String> dlqElement = dlq.mutationToDlqElement(m);
+    String payload = dlqElement.getPayload();
+
+    assertThat(payload).contains("\"new_user_id\":\"" + idUuid.toString() + "\"");
+    assertThat(payload)
+        .contains(
+            "\"uuid_array\":[\""
+                + elementUuid1.toString()
+                + "\",\""
+                + elementUuid2.toString()
+                + "\"]");
+  }
+
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
     return new IdentityMapper(spannerDdl);
   }
