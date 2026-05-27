@@ -79,9 +79,28 @@ public class UdfParameterTest {
   }
 
   @Test
-  public void testUdfParameterParseMissingDefaultKeyword() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> UdfParameter.parse("p1 int32 1", "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  public void testUdfParameterParseQuoted() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("`p 1` int32", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p 1` int32"));
+    assertThat(udfParameter.name(), equalToCompressingWhiteSpace("`p 1`"));
+  }
+
+  @Test
+  public void testUdfParameterParsePgQuoted() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("\"p 1\" TEXT", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p 1\" TEXT"));
+    assertThat(udfParameter.name(), equalToCompressingWhiteSpace("\"p 1\""));
+  }
+
+  @Test
+  public void testUdfParameterParseQuotedWithDefault() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("`p1` int32 DEFAULT 5", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` int32 DEFAULT 5"));
   }
 }

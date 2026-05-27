@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.identifierQuote;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
 import com.google.auto.value.AutoValue;
@@ -49,36 +50,50 @@ public abstract class UdfParameter implements Serializable {
   }
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
-    String[] paramParts = parameter.split(" ");
-    if (paramParts.length < 2) {
-      throw new IllegalArgumentException(
-          "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
-              + " Parameter: "
-              + parameter);
+    String name;
+    String rest;
+    String quote = identifierQuote(dialect);
+
+    if (parameter.startsWith(quote)) {
+      int closingQuoteIndex = parameter.indexOf(quote, quote.length());
+      if (closingQuoteIndex == -1) {
+        throw new IllegalArgumentException(
+            "Unterminated quoted parameter name in " + functionSpecificName);
+      }
+      name = parameter.substring(0, closingQuoteIndex + quote.length());
+      rest = parameter.substring(name.length()).trim();
+    } else {
+      String[] parts = parameter.split(" ", 2);
+      if (parts.length < 2) {
+        throw new IllegalArgumentException(
+            "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
+                + " Parameter: "
+                + parameter);
+      }
+      name = parts[0];
+      rest = parts[1].trim();
     }
+
+    String[] typeParts = rest.split("(?i)\\s+DEFAULT\\s*", 2);
+    String type = typeParts[0].trim();
+    String defaultExpression = typeParts.length > 1 ? typeParts[1].trim() : null;
+
+    if (defaultExpression == null && type.contains(" ")) {
+      throw new IllegalArgumentException("Unexpected parameter keyword in " + functionSpecificName);
+    }
+
     UdfParameter.Builder udfParameter =
         UdfParameter.builder(dialect)
             .functionSpecificName(functionSpecificName)
-            .name(paramParts[0])
-            .type(paramParts[1]);
-    if (paramParts.length > 2) {
-      if (paramParts[2].equalsIgnoreCase("default")) {
-        if (paramParts.length == 3) {
-          throw new IllegalArgumentException(
-              "Missing default parameter expression in " + functionSpecificName);
-        }
-        String defaultExpression = "";
-        for (int i = 3; i < paramParts.length; i++) {
-          if (!defaultExpression.isEmpty()) {
-            defaultExpression += " ";
-          }
-          defaultExpression += paramParts[i];
-        }
-        udfParameter.defaultExpression(defaultExpression);
-      } else {
+            .name(name)
+            .type(type);
+
+    if (defaultExpression != null) {
+      if (defaultExpression.isEmpty()) {
         throw new IllegalArgumentException(
-            "Unexpected parameter keyword \"" + paramParts[2] + "\" in " + functionSpecificName);
+            "Missing default parameter expression in " + functionSpecificName);
       }
+      udfParameter.defaultExpression(defaultExpression);
     }
     return udfParameter.autoBuild();
   }
