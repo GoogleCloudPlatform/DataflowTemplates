@@ -1540,6 +1540,23 @@ public class DdlTest {
   }
 
   @Test
+  public void pgUdfVolatile() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo")
+            .definition("(SELECT 'bar')")
+            .type("TEXT")
+            .spannerDeterminism("NOT_DETERMINISTIC_VOLATILE")
+            .endUdf()
+            .build();
+
+    String expectedDdlString = "CREATE FUNCTION \"Foo\"() RETURNS TEXT VOLATILE RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
   public void sequences() {
     Ddl ddl =
         Ddl.builder()
