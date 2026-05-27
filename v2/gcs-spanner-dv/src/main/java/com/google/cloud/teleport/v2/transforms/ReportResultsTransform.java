@@ -23,6 +23,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.dofn.ComputeTableStatsFn;
 import com.google.cloud.teleport.v2.dto.BigQuerySchemas;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
+import com.google.cloud.teleport.v2.dto.LoggingCoderWrapper;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
 import com.google.cloud.teleport.v2.dto.TableValidationStats;
 import com.google.cloud.teleport.v2.dto.ValidationSummary;
@@ -89,27 +90,22 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     // 1. Write Mismatched Records
     PCollection<MismatchedRecord> allMismatches =
         transformMismatchedRecords(missingInSpanner, missingInSource);
+    allMismatches.setCoder(LoggingCoderWrapper.of(allMismatches.getCoder(), "All Mismatches"));
 
-    PCollection<TableRow> mismatchedRows =
-        allMismatches.apply(
-            "FormatMismatchedRecords",
-            MapElements.into(TypeDescriptor.of(TableRow.class))
-                .via(
-                    r ->
-                        new TableRow()
-                            .set(MismatchedRecord.RUN_ID_COLUMN_NAME, r.getRunId())
-                            .set(MismatchedRecord.SCHEMA_NAME, r.getSchemaName())
-                            .set(MismatchedRecord.TABLE_NAME_COLUMN_NAME, r.getTableName())
-                            .set(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME, r.getMismatchType())
-                            .set(MismatchedRecord.RECORD_KEY_COLUMN_NAME, r.getRecordKey())
-                            .set(MismatchedRecord.SOURCE_COLUMN_NAME, r.getSource())
-                            .set(MismatchedRecord.HASH_COLUMN_NAME, r.getHash())));
-
-    mismatchedRows.apply(
+    allMismatches.apply(
         "WriteMismatchedRecords",
-        BigQueryIO.writeTableRows()
+        BigQueryIO.<MismatchedRecord>write()
             .to(String.format("%s.%s", bigQueryDataset, MISMATCHED_RECORDS_TABLE))
             .withSchema(BigQuerySchemas.MISMATCHED_RECORDS_SCHEMA)
+            .withFormatFunction(
+                r ->
+                    new TableRow()
+                        .set(MismatchedRecord.RUN_ID_COLUMN_NAME, r.getRunId())
+                        .set(MismatchedRecord.TABLE_NAME_COLUMN_NAME, r.getTableName())
+                        .set(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME, r.getMismatchType())
+                        .set(MismatchedRecord.RECORD_KEY_COLUMN_NAME, r.getRecordKey())
+                        .set(MismatchedRecord.SOURCE_COLUMN_NAME, r.getSource())
+                        .set(MismatchedRecord.HASH_COLUMN_NAME, r.getHash()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
             .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
@@ -117,45 +113,40 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     // 2. Aggregate Stats
     PCollection<TableValidationStats> tableStats =
         calculateTableStats(matched, missingInSpanner, missingInSource);
+    tableStats.setCoder(LoggingCoderWrapper.of(tableStats.getCoder(), "Table Stats"));
 
-    PCollection<TableRow> tableStatsRows =
-        tableStats.apply(
-            "FormatTableStats",
-            MapElements.into(TypeDescriptor.of(TableRow.class))
-                .via(
-                    stats ->
-                        new TableRow()
-                            .set(TableValidationStats.RUN_ID_COLUMN_NAME, stats.getRunId())
-                            .set(TableValidationStats.SCHEMA_NAME, stats.getSchemaName())
-                            .set(TableValidationStats.TABLE_NAME_COLUMN_NAME, stats.getTableName())
-                            .set(TableValidationStats.STATUS_COLUMN_NAME, stats.getStatus())
-                            .set(
-                                TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME,
-                                stats.getSourceRowCount())
-                            .set(
-                                TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME,
-                                stats.getDestinationRowCount())
-                            .set(
-                                TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME,
-                                stats.getMatchedRowCount())
-                            .set(
-                                TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME,
-                                stats.getMismatchRowCount())
-                            .set(
-                                TableValidationStats.START_TIMESTAMP_COLUMN_NAME,
-                                stats.getStartTimestamp().toString())
-                            .set(
-                                TableValidationStats.END_TIMESTAMP_COLUMN_NAME,
-                                stats.getEndTimestamp().toString())));
-
-    tableStatsRows.apply(
+    tableStats.apply(
         "WriteTableStats",
-        BigQueryIO.writeTableRows()
+        BigQueryIO.<TableValidationStats>write()
             .to(String.format("%s.%s", bigQueryDataset, TABLE_VALIDATION_STATS_TABLE))
             .withSchema(BigQuerySchemas.TABLE_VALIDATION_STATS_SCHEMA)
+            .withFormatFunction(
+                stats ->
+                    new TableRow()
+                        .set(TableValidationStats.RUN_ID_COLUMN_NAME, stats.getRunId())
+                        .set(TableValidationStats.TABLE_NAME_COLUMN_NAME, stats.getTableName())
+                        .set(TableValidationStats.STATUS_COLUMN_NAME, stats.getStatus())
+                        .set(
+                            TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME,
+                            stats.getSourceRowCount())
+                        .set(
+                            TableValidationStats.DESTINATION_ROW_COUNT_COLUMN_NAME,
+                            stats.getDestinationRowCount())
+                        .set(
+                            TableValidationStats.MATCHED_ROW_COUNT_COLUMN_NAME,
+                            stats.getMatchedRowCount())
+                        .set(
+                            TableValidationStats.MISMATCH_ROW_COUNT_COLUMN_NAME,
+                            stats.getMismatchRowCount())
+                        .set(
+                            TableValidationStats.START_TIMESTAMP_COLUMN_NAME,
+                            stats.getStartTimestamp().toString())
+                        .set(
+                            TableValidationStats.END_TIMESTAMP_COLUMN_NAME,
+                            stats.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
+            .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
 
     // 3. Validation Summary
     /**
@@ -180,46 +171,41 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     }
 
     PCollection<ValidationSummary> validationSummary = calculateValidationSummary(tableStats);
+    validationSummary.setCoder(
+        LoggingCoderWrapper.of(validationSummary.getCoder(), "Validation Summary"));
 
-    PCollection<TableRow> validationSummaryRows =
-        validationSummary.apply(
-            "FormatValidationSummary",
-            MapElements.into(TypeDescriptor.of(TableRow.class))
-                .via(
-                    s ->
-                        new TableRow()
-                            .set(ValidationSummary.RUN_ID_COLUMN_NAME, s.getRunId())
-                            .set(
-                                ValidationSummary.SOURCE_DATABASE_COLUMN_NAME,
-                                s.getSourceDatabase())
-                            .set(
-                                ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME,
-                                s.getDestinationDatabase())
-                            .set(ValidationSummary.STATUS_COLUMN_NAME, s.getStatus())
-                            .set(
-                                ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME,
-                                s.getTotalTablesValidated())
-                            .set(
-                                ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME,
-                                s.getTablesWithMismatches())
-                            .set(
-                                ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME,
-                                s.getTotalRowsMatched())
-                            .set(
-                                ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME,
-                                s.getTotalRowsMismatched())
-                            .set(
-                                ValidationSummary.START_TIMESTAMP_COLUMN_NAME,
-                                s.getStartTimestamp().toString())
-                            .set(
-                                ValidationSummary.END_TIMESTAMP_COLUMN_NAME,
-                                s.getEndTimestamp().toString())));
-
-    validationSummaryRows.apply(
+    validationSummary.apply(
         "WriteValidationSummary",
-        BigQueryIO.writeTableRows()
+        BigQueryIO.<ValidationSummary>write()
             .to(String.format("%s.%s", this.bigQueryDataset, VALIDATION_SUMMARY_TABLE))
             .withSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA)
+            .withFormatFunction(
+                s ->
+                    new TableRow()
+                        .set(ValidationSummary.RUN_ID_COLUMN_NAME, s.getRunId())
+                        .set(ValidationSummary.SOURCE_DATABASE_COLUMN_NAME, s.getSourceDatabase())
+                        .set(
+                            ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME,
+                            s.getDestinationDatabase())
+                        .set(ValidationSummary.STATUS_COLUMN_NAME, s.getStatus())
+                        .set(
+                            ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME,
+                            s.getTotalTablesValidated())
+                        .set(
+                            ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME,
+                            s.getTablesWithMismatches())
+                        .set(
+                            ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME,
+                            s.getTotalRowsMatched())
+                        .set(
+                            ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME,
+                            s.getTotalRowsMismatched())
+                        .set(
+                            ValidationSummary.START_TIMESTAMP_COLUMN_NAME,
+                            s.getStartTimestamp().toString())
+                        .set(
+                            ValidationSummary.END_TIMESTAMP_COLUMN_NAME,
+                            s.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
             .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
