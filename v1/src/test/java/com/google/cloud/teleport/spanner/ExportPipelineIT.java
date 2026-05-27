@@ -263,6 +263,13 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
 
+    try {
+        Thread.sleep(1000 * 60 * 5);
+    } catch (InterruptedException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+    }
+
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(udfRemoteArtifacts).isNotEmpty();

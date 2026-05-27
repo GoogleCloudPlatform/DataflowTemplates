@@ -34,11 +34,10 @@ public abstract class Udf implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  // Remote function body is printed using $$ strings, which are
-  // unlikely but possible to be  present in the function definition.
-  // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE
+  // Remote UDF definition is printed using: AS '{definition}'.
+  // Quotes inside definiton string can be escaped using ''.
   public static final Escaper PG_DEFINITION_ESCAPER =
-      Escapers.builder().addEscape('$', "\\044").build();
+      Escapers.builder().addEscape('\'', "''").build();
 
   /** The access rights used by the UDF for underlying data: invoker-rights or definer-rights. */
   public enum SqlSecurity {
@@ -146,9 +145,9 @@ public abstract class Udf implements Serializable {
           } else {
             // Other languages use AS definition instead of sql body.
             appendable
-                .append(" AS $$")
+                .append(" AS '")
                 .append(PG_DEFINITION_ESCAPER.escape(definition()))
-                .append("$$");
+                .append("'");
           }
           break;
         default:

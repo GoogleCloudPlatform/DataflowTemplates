@@ -1056,10 +1056,10 @@ public class InformationSchemaScanner {
     ResultSet resultSet = context.executeQuery(queryStatement);
 
     while (resultSet.next()) {
-      String functionName =
-          resultSet.isNull(0) || resultSet.isNull(1)
+      String schema = resultSet.isNull(0) ? null : resultSet.getString(0);
+      String functionName = resultSet.isNull(1)
               ? null
-              : getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+              : getQualifiedName(schema, resultSet.getString(1));
       String functionSpecificName =
           getQualifiedName(resultSet.getString(2), resultSet.getString(3));
       String functionType = resultSet.isNull(4) ? null : resultSet.getString(4);
@@ -1067,10 +1067,10 @@ public class InformationSchemaScanner {
       String functionDefinition = resultSet.isNull(6) ? null : resultSet.getString(6);
       String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
 
-      // The routine_body is SQL or EXTERNAL and the external_language is not available yet.
-      // Assume that only available EXTERNAL language is REMOTE.
-      if (dialect == Dialect.POSTGRESQL && "EXTERNAL".equalsIgnoreCase(language)) {
-        language = "REMOTE";
+      // Built-in functions such as Change Stream READ_X are marked as External.
+      // Skip and do not re-create they will be autmatically added by change streams.
+      if ("EXTERNAL".equalsIgnoreCase(language)) {
+        continue;
       }
 
       LOG.debug("Schema user-defined function {}", functionName);
@@ -1117,13 +1117,18 @@ public class InformationSchemaScanner {
     if (dialect == Dialect.POSTGRESQL) {
       return;
     }
+    // Filter out EXTERNAL functions, which are built-in.
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.SPECIFIC_SCHEMA, t.SPECIFIC_NAME, t.OPTION_NAME, t.OPTION_TYPE,"
-                    + " t.OPTION_VALUE  FROM information_schema.routine_options AS t WHERE"
-                    + " t.SPECIFIC_SCHEMA NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY"
-                    + " t.SPECIFIC_NAME, t.OPTION_NAME"));
+                "SELECT o.SPECIFIC_SCHEMA, o.SPECIFIC_NAME, o.OPTION_NAME, o.OPTION_TYPE,"
+                    + " o.OPTION_VALUE"
+                    + " FROM information_schema.routine_options AS o"
+                    + "   INNER JOIN information_schema.routines AS r"
+                    + "   USING (SPECIFIC_SCHEMA, SPECIFIC_NAME)"
+                    + " WHERE o.SPECIFIC_SCHEMA NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') "
+                    + "   AND r.routine_body != 'EXTERNAL'"
+                    + " ORDER BY o.SPECIFIC_NAME, o.OPTION_NAME"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
     while (resultSet.next()) {

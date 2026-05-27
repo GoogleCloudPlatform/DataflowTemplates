@@ -34,6 +34,8 @@ CREATE TABLE "%PREFIX%Singers" (
                               "NameTokens" spanner.tokenlist generated always as (spanner.tokenize_fulltext("FirstName")) stored hidden,
                               PRIMARY KEY("Id")) INTERLEAVE IN "%PREFIX%Root";
 
+CREATE CHANGE STREAM "%PREFIX%SingersChanges" FOR "%PREFIX%Singers";
+
 CREATE SCHEMA "%PREFIX%UdfSchema";
 
 DROP SEARCH INDEX IF EXISTS "%PREFIX%SearchIndex";

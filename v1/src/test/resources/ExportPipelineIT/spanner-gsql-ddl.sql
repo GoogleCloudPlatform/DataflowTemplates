@@ -33,6 +33,8 @@ CREATE TABLE `%PREFIX%Singers` (
                               `MyTokens` TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN
 ) PRIMARY KEY(Id), INTERLEAVE IN `%PREFIX%Root`;
 
+CREATE CHANGE STREAM `%PREFIX%SingersChanges` FOR `%PREFIX%Singers`;
+
 DROP MODEL IF EXISTS `%PREFIX%ModelStruct`;
 CREATE MODEL `%PREFIX%ModelStruct`
  INPUT(content STRING(MAX))
