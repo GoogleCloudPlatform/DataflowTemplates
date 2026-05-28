@@ -115,19 +115,19 @@ public class UdfTest {
             .language("REMOTE")
             .addParameter(UdfParameter.parse("p1 BIGINT", "s1.foo", Dialect.POSTGRESQL))
             .definition(
-                "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/$myfunc\"}")
+                "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/'myfunc\"}")
             .build();
 
     assertThat(
         udf.toString(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
-                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}'"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/''myfunc\"}'"));
 
     assertThat(
         udf.toBuilder().build().toString(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
-                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}'"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/''myfunc\"}'"));
   }
 }
