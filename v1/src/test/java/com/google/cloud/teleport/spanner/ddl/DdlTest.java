@@ -1453,7 +1453,7 @@ public class DdlTest {
             + "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
             + " RETURNS STRING SQL SECURITY INVOKER RETURN (SELECT 'bar')\n"
             + "CREATE FUNCTION \"Foo3\"(\"arg0\" BIGINT) RETURNS STRING VOLATILE LANGUAGE REMOTE"
-            + " AS $${\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}$$";
+            + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
 
     List<String> statements = ddl.statements();
@@ -1470,7 +1470,7 @@ public class DdlTest {
         statements.get(2),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo3\"(\"arg0\" BIGINT) RETURNS STRING VOLATILE LANGUAGE REMOTE"
-                + " AS $${\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}$$"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'"));
     assertNotNull(ddl.hashCode());
 
     assertThat(

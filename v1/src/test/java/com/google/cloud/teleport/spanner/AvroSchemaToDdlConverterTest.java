@@ -982,7 +982,7 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"UdfSchema\".\"Foo\"(\"arg0\" STRING, \"arg1\" STRING DEFAULT \"bar\")"
                 + " RETURNS STRING VOLATILE LANGUAGE REMOTE"
-                + " AS $${\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}$$"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'"));
   }
 
   @Test

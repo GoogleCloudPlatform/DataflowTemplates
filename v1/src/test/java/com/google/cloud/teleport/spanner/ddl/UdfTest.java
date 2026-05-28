@@ -122,12 +122,12 @@ public class UdfTest {
         udf.toString(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
-                + " AS $${\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}$$"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}'"));
 
     assertThat(
         udf.toBuilder().build().toString(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
-                + " AS $${\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}$$"));
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/\\044myfunc\"}'"));
   }
 }
