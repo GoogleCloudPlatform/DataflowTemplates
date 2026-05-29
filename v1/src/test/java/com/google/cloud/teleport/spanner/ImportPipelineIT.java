@@ -144,6 +144,27 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .getPath());
   }
 
+  private void uploadImportPipelineArtifactsUdf(String subdirectory) throws IOException {
+    gcsClient.uploadArtifact(
+        "input/pg_add.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_add.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/pg_add-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_add-manifest.json")
+            .getPath());
+    gcsClient.uploadArtifact(
+        "input/pg_multiply.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_add.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/pg_multiply-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/pg_multiply-manifest.json")
+            .getPath());
+    gcsClient.uploadArtifact(
+        "input/spanner-export.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/spanner-export.json")
+            .getPath());
+  }
+
   private void uploadImportPipelineArtifactsUuid(String subdirectory) throws IOException {
     gcsClient.uploadArtifact(
         "input/UuidTable.avro-00000-of-00001",
@@ -382,6 +403,50 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     assertThat(uuidRecords).hasSize(4);
     assertThatRecords(structsToRecords(uuidRecords))
         .hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  @Test
+  public void testPostgresImportPipeline_UDF() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    testPostgresImportPipeline_UDFBase(
+        paramAdder ->
+            paramAdder.addParameter("spannerHost", spannerResourceManager.getSpannerHost()));
+  }
+
+  private void testPostgresImportPipeline_UDFBase(
+      Function<PipelineLauncher.LaunchConfig.Builder, PipelineLauncher.LaunchConfig.Builder>
+          paramsAdder)
+      throws IOException {
+    // Arrange
+    uploadImportPipelineArtifactsUdf("postgres_udf");
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        paramsAdder.apply(
+            PipelineLauncher.LaunchConfig.builder(testName, specPath)
+                .addParameter("spannerProjectId", PROJECT)
+                .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                .addParameter("inputDir", getGcsPath("input/")));
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    // Verify UDFs exist in the database
+    List<Struct> routines =
+        spannerResourceManager.runQuery(
+            "SELECT routine_name FROM information_schema.routines WHERE routine_name IN ('pg_add', 'pg_multiply')");
+    assertThat(routines).hasSize(2);
+    List<String> routineNames = routines.stream().map(r -> r.getString(0)).toList();
+    assertThat(routineNames).containsExactly("pg_add", "pg_multiply");
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.

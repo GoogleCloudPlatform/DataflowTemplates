@@ -52,3 +52,5 @@ DROP SEARCH INDEX IF EXISTS `%PREFIX%SequenceIndex`;
 CREATE SEARCH INDEX `%PREFIX%SearchIndex`
  ON `%PREFIX%Singers`(`MyTokens`)
  OPTIONS (sort_order_sharding=TRUE);
+
+CREATE FUNCTION `%PREFIX%_gsql_add`(a INT64, b INT64) RETURNS INT64 AS (a + b);

@@ -262,7 +262,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
-
+    List<Artifact> udfArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "gsql_add")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(udfRemoteArtifacts).isNotEmpty();
@@ -270,6 +272,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThat(identityArtifacts).isNotEmpty();
     assertThat(sequenceArtifacts).isNotEmpty();
     assertThat(sequenceNoKindArtifacts).isNotEmpty();
+    assertThat(udfArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
@@ -355,11 +358,44 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "Sequence2")));
+    List<Artifact> udfArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "pg_add")));
+    List<Artifact> udfMultiplyArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*/%s%s.*\\.avro.*", prefix, "pg_multiply")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(identityArtifacts).isNotEmpty();
     assertThat(sequenceArtifacts).isNotEmpty();
     assertThat(sequenceNoKindArtifacts).isNotEmpty();
+    assertThat(udfArtifacts).isNotEmpty();
+    assertThat(udfMultiplyArtifacts).isNotEmpty();
+
+    // Verify UDF artifact content
+    Schema udfSchema =
+        new org.apache.avro.file.DataFileReader<>(
+                new org.apache.avro.file.SeekableByteArrayInput(udfArtifacts.get(0).contents()),
+                new org.apache.avro.generic.GenericDatumReader<>())
+            .getSchema();
+    assertThat(udfSchema.getProp("spannerEntity")).isEqualTo("spannerUdf");
+    assertThat(udfSchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_add");
+    assertThat(udfSchema.getProp("spannerUdfDefinition")).isEqualTo("a + b");
+    assertThat(udfSchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
+    assertThat(udfSchema.getProp("spannerUdfParameter0")).isEqualTo("a integer");
+    assertThat(udfSchema.getProp("spannerUdfParameter1")).isEqualTo("b integer");
+
+    Schema udfMultiplySchema =
+        new org.apache.avro.file.DataFileReader<>(
+                new org.apache.avro.file.SeekableByteArrayInput(udfMultiplyArtifacts.get(0).contents()),
+                new org.apache.avro.generic.GenericDatumReader<>())
+            .getSchema();
+    assertThat(udfMultiplySchema.getProp("spannerEntity")).isEqualTo("spannerUdf");
+    assertThat(udfMultiplySchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_multiply");
+    assertThat(udfMultiplySchema.getProp("spannerUdfDefinition")).isEqualTo("SELECT a * b");
+    assertThat(udfMultiplySchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter0")).isEqualTo("a integer");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter1")).isEqualTo("b integer");
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
