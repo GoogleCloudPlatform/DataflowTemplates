@@ -99,6 +99,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                 r ->
                     new TableRow()
                         .set(MismatchedRecord.RUN_ID_COLUMN_NAME, r.getRunId())
+                        .set(MismatchedRecord.SCHEMA_NAME, r.getSchemaName())
                         .set(MismatchedRecord.TABLE_NAME_COLUMN_NAME, r.getTableName())
                         .set(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME, r.getMismatchType())
                         .set(MismatchedRecord.RECORD_KEY_COLUMN_NAME, r.getRecordKey())
@@ -122,6 +123,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     new TableRow()
                         .set(TableValidationStats.RUN_ID_COLUMN_NAME, stats.getRunId())
                         .set(TableValidationStats.TABLE_NAME_COLUMN_NAME, stats.getTableName())
+                        .set(TableValidationStats.SCHEMA_NAME, stats.getSchemaName())
                         .set(TableValidationStats.STATUS_COLUMN_NAME, stats.getStatus())
                         .set(
                             TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME,
@@ -143,7 +145,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             stats.getEndTimestamp().toString()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS));
+            .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
 
     // 3. Validation Summary
     /**
@@ -219,6 +221,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     r ->
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
+                            .setSchemaName(r.getSchemaName())
                             .setTableName(r.getTableName())
                             .setMismatchType(MISSING_IN_DESTINATION)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
@@ -234,6 +237,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     r ->
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
+                            .setSchemaName(r.getSchemaName())
                             .setTableName(r.getTableName())
                             .setMismatchType(MISSING_IN_SOURCE)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
