@@ -24,15 +24,22 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.InputStream;
@@ -327,10 +334,7 @@ public final class PostgreSQLDMLGeneratorTest {
     // Request with null mapper
     Ddl ddl = Ddl.builder().build();
     SourceSchema sourceSchema =
-        SourceSchema.builder(
-                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
-            .databaseName("test")
-            .build();
+        SourceSchema.builder(SourceDatabaseType.POSTGRESQL).databaseName("test").build();
     assertThrows(
         InvalidDMLGenerationException.class,
         () ->
@@ -413,14 +417,12 @@ public final class PostgreSQLDMLGeneratorTest {
   @Test
   public void testNonByteaDecodeBranch() {
     // Mocking Spanner Column
-    com.google.cloud.teleport.v2.spanner.ddl.Column spannerCol =
-        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    Column spannerCol = mock(Column.class);
     when(spannerCol.name()).thenReturn("c");
-    when(spannerCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.bytes());
+    when(spannerCol.type()).thenReturn(Type.bytes());
 
     // Mocking SourceColumn
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceCol =
-        mock(com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.class);
+    SourceColumn sourceCol = mock(SourceColumn.class);
     when(sourceCol.name()).thenReturn("c");
     when(sourceCol.type()).thenReturn("text");
 
@@ -430,13 +432,11 @@ public final class PostgreSQLDMLGeneratorTest {
     assertTrue(res.contains("decode('YWJj', 'base64')"));
 
     // Test string escape
-    com.google.cloud.teleport.v2.spanner.ddl.Column spannerStrCol =
-        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    Column spannerStrCol = mock(Column.class);
     when(spannerStrCol.name()).thenReturn("s");
-    when(spannerStrCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.string());
+    when(spannerStrCol.type()).thenReturn(Type.string());
 
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceStrCol =
-        mock(com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.class);
+    SourceColumn sourceStrCol = mock(SourceColumn.class);
     when(sourceStrCol.type()).thenReturn("text");
 
     JSONObject jsonStr = new JSONObject("{\"s\":\"it\\'s a string\"}");
@@ -444,5 +444,202 @@ public final class PostgreSQLDMLGeneratorTest {
     String resStr =
         PostgreSQLDMLGenerator.getMappedColumnValue(spannerStrCol, sourceStrCol, jsonStr, "+00:00");
     assertEquals("'it''s a string'", resStr);
+  }
+
+  @Test
+  public void testByteaTypeDML() throws Exception {
+    Column spannerCol = mock(Column.class);
+    when(spannerCol.name()).thenReturn("bytea_column");
+    when(spannerCol.type()).thenReturn(Type.bytes());
+
+    SourceColumn sourceCol = mock(SourceColumn.class);
+    when(sourceCol.name()).thenReturn("bytea_column");
+    when(sourceCol.type()).thenReturn("bytea");
+
+    JSONObject json = new JSONObject("{\"bytea_column\":\"SGVsbG8=\"}"); // "Hello" in base64
+
+    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    assertEquals("'\\x48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
+  }
+
+  @Test
+  public void testUuidTypeDML() throws Exception {
+    Column spannerCol = mock(Column.class);
+    when(spannerCol.name()).thenReturn("uuid_column");
+    when(spannerCol.type()).thenReturn(Type.string());
+
+    SourceColumn sourceCol = mock(SourceColumn.class);
+    when(sourceCol.name()).thenReturn("uuid_column");
+    when(sourceCol.type()).thenReturn("uuid");
+
+    JSONObject json = new JSONObject("{\"uuid_column\":\"123e4567-e89b-12d3-a456-426614174000\"}");
+
+    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    assertEquals("'123e4567-e89b-12d3-a456-426614174000'", res);
+  }
+
+  @Test
+  public void testJsonbTypeDML() throws Exception {
+    Column spannerCol = mock(Column.class);
+    when(spannerCol.name()).thenReturn("jsonb_column");
+    when(spannerCol.type()).thenReturn(Type.string());
+
+    SourceColumn sourceCol = mock(SourceColumn.class);
+    when(sourceCol.name()).thenReturn("jsonb_column");
+    when(sourceCol.type()).thenReturn("jsonb");
+
+    JSONObject json = new JSONObject("{\"jsonb_column\":\"{\\\"a\\\": 1}\"}");
+
+    String res = PostgreSQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    assertEquals("'{\"a\": 1}'", res);
+  }
+
+  @Test
+  public void testGetDMLStatement_SourceTableNotFound() {
+    PostgreSQLDMLGenerator generator = new PostgreSQLDMLGenerator();
+    DMLGeneratorRequest request = mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = mock(SourceSchema.class);
+
+    when(request.getSpannerTableName()).thenReturn("Singers");
+    when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    when(request.getSourceSchema()).thenReturn(sourceSchema);
+    when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    when(sourceSchema.table("Singers")).thenReturn(null); // Not found!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NoPrimaryKeys() {
+    PostgreSQLDMLGenerator generator = new PostgreSQLDMLGenerator();
+    DMLGeneratorRequest request = mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = mock(SourceSchema.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+
+    when(request.getSpannerTableName()).thenReturn("Singers");
+    when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    when(request.getSourceSchema()).thenReturn(sourceSchema);
+    when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of());
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_UpdateMode() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "UPDATE";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("\"FirstName\" = EXCLUDED.\"FirstName\""));
+    assertTrue(sql.contains("\"LastName\" = EXCLUDED.\"LastName\""));
+    assertTrue(sql.contains("ON CONFLICT (\"SingerId\") DO UPDATE SET"));
+  }
+
+  @Test
+  public void testGetUpsertStatement_AllColumnsArePKs() {
+    String sessionFile = "src/test/resources/onlyPKColumnsSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "resource_access";
+    String newValuesString = "{\"user_id\":\"101\",\"group_id\":\"5\",\"resource_id\":\"99\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject(newValuesString);
+    String modType = "INSERT";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("DO NOTHING"));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullPrimaryKeys() {
+    PostgreSQLDMLGenerator generator = new PostgreSQLDMLGenerator();
+    DMLGeneratorRequest request = mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = mock(SourceSchema.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+    Ddl ddl = mock(Ddl.class);
+    Table spannerTable = mock(Table.class);
+
+    when(request.getSpannerTableName()).thenReturn("Singers");
+    when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    when(request.getSourceSchema()).thenReturn(sourceSchema);
+    when(request.getSpannerDdl()).thenReturn(ddl);
+    when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    when(sourceTable.primaryKeyColumns()).thenReturn(null); // NULL!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetQuotedEscapedString_PgBytea() {
+    String result = PostgreSQLDMLGenerator.getQuotedEscapedString("Hello", "PG_BYTEA");
+    assertEquals("Hello", result); // No quotes!
+  }
+
+  @Test
+  public void testGetDMLStatement_NullValueInUpsert() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}"; // NULL value!
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+    String modType = "INSERT";
+
+    PostgreSQLDMLGenerator postgreSQLDMLGenerator = new PostgreSQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        postgreSQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    // Verify that LastName=NULL results in unquoted NULL in VALUES list
+    String[] parts = sql.split("VALUES");
+    assertTrue(parts.length > 1);
+    assertTrue(parts[1].contains("NULL"));
   }
 }
