@@ -19,6 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -1556,5 +1558,128 @@ public final class MySQLDMLGeneratorTest {
     // because it's a generated PK and skipped during DML creation.
     assertEquals(0, countInSQL(sql, "FirstName"));
     assertEquals(0, countInSQL(sql, "SingerId"));
+  }
+
+  @Test
+  public void testGetMappedColumnValue_GsqlUuidArray() {
+    com.google.cloud.teleport.v2.spanner.ddl.Column spannerColDef =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(spannerColDef.name()).thenReturn("uuid_array");
+    when(spannerColDef.type())
+        .thenReturn(
+            com.google.cloud.teleport.v2.spanner.type.Type.array(
+                com.google.cloud.teleport.v2.spanner.type.Type.uuid()));
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceColDef =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("uuid_array")
+            .type("varchar")
+            .build();
+
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    JSONObject valuesJson = new JSONObject();
+    org.json.JSONArray jsonArray = new org.json.JSONArray();
+    jsonArray.put(uuid1.toString());
+    jsonArray.put(uuid2.toString());
+    valuesJson.put("uuid_array", jsonArray);
+
+    String mappedValue =
+        MySQLDMLGenerator.getMappedColumnValue(spannerColDef, sourceColDef, valuesJson, "+00:00");
+
+    assertEquals("'" + uuid1.toString() + "," + uuid2.toString() + "'", mappedValue);
+  }
+
+  @Test
+  public void testGetMappedColumnValue_PgUuidArray() {
+    com.google.cloud.teleport.v2.spanner.ddl.Column spannerColDef =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(spannerColDef.name()).thenReturn("uuid_array");
+    when(spannerColDef.type())
+        .thenReturn(
+            com.google.cloud.teleport.v2.spanner.type.Type.pgArray(
+                com.google.cloud.teleport.v2.spanner.type.Type.pgUuid()));
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceColDef =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("uuid_array")
+            .type("varchar")
+            .build();
+
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    JSONObject valuesJson = new JSONObject();
+    org.json.JSONArray jsonArray = new org.json.JSONArray();
+    jsonArray.put(uuid1.toString());
+    jsonArray.put(uuid2.toString());
+    valuesJson.put("uuid_array", jsonArray);
+
+    String mappedValue =
+        MySQLDMLGenerator.getMappedColumnValue(spannerColDef, sourceColDef, valuesJson, "+00:00");
+
+    assertEquals("'" + uuid1.toString() + "," + uuid2.toString() + "'", mappedValue);
+  }
+
+  @Test
+  public void testGetMappedColumnValue_BasicTypes() {
+    // 1. Test INT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column intCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(intCol.name()).thenReturn("int_col");
+    when(intCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.int64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceIntCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("int_col")
+            .type("int")
+            .build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("int_col", "12345");
+
+    String mappedInt =
+        MySQLDMLGenerator.getMappedColumnValue(intCol, sourceIntCol, valuesJson, "+00:00");
+    assertEquals("12345", mappedInt);
+
+    // 2. Test BOOL mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column boolCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(boolCol.name()).thenReturn("bool_col");
+    when(boolCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.bool());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceBoolCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("bool_col")
+            .type("tinyint")
+            .build();
+
+    valuesJson.put("bool_col", true);
+
+    String mappedBool =
+        MySQLDMLGenerator.getMappedColumnValue(boolCol, sourceBoolCol, valuesJson, "+00:00");
+    assertEquals("true", mappedBool);
+
+    // 3. Test FLOAT64 mapping
+    com.google.cloud.teleport.v2.spanner.ddl.Column floatCol =
+        mock(com.google.cloud.teleport.v2.spanner.ddl.Column.class);
+    when(floatCol.name()).thenReturn("float_col");
+    when(floatCol.type()).thenReturn(com.google.cloud.teleport.v2.spanner.type.Type.float64());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn sourceFloatCol =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+            .name("float_col")
+            .type("double")
+            .build();
+
+    valuesJson.put("float_col", "12.345");
+
+    String mappedFloat =
+        MySQLDMLGenerator.getMappedColumnValue(floatCol, sourceFloatCol, valuesJson, "+00:00");
+    assertEquals("12.345", mappedFloat);
   }
 }

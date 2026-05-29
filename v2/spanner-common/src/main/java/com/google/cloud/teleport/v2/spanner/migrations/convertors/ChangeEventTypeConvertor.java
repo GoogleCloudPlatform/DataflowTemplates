@@ -91,10 +91,29 @@ public class ChangeEventTypeConvertor {
       case ARRAY:
         // TODO(b/422928714): Add support for Array types.
         return null;
+      case UUID:
+      case PG_UUID:
+        return Value.uuid(toUuid(changeEvent, key, requiredField));
         // TODO(b/179070999) - Add support for other data types.
       default:
         throw new IllegalArgumentException(
             "Column name(" + key + ") has unsupported column type(" + columnType.getCode() + ")");
+    }
+  }
+
+  public static java.util.UUID toUuid(JsonNode changeEvent, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+    if (!containsValue(changeEvent, key, requiredField)) {
+      return null;
+    }
+    try {
+      String uuidStr = changeEvent.get(key).asText();
+      if (uuidStr.equalsIgnoreCase("NULL") || uuidStr.isEmpty()) {
+        return null;
+      }
+      return java.util.UUID.fromString(uuidStr);
+    } catch (Exception e) {
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to UUID ", e);
     }
   }
 

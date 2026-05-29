@@ -228,10 +228,12 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
         || colType.getCode().equals(Type.Code.PG_BOOL)) {
       colInputValue = String.valueOf(valuesJson.getBoolean(colName));
     } else if ((colType.getCode().equals(Type.Code.ARRAY)
-            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+            && (colType.getArrayElementType().getCode().equals(Type.Code.STRING)
+                || colType.getArrayElementType().getCode().equals(Type.Code.UUID)))
         || (colType.getCode().equals(Type.Code.PG_ARRAY)
             && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
-                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_UUID)))) {
 
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()

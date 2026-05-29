@@ -154,7 +154,7 @@ public class GenericRecordTypeConvertor {
         }
         // If current column is migration shard id, populate value.
         if (spannerColName.equals(shardIdCol)) {
-          result = populateShardId(result, shardIdCol);
+          result = populateShardId(result, shardIdCol, spannerTableName);
           continue;
         }
 
@@ -167,7 +167,14 @@ public class GenericRecordTypeConvertor {
         // the schemaMapper returns null.
         if (spannerColName.equals(
             schemaMapper.getSyntheticPrimaryKeyColName(namespace, spannerTableName))) {
-          result.put(spannerColName, Value.string(getUUID()));
+          Type spannerColumnType =
+              schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
+          if (spannerColumnType.getCode() == Type.Code.UUID
+              || spannerColumnType.getCode() == Type.Code.PG_UUID) {
+            result.put(spannerColName, Value.uuid(java.util.UUID.randomUUID()));
+          } else {
+            result.put(spannerColName, Value.string(getUUID()));
+          }
           continue;
         }
 
@@ -432,11 +439,17 @@ public class GenericRecordTypeConvertor {
     return migrationTransformationResponse;
   }
 
-  private Map<String, Value> populateShardId(Map<String, Value> result, String shardIdCol) {
+  private Map<String, Value> populateShardId(
+      Map<String, Value> result, String shardIdCol, String tableName) {
     if (shardId == null || shardId.isBlank()) {
       return result;
     }
-    result.put(shardIdCol, Value.string(shardId));
+    Type spannerType = schemaMapper.getSpannerColumnType(namespace, tableName, shardIdCol);
+    if (spannerType.getCode() == Type.Code.UUID || spannerType.getCode() == Type.Code.PG_UUID) {
+      result.put(shardIdCol, Value.uuid(java.util.UUID.fromString(shardId)));
+    } else {
+      result.put(shardIdCol, Value.string(shardId));
+    }
     return result;
   }
 

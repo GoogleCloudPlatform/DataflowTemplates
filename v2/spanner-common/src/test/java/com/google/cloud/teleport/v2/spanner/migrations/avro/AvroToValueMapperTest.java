@@ -25,6 +25,7 @@ import static org.junit.Assert.assertThrows;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -869,5 +870,147 @@ public class AvroToValueMapperTest {
         () ->
             avroArrayFieldToSpannerArray(
                 genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToLong));
+  }
+
+  @Test
+  public void testAvroFieldToUuid_ValidUuidString() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(
+            originalUuid.toString(), SchemaBuilder.builder().stringType());
+    assertEquals(originalUuid, result);
+  }
+
+  @Test
+  public void testAvroFieldToUuid_ValidUuidObject() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(originalUuid, SchemaBuilder.builder().stringType());
+    assertEquals(originalUuid, result);
+  }
+
+  @Test
+  public void testAvroFieldToUuid_ValidByteBuffer() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(originalUuid.getMostSignificantBits())
+        .putLong(originalUuid.getLeastSignificantBits());
+    bb.flip();
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(bb, SchemaBuilder.builder().bytesType());
+    assertEquals(originalUuid, result);
+  }
+
+  @Test
+  public void testAvroFieldToUuid_ValidByteArray() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(originalUuid.getMostSignificantBits())
+        .putLong(originalUuid.getLeastSignificantBits());
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(bb.array(), SchemaBuilder.builder().bytesType());
+    assertEquals(originalUuid, result);
+  }
+
+  @Test
+  public void testAvroFieldToUuid_NullInput() {
+    java.util.UUID result =
+        AvroToValueMapper.avroFieldToUuid(null, SchemaBuilder.builder().stringType());
+    assertNull(result);
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_InvalidInput() {
+    AvroToValueMapper.avroFieldToUuid("invalid-uuid", SchemaBuilder.builder().stringType());
+  }
+
+  @Test
+  public void testGsqlUuidConverter() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    Value value =
+        AvroToValueMapper.convertorMap()
+            .get(Dialect.GOOGLE_STANDARD_SQL)
+            .get(Type.uuid())
+            .apply(originalUuid.toString(), SchemaBuilder.builder().stringType());
+    assertEquals(Value.uuid(originalUuid), value);
+  }
+
+  @Test
+  public void testPgUuidConverter() {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    Value value =
+        AvroToValueMapper.convertorMap()
+            .get(Dialect.POSTGRESQL)
+            .get(Type.pgUuid())
+            .apply(originalUuid.toString(), SchemaBuilder.builder().stringType());
+    assertEquals(Value.uuid(originalUuid), value);
+  }
+
+  @Test
+  public void testAvroValueToUuidArray() {
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    String[] uuidValues = new String[] {uuid1.toString(), uuid2.toString()};
+
+    Schema schemaUuidArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+
+    GenericRecord genericRecordUuidArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaUuidArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", uuidValues)
+            .build();
+
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.uuid()))
+                .apply(
+                    genericRecordUuidArray.get("arrayField"),
+                    genericRecordUuidArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.uuidArray(java.util.Arrays.asList(uuid1, uuid2)));
+  }
+
+  @Test
+  public void testAvroValueToPgUuidArray() {
+    java.util.UUID uuid1 = java.util.UUID.randomUUID();
+    java.util.UUID uuid2 = java.util.UUID.randomUUID();
+    String[] uuidValues = new String[] {uuid1.toString(), uuid2.toString()};
+
+    Schema schemaUuidArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+
+    GenericRecord genericRecordUuidArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaUuidArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", uuidValues)
+            .build();
+
+    assertThat(
+            AvroToValueMapper.getPgMap()
+                .get(Type.pgArray(Type.pgUuid()))
+                .apply(
+                    genericRecordUuidArray.get("arrayField"),
+                    genericRecordUuidArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.uuidArray(java.util.Arrays.asList(uuid1, uuid2)));
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_InvalidByteBufferLength() {
+    ByteBuffer bb = ByteBuffer.wrap(new byte[10]);
+    AvroToValueMapper.avroFieldToUuid(bb, SchemaBuilder.builder().bytesType());
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToUuid_InvalidByteArrayLength() {
+    byte[] bytes = new byte[20];
+    AvroToValueMapper.avroFieldToUuid(bytes, SchemaBuilder.builder().bytesType());
   }
 }

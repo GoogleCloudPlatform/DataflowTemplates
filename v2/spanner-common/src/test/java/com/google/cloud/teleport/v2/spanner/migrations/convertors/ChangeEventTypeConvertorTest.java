@@ -758,6 +758,7 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("byte_field", "NULL");
     changeEvent.put("timestamp_field", "NULL");
     changeEvent.put("date_field", "NULL");
+    changeEvent.put("uuid_field", "NULL");
     changeEvent.put("string_field", "NULL"); // this should not be converted to null
 
     JsonNode ce = getJsonNode(changeEvent.toString());
@@ -770,6 +771,32 @@ public final class ChangeEventTypeConvertorTest {
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "byte_field", true));
     assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "timestamp_field", true));
     assertNull(ChangeEventTypeConvertor.toDate(ce, "date_field", true));
+    assertNull(ChangeEventTypeConvertor.toUuid(ce, "uuid_field", true));
     assertEquals("NULL", ChangeEventTypeConvertor.toString(ce, "string_field", true));
+  }
+
+  @Test
+  public void canConvertToUuid() throws Exception {
+    java.util.UUID originalUuid = java.util.UUID.randomUUID();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("uuid_field1", originalUuid.toString());
+    changeEvent.put("uuid_field2", JSONObject.NULL);
+    changeEvent.put("uuid_field3", "");
+
+    JsonNode ce = getJsonNode(changeEvent.toString());
+
+    assertEquals(
+        ChangeEventTypeConvertor.toUuid(ce, "uuid_field1", /* requiredField= */ true),
+        originalUuid);
+    assertNull(ChangeEventTypeConvertor.toUuid(ce, "uuid_field2", /* requiredField= */ false));
+    assertNull(ChangeEventTypeConvertor.toUuid(ce, "uuid_field3", /* requiredField= */ false));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertInvalidStringToUuid() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("uuid_field1", "invalid-uuid");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    ChangeEventTypeConvertor.toUuid(ce, "uuid_field1", /* requiredField= */ true);
   }
 }
