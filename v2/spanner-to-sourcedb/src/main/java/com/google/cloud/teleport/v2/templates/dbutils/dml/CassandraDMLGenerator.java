@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.common.collect.ImmutableMap;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -135,7 +136,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
               "Cannot reverse replicate for table %s without primary key, skipping the record",
               sourceTableName));
     }
-    java.sql.Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
+    Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
     String modType = dmlGeneratorRequest.getModType();
     return generateDMLResponse(
         spannerTable,
@@ -177,7 +178,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, PreparedStatementValueObject<?>> pkColumnNameValues,
-      java.sql.Timestamp timestamp,
+      Timestamp timestamp,
       String modType) {
     Map<String, PreparedStatementValueObject<?>> columnNameValues =
         getColumnValues(
@@ -223,7 +224,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    */
   private static DMLGeneratorResponse getUpsertStatementCQL(
       String tableName,
-      java.sql.Timestamp timestamp,
+      Timestamp timestamp,
       Map<String, PreparedStatementValueObject<?>> allColumnNamesAndValues) {
 
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
@@ -269,9 +270,9 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     <p>If no primary key column values are provided, an empty WHERE clause is generated. An
    *     exception may be thrown if any value type does not match the expected type.
    */
-  private static DMLGeneratorResponse getDeleteStatementCQL(
+  static DMLGeneratorResponse getDeleteStatementCQL(
       String tableName,
-      java.sql.Timestamp timestamp,
+      Timestamp timestamp,
       Map<String, PreparedStatementValueObject<?>> allColumnNamesAndValues) {
 
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
@@ -284,15 +285,18 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     List<PreparedStatementValueObject<?>> values =
         new ArrayList<>(allColumnNamesAndValues.values());
 
+    String preparedStatement;
     if (timestamp != null) {
       PreparedStatementValueObject<Long> timestampObj =
           PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp.getTime());
       values.add(0, timestampObj);
+      preparedStatement =
+          String.format(
+              "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
+    } else {
+      preparedStatement =
+          String.format("DELETE FROM %s WHERE %s", escapedTableName, deleteConditions);
     }
-
-    String preparedStatement =
-        String.format(
-            "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
 
     return new PreparedStatementGeneratedResponse(preparedStatement, values);
   }
@@ -315,7 +319,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     `newValuesJson` and retrieves the appropriate value. 4. Skips columns that do not exist in
    *     any of the JSON objects or are marked as null.
    */
-  private static Map<String, PreparedStatementValueObject<?>> getColumnValues(
+  static Map<String, PreparedStatementValueObject<?>> getColumnValues(
       ISchemaMapper schemaMapper,
       Table spannerTable,
       SourceTable sourceTable,
@@ -390,7 +394,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     `newValuesJson` and retrieves the appropriate value. 4. Returns null if any required
    *     primary key column is missing in the JSON objects.
    */
-  private static Map<String, PreparedStatementValueObject<?>> getPkColumnValues(
+  static Map<String, PreparedStatementValueObject<?>> getPkColumnValues(
       ISchemaMapper schemaMapper,
       Table spannerTable,
       SourceTable sourceTable,
