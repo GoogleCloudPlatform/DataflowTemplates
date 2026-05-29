@@ -25,10 +25,9 @@ component_management:
     - "v2/spanner-to-sourcedb/**"
     statuses:
     - type: project
-      informational: true
+      target: 80%
     - type: patch
       target: 80%
-      informational: true
   - component_id: spanner-import-export
     name: spanner-import-export
     paths:
