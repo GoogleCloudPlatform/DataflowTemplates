@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,11 +32,14 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options.ReadOption;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
@@ -42,12 +47,17 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
@@ -71,6 +81,7 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -233,7 +244,7 @@ public class AssignShardIdFnTest {
     when(mockOptions.getColumnOverrides()).thenReturn("");
     when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
-    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    ResultSet resultSet = mock(ResultSet.class);
     when(mockReadOnlyTransaction.read(
             eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenReturn(resultSet);
@@ -289,7 +300,7 @@ public class AssignShardIdFnTest {
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
 
-    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    ResultSet resultSet = mock(ResultSet.class);
     when(mockReadOnlyTransaction.read(
             eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenReturn(resultSet);
@@ -416,7 +427,7 @@ public class AssignShardIdFnTest {
     when(processContext.element()).thenReturn(record);
     // All datatypes row
     ByteArray bytesArray = ByteArray.copyFrom("abc");
-    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    ResultSet resultSet = mock(ResultSet.class);
 
     Struct allDatatypesRow =
         Struct.newBuilder()
@@ -689,8 +700,7 @@ public class AssignShardIdFnTest {
   @Test
   public void testProcessElementDeleteModUsesCorrectStaleReadTimestamp() throws Exception {
     // Define a precise commit timestamp for the test record.
-    com.google.cloud.Timestamp commitTimestamp =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(1678886400, 5000);
+    Timestamp commitTimestamp = Timestamp.ofTimeSecondsAndNanos(1678886400, 5000);
     TrimmedShardedDataChangeRecord record =
         new TrimmedShardedDataChangeRecord(
             commitTimestamp,
@@ -740,13 +750,13 @@ public class AssignShardIdFnTest {
         ArgumentCaptor.forClass(TimestampBound.class);
     verify(mockDatabaseClient).singleUse(timestampBoundCaptor.capture());
 
-    com.google.cloud.Timestamp expectedStaleTimestamp =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+    Timestamp expectedStaleTimestamp =
+        Timestamp.ofTimeSecondsAndNanos(
             commitTimestamp.getSeconds(), commitTimestamp.getNanos() - 1000);
 
     // Extract the actual timestamp from the captured bound and verify it is a microsecond older
     TimestampBound capturedBound = timestampBoundCaptor.getValue();
-    com.google.cloud.Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
+    Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
 
     assertEquals(expectedStaleTimestamp, actualStaleTimestamp);
   }
@@ -765,8 +775,8 @@ public class AssignShardIdFnTest {
     when(mockReadOnlyTransaction.read(
             eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenThrow(
-            com.google.cloud.spanner.SpannerExceptionFactory.newSpannerException(
-                com.google.cloud.spanner.ErrorCode.UNAVAILABLE, "Detailed retryable error"));
+            SpannerExceptionFactory.newSpannerException(
+                ErrorCode.UNAVAILABLE, "Detailed retryable error"));
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -856,30 +866,25 @@ public class AssignShardIdFnTest {
             .primaryKeyColumns(ImmutableList.of("accountId"))
             .columns(
                 ImmutableList.of(
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountId")
                         .type("varchar")
                         .isPrimaryKey(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountName")
                         .type("varchar")
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("migration_shard_id")
                         .type("varchar")
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountNumber")
                         .type("bigint")
                         .build(),
                     // Source column is NOT generated!
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("generated_col")
                         .type("varchar")
                         .isGenerated(false)
@@ -936,7 +941,7 @@ public class AssignShardIdFnTest {
 
     TrimmedShardedDataChangeRecord outputRecord = captor.getValue().getValue();
     assertEquals("shard1", outputRecord.getShard());
-    org.junit.Assert.assertTrue(
+    assertTrue(
         outputRecord.getMod().getNewValuesJson().contains("\"generated_col\":\"COMPUTED_VAL\""));
   }
 
@@ -992,29 +997,24 @@ public class AssignShardIdFnTest {
             .primaryKeyColumns(ImmutableList.of("accountId"))
             .columns(
                 ImmutableList.of(
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountId")
                         .type("varchar")
                         .isPrimaryKey(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountName")
                         .type("varchar")
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("migration_shard_id")
                         .type("varchar")
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("accountNumber")
                         .type("bigint")
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("generated_col")
                         .type("varchar")
                         .isGenerated(false)
@@ -1070,7 +1070,7 @@ public class AssignShardIdFnTest {
 
     TrimmedShardedDataChangeRecord outputRecord = captor.getValue().getValue();
     assertEquals("shard1", outputRecord.getShard());
-    org.junit.Assert.assertTrue(
+    assertTrue(
         outputRecord
             .getMod()
             .getNewValuesJson()
@@ -1092,8 +1092,8 @@ public class AssignShardIdFnTest {
     when(mockReadOnlyTransaction.read(
             eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenThrow(
-            com.google.cloud.spanner.SpannerExceptionFactory.newSpannerException(
-                com.google.cloud.spanner.ErrorCode.NOT_FOUND, "Detailed permanent error"));
+            SpannerExceptionFactory.newSpannerException(
+                ErrorCode.NOT_FOUND, "Detailed permanent error"));
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -1198,5 +1198,391 @@ public class AssignShardIdFnTest {
         ModType.valueOf("DELETE"),
         1,
         "");
+  }
+
+  @Test
+  public void testProcessElementDeletePostgresTypes() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .type(Type.pgInt8())
+            .endColumn()
+            .column("bool_field")
+            .type(Type.pgBool())
+            .endColumn()
+            .column("float_field")
+            .type(Type.pgFloat8())
+            .endColumn()
+            .column("string_field")
+            .type(Type.pgVarchar())
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            Timestamp.parseTimestamp("2020-12-01T10:15:30.000Z"),
+            "serverTxnId",
+            "recordSeq",
+            "Users",
+            new Mod("{\"id\": 1}", "{}", "{}"),
+            ModType.valueOf("DELETE"),
+            1,
+            "");
+
+    when(processContext.element()).thenReturn(record);
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+            eq("Users"),
+            any(KeySet.class),
+            any(Iterable.class),
+            any(com.google.cloud.spanner.Options.ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+
+    Struct allDatatypesRow =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("bool_field")
+            .to(true)
+            .set("float_field")
+            .to(4.2)
+            .set("string_field")
+            .to("abc")
+            .build();
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(allDatatypesRow);
+
+    SourceSchema sourceSchema =
+        SourceSchema.builder(SourceDatabaseType.POSTGRESQL)
+            .databaseName("testdb")
+            .tables(com.google.common.collect.ImmutableMap.of())
+            .build();
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_SINGLE_SHARD,
+            "shard1",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_POSTGRESQL,
+            "",
+            "",
+            "",
+            "");
+
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    assignShardIdFn.setMapper(new ObjectMapper());
+
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSourceTableName(any(), eq("Users"))).thenReturn("Users");
+
+    try (MockedStatic<SchemaMapperUtils> mockedSchemaMapperUtils =
+        mockStatic(SchemaMapperUtils.class)) {
+      mockedSchemaMapperUtils
+          .when(() -> SchemaMapperUtils.getSchemaMapper(any(), any(), any(), any(), any()))
+          .thenReturn(mockSchemaMapper);
+
+      assignShardIdFn.processElement(processContext);
+
+      record.setShard("shard1");
+      String expectedNewValues =
+          "{\"float_field\":\"4.2\",\"bool_field\":\"true\",\"string_field\":\"abc\"}";
+      record.setMod(
+          new Mod(
+              record.getMod().getKeysJson(),
+              record.getMod().getOldValuesJson(),
+              expectedNewValues));
+
+      String keyStr = "Users" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
+      Long key = keyStr.hashCode() % 10000L;
+      verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+    }
+  }
+
+  @Test
+  public void testSetup_NullSpannerConfig() {
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            null,
+            mockDdlView,
+            mock(SourceSchema.class),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            "",
+            "",
+            "",
+            "");
+    assignShardIdFn.setMapper(new ObjectMapper());
+    assignShardIdFn.setup();
+  }
+
+  @Test
+  public void testSetup_NullSessionFilePath() {
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            mock(SourceSchema.class),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            null,
+            "",
+            "",
+            "");
+    assignShardIdFn.setMapper(new ObjectMapper());
+
+    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
+      mockedSpannerAccessor
+          .when(() -> SpannerAccessor.getOrCreate(any(SpannerConfig.class)))
+          .thenReturn(spannerAccessor);
+      assignShardIdFn.setup();
+    }
+  }
+
+  @Test
+  public void testSetup_EmptySessionFilePath() {
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            mock(SourceSchema.class),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            "",
+            "",
+            "",
+            "");
+    assignShardIdFn.setMapper(new ObjectMapper());
+
+    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
+      mockedSpannerAccessor
+          .when(() -> SpannerAccessor.getOrCreate(any(SpannerConfig.class)))
+          .thenReturn(spannerAccessor);
+      assignShardIdFn.setup();
+    }
+  }
+
+  @Test
+  public void testProcessElement_InvalidShardId() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    assignShardIdFn.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    assignShardIdFn.setMapper(new ObjectMapper());
+
+    IShardIdFetcher mockFetcher = mock(IShardIdFetcher.class);
+    ShardIdResponse mockResponse = mock(ShardIdResponse.class);
+    when(mockFetcher.getShardId(any())).thenReturn(mockResponse);
+    when(mockResponse.getLogicalShardId()).thenReturn("invalid/shard");
+
+    try (MockedStatic<ShardingLogicImplFetcher> mockedFetcher =
+        mockStatic(ShardingLogicImplFetcher.class)) {
+      mockedFetcher
+          .when(
+              () ->
+                  ShardingLogicImplFetcher.getShardingLogicImpl(any(), any(), any(), any(), any()))
+          .thenReturn(mockFetcher);
+
+      assignShardIdFn.processElement(processContext);
+    }
+
+    ArgumentCaptor<KV> captor = ArgumentCaptor.forClass(KV.class);
+    verify(processContext).output(captor.capture());
+    TrimmedShardedDataChangeRecord outputRecord =
+        (TrimmedShardedDataChangeRecord) captor.getValue().getValue();
+    assertEquals(Constants.SEVERE_ERROR_SHARD_ID, outputRecord.getShard());
+  }
+
+  @Test
+  public void testProcessElement_Delete_RowNotFoundInSpanner() throws Exception {
+    TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecordAllDatatypes("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+            eq("Users"),
+            any(KeySet.class),
+            any(Iterable.class),
+            any(com.google.cloud.spanner.Options.ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(false); // Simulate no row found in Spanner
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(ALL_TYPES_SESSION_FILE_PATH);
+    SourceSchema sourceSchema =
+        SchemaUtils.buildSourceSchemaFromSessionFile(ALL_TYPES_SESSION_FILE_PATH);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            ALL_TYPES_SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    assignShardIdFn.setSchema(SessionFileReader.read(ALL_TYPES_SESSION_FILE_PATH));
+
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    ArgumentCaptor<KV> captor = ArgumentCaptor.forClass(KV.class);
+    verify(processContext).output(captor.capture());
+    TrimmedShardedDataChangeRecord outputRecord =
+        (TrimmedShardedDataChangeRecord) captor.getValue().getValue();
+    assertEquals(Constants.RETRYABLE_ERROR_SHARD_ID, outputRecord.getShard());
+  }
+
+  @Test
+  public void testUpdateChangeEventToIncludeGeneratedColumns() throws Exception {
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+
+    // Mock ISchemaMapper to return generated column!
+    ISchemaMapper mockSchemaMapper = mock(ISchemaMapper.class);
+    when(mockSchemaMapper.getSpannerColumns(null, "tableName"))
+        .thenReturn(com.google.common.collect.ImmutableList.of("migration_shard_id"));
+    when(mockSchemaMapper.isGeneratedColumn(null, "tableName", "migration_shard_id"))
+        .thenReturn(true);
+    when(mockSchemaMapper.colExistsAtSource(null, "tableName", "migration_shard_id"))
+        .thenReturn(true);
+    when(mockSchemaMapper.getSourceColumnName(null, "tableName", "migration_shard_id"))
+        .thenReturn("migration_shard_id");
+    when(mockSchemaMapper.getSourceTableName(null, "tableName")).thenReturn("tableName");
+
+    // Mock SourceSchema to return non-generated source column!
+    SourceTable sourceTable = mock(SourceTable.class);
+    SourceColumn sourceColumn = mock(SourceColumn.class);
+    // Mock SchemaMapperUtils to return the mock schema mapper.
+
+    ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+            eq("tableName"),
+            any(KeySet.class),
+            any(Iterable.class),
+            any(com.google.cloud.spanner.Options.ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
+
+    try (MockedStatic<SchemaMapperUtils> mockedSchemaMapperUtils =
+        mockStatic(SchemaMapperUtils.class)) {
+      mockedSchemaMapperUtils
+          .when(() -> SchemaMapperUtils.getSchemaMapper(any(), any(), any(), any(), any()))
+          .thenReturn(mockSchemaMapper);
+
+      // Mock SourceSchema to return the mock SourceTable.
+
+      SourceSchema mockSourceSchema = mock(SourceSchema.class);
+      when(mockSourceSchema.table("tableName")).thenReturn(sourceTable);
+      when(sourceTable.column("migration_shard_id")).thenReturn(sourceColumn);
+      when(sourceColumn.isGenerated()).thenReturn(false); // Simulate non-generated column
+
+      AssignShardIdFn assignShardIdFnWithMockSchema =
+          new AssignShardIdFn(
+              SpannerConfig.create(),
+              mockDdlView,
+              mockSourceSchema, // Use mock schema!
+              Constants.SHARDING_MODE_MULTI_SHARD,
+              "test",
+              "skip",
+              "",
+              "",
+              "",
+              10000L,
+              Constants.SOURCE_MYSQL,
+              SESSION_FILE_PATH,
+              "",
+              "",
+              "");
+      assignShardIdFnWithMockSchema.setSchema(SessionFileReader.read(SESSION_FILE_PATH));
+      assignShardIdFnWithMockSchema.setSpannerAccessor(spannerAccessor);
+      assignShardIdFnWithMockSchema.setMapper(mapper);
+
+      assignShardIdFnWithMockSchema.processElement(processContext);
+
+      // Verify that read was called with "migration_shard_id"!
+      ArgumentCaptor<Iterable> captor = ArgumentCaptor.forClass(Iterable.class);
+      verify(mockReadOnlyTransaction)
+          .read(eq("tableName"), any(KeySet.class), captor.capture(), any(ReadOption.class));
+      List<String> requestedCols =
+          com.google.common.collect.ImmutableList.copyOf(captor.getValue());
+      assertTrue(requestedCols.contains("migration_shard_id"));
+    }
   }
 }
