@@ -63,7 +63,8 @@ public class ComparisonRecordMapperBasicTest {
 
   @Test
   public void testMapFromSpannerStruct() throws Exception {
-    String tableName = "Users";
+    String tableName = "public.Users";
+    String cleanTableName = "Users";
     Struct struct =
         Struct.newBuilder()
             .set("id")
@@ -75,7 +76,7 @@ public class ComparisonRecordMapperBasicTest {
             .build();
 
     Table mockTable = mock(Table.class);
-    when(mockDdl.table(tableName)).thenReturn(mockTable);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
 
     // Mock primary keys
     IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
@@ -84,7 +85,8 @@ public class ComparisonRecordMapperBasicTest {
     ComparisonRecord record = mapper.mapFrom(struct);
 
     assertNotNull(record);
-    assertEquals(tableName, record.getTableName());
+    assertEquals(cleanTableName, record.getTableName());
+    assertEquals("public", record.getSchemaName());
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
@@ -110,12 +112,12 @@ public class ComparisonRecordMapperBasicTest {
     payload.put("name", "Alice");
 
     GenericRecord avroRecord = new GenericData.Record(avroSchema);
-    avroRecord.put("tableName", "Users");
+    avroRecord.put("tableName", "public.Users");
     avroRecord.put("shardId", "shard1");
     avroRecord.put("payload", payload);
 
-    String tableName = "Users";
-    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn(tableName);
+    String cleanTableName = "Users";
+    when(mockSchemaMapper.getSpannerTableName(anyString(), anyString())).thenReturn("public.Users");
     when(mockSchemaMapper.getSpannerColumnName(anyString(), anyString(), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(2)); // Identity column mapping
 
@@ -134,7 +136,7 @@ public class ComparisonRecordMapperBasicTest {
         .thenReturn(true);
 
     Table mockTable = mock(Table.class);
-    when(mockDdl.table(tableName)).thenReturn(mockTable);
+    when(mockDdl.table(cleanTableName)).thenReturn(mockTable);
     IndexColumn pkCol = IndexColumn.create("id", IndexColumn.Order.ASC);
     when(mockTable.primaryKeys()).thenReturn(com.google.common.collect.ImmutableList.of(pkCol));
 
@@ -146,7 +148,8 @@ public class ComparisonRecordMapperBasicTest {
     ComparisonRecord record = mapper.mapFrom(avroRecord);
 
     assertNotNull(record);
-    assertEquals(tableName, record.getTableName());
+    assertEquals(cleanTableName, record.getTableName());
+    assertEquals("public", record.getSchemaName());
     assertNotNull(record.getHash());
   }
 

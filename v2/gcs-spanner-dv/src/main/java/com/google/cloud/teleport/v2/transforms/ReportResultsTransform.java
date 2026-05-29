@@ -23,7 +23,6 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.dofn.ComputeTableStatsFn;
 import com.google.cloud.teleport.v2.dto.BigQuerySchemas;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
-import com.google.cloud.teleport.v2.dto.LoggingCoderWrapper;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
 import com.google.cloud.teleport.v2.dto.TableValidationStats;
 import com.google.cloud.teleport.v2.dto.ValidationSummary;
@@ -90,7 +89,6 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     // 1. Write Mismatched Records
     PCollection<MismatchedRecord> allMismatches =
         transformMismatchedRecords(missingInSpanner, missingInSource);
-    allMismatches.setCoder(LoggingCoderWrapper.of(allMismatches.getCoder(), "All Mismatches"));
 
     allMismatches.apply(
         "WriteMismatchedRecords",
@@ -101,6 +99,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                 r ->
                     new TableRow()
                         .set(MismatchedRecord.RUN_ID_COLUMN_NAME, r.getRunId())
+                        .set(MismatchedRecord.SCHEMA_NAME, r.getSchemaName())
                         .set(MismatchedRecord.TABLE_NAME_COLUMN_NAME, r.getTableName())
                         .set(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME, r.getMismatchType())
                         .set(MismatchedRecord.RECORD_KEY_COLUMN_NAME, r.getRecordKey())
@@ -113,7 +112,6 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     // 2. Aggregate Stats
     PCollection<TableValidationStats> tableStats =
         calculateTableStats(matched, missingInSpanner, missingInSource);
-    tableStats.setCoder(LoggingCoderWrapper.of(tableStats.getCoder(), "Table Stats"));
 
     tableStats.apply(
         "WriteTableStats",
@@ -125,6 +123,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     new TableRow()
                         .set(TableValidationStats.RUN_ID_COLUMN_NAME, stats.getRunId())
                         .set(TableValidationStats.TABLE_NAME_COLUMN_NAME, stats.getTableName())
+                        .set(TableValidationStats.SCHEMA_NAME, stats.getSchemaName())
                         .set(TableValidationStats.STATUS_COLUMN_NAME, stats.getStatus())
                         .set(
                             TableValidationStats.SOURCE_ROW_COUNT_COLUMN_NAME,
@@ -171,8 +170,6 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
     }
 
     PCollection<ValidationSummary> validationSummary = calculateValidationSummary(tableStats);
-    validationSummary.setCoder(
-        LoggingCoderWrapper.of(validationSummary.getCoder(), "Validation Summary"));
 
     validationSummary.apply(
         "WriteValidationSummary",
@@ -224,6 +221,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     r ->
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
+                            .setSchemaName(r.getSchemaName())
                             .setTableName(r.getTableName())
                             .setMismatchType(MISSING_IN_DESTINATION)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
@@ -239,6 +237,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                     r ->
                         MismatchedRecord.builder()
                             .setRunId(this.runId)
+                            .setSchemaName(r.getSchemaName())
                             .setTableName(r.getTableName())
                             .setMismatchType(MISSING_IN_SOURCE)
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
