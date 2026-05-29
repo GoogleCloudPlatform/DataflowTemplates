@@ -65,7 +65,8 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
     synchronized (specPaths) {
       if (!specPaths.containsKey(builder.templateName)
-          || builder.additionalMavenProfile.contains("failureInjectionTest")) {
+          || (builder.additionalMavenProfile != null
+              && builder.additionalMavenProfile.contains("failureInjectionTest"))) {
         buildAndStageTemplate(
             builder.templateName, builder.templateModulePath, builder.additionalMavenProfile);
       }
