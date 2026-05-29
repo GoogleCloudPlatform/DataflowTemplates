@@ -35,7 +35,7 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
       "New Relic Logs API url. This should be routable from the VPC in which the Dataflow pipeline runs. "
           + "Supported regions: US (https://log-api.newrelic.com/log/v1), "
           + "EU (https://log-api.eu.newrelic.com/log/v1), "
-          + "JP (https://log-api.jp.newrelic.com/log/v1)")
+          + "JP (https://log-api.jp.nr-data.net/log/v1)")
   ValueProvider<String> getLogsApiUrl();
 
   void setLogsApiUrl(ValueProvider<String> logsApiUrl);
