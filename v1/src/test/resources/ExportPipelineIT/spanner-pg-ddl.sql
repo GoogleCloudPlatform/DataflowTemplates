@@ -48,3 +48,5 @@ CREATE TABLE "%PREFIX%NoPkTable" (
     "Name" character varying
 );
 
+CREATE FUNCTION "%PREFIX%_pg_add"(a integer, b integer) RETURNS integer SECURITY INVOKER IMMUTABLE RETURN a + b;
+CREATE FUNCTION "%PREFIX%_pg_multiply"(a integer, b integer) RETURNS integer SECURITY INVOKER IMMUTABLE AS 'SELECT a * b' LANGUAGE SQL;
