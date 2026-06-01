@@ -638,4 +638,71 @@ public class CollationMapperTest {
     }
     return CollationMapper.fromRanksCollection(list, collationReference);
   }
+
+  public void testCollationMapperDeduplication() {
+    CollationReference testCollationReference =
+        CollationReference.builder()
+            .setDbCharacterSet("testCharSet")
+            .setDbCollation("testCollation")
+            .setPadSpace(false)
+            .build();
+
+    CollationMapper.Builder collationMapperBuilder =
+        CollationMapper.builder(testCollationReference);
+
+    // Add a normal character
+    collationMapperBuilder.addCharacter(
+        CollationOrderRow.builder()
+            .setCharsetChar((int) 'a')
+            .setEquivalentChar((int) 'a')
+            .setEquivalentCharPadSpace((int) 'a')
+            .setCodepointRank(0L)
+            .setCodepointRankPadSpace(0L)
+            .setIsEmpty(false)
+            .setIsSpace(false)
+            .build());
+
+    // Add first \uFFFD character
+    collationMapperBuilder.addCharacter(
+        CollationOrderRow.builder()
+            .setCharsetChar((int) '\uFFFD')
+            .setEquivalentChar((int) '\uFFFD')
+            .setEquivalentCharPadSpace((int) '\uFFFD')
+            .setCodepointRank(1L)
+            .setCodepointRankPadSpace(1L)
+            .setIsEmpty(false)
+            .setIsSpace(false)
+            .build());
+
+    // Add duplicate \uFFFD character with different rank and SAME charsetChar
+    collationMapperBuilder.addCharacter(
+        CollationOrderRow.builder()
+            .setCharsetChar((int) '\uFFFD')
+            .setEquivalentChar((int) '\uFFFD')
+            .setEquivalentCharPadSpace((int) '\uFFFD')
+            .setCodepointRank(2L)
+            .setCodepointRankPadSpace(2L)
+            .setIsEmpty(false)
+            .setIsSpace(false)
+            .build());
+
+    CollationMapper collationMapper = collationMapperBuilder.build();
+
+    // Verify that we have 3 entries in allPositionsIndex (indexes 0, 1, 2)
+    assertThat(collationMapper.allPositionsIndex().indexToCharacter().size()).isEqualTo(3);
+
+    // Verify that indexes are contiguous (0, 1, 2)
+    assertThat(collationMapper.allPositionsIndex().indexToCharacter().containsKey(0L)).isTrue();
+    assertThat(collationMapper.allPositionsIndex().indexToCharacter().containsKey(1L)).isTrue();
+    assertThat(collationMapper.allPositionsIndex().indexToCharacter().containsKey(2L)).isTrue();
+
+    // Verify that both index 1 and 2 map to \uFFFD
+    assertThat(collationMapper.allPositionsIndex().getCharacterFromPosition(1L))
+        .isEqualTo((int) '\uFFFD');
+    assertThat(collationMapper.allPositionsIndex().getCharacterFromPosition(2L))
+        .isEqualTo((int) '\uFFFD');
+
+    // Verify that \uFFFD maps to the first seen index (1L)
+    assertThat(collationMapper.allPositionsIndex().getOrdinalPosition((int) '\uFFFD')).isEqualTo(1L);
+  }
 }
