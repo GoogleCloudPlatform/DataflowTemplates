@@ -16,7 +16,8 @@ Before deploying the configurations, ensure your local environment satisfies the
    gcloud auth login
    gcloud auth application-default login
    ```
-3. **Google Cloud Project**: An active GCP Project with Billing enabled.
+3. **Python 3**: Installed locally (required for Terraform's automated Project Quota Validator).
+4. **Google Cloud Project**: An active GCP Project with Billing enabled.
 
 ---
 
@@ -114,6 +115,7 @@ This template features built-in architecture to natively overcome GCP eventual c
 
 *   **Spanner Backups Teardown**: Automatically searches for and deletes dynamically created, cascading Cloud Spanner instance backups during database destruction to prevent parent Instance deletion blockers.
 *   **Intelligent VPC Teardown Polling**: Implements a dynamic Bash-loop provisioner ensuring Terraform seamlessly waits for Cloud SQL's invisible tenant network endpoints to release before finalizing removal of the VPC Peering connection.
+*   **Automated Project Quota Validation**: Integrates a Python-backed Terraform `external` validator data source that queries active GCP resource deployments (`gcloud`) and configured limits, preventing mid-deployment Cloud SQL instance or Spanner node quota stockout errors during the `terraform plan` stage.
 
 ---
 

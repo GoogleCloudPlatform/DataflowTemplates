@@ -29,3 +29,13 @@ output "shard_config_content" {
   description = "The JSON configuration of the generated shard config matching Shard.java"
   value       = jsondecode(local_file.shard_config.content)
 }
+
+output "quota_warning" {
+  description = "Detailed list of IAM permission denials or limit fallbacks detected during Quota Validation"
+  value       = try(data.external.quota_validator.result.warning, "none")
+}
+
+output "state_reconciliation_script" {
+  description = "The filesystem path of the state reconciliation shell script used to gracefully adopt pre-existing GCP resources"
+  value       = local_file.import_shards.filename
+}

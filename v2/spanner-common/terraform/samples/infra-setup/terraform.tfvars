@@ -8,7 +8,7 @@ migration_prefix = "smt-sharded-demo-new"
 # Source database setup (MySQL example)
 database_provider     = "MYSQL"
 database_version      = "8_0"
-physical_shards_count = 108
+physical_shards_count = 1
 logical_shards_count  = 8
 logical_shard_prefix  = "shard_db"
 cloudsql_tier         = "db-f1-micro"

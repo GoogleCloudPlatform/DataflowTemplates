@@ -15,13 +15,30 @@ locals {
   resolved_vpc_id                = var.vpc_network_id != null ? var.vpc_network_id : google_compute_network.private_network[0].id
 }
 
+# Validate GCP Project Quota Before Provisioning Resources
+data "external" "quota_validator" {
+  program = ["python3", "${path.module}/scripts/check_quota.py"]
+
+  query = {
+    project_id                  = var.project_id
+    region                      = var.region
+    cloudsql_instances_required = tostring(var.physical_shards_count)
+    spanner_pu_required         = tostring(var.spanner_processing_units)
+    spanner_config              = var.spanner_config
+    vpc_network_required        = tostring(var.vpc_network_id == null)
+  }
+}
+
 # Create a VPC network if one is not supplied as an input variable
 resource "google_compute_network" "private_network" {
   count                   = var.vpc_network_id == null ? 1 : 0
   name                    = "${var.migration_prefix}-vpc"
   auto_create_subnetworks = false
   project                 = var.project_id
-  depends_on              = [google_project_service.enabled_apis]
+  depends_on = [
+    google_project_service.enabled_apis,
+    data.external.quota_validator
+  ]
 }
 
 # Create a subnetwork within the VPC network
@@ -110,7 +127,8 @@ resource "google_sql_database_instance" "instances" {
   deletion_protection = false
   depends_on = [
     google_project_service.enabled_apis,
-    null_resource.private_vpc_connection
+    null_resource.private_vpc_connection,
+    data.external.quota_validator
   ]
 }
 
@@ -216,7 +234,10 @@ resource "google_spanner_instance" "spanner_instance" {
   processing_units = var.spanner_processing_units
   project          = var.project_id
   labels           = var.resource_labels
-  depends_on       = [google_project_service.enabled_apis]
+  depends_on = [
+    google_project_service.enabled_apis,
+    data.external.quota_validator
+  ]
 
   # Automated teardown of Spanner backups to prevent destroy failures
   provisioner "local-exec" {
@@ -241,7 +262,7 @@ resource "google_spanner_database" "spanner_database" {
 # Generate the Shard Config json file matching the Shard.java model properties
 locals {
   shards = [
-    for idx in range(var.physical_shards_count * var.logical_shards_count) : {
+    for idx, db in google_sql_database.logical_databases : {
       logicalShardId = "shard-${idx}"
       host = coalesce(
         one([for ip in google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
@@ -250,7 +271,7 @@ locals {
       port                 = tostring(var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306))
       user                 = google_sql_user.users[floor(idx / var.logical_shards_count)].name
       password             = null
-      dbName               = google_sql_database.logical_databases[idx].name
+      dbName               = db.name
       namespace            = "public"
       secretManagerUri     = "${google_secret_manager_secret.db_passwords[floor(idx / var.logical_shards_count)].id}/versions/latest"
       connectionProperties = var.connection_properties
@@ -261,4 +282,43 @@ locals {
 resource "local_file" "shard_config" {
   content  = jsonencode(local.shards)
   filename = "${path.module}/shard-config.json"
+}
+
+resource "local_file" "import_shards" {
+  filename = "${path.module}/scripts/import_shards.sh"
+  file_permission = "0755"
+  content = <<-EOF
+#!/usr/bin/env bash
+set -eo pipefail
+
+PROJECT_ID="${var.project_id}"
+REGION="${var.region}"
+
+echo "================================================================="
+echo "Running automated GCP state reconciliation (Terraform Import)..."
+echo "================================================================="
+
+%{ for idx in range(var.physical_shards_count) ~}
+INSTANCE_NAME="${var.migration_prefix}-physical-shard-${idx}"
+echo "[INFO] Checking Cloud SQL shard: $INSTANCE_NAME..."
+if gcloud sql instances describe "$INSTANCE_NAME" --project="$PROJECT_ID" &>/dev/null; then
+  echo "[INFO] Adopting existing Cloud SQL instance into Terraform State..."
+  terraform import "google_sql_database_instance.instances[${idx}]" "projects/$PROJECT_ID/instances/$INSTANCE_NAME" || true
+else
+  echo "[INFO] Cloud SQL instance $INSTANCE_NAME does not exist. Skipping."
+fi
+%{ endfor ~}
+
+echo "[INFO] Checking Spanner instance: ${var.spanner_instance_name}..."
+if gcloud spanner instances describe "${var.spanner_instance_name}" --project="$PROJECT_ID" &>/dev/null; then
+  echo "[INFO] Adopting existing Spanner instance into Terraform State..."
+  terraform import "google_spanner_instance.spanner_instance" "projects/$PROJECT_ID/instances/${var.spanner_instance_name}" || true
+else
+  echo "[INFO] Spanner instance ${var.spanner_instance_name} does not exist. Skipping."
+fi
+
+echo "================================================================="
+echo "[SUCCESS] State reconciliation complete! You may now run 'terraform apply'."
+echo "================================================================="
+EOF
 }
