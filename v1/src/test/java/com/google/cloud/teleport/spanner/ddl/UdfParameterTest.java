@@ -103,4 +103,13 @@ public class UdfParameterTest {
 
     assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` int32 DEFAULT 5"));
   }
+
+  @Test
+  public void testUdfParameterParsePgTypeWithSpace() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("p1 double precision", "s1.foo", Dialect.POSTGRESQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p1\" double precision"));
+    assertThat(udfParameter.type(), equalToCompressingWhiteSpace("double precision"));
+  }
 }
