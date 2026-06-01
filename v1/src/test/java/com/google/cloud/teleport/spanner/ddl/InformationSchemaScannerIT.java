@@ -706,7 +706,9 @@ public class InformationSchemaScannerIT {
     assertEquals(udf3.language(), "REMOTE");
     assertThat(
         udf3.options(),
-        hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"", "max_batching_rows=50"));
+        hasItems(
+            "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
+            "max_batching_rows=50"));
     assertEquals(udf3.definition(), "");
     assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
     assertThat(

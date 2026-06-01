@@ -253,9 +253,14 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
 
-    assertThat(spannerResourceManager
-            .runQuery("SELECT CONCAT(ROUTINE_SCHEMA, '.', ROUTINE_NAME) FROM INFORMATION_SCHEMA.ROUTINES").stream()
-            .map(row -> row.getString(0)).collect(Collectors.toList())).containsExactly("UdfSchema.Remote");
+    assertThat(
+            spannerResourceManager
+                .runQuery(
+                    "SELECT CONCAT(ROUTINE_SCHEMA, '.', ROUTINE_NAME) FROM INFORMATION_SCHEMA.ROUTINES")
+                .stream()
+                .map(row -> row.getString(0))
+                .collect(Collectors.toList()))
+        .containsExactly("UdfSchema.Remote");
   }
 
   @Test
