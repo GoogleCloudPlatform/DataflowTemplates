@@ -94,15 +94,10 @@ public abstract class Udf implements Serializable {
     // For now, we infer it from the language.
     if (language() != null && language().equalsIgnoreCase("REMOTE")) {
       String determinism;
-      switch (dialect()) {
-        case GOOGLE_STANDARD_SQL:
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
           determinism = "NOT DETERMINISTIC";
-          break;
-        case POSTGRESQL:
-          determinism = "VOLATILE";
-          break;
-        default:
-          throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
+        } else {
+         determinism = "VOLATILE";
       }
       appendable.append(" ").append(determinism);
     }
@@ -122,24 +117,18 @@ public abstract class Udf implements Serializable {
     }
 
     if (!options().isEmpty()) {
-      switch (dialect()) {
-        case GOOGLE_STANDARD_SQL:
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
           appendable.append(" OPTIONS (").append(String.join(", ", options())).append(")");
-          break;
-        case POSTGRESQL:
+        } else {
           throw new IllegalArgumentException(
               "Options are not supported in PostgreSQL dialect for non-remote UDFs.");
-        default:
-          throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
       }
     }
 
     if (definition() != null && !definition().isEmpty()) {
-      switch (dialect()) {
-        case GOOGLE_STANDARD_SQL:
+      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
           appendable.append(" AS (").append(definition()).append(")");
-          break;
-        case POSTGRESQL:
+        } else {
           if (language() == null || language().isEmpty() || "SQL".equalsIgnoreCase(language())) {
             appendable.append(" RETURN ").append(definition());
           } else {
@@ -149,9 +138,6 @@ public abstract class Udf implements Serializable {
                 .append(PG_DEFINITION_ESCAPER.escape(definition()))
                 .append("'");
           }
-          break;
-        default:
-          throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s.", dialect()));
       }
     }
   }

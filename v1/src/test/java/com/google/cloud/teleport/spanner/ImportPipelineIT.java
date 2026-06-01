@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -251,6 +252,10 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    assertThat(spannerResourceManager
+            .runQuery("SELECT CONCAT(ROUTINE_SCHEMA, '.', ROUTINE_NAME) FROM INFORMATION_SCHEMA.ROUTINES").stream()
+            .map(row -> row.getString(0)).collect(Collectors.toList())).containsExactly("UdfSchema.Remote");
   }
 
   @Test
@@ -315,6 +320,8 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    // TODO(b/485601737): Add PG UDFs.
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.

@@ -639,7 +639,7 @@ public class InformationSchemaScannerIT {
     String udfDef3 =
         "CREATE FUNCTION s1.remote_udf(x INT64, y INT64) "
             + "RETURNS INT64 NOT DETERMINISTIC LANGUAGE REMOTE "
-            + "OPTIONS ( endpoint = 'https://us-central1-myproject.cloudfunctions.net/myfunc' )";
+            + "OPTIONS ( endpoint = 'https://us-central1-myproject.cloudfunctions.net/myfunc', max_batching_rows = 50 )";
 
     SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2, udfDef3));
     Ddl ddl = getDatabaseDdl();
@@ -706,7 +706,7 @@ public class InformationSchemaScannerIT {
     assertEquals(udf3.language(), "REMOTE");
     assertThat(
         udf3.options(),
-        hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\""));
+        hasItems("endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"", "max_batching_rows=50"));
     assertEquals(udf3.definition(), "");
     assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
     assertThat(
@@ -735,6 +735,8 @@ public class InformationSchemaScannerIT {
 
     assertThat(ddl.schemas(), hasSize(1));
     assertThat(ddl.schema("s1"), notNullValue());
+
+    // TODO(b/485601737): Add PG UDFs.
 
     assertThat(ddl.udfs(), hasSize(0));
   }
