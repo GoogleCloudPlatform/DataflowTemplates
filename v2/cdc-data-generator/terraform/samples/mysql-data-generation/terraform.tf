@@ -30,15 +30,19 @@ provider "google-beta" {
 data "google_project" "project" {}
 
 # Find default compute engine service account to assign roles if needed
-data "google_compute_default_service_account" "gce_account" {}
+data "google_compute_default_service_account" "gce_account" {
+  depends_on = [google_project_service.enabled_apis]
+}
 
 # Enable required GCP service APIs
 resource "google_project_service" "enabled_apis" {
   for_each = toset([
+    "iam.googleapis.com",
     "dataflow.googleapis.com",
     "storage.googleapis.com",
     "cloudprofiler.googleapis.com"
   ])
   service            = each.key
+  project            = var.common_params.project
   disable_on_destroy = false
 }

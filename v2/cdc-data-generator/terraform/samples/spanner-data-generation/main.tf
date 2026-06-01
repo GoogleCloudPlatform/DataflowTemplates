@@ -45,7 +45,7 @@ resource "google_project_iam_member" "dataflow_roles" {
     "roles/storage.objectAdmin",
     "roles/dataflow.worker",
     "roles/dataflow.admin",
-    "roles/spanner.databaseAdmin",
+    "roles/spanner.databaseUser",
     "roles/monitoring.metricWriter",
     "roles/cloudprofiler.agent"
   ]) : toset([])
@@ -65,14 +65,14 @@ resource "google_dataflow_flex_template_job" "generator_job" {
 
   parameters = {
     sinkType       = "SPANNER"
-    sinkOptions    = var.dataflow_params.template_params.sink_options_gcs_path != null ? var.dataflow_params.template_params.sink_options_gcs_path : "gs://${google_storage_bucket_object.sink_options_file[0].bucket}/${google_storage_bucket_object.sink_options_file[0].name}"
+    sinkOptions    = var.dataflow_params.template_params.sink_options_gcs_path != null ? var.dataflow_params.template_params.sink_options_gcs_path : "gs://${google_storage_bucket.generator_bucket.name}/sink-options.json"
     batchSize      = tostring(var.dataflow_params.template_params.batch_size)
     insertQps      = tostring(var.dataflow_params.template_params.insert_qps)
     updateQps      = tostring(var.dataflow_params.template_params.update_qps)
     deleteQps      = tostring(var.dataflow_params.template_params.delete_qps)
     updateInterval = tostring(var.dataflow_params.template_params.update_interval)
     deleteInterval = tostring(var.dataflow_params.template_params.delete_interval)
-    schemaConfig   = var.dataflow_params.template_params.local_schema_config_file_path != null ? "gs://${google_storage_bucket_object.schema_config_file[0].bucket}/${google_storage_bucket_object.schema_config_file[0].name}" : null
+    schemaConfig   = var.dataflow_params.template_params.local_schema_config_file_path != null ? "gs://${google_storage_bucket.generator_bucket.name}/schema-config.json" : null
     dlqDirectory   = var.dataflow_params.template_params.dlq_directory != null ? var.dataflow_params.template_params.dlq_directory : "gs://${google_storage_bucket.generator_bucket.name}/dlq"
     maxParallelism = var.dataflow_params.template_params.max_parallelism != null ? tostring(var.dataflow_params.template_params.max_parallelism) : null
   }
@@ -96,7 +96,7 @@ resource "google_dataflow_flex_template_job" "generator_job" {
   on_delete                    = var.dataflow_params.runner_params.on_delete
   region                       = var.common_params.region
   ip_configuration             = var.dataflow_params.runner_params.ip_configuration
-  labels = {
+  labels = merge({
     "migration_id" = local.migration_id
-  }
+  }, var.dataflow_params.runner_params.labels != null ? var.dataflow_params.runner_params.labels : {})
 }
