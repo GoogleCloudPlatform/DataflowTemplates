@@ -95,9 +95,9 @@ public abstract class Udf implements Serializable {
     if (language() != null && language().equalsIgnoreCase("REMOTE")) {
       String determinism;
       if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
-          determinism = "NOT DETERMINISTIC";
-        } else {
-         determinism = "VOLATILE";
+        determinism = "NOT DETERMINISTIC";
+      } else {
+        determinism = "VOLATILE";
       }
       appendable.append(" ").append(determinism);
     }
@@ -118,26 +118,26 @@ public abstract class Udf implements Serializable {
 
     if (!options().isEmpty()) {
       if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
-          appendable.append(" OPTIONS (").append(String.join(", ", options())).append(")");
-        } else {
-          throw new IllegalArgumentException(
-              "Options are not supported in PostgreSQL dialect for non-remote UDFs.");
+        appendable.append(" OPTIONS (").append(String.join(", ", options())).append(")");
+      } else {
+        throw new IllegalArgumentException(
+            "Options are not supported in PostgreSQL dialect for non-remote UDFs.");
       }
     }
 
     if (definition() != null && !definition().isEmpty()) {
       if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
-          appendable.append(" AS (").append(definition()).append(")");
+        appendable.append(" AS (").append(definition()).append(")");
+      } else {
+        if (language() == null || language().isEmpty() || "SQL".equalsIgnoreCase(language())) {
+          appendable.append(" RETURN ").append(definition());
         } else {
-          if (language() == null || language().isEmpty() || "SQL".equalsIgnoreCase(language())) {
-            appendable.append(" RETURN ").append(definition());
-          } else {
-            // Other languages use AS definition instead of sql body.
-            appendable
-                .append(" AS '")
-                .append(PG_DEFINITION_ESCAPER.escape(definition()))
-                .append("'");
-          }
+          // Other languages use AS definition instead of sql body.
+          appendable
+              .append(" AS '")
+              .append(PG_DEFINITION_ESCAPER.escape(definition()))
+              .append("'");
+        }
       }
     }
   }

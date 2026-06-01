@@ -48,7 +48,7 @@
     <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>
     <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-    <jacoco.version>0.8.14</jacoco.version>
+    <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
     <beam.version>2.73.0</beam.version>
