@@ -14,6 +14,7 @@ on:
       - 'v2/datastream-to-spanner/terraform/samples/**'
       - 'v2/sourcedb-to-spanner/terraform/samples/**'
       - 'v2/spanner-to-sourcedb/terraform/samples/**'
+      - 'v2/cdc-data-generator/terraform/samples/**'
 
 jobs:
   verify-terraform-samples:
@@ -25,6 +26,7 @@ jobs:
           - v2/datastream-to-spanner/terraform/samples
           - v2/spanner-common/terraform/samples
           - v2/spanner-to-sourcedb/terraform/samples
+          - v2/cdc-data-generator/terraform/samples
     steps:
       - uses: hashicorp/setup-terraform@v4
       - name: Checkout Code
