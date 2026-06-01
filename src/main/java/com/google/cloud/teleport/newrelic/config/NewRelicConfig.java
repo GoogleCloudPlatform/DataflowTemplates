@@ -68,7 +68,9 @@ public class NewRelicConfig {
    */
   public static NewRelicConfig fromPipelineOptions(final NewRelicPipelineOptions newRelicOptions) {
     return new NewRelicConfig(
-        valueOrDefault(newRelicOptions.getLogsApiUrl(), DEFAULT_LOGS_API_URL),
+        newRelicOptions.getLogsApiUrl() != null
+            ? newRelicOptions.getLogsApiUrl()
+            : ValueProvider.StaticValueProvider.of(DEFAULT_LOGS_API_URL),
         newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
             ? maybeDecrypt(
                 newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
