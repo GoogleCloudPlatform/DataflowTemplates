@@ -1,5 +1,5 @@
 {
-  "projectId": "span-cloud-testing",
-  "instanceId": "shreya-test",
-  "databaseId": "dg-test-fk"
+  "projectId": "<YOUR_PROJECT_ID>",
+  "instanceId": "<YOUR_SPANNER_INSTANCE_ID>",
+  "databaseId": "<YOUR_SPANNER_DATABASE_ID>"
 }

@@ -95,3 +95,6 @@ Direct links to the Google Cloud Console for the launched Dataflow job and GCS b
 
 ### How can I control the generated QPS or enable max parallelism?
 You can tune options such as `insert_qps`, `batch_size`, or configure the key-based redistribution parallelism by setting `max_parallelism` in your `*.tfvars` parameters block.
+
+### Is the launched data generator a batch or streaming job?
+The CDC Data Generator launches as a **streaming pipeline** in order to continuously synthesis and stream events to your target sink. Since it runs indefinitely, it will keep running and incurring standard GCP compute charges until you manually cancel it (e.g. by executing `terraform destroy`).
