@@ -45,13 +45,38 @@ resource "google_compute_global_address" "private_ip_alloc" {
   project       = var.project_id
 }
 
-# Establish the private service connection mapping
-resource "google_service_networking_connection" "private_vpc_connection" {
-  count                   = var.vpc_network_id == null ? 1 : 0
-  network                 = google_compute_network.private_network[0].id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_alloc[0].name]
-  depends_on              = [google_project_service.enabled_apis]
+# Establish the private service connection mapping using gcloud to support bulletproof teardowns
+resource "null_resource" "private_vpc_connection" {
+  count = var.vpc_network_id == null ? 1 : 0
+
+  triggers = {
+    project_id   = var.project_id
+    network_name = google_compute_network.private_network[0].name
+    range_name   = google_compute_global_address.private_ip_alloc[0].name
+  }
+
+  provisioner "local-exec" {
+    environment = {
+      NETWORK_NAME = self.triggers.network_name
+      RANGE_NAME   = self.triggers.range_name
+      PROJECT_ID   = self.triggers.project_id
+    }
+    command = "${path.module}/scripts/connect_vpc_peering.sh"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    environment = {
+      NETWORK_NAME = self.triggers.network_name
+      PROJECT_ID   = self.triggers.project_id
+    }
+    command = "${path.module}/scripts/teardown_vpc_peering.sh"
+  }
+
+  depends_on = [
+    google_project_service.enabled_apis,
+    google_compute_global_address.private_ip_alloc
+  ]
 }
 
 # Provision Cloud SQL physical database instances
@@ -85,7 +110,7 @@ resource "google_sql_database_instance" "instances" {
   deletion_protection = false
   depends_on = [
     google_project_service.enabled_apis,
-    google_service_networking_connection.private_vpc_connection
+    null_resource.private_vpc_connection
   ]
 }
 
@@ -179,49 +204,7 @@ resource "null_resource" "schema_import" {
       DATABASE_NAMES = join(",", google_sql_database.logical_databases[*].name)
     }
 
-    command = <<-EOT
-      set -euo pipefail
-      
-      # Convert comma-separated env inputs to bash arrays
-      IFS=',' read -ra INSTANCES <<< "$INSTANCE_NAMES"
-      IFS=',' read -ra DATABASES <<< "$DATABASE_NAMES"
-      
-      TOTAL_SHARDS=$((PHYSICAL_COUNT * LOGICAL_COUNT))
-      
-      echo "========================================="
-      echo "Starting sequential schema import..."
-      echo "========================================="
-      
-      for idx in $(seq 0 $((TOTAL_SHARDS - 1))); do
-        PHYSICAL_IDX=$((idx / LOGICAL_COUNT))
-        INSTANCE_NAME=$${INSTANCES[$PHYSICAL_IDX]}
-        DB_NAME=$${DATABASES[$idx]}
-        
-        echo "[INFO] Shard $idx: Importing schema into '$DB_NAME' on '$INSTANCE_NAME'..."
-        
-        success=false
-        for attempt in {1..6}; do
-          if gcloud sql import sql "$INSTANCE_NAME" "gs://$BUCKET_NAME/$OBJECT_NAME" \
-            --database="$DB_NAME" \
-            --project="$PROJECT_ID" \
-            --quiet; then
-            success=true
-            break
-          fi
-          echo "[WARN] GCS IAM eventual consistency delay. Retrying in 10s (attempt $attempt/6)..."
-          sleep 10
-        done
-        
-        if [ "$success" = false ]; then
-          echo "[ERROR] Failed to import schema into database '$DB_NAME' after 6 attempts."
-          exit 1
-        fi
-      done
-      
-      echo "========================================="
-      echo "Schema import completed successfully!"
-      echo "========================================="
-    EOT
+    command = "${path.module}/scripts/import_schema.sh"
   }
 }
 
@@ -234,6 +217,16 @@ resource "google_spanner_instance" "spanner_instance" {
   project          = var.project_id
   labels           = var.resource_labels
   depends_on       = [google_project_service.enabled_apis]
+
+  # Automated teardown of Spanner backups to prevent destroy failures
+  provisioner "local-exec" {
+    when    = destroy
+    environment = {
+      INSTANCE_NAME = self.name
+      PROJECT_ID    = self.project
+    }
+    command = "${path.module}/scripts/delete_spanner_backups.sh"
+  }
 }
 
 # Provision Spanner Target Database
@@ -241,6 +234,7 @@ resource "google_spanner_database" "spanner_database" {
   instance            = google_spanner_instance.spanner_instance.name
   name                = var.spanner_database_name
   project             = var.project_id
+  database_dialect    = var.spanner_database_dialect
   deletion_protection = false
 }
 

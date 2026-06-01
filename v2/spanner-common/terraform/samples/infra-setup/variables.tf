@@ -138,3 +138,9 @@ variable "resource_labels" {
     "migration_prefix" = "smt-migration"
   }
 }
+
+variable "spanner_database_dialect" {
+  description = "The dialect for the target Spanner database. Supported: GOOGLE_STANDARD_SQL, POSTGRESQL"
+  type        = string
+  default     = "GOOGLE_STANDARD_SQL"
+}
