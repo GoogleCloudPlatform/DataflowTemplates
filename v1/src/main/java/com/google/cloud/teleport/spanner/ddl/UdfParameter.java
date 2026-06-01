@@ -50,35 +50,36 @@ public abstract class UdfParameter implements Serializable {
   }
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
-    String name;
-    String rest;
     String quote = identifierQuote(dialect);
 
-    if (parameter.startsWith(quote)) {
-      int closingQuoteIndex = parameter.indexOf(quote, quote.length());
-      if (closingQuoteIndex == -1) {
-        throw new IllegalArgumentException(
-            "Unterminated quoted parameter name in " + functionSpecificName);
-      }
-      name = parameter.substring(0, closingQuoteIndex + quote.length());
-      rest = parameter.substring(name.length()).trim();
-    } else {
-      String[] parts = parameter.split(" ", 2);
-      if (parts.length < 2) {
-        throw new IllegalArgumentException(
-            "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
-                + " Parameter: "
-                + parameter);
-      }
-      name = parts[0];
-      rest = parts[1].trim();
+    // Regex to extract the name (quoted or unquoted) and the rest of the parameter string.
+    // Group 1: Name (quoted or unquoted)
+    // Group 2: Quoted Name
+    // Group 3: Unquoted Name
+    // Group 4: The rest (type and optional DEFAULT)
+    String regex =
+        String.format("^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", java.util.regex.Pattern.quote(quote));
+    java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(parameter);
+
+    if (!matcher.find()) {
+      throw new IllegalArgumentException(
+          "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
+              + " Parameter: "
+              + parameter);
     }
 
-    String[] typeParts = rest.split("(?i)\\s+DEFAULT\\s*", 2);
-    String type = typeParts[0].trim();
-    String defaultExpression = typeParts.length > 1 ? typeParts[1].trim() : null;
+    String name = matcher.group(1);
+    String rest = matcher.group(4).trim();
 
-    if (defaultExpression == null && type.contains(" ")) {
+    // Split 'rest' into type and defaultExpression using a case-insensitive 'DEFAULT' keyword.
+    String[] parts = rest.split("(?i)\\s+DEFAULT\\s+", 2);
+    String type = parts[0].trim();
+    String defaultExpression = parts.length > 1 ? parts[1].trim() : null;
+
+    // The original logic for GoogleSQL restricted types to be a single word if no DEFAULT was
+    // present.
+    // We preserve this check for GSQL only to minimize behavioral changes.
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL && defaultExpression == null && type.contains(" ")) {
       throw new IllegalArgumentException("Unexpected parameter keyword in " + functionSpecificName);
     }
 
