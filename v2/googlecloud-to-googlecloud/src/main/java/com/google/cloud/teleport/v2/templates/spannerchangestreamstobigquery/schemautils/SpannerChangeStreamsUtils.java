@@ -512,6 +512,7 @@ public class SpannerChangeStreamsUtils {
       case DATE:
       case STRING:
       case TIMESTAMP:
+      case UUID:
         keyBuilder.append(keysJsonObject.getString(name));
         break;
       default:
