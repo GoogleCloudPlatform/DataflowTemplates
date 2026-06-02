@@ -198,9 +198,15 @@ public class AvroToValueMapperTest {
         AvroToValueMapper.avroFieldToFloat32((Double) 3.14, SchemaBuilder.builder().floatType());
     assertEquals("Test float input", (Float) 3.14f, result);
 
+    // Test a valid GSQL float32 to float32 mapping
     Value value =
         getGsqlMap().get(Type.float32()).apply(3.14f, SchemaBuilder.builder().floatType());
     assertEquals("Test float input", Value.float32(3.14f), value);
+
+    // Test a valid PostgreSQL float4/real to float32 mapping
+    Value pgValue =
+        getPgMap().get(Type.pgFloat4()).apply(5.75f, SchemaBuilder.builder().floatType());
+    assertEquals("Test float input", Value.float32(5.75f), pgValue);
 
     result = AvroToValueMapper.avroFieldToFloat32("456.346", SchemaBuilder.builder().doubleType());
     assertEquals("Test string input", (Float) 456.346f, result);
