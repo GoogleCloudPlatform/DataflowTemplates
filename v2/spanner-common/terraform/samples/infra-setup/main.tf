@@ -277,11 +277,41 @@ locals {
       connectionProperties = var.connection_properties
     }
   ]
+
+  bulk_shards = {
+    shardConfigurationBulk = {
+      dataShards = [
+        for p_idx in range(var.physical_shards_count) : {
+          host = coalesce(
+            one([for ip in google_sql_database_instance.instances[p_idx].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+            google_sql_database_instance.instances[p_idx].ip_address[0].ip_address
+          )
+          port                 = var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306)
+          user                 = google_sql_user.users[p_idx].name
+          password             = null
+          secretManagerUri     = "${google_secret_manager_secret.db_passwords[p_idx].id}/versions/latest"
+          connectionProperties = var.connection_properties
+          namespace            = "public"
+          databases = [
+            for l_idx in range(var.logical_shards_count) : {
+              dbName     = google_sql_database.logical_databases[p_idx * var.logical_shards_count + l_idx].name
+              databaseId = "shard-${p_idx * var.logical_shards_count + l_idx}"
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 resource "local_file" "shard_config" {
   content  = jsonencode(local.shards)
   filename = "${path.module}/shard-config.json"
+}
+
+resource "local_file" "bulk_shard_config" {
+  content  = jsonencode(local.bulk_shards)
+  filename = "${path.module}/bulk-shard.config"
 }
 
 resource "local_file" "import_shards" {

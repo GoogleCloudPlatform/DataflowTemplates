@@ -39,3 +39,13 @@ output "state_reconciliation_script" {
   description = "The filesystem path of the state reconciliation shell script used to gracefully adopt pre-existing GCP resources"
   value       = local_file.import_shards.filename
 }
+
+output "bulk_shard_config_file" {
+  description = "The filesystem path of the generated bulk shard config file"
+  value       = local_file.bulk_shard_config.filename
+}
+
+output "bulk_shard_config_content" {
+  description = "The JSON configuration of the generated bulk shard config"
+  value       = jsondecode(local_file.bulk_shard_config.content)
+}
