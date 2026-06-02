@@ -17,11 +17,14 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -68,6 +71,32 @@ public interface UniformSplitterDBAdapter extends Serializable {
   boolean checkForTimeout(SQLException exception);
 
   /**
+   * Describes the shape of the result set returned by {@link #getCollationsOrderQuery}.
+   *
+   * <ul>
+   *   <li>{@link #WEIGHT_BYTES} – the query returns raw {@code WEIGHT_STRING} sort-key bytes for
+   *       each character (columns {@code weight_non_trailing}, {@code weight_trailing}, {@code
+   *       is_empty}, {@code is_space}). Java performs all grouping, ranking and
+   *       equivalent-character resolution. Used by the MySQL adapter.
+   *   <li>{@link #WITH_RANKS} – the query returns pre-computed dense ranks ({@code codepoint_rank},
+   *       {@code codepoint_rank_pad_space}) together with {@code is_empty} and {@code is_space}.
+   *       Java resolves equivalent characters from the rank groups. Used by the PostgreSQL adapter.
+   * </ul>
+   */
+  enum CollationQueryResultType {
+    WEIGHT_BYTES,
+    WITH_RANKS
+  }
+
+  /**
+   * Returns the type of result produced by {@link #getCollationsOrderQuery}. Defaults to {@link
+   * CollationQueryResultType#WITH_RANKS}.
+   */
+  default CollationQueryResultType collationQueryResultType() {
+    return CollationQueryResultType.WITH_RANKS;
+  }
+
+  /**
    * Get a query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.
    *
@@ -80,7 +109,67 @@ public interface UniformSplitterDBAdapter extends Serializable {
    */
   String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace);
 
+  default String getCollationsOrderQuery(
+      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
+    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace);
+  }
+
   default Duration extractBoundaryDuration(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
+  }
+
+  default boolean supportsRanksRetrieval() {
+    return false;
+  }
+
+  default List<CharacterRank> getRanks(Connection conn, List<Integer> codepoints, String collation)
+      throws SQLException {
+    throw new UnsupportedOperationException("Ranks retrieval not supported");
+  }
+
+  default List<CharacterRank> processCollationResultSet(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    throw new UnsupportedOperationException("Processing collation result set not supported");
+  }
+
+  default int getCharsetMaxLength(Connection conn, String charsetName) throws SQLException {
+    return 4; // Default to safe 4 bytes
+  }
+
+  class CharacterRank implements Serializable {
+    private final int codepoint;
+    private final long rank;
+    private final long rankPadSpace;
+    private final boolean isEmpty;
+    private final boolean isSpace;
+
+    public CharacterRank(
+        int codepoint, long rank, long rankPadSpace, boolean isEmpty, boolean isSpace) {
+      this.codepoint = codepoint;
+      this.rank = rank;
+      this.rankPadSpace = rankPadSpace;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+
+    public int codepoint() {
+      return codepoint;
+    }
+
+    public long rank() {
+      return rank;
+    }
+
+    public long rankPadSpace() {
+      return rankPadSpace;
+    }
+
+    public boolean isEmpty() {
+      return isEmpty;
+    }
+
+    public boolean isSpace() {
+      return isSpace;
+    }
   }
 }

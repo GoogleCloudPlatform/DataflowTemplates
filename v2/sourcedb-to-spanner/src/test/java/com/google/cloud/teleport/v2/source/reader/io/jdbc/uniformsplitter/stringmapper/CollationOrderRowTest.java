@@ -42,9 +42,9 @@ public class CollationOrderRowTest {
   public void testCollationOrderRowBasic() {
     CollationOrderRow collationOrderRow =
         CollationOrderRow.builder()
-            .setCharsetChar('a')
-            .setEquivalentChar('A')
-            .setEquivalentCharPadSpace('A')
+            .setCharsetChar((int) 'a')
+            .setEquivalentChar((int) 'A')
+            .setEquivalentCharPadSpace((int) 'A')
             .setCodepointRank(1L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -52,9 +52,9 @@ public class CollationOrderRowTest {
             .build();
     assertThat(collationOrderRow.codepointRank()).isEqualTo(1L);
     assertThat(collationOrderRow.codepointRankPadSpace()).isEqualTo(0L);
-    assertThat(collationOrderRow.charsetChar()).isEqualTo('a');
-    assertThat(collationOrderRow.equivalentChar()).isEqualTo('A');
-    assertThat(collationOrderRow.equivalentCharPadSpace()).isEqualTo('A');
+    assertThat(collationOrderRow.charsetChar()).isEqualTo((int) 'a');
+    assertThat(collationOrderRow.equivalentChar()).isEqualTo((int) 'A');
+    assertThat(collationOrderRow.equivalentCharPadSpace()).isEqualTo((int) 'A');
     assertThat(collationOrderRow.isEmpty()).isFalse();
     assertThat(collationOrderRow.isSpace()).isFalse();
   }
@@ -74,9 +74,9 @@ public class CollationOrderRowTest {
     assertThat(collationOrderRow)
         .isEqualTo(
             CollationOrderRow.builder()
-                .setCharsetChar('a')
-                .setEquivalentChar('a')
-                .setEquivalentCharPadSpace('a')
+                .setCharsetChar((int) 'a')
+                .setEquivalentChar((int) 'a')
+                .setEquivalentCharPadSpace((int) 'a')
                 .setCodepointRank(0L)
                 .setCodepointRankPadSpace(0L)
                 .setIsEmpty(false)
