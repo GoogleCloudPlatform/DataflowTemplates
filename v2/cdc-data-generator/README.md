@@ -539,13 +539,13 @@ If you configure `--dlqDirectory`, rows that fail to write to the database are s
 
 ## Troubleshooting Common Errors
 
-| Symptom | Likely Cause | Mitigation / Resolution |
-| :--- | :--- | :--- |
-| **Pipeline runs but no rows are written** (`recordsWritten = 0`) | The resolved total root-table QPS is `0`. | Ensure you have provided a non-zero `insertQps` parameter or set the rates in your `schemaConfig` file. |
-| **`PrimaryKey validation failed`** | A primary key column was marked as `skip = true` in the override config. | Primary key columns are required to identify row states and route lifecycle events. Remove the `skip` property from all primary keys. |
-| **`writeFailures` count is high** | Database constraints are being violated. | Inspect your DLQ files to find the error. For Spanner, ensure your Faker generators conform to specific check constraints. For MySQL, check for duplicate key conflicts. |
-| **MySQL Connection Pool Exhausted** | Workers are opening too many parallel JDBC connections. | Lower `--jdbcPoolSize` or reduce `--maxParallelism` to keep connection allocations within the limits of your MySQL server. |
-| **Spanner job stalls or times out** | The Spanner database has hit its mutation limit or transaction lock boundaries. | Lower the aggregate `--insertQps` rate or reduce `--batchSize`. |
+| Symptom | Likely Cause | Mitigation / Resolution                                                                                                                                     |
+| :--- | :--- |:------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Pipeline runs but no rows are written** (`recordsWritten = 0`) | The resolved total root-table QPS is `0`. | Ensure you have provided a non-zero `insertQps` parameter or set the rates in your `schemaConfig` file.                                                     |
+| **`PrimaryKey validation failed`** | A primary key column was marked as `skip = true` in the override config. | Primary key columns are required to identify row states and route lifecycle events. Remove the `skip` property from all primary keys.                       |
+| **`writeFailures` count is high** | Database constraints are being violated. | Inspect your DLQ files to find the error. Ensure your Faker generators conform to specific check constraints. |
+| **MySQL Connection Pool Exhausted** | Workers are opening too many parallel JDBC connections. | Lower `--jdbcPoolSize` or reduce `--maxParallelism` to keep connection allocations within the limits of your MySQL server.                                  |
+| **Spanner job stalls or times out** | The Spanner database has hit its mutation limit or transaction lock boundaries. | Lower the aggregate `--insertQps` rate or reduce `--batchSize`.                                                                                             |
 
 ---
 
@@ -554,9 +554,9 @@ If you configure `--dlqDirectory`, rows that fail to write to the database are s
 * **Data Type Coverage**: Standard types like `STRING`, `INT64`, `FLOAT64`, `NUMERIC`, `BOOLEAN`, `BYTES`, `DATE`, `TIMESTAMP`, and `JSON` are supported. Custom user-defined database types (UDTs) or custom database enums are not supported.
 * **Schema Updates**: The pipeline reads target table schemas once during startup. If you run a DDL statement to alter schemas while the pipeline is running, you must restart the Dataflow job to discover the changes.
 * **Child-Parent Relationship Caveats**:
-    * **Self-Referencing Keys**: Tables with self-referencing foreign keys (e.g., an `Employees` table where a `manager_id` foreign key references `employee_id` within the same table) are not supported.
-    * **Multiple Foreign Keys to the Same Parent**: Tables containing multiple distinct foreign keys pointing to the same parent table (e.g., both a `billing_address_id` and a `shipping_address_id` pointing to an `Addresses` table) are not supported and will fail schema validation.
-    * **Interleaved Spanner Hierarchies**: While Spanner interleaved tables are fully supported, they are treated strictly as parent-child relationships. All rules about delete propagation and suppression apply directly.
+    * **Cyclic & Circular Dependencies**: Directed cycles in table relationships (e.g., Table A references Table B, and Table B references Table A, or self-referencing parent loops) are not supported. The pipeline will detect cycles at launch and fail with `Circular dependency detected in schema layout.`.
+    * **Self-Referencing Keys**: Tables with self-referencing foreign keys (e.g., an `Employees` table where a `manager_id` foreign key references `employee_id` within the same table) are not supported due to the circular dependency constraint.
+    * **Interleaved Spanner Hierarchies**: While Spanner interleaved tables are fully supported, they are treated strictly as parent-child relationships. All rules about cascade-deletes and delete suppression apply directly.
 ---
 
 ## Getting Help
