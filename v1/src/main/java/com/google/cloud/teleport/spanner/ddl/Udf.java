@@ -133,7 +133,7 @@ public abstract class Udf implements Serializable {
           appendable.append(" RETURN ").append(definition());
         } else {
           // Other languages use AS definition instead of sql body.
-          appendable.append("·AS·'").append(PG_DEFINITION_ESCAPER.escape(definition())).append("'");
+          appendable.append(" AS '").append(PG_DEFINITION_ESCAPER.escape(definition())).append("'");
         }
       }
     }
