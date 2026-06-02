@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.avro.AvroToValueMapper.avroArrayFieldToSpannerArray;
 import static com.google.cloud.teleport.v2.spanner.migrations.avro.AvroToValueMapper.getGsqlMap;
+import static com.google.cloud.teleport.v2.spanner.migrations.avro.AvroToValueMapper.getPgMap;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
