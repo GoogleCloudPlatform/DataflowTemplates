@@ -24,12 +24,12 @@ on:
         description: 'Target GCP Project ID'
         type: string
         required: true
-        default: 'spanner-migrations-prod'
+        default: 'span-cloud-migrations-staging'
       bucketName:
         description: 'Target GCS Bucket Name'
         type: string
         required: true
-        default: 'spanner-migrations-prod'
+        default: 'spanner-migrations-staging'
       stagePrefix:
         description: 'Prefix for staging the template (e.g., templates-2025-10-31). If blank, defaults to templates-YYYY-MM-DD using current date.'
         type: string
@@ -49,7 +49,7 @@ on:
         description: 'Runner labels formatted as a JSON array'
         type: string
         required: true
-        default: '["self-hosted", "release"]'
+        default: '["self-hosted", "spanner-it"]'
 
 env:
   MAVEN_OPTS: >-
@@ -74,22 +74,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
 
-      - name: Resolve Stage Prefix
-        id: get-prefix
+      - name: Resolve Variables
+        id: resolve-vars
         run: |
-          PREFIX="${{ github.event.inputs.stagePrefix }}"
-          if [ -z "$PREFIX" ]; then
-            PREFIX="templates-$(date +'%Y-%m-%d')"
-            echo "No stage prefix provided. Defaulting to dynamic prefix: $PREFIX"
-          else
-            echo "Using user-provided stage prefix: $PREFIX"
-          fi
-          echo "stagePrefix=$PREFIX" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Build & Stage Template
-        run: |
-          # Fallback to defaults if trigger is not workflow_dispatch (e.g., push)
           PROJECT_ID="${{ github.event.inputs.projectId }}"
           PROJECT_ID="${PROJECT_ID:-spanner-migrations-prod}"
           
@@ -102,23 +89,39 @@ jobs:
           MODULE_PATH="${{ github.event.inputs.modulePath }}"
           MODULE_PATH="${MODULE_PATH:-v2/spanner-to-sourcedb}"
           
-          STAGE_PREFIX="${{ steps.get-prefix.outputs.stagePrefix }}"
+          STAGE_PREFIX="${{ github.event.inputs.stagePrefix }}"
+          if [ -z "$STAGE_PREFIX" ]; then
+            STAGE_PREFIX="templates-$(date +'%Y-%m-%d')"
+          fi
           
+          echo "Resolved Variables:"
+          echo "-------------------"
+          echo "Project ID:    $PROJECT_ID"
+          echo "Bucket Name:   $BUCKET_NAME"
+          echo "Template Name: $TEMPLATE_NAME"
+          echo "Module Path:   $MODULE_PATH"
+          echo "Stage Prefix:  $STAGE_PREFIX"
+          echo "-------------------"
+          
+          echo "projectId=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "bucketName=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "templateName=$TEMPLATE_NAME" >> $GITHUB_OUTPUT
+          echo "modulePath=$MODULE_PATH" >> $GITHUB_OUTPUT
+          echo "stagePrefix=$STAGE_PREFIX" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Build & Stage Template
+        run: |
           echo "Starting Spanner Targeted Release staging..."
-          echo "Template: $TEMPLATE_NAME"
-          echo "Module Path: $MODULE_PATH"
-          echo "Project ID: $PROJECT_ID"
-          echo "Bucket Name: $BUCKET_NAME"
-          echo "Stage Prefix: $STAGE_PREFIX"
           
           mvn clean package -PtemplatesStage \
-            -DprojectId="$PROJECT_ID" \
-            -DbucketName="$BUCKET_NAME" \
-            -DstagePrefix="$STAGE_PREFIX" \
-            -DtemplateName="$TEMPLATE_NAME" \
+            -DprojectId="${{ steps.resolve-vars.outputs.projectId }}" \
+            -DbucketName="${{ steps.resolve-vars.outputs.bucketName }}" \
+            -DstagePrefix="${{ steps.resolve-vars.outputs.stagePrefix }}" \
+            -DtemplateName="${{ steps.resolve-vars.outputs.templateName }}" \
             -Dmaven.test.skip \
             -DskipIntegrationTests \
-            -pl $MODULE_PATH -am
+            -pl ${{ steps.resolve-vars.outputs.modulePath }} -am
         shell: bash
 
       - name: Cleanup Java Environment
