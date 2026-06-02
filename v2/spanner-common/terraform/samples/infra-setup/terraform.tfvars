@@ -2,7 +2,8 @@
 project_id = "<PROJECT_ID>"
 region     = "<REGION>"
 
-# Naming convention prefix
+# Naming convention prefixes (both are optional; random suffixes are appended if left blank)
+instance_prefix  = "<INSTANCE_PREFIX>"
 migration_prefix = "<MIGRATION_PREFIX>"
 
 # Source database setup (MySQL example)

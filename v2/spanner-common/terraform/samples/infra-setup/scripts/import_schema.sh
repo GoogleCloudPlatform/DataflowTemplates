@@ -16,36 +16,61 @@ fi
 IFS=',' read -ra INSTANCES <<< "$INSTANCE_NAMES"
 IFS=',' read -ra DATABASES <<< "$DATABASE_NAMES"
 
-TOTAL_SHARDS=$((PHYSICAL_COUNT * LOGICAL_COUNT))
-
-for idx in $(seq 0 $((TOTAL_SHARDS - 1))); do
-  PHYSICAL_IDX=$((idx / LOGICAL_COUNT))
-  INSTANCE_NAME=${INSTANCES[$PHYSICAL_IDX]}
-  DB_NAME=${DATABASES[$idx]}
+# Function to import all logical databases sequentially for a single physical instance
+import_instance_databases() {
+  local p_idx="$1"
+  local instance_name="${INSTANCES[$p_idx]}"
   
-  echo "[INFO] Shard $idx: Importing schema into '$DB_NAME' on '$INSTANCE_NAME'..."
-  
-  success=false
-  for attempt in {1..6}; do
-    if gcloud sql import sql "$INSTANCE_NAME" "gs://$BUCKET_NAME/$OBJECT_NAME" \
-      --database="$DB_NAME" \
-      --project="$PROJECT_ID" \
-      --quiet; then
-      success=true
-      break
+  for l_idx in $(seq 0 $((LOGICAL_COUNT - 1))); do
+    local global_idx=$((p_idx * LOGICAL_COUNT + l_idx))
+    local db_name="${DATABASES[$global_idx]}"
+    
+    echo "[INFO] Physical Shard $p_idx (Logical $l_idx): Importing schema into '$db_name'..."
+    
+    local success=false
+    for attempt in {1..6}; do
+      if gcloud sql import sql "$instance_name" "gs://$BUCKET_NAME/$OBJECT_NAME" \
+        --database="$db_name" \
+        --project="$PROJECT_ID" \
+        --quiet; then
+        success=true
+        break
+      fi
+      echo "[WARN] Instance $instance_name: GCS IAM eventual consistency delay. Retrying in 10s (attempt $attempt/6)..."
+      sleep 10
+    done
+    
+    if [ "$success" = false ]; then
+      echo "[ERROR] Instance $instance_name: Failed to import schema into '$db_name' after 6 attempts."
+      return 1
     fi
-    echo "[WARN] GCS IAM eventual consistency delay. Retrying in 10s (attempt $attempt/6)..."
-    sleep 10
   done
-  
-  if [ "$success" = false ]; then
-    echo "[ERROR] Failed to import schema into database '$DB_NAME' after 6 attempts."
-    exit 1
+  return 0
+}
+
+# Spin up parallel background jobs, one for each physical database instance
+echo "[INFO] Starting parallel schema imports across $PHYSICAL_COUNT physical database instances..."
+pids=()
+for p_idx in $(seq 0 $((PHYSICAL_COUNT - 1))); do
+  import_instance_databases "$p_idx" &
+  pids+=($!)
+done
+
+# Wait for all parallel background jobs to finish
+echo "[INFO] Waiting for all parallel schema import jobs to complete..."
+failed=0
+for pid in "${pids[@]}"; do
+  if ! wait "$pid"; then
+    failed=$((failed + 1))
   fi
 done
 
-echo "========================================="
-echo "Schema import completed successfully!"
-echo "========================================="
+if [ "$failed" -ne 0 ]; then
+  echo "[ERROR] $failed physical shards failed to complete their schema imports."
+  exit 1
+fi
 
+echo "========================================="
+echo "Parallel schema import completed successfully!"
+echo "========================================="
 exit 0

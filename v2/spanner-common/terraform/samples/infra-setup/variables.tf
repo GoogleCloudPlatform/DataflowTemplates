@@ -8,10 +8,16 @@ variable "region" {
   type        = string
 }
 
-variable "migration_prefix" {
-  description = "A prefix to apply to all resources to ensure name uniqueness"
+variable "instance_prefix" {
+  description = "A prefix to apply to physical database and Spanner instance names"
   type        = string
-  default     = "smt-migration"
+  default     = null
+}
+
+variable "migration_prefix" {
+  description = "A prefix to apply to other migration resources to ensure name uniqueness"
+  type        = string
+  default     = null
 }
 
 variable "database_provider" {
@@ -102,9 +108,9 @@ variable "connection_properties" {
 }
 
 variable "spanner_instance_name" {
-  description = "The name/ID of the Spanner instance to create"
+  description = "The name/ID of the Spanner instance to create. If empty, derived from instance_prefix"
   type        = string
-  default     = "smt-spanner-instance"
+  default     = null
 }
 
 variable "spanner_display_name" {
@@ -126,9 +132,9 @@ variable "spanner_processing_units" {
 }
 
 variable "spanner_database_name" {
-  description = "The name of the Spanner database to create"
+  description = "The name of the Spanner database to create. If empty, derived from migration_prefix"
   type        = string
-  default     = "smt-spanner-db"
+  default     = null
 }
 
 variable "resource_labels" {

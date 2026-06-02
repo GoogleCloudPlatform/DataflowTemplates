@@ -75,6 +75,7 @@ def main():
             )
     else:
         remaining_sql = "unknown"
+        warnings.append("Cloud SQL Instances (No custom quota override found in project; check skipped to prevent false-positive blocks).")
 
     # 2. Check Spanner Processing Units Quota
     spanner_instances, _ = get_json_command(["gcloud", "spanner", "instances", "list", "--project", project_id, "--format=json"])
@@ -117,6 +118,7 @@ def main():
             )
     else:
         remaining_pu = "unknown"
+        warnings.append(f"Spanner Processing Units for '{spanner_config}' (No custom quota override found in project; check skipped to prevent false-positive blocks).")
 
     # 3. Check VPC Network Quota
     remaining_net = "unknown"
@@ -149,11 +151,12 @@ def main():
                 )
         else:
             remaining_net = "unknown"
+            warnings.append("VPC Networks (No custom quota override found in project; check skipped to prevent false-positive blocks).")
 
     if warnings:
-        print("\n[QUOTA WARNING] Insufficient IAM permissions to retrieve custom GCP quota limits for:\n" + 
+        print("\n[QUOTA WARNING] Validation check skipped for some properties to prevent false-positive blocks:\n" + 
               "\n".join("- " + warn for warn in warnings) + 
-              "\nStatic limit enforcement skipped to prevent false positives. Current usage was recorded safely.", file=sys.stderr)
+              "\nDeployment will proceed safely.", file=sys.stderr)
 
     if errors:
         print("\n[QUOTA ERROR] The requested infrastructure cannot be provisioned due to quota limits:\n" + 

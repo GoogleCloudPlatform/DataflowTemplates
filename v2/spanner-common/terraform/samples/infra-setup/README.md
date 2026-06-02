@@ -46,10 +46,6 @@ When you run `terraform destroy` to delete your setup, Google Cloud Spanner will
 ### 4. Private Connection Cleanup (`scripts/teardown_vpc_peering.sh`)
 If you configure your databases to use private IPs instead of public IPs, Google Cloud creates private networking connections between your network and Cloud SQL. When deleting this infrastructure, Google Cloud occasionally takes time to release these connections. This script cleanly deletes the private network connection using the `gcloud` tool, or safely bypasses it if there are other active resources still using the connection.
 
-### 5. Existing Resources Ingestion (`scripts/import_shards.sh` - Auto-Generated)
-If you run a plan (`terraform plan`), Terraform dynamically writes this customized import bash script for you in the `scripts/` directory. 
-* **Why it is needed:** If you already have existing Cloud SQL instances or Cloud Spanner instances running in your GCP project with the same names, Terraform's default behavior is to throw a `409 Conflict` error and halt. 
-* **How to use it:** Simply execute `./scripts/import_shards.sh` in your terminal before running `terraform apply`. It will check Google Cloud for any pre-existing instances and safely register them into Terraform's internal state tracking. This ensures the deployment finishes successfully and uses the existing database IP addresses to build the final `shard-config.json` configuration file.
 
 ---
 
@@ -67,8 +63,13 @@ CREATE TABLE users (
 
 ### Step 2: Configure Your Variables
 There are two variable sample files provided:
-1. **`terraform_simple.tfvars` (Recommended for beginners)**: A simple, minimal configuration containing only the most important variables.
+1. **`terraform_simple.tfvars` (Recommended for beginners)**: A simple, minimal configuration containing only the most important variables. It leverages the automated prefix generation.
 2. **`terraform.tfvars`**: A comprehensive variable template containing all available settings (such as database user, password, network CIDRs, tags, Spanner processing units).
+
+#### Key Naming Variables:
+* **`instance_prefix` (Optional)**: A string prefixed to physical database instances and target Spanner instances. If not provided, a unique name prefixed with `smt-inst-` and a random suffix is generated automatically.
+* **`migration_prefix` (Optional)**: A string prefixed to other resources like VPC networks, subnets, Secret Manager secrets, and GCS schema buckets. If not provided, a unique name prefixed with `smt-mig-` and a random suffix is generated automatically.
+* **`spanner_instance_name` / `spanner_database_name` (Optional)**: Overrides the target Spanner instance and database names completely. If left blank, they are dynamically derived from your `instance_prefix` and `migration_prefix` respectively.
 
 Open `terraform_simple.tfvars` or `terraform.tfvars`, replace the placeholders (like `<PROJECT_ID>`) with your actual values, and save the file.
 
@@ -80,13 +81,10 @@ Run the following commands in your terminal:
 # 1. Download necessary Terraform providers and plugins
 terraform init
 
-# 2. Optional: If you have pre-existing GCP resources with the same names, run this to register them:
-# Note: This script is created or updated after running "terraform plan"
-terraform plan --var-file=terraform_simple.tfvars
-./scripts/import_shards.sh
-
-# 3. Deploy the databases and generate the configuration
-terraform apply --var-file=terraform_simple.tfvars
+# 2. Deploy the databases and generate the configuration
+# Note: For large scale deployments (e.g., 128 shards), you MUST use the -parallelism flag
+# for faster resource creation (default is 10).
+terraform apply -parallelism=100 --var-file=terraform_simple.tfvars
 ```
 
 ---
@@ -96,7 +94,7 @@ terraform apply --var-file=terraform_simple.tfvars
 Once the deployment completes successfully, Terraform will print the resource details on your screen and generate two sharding configuration files in this directory:
 
 1. **`shard-config.json`**: A flat JSON list of all logical shards.
-2. **`bulk-shard.config`**: A grouped JSON bulk sharding configuration mapping database names directly to their hosting database servers, matching the Java migration template reader.
+2. **`bulk-config.json`**: A grouped JSON bulk sharding configuration mapping database names directly to their hosting database servers, matching the Java migration template reader.
 
 ### 1. Regular Shard Config Format (`shard-config.json`)
 ```json
@@ -114,7 +112,7 @@ Once the deployment completes successfully, Terraform will print the resource de
 ]
 ```
 
-### 2. Bulk Shard Config Format (`bulk-shard.config`)
+### 2. Bulk Shard Config Format (`bulk-config.json`)
 ```json
 {
   "shardConfigurationBulk": {
@@ -142,6 +140,44 @@ Once the deployment completes successfully, Terraform will print the resource de
   }
 }
 ```
+
+---
+
+## Troubleshooting
+
+### Handling Creation Timeouts & Operation Dropouts
+When deploying a high number of physical database instances concurrently (e.g., 128 shards), you may occasionally encounter a transient timeout or polling connection dropout error from the Google Cloud API:
+```
+Error: Error waiting for Create Instance: ...
+```
+Or when running `terraform apply` again after a timeout:
+```
+Error: Error, failed to create instance ...: googleapi: Error 409: The Cloud SQL instance already exists., instanceAlreadyExists
+```
+
+#### Why this happens:
+When Terraform requests the creation of 100+ databases, Google Cloud schedules their creation asynchronously in the background. If the local Terraform process loses connection to the GCP Operation API or hits a client-side wait timeout, Terraform aborts the command and **fails to save those specific instances to your local `terraform.tfstate` file**, even though the creation continues successfully in the background on Google's servers.
+
+#### How to resolve this:
+1. **Verify creation in GCP**: Run this CLI command to confirm that the instances are active and running on Google Cloud:
+   ```bash
+   gcloud sql instances list --project="<YOUR_PROJECT_ID>" --filter="name~smt-sharded"
+   ```
+2. **Import the affected instances into Terraform State**: For any instances that were successfully created on GCP but are missing from your local state file (causing `409 Already Exists` errors), import them manually back into Terraform using the following command:
+   ```bash
+   terraform import --var-file=terraform_simple.tfvars "google_sql_database_instance.instances[<INDEX>]" "projects/<YOUR_PROJECT_ID>/instances/<INSTANCE_NAME>"
+   ```
+   *Example:*
+   ```bash
+   terraform import --var-file=terraform_simple.tfvars "google_sql_database_instance.instances[18]" "projects/my-gcp-project/instances/smt-sharded-demo-new-physical-shard-18"
+   ```
+3. **Resume the Deployment**: Once all missing instances are imported, simply rerun the deployment command with controlled parallelism:
+   ```bash
+   terraform apply -parallelism=30 --var-file=terraform_simple.tfvars
+   ```
+   Terraform will successfully refresh the state and complete the configuration setup in minutes!
+
+---
 
 ### Cleaning Up Resources
 To delete all created Google Cloud resources and avoid ongoing charges, run:

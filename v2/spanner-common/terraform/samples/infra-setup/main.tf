@@ -3,14 +3,29 @@ resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
+# Random prefixes generated using pet names if none are supplied
+resource "random_pet" "migration_id" {
+  prefix = "smt"
+}
+
+resource "random_pet" "instance_id" {
+  prefix = "smt"
+}
+
 # Random passwords for database users if a specific password was not provided
 resource "random_password" "db_password" {
-  count   = var.database_password != null && var.database_password != "" ? 0 : var.physical_shards_count
+  count   = var.database_password != null && var.database_password != "" ? 0 : 1
   length  = 16
   special = false
 }
 
 locals {
+  migration_prefix_resolved = var.migration_prefix != null && var.migration_prefix != "" ? var.migration_prefix : random_pet.migration_id.id
+  instance_prefix_resolved  = var.instance_prefix != null && var.instance_prefix != "" ? var.instance_prefix : random_pet.instance_id.id
+
+  spanner_instance_name_resolved = var.spanner_instance_name != null && var.spanner_instance_name != "" ? var.spanner_instance_name : "${local.instance_prefix_resolved}-spanner"
+  spanner_database_name_resolved = var.spanner_database_name != null && var.spanner_database_name != "" ? var.spanner_database_name : "${local.migration_prefix_resolved}-db"
+
   database_version_reconstructed = "${upper(var.database_provider)}_${upper(var.database_version)}"
   resolved_vpc_id                = var.vpc_network_id != null ? var.vpc_network_id : google_compute_network.private_network[0].id
 }
@@ -32,7 +47,7 @@ data "external" "quota_validator" {
 # Create a VPC network if one is not supplied as an input variable
 resource "google_compute_network" "private_network" {
   count                   = var.vpc_network_id == null ? 1 : 0
-  name                    = "${var.migration_prefix}-vpc"
+  name                    = "${lower(local.migration_prefix_resolved)}-vpc"
   auto_create_subnetworks = false
   project                 = var.project_id
   depends_on = [
@@ -44,7 +59,7 @@ resource "google_compute_network" "private_network" {
 # Create a subnetwork within the VPC network
 resource "google_compute_subnetwork" "private_subnetwork" {
   count         = var.vpc_network_id == null ? 1 : 0
-  name          = "${var.migration_prefix}-subnet"
+  name          = "${lower(local.migration_prefix_resolved)}-subnet"
   ip_cidr_range = "10.0.0.0/24"
   region        = var.region
   network       = google_compute_network.private_network[0].id
@@ -54,7 +69,7 @@ resource "google_compute_subnetwork" "private_subnetwork" {
 # Allocate an IP range for private service connection
 resource "google_compute_global_address" "private_ip_alloc" {
   count         = var.vpc_network_id == null ? 1 : 0
-  name          = "${var.migration_prefix}-pip-alloc"
+  name          = "${lower(local.migration_prefix_resolved)}-pip-alloc"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
@@ -99,7 +114,7 @@ resource "null_resource" "private_vpc_connection" {
 # Provision Cloud SQL physical database instances
 resource "google_sql_database_instance" "instances" {
   count            = var.physical_shards_count
-  name             = "${var.migration_prefix}-physical-shard-${count.index}"
+  name             = "${lower(local.instance_prefix_resolved)}-physical-shard-${count.index}"
   database_version = local.database_version_reconstructed
   region           = var.region
   project          = var.project_id
@@ -125,6 +140,7 @@ resource "google_sql_database_instance" "instances" {
   }
 
   deletion_protection = false
+
   depends_on = [
     google_project_service.enabled_apis,
     null_resource.private_vpc_connection,
@@ -138,14 +154,14 @@ resource "google_sql_user" "users" {
   name     = var.database_user
   instance = google_sql_database_instance.instances[count.index].name
   host     = length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? null : "%"
-  password = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[count.index].result
+  password = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[0].result
   project  = var.project_id
 }
 
 # Provision Secret Manager secrets to store the shard passwords
 resource "google_secret_manager_secret" "db_passwords" {
-  count     = var.physical_shards_count
-  secret_id = "${var.migration_prefix}-db-password-${count.index}"
+  count     = 1
+  secret_id = "${replace(local.migration_prefix_resolved, "-", "_")}_db_password"
 
   replication {
     auto {}
@@ -157,9 +173,9 @@ resource "google_secret_manager_secret" "db_passwords" {
 
 # Store database user passwords securely in Secret Manager secret versions
 resource "google_secret_manager_secret_version" "db_password_versions" {
-  count       = var.physical_shards_count
-  secret      = google_secret_manager_secret.db_passwords[count.index].id
-  secret_data = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[count.index].result
+  count       = 1
+  secret      = google_secret_manager_secret.db_passwords[0].id
+  secret_data = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[0].result
 }
 
 # Create the logical shard databases distributed across physical instances
@@ -172,7 +188,7 @@ resource "google_sql_database" "logical_databases" {
 
 # Create GCS bucket to upload the schema file for Cloud SQL import
 resource "google_storage_bucket" "schema_bucket" {
-  name                        = "${var.migration_prefix}-schema-${random_id.bucket_suffix.hex}"
+  name                        = "${lower(local.migration_prefix_resolved)}-schema-${random_id.bucket_suffix.hex}"
   location                    = var.region
   project                     = var.project_id
   uniform_bucket_level_access = true
@@ -188,12 +204,14 @@ resource "google_storage_bucket_object" "schema_file" {
   bucket = google_storage_bucket.schema_bucket.name
 }
 
-# Grant IAM permissions to Cloud SQL service accounts to read schema from GCS bucket
-resource "google_storage_bucket_iam_member" "sql_gcs_reader" {
-  count  = var.physical_shards_count
-  bucket = google_storage_bucket.schema_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_sql_database_instance.instances[count.index].service_account_email_address}"
+# Grant IAM permissions to all Cloud SQL service accounts to read schema from the GCS bucket in a single API call to prevent ETag lock collision delays
+resource "google_storage_bucket_iam_binding" "sql_gcs_reader" {
+  bucket  = google_storage_bucket.schema_bucket.name
+  role    = "roles/storage.objectViewer"
+  members = [
+    for inst in google_sql_database_instance.instances :
+    "serviceAccount:${inst.service_account_email_address}"
+  ]
 }
 
 # Run sql schema import sequentially or parallelly into logical database shards
@@ -204,7 +222,7 @@ resource "null_resource" "schema_import" {
   }
 
   depends_on = [
-    google_storage_bucket_iam_member.sql_gcs_reader,
+    google_storage_bucket_iam_binding.sql_gcs_reader,
     google_sql_user.users,
     google_sql_database.logical_databases,
     google_storage_bucket_object.schema_file
@@ -228,7 +246,7 @@ resource "null_resource" "schema_import" {
 
 # Provision Spanner Target Instance
 resource "google_spanner_instance" "spanner_instance" {
-  name             = var.spanner_instance_name
+  name             = local.spanner_instance_name_resolved
   config           = var.spanner_config
   display_name     = var.spanner_display_name
   processing_units = var.spanner_processing_units
@@ -253,7 +271,7 @@ resource "google_spanner_instance" "spanner_instance" {
 # Provision Spanner Target Database
 resource "google_spanner_database" "spanner_database" {
   instance            = google_spanner_instance.spanner_instance.name
-  name                = var.spanner_database_name
+  name                = local.spanner_database_name_resolved
   project             = var.project_id
   database_dialect    = var.spanner_database_dialect
   deletion_protection = false
@@ -262,18 +280,21 @@ resource "google_spanner_database" "spanner_database" {
 # Generate the Shard Config json file matching the Shard.java model properties
 locals {
   shards = [
-    for idx, db in google_sql_database.logical_databases : {
+    for idx in range(var.physical_shards_count * var.logical_shards_count) : {
       logicalShardId = "shard-${idx}"
-      host = coalesce(
-        one([for ip in google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
-        google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address[0].ip_address
+      host = try(
+        coalesce(
+          one([for ip in google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+          google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address[0].ip_address
+        ),
+        "127.0.0.1"
       )
       port                 = tostring(var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306))
-      user                 = google_sql_user.users[floor(idx / var.logical_shards_count)].name
+      user                 = try(google_sql_user.users[floor(idx / var.logical_shards_count)].name, var.database_user)
       password             = null
-      dbName               = db.name
+      dbName               = "${var.logical_shard_prefix}_${floor(idx / var.logical_shards_count)}_${idx % var.logical_shards_count}"
       namespace            = "public"
-      secretManagerUri     = "${google_secret_manager_secret.db_passwords[floor(idx / var.logical_shards_count)].id}/versions/latest"
+      secretManagerUri     = try("${google_secret_manager_secret.db_passwords[0].id}/versions/latest", "projects/${var.project_id}/secrets/placeholder/versions/latest")
       connectionProperties = var.connection_properties
     }
   ]
@@ -282,19 +303,22 @@ locals {
     shardConfigurationBulk = {
       dataShards = [
         for p_idx in range(var.physical_shards_count) : {
-          host = coalesce(
-            one([for ip in google_sql_database_instance.instances[p_idx].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
-            google_sql_database_instance.instances[p_idx].ip_address[0].ip_address
+          host = try(
+            coalesce(
+              one([for ip in google_sql_database_instance.instances[p_idx].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+              google_sql_database_instance.instances[p_idx].ip_address[0].ip_address
+            ),
+            "127.0.0.1"
           )
           port                 = var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306)
-          user                 = google_sql_user.users[p_idx].name
+          user                 = try(google_sql_user.users[p_idx].name, var.database_user)
           password             = null
-          secretManagerUri     = "${google_secret_manager_secret.db_passwords[p_idx].id}/versions/latest"
+          secretManagerUri     = try("${google_secret_manager_secret.db_passwords[0].id}/versions/latest", "projects/${var.project_id}/secrets/placeholder/versions/latest")
           connectionProperties = var.connection_properties
           namespace            = "public"
           databases = [
             for l_idx in range(var.logical_shards_count) : {
-              dbName     = google_sql_database.logical_databases[p_idx * var.logical_shards_count + l_idx].name
+              dbName     = "${var.logical_shard_prefix}_${p_idx}_${l_idx}"
               databaseId = "shard-${p_idx * var.logical_shards_count + l_idx}"
             }
           ]
@@ -311,44 +335,6 @@ resource "local_file" "shard_config" {
 
 resource "local_file" "bulk_shard_config" {
   content  = jsonencode(local.bulk_shards)
-  filename = "${path.module}/bulk-shard.config"
+  filename = "${path.module}/bulk-config.json"
 }
 
-resource "local_file" "import_shards" {
-  filename = "${path.module}/scripts/import_shards.sh"
-  file_permission = "0755"
-  content = <<-EOF
-#!/usr/bin/env bash
-set -eo pipefail
-
-PROJECT_ID="${var.project_id}"
-REGION="${var.region}"
-
-echo "================================================================="
-echo "Running automated GCP state reconciliation (Terraform Import)..."
-echo "================================================================="
-
-%{ for idx in range(var.physical_shards_count) ~}
-INSTANCE_NAME="${var.migration_prefix}-physical-shard-${idx}"
-echo "[INFO] Checking Cloud SQL shard: $INSTANCE_NAME..."
-if gcloud sql instances describe "$INSTANCE_NAME" --project="$PROJECT_ID" &>/dev/null; then
-  echo "[INFO] Adopting existing Cloud SQL instance into Terraform State..."
-  terraform import "google_sql_database_instance.instances[${idx}]" "projects/$PROJECT_ID/instances/$INSTANCE_NAME" || true
-else
-  echo "[INFO] Cloud SQL instance $INSTANCE_NAME does not exist. Skipping."
-fi
-%{ endfor ~}
-
-echo "[INFO] Checking Spanner instance: ${var.spanner_instance_name}..."
-if gcloud spanner instances describe "${var.spanner_instance_name}" --project="$PROJECT_ID" &>/dev/null; then
-  echo "[INFO] Adopting existing Spanner instance into Terraform State..."
-  terraform import "google_spanner_instance.spanner_instance" "projects/$PROJECT_ID/instances/${var.spanner_instance_name}" || true
-else
-  echo "[INFO] Spanner instance ${var.spanner_instance_name} does not exist. Skipping."
-fi
-
-echo "================================================================="
-echo "[SUCCESS] State reconciliation complete! You may now run 'terraform apply'."
-echo "================================================================="
-EOF
-}
