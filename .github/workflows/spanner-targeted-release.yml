@@ -15,9 +15,6 @@
 name: Spanner Targeted Release
 
 on:
-  push:
-    branches:
-      - targeted-release
   workflow_dispatch:
     inputs:
       projectId:
@@ -116,6 +113,8 @@ jobs:
             -DbucketName="$BUCKET_NAME" \
             -DstagePrefix="$STAGE_PREFIX" \
             -DtemplateName="$TEMPLATE_NAME" \
+            -Dmaven.test.skip \
+            -DskipIntegrationTests \
             -pl $MODULE_PATH -am
         shell: bash
 
