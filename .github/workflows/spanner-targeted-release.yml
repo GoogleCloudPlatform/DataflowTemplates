@@ -78,10 +78,10 @@ jobs:
         id: resolve-vars
         run: |
           PROJECT_ID="${{ github.event.inputs.projectId }}"
-          PROJECT_ID="${PROJECT_ID:-spanner-migrations-prod}"
+          PROJECT_ID="${PROJECT_ID:-span-cloud-migrations-staging}"
           
           BUCKET_NAME="${{ github.event.inputs.bucketName }}"
-          BUCKET_NAME="${BUCKET_NAME:-spanner-migrations-prod}"
+          BUCKET_NAME="${BUCKET_NAME:-spanner-migrations-staging}"
           
           TEMPLATE_NAME="${{ github.event.inputs.templateName }}"
           TEMPLATE_NAME="${TEMPLATE_NAME:-Spanner_to_SourceDb}"
