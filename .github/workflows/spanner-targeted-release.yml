@@ -15,6 +15,9 @@
 name: Spanner Targeted Release
 
 on:
+  push:
+    branches:
+      - targeted-release
   workflow_dispatch:
     inputs:
       projectId:
