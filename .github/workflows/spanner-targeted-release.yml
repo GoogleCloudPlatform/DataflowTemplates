@@ -1,0 +1,106 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Spanner Targeted Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      projectId:
+        description: 'Target GCP Project ID'
+        type: string
+        required: true
+        default: 'spanner-migrations-prod'
+      bucketName:
+        description: 'Target GCS Bucket Name'
+        type: string
+        required: true
+        default: 'spanner-migrations-prod'
+      stagePrefix:
+        description: 'Prefix for staging the template (e.g., templates-2025-10-31). If blank, defaults to templates-YYYY-MM-DD using current date.'
+        type: string
+        required: false
+        default: ''
+      templateName:
+        description: 'Template Name to build and stage'
+        type: string
+        required: true
+        default: 'Spanner_to_SourceDb'
+      modulePath:
+        description: 'Maven module directory of the template to build'
+        type: string
+        required: true
+        default: 'v2/spanner-to-sourcedb'
+      runnerLabels:
+        description: 'Runner labels formatted as a JSON array'
+        type: string
+        required: true
+        default: '["self-hosted", "release"]'
+
+env:
+  MAVEN_OPTS: >-
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+    --add-opens java.base/java.nio=ALL-UNNAMED
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+    --add-opens java.base/java.lang=ALL-UNNAMED
+    --add-opens java.base/java.util=ALL-UNNAMED
+
+permissions:
+  contents: read
+
+jobs:
+  targeted_release:
+    name: Targeted Template Release
+    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+
+      - name: Resolve Stage Prefix
+        id: get-prefix
+        run: |
+          PREFIX="${{ github.event.inputs.stagePrefix }}"
+          if [ -z "$PREFIX" ]; then
+            PREFIX="templates-$(date +'%Y-%m-%d')"
+            echo "No stage prefix provided. Defaulting to dynamic prefix: $PREFIX"
+          else
+            echo "Using user-provided stage prefix: $PREFIX"
+          fi
+          echo "stagePrefix=$PREFIX" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Build & Stage Template
+        run: |
+          echo "Starting Targeted Release staging..."
+          echo "Template: ${{ github.event.inputs.templateName }}"
+          echo "Module Path: ${{ github.event.inputs.modulePath }}"
+          echo "Project ID: ${{ github.event.inputs.projectId }}"
+          echo "Bucket Name: ${{ github.event.inputs.bucketName }}"
+          echo "Stage Prefix: ${{ steps.get-prefix.outputs.stagePrefix }}"
+          
+          mvn clean package -PtemplatesStage \
+            -DprojectId="${{ github.event.inputs.projectId }}" \
+            -DbucketName="${{ github.event.inputs.bucketName }}" \
+            -DstagePrefix="${{ steps.get-prefix.outputs.stagePrefix }}" \
+            -DtemplateName="${{ github.event.inputs.templateName }}" \
+            -pl ${{ github.event.inputs.modulePath }} -am
+        shell: bash
+
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()
