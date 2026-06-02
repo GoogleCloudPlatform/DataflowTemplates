@@ -67,6 +67,9 @@ At a high level, the pipeline goes through the following operational stages at l
 
 ## Consistency and Ordering Guarantees
 
+* **Primary Key Requirement**: Every target table **must** have a defined primary key. Tables without primary keys cannot be tracked in stateful buffers and are filtered out during the schema discovery phase.
+* **Static Unique Columns & Foreign Keys on UPDATE**: When generating `UPDATE` events, the values of the primary keys, foreign keys, and any unique key columns are preserved from the original `INSERT` state. These values do not churn or modify between updates, which prevents logical identity drift and referential integrity errors.
+* **No Retries for Database Write Failures**: Write failures (e.g., due to database constraint violations or connection dropouts) are considered final. Failed rows are routed directly to the Dead-Letter Queue (DLQ) and are **not** internally retried by the pipeline.
 * **INSERT Order**: Parent rows are always written to the database before child rows. Writes are ordered topologically according to the foreign key hierarchy.
 * **DELETE Order**: Child rows are always deleted before their parent rows. Deletions happen in reverse topological order to prevent foreign-key or referential integrity violations.
 * **UPDATE Order**: An `UPDATE` on a specific row is guaranteed to be written after its `INSERT` and strictly before its `DELETE`. There is no ordering guarantee between updates of unrelated rows.
@@ -98,8 +101,13 @@ At a high level, the pipeline goes through the following operational stages at l
 
 * The target tables must exist on all database shards before you run the pipeline.
 * The MySQL user requires `INSERT`, `UPDATE`, `DELETE`, and `SELECT` (used to discover schemas) privileges.
-* All database shards listed in your configuration file **must have identical schemas**. The generator inspects the schema of the first database and assumes all other shards have the exact same structure.
 * Secure your passwords by storing them in Google Secret Manager and referencing them via `secretManagerUri` in your shard JSON file.
+
+> [!WARNING]
+> **Schema Consistency Across Shards**: All database shards listed in your configuration file **must have identical schemas** (same tables, columns, data types, primary keys, and constraints). The generator discovers the schema once using the first database shard in the list, and assumes all other shards are perfectly identical.
+
+> [!TIP]
+> **Batching Performance Knob (`rewriteBatchedStatements`)**: If you set `--batchSize` to a value greater than `1`, you **must** append `rewriteBatchedStatements=true` to the `"connectionProperties"` string (e.g., `"connectionProperties": "useSSL=false&rewriteBatchedStatements=true"`) in your MySQL shards config. Without this property, the MySQL JDBC driver compiles batch operations into sequential, single-record statements, completely negating the performance benefit of batching.
 
 ### Sample Spanner Sink-Options File
 
@@ -158,6 +166,7 @@ gcloud dataflow flex-template run "cdc-gen-spanner-$(date +%Y%m%d-%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --template-file-gcs-location="${TEMPLATE_LOCATION}" \
+  --additional-experiments=use_runner_v2 \
   --parameters \
 sinkType=SPANNER,\
 sinkOptions=gs://my-bucket/configs/spanner_options.json,\
@@ -174,6 +183,7 @@ gcloud dataflow flex-template run "cdc-gen-mysql-$(date +%Y%m%d-%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --template-file-gcs-location="${TEMPLATE_LOCATION}" \
+  --additional-experiments=use_runner_v2 \
   --parameters \
 sinkType=MYSQL,\
 sinkOptions=gs://my-bucket/configs/mysql_shards.json,\
@@ -192,10 +202,10 @@ schemaConfig=gs://my-bucket/configs/overrides.conf
 | :--- | :---: | :---: | :--- |
 | **`sinkType`** | **Yes** | — | The target database engine type. Supported values: `SPANNER` or `MYSQL`. |
 | **`sinkOptions`** | **Yes** | — | GCS path to the sink JSON configuration file. For Spanner, this is a database spec. For MySQL, this is a JSON array of database shards. |
-| **`batchSize`** | No | `1` | The maximum number of mutations buffered per unique `(table, shard, operation)` combination before being flushed to the database. Higher values improve throughput but consume more memory. |
-| **`insertQps`** | No | `1000` | The target insert rate (records per second) applied to each root table. Can be overridden per-table in `schemaConfig`. |
-| **`updateQps`** | No | `0` | The target update rate (records per second) per table. If set to `0`, updates are disabled. |
-| **`deleteQps`** | No | `0` | The target delete rate (records per second) per table. If set to `0`, deletions are disabled. |
+| **`batchSize`** | No | `1` | The maximum number of mutations buffered per unique `(table, shard, operation)` combination *within a single Beam bundle* before flushing. Because flushes are bounded by Beam bundles, if a bundle finishes processing before the buffer hits `batchSize`, a flush is forced immediately. Actual batch write sizes may therefore be smaller than this setting. |
+| **`insertQps`** | No | `1000` | The **approximate** target insert rate (records per second) applied to each root table. Rates are statistical targets and subject to micro-fluctuations based on worker thread scheduling and probabilistic selection weights. Can be overridden per-table in `schemaConfig`. |
+| **`updateQps`** | No | `0` | The **approximate** target update rate (records per second) per table. If set to `0`, updates are disabled. |
+| **`deleteQps`** | No | `0` | The **approximate** target delete rate (records per second) per table. If set to `0`, deletions are disabled. |
 | **`jdbcPoolSize`** | No | `10` | The maximum number of active connections in the JDBC pool per logical MySQL shard. Only applies to MySQL. |
 | **`updateInterval`** | No | `5` | The time interval (in seconds) between consecutive `UPDATE` events for a given row. |
 | **`deleteInterval`** | No | `5` | The delay (in seconds) after the final `UPDATE` before a `DELETE` event is written. |
@@ -305,7 +315,15 @@ At $T0+15\text{s}$, the deletion timer fires for both parent and child records. 
 
 ## Schema Overrides Reference (DSL)
 
-To fine-tune how fields are generated, pass a HOCON or JSON configuration file via the `--schemaConfig` parameter. We recommend **HOCON** (Human-Optimized Config Object Notation) because it supports comments, omit-quotes, and trailing commas.
+To fine-tune how fields are generated, pass a configuration file via the `--schemaConfig` parameter.
+
+> [!NOTE]
+> **JSON Format Support**: Since standard JSON is a strict subset of HOCON, you can seamlessly provide a standard raw JSON file instead of a `.conf` file if your orchestration prefers JSON objects.
+
+> [!IMPORTANT]
+> **Case Sensitivity**: All table and column keys defined inside your configuration file are **strictly case-sensitive**. They must align exactly with the discovered database catalog names.
+
+We highly recommend **HOCON** (Human-Optimized Config Object Notation) because it supports inline comments, unquoted values, and flexible commas.
 
 ### Full HOCON Example
 
@@ -397,6 +415,10 @@ You can override data generation using two main formats:
 
 * **Note**: If a Faker expression evaluates to a value that cannot be parsed into the target column's database data type, the pipeline will crash on startup, pointing out the invalid column mapping.
 
+> [!IMPORTANT]
+> **Strict ISO-8601 Date & Timestamp Parsing**: In the underlying utility module, date and timestamp column parsing strictly expects standard ISO-8601 strings (e.g., `YYYY-MM-DD` for dates, and `YYYY-MM-DDTHH:mm:ssZ` or `YYYY-MM-DDTHH:mm:ss.SSSZ` for timestamps).
+> If a custom literal or a custom Faker date expression (such as `#{date.birthday 'dd/MM/yyyy'}`) is provided, the underlying string parser (`LocalDate.parse()` and `Instant.parse()`) will fail to parse it, throwing a `DateTimeParseException` and causing the pipeline to crash immediately. You must ensure all date/timestamp faker templates output strictly ISO-compliant formats.
+
 ---
 
 ## Pipeline Architecture
@@ -475,6 +497,7 @@ Monitor these metrics in the Cloud Dataflow console under the **Job Metrics** ta
 
 ### Tuning the Knobs
 
+* **Avoid Initial Backlog Buildup (Pre-Scale Workers)**: If you are running a pipeline with a high QPS target (e.g. >10,000 inserts/sec), **do not** rely solely on Dataflow's default autoscaling from 1 worker. The metronome generates impulses immediately on startup, and a single worker will quickly become overwhelmed, building a massive state queue/backlog that is extremely slow to drain even after autoscaling kicks in. Instead, **explicitly set `--numWorkers` to a high starting count** (e.g., 10-30 workers depending on target QPS) to handle the immediate workload at launch.
 * **High CPU / Worker Bottleneck**: If workers are pegged at 100% CPU but database throughput is low, increase the worker pool size using `--maxNumWorkers` or choose a higher-performance machine type.
 * **Database Bottleneck**: If `recordsWritten` lags significantly behind `insertsGenerated`, your target database is saturated. Reduce the QPS targets, or scale up Spanner nodes / MySQL database hardware.
 * **Optimizing Batching**: If you write to a high-throughput sink, increase `--batchSize` to pack more records into each transaction. However, keep this value moderate for MySQL, as large JDBC batches can increase replication lag.
@@ -528,11 +551,12 @@ If you configure `--dlqDirectory`, rows that fail to write to the database are s
 
 ## Limitations
 
-* **Data Type Coverage**: Standard types like `STRING`, `INT64`, `FLOAT64`, `NUMERIC`, `BOOLEAN`, `BYTES`, `DATE`, `TIMESTAMP`, and `JSON` are supported. Custom user-defined database types (UDTs) are not supported.
+* **Data Type Coverage**: Standard types like `STRING`, `INT64`, `FLOAT64`, `NUMERIC`, `BOOLEAN`, `BYTES`, `DATE`, `TIMESTAMP`, and `JSON` are supported. Custom user-defined database types (UDTs) or custom database enums are not supported.
 * **Schema Updates**: The pipeline reads target table schemas once during startup. If you run a DDL statement to alter schemas while the pipeline is running, you must restart the Dataflow job to discover the changes.
-* **Cross-Table Foreign Keys with Self-References**: Tables with multiple foreign keys referencing the same parent table (e.g. `manager_id` and `approver_id` pointing to an `Employees` table) are not supported and will fail schema validation.
-* **Dialect Uniformity**: Auto-detection resolves dialects at database startup. Databases with mixed table dialects are not supported.
-
+* **Child-Parent Relationship Caveats**:
+    * **Self-Referencing Keys**: Tables with self-referencing foreign keys (e.g., an `Employees` table where a `manager_id` foreign key references `employee_id` within the same table) are not supported.
+    * **Multiple Foreign Keys to the Same Parent**: Tables containing multiple distinct foreign keys pointing to the same parent table (e.g., both a `billing_address_id` and a `shipping_address_id` pointing to an `Addresses` table) are not supported and will fail schema validation.
+    * **Interleaved Spanner Hierarchies**: While Spanner interleaved tables are fully supported, they are treated strictly as parent-child relationships. All rules about delete propagation and suppression apply directly.
 ---
 
 ## Getting Help
