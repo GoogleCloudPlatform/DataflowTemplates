@@ -15,6 +15,9 @@
 name: Spanner Targeted Release
 
 on:
+  push:
+    branches:
+      - targeted-release
   workflow_dispatch:
     inputs:
       projectId:
@@ -62,7 +65,7 @@ permissions:
 jobs:
   targeted_release:
     name: Targeted Template Release
-    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels) }}
+    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels || '["self-hosted", "release"]') }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -86,19 +89,34 @@ jobs:
 
       - name: Build & Stage Template
         run: |
-          echo "Starting Targeted Release staging..."
-          echo "Template: ${{ github.event.inputs.templateName }}"
-          echo "Module Path: ${{ github.event.inputs.modulePath }}"
-          echo "Project ID: ${{ github.event.inputs.projectId }}"
-          echo "Bucket Name: ${{ github.event.inputs.bucketName }}"
-          echo "Stage Prefix: ${{ steps.get-prefix.outputs.stagePrefix }}"
+          # Fallback to defaults if trigger is not workflow_dispatch (e.g., push)
+          PROJECT_ID="${{ github.event.inputs.projectId }}"
+          PROJECT_ID="${PROJECT_ID:-spanner-migrations-prod}"
+          
+          BUCKET_NAME="${{ github.event.inputs.bucketName }}"
+          BUCKET_NAME="${BUCKET_NAME:-spanner-migrations-prod}"
+          
+          TEMPLATE_NAME="${{ github.event.inputs.templateName }}"
+          TEMPLATE_NAME="${TEMPLATE_NAME:-Spanner_to_SourceDb}"
+          
+          MODULE_PATH="${{ github.event.inputs.modulePath }}"
+          MODULE_PATH="${MODULE_PATH:-v2/spanner-to-sourcedb}"
+          
+          STAGE_PREFIX="${{ steps.get-prefix.outputs.stagePrefix }}"
+          
+          echo "Starting Spanner Targeted Release staging..."
+          echo "Template: $TEMPLATE_NAME"
+          echo "Module Path: $MODULE_PATH"
+          echo "Project ID: $PROJECT_ID"
+          echo "Bucket Name: $BUCKET_NAME"
+          echo "Stage Prefix: $STAGE_PREFIX"
           
           mvn clean package -PtemplatesStage \
-            -DprojectId="${{ github.event.inputs.projectId }}" \
-            -DbucketName="${{ github.event.inputs.bucketName }}" \
-            -DstagePrefix="${{ steps.get-prefix.outputs.stagePrefix }}" \
-            -DtemplateName="${{ github.event.inputs.templateName }}" \
-            -pl ${{ github.event.inputs.modulePath }} -am
+            -DprojectId="$PROJECT_ID" \
+            -DbucketName="$BUCKET_NAME" \
+            -DstagePrefix="$STAGE_PREFIX" \
+            -DtemplateName="$TEMPLATE_NAME" \
+            -pl $MODULE_PATH -am
         shell: bash
 
       - name: Cleanup Java Environment
