@@ -110,12 +110,6 @@ jobs:
           echo "stagePrefix=$STAGE_PREFIX" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Diagnostic - List Artifact Registry Repositories
-        run: |
-          echo "=== Listing Repositories in Project ${{ steps.resolve-vars.outputs.projectId }} ==="
-          gcloud artifacts repositories list --project="${{ steps.resolve-vars.outputs.projectId }}"
-        shell: bash
-
       - name: Build & Stage Template
         run: |
           echo "Starting Spanner Targeted Release staging..."
