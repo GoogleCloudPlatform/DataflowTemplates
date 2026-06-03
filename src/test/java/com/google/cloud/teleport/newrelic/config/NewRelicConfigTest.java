@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.newrelic.config;
 
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_BATCH_COUNT;
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_DISABLE_CERTIFICATE_VALIDATION;
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_FLUSH_DELAY;
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_LOGS_API_URL;
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_PARALLELISM;
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_USE_COMPRESSION;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_BATCH_COUNT;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_DISABLE_CERTIFICATE_VALIDATION;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_FLUSH_DELAY;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_LOGS_API_URL;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_PARALLELISM;
+import static com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions.DEFAULT_USE_COMPRESSION;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

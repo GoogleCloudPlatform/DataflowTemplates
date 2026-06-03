@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.newrelic.config;
 
 import com.google.cloud.teleport.newrelic.dofns.NewRelicLogRecordWriterFn;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -26,6 +27,14 @@ import org.apache.beam.sdk.options.ValueProvider;
  * {@link NewRelicLogRecordWriterFn}.
  */
 public interface NewRelicPipelineOptions extends PipelineOptions {
+  // Default values for pipeline options
+  String DEFAULT_LOGS_API_URL = "https://log-api.newrelic.com/log/v1";
+  int DEFAULT_BATCH_COUNT = 100;
+  int DEFAULT_FLUSH_DELAY = 2;
+  int DEFAULT_PARALLELISM = 1;
+  boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
+  boolean DEFAULT_USE_COMPRESSION = true;
+
   @Description("New Relic license key.")
   ValueProvider<String> getLicenseKey();
 
@@ -36,12 +45,14 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
           + "Supported regions: US (https://log-api.newrelic.com/log/v1), "
           + "EU (https://log-api.eu.newrelic.com/log/v1), "
           + "JP (https://log-api.jp.nr-data.net/log/v1)")
+  @Default.String(DEFAULT_LOGS_API_URL)
   ValueProvider<String> getLogsApiUrl();
 
   void setLogsApiUrl(ValueProvider<String> logsApiUrl);
 
   @Description(
       "Maximum number of log records to aggregate into a batch before sending them to NewRelic in a single HTTP POST request.")
+  @Default.Integer(DEFAULT_BATCH_COUNT)
   ValueProvider<Integer> getBatchCount();
 
   void setBatchCount(ValueProvider<Integer> batchCount);
@@ -50,14 +61,17 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
 
   @Description(
       "Number of seconds to wait for additional logs (up to batchCount) since the reception of the last log record in non-full batch, before flushing them to New Relic Logs.")
+  @Default.Integer(DEFAULT_FLUSH_DELAY)
   ValueProvider<Integer> getFlushDelay();
 
   @Description("Disable SSL certificate validation.")
+  @Default.Boolean(DEFAULT_DISABLE_CERTIFICATE_VALIDATION)
   ValueProvider<Boolean> getDisableCertificateValidation();
 
   void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
 
   @Description("Maximum number of parallel requests.")
+  @Default.Integer(DEFAULT_PARALLELISM)
   ValueProvider<Integer> getParallelism();
 
   void setParallelism(ValueProvider<Integer> parallelism);
@@ -70,6 +84,7 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
   void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
 
   @Description("True to compress (in GZIP) the payloads sent to the New Relic Logs API.")
+  @Default.Boolean(DEFAULT_USE_COMPRESSION)
   ValueProvider<Boolean> getUseCompression();
 
   void setUseCompression(ValueProvider<Boolean> useCompression);
