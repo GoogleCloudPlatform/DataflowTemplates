@@ -49,7 +49,7 @@ on:
         description: 'Runner labels formatted as a JSON array'
         type: string
         required: true
-        default: '["self-hosted", "spanner-it"]'
+        default: '["self-hosted", "spanner-release"]'
       runIntegrationTests:
         description: 'Run Spanner integration tests before staging templates'
         type: boolean
@@ -75,7 +75,7 @@ permissions:
 jobs:
   targeted_release:
     name: Targeted Template Release
-    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels || '["self-hosted", "release"]') }}
+    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels || '["self-hosted", "spanner-release"]') }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
