@@ -26,13 +26,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * send the processed logs to New Relic.
  */
 public class NewRelicConfig {
-  protected static final String DEFAULT_LOGS_API_URL = "https://log-api.newrelic.com/log/v1";
-  protected static final int DEFAULT_BATCH_COUNT = 100;
-  protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
-  protected static final boolean DEFAULT_USE_COMPRESSION = true;
-  protected static final int DEFAULT_FLUSH_DELAY = 2;
-  protected static final Integer DEFAULT_PARALLELISM = 1;
-
   private final ValueProvider<String> logsApiUrl;
   private final ValueProvider<String> licenseKey;
   private final ValueProvider<Integer> batchCount;
@@ -60,28 +53,24 @@ public class NewRelicConfig {
 
   /**
    * Factory method to build a {@link NewRelicConfig} out of the supplied {@link
-   * NewRelicPipelineOptions} supplied by the user. The method takes care of configuring the default
-   * values if the user provided a null value for any of them.
+   * NewRelicPipelineOptions} supplied by the user. Default values are configured via @Default
+   * annotations in {@link NewRelicPipelineOptions}.
    *
    * @param newRelicOptions The supplied options when executing the pipeline
    * @return The options to be used to execute the pipeline.
    */
   public static NewRelicConfig fromPipelineOptions(final NewRelicPipelineOptions newRelicOptions) {
     return new NewRelicConfig(
-        newRelicOptions.getLogsApiUrl() != null
-            ? newRelicOptions.getLogsApiUrl()
-            : ValueProvider.StaticValueProvider.of(DEFAULT_LOGS_API_URL),
+        newRelicOptions.getLogsApiUrl(),
         newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
             ? maybeDecrypt(
                 newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
             : newRelicOptions.getLicenseKey(),
-        valueOrDefault(newRelicOptions.getBatchCount(), DEFAULT_BATCH_COUNT),
-        valueOrDefault(newRelicOptions.getFlushDelay(), DEFAULT_FLUSH_DELAY),
-        valueOrDefault(newRelicOptions.getParallelism(), DEFAULT_PARALLELISM),
-        valueOrDefault(
-            newRelicOptions.getDisableCertificateValidation(),
-            DEFAULT_DISABLE_CERTIFICATE_VALIDATION),
-        valueOrDefault(newRelicOptions.getUseCompression(), DEFAULT_USE_COMPRESSION));
+        newRelicOptions.getBatchCount(),
+        newRelicOptions.getFlushDelay(),
+        newRelicOptions.getParallelism(),
+        newRelicOptions.getDisableCertificateValidation(),
+        newRelicOptions.getUseCompression());
   }
 
   /**
@@ -138,20 +127,4 @@ public class NewRelicConfig {
         .toString();
   }
 
-  /**
-   * Returns the value included in the provided ValueProvider, if it's available and non-null. In
-   * any other case, it returns the default value provided in the second argument.
-   *
-   * @param value The value to use, if it's non-null.
-   * @param defaultValue Fallback value to use if the provided ValueProvider is null or holds a null
-   *     value.
-   * @param <T> The type of the value being read
-   * @return The value included in the provided ValueProvider, if it's available and non-null,
-   *     otherwise the default value.
-   */
-  private static <T> ValueProvider<T> valueOrDefault(ValueProvider<T> value, T defaultValue) {
-    return (value != null && value.isAccessible()) && value.get() != null
-        ? ValueProvider.StaticValueProvider.of(value.get())
-        : ValueProvider.StaticValueProvider.of(defaultValue);
-  }
 }

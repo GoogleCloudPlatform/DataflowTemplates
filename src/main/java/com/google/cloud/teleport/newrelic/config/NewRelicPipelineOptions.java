@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.newrelic.config;
 
 import com.google.cloud.teleport.newrelic.dofns.NewRelicLogRecordWriterFn;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -36,12 +37,14 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
           + "Supported regions: US (https://log-api.newrelic.com/log/v1), "
           + "EU (https://log-api.eu.newrelic.com/log/v1), "
           + "JP (https://log-api.jp.nr-data.net/log/v1)")
+  @Default.String("https://log-api.newrelic.com/log/v1")
   ValueProvider<String> getLogsApiUrl();
 
   void setLogsApiUrl(ValueProvider<String> logsApiUrl);
 
   @Description(
       "Maximum number of log records to aggregate into a batch before sending them to NewRelic in a single HTTP POST request.")
+  @Default.Integer(100)
   ValueProvider<Integer> getBatchCount();
 
   void setBatchCount(ValueProvider<Integer> batchCount);
@@ -50,14 +53,17 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
 
   @Description(
       "Number of seconds to wait for additional logs (up to batchCount) since the reception of the last log record in non-full batch, before flushing them to New Relic Logs.")
+  @Default.Integer(2)
   ValueProvider<Integer> getFlushDelay();
 
   @Description("Disable SSL certificate validation.")
+  @Default.Boolean(false)
   ValueProvider<Boolean> getDisableCertificateValidation();
 
   void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
 
   @Description("Maximum number of parallel requests.")
+  @Default.Integer(1)
   ValueProvider<Integer> getParallelism();
 
   void setParallelism(ValueProvider<Integer> parallelism);
@@ -70,6 +76,7 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
   void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
 
   @Description("True to compress (in GZIP) the payloads sent to the New Relic Logs API.")
+  @Default.Boolean(true)
   ValueProvider<Boolean> getUseCompression();
 
   void setUseCompression(ValueProvider<Boolean> useCompression);
