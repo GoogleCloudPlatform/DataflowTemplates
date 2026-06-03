@@ -33,7 +33,7 @@ on:
       stagePrefix:
         description: 'Prefix for staging the template (e.g., templates-2025-10-31). If blank, defaults to templates-YYYY-MM-DD using current date.'
         type: string
-        required: false
+        required: true
         default: ''
       templateName:
         description: 'Template Name to build and stage'
