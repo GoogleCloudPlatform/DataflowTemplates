@@ -168,6 +168,22 @@ public class BigtableToParquet {
 
     @SuppressWarnings("unused")
     void setMinRowCountForPageSizeCheck(ValueProvider<Integer> minRowCountForPageSizeCheck);
+
+    @TemplateParameter.Integer(
+        order = 9,
+        optional = true,
+        description = "Maximum row count for page size check",
+        helpText =
+            "The maximum number of rows to buffer before a page size check is forced. By default "
+                + "Parquet estimates when to check from the average row size and can defer it (up to "
+                + "10000 rows); with many small rows followed by large rows, that estimate can let the "
+                + "in-memory page buffer overflow before a flush. Set a low value (for example, 1), "
+                + "together with minRowCountForPageSizeCheck, to bound memory for tables whose row "
+                + "sizes vary widely. The default is 10000.")
+    ValueProvider<Integer> getMaxRowCountForPageSizeCheck();
+
+    @SuppressWarnings("unused")
+    void setMaxRowCountForPageSizeCheck(ValueProvider<Integer> maxRowCountForPageSizeCheck);
   }
 
   /**
@@ -211,7 +227,8 @@ public class BigtableToParquet {
      */
     ParquetIO.Sink parquetSink =
         ParquetIO.sink(BigtableRow.getClassSchema())
-            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck());
+            .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck())
+            .withMaxRowCountForPageSizeCheck(options.getMaxRowCountForPageSizeCheck());
     FileIO.Write<Void, GenericRecord> write =
         FileIO.<GenericRecord>write()
             .via(parquetSink)
