@@ -22,6 +22,7 @@ import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
 import com.google.cloud.teleport.bigtable.BigtableToParquet.Options;
+import com.google.cloud.teleport.io.parquet.ParquetIO;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -36,7 +37,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
-import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -225,6 +225,8 @@ public class BigtableToParquet {
      * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
      * GenericRecord(s) to GCS in parquet format.
      */
+    // Uses a forked copy of Beam's ParquetIO (com.google.cloud.teleport.io.parquet) so that the
+    // maxRowCountForPageSizeCheck knob is available without waiting for a Beam release.
     ParquetIO.Sink parquetSink =
         ParquetIO.sink(BigtableRow.getClassSchema())
             .withMinRowCountForPageSizeCheck(options.getMinRowCountForPageSizeCheck())
