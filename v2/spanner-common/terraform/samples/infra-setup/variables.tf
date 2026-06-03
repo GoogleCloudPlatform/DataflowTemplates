@@ -24,6 +24,11 @@ variable "database_provider" {
   description = "The Cloud SQL database engine provider. Supported providers: MYSQL, POSTGRES"
   type        = string
   default     = "MYSQL"
+
+  validation {
+    condition     = contains(["MYSQL", "POSTGRES"], upper(var.database_provider))
+    error_message = "database_provider must be either MYSQL or POSTGRES."
+  }
 }
 
 variable "database_version" {
@@ -36,12 +41,22 @@ variable "physical_shards_count" {
   description = "The number of physical Cloud SQL database instances to create"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.physical_shards_count >= 1
+    error_message = "physical_shards_count must be at least 1."
+  }
 }
 
 variable "logical_shards_count" {
   description = "The number of logical databases (shards) to create per physical Cloud SQL instance"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.logical_shards_count >= 1
+    error_message = "logical_shards_count must be at least 1."
+  }
 }
 
 variable "logical_shard_prefix" {
@@ -129,6 +144,11 @@ variable "spanner_processing_units" {
   description = "The number of processing units to allocate for the Spanner instance (100 units = 0.1 node)"
   type        = number
   default     = 100
+
+  validation {
+    condition     = var.spanner_processing_units > 0 && var.spanner_processing_units % 100 == 0
+    error_message = "spanner_processing_units must be a positive multiple of 100."
+  }
 }
 
 variable "spanner_database_name" {
@@ -149,4 +169,9 @@ variable "spanner_database_dialect" {
   description = "The dialect for the target Spanner database. Supported: GOOGLE_STANDARD_SQL, POSTGRESQL"
   type        = string
   default     = "GOOGLE_STANDARD_SQL"
+
+  validation {
+    condition     = contains(["GOOGLE_STANDARD_SQL", "POSTGRESQL"], upper(var.spanner_database_dialect))
+    error_message = "spanner_database_dialect must be GOOGLE_STANDARD_SQL or POSTGRESQL."
+  }
 }

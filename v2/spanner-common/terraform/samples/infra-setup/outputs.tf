@@ -10,13 +10,20 @@ output "spanner_database_id" {
 
 output "cloudsql_instance_names" {
   description = "The names of the provisioned physical Cloud SQL database instances"
-  value       = google_sql_database_instance.instances[*].name
+  value       = [for inst in google_sql_database_instance.instances : inst.name]
 }
 
 output "cloudsql_instance_ips" {
   description = "A map of physical Cloud SQL database instances and their assigned IP addresses"
   value = {
-    for inst in google_sql_database_instance.instances : inst.name => inst.ip_address[0].ip_address
+    for inst in google_sql_database_instance.instances :
+    inst.name => try(
+      coalesce(
+        one([for ip in inst.ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+        inst.ip_address[0].ip_address
+      ),
+      "unknown"
+    )
   }
 }
 
@@ -30,10 +37,6 @@ output "shard_config_content" {
   value       = jsondecode(local_file.shard_config.content)
 }
 
-output "quota_warning" {
-  description = "Detailed list of IAM permission denials or limit fallbacks detected during Quota Validation"
-  value       = try(data.external.quota_validator.result.warning, "none")
-}
 
 output "bulk_shard_config_file" {
   description = "The filesystem path of the generated bulk shard config file"

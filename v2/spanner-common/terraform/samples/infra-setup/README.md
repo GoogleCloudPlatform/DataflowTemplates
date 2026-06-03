@@ -7,7 +7,7 @@ This setup is designed to help you prepare and test database migration pipelines
 2. Inside those database instances, it creates multiple **logical databases (shards)**.
 3. It imports a database table structure (your SQL schema) from a local file into all created logical databases.
 4. A **target Cloud Spanner database instance**.
-5. A **configuration file (`shard-config.json`)** that lists the host IP, database name, and credentials for all created database shards. You can pass this file directly as an input parameter to your Dataflow migration jobs.
+5. Two **sharding configuration files** (`shard-config.json` and `bulk-config.json`) that list the host IP, database name, and credentials for all created database shards. You can pass either file directly as an input parameter to your Dataflow migration jobs.
 
 ---
 
@@ -15,7 +15,7 @@ This setup is designed to help you prepare and test database migration pipelines
 
 Before you begin, make sure your computer has the following installed and configured:
 
-1. **Terraform CLI** (Version 1.3.0 or newer)
+1. **Terraform CLI** (Version 1.2.0 or newer)
 2. **Google Cloud SDK (`gcloud` CLI)**: Installed, logged in, and set up with your project:
    ```bash
    gcloud auth login
@@ -28,22 +28,16 @@ Before you begin, make sure your computer has the following installed and config
 
 ## How the Automated Scripts Work
 
-This setup includes several helper scripts in the `scripts/` folder to handle quota checking, database loading, cleanup, and state reconciliation.
+This setup includes several helper scripts in the `scripts/` folder to handle database loading, cleanup, and state reconciliation.
 
-### 1. Quota Validator (`scripts/check_quota.py`)
-Before Terraform starts creating any resources, it automatically runs this Python script. The script checks if your Google Cloud Project has enough available quota limits to create the requested number of Cloud SQL instances, Spanner Processing Units, and VPC networks.
-* **How it behaves:** 
-  * If you do not have enough quota, it stops execution immediately and prints a clear error explaining what resource limit would be exceeded.
-  * If the user running Terraform does not have sufficient permissions to read quota limits from the Google Cloud API, it prints a `[QUOTA WARNING]` warning on the screen but lets the execution continue safely without blocking you.
+### 1. Database Schema Loader (`scripts/import_schema.sh`)
+Once the Cloud SQL database instances are created, Terraform runs this bash script **once per physical instance** (the import step uses `for_each`), so a failure on one instance only re-imports that instance on the next apply instead of all of them. Each run reads your local SQL structure file (like `schema.sql`) and imports it sequentially into that instance's logical databases (Cloud SQL allows only one import at a time per instance); Terraform runs the instances in parallel.
+* **Why the retries are needed:** The bucket grants each Cloud SQL instance's service account read access just before the import runs, but IAM changes take a few seconds to propagate across Google Cloud. An import attempted in that window fails with a permission error. To handle this, the script retries each import up to 6 times (waiting 10 seconds between attempts) until the permission propagates and the schema loads successfully.
 
-### 2. Database Schema Loader (`scripts/import_schema.sh`)
-Once the Cloud SQL database instances are created, Terraform runs this bash script. It reads your local SQL database structure file (like `schema.sql`) and imports it into every logical database shard.
-* **Why it is needed:** Setting up IAM permissions on newly created resources sometimes takes a few seconds to propagate across Google Cloud. This script automatically retries the import up to 6 times (waiting 10 seconds between attempts) to ensure the database tables are loaded successfully.
-
-### 3. Spanner Backup Cleanup (`scripts/delete_spanner_backups.sh`)
+### 2. Spanner Backup Cleanup (`scripts/delete_spanner_backups.sh`)
 When you run `terraform destroy` to delete your setup, Google Cloud Spanner will refuse to delete the database instance if there are any automatic database backups present. This script automatically finds and deletes all backups for the Spanner instance right before Terraform deletes the instance.
 
-### 4. Private Connection Cleanup (`scripts/teardown_vpc_peering.sh`)
+### 3. Private Connection Cleanup (`scripts/teardown_vpc_peering.sh`)
 If you configure your databases to use private IPs instead of public IPs, Google Cloud creates private networking connections between your network and Cloud SQL. When deleting this infrastructure, Google Cloud occasionally takes time to release these connections. This script cleanly deletes the private network connection using the `gcloud` tool, or safely bypasses it if there are other active resources still using the connection.
 
 
@@ -67,8 +61,8 @@ There are two variable sample files provided:
 2. **`terraform.tfvars`**: A comprehensive variable template containing all available settings (such as database user, password, network CIDRs, tags, Spanner processing units).
 
 #### Key Naming Variables:
-* **`instance_prefix` (Optional)**: A string prefixed to physical database instances and target Spanner instances. If not provided, a unique name prefixed with `smt-inst-` and a random suffix is generated automatically.
-* **`migration_prefix` (Optional)**: A string prefixed to other resources like VPC networks, subnets, Secret Manager secrets, and GCS schema buckets. If not provided, a unique name prefixed with `smt-mig-` and a random suffix is generated automatically.
+* **`instance_prefix` (Optional)**: A string prefixed to physical database instances and target Spanner instances. If not provided, a unique random pet name of the form `smt-<word>-<word>` (e.g. `smt-clever-mongoose`) is generated automatically.
+* **`migration_prefix` (Optional)**: A string prefixed to other resources like VPC networks, subnets, Secret Manager secrets, and GCS schema buckets. If not provided, a unique random pet name of the form `smt-<word>-<word>` is generated automatically.
 * **`spanner_instance_name` / `spanner_database_name` (Optional)**: Overrides the target Spanner instance and database names completely. If left blank, they are dynamically derived from your `instance_prefix` and `migration_prefix` respectively.
 
 Open `terraform_simple.tfvars` or `terraform.tfvars`, replace the placeholders (like `<PROJECT_ID>`) with your actual values, and save the file.
@@ -93,9 +87,6 @@ terraform apply -parallelism=100 --var-file=terraform_simple.tfvars
 
 Once the deployment completes successfully, Terraform will print the resource details on your screen and generate two sharding configuration files in this directory:
 
-1. **`shard-config.json`**: A flat JSON list of all logical shards.
-2. **`bulk-config.json`**: A grouped JSON bulk sharding configuration mapping database names directly to their hosting database servers, matching the Java migration template reader.
-
 ### 1. Regular Shard Config Format (`shard-config.json`)
 ```json
 [
@@ -104,9 +95,10 @@ Once the deployment completes successfully, Terraform will print the resource de
     "host": "198.51.100.5",
     "port": "3306",
     "user": "migration_user",
+    "password": null,
     "dbName": "shard_db_0",
     "namespace": "public",
-    "secretManagerUri": "smt-migration-db-password-0/versions/latest",
+    "secretManagerUri": "projects/my-gcp-project/secrets/smt_clever_mongoose_db_password/versions/latest",
     "connectionProperties": "jdbcCompliantTruncation=true"
   }
 ]
@@ -122,7 +114,7 @@ Once the deployment completes successfully, Terraform will print the resource de
         "port": 3306,
         "user": "migration_user",
         "password": null,
-        "secretManagerUri": "smt-migration-db-password-0/versions/latest",
+        "secretManagerUri": "projects/my-gcp-project/secrets/smt_clever_mongoose_db_password/versions/latest",
         "connectionProperties": "jdbcCompliantTruncation=true",
         "namespace": "public",
         "databases": [
@@ -163,13 +155,13 @@ When Terraform requests the creation of 100+ databases, Google Cloud schedules t
    ```bash
    gcloud sql instances list --project="<YOUR_PROJECT_ID>" --filter="name~smt-sharded"
    ```
-2. **Import the affected instances into Terraform State**: For any instances that were successfully created on GCP but are missing from your local state file (causing `409 Already Exists` errors), import them manually back into Terraform using the following command:
+2. **Import the affected instances into Terraform State**: For any instances that were successfully created on GCP but are missing from your local state file (causing `409 Already Exists` errors), import them manually back into Terraform. The instances use `for_each`, so the resource address is keyed by the shard index **as a quoted string** (e.g. `["18"]`, not `[18]`):
    ```bash
-   terraform import --var-file=terraform_simple.tfvars "google_sql_database_instance.instances[<INDEX>]" "projects/<YOUR_PROJECT_ID>/instances/<INSTANCE_NAME>"
+   terraform import --var-file=terraform_simple.tfvars 'google_sql_database_instance.instances["<INDEX>"]' "projects/<YOUR_PROJECT_ID>/instances/<INSTANCE_NAME>"
    ```
    *Example:*
    ```bash
-   terraform import --var-file=terraform_simple.tfvars "google_sql_database_instance.instances[18]" "projects/my-gcp-project/instances/smt-sharded-demo-new-physical-shard-18"
+   terraform import --var-file=terraform_simple.tfvars 'google_sql_database_instance.instances["18"]' "projects/my-gcp-project/instances/smt-sharded-demo-new-physical-shard-18"
    ```
 3. **Resume the Deployment**: Once all missing instances are imported, simply rerun the deployment command with controlled parallelism:
    ```bash

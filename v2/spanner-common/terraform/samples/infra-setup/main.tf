@@ -23,26 +23,33 @@ locals {
   migration_prefix_resolved = var.migration_prefix != null && var.migration_prefix != "" ? var.migration_prefix : random_pet.migration_id.id
   instance_prefix_resolved  = var.instance_prefix != null && var.instance_prefix != "" ? var.instance_prefix : random_pet.instance_id.id
 
-  spanner_instance_name_resolved = var.spanner_instance_name != null && var.spanner_instance_name != "" ? var.spanner_instance_name : "${local.instance_prefix_resolved}-spanner"
-  spanner_database_name_resolved = var.spanner_database_name != null && var.spanner_database_name != "" ? var.spanner_database_name : "${local.migration_prefix_resolved}-db"
+  # Spanner instance/database names must match ^[a-z][-a-z0-9]*[a-z0-9]$, so we
+  # lower() the resolved value.
+  # without this an uppercase prefix would but fail Spanner.
+  spanner_instance_name_resolved = lower(var.spanner_instance_name != null && var.spanner_instance_name != "" ? var.spanner_instance_name : "${local.instance_prefix_resolved}-spanner")
+  spanner_database_name_resolved = lower(var.spanner_database_name != null && var.spanner_database_name != "" ? var.spanner_database_name : "${local.migration_prefix_resolved}-db")
 
   database_version_reconstructed = "${upper(var.database_provider)}_${upper(var.database_version)}"
   resolved_vpc_id                = var.vpc_network_id != null ? var.vpc_network_id : google_compute_network.private_network[0].id
-}
 
-# Validate GCP Project Quota Before Provisioning Resources
-data "external" "quota_validator" {
-  program = ["python3", "${path.module}/scripts/check_quota.py"]
+  # Stable for_each keys for the sharded resources. Keying by index string
+  # (instead of count) means changing attributes on one shard never re-indexes
+  # or recreates the others.
+  physical_shard_ids = toset([for i in range(var.physical_shards_count) : tostring(i)])
 
-  query = {
-    project_id                  = var.project_id
-    region                      = var.region
-    cloudsql_instances_required = tostring(var.physical_shards_count)
-    spanner_pu_required         = tostring(var.spanner_processing_units)
-    spanner_config              = var.spanner_config
-    vpc_network_required        = tostring(var.vpc_network_id == null)
+  # Map of every logical database keyed by its flat global index. Each value
+  # records the owning physical shard and the database name, so the resource
+  # and the generated shard configs stay in lockstep.
+  logical_databases = {
+    for idx in range(var.physical_shards_count * var.logical_shards_count) :
+    tostring(idx) => {
+      physical_key = tostring(floor(idx / var.logical_shards_count))
+      name         = "${var.logical_shard_prefix}_${idx}"
+    }
   }
 }
+
+
 
 # Create a VPC network if one is not supplied as an input variable
 resource "google_compute_network" "private_network" {
@@ -51,8 +58,7 @@ resource "google_compute_network" "private_network" {
   auto_create_subnetworks = false
   project                 = var.project_id
   depends_on = [
-    google_project_service.enabled_apis,
-    data.external.quota_validator
+    google_project_service.enabled_apis
   ]
 }
 
@@ -77,7 +83,14 @@ resource "google_compute_global_address" "private_ip_alloc" {
   project       = var.project_id
 }
 
-# Establish the private service connection mapping using gcloud to support bulletproof teardowns
+# Establish the private service connection mapping using gcloud rather than the
+# native google_service_networking_connection resource. The native resource has
+# a long-standing destroy bug (hashicorp/terraform-provider-google #16275,
+# #19908): after a Cloud SQL instance is deleted, the producer side releases the
+# peering only after a delay, so the connection reports "Producer services still
+# using the connection" and terraform destroy fails/hangs. The teardown script
+# below deletes the peering via gcloud and exits cleanly if it is still in use,
+# allowing destroy to complete.
 resource "null_resource" "private_vpc_connection" {
   count = var.vpc_network_id == null ? 1 : 0
 
@@ -113,8 +126,8 @@ resource "null_resource" "private_vpc_connection" {
 
 # Provision Cloud SQL physical database instances
 resource "google_sql_database_instance" "instances" {
-  count            = var.physical_shards_count
-  name             = "${lower(local.instance_prefix_resolved)}-physical-shard-${count.index}"
+  for_each         = local.physical_shard_ids
+  name             = "${lower(local.instance_prefix_resolved)}-physical-shard-${each.key}"
   database_version = local.database_version_reconstructed
   region           = var.region
   project          = var.project_id
@@ -141,18 +154,27 @@ resource "google_sql_database_instance" "instances" {
 
   deletion_protection = false
 
+  # Large concurrent deployments (e.g. 128 shards) can exceed the default
+  # client-side wait, causing Terraform to abort while creation continues
+  # server-side (leading to 409 "already exists" on re-apply). Generous
+  # timeouts keep Terraform polling instead of dropping the operation.
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "60m"
+  }
+
   depends_on = [
     google_project_service.enabled_apis,
-    null_resource.private_vpc_connection,
-    data.external.quota_validator
+    null_resource.private_vpc_connection
   ]
 }
 
 # Create the database migration user on all physical database shards
 resource "google_sql_user" "users" {
-  count    = var.physical_shards_count
+  for_each = local.physical_shard_ids
   name     = var.database_user
-  instance = google_sql_database_instance.instances[count.index].name
+  instance = google_sql_database_instance.instances[each.key].name
   host     = length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? null : "%"
   password = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[0].result
   project  = var.project_id
@@ -180,9 +202,9 @@ resource "google_secret_manager_secret_version" "db_password_versions" {
 
 # Create the logical shard databases distributed across physical instances
 resource "google_sql_database" "logical_databases" {
-  count    = var.physical_shards_count * var.logical_shards_count
-  name     = "${var.logical_shard_prefix}_${count.index}"
-  instance = google_sql_database_instance.instances[floor(count.index / var.logical_shards_count)].name
+  for_each = local.logical_databases
+  name     = each.value.name
+  instance = google_sql_database_instance.instances[each.value.physical_key].name
   project  = var.project_id
 }
 
@@ -214,11 +236,20 @@ resource "google_storage_bucket_iam_binding" "sql_gcs_reader" {
   ]
 }
 
-# Run sql schema import sequentially or parallelly into logical database shards
+# Import the schema into each physical instance's logical databases. One
+# null_resource per physical shard so a failed import only taints (and re-runs)
+# that single instance on the next apply; the script serializes the logical
+# imports within an instance (Cloud SQL allows one import operation at a time).
 resource "null_resource" "schema_import" {
+  for_each = local.physical_shard_ids
+
   triggers = {
-    schema_md5   = filemd5(var.local_schema_file_path)
-    database_ids = join(",", google_sql_database.logical_databases[*].id)
+    schema_md5    = filemd5(var.local_schema_file_path)
+    instance_name = google_sql_database_instance.instances[each.key].name
+    database_ids = join(",", [
+      for idx in range(var.logical_shards_count) :
+      google_sql_database.logical_databases[tostring(tonumber(each.key) * var.logical_shards_count + idx)].id
+    ])
   }
 
   depends_on = [
@@ -231,13 +262,14 @@ resource "null_resource" "schema_import" {
   provisioner "local-exec" {
     # Pass parameters via shell environments to avoid shell injection issues
     environment = {
-      PROJECT_ID     = var.project_id
-      BUCKET_NAME    = google_storage_bucket.schema_bucket.name
-      OBJECT_NAME    = google_storage_bucket_object.schema_file.name
-      PHYSICAL_COUNT = var.physical_shards_count
-      LOGICAL_COUNT  = var.logical_shards_count
-      INSTANCE_NAMES = join(",", google_sql_database_instance.instances[*].name)
-      DATABASE_NAMES = join(",", google_sql_database.logical_databases[*].name)
+      PROJECT_ID    = var.project_id
+      BUCKET_NAME   = google_storage_bucket.schema_bucket.name
+      OBJECT_NAME   = google_storage_bucket_object.schema_file.name
+      INSTANCE_NAME = google_sql_database_instance.instances[each.key].name
+      DATABASE_NAMES = join(",", [
+        for idx in range(var.logical_shards_count) :
+        google_sql_database.logical_databases[tostring(tonumber(each.key) * var.logical_shards_count + idx)].name
+      ])
     }
 
     command = "${path.module}/scripts/import_schema.sh"
@@ -253,8 +285,7 @@ resource "google_spanner_instance" "spanner_instance" {
   project          = var.project_id
   labels           = var.resource_labels
   depends_on = [
-    google_project_service.enabled_apis,
-    data.external.quota_validator
+    google_project_service.enabled_apis
   ]
 
   # Automated teardown of Spanner backups to prevent destroy failures
@@ -284,15 +315,15 @@ locals {
       logicalShardId = "shard-${idx}"
       host = try(
         coalesce(
-          one([for ip in google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
-          google_sql_database_instance.instances[floor(idx / var.logical_shards_count)].ip_address[0].ip_address
+          one([for ip in google_sql_database_instance.instances[tostring(floor(idx / var.logical_shards_count))].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+          google_sql_database_instance.instances[tostring(floor(idx / var.logical_shards_count))].ip_address[0].ip_address
         ),
         "127.0.0.1"
       )
       port                 = tostring(var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306))
-      user                 = try(google_sql_user.users[floor(idx / var.logical_shards_count)].name, var.database_user)
+      user                 = try(google_sql_user.users[tostring(floor(idx / var.logical_shards_count))].name, var.database_user)
       password             = null
-      dbName               = "${var.logical_shard_prefix}_${floor(idx / var.logical_shards_count)}_${idx % var.logical_shards_count}"
+      dbName               = "${var.logical_shard_prefix}_${idx}"
       namespace            = "public"
       secretManagerUri     = try("${google_secret_manager_secret.db_passwords[0].id}/versions/latest", "projects/${var.project_id}/secrets/placeholder/versions/latest")
       connectionProperties = var.connection_properties
@@ -305,20 +336,20 @@ locals {
         for p_idx in range(var.physical_shards_count) : {
           host = try(
             coalesce(
-              one([for ip in google_sql_database_instance.instances[p_idx].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
-              google_sql_database_instance.instances[p_idx].ip_address[0].ip_address
+              one([for ip in google_sql_database_instance.instances[tostring(p_idx)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
+              google_sql_database_instance.instances[tostring(p_idx)].ip_address[0].ip_address
             ),
             "127.0.0.1"
           )
           port                 = var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306)
-          user                 = try(google_sql_user.users[p_idx].name, var.database_user)
+          user                 = try(google_sql_user.users[tostring(p_idx)].name, var.database_user)
           password             = null
           secretManagerUri     = try("${google_secret_manager_secret.db_passwords[0].id}/versions/latest", "projects/${var.project_id}/secrets/placeholder/versions/latest")
           connectionProperties = var.connection_properties
           namespace            = "public"
           databases = [
             for l_idx in range(var.logical_shards_count) : {
-              dbName     = "${var.logical_shard_prefix}_${p_idx}_${l_idx}"
+              dbName     = "${var.logical_shard_prefix}_${p_idx * var.logical_shards_count + l_idx}"
               databaseId = "shard-${p_idx * var.logical_shards_count + l_idx}"
             }
           ]
@@ -337,4 +368,3 @@ resource "local_file" "bulk_shard_config" {
   content  = jsonencode(local.bulk_shards)
   filename = "${path.module}/bulk-config.json"
 }
-
