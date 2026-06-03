@@ -50,6 +50,16 @@ on:
         type: string
         required: true
         default: '["self-hosted", "spanner-it"]'
+      runIntegrationTests:
+        description: 'Run Spanner integration tests before staging templates'
+        type: boolean
+        required: true
+        default: true
+      specific_test:
+        description: 'Specific Integration Test (passed to -Dtest=)'
+        type: string
+        required: false
+        default: ''
 
 env:
   MAVEN_OPTS: >-
@@ -93,7 +103,13 @@ jobs:
           if [ -z "$STAGE_PREFIX" ]; then
             STAGE_PREFIX="templates-$(date +'%Y-%m-%d')"
           fi
-          
+
+          RUN_INTEGRATION_TESTS="${{ github.event.inputs.runIntegrationTests }}"
+          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-true}"
+
+          SPECIFIC_TEST="${{ github.event.inputs.specific_test }}"
+          SPECIFIC_TEST="${SPECIFIC_TEST:-}"
+
           echo "Resolved Variables:"
           echo "-------------------"
           echo "Project ID:    $PROJECT_ID"
@@ -101,6 +117,8 @@ jobs:
           echo "Template Name: $TEMPLATE_NAME"
           echo "Module Path:   $MODULE_PATH"
           echo "Stage Prefix:  $STAGE_PREFIX"
+          echo "Run IT Tests:  $RUN_INTEGRATION_TESTS"
+          echo "Specific Test: $SPECIFIC_TEST"
           echo "-------------------"
           
           echo "projectId=$PROJECT_ID" >> $GITHUB_OUTPUT
@@ -108,7 +126,46 @@ jobs:
           echo "templateName=$TEMPLATE_NAME" >> $GITHUB_OUTPUT
           echo "modulePath=$MODULE_PATH" >> $GITHUB_OUTPUT
           echo "stagePrefix=$STAGE_PREFIX" >> $GITHUB_OUTPUT
+          echo "runIntegrationTests=$RUN_INTEGRATION_TESTS" >> $GITHUB_OUTPUT
+          echo "specificTest=$SPECIFIC_TEST" >> $GITHUB_OUTPUT
         shell: bash
+
+      - name: Run Integration Tests
+        if: ${{ steps.resolve-vars.outputs.runIntegrationTests == 'true' }}
+        run: |
+          echo "Starting Spanner Integration Tests..."
+          ./cicd/run-it-tests \
+            --modules-to-build="SPANNER" \
+            --it-region="us-central1" \
+            --it-project="span-cloud-teleport-testing" \
+            --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
+            --it-private-connectivity="datastream-connect-2" \
+            --it-cloud-proxy-host="10.128.0.16" \
+            --test="${{ steps.resolve-vars.outputs.specificTest }}"
+
+      - name: Upload Integration Tests Report
+        if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-integration-test-results
+          path: |
+            **/surefire-reports/TEST-*.xml
+            **/surefire-reports/*.html
+            **/surefire-reports/html/**
+          retention-days: 10
+
+      - name: Integration Test report on GitHub
+        if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
+        uses: dorny/test-reporter@v3
+        with:
+          name: Integration Test report on GitHub
+          path: '**/surefire-reports/TEST-*.xml'
+          reporter: java-junit
+          only-summary: 'true'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: 'false'
+          list-suites: 'failed'
+          list-tests: 'failed'
 
       - name: Build & Stage Template
         run: |
