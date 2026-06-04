@@ -8,6 +8,7 @@ By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database
 
 ## Table of Contents
 
+* [Supported Sinks](#supported-sinks)
 * [Core Use Cases](#core-use-cases)
 * [How It Works](#how-it-works)
 * [Consistency and Ordering Guarantees](#consistency-and-ordering-guarantees)
@@ -45,6 +46,14 @@ By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database
 
 ---
 
+## Supported Sinks
+
+The pipeline currently supports generating data for the following target databases:
+* **Cloud Spanner** (GoogleSQL and PostgreSQL dialects)
+* **MySQL** (Single or Sharded instances)
+
+---
+
 ## Core Use Cases
 
 * **Load Testing Migration Pipelines**: Simulate realistic transactional workloads to test the different migration pipelines.
@@ -56,11 +65,11 @@ By pointing the pipeline at a Cloud Spanner database or a sharded MySQL database
 
 At a high level, the pipeline goes through the following operational stages at launch:
 
-1. **Schema Discovery**: The pipeline connects to the target sink (Spanner or MySQL) and reads the system tables or catalog metadata. It builds an in-memory schema representing every table, column type, primary key, foreign key, and parent-child hierarchy.
+1. **Schema Discovery**: The pipeline connects to the target sink and reads the system tables or catalog metadata. It builds an in-memory schema representing every table, column type, primary key, foreign key, and parent-child hierarchy.
 2. **Apply Configurations**: If you provide an optional HOCON or JSON override config, the pipeline merges it on top of the discovered schema. This lets you override per-table QPS rates, skip generating specific columns, map custom Faker rules, or introduce extra relationship dependencies.
-3. **Dependency Sorting**: It sorts the schema tables so child tables are nested under parents and flushes to the database occur in a safe order.
+3. **Dependency Sorting**: It sorts the schema tables to ensure that child tables are never written to the database before their parent tables.
 4. **Metronome Clock**: A periodic impulse generator fires once every second. This tick is converted into a specific number of root-table operations based on the target QPS.
-5. **State-Sticky Redistribution**: Generated primary keys are mapped to workers using a hash algorithm. This ensures all life cycle events (`INSERT`, subsequent `UPDATE`s, and trailing `DELETE`) for a given primary key land on the exact same Dataflow worker state via a key-based redistribution step.
+5. **Stateful Lifecycle Management**: Initial `INSERT` records are distributed evenly across logical state partitions using a hash algorithm. Once ingested, all subsequent `UPDATE` and `DELETE` events are generated in-place by local timers within that exact same state partition, ensuring perfect referential consistency.
 6. **Stateful Traversal**: The stateful writer completes missing fields, evaluates cascaded child rows, batches mutations, and executes writes to the target databases.
 
 ---
@@ -68,7 +77,7 @@ At a high level, the pipeline goes through the following operational stages at l
 ## Consistency and Ordering Guarantees
 
 * **Primary Key Requirement**: Every target table **must** have a defined primary key. Tables without primary keys cannot be tracked in stateful buffers and are filtered out during the schema discovery phase.
-* **Static Unique Columns & Foreign Keys on UPDATE**: When generating `UPDATE` events, the values of the primary keys, foreign keys, and any unique key columns are preserved from the original `INSERT` state. These values do not churn or modify between updates, which prevents logical identity drift and referential integrity errors.
+* **Static Unique Columns & Foreign Keys on UPDATE**: When generating `UPDATE` events, the values of the primary keys, foreign keys, and any unique key columns are preserved from the original `INSERT` state. The data values for these specific columns remain constant and are not changed by subsequent `UPDATE` operations, which prevents referential integrity errors.
 * **No Retries for Database Write Failures**: Write failures (e.g., due to database constraint violations or connection dropouts) are considered final. Failed rows are routed directly to the Dead-Letter Queue (DLQ) and are **not** internally retried by the pipeline.
 * **INSERT Order**: Parent rows are always written to the database before child rows. Writes are ordered topologically according to the foreign key hierarchy.
 * **DELETE Order**: Child rows are always deleted before their parent rows. Deletions happen in reverse topological order to prevent foreign-key or referential integrity violations.
@@ -89,7 +98,7 @@ At a high level, the pipeline goes through the following operational stages at l
     * `roles/spanner.databaseUser` on the target Spanner database (Spanner sinks only).
     * `roles/secretmanager.secretAccessor` if your MySQL configuration retrieves passwords using Secret Manager URIs.
 3. **Network Connectivity**: Ensure Dataflow workers can communicate with the databases. If writing to MySQL, you may need to allowlist Dataflow IPs or route traffic via a private subnet.
-4. **Private IP Execution**: If you launch workers without public internet access, pass the `--disable-public-ips` parameter and specify the `--subnetwork` path.
+4. **Private IP Execution (Recommended)**: When launching workers, pass the `--disable-public-ips` parameter and specify the `--subnetwork` path to ensure secure execution without public internet access.
 
 ### Spanner Sink Prerequisites
 
@@ -155,7 +164,7 @@ Save this JSON file containing your database shards as `mysql_shards.json` and u
 
 The CDC Data Generator is packaged as a Dataflow Flex Template. To run the pipeline, make sure you have built and staged the container image (for build instructions, refer to the root directory's developer setup).
 
-### Staging and Running via Spanner
+### Staging and Running for Spanner
 
 ```bash
 export PROJECT="my-gcp-project"
@@ -166,31 +175,38 @@ gcloud dataflow flex-template run "cdc-gen-spanner-$(date +%Y%m%d-%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --template-file-gcs-location="${TEMPLATE_LOCATION}" \
+  --disable-public-ips \
+  --worker-machine-type="n2-standard-8" \
+  --subnetwork="regions/${REGION}/subnetworks/my-subnet" \
   --additional-experiments=use_runner_v2 \
   --parameters \
 sinkType=SPANNER,\
 sinkOptions=gs://my-bucket/configs/spanner_options.json,\
-batchSize=250,\
+batchSize=100,\
 insertQps=2000,\
 updateQps=500,\
 deleteQps=100
 ```
 
-### Staging and Running via MySQL
+### Staging and Running for MySQL
 
 ```bash
 gcloud dataflow flex-template run "cdc-gen-mysql-$(date +%Y%m%d-%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --template-file-gcs-location="${TEMPLATE_LOCATION}" \
+  --disable-public-ips \
+  --worker-machine-type="n2-standard-64" \
+  --subnetwork="regions/${REGION}/subnetworks/my-subnet" \
   --additional-experiments=use_runner_v2 \
   --parameters \
 sinkType=MYSQL,\
 sinkOptions=gs://my-bucket/configs/mysql_shards.json,\
 batchSize=100,\
-insertQps=1000,\
+insertQps=4000,\
 updateQps=2000,\
-jdbcPoolSize=15,\
+deleteQps=100,\
+jdbcPoolSize=100,\
 schemaConfig=gs://my-bucket/configs/overrides.conf
 ```
 
@@ -223,93 +239,101 @@ To avoid writing conflicts, lock contentions, or resource depletion, the pipelin
 
 ## End-to-End Persistence Lifecycle Walkthrough
 
-To illustrate the generator's advanced features—specifically parent-child cascading, delete suppression, and dynamic interval compression—let's walk through a realistic scenario with a **Parent** table and a **Child** table.
+To illustrate the generator's advanced features—specifically parent-child cascading, delete suppression, and dynamic interval compression—let's walk through a realistic e-commerce scenario with a **Users** table (Parent) and an **Orders** table (Child).
 
-Suppose our schema has:
-* **Parent Table**: `insertQps = 10`, `updateQps = 20`, `deleteQps = 5`
-* **Child Table**: `insertQps = 30`, `updateQps = 300`, `deleteQps = 30` (Child references Parent via foreign key)
+**The Use Case:**
+We want to simulate an active e-commerce platform where:
+* 10 new Users register every second.
+* On average, each User creates 3 Orders (30 total new Orders per second).
+* Users occasionally update their profile (20 updates per second across all users).
+* Orders change status very frequently, such as moving from 'processing' to 'shipped' (300 updates per second across all orders).
+* 50% of Users eventually delete their accounts (5 deletes per second).
+
+Based on this use case, we configure the pipeline with:
+* **Users Table**: `insertQps = 10`, `updateQps = 20`, `deleteQps = 5`
+* **Orders Table**: `insertQps = 30`, `updateQps = 300`, `deleteQps = 30` (Orders references Users via foreign key)
 * **Global Settings**: `updateInterval = 5s`, `deleteInterval = 5s`
 
-Here is the sequence of events:
+Here is the sequence of events for a single User and their Orders:
 
 ```mermaid
 sequenceDiagram
     autonumber
     rect rgb(240, 248, 255)
     note right of User: T0: Root Ingestion & Cascading Inserts
-    User->>Parent: Generate Root PK (e.g., id=101)
-    Parent->>Parent: Fill columns, buffer Parent INSERT
-    Parent->>Child: Fan-out (30 child QPS / 10 parent QPS = 3 children per parent)
-    Child->>Child: Generate 3 Child rows (id=501, 502, 503) inheriting Parent PK (parent_id=101)
-    Child->>Child: Buffer 3 Child INSERTs
+    User->>Users: Generate Root PK (e.g., id=101)
+    Users->>Users: Fill columns, buffer Users INSERT
+    Users->>Orders: Fan-out (30 Orders QPS / 10 Users QPS = 3 Orders per User)
+    Orders->>Orders: Generate 3 Orders (id=501, 502, 503) inheriting User PK (user_id=101)
+    Orders->>Orders: Buffer 3 Orders INSERTs
     end
 
     rect rgb(255, 240, 245)
     note right of User: T0: Schedule Updates & Deletes (with Suppression)
-    Parent->>Parent: Schedule Update1 (T0+5s), Update2 (T0+10s), Delete (T0+15s)
-    note over Child: Child deleteQps overridden to 0 to avoid orphans.<br/>Child inherits Parent forcedDeleteTimestamp (T0+15s).
-    note over Child: Child needs 10 updates (300 update QPS / 30 insert QPS).<br/>Standard 10 updates * 5s = 50s (violates T0+15s deadline).
-    note over Child: Dynamic Compression: Time budget = 15s - 5s (delInterval) = 10s.<br/>Update interval compressed to 10s / 10 = 1 second!
-    Child->>Child: Schedule 10 Child Updates (T0+1s, T0+2s, ..., T0+10s)
-    Child->>Child: Schedule Child Deletes at T0+15s
+    Users->>Users: Schedule Update1 (T0+5s), Update2 (T0+10s), Delete (T0+15s)
+    note over Orders: Orders deleteQps overridden to 0 to avoid orphans.<br/>Orders inherits Users forcedDeleteTimestamp (T0+15s).
+    note over Orders: Orders needs 10 updates before the T0+15s deadline.
+    note over Orders: Dynamic Compression: Update interval is compressed<br/>from 5s down to 1s to fit the remaining time budget!
+    Orders->>Orders: Schedule 10 Orders Updates (T0+1s, T0+2s, ..., T0+10s)
+    Orders->>Orders: Schedule Orders Deletes at T0+15s
     end
 
     rect rgb(245, 255, 240)
     note right of User: T0+1s to T0+10s: Lifecycle Timers Fire
-    Note over Child: T0+1s to T0+4s: Child Updates 1 to 4 execute
-    Note over Parent, Child: T0+5s: Parent Update1 & Child Update5 execute
-    Note over Child: T0+6s to T0+9s: Child Updates 6 to 9 execute
-    Note over Parent, Child: T0+10s: Parent Update2 & Child Update10 execute
+    Note over Orders: T0+1s to T0+4s: Orders Updates 1 to 4 execute
+    Note over Users, Orders: T0+5s: Users Update1 & Orders Update5 execute
+    Note over Orders: T0+6s to T0+9s: Orders Updates 6 to 9 execute
+    Note over Users, Orders: T0+10s: Users Update2 & Orders Update10 execute
     end
 
     rect rgb(253, 245, 230)
     note right of User: T0+15s: Safe Deletion (Reverse Topological Order)
-    Note over Parent, Child: Deletion timer fires at T0+15s.
-    Child->>Database: Delete Child 501, 502, 503 (First)
-    Parent->>Database: Delete Parent 101 (Second)
+    Note over Users, Orders: Deletion timer fires at T0+15s.
+    Orders->>Database: Delete Orders 501, 502, 503 (First)
+    Users->>Database: Delete Users 101 (Second)
     note over Database: Zero foreign key or referential integrity violations!
     end
 ```
 
 ### 1. Root Record Ingestion (T0)
 
-The impulse metronome triggers generation. The pipeline synthesizes a new primary key for the `Parent` table (e.g. `id=101`). The stateful DoFn fills in the remaining parent fields and buffers an `INSERT` mutation.
+The impulse metronome triggers generation. The pipeline synthesizes a new primary key for the `Users` table (e.g. `id=101`). The stateful DoFn fills in the remaining user fields and buffers an `INSERT` mutation.
 
-The engine calculates how many updates and deletions the parent record should experience before it is cleaned up:
+The engine calculates how many updates and deletions the user record should experience before it is cleaned up:
 * **Updates**: `updateQps / insertQps = 20 / 10 = 2` updates.
 * **Deletions**: `deleteQps / insertQps = 5 / 10 = 0.5` (50% probability of deletion).
 Assuming this specific record is selected for deletion, its total lifespan is calculated as:
 $$\text{Lifespan} = \text{now} + (\text{updateInterval} \times \text{numUpdates}) + \text{deleteInterval}$$
 $$\text{Lifespan} = T0 + (5\text{s} \times 2) + 5\text{s} = T0 + 15\text{s}$$
-Thus, the `Parent` record schedules `Update1` at $T0+5\text{s}$, `Update2` at $T0+10\text{s}$, and a final `DELETE` at $T0+15\text{s}$.
+Thus, the `Users` record schedules `Update1` at $T0+5\text{s}$, `Update2` at $T0+10\text{s}$, and a final `DELETE` at $T0+15\text{s}$.
 
 ### 2. Cascading Generation & Delete Suppression
 
-Next, the parent fans out generation to child tables. The fan-out ratio is calculated:
-$$\text{Fan-Out Ratio} = \frac{\text{Child insertQps}}{\text{Parent insertQps}} = \frac{30}{10} = 3 \text{ child records per Parent}$$
-The engine generates three distinct child records (e.g. `id=501`, `502`, `503`), automatically passing down the parent's primary key value (`parent_id=101`) to satisfy the foreign key constraints. The child `INSERT` mutations are buffered.
+Next, the user record fans out generation to child tables. The fan-out ratio is calculated:
+$$\text{Fan-Out Ratio} = \frac{\text{Orders insertQps}}{\text{Users insertQps}} = \frac{30}{10} = 3 \text{ orders per User}$$
+The engine generates three distinct order records (e.g. `id=501`, `502`, `503`), automatically passing down the user's primary key value (`user_id=101`) to satisfy the foreign key constraints. The order `INSERT` mutations are buffered.
 
-Because `Parent` has a deletion scheduled, **the child's independent delete schedule is suppressed (set to 0) to prevent out-of-order deletions or double-deletion conflicts**. Instead of deleting themselves at a different or arbitrary time, child records inherit the parent's exact delete deadline of $T0+15\text{s}$. This ensures that **both the parent and child records are deleted together** as part of the same lifecycle teardown, with child records deleted first during the final transaction flush to respect referential integrity constraints.
+Because the `User` has a deletion scheduled, **the orders' independent delete schedule is suppressed (set to 0) to prevent out-of-order deletions or double-deletion conflicts**. Instead of deleting themselves at a different or arbitrary time, the order records inherit the user's exact delete deadline of $T0+15\text{s}$. This ensures that **both the user and their orders are deleted together** as part of the same lifecycle teardown, with the order records deleted first during the final transaction flush to respect referential integrity constraints.
 
 ### 3. Dynamic Interval Compression
 
-The engine now plans updates for the child records. Based on the child's QPS ratio, each child requires:
-$$\text{Updates} = \frac{\text{Child updateQps}}{\text{Child insertQps}} = \frac{300}{30} = 10 \text{ updates}$$
-Under standard settings, 10 updates spaced 5 seconds apart would require 50 seconds. However, the child records must be deleted along with the parent at $T0+15\text{s}$.
+The engine now plans updates for the order records. Based on the order's QPS ratio, each order requires:
+$$\text{Updates} = \frac{\text{Orders updateQps}}{\text{Orders insertQps}} = \frac{300}{30} = 10 \text{ updates}$$
+Under standard settings, 10 updates spaced 5 seconds apart would require 50 seconds. However, the order records must be deleted along with the user at $T0+15\text{s}$.
 
-To prevent data truncation, **Dynamic Interval Compression** recalibrates the child's update interval. It subtracts the 5-second trailing deletion interval from the parent's lifetime, leaving a remaining active window of:
+To prevent data truncation, **Dynamic Interval Compression** recalibrates the order's update interval. It subtracts the 5-second trailing deletion interval from the user's lifetime, leaving a remaining active window of:
 $$\text{Active Window} = 15\text{s} - 5\text{s} = 10\text{s}$$
 To execute 10 updates in a 10-second window, the update interval is compressed:
 $$\text{Compressed Interval} = \frac{10\text{s}}{10} = 1 \text{ second}$$
-Each child schedules 10 updates spaced exactly 1 second apart ($T0+1\text{s}$, $T0+2\text{s}$, ..., $T0+10\text{s}$) and schedules its final `DELETE` at $T0+15\text{s}$.
+Each order schedules 10 updates spaced exactly 1 second apart ($T0+1\text{s}$, $T0+2\text{s}$, ..., $T0+10\text{s}$) and schedules its final `DELETE` at $T0+15\text{s}$.
 
 ### 4. Lifecycle Timer Execution (T0+1s to T0+10s)
 
-As processing time advances, the Dataflow worker fires timers. Every second, child updates are synthesized and buffered. At $T0+5\text{s}$, the parent's `Update1` timer fires alongside the child's `Update5`. At $T0+10\text{s}$, the parent's `Update2` timer and the child's final `Update10` timer execute, leaving the database state completely updated.
+As processing time advances, the Dataflow worker fires timers. Every second, order updates are synthesized and buffered. At $T0+5\text{s}$, the user's `Update1` timer fires alongside the order's `Update5`. At $T0+10\text{s}$, the user's `Update2` timer and the order's final `Update10` timer execute, leaving the database state completely updated.
 
 ### 5. Referential Integrity Safe Deletion (T0+15s)
 
-At $T0+15\text{s}$, the deletion timer fires for both parent and child records. As they are pushed into the batch buffer, the batcher flushes the deletes in **reverse topological order** (Children first, then Parent). The database processes child deletions first, clearing the parent last. This prevents foreign key constraint violations.
+At $T0+15\text{s}$, the deletion timer fires for both user and order records. As they are pushed into the batch buffer, the batcher flushes the deletes in **reverse topological order** (Orders first, then Users). The database processes order deletions first, clearing the user last. This prevents foreign key constraint violations.
 
 ---
 
@@ -497,7 +521,7 @@ Monitor these metrics in the Cloud Dataflow console under the **Job Metrics** ta
 
 ### Tuning the Knobs
 
-* **Avoid Initial Backlog Buildup (Pre-Scale Workers)**: If you are running a pipeline with a high QPS target (e.g. >10,000 inserts/sec), **do not** rely solely on Dataflow's default autoscaling from 1 worker. The metronome generates impulses immediately on startup, and a single worker will quickly become overwhelmed, building a massive state queue/backlog that is extremely slow to drain even after autoscaling kicks in. Instead, **explicitly set `--numWorkers` to a high starting count** (e.g., 10-30 workers depending on target QPS) to handle the immediate workload at launch.
+* **Avoid Initial Backlog Buildup (Pre-Scale Workers)**: If you are running a pipeline with a high QPS target (e.g. >10,000 inserts/sec), **do not** rely solely on Dataflow's default autoscaling from 1 worker. The metronome generates impulses immediately on startup, and a single worker will quickly become overwhelmed, building a massive state queue/backlog that is extremely slow to drain even after autoscaling kicks in. Instead, **explicitly set `--numWorkers` to match your `--maxNumWorkers` at the start** to handle the immediate workload at launch.
 * **High CPU / Worker Bottleneck**: If workers are pegged at 100% CPU but database throughput is low, increase the worker pool size using `--maxNumWorkers` or choose a higher-performance machine type.
 * **Database Bottleneck**: If `recordsWritten` lags significantly behind `insertsGenerated`, your target database is saturated. Reduce the QPS targets, or scale up Spanner nodes / MySQL database hardware.
 * **Optimizing Batching**: If you write to a high-throughput sink, increase `--batchSize` to pack more records into each transaction. However, keep this value moderate for MySQL, as large JDBC batches can increase replication lag.
