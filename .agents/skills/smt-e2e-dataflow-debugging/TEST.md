@@ -5,7 +5,7 @@ Verify the skill triggers and executes correctly for debugging logical errors in
 ## Case 1: Debugging Schema Mapping Issues
 
 **Prompt:**
-`/dataflow-debug-logic test_job.tfvars`
+`/smt-dataflow-debug-logic test_job.tfvars`
 
 **Expected Outcome:**
 - The agent should initialize Terraform and launch the Dataflow job.
