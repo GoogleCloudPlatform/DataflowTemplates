@@ -78,14 +78,14 @@ To debug logical errors and data discrepancies by comparing source data (e.g., C
     ```
 2.  **Inspect Job Logs**: Retrieve job message logs to identify warnings or non-obvious issues:
     ```bash
-    gcloud logging read 'resource.type="dataflow_step" AND resource.labels.job_id="'$JOB_ID'" AND logName=~"projects/.*/logs/dataflow.googleapis.com%2Fjob-message"' \
+    gcloud logging read 'resource.type="dataflow_step" AND resource.labels.job_id="<JOB_ID>" AND logName=~"projects/.*/logs/dataflow.googleapis.com%2Fjob-message"' \
       --project=<YOUR_PROJECT_ID> \
       --limit=200 \
       --format="table(timestamp, textPayload, severity)" --order=asc
     ```
 3.  **Inspect Worker Logs**: Check worker execution logs for specific exceptions or stack traces:
     ```bash
-    gcloud logging read 'resource.type="dataflow_step" AND logName=~"projects/.*/logs/dataflow.googleapis.com%2Fworker" AND resource.labels.job_id="'$JOB_ID'"' \
+    gcloud logging read 'resource.type="dataflow_step" AND logName=~"projects/.*/logs/dataflow.googleapis.com%2Fworker" AND resource.labels.job_id="<JOB_ID>"' \
       --project=<YOUR_PROJECT_ID> \
       --limit=500 \
       --format="table(timestamp, jsonPayload.message, severity)" --order=asc
@@ -95,7 +95,7 @@ To debug logical errors and data discrepancies by comparing source data (e.g., C
 1.  **Inspect Source Data (Cloud SQL)**: Connect to the Cloud SQL instance and query source tables:
     ```bash
     # For PostgreSQL
-    gcloud sql connect <CSQL_INSTANCE> --user=<CSQL_USER> --project=<CSQL_PROJECT> --database=<CSQL_DATABASE>
+    gcloud sql connect <CSQL_INSTANCE> --user=<CSQL_USER> --project=<CSQL_PROJECT>
     # For MySQL
     gcloud sql connect <CSQL_INSTANCE> --user=<CSQL_USER> --project=<CSQL_PROJECT>
     ```
