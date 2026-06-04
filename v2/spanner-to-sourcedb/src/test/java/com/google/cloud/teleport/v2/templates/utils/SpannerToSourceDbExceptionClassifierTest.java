@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationExce
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import java.sql.DataTruncation;
 import java.sql.SQLDataException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
@@ -124,6 +125,15 @@ public class SpannerToSourceDbExceptionClassifierTest {
     SpannerException ex =
         SpannerExceptionFactory.newSpannerException(
             ErrorCode.UNKNOWN, "test", new SQLDataException("test"));
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
+  }
+
+  @Test
+  public void testClassifyWrappedDataTruncation() {
+    DataTruncation dataTruncation = new DataTruncation(1, false, false, 202, 200);
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "test", dataTruncation);
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
