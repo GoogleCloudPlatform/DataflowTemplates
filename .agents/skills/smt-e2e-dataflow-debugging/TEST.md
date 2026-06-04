@@ -1,4 +1,4 @@
-# Tests for e2e-dataflow-debugging skill
+# Tests for smt-e2e-dataflow-debugging skill
 
 Verify the skill triggers and executes correctly for debugging logical errors in Dataflow jobs.
 

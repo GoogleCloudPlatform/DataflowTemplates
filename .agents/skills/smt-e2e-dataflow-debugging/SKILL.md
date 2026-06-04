@@ -1,5 +1,5 @@
 ---
-name: e2e-dataflow-debugging
+name: smt-e2e-dataflow-debugging
 description: >-
   Debugs logical errors and data discrepancies in Dataflow templates by launching jobs via Terraform and comparing source (e.g. Cloud SQL) vs destination (e.g. Spanner) data.
   Use ONLY when the pipeline launches and runs to completion (terminal state) but exhibits data discrepancies or logical issues.
@@ -12,7 +12,11 @@ description: >-
 `/dataflow-debug-logic <FILE_NAME>.tfvars`
 
 ## Scope
-This skill is used for debugging logical errors and data discrepancies in Dataflow templates from the `GoogleCloudPlatform/DataflowTemplates` repository, assuming the pipeline can launch and run to completion.
+This skill is **STRICTLY** restricted to testing the following templates:
+*   `gcs-spanner-dv`
+*   `sourcedb-to-spanner`
+*   `datastream-to-spanner`
+*   `spanner-to-sourcedb`
 
 ## Goal
 To debug logical errors and data discrepancies by comparing source data (e.g., Cloud SQL) with destination data (e.g., Spanner).
