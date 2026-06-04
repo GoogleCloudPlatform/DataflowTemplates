@@ -1,5 +1,5 @@
 ---
-name: migrations-functional-testing
+name: smt-functional-testing
 description: >-
   Functionally tests local Dataflow pipeline changes against the main branch using ephemeral GCP resources and gated approvals.
   Use ONLY when functionally testing one of these specific migration templates: gcs-spanner-dv, sourcedb-to-spanner, datastream-to-spanner, spanner-to-sourcedb.
@@ -9,7 +9,7 @@ description: >-
 # Skill: Dataflow PR Functional Testing (Modular & Gated)
 
 ## Trigger
-`/migrations-functional-testing`
+`/smt-functional-testing`
 
 ## Scope
 This skill is **STRICTLY** restricted to testing the following templates:
@@ -26,7 +26,7 @@ To functionally test local Dataflow pipeline changes against the `main` branch. 
 ## Prerequisites
 * Local changes are committed or staged.
 * `gcloud` and `terraform` CLIs are authenticated.
-* The `/dataflow-debug-logic` skill is active and available.
+* The `/smt-e2e-dataflow-debugging` skill is active and available.
 * A pre-built flex template path is provided by the user.
 * A `.env.testing` file exists in the workspace root.
 
@@ -101,7 +101,7 @@ CUSTOM_TRANSFORMATION_JAR_PATH=
 1.  **Dynamic TFVars**: Generate and autonomously edit the Terraform variables file named `test_${TEST_RUN_ID}.tfvars` incorporating the dynamic resources from Phase 2, the uploaded configs from Phase 3, and the `BUILT_TEMPLATE_GCS_PATH` read from the `.env.testing` state.
 2.  **Approval Gate 4 (TFVars)**: Output the contents of the generated `.tfvars` file (job parameters). STOP AND WAIT for user confirmation.
 3.  **Stage the Job (Autonomous)**: Upon approval of the job parameters, autonomously execute the necessary commands (e.g., `terraform apply`) in the terminal to stage the job. Do NOT ask the user to execute it themselves.
-4.  **Monitoring & Debugging Gate**: Pause the primary workflow here while the job is running. Monitor the terminal/context for the completion of the job execution. If you need to check the progress of the already staged job or debug any runtime errors, you should utilize the `/dataflow-debug-logic` skill. Note: The `/dataflow-debug-logic` skill is STRICTLY for checking progress and debugging an already staged Dataflow job, not for staging the job itself. DO NOT PROCEED to Phase 5 until a definitive completion signal is observed.
+4.  **Monitoring & Debugging Gate**: Pause the primary workflow here while the job is running. Monitor the terminal/context for the completion of the job execution. If you need to check the progress of the already staged job or debug any runtime errors, you should utilize the `/smt-e2e-dataflow-debugging` skill. Note: The `/smt-e2e-dataflow-debugging` skill is STRICTLY for checking progress and debugging an already staged Dataflow job, not for staging the job itself. DO NOT PROCEED to Phase 5 until a definitive completion signal is observed.
 
 ### Phase 5: Automated Verification & Teardown
 1.  **Verification Queries**: Once Phase 4 is definitively complete, execute targeted terminal queries (`gcloud spanner databases execute-sql`, `gcloud sql execute`, etc.) against the destination tables and DLQs to verify the expected state for EACH test case.

@@ -1,11 +1,11 @@
-# Tests for migrations-functional-testing skill
+# Tests for smt-functional-testing skill
 
 Verify the skill triggers and executes correctly for typical functional testing tasks.
 
 ## Case 1: Custom Transformation Pipeline with Edge Cases
 
 **Prompt:**
-`/migrations-functional-testing What to test: I want to test Custom transformations in the template @[v2/sourcedb-to-spanner].`
+`/smt-functional-testing What to test: I want to test Custom transformations in the template @[v2/sourcedb-to-spanner].`
 
 **Expected Outcome:**
 - The agent should check the git diff and acknowledge no new changes were made. Proceed with testing the template with edge cases as requested.
