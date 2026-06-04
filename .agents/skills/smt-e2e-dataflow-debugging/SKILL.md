@@ -9,7 +9,7 @@ description: >-
 # Skill: Dataflow Template Logical Error Debugging
 
 ## Trigger
-`/smt-dataflow-debug-logic <FILE_NAME>.tfvars`
+`/smt-e2e-dataflow-debugging <FILE_NAME>.tfvars`
 
 ## Scope
 This skill is **STRICTLY** restricted to testing the following templates:
