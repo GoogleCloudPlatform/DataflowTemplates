@@ -2,14 +2,23 @@
 name: migrations-functional-testing
 description: >-
   Functionally tests local Dataflow pipeline changes against the main branch using ephemeral GCP resources and gated approvals.
-  Use when you need to run functional tests on Dataflow template changes and have local changes committed or staged.
-  Don't use for deploying templates to production or debugging a running production pipeline without testing.
+  Use ONLY when functionally testing one of these specific migration templates: gcs-spanner-dv, sourcedb-to-spanner, datastream-to-spanner, spanner-to-sourcedb.
+  Skip entirely for other templates. Don't use for deploying templates to production or debugging a running production pipeline without testing.
 ---
 
 # Skill: Dataflow PR Functional Testing (Modular & Gated)
 
 ## Trigger
 `/migrations-functional-testing`
+
+## Scope
+This skill is **STRICTLY** restricted to testing the following templates:
+*   `gcs-spanner-dv`
+*   `sourcedb-to-spanner`
+*   `datastream-to-spanner`
+*   `spanner-to-sourcedb`
+
+If the template being tested is NOT one of the above, **DO NOT** use this skill. Skip it entirely.
 
 ## Goal
 To functionally test local Dataflow pipeline changes against the `main` branch. The IDE agent acts as an orchestrator to analyze code, define topologies, provision isolated ephemeral environments, and verify data. **Pause for user approval before state-changing actions and halt immediately if any terminal command fails.**
