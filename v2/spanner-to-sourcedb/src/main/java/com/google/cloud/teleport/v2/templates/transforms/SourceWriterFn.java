@@ -350,6 +350,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
       } catch (Exception ex) {
+        LOG.error("Failed to write to source database. Record: {}", spannerRec, ex);
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
         if (cause != null) {
