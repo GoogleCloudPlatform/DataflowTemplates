@@ -103,7 +103,7 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   @Test
   public void gcsNoPermissionFITest() throws IOException, InterruptedException {
     String serviceAccountEmail =
-        "gcs-permission-test@cloud-teleport-testing.iam.gserviceaccount.com";
+        "gcs-permission-test@span-cloud-teleport-testing.iam.gserviceaccount.com";
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
             .addParameter("serviceAccount", serviceAccountEmail);
