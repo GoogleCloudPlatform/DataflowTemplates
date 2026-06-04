@@ -26,7 +26,6 @@ import java.net.URLClassLoader;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang3.StringUtils;
-import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,7 +138,7 @@ public final class JdbcDataSource extends BasicDataSource implements Serializabl
 
   private void initializeSuper() {
 
-    Log.info("Initializing {}", this);
+    LOG.info("Initializing {}", this);
 
     super.setDriverClassName(jdbcDriverClassName);
 
