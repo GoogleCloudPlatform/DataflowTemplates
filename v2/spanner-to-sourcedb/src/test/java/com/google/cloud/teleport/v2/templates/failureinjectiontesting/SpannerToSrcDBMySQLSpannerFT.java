@@ -109,7 +109,7 @@ public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
             "failureInjectionTest",
             Map.of(
                 "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\", \"policyInput\": { \"duration\": \"PT5M\", \"errorCode\": \"FAILED_PRECONDITION\" }}"),
+                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\", \"policyInput\": { \"duration\": \"PT5M\", \"errorCode\": \"DEADLINE_EXCEEDED\" }}"),
             null,
             spannerResourceManager,
             gcsResourceManager,
