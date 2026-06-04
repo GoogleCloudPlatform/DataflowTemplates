@@ -776,13 +776,6 @@ public class SpannerToSourceDb {
             ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
 
-    if (options.getFailureInjectionParameter() != null
-        && !options.getFailureInjectionParameter().isBlank()) {
-      spannerConfig =
-          SpannerServiceFactoryImpl.createSpannerService(
-              spannerConfig, options.getFailureInjectionParameter());
-    }
-
     if (isRegularMode) {
       PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
           pipeline
@@ -807,6 +800,13 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerConfig, options.getFailureInjectionParameter());
+    }
 
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
