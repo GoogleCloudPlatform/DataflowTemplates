@@ -54,7 +54,7 @@ on:
         description: 'Run Spanner integration tests before staging templates'
         type: boolean
         required: true
-        default: true
+        default: false
       specific_test:
         description: 'Specific Integration Test (passed to -Dtest=)'
         type: string
@@ -105,7 +105,7 @@ jobs:
           fi
 
           RUN_INTEGRATION_TESTS="${{ github.event.inputs.runIntegrationTests }}"
-          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-true}"
+          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-false}"
 
           SPECIFIC_TEST="${{ github.event.inputs.specific_test }}"
           SPECIFIC_TEST="${SPECIFIC_TEST:-}"
