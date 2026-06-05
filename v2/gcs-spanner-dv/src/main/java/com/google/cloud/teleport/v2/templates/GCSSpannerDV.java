@@ -169,7 +169,7 @@ public class GCSSpannerDV {
         example = "[{Singers, Vocalists}, {Albums, Records}]",
         helpText =
             "These are the table name overrides from source to spanner. They are written in"
-                + " thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2,"
+                + " the following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2,"
                 + " SpannerTableName2}]This example shows mapping Singers table to Vocalists and"
                 + " Albums table to Records.")
     @Default.String("")
@@ -187,7 +187,7 @@ public class GCSSpannerDV {
             "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
         helpText =
             "These are the column name overrides from source to spanner. They are written in"
-                + " thefollowing format: [{SourceTableName1.SourceColumnName1,"
+                + " the following format: [{SourceTableName1.SourceColumnName1,"
                 + " SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1,"
                 + " SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should"
                 + " remain the same in both the source and spanner pair. To override table names,"
