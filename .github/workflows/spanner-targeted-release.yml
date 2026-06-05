@@ -54,7 +54,7 @@ on:
         description: 'Run Spanner integration tests before staging templates'
         type: boolean
         required: true
-        default: false
+        default: true
       specific_test:
         description: 'Specific Integration Test (passed to -Dtest=)'
         type: string
@@ -105,7 +105,7 @@ jobs:
           fi
 
           RUN_INTEGRATION_TESTS="${{ github.event.inputs.runIntegrationTests }}"
-          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-false}"
+          RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-true}"
 
           SPECIFIC_TEST="${{ github.event.inputs.specific_test }}"
           SPECIFIC_TEST="${SPECIFIC_TEST:-}"
@@ -166,19 +166,6 @@ jobs:
           fail-on-error: 'false'
           list-suites: 'failed'
           list-tests: 'failed'
-
-      - name: Debug Credentials & Configure Docker
-        run: |
-          echo "=== Debugging Credentials ==="
-          echo "gcloud active account:"
-          gcloud auth list
-          echo ""
-          echo "GCE Metadata Server default account:"
-          curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email || echo "Not found"
-          echo ""
-          echo "Configuring docker with gcloud..."
-          gcloud auth configure-docker gcr.io,us-central1-docker.pkg.dev --quiet
-        shell: bash
 
       - name: Build & Stage Template
         run: |
