@@ -1089,4 +1089,44 @@ public class ReadWithUniformPartitionsTest implements Serializable {
         .contains(
             "TableIdentifiers in tableSplitSpecifications and tableReadSpecifications must match");
   }
+
+  @Test
+  public void testPhasedCountModeInstantiation() {
+    TableIdentifier tableIdentifier =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName(tableName)
+            .build();
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableIdentifier)
+            .setApproxRowCount(100L)
+            .setSplitStagesCount(4L)
+            .setPartitionColumns(
+                ImmutableList.of(
+                    PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
+                        .setColumnName("col")
+                        .setColumnClass(Integer.class)
+                        .build()))
+            .build();
+    TableReadSpecification<String> readSpec =
+        TableReadSpecification.<String>builder()
+            .setTableIdentifier(tableIdentifier)
+            .setRowMapper(rs -> rs.getString(1))
+            .build();
+
+    ReadWithUniformPartitions<String> transform =
+        ReadWithUniformPartitions.<String>builder()
+            .setTableSplitSpecifications(ImmutableList.of(splitSpec))
+            .setTableReadSpecifications(ImmutableMap.of(tableIdentifier, readSpec))
+            .setDbAdapter(new MysqlDialectAdapter(MySqlVersion.DEFAULT))
+            .setDataSourceProvider(
+                DataSourceProviderImpl.builder()
+                    .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", dataSourceProviderFn)
+                    .build())
+            .build();
+
+    assertThat(transform.maxSplitStages()).isEqualTo(4L);
+  }
 }

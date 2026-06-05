@@ -50,6 +50,15 @@ public abstract class Range implements Serializable, Comparable<Range> {
   public abstract long count();
 
   /**
+   * Approximate count (e.g., from EXPLAIN query) of a given range. Defaults to {@link
+   * Range#INDETERMINATE_COUNT}. If not explicitly assigned, defaults to whatever {@link #count()}
+   * is set to.
+   *
+   * @return approximate count of rows represented by the range.
+   */
+  public abstract long approxCount();
+
+  /**
    * Height for this range. The leaf child always has a height of 0. Defaults to 0.
    *
    * @return split height.
@@ -103,6 +112,7 @@ public abstract class Range implements Serializable, Comparable<Range> {
   public static <T extends Serializable> Builder builder() {
     return new AutoValue_Range.Builder()
         .setCount(INDETERMINATE_COUNT)
+        .setApproxCount(INDETERMINATE_COUNT)
         .setHeight(0L)
         .setIsFirst(false)
         .setIsLast(false);
@@ -127,6 +137,22 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return withChildRange(childRange().withCount(count, processContext), processContext);
     }
     return this.toBuilder().setCount(count).build();
+  }
+
+  /**
+   * Return a cloned Range with both factual count and approximate count parameters set.
+   *
+   * @param count count of the range
+   * @param approxCount approximate count of the range
+   * @param processContext process context
+   * @return range with count and approxCount.
+   */
+  public Range withCounts(long count, long approxCount, @Nullable ProcessContext processContext) {
+    if (hasChildRange()) {
+      return withChildRange(
+          childRange().withCounts(count, approxCount, processContext), processContext);
+    }
+    return this.toBuilder().setCount(count).setApproxCount(approxCount).build();
   }
 
   /**
@@ -181,6 +207,7 @@ public abstract class Range implements Serializable, Comparable<Range> {
     return this.toBuilder()
         .setChildRange(childRange)
         .setCount(childRange.count())
+        .setApproxCount(childRange.approxCount())
         .setHeight(childRange.height() + 1)
         .build();
   }
@@ -228,12 +255,14 @@ public abstract class Range implements Serializable, Comparable<Range> {
         this.toBuilder()
             .setBoundary(boundaries.getLeft())
             .setCount(INDETERMINATE_COUNT)
+            .setApproxCount(INDETERMINATE_COUNT)
             .setIsFirst(isFirst())
             .setIsLast(false)
             .build(),
         this.toBuilder()
             .setBoundary(boundaries.getRight())
             .setCount(INDETERMINATE_COUNT)
+            .setApproxCount(INDETERMINATE_COUNT)
             .setIsFirst(false)
             .setIsLast(isLast())
             .build());
@@ -284,12 +313,14 @@ public abstract class Range implements Serializable, Comparable<Range> {
         return this.toBuilder()
             .setBoundary(this.boundary().merge(other.boundary()))
             .setCount(addCount(this.count(), other.count()))
+            .setApproxCount(addCount(this.approxCount(), other.approxCount()))
             .setIsLast(other.isLast())
             .build();
       } else {
         return this.toBuilder()
             .setBoundary(this.boundary().merge(other.boundary()))
             .setCount(addCount(this.count(), other.count()))
+            .setApproxCount(addCount(this.approxCount(), other.approxCount()))
             .setIsFirst(other.isFirst())
             .build();
       }
@@ -308,7 +339,7 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return false;
     }
     Range that = (Range) obj;
-    if (this.count() != that.count()) {
+    if (this.count() != that.count() || this.approxCount() != that.approxCount()) {
       return false;
     }
     return Objects.equal(this.childRange(), that.childRange());
@@ -362,6 +393,10 @@ public abstract class Range implements Serializable, Comparable<Range> {
       }
     }
     result = Long.valueOf(this.count()).compareTo(other.count());
+    if (result != 0) {
+      return result;
+    }
+    result = Long.valueOf(this.approxCount()).compareTo(other.approxCount());
 
     Preconditions.checkState(
         result != 0,
@@ -381,6 +416,8 @@ public abstract class Range implements Serializable, Comparable<Range> {
     abstract Boundary.Builder boundaryBuilder();
 
     public abstract Builder setCount(long value);
+
+    public abstract Builder setApproxCount(long value);
 
     protected abstract Builder setHeight(long value);
 
@@ -432,11 +469,19 @@ public abstract class Range implements Serializable, Comparable<Range> {
       return this;
     }
 
+    abstract Range autoBuild();
+
     /**
-     * Build {@link Range}.
+     * Build {@link Range}, auto-defaulting {@code approxCount} to {@code count} if left unassigned.
      *
      * @return range.
      */
-    public abstract Range build();
+    public Range build() {
+      Range range = autoBuild();
+      if (range.approxCount() == INDETERMINATE_COUNT && range.count() != INDETERMINATE_COUNT) {
+        range = range.toBuilder().setApproxCount(range.count()).build();
+      }
+      return range;
+    }
   }
 }
