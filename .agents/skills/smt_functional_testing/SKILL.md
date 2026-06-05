@@ -58,7 +58,7 @@ CUSTOM_TRANSFORMATION_JAR_PATH=
 ## Workflow Phases
 
 ### Phase 1: Code Analysis & Test Case Generation
-1.  **Sourcing State**: Execute `source .env.testing` in the terminal or load the variables into context. Generate a unique run ID: `export TEST_RUN_ID=$(head /dev/urandom | tr -dc a-z0-9 | head -c 6)`.
+1.  **Sourcing State**: Execute `source .env.testing` in the terminal or load the variables into context. Generate a unique run ID: `export TEST_RUN_ID=$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c 6)`.
 2.  **Analyze Diff**: Execute `git diff main...` and analyze the output:
     *   Summarize the code changes in plain English.
     *   Identify the Dataflow pipeline components, classes, or transforms affected.
