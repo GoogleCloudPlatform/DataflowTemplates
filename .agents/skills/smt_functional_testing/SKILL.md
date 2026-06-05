@@ -118,8 +118,8 @@ CUSTOM_TRANSFORMATION_JAR_PATH=
 
 ```bash
 # Example commands, adjust based on actual provisioned resources
-gcloud sql instances delete <provisioned-instances>-${TEST_RUN_ID} --project=${PROJECT_ID} --quiet
-gcloud spanner instances delete <provisioned-instances>-${TEST_RUN_ID} --project=${PROJECT_ID} --quiet
+gcloud sql instances delete ${SOURCE_INSTANCE_NAME}-${TEST_RUN_ID} --project=${PROJECT_ID} --quiet
+gcloud spanner instances delete ${TARGET_SPANNER_INSTANCE}-${TEST_RUN_ID} --project=${PROJECT_ID} --quiet
 gcloud storage rm -r gs://${GCS_STAGING_BUCKET}/test_configs_${TEST_RUN_ID}
 rm -f test_${TEST_RUN_ID}.tfvars source_schema_${TEST_RUN_ID}.sql target_schema_${TEST_RUN_ID}.ddl
 ```
