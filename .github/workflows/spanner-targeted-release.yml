@@ -167,6 +167,19 @@ jobs:
           list-suites: 'failed'
           list-tests: 'failed'
 
+      - name: Debug Credentials & Configure Docker
+        run: |
+          echo "=== Debugging Credentials ==="
+          echo "gcloud active account:"
+          gcloud auth list
+          echo ""
+          echo "GCE Metadata Server default account:"
+          curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email || echo "Not found"
+          echo ""
+          echo "Configuring docker with gcloud..."
+          gcloud auth configure-docker gcr.io,us-central1-docker.pkg.dev --quiet
+        shell: bash
+
       - name: Build & Stage Template
         run: |
           echo "Starting Spanner Targeted Release staging..."
