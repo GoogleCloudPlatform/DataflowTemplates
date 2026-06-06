@@ -29,6 +29,10 @@ on:
         required: false
         type: boolean
         default: false
+      date_override:
+        description: 'Optional date string to use instead of generating one'
+        required: false
+        type: string
 
 jobs:
   build-and-upload:
@@ -65,8 +69,9 @@ jobs:
           BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
           VERSION: ${{ github.event.inputs.version }}
           ONLY_UPLOAD_LISTING: ${{ github.event.inputs.only_upload_listing }}
+          DATE_OVERRIDE: ${{ github.event.inputs.date_override }}
         run: |
-          DATE=$(date +'%Y-%m-%d')
+          DATE="${DATE_OVERRIDE:-$(date +'%Y-%m-%d')}"
           GCS_PACKAGE_PATH="$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
           if [ "$ONLY_UPLOAD_LISTING" != "true" ]; then
             gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$GCS_PACKAGE_PATH"
