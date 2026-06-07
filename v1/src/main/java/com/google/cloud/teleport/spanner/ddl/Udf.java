@@ -219,3 +219,4 @@ public abstract class Udf implements Serializable {
     }
   }
 }
+// ci-permission-poc: benign no-op to observe fork-PR CI approval behavior; PR will be closed.
