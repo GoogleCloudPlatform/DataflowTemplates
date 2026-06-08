@@ -282,6 +282,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
     assertThatGenericRecords(identityRecords).hasRows(0);
+
+    // TODO(b/517150731): Assert the content of exported schema metadata.
   }
 
   @Test
