@@ -87,7 +87,7 @@ terraform apply -parallelism=100 --var-file=terraform_simple.tfvars
 
 Once the deployment completes successfully, Terraform will print the resource details on your screen and generate two sharding configuration files in this directory:
 
-### 1. Regular Shard Config Format (`shard-config.json`)
+### 1. Regular Shard Config Format (`shard-config.json`) *(Sample output)*
 ```json
 [
   {
@@ -104,7 +104,7 @@ Once the deployment completes successfully, Terraform will print the resource de
 ]
 ```
 
-### 2. Bulk Shard Config Format (`bulk-config.json`)
+### 2. Bulk Shard Config Format (`bulk-config.json`) *(Sample output)*
 ```json
 {
   "shardConfigurationBulk": {

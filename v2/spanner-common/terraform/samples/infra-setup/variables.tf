@@ -32,9 +32,9 @@ variable "database_provider" {
 }
 
 variable "database_version" {
-  description = "The Cloud SQL database engine version. Supported versions: for MYSQL ('8_0', '5_7'), for POSTGRES ('14', '15', '16')"
+  description = "The Cloud SQL database engine version. Supported versions: for MYSQL ('8_0', '5_7'), for POSTGRES ('14', '15', '16'). If null, defaults to '8_0' for MYSQL and '14' for POSTGRES."
   type        = string
-  default     = "8_0"
+  default     = null
 }
 
 variable "physical_shards_count" {
@@ -135,15 +135,15 @@ variable "spanner_display_name" {
 }
 
 variable "spanner_config" {
-  description = "The Spanner instance config name (e.g. regional-us-central1, multi-region-us)"
+  description = "The Spanner instance config name (e.g. regional-us-central1, multi-region-us). If null, defaults to regional-<region>."
   type        = string
-  default     = "regional-us-central1"
+  default     = null
 }
 
 variable "spanner_processing_units" {
   description = "The number of processing units to allocate for the Spanner instance (100 units = 0.1 node)"
   type        = number
-  default     = 100
+  default     = 1000
 
   validation {
     condition     = var.spanner_processing_units > 0 && var.spanner_processing_units % 100 == 0

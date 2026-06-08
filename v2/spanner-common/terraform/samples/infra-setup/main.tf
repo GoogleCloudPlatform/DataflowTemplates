@@ -29,8 +29,25 @@ locals {
   spanner_instance_name_resolved = lower(var.spanner_instance_name != null && var.spanner_instance_name != "" ? var.spanner_instance_name : "${local.instance_prefix_resolved}-spanner")
   spanner_database_name_resolved = lower(var.spanner_database_name != null && var.spanner_database_name != "" ? var.spanner_database_name : "${local.migration_prefix_resolved}-db")
 
-  database_version_reconstructed = "${upper(var.database_provider)}_${upper(var.database_version)}"
-  resolved_vpc_id                = var.vpc_network_id != null ? var.vpc_network_id : google_compute_network.private_network[0].id
+  active_provider = upper(var.database_provider)
+  provider_configs = {
+    MYSQL = {
+      default_version = "8_0"
+      default_port    = 3306
+      # MySQL binds users to connection origins; "%" allows external access.
+      user_host       = "%"
+    }
+    POSTGRES = {
+      default_version = "14"
+      default_port    = 5432
+      # PostgreSQL does not support host-bound users in the GCP API; must be null.
+      user_host       = null
+    }
+  }
+
+  database_version_resolved      = var.database_version != null && var.database_version != "" ? var.database_version : local.provider_configs[local.active_provider].default_version
+  database_version_reconstructed = "${local.active_provider}_${upper(local.database_version_resolved)}"
+  resolved_vpc_id                = var.vpc_network_id != null ? var.vpc_network_id : one(google_compute_network.private_network[*].id)
 
   # Stable for_each keys for the sharded resources. Keying by index string
   # (instead of count) means changing attributes on one shard never re-indexes
@@ -175,8 +192,8 @@ resource "google_sql_user" "users" {
   for_each = local.physical_shard_ids
   name     = var.database_user
   instance = google_sql_database_instance.instances[each.key].name
-  host     = length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? null : "%"
-  password = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[0].result
+  host     = local.provider_configs[local.active_provider].user_host
+  password = var.database_password != null && var.database_password != "" ? var.database_password : one(random_password.db_password[*].result)
   project  = var.project_id
 }
 
@@ -197,7 +214,7 @@ resource "google_secret_manager_secret" "db_passwords" {
 resource "google_secret_manager_secret_version" "db_password_versions" {
   count       = 1
   secret      = google_secret_manager_secret.db_passwords[0].id
-  secret_data = var.database_password != null && var.database_password != "" ? var.database_password : random_password.db_password[0].result
+  secret_data = var.database_password != null && var.database_password != "" ? var.database_password : one(random_password.db_password[*].result)
 }
 
 # Create the logical shard databases distributed across physical instances
@@ -279,7 +296,7 @@ resource "null_resource" "schema_import" {
 # Provision Spanner Target Instance
 resource "google_spanner_instance" "spanner_instance" {
   name             = local.spanner_instance_name_resolved
-  config           = var.spanner_config
+  config           = var.spanner_config != null ? var.spanner_config : "regional-${var.region}"
   display_name     = var.spanner_display_name
   processing_units = var.spanner_processing_units
   project          = var.project_id
@@ -318,9 +335,9 @@ locals {
           one([for ip in google_sql_database_instance.instances[tostring(floor(idx / var.logical_shards_count))].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
           google_sql_database_instance.instances[tostring(floor(idx / var.logical_shards_count))].ip_address[0].ip_address
         ),
-        "127.0.0.1"
+        "unknown" /* Fallback for plan-time eval */
       )
-      port                 = tostring(var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306))
+      port                 = tostring(var.database_port != null ? var.database_port : local.provider_configs[local.active_provider].default_port)
       user                 = try(google_sql_user.users[tostring(floor(idx / var.logical_shards_count))].name, var.database_user)
       password             = null
       dbName               = "${var.logical_shard_prefix}_${idx}"
@@ -339,9 +356,9 @@ locals {
               one([for ip in google_sql_database_instance.instances[tostring(p_idx)].ip_address : ip.ip_address if ip.type == "PRIVATE"]),
               google_sql_database_instance.instances[tostring(p_idx)].ip_address[0].ip_address
             ),
-            "127.0.0.1"
+            "unknown" /* Fallback for plan-time eval */
           )
-          port                 = var.database_port != null ? var.database_port : (length(regexall(".*POSTGRES.*", upper(var.database_provider))) > 0 ? 5432 : 3306)
+          port                 = var.database_port != null ? var.database_port : local.provider_configs[local.active_provider].default_port
           user                 = try(google_sql_user.users[tostring(p_idx)].name, var.database_user)
           password             = null
           secretManagerUri     = try("${google_secret_manager_secret.db_passwords[0].id}/versions/latest", "projects/${var.project_id}/secrets/placeholder/versions/latest")

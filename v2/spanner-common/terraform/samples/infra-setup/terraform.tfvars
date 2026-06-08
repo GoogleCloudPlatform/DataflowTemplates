@@ -23,7 +23,7 @@ local_schema_file_path = "./schema.sql" # Local SQL schema imported into every s
 # SOURCE DATABASE (Cloud SQL)
 # ------------------------------------------------------------------------------
 database_provider     = "MYSQL"          # MYSQL or POSTGRES
-database_version      = "8_0"            # MySQL: 8_0, 5_7  |  Postgres: 14, 15, 16
+# database_version      = "8_0"            # Set specific version (e.g., "14" for Postgres) or leave commented for module default
 physical_shards_count = 1                # Number of physical Cloud SQL instances
 logical_shards_count  = 2                # Logical databases per physical instance
 logical_shard_prefix  = "shard_db"       # DB name prefix -> shard_db_0, shard_db_1, ...
@@ -55,7 +55,7 @@ connection_properties = "jdbcCompliantTruncation=true"
 # ------------------------------------------------------------------------------
 # TARGET SPANNER
 # ------------------------------------------------------------------------------
-spanner_config           = "regional-<REGION>" # e.g. "regional-us-central1"; should match `region`
+# spanner_config           = "regional-<REGION>" # e.g. "regional-us-central1"; defaults to regional-${var.region}
 spanner_display_name     = "SMT Spanner Instance"
 spanner_processing_units = 100                  # Positive multiple of 100 (100 = 0.1 node)
 spanner_database_dialect = "GOOGLE_STANDARD_SQL" # GOOGLE_STANDARD_SQL or POSTGRESQL

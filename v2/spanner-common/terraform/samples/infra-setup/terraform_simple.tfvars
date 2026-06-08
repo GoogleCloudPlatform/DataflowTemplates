@@ -16,10 +16,10 @@ local_schema_file_path = "./schema.sql"
 
 # Cloud SQL Database Setup
 database_provider     = "MYSQL"
-database_version      = "8_0"
+# database_version      = "8_0"
 physical_shards_count = 1
 logical_shards_count  = 2
 
 # Target Spanner config. Should match `region` above, otherwise Spanner is
-# created in a different region than Cloud SQL. Default is regional-us-central1.
-spanner_config = "regional-<REGION>"
+# created in a different region than Cloud SQL. Defaults to regional-${var.region}.
+# spanner_config = "regional-<REGION>"
