@@ -55,7 +55,7 @@ public class MysqlMappingProviderTest {
         .put("BLOB", "\"string\"")
         .put("BOOL", "\"int\"")
         .put("CHAR", "\"string\"")
-        .put("DATE", "{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}")
+        .put("DATE", "{\"type\":\"int\",\"logicalType\":\"date\"}")
         .put(
             "DATETIME",
             "{\"type\":\"record\","
