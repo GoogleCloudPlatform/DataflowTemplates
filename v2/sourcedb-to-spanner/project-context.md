@@ -18,7 +18,7 @@
     *   **Languages:** Java 17
     *   **Frameworks/Libraries:** Apache Beam 2.73.0, Maven
     *   **Key Google Technologies:** Cloud Spanner, Cloud Storage (GCS), Dataflow
-*   **Code Location:** `/usr/local/google/home/aasthabharill/DataflowTemplates/v2/sourcedb-to-spanner`
+*   **Code Location:** `v2/sourcedb-to-spanner`
 *   **Data Flow:** Data is read from Source Databases (MySQL/PostgreSQL/Cassandra) using JDBC or Datastax driver -> Mapped into SourceRows -> Transformed to Spanner Mutations -> Written to Cloud Spanner. Failed mutations are logged to a GCS DLQ.
 *   **Project Structure (Logical Architecture Mapping):**
     *   `src/main/java/com/google/cloud/teleport/v2/source/reader`: Source Readers (IoWrappers for Cassandra, JDBC, etc., RowMappers)
