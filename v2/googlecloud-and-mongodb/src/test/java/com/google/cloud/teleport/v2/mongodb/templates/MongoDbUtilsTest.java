@@ -158,4 +158,43 @@ public class MongoDbUtilsTest {
     assertNotNull(parsedDocument.get("pastDate"));
     assertNotNull(parsedDocument.get("futureDate"));
   }
+
+  @Test
+  public void testGetTableSchemaJsonOmitsNullFields() {
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("presentField", "value");
+    document.put("nullField", null);
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "JSON");
+
+    assertNotNull(result);
+    // source_data is a Map for the JSON user option.
+    @SuppressWarnings("unchecked")
+    java.util.Map<String, Object> sourceData =
+        (java.util.Map<String, Object>) result.get("source_data");
+    assertNotNull("source_data should be set", sourceData);
+    assertTrue("Non-null field should be present", sourceData.containsKey("presentField"));
+    assertFalse("Null field should be omitted", sourceData.containsKey("nullField"));
+  }
+
+  @Test
+  public void testGetTableSchemaNoneOmitsNullFields() {
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("presentField", "value");
+    document.put("nullField", null);
+    document.put("createdAt", new Date(1738598501924L)); // 2026-02-03T15:31:41.924Z
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "NONE");
+
+    assertNotNull(result);
+    // source_data is a raw JSON string for the NONE user option.
+    String sourceData = (String) result.get("source_data");
+    assertNotNull("source_data should be set", sourceData);
+    assertTrue("Non-null field should be present", sourceData.contains("presentField"));
+    assertFalse("Null field should be omitted", sourceData.contains("nullField"));
+    // Date fields must still serialize as ISO-8601 Extended JSON alongside null omission.
+    assertTrue("Date should remain ISO-8601 $date", sourceData.contains("\"$date\""));
+  }
 }

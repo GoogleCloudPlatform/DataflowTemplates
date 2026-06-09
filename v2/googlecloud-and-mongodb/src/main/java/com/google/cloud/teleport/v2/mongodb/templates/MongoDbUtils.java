@@ -172,7 +172,8 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
-      String jsonString = document.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+      String jsonString =
+          ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS);
       JsonObject sourceDataJsonObject = GSON.fromJson(jsonString, JsonObject.class);
 
       // Convert to a Map
@@ -183,13 +184,42 @@ public class MongoDbUtils implements Serializable {
           .set("source_data", sourceDataMap)
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
-      String sourceData = document.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+      String sourceData =
+          ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS);
 
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
           .set("timestamp", localDate.format(TIMEFORMAT));
     }
     return row;
+  }
+
+  /**
+   * Returns a copy of {@code value} with null-valued fields removed, recursing into nested {@link
+   * Document}s and {@link List}s. This preserves the previous Gson behavior of omitting nulls from
+   * the serialized output, consistent with the FLATTEN path which also skips null values.
+   */
+  private static Object stripNullValues(Object value) {
+    if (value instanceof Document) {
+      Document out = new Document();
+      ((Document) value)
+          .forEach(
+              (key, val) -> {
+                if (val != null) {
+                  out.put(key, stripNullValues(val));
+                }
+              });
+      return out;
+    } else if (value instanceof List) {
+      List<Object> out = new ArrayList<>();
+      for (Object item : (List<?>) value) {
+        if (item != null) {
+          out.add(stripNullValues(item));
+        }
+      }
+      return out;
+    }
+    return value;
   }
 
   public static TableSchema getTableFieldSchemaForUDF(
