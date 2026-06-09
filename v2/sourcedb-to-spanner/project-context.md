@@ -28,9 +28,9 @@
 *   **Build/Run Commands:**
     ```bash
     # To build the flex template
-    export PROJECT=span-cloud-ck-testing-external
-    export BUCKET_NAME=ea-functional-tests
-    mvn clean package -PtemplatesStage -DskipTests -DprojectId="$PROJECT" -DbucketName="$BUCKET_NAME" -DstagePrefix="templates-<replace-with-your-prefix>" -DtemplateName="Sourcedb_to_Spanner_Flex" -pl v2/sourcedb-to-spanner -am
+    export PROJECT_ID="<your-project-id>"
+    export BUCKET_NAME="<your-bucket-name>"
+    mvn clean package -PtemplatesStage -DskipTests -DprojectId="$PROJECT_ID" -DbucketName="$BUCKET_NAME" -DstagePrefix="templates-<replace-with-your-prefix>" -DtemplateName="Sourcedb_to_Spanner_Flex" -pl v2/sourcedb-to-spanner -am
 
     # To run tests
     mvn clean test -pl v2/sourcedb-to-spanner -am
