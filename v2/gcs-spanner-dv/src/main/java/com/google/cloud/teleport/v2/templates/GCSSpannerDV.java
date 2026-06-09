@@ -138,8 +138,7 @@ public class GCSSpannerDV {
         order = 7,
         optional = true,
         description =
-            "Session File Path in Cloud Storage, to provide mapping information in the form of a"
-                + " session file",
+            "Session File Path in Cloud Storage, to provide mapping information in the form of a session file",
         helpText =
             "Session file path in Cloud Storage that contains mapping information from"
                 + " Spanner Migration Tool")
@@ -153,8 +152,7 @@ public class GCSSpannerDV {
         optional = true,
         description = "File based overrides from source to spanner",
         helpText =
-            "A file which specifies the table and the column name overrides from source to"
-                + " spanner.")
+            "A file which specifies the table and the column name overrides from source to spanner.")
     @Default.String("")
     String getSchemaOverridesFilePath();
 
@@ -168,10 +166,9 @@ public class GCSSpannerDV {
             "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
         example = "[{Singers, Vocalists}, {Albums, Records}]",
         helpText =
-            "These are the table name overrides from source to spanner. They are written in"
-                + " the following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2,"
-                + " SpannerTableName2}]This example shows mapping Singers table to Vocalists and"
-                + " Albums table to Records.")
+            "These are the table name overrides from source to spanner. They are written in the"
+                + " following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + " This example shows mapping Singers table to Vocalists and Albums table to Records.")
     @Default.String("")
     String getTableOverrides();
 
@@ -286,17 +283,11 @@ public class GCSSpannerDV {
             options.getTableOverrides(),
             options.getColumnOverrides());
 
-    CustomTransformation customTransformation = null;
-    if (options.getTransformationJarPath() != null
-        && !options.getTransformationJarPath().isEmpty()
-        && options.getTransformationClassName() != null
-        && !options.getTransformationClassName().isEmpty()) {
-      customTransformation =
-          CustomTransformation.builder(
-                  options.getTransformationJarPath(), options.getTransformationClassName())
-              .setCustomParameters(options.getTransformationCustomParameters())
-              .build();
-    }
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
 
     // Get Source records hashes
     PCollection<ComparisonRecord> sourceRecords =
