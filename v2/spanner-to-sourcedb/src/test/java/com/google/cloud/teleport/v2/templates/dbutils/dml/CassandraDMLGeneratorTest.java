@@ -1231,4 +1231,253 @@ public class CassandraDMLGeneratorTest {
 
     assertNull(response);
   }
+
+  @Test
+  public void testGetDMLStatement_PkColSpannerColNameThrowsNoSuchElement() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Ddl spannerDdl = Ddl.builder().build();
+    spannerDdl = Mockito.spy(spannerDdl);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+
+    Mockito.doReturn(spannerTable).when(spannerDdl).table("Singers");
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId"));
+    Mockito.when(sourceTable.column("SingerId")).thenReturn(sourceCol);
+    Mockito.when(sourceCol.type()).thenReturn("int");
+    Mockito.when(sourceTable.name()).thenReturn("Singers");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "SingerId"))
+        .thenThrow(new NoSuchElementException("Not found"));
+
+    DMLGeneratorRequest request =
+        new DMLGeneratorRequest.Builder(
+                "INSERT", "Singers", new JSONObject(), new JSONObject(), "+00:00")
+            .setSchemaMapper(schemaMapper)
+            .setDdl(spannerDdl)
+            .setSourceSchema(sourceSchema)
+            .setCommitTimestamp(Timestamp.now())
+            .build();
+
+    assertThrows(
+        InvalidDMLGenerationException.class, () -> cassandraDMLGenerator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_PkColSpannerColNameNull() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Ddl spannerDdl = Ddl.builder().build();
+    spannerDdl = Mockito.spy(spannerDdl);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+
+    Mockito.doReturn(spannerTable).when(spannerDdl).table("Singers");
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId"));
+    Mockito.when(sourceTable.column("SingerId")).thenReturn(sourceCol);
+    Mockito.when(sourceCol.type()).thenReturn("int");
+    Mockito.when(sourceTable.name()).thenReturn("Singers");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "SingerId")).thenReturn(null);
+
+    DMLGeneratorRequest request =
+        new DMLGeneratorRequest.Builder(
+                "INSERT", "Singers", new JSONObject(), new JSONObject(), "+00:00")
+            .setSchemaMapper(schemaMapper)
+            .setDdl(spannerDdl)
+            .setSourceSchema(sourceSchema)
+            .setCommitTimestamp(Timestamp.now())
+            .build();
+
+    assertThrows(
+        InvalidDMLGenerationException.class, () -> cassandraDMLGenerator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_PkColSpannerColDefNull() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Ddl spannerDdl = Ddl.builder().build();
+    spannerDdl = Mockito.spy(spannerDdl);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+
+    Mockito.doReturn(spannerTable).when(spannerDdl).table("Singers");
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId"));
+    Mockito.when(sourceTable.column("SingerId")).thenReturn(sourceCol);
+    Mockito.when(sourceCol.type()).thenReturn("int");
+    Mockito.when(sourceTable.name()).thenReturn("Singers");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "SingerId"))
+        .thenReturn("SingerId");
+    Mockito.when(spannerTable.column("SingerId")).thenReturn(null);
+
+    DMLGeneratorRequest request =
+        new DMLGeneratorRequest.Builder(
+                "INSERT", "Singers", new JSONObject(), new JSONObject(), "+00:00")
+            .setSchemaMapper(schemaMapper)
+            .setDdl(spannerDdl)
+            .setSourceSchema(sourceSchema)
+            .setCommitTimestamp(Timestamp.now())
+            .build();
+
+    assertThrows(
+        InvalidDMLGenerationException.class, () -> cassandraDMLGenerator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_ColValuesSpannerColDefNullAndKeyValuesHasNonPk() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn pkCol = Mockito.mock(SourceColumn.class);
+    SourceColumn nonPkCol = Mockito.mock(SourceColumn.class);
+    SourceColumn missingCol = Mockito.mock(SourceColumn.class);
+    Column spannerPkCol = Mockito.mock(Column.class);
+    Column spannerNonPkCol = Mockito.mock(Column.class);
+
+    Ddl spannerDdl = Ddl.builder().build();
+    spannerDdl = Mockito.spy(spannerDdl);
+    Mockito.doReturn(spannerTable).when(spannerDdl).table("Singers");
+
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId"));
+    Mockito.when(sourceTable.column("SingerId")).thenReturn(pkCol);
+    Mockito.when(pkCol.type()).thenReturn("int");
+    Mockito.when(sourceTable.name()).thenReturn("Singers");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "SingerId"))
+        .thenReturn("SingerId");
+    Mockito.when(spannerTable.column("SingerId")).thenReturn(spannerPkCol);
+    Mockito.when(spannerPkCol.name()).thenReturn("SingerId");
+    Mockito.when(spannerPkCol.type()).thenReturn(Type.int64());
+
+    Mockito.when(sourceTable.columns()).thenReturn(ImmutableList.of(pkCol, nonPkCol, missingCol));
+    Mockito.when(nonPkCol.name()).thenReturn("LastName");
+    Mockito.when(nonPkCol.type()).thenReturn("varchar");
+    Mockito.when(missingCol.name()).thenReturn("MissingCol");
+    Mockito.when(missingCol.type()).thenReturn("varchar");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "LastName"))
+        .thenReturn("LastName");
+    Mockito.when(spannerTable.column("LastName")).thenReturn(spannerNonPkCol);
+    Mockito.when(spannerNonPkCol.name()).thenReturn("LastName");
+    Mockito.when(spannerNonPkCol.type()).thenReturn(Type.string());
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "MissingCol"))
+        .thenReturn("MissingCol");
+    Mockito.when(spannerTable.column("MissingCol")).thenReturn(null);
+
+    JSONObject keyValuesJson = new JSONObject();
+    keyValuesJson.put("SingerId", "999");
+    keyValuesJson.put("LastName", "Smith");
+
+    DMLGeneratorRequest request =
+        new DMLGeneratorRequest.Builder(
+                "INSERT", "Singers", new JSONObject(), keyValuesJson, "+00:00")
+            .setSchemaMapper(schemaMapper)
+            .setDdl(spannerDdl)
+            .setSourceSchema(sourceSchema)
+            .setCommitTimestamp(Timestamp.now())
+            .build();
+
+    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(request);
+
+    assertTrue(response instanceof PreparedStatementGeneratedResponse);
+    PreparedStatementGeneratedResponse prepResponse = (PreparedStatementGeneratedResponse) response;
+
+    assertTrue(prepResponse.getDmlStatement().contains("\"LastName\""));
+    assertTrue(!prepResponse.getDmlStatement().contains("\"MissingCol\""));
+
+    assertEquals(3, prepResponse.getValues().size());
+  }
+
+  @Test
+  public void testGetDMLStatement_CompositePk_OnePkSpannerColDefNull() {
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    Table spannerTable = Mockito.mock(Table.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    SourceColumn pkCol1 = Mockito.mock(SourceColumn.class);
+    SourceColumn pkCol2 = Mockito.mock(SourceColumn.class);
+    SourceColumn nonPkCol = Mockito.mock(SourceColumn.class);
+    Column spannerPkCol1 = Mockito.mock(Column.class);
+    Column spannerNonPkCol = Mockito.mock(Column.class);
+
+    Ddl spannerDdl = Ddl.builder().build();
+    spannerDdl = Mockito.spy(spannerDdl);
+    Mockito.doReturn(spannerTable).when(spannerDdl).table("Singers");
+
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+
+    // Composite PK
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId", "LastName"));
+    Mockito.when(sourceTable.column("SingerId")).thenReturn(pkCol1);
+    Mockito.when(pkCol1.type()).thenReturn("int");
+    Mockito.when(sourceTable.column("LastName")).thenReturn(pkCol2);
+    Mockito.when(pkCol2.type()).thenReturn("varchar");
+    Mockito.when(sourceTable.name()).thenReturn("Singers");
+
+    // SingerId (pkCol1) maps successfully
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "SingerId"))
+        .thenReturn("SingerId");
+    Mockito.when(spannerTable.column("SingerId")).thenReturn(spannerPkCol1);
+    Mockito.when(spannerPkCol1.name()).thenReturn("SingerId");
+    Mockito.when(spannerPkCol1.type()).thenReturn(Type.int64());
+
+    // LastName (pkCol2) fails to map because Spanner column def is null
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "LastName"))
+        .thenReturn("LastName");
+    Mockito.when(spannerTable.column("LastName")).thenReturn(null);
+
+    // Non-PK col (Age) maps successfully
+    Mockito.when(sourceTable.columns()).thenReturn(ImmutableList.of(pkCol1, pkCol2, nonPkCol));
+    Mockito.when(nonPkCol.name()).thenReturn("Age");
+    Mockito.when(nonPkCol.type()).thenReturn("int");
+
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "Age"))
+        .thenReturn("Age");
+    Mockito.when(spannerTable.column("Age")).thenReturn(spannerNonPkCol);
+    Mockito.when(spannerNonPkCol.name()).thenReturn("Age");
+    Mockito.when(spannerNonPkCol.type()).thenReturn(Type.int64());
+
+    JSONObject keyValuesJson = new JSONObject();
+    keyValuesJson.put("SingerId", 999L);
+    keyValuesJson.put("LastName", "Smith");
+    keyValuesJson.put("Age", 30L);
+
+    DMLGeneratorRequest request =
+        new DMLGeneratorRequest.Builder(
+                "INSERT", "Singers", new JSONObject(), keyValuesJson, "+00:00")
+            .setSchemaMapper(schemaMapper)
+            .setDdl(spannerDdl)
+            .setSourceSchema(sourceSchema)
+            .setCommitTimestamp(Timestamp.now())
+            .build();
+
+    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(request);
+
+    assertTrue(response instanceof PreparedStatementGeneratedResponse);
+    PreparedStatementGeneratedResponse prepResponse = (PreparedStatementGeneratedResponse) response;
+
+    // The statement should contain SingerId and Age, but NOT LastName
+    assertTrue(prepResponse.getDmlStatement().contains("\"SingerId\""));
+    assertTrue(prepResponse.getDmlStatement().contains("\"Age\""));
+    assertTrue(!prepResponse.getDmlStatement().contains("\"LastName\""));
+
+    // Expected values: SingerId (999), Age (30), and using_timestamp
+    assertEquals(3, prepResponse.getValues().size());
+  }
 }

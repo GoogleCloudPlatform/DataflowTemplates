@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -69,7 +68,6 @@ import java.sql.SQLDataException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
@@ -80,7 +78,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
@@ -1402,63 +1399,5 @@ public class SourceWriterFnTest {
             .endTable()
             .build();
     return ddl;
-  }
-
-  @Ignore("Skipping until test issue is resolved")
-  @Test
-  public void testSetup_NullSessionFilePath() throws Exception {
-    SourceWriterFn sourceWriterFn =
-        new SourceWriterFn(
-            ImmutableList.of(testShard),
-            mockSpannerConfig,
-            testSourceDbTimezoneOffset,
-            testSourceSchema,
-            "shadow_",
-            "skip",
-            500,
-            "mysql",
-            null,
-            mockDdlView,
-            mockShadowTableDdlView,
-            null,
-            "",
-            "",
-            "");
-
-    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
-      mockedSpannerAccessor
-          .when(() -> SpannerAccessor.getOrCreate(any()))
-          .thenReturn(mock(SpannerAccessor.class));
-      sourceWriterFn.setup();
-    }
-  }
-
-  @Ignore("Skipping until test issue is resolved")
-  @Test
-  public void testSetup_EmptySessionFilePath() throws Exception {
-    SourceWriterFn sourceWriterFn =
-        new SourceWriterFn(
-            ImmutableList.of(testShard),
-            mockSpannerConfig,
-            testSourceDbTimezoneOffset,
-            testSourceSchema,
-            "shadow_",
-            "skip",
-            500,
-            "mysql",
-            null,
-            mockDdlView,
-            mockShadowTableDdlView,
-            "",
-            "",
-            "",
-            "");
-
-    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
-      mockedSpannerAccessor
-          .when(() -> SpannerAccessor.getOrCreate(any()))
-          .thenReturn(mock(SpannerAccessor.class));
-      sourceWriterFn.setup();
-    }
   }
 }

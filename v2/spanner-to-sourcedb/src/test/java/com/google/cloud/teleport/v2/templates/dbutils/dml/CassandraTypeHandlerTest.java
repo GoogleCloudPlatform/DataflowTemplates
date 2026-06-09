@@ -1803,4 +1803,146 @@ public class CassandraTypeHandlerTest {
     assertEquals(1, map.size());
     assertEquals("John", map.get("name"));
   }
+
+  @Test
+  public void testNullClassToString() {
+    assertEquals("NULL_CLASS", CassandraTypeHandler.NullClass.INSTANCE.toString());
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForInvalidDuration() {
+    String columnValue = "invalid_duration";
+    String columnName = "total_time";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("duration")
+            .build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CassandraTypeHandler.castToExpectedType(result.dataType(), result.value()));
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForInvalidIpAddress() {
+    String columnValue = "invalid_ip";
+    String columnName = "ipAddress";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("inet").build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CassandraTypeHandler.castToExpectedType(result.dataType(), result.value()));
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForEmptyBytes() {
+    String columnName = "data";
+    String columnValue = "";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+    assertEquals("blob", result.dataType());
+    assertEquals(CassandraTypeHandler.NullClass.INSTANCE, result.value());
+  }
+
+  @Test
+  public void testGetColumnValueByType_InvalidHexBytesException() {
+    String columnName = "data";
+    String columnValue = "invalid_hex_$$";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> getColumnValueByType(spannerCol, sourceCol, valuesJson, null));
+  }
+
+  @Test
+  public void testGetColumnValueByType_InvalidTimestampException() {
+    String columnName = "created_on";
+    String columnValue = "invalid_timestamp";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .date()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("timestamp")
+            .build();
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CassandraTypeHandler.castToExpectedType(result.dataType(), result.value()));
+  }
 }
