@@ -7,7 +7,7 @@
 *   **Core Intent:** A bulk migration Dataflow pipeline to migrate data from various Source Databases (MySQL, PostgreSQL, Cassandra) into Cloud Spanner. It handles sharded and non-sharded databases.
 *   **Primary Users:** Internal SREs, external customers migrating to Cloud Spanner, and users of Spanner Migration Tool.
 *   **Critical SLOs/Guarantees:** Must effectively handle bulk data extraction and mapping to Cloud Spanner mutations while maintaining data integrity. Features a Dead Letter Queue (DLQ) for failed mutations.
-*   **Terminology:** 
+*   **Terminology:**
     *   **DLQ:** Dead Letter Queue (for failed records).
     *   **SourceRow:** Intermediate representation of a row read from the source database.
     *   **Mutation:** Spanner mutation to be applied.
