@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -1186,7 +1187,7 @@ public class CassandraDMLGeneratorTest {
     Mockito.when(sourceTable.name()).thenReturn("src_table");
 
     Mockito.when(schemaMapper.getSpannerColumnName("", "src_table", "col1"))
-        .thenThrow(new java.util.NoSuchElementException());
+        .thenThrow(new NoSuchElementException());
 
     Map<String, PreparedStatementValueObject<?>> response =
         CassandraDMLGenerator.getColumnValues(
@@ -1398,7 +1399,7 @@ public class CassandraDMLGeneratorTest {
     PreparedStatementGeneratedResponse prepResponse = (PreparedStatementGeneratedResponse) response;
 
     assertTrue(prepResponse.getDmlStatement().contains("\"LastName\""));
-    assertTrue(!prepResponse.getDmlStatement().contains("\"MissingCol\""));
+    assertFalse(prepResponse.getDmlStatement().contains("\"MissingCol\""));
 
     assertEquals(3, prepResponse.getValues().size());
   }
@@ -1423,7 +1424,8 @@ public class CassandraDMLGeneratorTest {
     Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
 
     // Composite PK
-    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("SingerId", "LastName"));
+    Mockito.when(sourceTable.primaryKeyColumns())
+        .thenReturn(ImmutableList.of("SingerId", "LastName"));
     Mockito.when(sourceTable.column("SingerId")).thenReturn(pkCol1);
     Mockito.when(pkCol1.type()).thenReturn("int");
     Mockito.when(sourceTable.column("LastName")).thenReturn(pkCol2);
@@ -1447,8 +1449,7 @@ public class CassandraDMLGeneratorTest {
     Mockito.when(nonPkCol.name()).thenReturn("Age");
     Mockito.when(nonPkCol.type()).thenReturn("int");
 
-    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "Age"))
-        .thenReturn("Age");
+    Mockito.when(schemaMapper.getSpannerColumnName("", "Singers", "Age")).thenReturn("Age");
     Mockito.when(spannerTable.column("Age")).thenReturn(spannerNonPkCol);
     Mockito.when(spannerNonPkCol.name()).thenReturn("Age");
     Mockito.when(spannerNonPkCol.type()).thenReturn(Type.int64());
@@ -1475,7 +1476,7 @@ public class CassandraDMLGeneratorTest {
     // The statement should contain SingerId and Age, but NOT LastName
     assertTrue(prepResponse.getDmlStatement().contains("\"SingerId\""));
     assertTrue(prepResponse.getDmlStatement().contains("\"Age\""));
-    assertTrue(!prepResponse.getDmlStatement().contains("\"LastName\""));
+    assertFalse(prepResponse.getDmlStatement().contains("\"LastName\""));
 
     // Expected values: SingerId (999), Age (30), and using_timestamp
     assertEquals(3, prepResponse.getValues().size());

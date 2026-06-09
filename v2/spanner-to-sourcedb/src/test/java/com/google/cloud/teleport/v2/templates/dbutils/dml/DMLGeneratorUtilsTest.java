@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -29,6 +30,7 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.common.collect.ImmutableList;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -59,7 +61,7 @@ public class DMLGeneratorUtilsTest {
   }
 
   @Test
-  public void testGetColumnValues_HappyPath() {
+  public void testGetColumnValues() {
     ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
     Table spannerTable = mock(Table.class);
     SourceTable sourceTable = mock(SourceTable.class);
@@ -104,7 +106,7 @@ public class DMLGeneratorUtilsTest {
   }
 
   @Test
-  public void testGetPkColumnValues_HappyPath() {
+  public void testGetPkColumnValues() {
     ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
     Table spannerTable = mock(Table.class);
     SourceTable sourceTable = mock(SourceTable.class);
@@ -184,7 +186,7 @@ public class DMLGeneratorUtilsTest {
     when(sourceTable.name()).thenReturn("src_table");
 
     when(schemaMapper.getSpannerColumnName("", "src_table", "col1"))
-        .thenThrow(new java.util.NoSuchElementException("Not found"));
+        .thenThrow(new NoSuchElementException("Not found"));
 
     Map<String, String> response =
         DMLGeneratorUtils.getPkColumnValues(
@@ -308,6 +310,6 @@ public class DMLGeneratorUtilsTest {
 
     assertEquals(1, response.size());
     assertEquals("mapped_val1", response.get("col1"));
-    assertTrue(!response.containsKey("col2"));
+    assertFalse(response.containsKey("col2"));
   }
 }
