@@ -16,7 +16,7 @@ workflows.
 
 ## Prerequisites
 
-Before starting, ask the user for the following:
+Before starting, attempt to automatically detect the local git repository root (e.g., using git rev-parse --show-toplevel). If automatic detection fails, ask the user for:
 
 *   The absolute path to the local git repository root.
 *   If needed, ask the user to authenticate to git/GitHub (e.g., `gh auth login`).
@@ -68,7 +68,7 @@ Check the pre-existing testing patterns and practices. Detail the exact testing 
 
 ### Step 7: Find Example PRs
 
-Search recently merged PRs (`gh pr list --state merged --limit 20`) or recent commits (`git log -n 20`) to find good representative examples of how a new feature request or bug-fix looks like for that template. Avoid using simple or test-only PRs.
+Search recently merged PRs or recent commits specifically touching the project directory (e.g., git log -n 20 -- <project-directory>) to find good representative examples of how a new feature request or bug-fix looks like for that template. Avoid using simple or test-only PRs.
 
 ### Confirmation
 
@@ -86,8 +86,7 @@ After the user approves your research findings:
     *   Focus on "Need to Know" information for a developer making their first
         PR.
     *   If information is missing, leave the section as `[TBD]`.
-    *   Use absolute paths or relative repository paths for all code references.
-3.  Write the generated Markdown content to a file named `project-context.md` in
+    *   Use relative repository paths for all code references to ensure portability across different environments.3.  Write the generated Markdown content to a file named `project-context.md` in
     the root directory of the project.
 4.  Embed the SVG architecture diagram in the document.
 5.  Commit your changes and upload a PR for review (`git commit`, `gh pr create`).

@@ -73,12 +73,12 @@ Did you encounter any particular challenges while working on your changes? If
 you found any subtle project quirks, "gotchas", or tricky API interactions,
 document these in the `AI Agent Tips > Areas to be Careful` section.
 
-*   **Example PRs**: Add your PR (or another representative PR) to the `Example
-    PRs` section to help guide future AI agents with similar tasks.
+*   **Example PRs**: Add a placeholder for your PR (or another representative PR) to the Example
+    PRs section, or update it with the actual PR link after creation to help guide future AI agents.
 
 ## 3. Creating the PR
 
-Once updates are made, commit the `project-context.md` changes and upload them as part of your existing PR (or create a new one) using `git commit` and `gh pr create`.
+Once updates are made, commit the project-context.md changes. If updating an existing PR, push the changes to the remote branch. If creating a new PR, use gh pr create.
 If needed, ask the user to authenticate to git/GitHub (e.g., `gh auth login`).
 
 ## Reporting Issues
