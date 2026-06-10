@@ -22,15 +22,15 @@ import java.util.Objects;
 
 public class Shard implements Serializable {
 
-  private String logicalShardId;
-  private String host;
-  private String port;
-  private String user;
-  private String password;
-  private String dbName;
-  private String namespace;
-  private String secretManagerUri;
-  private String connectionProperties;
+  private String logicalShardId = "";
+  private String host = "";
+  private String port = "";
+  private String user = "";
+  private String password = "";
+  private String dbName = "";
+  private String namespace = "";
+  private String secretManagerUri = "";
+  private String connectionProperties = "";
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 

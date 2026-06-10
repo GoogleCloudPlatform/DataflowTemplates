@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
@@ -38,17 +39,20 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchemaScanner;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -62,6 +66,7 @@ import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchem
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -118,6 +123,14 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb.class);
+
+  // JDBC Drivers
+  private static final String MYSQL_DRIVER = "com.mysql.cj.jdbc.Driver";
+  private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
+
+  // JDBC URL Prefixes
+  private static final String MYSQL_JDBC_PREFIX = "jdbc:mysql://";
+  private static final String POSTGRESQL_JDBC_PREFIX = "jdbc:postgresql://";
 
   /**
    * Options supported by the pipeline.
@@ -592,24 +605,8 @@ public class SpannerToSourceDb {
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers() > 0
             ? pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers()
             : 1;
-    int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
-    if (connectionPoolSizePerWorker < 1) {
-      // This can happen when the number of workers is more than max.
-      // This can cause overload on the source database. Error out and let the user know.
-      LOG.error(
-          "Max workers {} is more than max shard connections {}, this can lead to more database"
-              + " connections than desired",
-          maxNumWorkers,
-          options.getMaxShardConnections());
-      throw new IllegalArgumentException(
-          "Max Dataflow workers "
-              + maxNumWorkers
-              + " is more than max per shard connections: "
-              + options.getMaxShardConnections()
-              + " this can lead to more"
-              + " database connections than desired. Either reduce the max allowed workers or"
-              + " incease the max shard connections");
-    }
+    int connectionPoolSizePerWorker =
+        calculateConnectionPoolSizePerWorker(options.getMaxShardConnections(), maxNumWorkers);
 
     String workerMachineType =
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
@@ -656,20 +653,14 @@ public class SpannerToSourceDb {
             .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
-    List<Shard> shards;
-    String shardingMode;
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-        || POSTGRES_SOURCE_TYPE.equals(options.getSourceType())) {
-      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    List<Shard> shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
 
-    } else {
-      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
-      shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
-      LOG.info("Cassandra config is: {}", shards.get(0));
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-    }
+    // cassandra is always a single sharded migration.
+    // for JDBC, shards size and IsShardedMigration option is used below.
+    String shardingMode =
+        options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)
+            ? Constants.SHARDING_MODE_SINGLE_SHARD
+            : Constants.SHARDING_MODE_MULTI_SHARD;
 
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       validateMySQLNotReadOnly(shards);
@@ -688,6 +679,38 @@ public class SpannerToSourceDb {
       }
     }
 
+    buildPipeline(
+        pipeline,
+        options,
+        sourceSchema,
+        shards,
+        ddlView,
+        shadowTableDdlView,
+        spannerConfig,
+        spannerMetadataConfig,
+        connectionPoolSizePerWorker,
+        shardingMode,
+        startTime,
+        maxNumWorkers);
+
+    return pipeline.run();
+  }
+
+  static void buildPipeline(
+      Pipeline pipeline,
+      Options options,
+      SourceSchema sourceSchema,
+      List<Shard> shards,
+      PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
+      SpannerConfig spannerConfig,
+      SpannerConfig spannerMetadataConfig,
+      int connectionPoolSizePerWorker,
+      String shardingMode,
+      long startTime,
+      int maxNumWorkers) {
+
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
@@ -926,8 +949,53 @@ public class SpannerToSourceDb {
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
                 .setIncludePaneInfo(true)
                 .build());
+  }
 
-    return pipeline.run();
+  /**
+   * Returns a list of shards based on the source type and source shards file path. This should be
+   * removed in Phase 2 of Standardizing config.
+   *
+   * @param sourceType The type of the source database.
+   * @param sourceShardsFilePath The GCS path to the source shards configuration file.
+   * @return A list of shards.
+   */
+  public static List<Shard> getShardList(String sourceType, String sourceShardsFilePath) {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig;
+    try {
+      // Parse the source shards configuration file to respective
+      // SourceConnectionConfig.
+      sourceConnectionConfig =
+          sourceConfigParser.parseConfiguration(sourceType, sourceShardsFilePath);
+    } catch (Exception e) {
+      LOG.error("Error parsing source config", e);
+      throw new RuntimeException("Error parsing source config", e);
+    }
+    List<Shard> shards;
+    if (sourceConnectionConfig instanceof JdbcShardConfig) {
+      shards = ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+      LOG.info("JDBC shard config is parsed.");
+    } else if (sourceConnectionConfig instanceof CassandraConnectionConfig) {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      shards =
+          cassandraConfigFileReader.getCassandraShard(
+              ((CassandraConnectionConfig) sourceConnectionConfig).getOptionsMap());
+      LOG.info("Cassandra shard config is parsed.");
+    } else {
+      String errorMessage =
+          "Invalid source config for source type: "
+              + sourceType
+              + ". Source config parsed to: "
+              + sourceConnectionConfig.getClass()
+              + ". Source config file path: "
+              + sourceShardsFilePath;
+      LOG.error(errorMessage);
+      throw new RuntimeException(errorMessage);
+    }
+    Preconditions.checkArgument(
+        shards != null && !shards.isEmpty(), "Shard list should have at least 1 element.");
+    return shards;
   }
 
   public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
@@ -964,7 +1032,7 @@ public class SpannerToSourceDb {
     return readChangeStreamDoFn;
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  static DeadLetterQueueManager buildDlqManager(Options options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
@@ -978,7 +1046,7 @@ public class SpannerToSourceDb {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
-  private static Connection createJdbcConnection(
+  static Connection createJdbcConnection(
       Shard shard, String driverClassName, String jdbcUrlPrefix) {
     try {
       String sourceConnectionUrl =
@@ -1009,7 +1077,7 @@ public class SpannerToSourceDb {
    * @param cassandraShard The shard containing connection details.
    * @return A {@link CqlSession} instance.
    */
-  private static CqlSession createCqlSession(CassandraShard cassandraShard) {
+  static CqlSession createCqlSession(CassandraShard cassandraShard) {
     CqlSessionBuilder builder = CqlSession.builder();
     DriverConfigLoader configLoader =
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
@@ -1017,10 +1085,9 @@ public class SpannerToSourceDb {
     return builder.build();
   }
 
-  private static void validateMySQLNotReadOnly(List<Shard> shards) {
+  static void validateMySQLNotReadOnly(List<Shard> shards) {
     for (Shard shard : shards) {
-      try (Connection conn =
-          createJdbcConnection(shard, "com.mysql.cj.jdbc.Driver", "jdbc:mysql://")) {
+      try (Connection conn = createJdbcConnection(shard, MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
         if (conn != null) {
           try (Statement stmt = conn.createStatement();
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
@@ -1040,35 +1107,48 @@ public class SpannerToSourceDb {
     }
   }
 
-  private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
-    SourceSchemaScanner scanner = null;
-    SourceSchema sourceSchema = null;
+  static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
     try {
-      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-        Connection connection =
-            createJdbcConnection(shards.get(0), "com.mysql.cj.jdbc.Driver", "jdbc:mysql://");
-        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
-        sourceSchema = scanner.scan();
-        connection.close();
-      } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
-        Connection connection =
-            createJdbcConnection(shards.get(0), "org.postgresql.Driver", "jdbc:postgresql://");
-        scanner =
-            new PostgreSQLInformationSchemaScanner(
-                connection, shards.get(0).getDbName(), shards.get(0).getNamespace());
-        sourceSchema = scanner.scan();
-        connection.close();
-      } else {
-        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
-          scanner =
-              new CassandraInformationSchemaScanner(
-                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
-          sourceSchema = scanner.scan();
-        }
-      }
+      return getSourceSchema(options, shards);
     } catch (SQLException e) {
       throw new RuntimeException("Unable to discover jdbc schema", e);
     }
-    return sourceSchema;
+  }
+
+  static SourceSchema getSourceSchema(Options options, List<Shard> shards) throws SQLException {
+    if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+      try (Connection connection =
+          createJdbcConnection(shards.get(0), MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
+        return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
+      }
+    } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
+      try (Connection connection =
+          createJdbcConnection(shards.get(0), POSTGRESQL_DRIVER, POSTGRESQL_JDBC_PREFIX)) {
+        return new PostgreSQLInformationSchemaScanner(
+                connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
+            .scan();
+      }
+    } else {
+      try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
+        return new CassandraInformationSchemaScanner(
+                session, ((CassandraShard) shards.get(0)).getKeySpaceName())
+            .scan();
+      }
+    }
+  }
+
+  static int calculateConnectionPoolSizePerWorker(Long maxShardConnections, int maxNumWorkers) {
+    int connectionPoolSizePerWorker = (int) (maxShardConnections / maxNumWorkers);
+    if (connectionPoolSizePerWorker < 1) {
+      throw new IllegalArgumentException(
+          "Max Dataflow workers "
+              + maxNumWorkers
+              + " is more than max per shard connections: "
+              + maxShardConnections
+              + " this can lead to more"
+              + " database connections than desired. Either reduce the max allowed workers or"
+              + " incease the max shard connections");
+    }
+    return connectionPoolSizePerWorker;
   }
 }

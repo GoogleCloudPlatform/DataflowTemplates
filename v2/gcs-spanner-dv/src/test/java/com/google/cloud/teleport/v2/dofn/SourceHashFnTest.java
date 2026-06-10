@@ -112,7 +112,7 @@ public class SourceHashFnTest {
     when(table.primaryKeys()).thenReturn(ImmutableList.of(pkColumn));
 
     // Execute
-    SourceHashFn fn = new SourceHashFn(ddlView, schemaMapperProvider);
+    SourceHashFn fn = new SourceHashFn(ddlView, schemaMapperProvider, null);
     fn.processElement(context);
     fn.processElement(context);
 

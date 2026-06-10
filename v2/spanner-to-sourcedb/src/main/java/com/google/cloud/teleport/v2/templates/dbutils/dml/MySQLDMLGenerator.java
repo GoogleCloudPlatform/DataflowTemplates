@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
@@ -69,8 +70,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException(
           "Could not find source table name for spanner table: " + spannerTableName, e);
     }
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
-        sourceSchema.table(sourceTableName);
+    SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -95,7 +95,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
             MySQLDMLGenerator::getMappedColumnValue);
-    if (pkcolumnNameValues == null) {
+    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",
@@ -179,7 +179,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
   private static DMLGeneratorResponse generateUpsertStatement(
       Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
+      SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
@@ -196,7 +196,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     return getUpsertStatement(sourceTable.name(), columnNameValues);
   }
 
-  private static String getMappedColumnValue(
+  @VisibleForTesting
+  static String getMappedColumnValue(
       Column spannerColDef,
       SourceColumn sourceColDef,
       JSONObject valuesJson,
@@ -258,7 +259,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     return rawHex.isEmpty() ? "x''" : "x'" + rawHex + "'";
   }
 
-  private static String getColumnValueByType(
+  @VisibleForTesting
+  static String getColumnValueByType(
       String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
     String response = "";
     String cleanedNullBytes = "";

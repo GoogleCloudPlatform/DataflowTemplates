@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
@@ -71,8 +72,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException(
           "Could not find source table name for spanner table: " + spannerTableName, e);
     }
-    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
-        sourceSchema.table(sourceTableName);
+    SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -97,7 +97,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
             PostgreSQLDMLGenerator::getMappedColumnValue);
-    if (pkcolumnNameValues == null) {
+    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",
@@ -190,7 +190,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
 
   private static DMLGeneratorResponse generateUpsertStatement(
       Table spannerTable,
-      com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
+      SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
@@ -311,7 +311,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
     return cleanedNullBytes;
   }
 
-  private static String getQuotedEscapedString(String input, String spannerColType) {
+  static String getQuotedEscapedString(String input, String spannerColType) {
     if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
       return input;
     }

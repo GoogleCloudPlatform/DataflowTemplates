@@ -162,9 +162,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
             .by(
                 (record) ->
                     AvroDestination.of(
-                        record.shardId(),
-                        record.tableName(),
-                        record.getPayload().getSchema().toString()))
+                        record.shardId(), record.tableName(), record.gcsSchema().toString()))
             .via(
                 Contextful.fn(
                     record -> {

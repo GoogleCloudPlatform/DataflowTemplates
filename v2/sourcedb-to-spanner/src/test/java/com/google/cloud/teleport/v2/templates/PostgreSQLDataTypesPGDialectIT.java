@@ -228,12 +228,10 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         "float4",
         createRows(
             "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
-    // float4_to_float32 is commented out to avoid failing the test case; data is not migrated at
-    // all
-    // result.put(
-    //     "float4_to_float32",
-    //     createRows(
-    //         "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
+    result.put(
+        "float4_to_float32",
+        createRows(
+            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "2.34", "NULL"));
     result.put(
         "float4_to_string",
         createRows(
@@ -302,12 +300,10 @@ public class PostgreSQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
         "real",
         createRows(
             "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
-    // float4_to_float32 is commented out to avoid failing the test case; data is not migrated at
-    // all
-    // result.put(
-    //     "real_to_float32",
-    //     createRows(
-    //         "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
+    result.put(
+        "real_to_float32",
+        createRows(
+            "-1.9876542E38", "1.9876542E38", "NaN", "-Infinity", "Infinity", "5.67", "NULL"));
     result.put(
         "real_to_string",
         createRows(
