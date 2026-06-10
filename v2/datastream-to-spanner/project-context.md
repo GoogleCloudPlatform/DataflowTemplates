@@ -4,7 +4,7 @@
 
 ## Overview
 
-*   **Core Intent:** The Dataflow template is a streaming CDC (Change Data Capture) migration pipeline that moves real-time database changes from Datastream to Cloud Spanner. It's meant to reduce application downtime by applying in-flight changes while bulk data loads happen.
+*   **Core Intent:** The Dataflow template is a streaming CDC (Change Data Capture) migration pipeline that applies real-time database changes to Cloud Spanner. **Important distinction:** This template does *not* read directly from the source database or pipe data to Datastream. Instead, Datastream independently reads from the source DB and writes the change events as Avro (or JSON) files to a GCS bucket. This Dataflow template then consumes those files from GCS, converts the Avro records into internal JSON representations, and applies the changes to Spanner. It's meant to reduce application downtime by applying in-flight changes while bulk data loads happen.
 *   **Primary Users:** Database administrators, migration engineers, and customers moving databases to Cloud Spanner.
 *   **Critical SLOs/Guarantees:** Must ensure eventual consistency with the source database by never allowing older events to overwrite newer ones (preserving commit order).
 *   **Terminology:**
@@ -21,7 +21,7 @@
     *   **Frameworks/Libraries:** Apache Beam, GCP Spanner SDK, Datastream API Client.
     *   **Key Technologies:** Cloud Spanner, Cloud Dataflow, Datastream, Google Cloud Storage (GCS)
 *   **Code Location:** `v2/datastream-to-spanner`
-*   **Data Flow:** Source Database -> Datastream -> Google Cloud Storage (Avro/JSON) -> Cloud Dataflow Pipeline (parses, transforms, schema validates) -> Cloud Spanner. Failed events are sent to a Dead Letter Queue (DLQ) in GCS for recycling/retrying.
+*   **Data Flow:** Source Database -> Datastream -> Google Cloud Storage (Avro/JSON) -> Cloud Dataflow Pipeline (consumes Avro/JSON from GCS, converts Avro to JSON, transforms, schema validates) -> Cloud Spanner. Failed events are sent to a Dead Letter Queue (DLQ) in GCS for recycling/retrying.
 *   **Project Structure (Logical Architecture Mapping):**
     *   `v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates`: Core dataflow pipeline logic (`DataStreamToSpanner.java`) and DoFns.
     *   `v2/datastream-to-spanner/src/main/java/com/google/cloud/teleport/v2/templates/datastream`: Datastream mapping, JSON/Avro parsing, and dialect-specific parsing contexts.
