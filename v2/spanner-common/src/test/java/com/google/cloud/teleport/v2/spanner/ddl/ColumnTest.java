@@ -51,6 +51,7 @@ public class ColumnTest {
     assertEquals("JSON", Column.builder().name("col").type(Type.json()).autoBuild().typeString());
     assertEquals(
         "TOKENLIST", Column.builder().name("col").type(Type.tokenlist()).autoBuild().typeString());
+    assertEquals("UUID", Column.builder().name("col").type(Type.uuid()).autoBuild().typeString());
     assertEquals(
         "ARRAY<INT64>",
         Column.builder().name("col").type(Type.array(Type.int64())).autoBuild().typeString());
@@ -152,6 +153,13 @@ public class ColumnTest {
             .autoBuild()
             .typeString());
     assertEquals(
+        "uuid",
+        Column.builder(Dialect.POSTGRESQL)
+            .name("col")
+            .type(Type.pgUuid())
+            .autoBuild()
+            .typeString());
+    assertEquals(
         "bigint[]",
         Column.builder(Dialect.POSTGRESQL)
             .name("col")
@@ -180,6 +188,7 @@ public class ColumnTest {
     assertEquals(Type.json(), Column.builder().name("col").parseType("JSON").autoBuild().type());
     assertEquals(
         Type.tokenlist(), Column.builder().name("col").parseType("TOKENLIST").autoBuild().type());
+    assertEquals(Type.uuid(), Column.builder().name("col").parseType("UUID").autoBuild().type());
     assertEquals(
         Type.array(Type.int64()),
         Column.builder().name("col").parseType("ARRAY<INT64>").autoBuild().type());
@@ -239,6 +248,9 @@ public class ColumnTest {
             .parseType("spanner.commit_timestamp")
             .autoBuild()
             .type());
+    assertEquals(
+        Type.pgUuid(),
+        Column.builder(Dialect.POSTGRESQL).name("col").parseType("uuid").autoBuild().type());
     assertEquals(
         Type.pgArray(Type.pgInt8()),
         Column.builder(Dialect.POSTGRESQL).name("col").parseType("bigint[]").autoBuild().type());

@@ -164,6 +164,10 @@ public abstract class Column implements Serializable {
         return Type.Code.JSON.getName();
       case PG_JSONB:
         return Type.Code.PG_JSONB.getName();
+      case UUID:
+        return Type.Code.UUID.getName();
+      case PG_UUID:
+        return Type.Code.PG_UUID.getName();
       case TOKENLIST:
         return Type.Code.TOKENLIST.getName();
       case ARRAY:
@@ -250,6 +254,10 @@ public abstract class Column implements Serializable {
       return type(Type.bytes());
     }
 
+    public Builder uuid() {
+      return type(Type.uuid());
+    }
+
     public Builder timestamp() {
       return type(Type.timestamp());
     }
@@ -304,6 +312,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgJsonb() {
       return type(Type.pgJsonb());
+    }
+
+    public Builder pgUuid() {
+      return type(Type.pgUuid());
     }
 
     public Builder max() {
@@ -377,6 +389,9 @@ public abstract class Column implements Serializable {
           if (spannerType.equals(Type.Code.NUMERIC.getName())) {
             return t(Type.numeric(), null);
           }
+          if (spannerType.equals(Type.Code.UUID.getName())) {
+            return t(Type.uuid(), null);
+          }
           if (spannerType.equals(Type.Code.JSON.getName())) {
             return t(Type.json(), null);
           }
@@ -431,6 +446,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals(Type.Code.PG_NUMERIC.getName())) {
             return t(Type.pgNumeric(), null);
+          }
+          if (spannerType.equals(Type.Code.PG_UUID.getName())) {
+            return t(Type.pgUuid(), null);
           }
           if (spannerType.equals(Type.Code.PG_JSONB.getName())) {
             return t(Type.pgJsonb(), null);

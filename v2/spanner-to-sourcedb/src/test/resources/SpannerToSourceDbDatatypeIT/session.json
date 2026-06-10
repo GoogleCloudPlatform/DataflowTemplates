@@ -507,7 +507,7 @@
         "c1": {
           "Name": "uuid_column",
           "T": {
-            "Name": "STRING",
+            "Name": "UUID",
             "Len": 128,
             "IsArray": false
           },
@@ -718,7 +718,7 @@
         "c1": {
           "Name": "uuid_column",
           "T": {
-            "Name": "STRING",
+            "Name": "UUID",
             "Len": 128,
             "IsArray": false
           },

@@ -215,7 +215,9 @@ public class GenericRecordTypeConvertor {
         throw e;
       } catch (Exception e) {
         throw new RuntimeException(
-            String.format("Unable to convert spanner value for spanner col: %s", spannerColName),
+            String.format(
+                "Unable to convert spanner value for spanner col: %s. table: %s",
+                spannerColName, srcTableName),
             e);
       }
     }
@@ -570,10 +572,21 @@ public class GenericRecordTypeConvertor {
       throw new NullPointerException("schemaMapper returned null spanner dialect.");
     }
     if (AvroToValueMapper.convertorMap().get(dialect).containsKey(spannerType)) {
-      return AvroToValueMapper.convertorMap()
-          .get(dialect)
-          .get(spannerType)
-          .apply(value, fieldSchema);
+      try {
+        return AvroToValueMapper.convertorMap()
+            .get(dialect)
+            .get(spannerType)
+            .apply(value, fieldSchema);
+      } catch (Exception e) {
+        LOG.error(
+            "Exception while converting record value {} to Field Schema: {}, colName: {}, spannerType: {}",
+            value,
+            fieldSchema,
+            recordColName,
+            spannerType,
+            e);
+        throw e;
+      }
     } else {
       throw new IllegalArgumentException(
           "Found unsupported Spanner column type("
