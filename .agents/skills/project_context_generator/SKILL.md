@@ -96,7 +96,3 @@ After the user approves your research findings:
 
 The template structure can be found in
 [project-context.template.md](references/project-context.template.md).
-
-## Reporting Issues
-
-Report bugs or improvements for this skill in the repository's issue tracker.
