@@ -97,7 +97,7 @@ public class PostgreSQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
             PostgreSQLDMLGenerator::getMappedColumnValue);
-    if (pkcolumnNameValues == null) {
+    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",

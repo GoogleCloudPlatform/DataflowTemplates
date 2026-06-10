@@ -16,8 +16,10 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +30,7 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.common.collect.ImmutableList;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -58,7 +61,7 @@ public class DMLGeneratorUtilsTest {
   }
 
   @Test
-  public void testGetColumnValues_HappyPath() {
+  public void testGetColumnValues() {
     ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
     Table spannerTable = mock(Table.class);
     SourceTable sourceTable = mock(SourceTable.class);
@@ -103,7 +106,7 @@ public class DMLGeneratorUtilsTest {
   }
 
   @Test
-  public void testGetPkColumnValues_HappyPath() {
+  public void testGetPkColumnValues() {
     ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
     Table spannerTable = mock(Table.class);
     SourceTable sourceTable = mock(SourceTable.class);
@@ -145,5 +148,168 @@ public class DMLGeneratorUtilsTest {
 
     assertEquals(1, response.size());
     assertEquals("mapped_val", response.get("col1"));
+  }
+
+  @Test
+  public void testGetPkColumnValues_SourceColDefNull() {
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    Table spannerTable = mock(Table.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("col1"));
+    when(sourceTable.column("col1")).thenReturn(null);
+
+    Map<String, String> response =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null,
+            null);
+
+    assertNull(response);
+  }
+
+  @Test
+  public void testGetPkColumnValues_SpannerColNameThrowsNoSuchElement() {
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    Table spannerTable = mock(Table.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+    SourceColumn sourceCol = mock(SourceColumn.class);
+
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("col1"));
+    when(sourceTable.column("col1")).thenReturn(sourceCol);
+    when(sourceCol.isGenerated()).thenReturn(false);
+    when(sourceTable.name()).thenReturn("src_table");
+
+    when(schemaMapper.getSpannerColumnName("", "src_table", "col1"))
+        .thenThrow(new NoSuchElementException("Not found"));
+
+    Map<String, String> response =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null,
+            null);
+
+    assertTrue(response.isEmpty());
+  }
+
+  @Test
+  public void testGetPkColumnValues_SpannerColNameNull() {
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    Table spannerTable = mock(Table.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+    SourceColumn sourceCol = mock(SourceColumn.class);
+
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("col1"));
+    when(sourceTable.column("col1")).thenReturn(sourceCol);
+    when(sourceCol.isGenerated()).thenReturn(false);
+    when(sourceTable.name()).thenReturn("src_table");
+
+    when(schemaMapper.getSpannerColumnName("", "src_table", "col1")).thenReturn(null);
+
+    Map<String, String> response =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null,
+            null);
+
+    assertTrue(response.isEmpty());
+  }
+
+  @Test
+  public void testGetPkColumnValues_SpannerColDefNull() {
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    Table spannerTable = mock(Table.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+    SourceColumn sourceCol = mock(SourceColumn.class);
+
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("col1"));
+    when(sourceTable.column("col1")).thenReturn(sourceCol);
+    when(sourceCol.isGenerated()).thenReturn(false);
+    when(sourceTable.name()).thenReturn("src_table");
+
+    when(schemaMapper.getSpannerColumnName("", "src_table", "col1")).thenReturn("spanner_col1");
+    when(spannerTable.column("spanner_col1")).thenReturn(null);
+
+    Map<String, String> response =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            new JSONObject(),
+            "+00:00",
+            null,
+            null);
+
+    assertTrue(response.isEmpty());
+  }
+
+  @Test
+  public void testGetPkColumnValues_CompositePk_OnePkFailsToMap() {
+    ISchemaMapper schemaMapper = mock(ISchemaMapper.class);
+    Table spannerTable = mock(Table.class);
+    SourceTable sourceTable = mock(SourceTable.class);
+    SourceColumn sourceCol1 = mock(SourceColumn.class);
+    SourceColumn sourceCol2 = mock(SourceColumn.class);
+    Column spannerCol1 = mock(Column.class);
+
+    when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of("col1", "col2"));
+    when(sourceTable.column("col1")).thenReturn(sourceCol1);
+    when(sourceCol1.name()).thenReturn("col1");
+    when(sourceCol1.isGenerated()).thenReturn(false);
+    when(sourceTable.column("col2")).thenReturn(sourceCol2);
+    when(sourceCol2.name()).thenReturn("col2");
+    when(sourceCol2.isGenerated()).thenReturn(false);
+    when(sourceTable.name()).thenReturn("src_table");
+
+    // col1 maps successfully
+    when(schemaMapper.getSpannerColumnName("", "src_table", "col1")).thenReturn("spanner_col1");
+    when(spannerTable.column("spanner_col1")).thenReturn(spannerCol1);
+    when(spannerCol1.name()).thenReturn("spanner_col1");
+
+    // col2 fails to map (returns null)
+    when(schemaMapper.getSpannerColumnName("", "src_table", "col2")).thenReturn(null);
+
+    JSONObject keyValuesJson = new JSONObject();
+    keyValuesJson.put("spanner_col1", "val1");
+
+    DMLGeneratorUtils.ColumnValueMapper mapper =
+        (spannerColDef, sourceColDef, valuesJson, timezoneOffset) -> {
+          assertEquals(spannerCol1, spannerColDef);
+          assertEquals(sourceCol1, sourceColDef);
+          assertEquals(keyValuesJson, valuesJson);
+          assertEquals("+00:00", timezoneOffset);
+          return "mapped_val1";
+        };
+
+    Map<String, String> response =
+        DMLGeneratorUtils.getPkColumnValues(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            new JSONObject(),
+            keyValuesJson,
+            "+00:00",
+            null,
+            mapper);
+
+    assertEquals(1, response.size());
+    assertEquals("mapped_val1", response.get("col1"));
+    assertFalse(response.containsKey("col2"));
   }
 }
