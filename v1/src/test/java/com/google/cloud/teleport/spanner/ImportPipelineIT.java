@@ -261,6 +261,8 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
                 .map(row -> row.getString(0))
                 .collect(Collectors.toList()))
         .containsExactly("UdfSchema.Remote");
+
+    // TODO(b/517150731): Assert the rest of the database content.
   }
 
   @Test
