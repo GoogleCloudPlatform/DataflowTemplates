@@ -116,8 +116,7 @@ public class SourceProcessorFactoryTest {
 
   @Test
   public void testCreateSourceProcessor_spanner_validSource() throws Exception {
-    SpannerShard spannerShard =
-        new SpannerShard("my-project", "my-instance", "my-database");
+    SpannerShard spannerShard = new SpannerShard("my-project", "my-instance", "my-database");
     spannerShard.setLogicalShardId("shard1");
 
     List<Shard> shards = List.of(spannerShard);

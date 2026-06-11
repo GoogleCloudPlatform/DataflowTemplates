@@ -72,7 +72,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException("SchemaMapper must not be null.");
     }
     if (spannerDdl == null) {
-      throw new InvalidDMLGenerationException("Spanner DDL must not be null.");
+      throw new InvalidDMLGenerationException("Source Spanner DDL must not be null.");
     }
     if (sourceSchema == null) {
       throw new InvalidDMLGenerationException("SourceSchema must not be null.");
@@ -81,7 +81,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
       throw new InvalidDMLGenerationException(
-          "Spanner table '" + spannerTableName + "' not found in DDL.");
+          "Source Spanner table '" + spannerTableName + "' not found in source DDL.");
     }
 
     String targetTableName;
@@ -89,7 +89,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       targetTableName = schemaMapper.getSourceTableName("", spannerTableName);
     } catch (NoSuchElementException e) {
       throw new InvalidDMLGenerationException(
-          "Could not find target table name for Spanner table: " + spannerTableName, e);
+          "Could not find target table name for source Spanner table: " + spannerTableName, e);
     }
 
     SourceTable targetTable = sourceSchema.table(targetTableName);

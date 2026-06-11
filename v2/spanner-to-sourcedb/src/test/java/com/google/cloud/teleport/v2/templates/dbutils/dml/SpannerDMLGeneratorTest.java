@@ -870,8 +870,7 @@ public final class SpannerDMLGeneratorTest {
                     .build());
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
-    assertEquals(
-        new BigDecimal("12345.6789"), mutation.asMap().get("Amount").getNumeric());
+    assertEquals(new BigDecimal("12345.6789"), mutation.asMap().get("Amount").getNumeric());
   }
 
   @Test

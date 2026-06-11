@@ -19,16 +19,15 @@ import java.util.Objects;
 
 /**
  * Represents a shard targeting a Cloud Spanner database. The {@code projectId} and {@code
- * instanceId} are stored as dedicated fields; {@code databaseId} maps to the parent's {@code dbName}
- * field.
+ * instanceId} are stored as dedicated fields; {@code databaseId} maps to the parent's {@code
+ * dbName} field.
  */
 public class SpannerShard extends Shard {
 
   private final String projectId;
   private final String instanceId;
 
-  public SpannerShard(
-      String projectId, String instanceId, String databaseId) {
+  public SpannerShard(String projectId, String instanceId, String databaseId) {
     super();
     this.projectId = projectId;
     this.instanceId = instanceId;
