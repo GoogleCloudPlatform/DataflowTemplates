@@ -120,10 +120,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       }
     } catch (Exception exception) {
       LOG.error(
-          "Error resetting database: "
-              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE', "
-              + "'SHOW CONSTRAINTS', 'DROP CONSTRAINT', 'SHOW INDEXES' and 'DROP INDEXES'.\n"
-              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          """
+                      Failed to reset Neo4j database. The reset uses CREATE OR REPLACE DATABASE when
+                        supported; otherwise, or if that fails, it deletes all nodes and relationships and
+                        drops constraints/indexes. Check that the configured Neo4j user can run either CREATE
+                        OR REPLACE DATABASE or the fallback operations: MATCH/DETACH DELETE, SHOW/DROP
+                        CONSTRAINTS, and SHOW/DROP INDEXES. To skip reset, set 'reset_db' to false in the job
+                        specification.""",
           exception);
     }
   }
