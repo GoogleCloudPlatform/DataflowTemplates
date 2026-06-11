@@ -92,4 +92,11 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
   public void setClientMap(Map<String, DatabaseClient> inputMap) {
     clientMap = inputMap;
   }
+
+  public void close() {
+    if (spannerService != null) {
+      spannerService.close();
+    }
+    clientMap.clear();
+  }
 }

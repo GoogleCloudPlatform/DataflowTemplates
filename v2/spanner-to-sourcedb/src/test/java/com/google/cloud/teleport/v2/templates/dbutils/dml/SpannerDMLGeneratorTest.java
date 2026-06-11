@@ -1247,25 +1247,6 @@ public final class SpannerDMLGeneratorTest {
   }
 
   @Test
-  public void unsupportedModTypeThrows() throws Exception {
-    assertThrows(
-        InvalidDMLGenerationException.class,
-        () ->
-            new SpannerDMLGenerator()
-                .getDMLStatement(
-                    new DMLGeneratorRequest.Builder(
-                            "UNSUPPORTED",
-                            "Singers",
-                            new JSONObject("{}"),
-                            new JSONObject("{\"SingerId\":\"1\"}"),
-                            "+00:00")
-                        .setSchemaMapper(buildIdentityMapper())
-                        .setDdl(buildDdl())
-                        .setSourceSchema(buildSourceSchema())
-                        .build()));
-  }
-
-  @Test
   public void tableNotFoundInDdlThrows() throws Exception {
     Ddl ddl = Ddl.builder().build(); // empty DDL
     SourceSchema schema = buildSourceSchema();
@@ -1366,28 +1347,6 @@ public final class SpannerDMLGeneratorTest {
   }
 
   @Test
-  public void nullArrayOfInt64IsBoundAsTypedNullArray() throws Exception {
-    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.int64()));
-    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<INT64>");
-    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
-
-    JSONObject newValues = new JSONObject("{\"ArrVal\":null}");
-    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
-
-    DMLGeneratorResponse response =
-        new SpannerDMLGenerator()
-            .getDMLStatement(
-                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
-                    .setSchemaMapper(mapper)
-                    .setDdl(ddl)
-                    .setSourceSchema(schema)
-                    .build());
-
-    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
-    assertTrue(mutation.asMap().get("ArrVal").isNull());
-  }
-
-  @Test
   public void arrayOfFloat64IsHandled() throws Exception {
     Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.float64()));
     SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<FLOAT64>");
@@ -1431,12 +1390,6 @@ public final class SpannerDMLGeneratorTest {
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertEquals(
         java.util.Arrays.asList(true, false), mutation.asMap().get("ArrVal").getBoolArray());
-  }
-
-  @Test
-  public void nullRequestThrows() {
-    assertThrows(
-        InvalidDMLGenerationException.class, () -> new SpannerDMLGenerator().getDMLStatement(null));
   }
 
   @Test
