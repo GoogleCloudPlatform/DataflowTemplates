@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.dbutils.dml;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +28,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
@@ -1149,6 +1152,291 @@ public final class SpannerDMLGeneratorTest {
                         .setSchemaMapper(buildIdentityMapper())
                         .setSourceSchema(buildSourceSchema())
                         .build()));
+  }
+
+  @Test
+  public void deleteWithCompositePrimaryKey() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Albums")
+            .column("SingerId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("AlbumId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Title")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("SingerId")
+            .asc("AlbumId")
+            .end()
+            .endTable()
+            .build();
+    SourceSchema schema =
+        SourceSchema.builder(SRC_TYPE)
+            .databaseName("test-db")
+            .tables(
+                ImmutableMap.of(
+                    "Albums",
+                    SourceTable.builder(SRC_TYPE)
+                        .name("Albums")
+                        .primaryKeyColumns(ImmutableList.of("SingerId", "AlbumId"))
+                        .columns(
+                            ImmutableList.of(
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("SingerId")
+                                    .type("INT64")
+                                    .isPrimaryKey(true)
+                                    .build(),
+                                SourceColumn.builder(SRC_TYPE)
+                                    .name("AlbumId")
+                                    .type("INT64")
+                                    .isPrimaryKey(true)
+                                    .build()))
+                        .build()))
+            .build();
+    ISchemaMapper mapper = buildIdentityMapper();
+    when(mapper.getSourceTableName("", "Albums")).thenReturn("Albums");
+    when(mapper.getSourceColumnName("", "Albums", "SingerId")).thenReturn("SingerId");
+    when(mapper.getSourceColumnName("", "Albums", "AlbumId")).thenReturn("AlbumId");
+
+    JSONObject newValues = new JSONObject("{}");
+    JSONObject keyValues = new JSONObject("{\"SingerId\":\"1\", \"AlbumId\":\"2\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("DELETE", "Albums", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(Mutation.Op.DELETE, mutation.getOperation());
+    assertTrue(mutation.toString().contains("Albums"));
+    assertTrue(mutation.toString().contains("1"));
+    assertTrue(mutation.toString().contains("2"));
+  }
+
+  @Test
+  public void explicitNullInJsonPayloadIsBoundAsTypedNull() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("Val", Type.string());
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("Val", "STRING");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"Val\":null}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertTrue(mutation.asMap().get("Val").isNull());
+  }
+
+  @Test
+  public void unsupportedModTypeThrows() throws Exception {
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            new SpannerDMLGenerator()
+                .getDMLStatement(
+                    new DMLGeneratorRequest.Builder(
+                            "UNSUPPORTED",
+                            "Singers",
+                            new JSONObject("{}"),
+                            new JSONObject("{\"SingerId\":\"1\"}"),
+                            "+00:00")
+                        .setSchemaMapper(buildIdentityMapper())
+                        .setDdl(buildDdl())
+                        .setSourceSchema(buildSourceSchema())
+                        .build()));
+  }
+
+  @Test
+  public void tableNotFoundInDdlThrows() throws Exception {
+    Ddl ddl = Ddl.builder().build(); // empty DDL
+    SourceSchema schema = buildSourceSchema();
+    ISchemaMapper mapper = buildIdentityMapper();
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            new SpannerDMLGenerator()
+                .getDMLStatement(
+                    new DMLGeneratorRequest.Builder(
+                            "INSERT",
+                            "Singers",
+                            new JSONObject("{}"),
+                            new JSONObject("{\"SingerId\":\"1\"}"),
+                            "+00:00")
+                        .setSchemaMapper(mapper)
+                        .setDdl(ddl)
+                        .setSourceSchema(schema)
+                        .build()));
+  }
+
+  @Test
+  public void columnNotFoundInDdlDuringDeleteThrows() throws Exception {
+    Table mockTable = mock(Table.class);
+    IndexColumn mockPk = mock(IndexColumn.class);
+    when(mockPk.name()).thenReturn("MissingCol");
+    when(mockTable.primaryKeys()).thenReturn(ImmutableList.of(mockPk));
+    when(mockTable.column("MissingCol")).thenReturn(null);
+
+    Ddl mockDdl = mock(Ddl.class);
+    when(mockDdl.table("Singers")).thenReturn(mockTable);
+
+    SourceSchema schema = buildSourceSchema();
+    ISchemaMapper mapper = buildIdentityMapper();
+    when(mapper.getSourceColumnName(any(), any(), any())).thenReturn("MissingCol");
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            new SpannerDMLGenerator()
+                .getDMLStatement(
+                    new DMLGeneratorRequest.Builder(
+                            "DELETE",
+                            "Singers",
+                            new JSONObject("{}"),
+                            new JSONObject("{\"MissingCol\":\"1\"}"),
+                            "+00:00")
+                        .setSchemaMapper(mapper)
+                        .setDdl(mockDdl)
+                        .setSourceSchema(schema)
+                        .build()));
+  }
+
+  @Test
+  public void arrayWithNullElementsIsHandled() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.string()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<STRING>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"ArrVal\":[\"a\", null, \"c\"]}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(
+        java.util.Arrays.asList("a", null, "c"), mutation.asMap().get("ArrVal").getStringArray());
+  }
+
+  @Test
+  public void missingPkColumnInChangeRecordThrows() throws Exception {
+    Ddl ddl = buildDdl();
+    SourceSchema schema = buildSourceSchema();
+    ISchemaMapper mapper = buildIdentityMapper();
+
+    JSONObject newValues = new JSONObject("{}");
+    JSONObject keyValues = new JSONObject("{}"); // Missing SingerId
+
+    assertThrows(
+        InvalidDMLGenerationException.class,
+        () ->
+            new SpannerDMLGenerator()
+                .getDMLStatement(
+                    new DMLGeneratorRequest.Builder(
+                            "DELETE", "Singers", newValues, keyValues, "+00:00")
+                        .setSchemaMapper(mapper)
+                        .setDdl(ddl)
+                        .setSourceSchema(schema)
+                        .build()));
+  }
+
+  @Test
+  public void nullArrayOfInt64IsBoundAsTypedNullArray() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.int64()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<INT64>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"ArrVal\":null}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertTrue(mutation.asMap().get("ArrVal").isNull());
+  }
+
+  @Test
+  public void arrayOfFloat64IsHandled() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.float64()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<FLOAT64>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"ArrVal\":[1.1, 2.2]}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(
+        java.util.Arrays.asList(1.1, 2.2), mutation.asMap().get("ArrVal").getFloat64Array());
+  }
+
+  @Test
+  public void arrayOfBoolIsHandled() throws Exception {
+    Ddl ddl = buildDdlWithSingleNonPkCol("ArrVal", Type.array(Type.bool()));
+    SourceSchema schema = buildSchemaWithSingleNonPkCol("ArrVal", "ARRAY<BOOL>");
+    ISchemaMapper mapper = buildMapperForSingleColTable(schema);
+
+    JSONObject newValues = new JSONObject("{\"ArrVal\":[true, false]}");
+    JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
+
+    DMLGeneratorResponse response =
+        new SpannerDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder("INSERT", "T", newValues, keyValues, "+00:00")
+                    .setSchemaMapper(mapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(schema)
+                    .build());
+
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertEquals(
+        java.util.Arrays.asList(true, false), mutation.asMap().get("ArrVal").getBoolArray());
+  }
+
+  @Test
+  public void nullRequestThrows() {
+    assertThrows(
+        InvalidDMLGenerationException.class, () -> new SpannerDMLGenerator().getDMLStatement(null));
   }
 
   @Test

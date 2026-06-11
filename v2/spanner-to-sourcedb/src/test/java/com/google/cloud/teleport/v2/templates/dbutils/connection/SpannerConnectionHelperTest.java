@@ -94,4 +94,22 @@ public final class SpannerConnectionHelperTest {
     helper.setClientMap(map);
     assertThat(helper.isConnectionPoolInitialized()).isTrue();
   }
+
+  @Test
+  public void initDoesNotReinitializeIfNotEmpty() {
+    SpannerConnectionHelper helper = new SpannerConnectionHelper();
+    Map<String, DatabaseClient> map = new HashMap<>();
+    map.put("p/i/d", Mockito.mock(DatabaseClient.class));
+    helper.setClientMap(map);
+
+    // This should just return without doing anything (and log it)
+    helper.init(null);
+    assertThat(helper.isConnectionPoolInitialized()).isTrue();
+  }
+
+  @Test
+  public void testClose() {
+    SpannerConnectionHelper helper = new SpannerConnectionHelper();
+    helper.close();
+  }
 }

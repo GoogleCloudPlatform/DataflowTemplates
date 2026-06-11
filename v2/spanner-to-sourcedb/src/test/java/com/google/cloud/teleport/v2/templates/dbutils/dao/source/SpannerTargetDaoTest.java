@@ -75,4 +75,20 @@ public class SpannerTargetDaoTest {
     SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
     assertThrows(IllegalArgumentException.class, () -> dao.write(wrongResponse, null));
   }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteBuffersMutationWhenTransactionContextProvided() throws Exception {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    com.google.cloud.spanner.TransactionContext mockTxnContext =
+        mock(com.google.cloud.spanner.TransactionContext.class);
+
+    Mutation mutation = Mutation.newInsertOrUpdateBuilder("T").set("Id").to(1L).build();
+    SpannerMutationResponse response = new SpannerMutationResponse(mutation);
+
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    dao.write(response, null, mockTxnContext);
+
+    verify(mockTxnContext).buffer(mutation);
+  }
 }
