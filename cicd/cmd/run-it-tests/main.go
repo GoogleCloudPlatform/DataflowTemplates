@@ -61,6 +61,7 @@ func main() {
 		mvnFlags.InternalMaven(),
 		flags.Region(),
 		flags.Project(),
+		flags.WorkerMachineType(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
 		flags.HostIp(),
