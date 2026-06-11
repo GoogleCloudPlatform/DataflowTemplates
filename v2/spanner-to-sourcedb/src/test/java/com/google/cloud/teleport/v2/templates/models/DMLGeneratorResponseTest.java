@@ -36,7 +36,8 @@ public final class DMLGeneratorResponseTest {
 
   @Test
   public void isEmptyReturnsFalseForNonEmptyDml() {
-    DMLGeneratorResponse validDml = new DMLGeneratorResponse("INSERT INTO Singers VALUES (42, 'John')");
+    DMLGeneratorResponse validDml =
+        new DMLGeneratorResponse("INSERT INTO Singers VALUES (42, 'John')");
     assertFalse(validDml.isEmpty());
   }
 }

@@ -296,8 +296,7 @@ public final class SpannerDMLGeneratorTest {
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertNotNull(mutation);
     assertEquals(
-        ByteArray.copyFrom("hello".getBytes()),
-        mutation.asMap().get("BytesVal").getBytes());
+        ByteArray.copyFrom("hello".getBytes()), mutation.asMap().get("BytesVal").getBytes());
   }
 
   @Test
@@ -345,8 +344,7 @@ public final class SpannerDMLGeneratorTest {
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertNotNull(mutation);
-    assertEquals(
-        Date.parseDate("2024-06-15"), mutation.asMap().get("DateVal").getDate());
+    assertEquals(Date.parseDate("2024-06-15"), mutation.asMap().get("DateVal").getDate());
   }
 
   @Test
@@ -507,8 +505,7 @@ public final class SpannerDMLGeneratorTest {
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertNotNull(mutation);
-    assertEquals(
-        ImmutableList.of(1L, 2L, 3L), mutation.asMap().get("ArrVal").getInt64Array());
+    assertEquals(ImmutableList.of(1L, 2L, 3L), mutation.asMap().get("ArrVal").getInt64Array());
   }
 
   @Test
@@ -531,8 +528,7 @@ public final class SpannerDMLGeneratorTest {
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertNotNull(mutation);
-    assertEquals(
-        ImmutableList.of("a", "b"), mutation.asMap().get("ArrVal").getStringArray());
+    assertEquals(ImmutableList.of("a", "b"), mutation.asMap().get("ArrVal").getStringArray());
   }
 
   private static Ddl buildDdlWithSingleNonPkCol(String colName, Type colType) {

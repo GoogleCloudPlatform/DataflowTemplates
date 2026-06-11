@@ -34,10 +34,13 @@ public final class SpannerMutationResponseTest {
 
   @Test
   public void isEmptyReturnsFalseForValidMutation() {
-    Mutation mutation = Mutation.newInsertOrUpdateBuilder("Singers")
-        .set("SingerId").to(12)
-        .set("Name").to("John")
-        .build();
+    Mutation mutation =
+        Mutation.newInsertOrUpdateBuilder("Singers")
+            .set("SingerId")
+            .to(12)
+            .set("Name")
+            .to("John")
+            .build();
     SpannerMutationResponse response = new SpannerMutationResponse(mutation);
     assertFalse(response.isEmpty());
   }
