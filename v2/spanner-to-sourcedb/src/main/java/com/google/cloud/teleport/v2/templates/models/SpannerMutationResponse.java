@@ -33,4 +33,9 @@ public class SpannerMutationResponse extends DMLGeneratorResponse {
   public Mutation getMutation() {
     return mutation;
   }
+
+  @Override
+  public boolean isEmpty() {
+    return mutation == null;
+  }
 }

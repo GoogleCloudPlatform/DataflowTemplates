@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
-import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SPANNER;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
@@ -113,7 +112,7 @@ public class InputRecordProcessor {
 
     DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
 
-    if (!SOURCE_SPANNER.equals(source) && dmlGeneratorResponse.getDmlStatement().isEmpty()) {
+    if (dmlGeneratorResponse.isEmpty()) {
       throw new InvalidDMLGenerationException("DML statement is empty for table: " + tableName);
     }
 

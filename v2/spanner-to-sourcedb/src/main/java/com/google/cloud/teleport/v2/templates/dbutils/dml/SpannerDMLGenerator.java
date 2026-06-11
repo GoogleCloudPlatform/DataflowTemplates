@@ -98,7 +98,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           "Target table '" + targetTableName + "' not found in SourceSchema.");
     }
 
-    if (targetSpannerTable.primaryKeyColumns() == null || targetSpannerTable.primaryKeyColumns().isEmpty()) {
+    if (targetSpannerTable.primaryKeyColumns() == null
+        || targetSpannerTable.primaryKeyColumns().isEmpty()) {
       throw new InvalidDMLGenerationException(
           "Cannot reverse replicate to target table '"
               + targetTableName
@@ -107,9 +108,11 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
     String modType = request.getModType();
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
-      return buildUpsertMutation(sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+      return buildUpsertMutation(
+          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else if ("DELETE".equals(modType)) {
-      return buildDeleteMutation(sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
+      return buildDeleteMutation(
+          sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else {
       throw new InvalidDMLGenerationException(
           "Unsupported modType '" + modType + "' for table " + sourceTableName);
@@ -136,7 +139,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
       String sourceColName;
       try {
-        sourceColName = schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
+        sourceColName =
+            schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
       } catch (NoSuchElementException e) {
         continue;
       }
@@ -234,55 +238,15 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     String sourceColName = col.name();
     Type type = col.type();
 
-    switch (type.getCode()) {
-      case BOOL:
-        builder.set(targetColName).to(valuesJson.getBoolean(sourceColName));
-        break;
-      case INT64:
-        builder.set(targetColName).to(Long.parseLong(valuesJson.getString(sourceColName)));
-        break;
-      case FLOAT64:
-        builder.set(targetColName).to(valuesJson.getBigDecimal(sourceColName).doubleValue());
-        break;
-      case FLOAT32:
-        builder
-            .set(targetColName)
-            .to((float) valuesJson.getBigDecimal(sourceColName).doubleValue());
-        break;
-      case STRING:
-        builder.set(targetColName).to(valuesJson.getString(sourceColName));
-        break;
-      case JSON:
-        builder.set(targetColName).to(Value.json(valuesJson.getString(sourceColName)));
-        break;
-      case BYTES:
-        builder.set(targetColName).to(ByteArray.fromBase64(valuesJson.getString(sourceColName)));
-        break;
-      case DATE:
-        builder.set(targetColName).to(Date.parseDate(valuesJson.getString(sourceColName)));
-        break;
-      case TIMESTAMP:
-        builder
-            .set(targetColName)
-            .to(Timestamp.parseTimestamp(valuesJson.getString(sourceColName)));
-        break;
-      case NUMERIC:
-        builder.set(targetColName).to(new BigDecimal(valuesJson.getString(sourceColName)));
-        break;
-      case ARRAY:
-        builder
-            .set(targetColName)
-            .to(
-                buildArrayValue(
-                    type.getArrayElementType(), valuesJson.getJSONArray(sourceColName)));
-        break;
-      default:
-        LOG.warn(
-            "Unrecognised Spanner type code {} for column '{}'; falling back to STRING.",
-            type.getCode(),
-            targetColName);
-        builder.set(targetColName).to(valuesJson.getString(sourceColName));
+    if (type.getCode() == Type.Code.ARRAY) {
+      builder
+          .set(targetColName)
+          .to(buildArrayValue(type.getArrayElementType(), valuesJson.getJSONArray(sourceColName)));
+      return;
     }
+
+    Object value = valuesJson.get(sourceColName);
+    setCustomColumnValue(builder, targetColName, col, value);
   }
 
   private static void setNullValue(Mutation.WriteBuilder builder, String targetColName, Type type) {
@@ -365,35 +329,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   /** Appends a single primary-key component to the Key builder. */
   private static void appendKeyComponent(
       Key.Builder keyBuilder, Column col, JSONObject valuesJson, String sourceColName) {
-    Type type = col.type();
-    switch (type.getCode()) {
-      case BOOL:
-        keyBuilder.append(valuesJson.getBoolean(sourceColName));
-        break;
-      case INT64:
-        keyBuilder.append(Long.parseLong(valuesJson.getString(sourceColName)));
-        break;
-      case FLOAT64:
-        keyBuilder.append(valuesJson.getBigDecimal(sourceColName).doubleValue());
-        break;
-      case FLOAT32:
-        keyBuilder.append((float) valuesJson.getBigDecimal(sourceColName).doubleValue());
-        break;
-      case BYTES:
-        keyBuilder.append(ByteArray.fromBase64(valuesJson.getString(sourceColName)));
-        break;
-      case DATE:
-        keyBuilder.append(Date.parseDate(valuesJson.getString(sourceColName)));
-        break;
-      case TIMESTAMP:
-        keyBuilder.append(Timestamp.parseTimestamp(valuesJson.getString(sourceColName)));
-        break;
-      case NUMERIC:
-        keyBuilder.append(new BigDecimal(valuesJson.getString(sourceColName)));
-        break;
-      default:
-        keyBuilder.append(valuesJson.getString(sourceColName));
-    }
+    Object value = valuesJson.get(sourceColName);
+    appendCustomKeyComponent(keyBuilder, col, value);
   }
 
   /**
