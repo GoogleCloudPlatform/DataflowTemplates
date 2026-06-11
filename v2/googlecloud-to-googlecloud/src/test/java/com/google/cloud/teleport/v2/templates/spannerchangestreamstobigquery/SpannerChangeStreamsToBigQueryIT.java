@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
+import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
@@ -31,6 +32,7 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -42,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Config;
@@ -245,7 +248,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
-  public void testSpannerChangeStreamsToBigQueryFloatColumns() throws IOException {
+  public void testSpannerChangeStreamsToBigQueryDataTypes() throws IOException {
     String spannerTable = testName + RandomStringUtils.randomAlphanumeric(1, 5);
     String createTableStatement =
         String.format(
@@ -253,6 +256,8 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
                 + "  Id INT64 NOT NULL,\n"
                 + "  Float32Col FLOAT32,\n"
                 + "  Float64Col FLOAT64,\n"
+                + "  GsqlUuid UUID,\n"
+                + "  GsqlUuidArray ARRAY<UUID>\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable);
 
@@ -284,31 +289,110 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
 
     assertThatPipeline(launchInfo).isRunning();
 
-    int key = nextValue();
+    // Insert data
+    int key1 = nextValue();
     float float32Val = 3.14f;
     double float64Val = 2.71;
-
-    Mutation expectedData =
+    String uuid1 = UUID.randomUUID().toString();
+    List<String> uuidArray1 = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    Mutation insert1 =
         Mutation.newInsertBuilder(spannerTable)
             .set("Id")
-            .to(key)
+            .to(key1)
             .set("Float32Col")
             .to(float32Val)
             .set("Float64Col")
             .to(float64Val)
+            .set("GsqlUuid")
+            .to(uuid1)
+            .set("GsqlUuidArray")
+            .toStringArray(uuidArray1)
             .build();
 
-    spannerResourceManager.write(Collections.singletonList(expectedData));
-    String query = queryCdcTable(cdcTable, key);
-    waitForQueryToReturnRows(query, 1, true);
+    int key2 = nextValue();
+    String uuid2 = UUID.randomUUID().toString();
+    List<String> uuidArray2WithNulls = new ArrayList<>();
+    uuidArray2WithNulls.add(UUID.randomUUID().toString());
+    uuidArray2WithNulls.add(null);
+    Mutation insert2 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key2)
+            .set("GsqlUuid")
+            .to(uuid2)
+            .set("GsqlUuidArray")
+            .toStringArray(uuidArray2WithNulls)
+            .build();
 
-    TableResult tableResult = bigQueryResourceManager.runQuery(query);
-    assertEquals(1, tableResult.getTotalRows());
+    int key3 = nextValue();
+    Mutation insert3 =
+        Mutation.newInsertBuilder(spannerTable)
+            .set("Id")
+            .to(key3)
+            .set("GsqlUuid")
+            .to(Value.string(null))
+            .set("GsqlUuidArray")
+            .toStringArray(null)
+            .build();
 
-    for (FieldValueList row : tableResult.iterateAll()) {
-      assertEquals(float32Val, (float) (row.get("Float32Col").getDoubleValue()), 1e-6f);
-      assertEquals(float64Val, row.get("Float64Col").getDoubleValue(), 1e-15);
-    }
+    spannerResourceManager.write(List.of(insert1, insert2, insert3));
+
+    // Verify schema in BigQuery
+    String schemaQuery = queryCdcTable(cdcTable, key1);
+    waitForQueryToReturnRows(schemaQuery, 1, false);
+
+    Table bqTable = bigQueryResourceManager.getTableIfExists(cdcTable);
+    Schema bqSchema = bqTable.getDefinition().getSchema();
+
+    Field float32Field = bqSchema.getFields().get("Float32Col");
+    assertEquals(LegacySQLTypeName.FLOAT, float32Field.getType());
+
+    Field float64Field = bqSchema.getFields().get("Float64Col");
+    assertEquals(LegacySQLTypeName.FLOAT, float64Field.getType());
+
+    Field gsqlUuidField = bqSchema.getFields().get("GsqlUuid");
+    assertEquals(LegacySQLTypeName.STRING, gsqlUuidField.getType());
+    assertEquals(Field.Mode.NULLABLE, gsqlUuidField.getMode());
+
+    Field gsqlUuidArrayField = bqSchema.getFields().get("GsqlUuidArray");
+    assertEquals(LegacySQLTypeName.STRING, gsqlUuidArrayField.getType());
+    assertEquals(Field.Mode.REPEATED, gsqlUuidArrayField.getMode());
+
+    // Wait and Query BigQuery for all keys
+    String query1 = queryCdcTable(cdcTable, key1);
+    TableResult result1 = bigQueryResourceManager.runQuery(query1);
+    assertEquals(1, result1.getTotalRows());
+    FieldValueList row1 = result1.iterateAll().iterator().next();
+    assertEquals(float32Val, (float) (row1.get("Float32Col").getDoubleValue()), 1e-6f);
+    assertEquals(float64Val, row1.get("Float64Col").getDoubleValue(), 1e-15);
+    assertEquals(uuid1, row1.get("GsqlUuid").getStringValue());
+    List<String> actualUuidArray1 =
+        row1.get("GsqlUuidArray").getRepeatedValue().stream()
+            .map(FieldValue::getStringValue)
+            .collect(Collectors.toList());
+    assertEquals(uuidArray1, actualUuidArray1);
+
+    String query2 = queryCdcTable(cdcTable, key2);
+    waitForQueryToReturnRows(query2, 1, false);
+    TableResult result2 = bigQueryResourceManager.runQuery(query2);
+    assertEquals(1, result2.getTotalRows());
+    FieldValueList row2 = result2.iterateAll().iterator().next();
+    assertEquals(uuid2, row2.get("GsqlUuid").getStringValue());
+    List<String> actualUuidArray2 =
+        row2.get("GsqlUuidArray").getRepeatedValue().stream()
+            .map(FieldValue::getStringValue)
+            .collect(Collectors.toList());
+    assertEquals(List.of(uuidArray2WithNulls.get(0)), actualUuidArray2); // Nulls are skipped
+
+    String query3 = queryCdcTable(cdcTable, key3);
+    waitForQueryToReturnRows(query3, 1, true); // Cancel pipeline after this
+    TableResult result3 = bigQueryResourceManager.runQuery(query3);
+    assertEquals(1, result3.getTotalRows());
+    FieldValueList row3 = result3.iterateAll().iterator().next();
+    assertTrue(row3.get("GsqlUuid").isNull());
+    assertTrue(
+        row3.get("GsqlUuidArray").isNull()
+            || row3.get("GsqlUuidArray").getRepeatedValue().isEmpty());
   }
 
   @Test
@@ -375,25 +459,32 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
     String createTableStatement2 =
         String.format(
             "CREATE TABLE %s (\n"
-                + "  Id INT64 NOT NULL,\n"
+                + "  Id UUID NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
             spannerTable2);
     spannerResourceManager.executeDdlStatement(createTableStatement2);
 
-    int key2 = nextValue();
+    String uuidPk = UUID.randomUUID().toString();
     String lastName2 = UUID.randomUUID().toString();
     Mutation insertOneRow2 =
         Mutation.newInsertBuilder(spannerTable2)
             .set("Id")
-            .to(key2)
+            .to(uuidPk)
             .set("LastName")
             .to(lastName2)
             .build();
     spannerResourceManager.write(Collections.singletonList(insertOneRow2));
 
-    String query2 = queryCdcTable(cdcTable2, key2);
+    String query2 =
+        "SELECT * FROM `"
+            + bigQueryResourceManager.getDatasetId()
+            + "."
+            + cdcTable2
+            + "` WHERE Id = \""
+            + uuidPk
+            + "\"";
     waitForQueryToReturnRows(query2, 1, false);
     TableResult tableResult2 = bigQueryResourceManager.runQuery(query2);
     assertEquals(1, tableResult2.getTotalRows());
@@ -401,6 +492,36 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
       assertTrue(row.get("FirstName").isNull());
       assertEquals(lastName2, row.get("LastName").getStringValue());
     }
+
+    // Update
+    String lastName2Updated = UUID.randomUUID().toString();
+    Mutation updateOneRow2 =
+        Mutation.newUpdateBuilder(spannerTable2)
+            .set("Id")
+            .to(uuidPk)
+            .set("LastName")
+            .to(lastName2Updated)
+            .build();
+    spannerResourceManager.write(Collections.singletonList(updateOneRow2));
+    waitForQueryToReturnRows(query2, 2, false); // Expecting a second row for the update
+    TableResult result2Updated =
+        bigQueryResourceManager.runQuery(
+            query2 + " ORDER BY _metadata_spanner_commit_timestamp DESC LIMIT 1");
+    assertEquals(1, result2Updated.getTotalRows());
+    FieldValueList row2Updated = result2Updated.iterateAll().iterator().next();
+    assertEquals(lastName2Updated, row2Updated.get("LastName").getStringValue());
+
+    // Delete
+    Mutation delete1 = Mutation.delete(spannerTable2, Key.of(uuidPk));
+    spannerResourceManager.write(Collections.singletonList(delete1));
+    waitForQueryToReturnRows(query2, 3, false); // Expecting a third row for the delete
+    TableResult result2Deleted =
+        bigQueryResourceManager.runQuery(
+            query2 + " ORDER BY _metadata_spanner_commit_timestamp DESC LIMIT 1");
+    assertEquals(1, result2Deleted.getTotalRows());
+    FieldValueList row2Deleted = result2Deleted.iterateAll().iterator().next();
+    assertTrue(row2Deleted.get("LastName").isNull());
+    assertEquals("DELETE", row2Deleted.get("_metadata_spanner_mod_type").getStringValue());
   }
 
   @Test

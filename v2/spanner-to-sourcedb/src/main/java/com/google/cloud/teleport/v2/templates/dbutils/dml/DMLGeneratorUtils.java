@@ -175,16 +175,13 @@ public class DMLGeneratorUtils {
         continue;
       }
       if (spannerColName == null) {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
+        continue;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
+        continue;
       }
       String columnValue = "";
       String actualColName = spannerColDef.name();

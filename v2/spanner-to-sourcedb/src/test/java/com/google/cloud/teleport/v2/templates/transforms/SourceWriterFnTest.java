@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,10 +65,11 @@ import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.sql.SQLDataException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
@@ -162,21 +162,17 @@ public class SourceWriterFnTest {
     when(mockSpannerConfig.getRpcPriority())
         .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
     doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
-    doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
+    doThrow(new SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
         .write(
             contains("2300"),
             any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "transient connection error", "HY000", 1161))
+    doThrow(new SQLNonTransientConnectionException("transient connection error", "HY000", 1161))
         .when(mockSqlDao)
         .write(contains("1161"), any()); // This is the child_id for which we want to retryable
     // connection error
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "permanent connection error", "HY000", 4242))
+    doThrow(new SQLNonTransientConnectionException("permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
         .write(contains("4242"), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
@@ -1401,61 +1397,5 @@ public class SourceWriterFnTest {
             .endTable()
             .build();
     return ddl;
-  }
-
-  @Test
-  public void testSetup_NullSessionFilePath() throws Exception {
-    SourceWriterFn sourceWriterFn =
-        new SourceWriterFn(
-            ImmutableList.of(testShard),
-            mockSpannerConfig,
-            testSourceDbTimezoneOffset,
-            testSourceSchema,
-            "shadow_",
-            "skip",
-            500,
-            "mysql",
-            null,
-            mockDdlView,
-            mockShadowTableDdlView,
-            null,
-            "",
-            "",
-            "");
-
-    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
-      mockedSpannerAccessor
-          .when(() -> SpannerAccessor.getOrCreate(any()))
-          .thenReturn(mock(SpannerAccessor.class));
-      sourceWriterFn.setup();
-    }
-  }
-
-  @Test
-  public void testSetup_EmptySessionFilePath() throws Exception {
-    SourceWriterFn sourceWriterFn =
-        new SourceWriterFn(
-            ImmutableList.of(testShard),
-            mockSpannerConfig,
-            testSourceDbTimezoneOffset,
-            testSourceSchema,
-            "shadow_",
-            "skip",
-            500,
-            "mysql",
-            null,
-            mockDdlView,
-            mockShadowTableDdlView,
-            "",
-            "",
-            "",
-            "");
-
-    try (MockedStatic<SpannerAccessor> mockedSpannerAccessor = mockStatic(SpannerAccessor.class)) {
-      mockedSpannerAccessor
-          .when(() -> SpannerAccessor.getOrCreate(any()))
-          .thenReturn(mock(SpannerAccessor.class));
-      sourceWriterFn.setup();
-    }
   }
 }

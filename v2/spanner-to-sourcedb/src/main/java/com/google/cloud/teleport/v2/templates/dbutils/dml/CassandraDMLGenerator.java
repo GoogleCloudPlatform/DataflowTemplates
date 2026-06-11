@@ -130,7 +130,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
-    if (pkColumnNameValues == null) {
+    if (pkColumnNameValues == null || pkColumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",
@@ -435,16 +435,13 @@ public class CassandraDMLGenerator implements IDMLGenerator {
         continue;
       }
       if (spannerColName == null || spannerColName == "") {
-        LOG.warn(
-            "The corresponding spanner table for {} was not found in schema mapping",
-            sourceColName);
-        return null;
+        continue;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        return null;
+        continue;
       }
       if (keyValuesJson.has(spannerColName)) {
         columnValue =

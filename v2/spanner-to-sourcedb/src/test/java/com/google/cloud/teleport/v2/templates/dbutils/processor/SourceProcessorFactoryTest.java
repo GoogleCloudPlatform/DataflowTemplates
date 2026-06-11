@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 
+import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -35,7 +36,9 @@ import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceExcept
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -43,6 +46,19 @@ import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public class SourceProcessorFactoryTest {
+
+  private static Map<String, IConnectionHelper> originalConnectionHelperMap;
+
+  @BeforeClass
+  public static void setUpBeforeClass() {
+    originalConnectionHelperMap = SourceProcessorFactory.getConnectionHelperMap();
+  }
+
+  @After
+  public void tearDown() {
+    SourceProcessorFactory.setConnectionHelperMap(originalConnectionHelperMap);
+  }
+
   @Test
   public void testCreateSourceProcessor_validSource() throws Exception {
     List<Shard> shards =

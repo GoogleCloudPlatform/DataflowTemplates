@@ -150,6 +150,10 @@ public class SourceProcessorFactory {
     connectionHelperMap = connectionHelper;
   }
 
+  static Map<String, IConnectionHelper> getConnectionHelperMap() {
+    return connectionHelperMap;
+  }
+
   /**
    * Creates a SourceProcessor instance for the specified source type.
    *
