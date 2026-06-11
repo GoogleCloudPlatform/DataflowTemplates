@@ -683,7 +683,7 @@ public class SpannerToSourceDb {
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
-      if (shard.getLogicalShardId() == null) {
+      if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
         shard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
         LOG.info(
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);

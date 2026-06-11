@@ -43,7 +43,6 @@ import org.slf4j.LoggerFactory;
  * <pre>
  * [
  *   {
- *     "logicalShardId": "shard1",
  *     "projectId": "my-gcp-project",
  *     "instanceId": "my-spanner-instance",
  *     "databaseId": "my-database"
@@ -76,7 +75,6 @@ public class SpannerShardFileReader {
 
       List<Shard> shards = new ArrayList<>();
       for (Map<String, String> config : shardConfigs) {
-        String logicalShardId = config.getOrDefault("logicalShardId", "");
         String projectId = config.get("projectId");
         String instanceId = config.get("instanceId");
         String databaseId = config.get("databaseId");
@@ -86,10 +84,9 @@ public class SpannerShardFileReader {
                   + shardsFilePath
                   + "' is missing one or more required fields: projectId, instanceId, databaseId");
         }
-        shards.add(new SpannerShard(logicalShardId, projectId, instanceId, databaseId));
+        shards.add(new SpannerShard(projectId, instanceId, databaseId));
         LOG.info(
-            "Loaded SpannerShard: logicalShardId={}, project={}, instance={}, database={}",
-            logicalShardId,
+            "Loaded SpannerShard: project={}, instance={}, database={}",
             projectId,
             instanceId,
             databaseId);

@@ -40,14 +40,14 @@ public final class SpannerConnectionHelperTest {
 
   @Test
   public void connectionKeyReturnsProjectInstanceDatabase() {
-    SpannerShard shard = new SpannerShard("shard1", "myproj", "myinst", "mydb");
+    SpannerShard shard = new SpannerShard("myproj", "myinst", "mydb");
     assertThat(SpannerConnectionHelper.connectionKey(shard)).isEqualTo("myproj/myinst/mydb");
   }
 
   @Test
   public void connectionKeyHandlesDifferentValues() {
-    SpannerShard a = new SpannerShard("s", "p1", "i1", "d1");
-    SpannerShard b = new SpannerShard("s", "p2", "i2", "d2");
+    SpannerShard a = new SpannerShard("p1", "i1", "d1");
+    SpannerShard b = new SpannerShard("p2", "i2", "d2");
     assertThat(SpannerConnectionHelper.connectionKey(a))
         .isNotEqualTo(SpannerConnectionHelper.connectionKey(b));
   }

@@ -28,77 +28,62 @@ public final class SpannerShardTest {
 
   @Test
   public void gettersReturnConstructorValues() {
-    SpannerShard shard = new SpannerShard("shard1", "p1", "i1", "d1");
-    assertEquals("shard1", shard.getLogicalShardId());
+    SpannerShard shard = new SpannerShard("p1", "i1", "d1");
+    assertEquals("", shard.getLogicalShardId());
     assertEquals("p1", shard.getProjectId());
     assertEquals("i1", shard.getInstanceId());
     assertEquals("d1", shard.getDatabaseId());
   }
 
   @Test
-  public void instanceIdMapsToNamespace() {
-    SpannerShard shard = new SpannerShard("s", "p", "myinstance", "d");
-    assertEquals("myinstance", shard.getNamespace());
-  }
-
-  @Test
   public void databaseIdMapsToDbName() {
-    SpannerShard shard = new SpannerShard("s", "p", "i", "mydb");
+    SpannerShard shard = new SpannerShard("p", "i", "mydb");
     assertEquals("mydb", shard.getDbName());
   }
 
   @Test
   public void equalsReturnsTrueForSameInstance() {
-    SpannerShard a = new SpannerShard("s", "p", "i", "d");
+    SpannerShard a = new SpannerShard("p", "i", "d");
     assertEquals(a, a);
   }
 
   @Test
-  public void equalsIgnoresLogicalShardId() {
-    SpannerShard a = new SpannerShard("s1", "p", "i", "d");
-    SpannerShard b = new SpannerShard("s2", "p", "i", "d");
-    assertEquals(a, b);
-    assertEquals(a.hashCode(), b.hashCode());
-  }
-
-  @Test
   public void equalsReturnsFalseForDifferentProject() {
-    SpannerShard a = new SpannerShard("s", "p1", "i", "d");
-    SpannerShard b = new SpannerShard("s", "p2", "i", "d");
+    SpannerShard a = new SpannerShard("p1", "i", "d");
+    SpannerShard b = new SpannerShard("p2", "i", "d");
     assertNotEquals(a, b);
   }
 
   @Test
   public void equalsReturnsFalseForDifferentInstance() {
-    SpannerShard a = new SpannerShard("s", "p", "i1", "d");
-    SpannerShard b = new SpannerShard("s", "p", "i2", "d");
+    SpannerShard a = new SpannerShard("p", "i1", "d");
+    SpannerShard b = new SpannerShard("p", "i2", "d");
     assertNotEquals(a, b);
   }
 
   @Test
   public void equalsReturnsFalseForDifferentDatabase() {
-    SpannerShard a = new SpannerShard("s", "p", "i", "d1");
-    SpannerShard b = new SpannerShard("s", "p", "i", "d2");
+    SpannerShard a = new SpannerShard("p", "i", "d1");
+    SpannerShard b = new SpannerShard("p", "i", "d2");
     assertNotEquals(a, b);
   }
 
   @Test
   public void equalsReturnsFalseForNull() {
-    SpannerShard a = new SpannerShard("s", "p", "i", "d");
+    SpannerShard a = new SpannerShard("p", "i", "d");
     assertNotEquals(a, null);
   }
 
   @Test
   public void equalsReturnsFalseForDifferentType() {
-    SpannerShard a = new SpannerShard("s", "p", "i", "d");
+    SpannerShard a = new SpannerShard("p", "i", "d");
     assertNotEquals(a, "not-a-shard");
   }
 
   @Test
   public void toStringIncludesAllFields() {
-    SpannerShard shard = new SpannerShard("shard1", "proj", "inst", "db");
+    SpannerShard shard = new SpannerShard("proj", "inst", "db");
     String s = shard.toString();
-    assertTrue(s.contains("shard1"));
     assertTrue(s.contains("proj"));
     assertTrue(s.contains("inst"));
     assertTrue(s.contains("db"));

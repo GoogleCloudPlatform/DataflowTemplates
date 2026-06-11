@@ -18,20 +18,21 @@ package com.google.cloud.teleport.v2.spanner.migrations.shard;
 import java.util.Objects;
 
 /**
- * Represents a shard targeting a Cloud Spanner database. The {@code projectId} is stored as a
- * dedicated field; {@code instanceId} maps to the parent's {@code namespace} field and {@code
- * databaseId} maps to the parent's {@code dbName} field.
+ * Represents a shard targeting a Cloud Spanner database. The {@code projectId} and {@code
+ * instanceId} are stored as dedicated fields; {@code databaseId} maps to the parent's {@code dbName}
+ * field.
  */
 public class SpannerShard extends Shard {
 
   private final String projectId;
+  private final String instanceId;
 
   public SpannerShard(
-      String logicalShardId, String projectId, String instanceId, String databaseId) {
+      String projectId, String instanceId, String databaseId) {
     super();
     this.projectId = projectId;
-    setLogicalShardId(logicalShardId);
-    setNamespace(instanceId);
+    this.instanceId = instanceId;
+    setLogicalShardId("");
     setDbName(databaseId);
   }
 
@@ -40,7 +41,7 @@ public class SpannerShard extends Shard {
   }
 
   public String getInstanceId() {
-    return getNamespace();
+    return instanceId;
   }
 
   public String getDatabaseId() {
@@ -50,8 +51,8 @@ public class SpannerShard extends Shard {
   @Override
   public String toString() {
     return String.format(
-        "SpannerShard{logicalShardId='%s', projectId='%s', instanceId='%s', databaseId='%s'}",
-        getLogicalShardId(), projectId, getInstanceId(), getDatabaseId());
+        "SpannerShard{projectId='%s', instanceId='%s', databaseId='%s'}",
+        projectId, getInstanceId(), getDatabaseId());
   }
 
   @Override

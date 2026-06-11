@@ -115,50 +115,6 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
    */
   static String spannerTypeToString(Type type) {
     switch (type.getCode()) {
-      case BOOL:
-        return "BOOL";
-      case INT64:
-        return "INT64";
-      case FLOAT32:
-        return "FLOAT32";
-      case FLOAT64:
-        return "FLOAT64";
-      case STRING:
-        return "STRING";
-      case BYTES:
-        return "BYTES";
-      case DATE:
-        return "DATE";
-      case TIMESTAMP:
-        return "TIMESTAMP";
-      case NUMERIC:
-        return "NUMERIC";
-      case JSON:
-        return "JSON";
-      case PG_NUMERIC:
-        return "PG_NUMERIC";
-      case PG_JSONB:
-        return "PG_JSONB";
-      case PG_FLOAT4:
-        return "PG_FLOAT4";
-      case PG_FLOAT8:
-        return "PG_FLOAT8";
-      case PG_TEXT:
-        return "PG_TEXT";
-      case PG_VARCHAR:
-        return "PG_VARCHAR";
-      case PG_BOOL:
-        return "PG_BOOL";
-      case PG_BYTEA:
-        return "PG_BYTEA";
-      case PG_DATE:
-        return "PG_DATE";
-      case PG_TIMESTAMPTZ:
-        return "PG_TIMESTAMPTZ";
-      case PG_COMMIT_TIMESTAMP:
-        return "PG_COMMIT_TIMESTAMP";
-      case PG_INT8:
-        return "PG_INT8";
       case ARRAY:
         return "ARRAY<" + spannerTypeToString(type.getArrayElementType()) + ">";
       case PG_ARRAY:
