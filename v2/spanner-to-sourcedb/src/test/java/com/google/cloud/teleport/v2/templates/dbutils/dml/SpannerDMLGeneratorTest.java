@@ -36,6 +36,9 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -555,7 +558,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Counter\":\"1\"}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Counter", 42L); // custom returns a Long, not a String
 
     DMLGeneratorResponse response =
@@ -582,7 +585,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"IsActive\":false}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("IsActive", Boolean.TRUE);
 
     DMLGeneratorResponse response =
@@ -608,7 +611,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Ts\":\"2024-01-15T10:30:00Z\"}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Ts", "2025-06-01T00:00:00Z"); // custom returns a String for TIMESTAMP
 
     DMLGeneratorResponse response =
@@ -718,7 +721,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Counter\":\"1\"}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Counter", null);
 
     DMLGeneratorResponse response =
@@ -745,7 +748,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject();
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Id", 7L); // custom returns a Long, not String
 
     DMLGeneratorResponse response =
@@ -775,7 +778,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject();
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Id", null);
 
     DMLGeneratorResponse response =
@@ -801,7 +804,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Name\":\"original\"}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Name", "overridden");
 
     DMLGeneratorResponse response =
@@ -827,7 +830,7 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Ratio\":1.5}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
+    Map<String, Object> custom = new HashMap<>();
     custom.put("Ratio", 3.14);
 
     DMLGeneratorResponse response =
@@ -853,8 +856,8 @@ public final class SpannerDMLGeneratorTest {
     JSONObject newValues = new JSONObject("{\"Amount\":\"1.0\"}");
     JSONObject keyValues = new JSONObject("{\"Id\":\"1\"}");
 
-    java.util.Map<String, Object> custom = new java.util.HashMap<>();
-    custom.put("Amount", new java.math.BigDecimal("12345.6789"));
+    Map<String, Object> custom = new HashMap<>();
+    custom.put("Amount", new BigDecimal("12345.6789"));
 
     DMLGeneratorResponse response =
         new SpannerDMLGenerator()
@@ -868,7 +871,7 @@ public final class SpannerDMLGeneratorTest {
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertEquals(
-        new java.math.BigDecimal("12345.6789"), mutation.asMap().get("Amount").getNumeric());
+        new BigDecimal("12345.6789"), mutation.asMap().get("Amount").getNumeric());
   }
 
   @Test
