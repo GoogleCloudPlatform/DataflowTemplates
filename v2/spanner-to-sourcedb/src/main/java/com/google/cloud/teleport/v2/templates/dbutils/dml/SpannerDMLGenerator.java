@@ -63,7 +63,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
           "DMLGeneratorRequest is null. Cannot process the request.");
     }
 
-    String spannerTableName = request.getSpannerTableName();
+    String sourceTableName = request.getSpannerTableName();
     ISchemaMapper schemaMapper = request.getSchemaMapper();
     Ddl spannerDdl = request.getSpannerDdl();
     SourceSchema sourceSchema = request.getSourceSchema();
@@ -78,27 +78,27 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       throw new InvalidDMLGenerationException("SourceSchema must not be null.");
     }
 
-    Table spannerTable = spannerDdl.table(spannerTableName);
-    if (spannerTable == null) {
+    Table sourceSpannerTable = spannerDdl.table(sourceTableName);
+    if (sourceSpannerTable == null) {
       throw new InvalidDMLGenerationException(
-          "Source Spanner table '" + spannerTableName + "' not found in source DDL.");
+          "Source Spanner table '" + sourceTableName + "' not found in source DDL.");
     }
 
     String targetTableName;
     try {
-      targetTableName = schemaMapper.getSourceTableName("", spannerTableName);
+      targetTableName = schemaMapper.getSourceTableName("", sourceTableName);
     } catch (NoSuchElementException e) {
       throw new InvalidDMLGenerationException(
-          "Could not find target table name for source Spanner table: " + spannerTableName, e);
+          "Could not find target table name for source Spanner table: " + sourceTableName, e);
     }
 
-    SourceTable targetTable = sourceSchema.table(targetTableName);
-    if (targetTable == null) {
+    SourceTable targetSpannerTable = sourceSchema.table(targetTableName);
+    if (targetSpannerTable == null) {
       throw new InvalidDMLGenerationException(
           "Target table '" + targetTableName + "' not found in SourceSchema.");
     }
 
-    if (targetTable.primaryKeyColumns() == null || targetTable.primaryKeyColumns().isEmpty()) {
+    if (targetSpannerTable.primaryKeyColumns() == null || targetSpannerTable.primaryKeyColumns().isEmpty()) {
       throw new InvalidDMLGenerationException(
           "Cannot reverse replicate to target table '"
               + targetTableName
@@ -107,18 +107,18 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
     String modType = request.getModType();
     if ("INSERT".equals(modType) || "UPDATE".equals(modType)) {
-      return buildUpsertMutation(spannerTable, targetTable, schemaMapper, request, targetTableName);
+      return buildUpsertMutation(sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else if ("DELETE".equals(modType)) {
-      return buildDeleteMutation(spannerTable, targetTable, schemaMapper, request, targetTableName);
+      return buildDeleteMutation(sourceSpannerTable, targetSpannerTable, schemaMapper, request, targetTableName);
     } else {
       throw new InvalidDMLGenerationException(
-          "Unsupported modType '" + modType + "' for table " + spannerTableName);
+          "Unsupported modType '" + modType + "' for table " + sourceTableName);
     }
   }
 
   private static DMLGeneratorResponse buildUpsertMutation(
-      Table spannerTable,
-      SourceTable targetTable,
+      Table sourceSpannerTable,
+      SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
       String targetTableName) {
@@ -127,7 +127,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     JSONObject newValuesJson = request.getNewValuesJson();
     JSONObject keyValuesJson = request.getKeyValuesJson();
 
-    for (SourceColumn targetCol : targetTable.columns()) {
+    for (SourceColumn targetCol : targetSpannerTable.columns()) {
       if (targetCol.isGenerated()) {
         continue;
       }
@@ -136,12 +136,12 @@ public class SpannerDMLGenerator implements IDMLGenerator {
 
       String sourceColName;
       try {
-        sourceColName = schemaMapper.getSpannerColumnName("", targetTable.name(), targetColName);
+        sourceColName = schemaMapper.getSpannerColumnName("", targetSpannerTable.name(), targetColName);
       } catch (NoSuchElementException e) {
         continue;
       }
 
-      Column sourceCol = spannerTable.column(sourceColName);
+      Column sourceCol = sourceSpannerTable.column(sourceColName);
       if (sourceCol == null) {
         continue;
       }
@@ -174,8 +174,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse buildDeleteMutation(
-      Table spannerTable,
-      SourceTable targetTable,
+      Table sourceSpannerTable,
+      SourceTable targetSpannerTable,
       ISchemaMapper schemaMapper,
       DMLGeneratorRequest request,
       String targetTableName) {
@@ -184,7 +184,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     JSONObject newValuesJson = request.getNewValuesJson();
 
     Key.Builder keyBuilder = Key.newBuilder();
-    for (IndexColumn pkIndexCol : spannerTable.primaryKeys()) {
+    for (IndexColumn pkIndexCol : sourceSpannerTable.primaryKeys()) {
       String sourceColName = pkIndexCol.name();
 
       String targetColName;
@@ -194,7 +194,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         targetColName = sourceColName;
       }
 
-      Column sourceCol = spannerTable.column(sourceColName);
+      Column sourceCol = sourceSpannerTable.column(sourceColName);
       if (sourceCol == null) {
         throw new InvalidDMLGenerationException(
             "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
