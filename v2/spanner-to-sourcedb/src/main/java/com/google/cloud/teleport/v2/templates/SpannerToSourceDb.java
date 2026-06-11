@@ -665,6 +665,13 @@ public class SpannerToSourceDb {
       shards = spannerShardFileReader.getSpannerShards(options.getSourceShardsFilePath());
       LOG.info("Spanner target shard config: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+      SpannerShard spannerShard = (SpannerShard) shards.get(0);
+      if (!options.getSpannerProjectId().equals(spannerShard.getProjectId())
+          || !options.getMetadataInstance().equals(spannerShard.getInstanceId())
+          || !options.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
+        throw new IllegalArgumentException(
+            "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
+      }
 
     } else {
       CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();

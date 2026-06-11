@@ -69,4 +69,31 @@ public class SpannerTargetDao implements IDao<DMLGeneratorResponse> {
     client.writeAtLeastOnce(ImmutableList.of(mutation));
     LOG.debug("Successfully wrote mutation via SpannerTargetDao for key: {}", connectionKey);
   }
+
+  @Override
+  public void write(
+      DMLGeneratorResponse dmlGeneratorResponse,
+      TransactionalCheck transactionalCheck,
+      Object transactionContext)
+      throws Exception {
+    if (transactionContext == null) {
+      write(dmlGeneratorResponse, transactionalCheck);
+      return;
+    }
+
+    if (transactionalCheck != null) {
+      throw new UnsupportedOperationException(
+          "TransactionalCheck is not supported for the Spanner target DAO.");
+    }
+
+    if (!(dmlGeneratorResponse instanceof SpannerMutationResponse)) {
+      throw new IllegalArgumentException(
+          "Expected SpannerMutationResponse but received: "
+              + dmlGeneratorResponse.getClass().getSimpleName());
+    }
+
+    Mutation mutation = ((SpannerMutationResponse) dmlGeneratorResponse).getMutation();
+    ((com.google.cloud.spanner.TransactionContext) transactionContext).buffer(mutation);
+    LOG.debug("Successfully buffered mutation via SpannerTargetDao for key: {}", connectionKey);
+  }
 }

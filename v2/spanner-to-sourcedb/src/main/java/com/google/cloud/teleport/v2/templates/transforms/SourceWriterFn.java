@@ -60,7 +60,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -250,11 +249,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
 
-        // For the Spanner target the write must happen outside the shadow-table transaction
-        // (writeAtLeastOnce inside readWriteTransaction causes "Nested transactions not
-        // supported"). We capture the response here and apply it after the TX commits.
-        AtomicReference<DMLGeneratorResponse> pendingSpannerWrite = new AtomicReference<>();
-
         Boolean transactionResult =
             spannerDao
                 .getDatabaseClient()
@@ -300,7 +294,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                     Constants.FILTERED_TAG_MESSAGE,
                                     spannerRec);
                               } else {
-                                pendingSpannerWrite.set(response);
+                                IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+                                sourceDao.write(response, null, shadowTransaction);
                                 isRecordWritten.set(true);
                               }
                             } else {
@@ -354,12 +349,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                           }
                           return isRecordWritten.get();
                         });
-
-        // Apply the deferred Spanner target write now that the shadow-table TX has committed.
-        if (pendingSpannerWrite.get() != null) {
-          IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-          sourceDao.write(pendingSpannerWrite.get(), null);
-        }
 
         if (Boolean.TRUE.equals(transactionResult)) {
           successRecordCountMetric.inc();
