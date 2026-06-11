@@ -163,10 +163,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       for (var constraint : constraints) {
         LOG.info("Dropping constraint {}", constraint);
 
-        runAutocommit(
-            String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
-            Map.of(),
-            databaseResetMetadata("drop-constraint"));
+        session
+            .run(
+                String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
+                Map.of(),
+                databaseResetMetadata("drop-constraint"))
+            .consume();
       }
 
       LOG.info("Dropping indexes");
@@ -180,10 +182,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       for (var index : indexes) {
         LOG.info("Dropping index {}", index);
 
-        runAutocommit(
-            String.format("DROP INDEX %s", CypherPatterns.sanitize(index)),
-            Map.of(),
-            databaseResetMetadata("drop-index"));
+        session
+            .run(
+                String.format("DROP INDEX %s", CypherPatterns.sanitize(index)),
+                Map.of(),
+                databaseResetMetadata("drop-index"))
+            .consume();
       }
     }
   }
