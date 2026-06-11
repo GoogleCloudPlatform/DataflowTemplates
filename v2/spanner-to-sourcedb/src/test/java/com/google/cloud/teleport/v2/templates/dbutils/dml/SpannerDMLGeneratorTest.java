@@ -21,6 +21,9 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -266,7 +269,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(true, mutation.asMap().get("BoolVal").getBool());
   }
 
   @Test
@@ -288,7 +293,11 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(
+        ByteArray.copyFrom("hello".getBytes()),
+        mutation.asMap().get("BytesVal").getBytes());
   }
 
   @Test
@@ -309,7 +318,11 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(
+        Timestamp.parseTimestamp("2024-01-15T10:30:00Z"),
+        mutation.asMap().get("TsVal").getTimestamp());
   }
 
   @Test
@@ -330,7 +343,10 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(
+        Date.parseDate("2024-06-15"), mutation.asMap().get("DateVal").getDate());
   }
 
   @Test
@@ -351,7 +367,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(new BigDecimal("123.456"), mutation.asMap().get("NumVal").getNumeric());
   }
 
   @Test
@@ -372,7 +390,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(42L, mutation.asMap().get("IntVal").getInt64());
   }
 
   @Test
@@ -393,7 +413,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(3.14, mutation.asMap().get("FloatVal").getFloat64(), 0.001);
   }
 
   @Test
@@ -414,7 +436,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(1.5f, mutation.asMap().get("Float32Val").getFloat32(), 0.001f);
   }
 
   @Test
@@ -435,7 +459,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals("hello", mutation.asMap().get("StrVal").getString());
   }
 
   @Test
@@ -456,7 +482,9 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals("{\"k\":1}", mutation.asMap().get("JsonVal").getJson());
   }
 
   @Test
@@ -477,7 +505,10 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(
+        ImmutableList.of(1L, 2L, 3L), mutation.asMap().get("ArrVal").getInt64Array());
   }
 
   @Test
@@ -498,7 +529,10 @@ public final class SpannerDMLGeneratorTest {
                     .setSourceSchema(schema)
                     .build());
 
-    assertNotNull(((SpannerMutationResponse) response).getMutation());
+    Mutation mutation = ((SpannerMutationResponse) response).getMutation();
+    assertNotNull(mutation);
+    assertEquals(
+        ImmutableList.of("a", "b"), mutation.asMap().get("ArrVal").getStringArray());
   }
 
   private static Ddl buildDdlWithSingleNonPkCol(String colName, Type colType) {
@@ -626,7 +660,7 @@ public final class SpannerDMLGeneratorTest {
 
     Mutation mutation = ((SpannerMutationResponse) response).getMutation();
     assertEquals(
-        com.google.cloud.Timestamp.parseTimestamp("2025-06-01T00:00:00Z"),
+        Timestamp.parseTimestamp("2025-06-01T00:00:00Z"),
         mutation.asMap().get("Ts").getTimestamp());
   }
 

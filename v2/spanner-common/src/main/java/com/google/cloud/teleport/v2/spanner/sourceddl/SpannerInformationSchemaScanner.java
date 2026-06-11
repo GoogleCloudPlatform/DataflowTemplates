@@ -69,7 +69,7 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
     }
   }
 
-  private SourceSchema convertDdlToSourceSchema(Ddl ddl) {
+  SourceSchema convertDdlToSourceSchema(Ddl ddl) {
     Map<String, SourceTable> tables = new HashMap<>();
     for (Table spannerTable : ddl.allTables()) {
       SourceTable sourceTable = convertTable(spannerTable);
@@ -81,7 +81,7 @@ public class SpannerInformationSchemaScanner implements SourceSchemaScanner {
         .build();
   }
 
-  private SourceTable convertTable(Table spannerTable) {
+  SourceTable convertTable(Table spannerTable) {
     List<String> pkColumns = new ArrayList<>();
     for (IndexColumn pk : spannerTable.primaryKeys()) {
       pkColumns.add(pk.name());
