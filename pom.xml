@@ -94,7 +94,7 @@
     <surefire.version>3.5.5</surefire.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <truth.version>1.4.5</truth.version>
-    <netty.version>4.2.12.Final</netty.version>
+    <netty.version>4.2.13.Final</netty.version>
     <zookeeper.version>3.9.5</zookeeper.version>
     <sqladmin-api.version>v1beta4-rev20240115-2.0.0</sqladmin-api.version>
 
@@ -399,6 +399,8 @@
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+            <!-- TODO: Remove this once Netty fixes the epoll transport regression introduced in 4.2.13.Final (https://github.com/netty/netty/issues/16689) -->
+            <io.netty.transport.noNative>true</io.netty.transport.noNative>
           </systemPropertyVariables>
         </configuration>
         <dependencies>
@@ -616,6 +618,11 @@
                   <name>beamMavenRepo</name>
                   <value>${beam-maven-repo}</value>
                 </property>
+                <!-- TODO: Remove this once Netty fixes the epoll transport regression introduced in 4.2.13.Final (https://github.com/netty/netty/issues/16689) -->
+                <property>
+                  <name>io.netty.transport.noNative</name>
+                  <value>true</value>
+                </property>
               </systemProperties>
               <includes>
                 <include>**/*IT.java</include>
@@ -796,6 +803,11 @@
                 <!-- Pass on the flag directRunnerTest to the templates test base -->
                 <property>
                   <name>directRunnerTest</name>
+                  <value>true</value>
+                </property>
+                <!-- TODO: Remove this once Netty fixes the epoll transport regression introduced in 4.2.13.Final (https://github.com/netty/netty/issues/16689) -->
+                <property>
+                  <name>io.netty.transport.noNative</name>
                   <value>true</value>
                 </property>
               </systemProperties>
