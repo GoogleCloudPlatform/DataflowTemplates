@@ -676,13 +676,7 @@ public class SpannerToSourceDb {
 
     if (SPANNER_SOURCE_TYPE.equals(options.getSourceType())) {
       LOG.info("Spanner target shard config: {}", shards.get(0));
-      SpannerShard spannerShard = (SpannerShard) shards.get(0);
-      if (!options.getSpannerProjectId().equals(spannerShard.getProjectId())
-          || !options.getMetadataInstance().equals(spannerShard.getInstanceId())
-          || !options.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
-        throw new IllegalArgumentException(
-            "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
-      }
+      validateSpannerColocation(options, (SpannerShard) shards.get(0));
     }
 
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -717,6 +711,15 @@ public class SpannerToSourceDb {
         maxNumWorkers);
 
     return pipeline.run();
+  }
+
+  static void validateSpannerColocation(Options options, SpannerShard spannerShard) {
+    if (!options.getSpannerProjectId().equals(spannerShard.getProjectId())
+        || !options.getMetadataInstance().equals(spannerShard.getInstanceId())
+        || !options.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
+      throw new IllegalArgumentException(
+          "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
+    }
   }
 
   static void buildPipeline(
