@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.templates.models;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -48,9 +47,9 @@ public class ModelBoilerplateTest {
   public void testSpannerMutationResponseBoilerplate() {
     Mutation m = Mutation.delete("T", com.google.cloud.spanner.Key.of(1));
     SpannerMutationResponse response = new SpannerMutationResponse(m);
-
+    
     assertEquals(m, response.getMutation());
-    assertNotNull(response.toString());
+    assertTrue(!response.isEmpty());
   }
 
   @Test
@@ -59,6 +58,7 @@ public class ModelBoilerplateTest {
     assertEquals("INSERT", response.getDmlStatement());
     response.setDmlStatement("UPDATE");
     assertEquals("UPDATE", response.getDmlStatement());
+    assertTrue(!response.isEmpty());
   }
 
   @Test
@@ -71,9 +71,9 @@ public class ModelBoilerplateTest {
     assertEquals(now, record1.getProcessedCommitTimestamp());
     assertEquals(100L, record1.getRecordSequence());
     assertTrue(record1.equals(record2));
-    assertFalse(record1.equals(record3));
+    assertTrue(!record1.equals(record3));
     assertTrue(ShadowTableRecord.isEquals(record1, record2));
-    assertFalse(ShadowTableRecord.isEquals(record1, null));
+    assertTrue(!ShadowTableRecord.isEquals(record1, null));
     assertTrue(ShadowTableRecord.isEquals(null, null));
   }
 }

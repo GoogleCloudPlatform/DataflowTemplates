@@ -32,10 +32,9 @@ public class SpannerToSourceDbMetadataTest {
   public void testCalculateConnectionPoolSizePerWorker() {
     assertEquals(5, SpannerToSourceDb.calculateConnectionPoolSizePerWorker(50L, 10));
     assertEquals(1, SpannerToSourceDb.calculateConnectionPoolSizePerWorker(10L, 10));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> SpannerToSourceDb.calculateConnectionPoolSizePerWorker(5L, 10));
+    
+    assertThrows(IllegalArgumentException.class, () -> 
+        SpannerToSourceDb.calculateConnectionPoolSizePerWorker(5L, 10));
   }
 
   @Test
@@ -43,7 +42,7 @@ public class SpannerToSourceDbMetadataTest {
     SpannerToSourceDb.Options options = PipelineOptionsFactory.as(SpannerToSourceDb.Options.class);
     options.setDeadLetterQueueDirectory("gs://test/dlq");
     options.setTempLocation("gs://test/temp/");
-
+    
     assertNotNull(SpannerToSourceDb.buildDlqManager(options));
     assertEquals("gs://test/dlq", options.getDeadLetterQueueDirectory());
 
@@ -62,8 +61,8 @@ public class SpannerToSourceDbMetadataTest {
     options.setStartTimestamp("");
     options.setEndTimestamp("");
     options.setSpannerPriority(com.google.cloud.spanner.Options.RpcPriority.HIGH);
-
-    org.apache.beam.sdk.io.gcp.spanner.SpannerConfig mockSpannerConfig =
+    
+    org.apache.beam.sdk.io.gcp.spanner.SpannerConfig mockSpannerConfig = 
         org.apache.beam.sdk.io.gcp.spanner.SpannerConfig.create();
 
     assertNotNull(SpannerToSourceDb.getReadChangeStreamDoFn(options, mockSpannerConfig));
