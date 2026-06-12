@@ -55,6 +55,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_R
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
@@ -134,9 +135,14 @@ public class DdlToAvroSchemaConverter {
       // Indicate that this is a "CREATE FUNCTION", not a table or a view.
       recordBuilder.prop(SPANNER_ENTITY, SPANNER_UDF);
       recordBuilder.prop(SPANNER_UDF_NAME, udf.name());
-      recordBuilder.prop(SPANNER_UDF_DEFINITION, udf.definition());
+      if (udf.definition() != null) {
+        recordBuilder.prop(SPANNER_UDF_DEFINITION, udf.definition());
+      }
       if (udf.type() != null) {
         recordBuilder.prop(SPANNER_UDF_TYPE, udf.type());
+      }
+      if (udf.language() != null) {
+        recordBuilder.prop(SPANNER_UDF_LANGUAGE, udf.language());
       }
       if (udf.security() != null) {
         recordBuilder.prop(SPANNER_UDF_SECURITY, udf.security().toString());
@@ -145,6 +151,10 @@ public class DdlToAvroSchemaConverter {
       for (UdfParameter udfParameter : udf.parameters()) {
         recordBuilder.prop(SPANNER_UDF_PARAMETER + i++, udfParameter.prettyPrint());
       }
+      for (int j = 0; j < udf.options().size(); j++) {
+        recordBuilder.prop(SPANNER_OPTION + j, udf.options().get(j));
+      }
+
       schemas.add(recordBuilder.fields().endRecord());
     }
     for (Table table : ddl.allTables()) {
