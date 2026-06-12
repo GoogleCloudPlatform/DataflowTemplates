@@ -307,7 +307,21 @@ public class SourceWriterFnTest {
 
   @Test
   public void testProcessElement_spannerSource() throws Exception {
-    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod mockMod =
+        Mockito.mock(org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod.class);
+    when(mockMod.getKeysJson()).thenReturn("{\"id\":\"42\"}");
+    when(mockMod.getNewValuesJson()).thenReturn("{\"FirstName\":\"John\"}");
+
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            com.google.cloud.Timestamp.now(),
+            "tx1",
+            "100",
+            "parent1",
+            mockMod,
+            org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType.INSERT,
+            1,
+            "");
     record.setShard("shardA");
     when(processContext.element()).thenReturn(KV.of(1L, record));
 
@@ -346,6 +360,66 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
 
     // Verify that IDao.write was called with a TransactionContext
+    verify(mockSpannerTargetDao).write(any(), any(), any());
+  }
+
+  @Test
+  public void testProcessElement_shadowTableRecordExists() throws Exception {
+    org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod mockMod =
+        Mockito.mock(org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod.class);
+    when(mockMod.getKeysJson()).thenReturn("{\"id\":\"42\"}");
+    when(mockMod.getNewValuesJson()).thenReturn("{\"FirstName\":\"John\"}");
+
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            com.google.cloud.Timestamp.now(),
+            "tx1",
+            "100",
+            "parent1",
+            mockMod,
+            org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType.INSERT,
+            1,
+            "");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    ShadowTableRecord existingRecord =
+        new ShadowTableRecord(com.google.cloud.Timestamp.ofTimeMicroseconds(0), 50L);
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(any(), any(), any(), any()))
+        .thenReturn(existingRecord);
+
+    IDao mockSpannerTargetDao = Mockito.mock(IDao.class);
+    when(mockSourceProcessor.getSourceDao(any())).thenReturn(mockSpannerTargetDao);
+    when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
+    when(mockDMLGenerator.getDMLStatement(any()))
+        .thenReturn(
+            new SpannerMutationResponse(Mockito.mock(com.google.cloud.spanner.Mutation.class)));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            Constants.SOURCE_SPANNER,
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(new ObjectMapper());
+    sourceWriterFn.setSourceProcessor(mockSourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    sourceWriterFn.processElement(processContext);
+
     verify(mockSpannerTargetDao).write(any(), any(), any());
   }
 

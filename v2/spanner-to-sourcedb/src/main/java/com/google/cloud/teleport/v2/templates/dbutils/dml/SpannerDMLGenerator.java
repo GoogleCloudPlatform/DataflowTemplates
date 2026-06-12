@@ -26,8 +26,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
-import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
@@ -44,13 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Generates Spanner {@link Mutation} objects for reverse-replication to a Cloud Spanner target.
- *
- * <p>INSERT and UPDATE change-stream events produce an {@code insertOrUpdate} mutation. DELETE
- * events produce a {@code delete} mutation keyed on the primary-key values from the change record.
- *
- * <p>Value conversion reads directly from the source Spanner DDL column type ({@link Type}), which
- * avoids ambiguity when the source and target share the same type system.
+ * Spanner implementation of {@link IDMLGenerator}. Generates Spanner {@link Mutation} objects for
+ * Cloud Spanner targets.
  */
 public class SpannerDMLGenerator implements IDMLGenerator {
 
@@ -66,7 +59,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     String sourceTableName = request.getSpannerTableName();
     ISchemaMapper schemaMapper = request.getSchemaMapper();
     Ddl spannerDdl = request.getSpannerDdl();
-    SourceSchema sourceSchema = request.getSourceSchema();
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema sourceSchema =
+        request.getSourceSchema();
 
     if (schemaMapper == null) {
       throw new InvalidDMLGenerationException("SchemaMapper must not be null.");
@@ -130,7 +124,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     JSONObject newValuesJson = request.getNewValuesJson();
     JSONObject keyValuesJson = request.getKeyValuesJson();
 
-    for (SourceColumn targetCol : targetSpannerTable.columns()) {
+    for (com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn targetCol :
+        targetSpannerTable.columns()) {
       if (targetCol.isGenerated()) {
         continue;
       }
@@ -151,26 +146,25 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       }
 
       if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(targetColName)) {
-        Object customVal = request.getCustomTransformationResponse().get(targetColName);
+          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
+        Object customVal = request.getCustomTransformationResponse().get(sourceColName);
         if (customVal == null) {
           setNullValue(builder, targetColName, sourceCol.type());
         } else {
           setCustomColumnValue(builder, targetColName, sourceCol, customVal);
         }
-        continue;
-      }
-
-      JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
-
-      if (!valuesJson.has(sourceColName)) {
-        continue;
-      }
-
-      if (valuesJson.isNull(sourceColName)) {
-        setNullValue(builder, targetColName, sourceCol.type());
-      } else {
-        setColumnValue(builder, targetColName, sourceCol, valuesJson);
+      } else if (newValuesJson.has(sourceColName)) {
+        if (newValuesJson.isNull(sourceColName)) {
+          setNullValue(builder, targetColName, sourceCol.type());
+        } else {
+          setColumnValue(builder, targetColName, sourceCol, newValuesJson);
+        }
+      } else if (keyValuesJson.has(sourceColName)) {
+        if (keyValuesJson.isNull(sourceColName)) {
+          setNullValue(builder, targetColName, sourceCol.type());
+        } else {
+          setColumnValue(builder, targetColName, sourceCol, keyValuesJson);
+        }
       }
     }
 
@@ -204,26 +198,22 @@ public class SpannerDMLGenerator implements IDMLGenerator {
             "Column '" + sourceColName + "' not found in Spanner DDL for table " + targetTableName);
       }
 
+      Object customVal = null;
       if (request.getCustomTransformationResponse() != null
-          && request.getCustomTransformationResponse().containsKey(targetColName)) {
-        Object customVal = request.getCustomTransformationResponse().get(targetColName);
-        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
-        continue;
+          && request.getCustomTransformationResponse().containsKey(sourceColName)) {
+        customVal = request.getCustomTransformationResponse().get(sourceColName);
       }
 
       JSONObject valuesJson = keyValuesJson.has(sourceColName) ? keyValuesJson : newValuesJson;
 
-      if (!valuesJson.has(sourceColName)) {
+      if (!valuesJson.has(sourceColName) && customVal == null) {
         LOG.warn("Primary key column '{}' not found in change record for DELETE.", sourceColName);
         throw new InvalidDMLGenerationException(
-            "Primary key column '"
-                + sourceColName
-                + "' missing from change record for table "
-                + targetTableName);
+            "Primary key column '" + sourceColName + "' not found in change record for DELETE.");
       }
 
-      if (valuesJson.isNull(sourceColName)) {
-        keyBuilder.append((String) null);
+      if (customVal != null) {
+        appendCustomKeyComponent(keyBuilder, sourceCol, customVal);
       } else {
         appendKeyComponent(keyBuilder, sourceCol, valuesJson, sourceColName);
       }
@@ -263,6 +253,12 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       case FLOAT32:
         builder.set(targetColName).to((Float) null);
         break;
+      case STRING:
+        builder.set(targetColName).to((String) null);
+        break;
+      case JSON:
+        builder.set(targetColName).to(Value.json(null));
+        break;
       case BYTES:
         builder.set(targetColName).to((ByteArray) null);
         break;
@@ -275,9 +271,6 @@ public class SpannerDMLGenerator implements IDMLGenerator {
       case NUMERIC:
         builder.set(targetColName).to((BigDecimal) null);
         break;
-      case JSON:
-        builder.set(targetColName).to(Value.json(null));
-        break;
       case ARRAY:
         setNullArrayValue(builder, targetColName, type.getArrayElementType());
         break;
@@ -286,43 +279,41 @@ public class SpannerDMLGenerator implements IDMLGenerator {
     }
   }
 
-  /**
-   * Emits a typed NULL for an ARRAY column. The Spanner client requires the null value to carry the
-   * array element type, otherwise a commit-time type mismatch occurs (e.g. binding {@code
-   * Value.stringArray(null)} to an {@code ARRAY<INT64>} column).
-   */
   private static void setNullArrayValue(
       Mutation.WriteBuilder builder, String targetColName, Type elementType) {
     switch (elementType.getCode()) {
       case BOOL:
-        builder.set(targetColName).to(Value.boolArray((Iterable<Boolean>) null));
+        builder.set(targetColName).toBoolArray((Iterable<Boolean>) null);
         break;
       case INT64:
-        builder.set(targetColName).to(Value.int64Array((Iterable<Long>) null));
+        builder.set(targetColName).toInt64Array((Iterable<Long>) null);
         break;
       case FLOAT64:
-        builder.set(targetColName).to(Value.float64Array((Iterable<Double>) null));
+        builder.set(targetColName).toFloat64Array((Iterable<Double>) null);
         break;
       case FLOAT32:
-        builder.set(targetColName).to(Value.float32Array((Iterable<Float>) null));
+        builder.set(targetColName).toFloat32Array((Iterable<Float>) null);
         break;
-      case BYTES:
-        builder.set(targetColName).to(Value.bytesArray((Iterable<ByteArray>) null));
-        break;
-      case DATE:
-        builder.set(targetColName).to(Value.dateArray((Iterable<Date>) null));
-        break;
-      case TIMESTAMP:
-        builder.set(targetColName).to(Value.timestampArray((Iterable<Timestamp>) null));
-        break;
-      case NUMERIC:
-        builder.set(targetColName).to(Value.numericArray((Iterable<BigDecimal>) null));
+      case STRING:
+        builder.set(targetColName).toStringArray((Iterable<String>) null);
         break;
       case JSON:
-        builder.set(targetColName).to(Value.jsonArray(null));
+        builder.set(targetColName).toJsonArray((Iterable<String>) null);
+        break;
+      case BYTES:
+        builder.set(targetColName).toBytesArray((Iterable<ByteArray>) null);
+        break;
+      case DATE:
+        builder.set(targetColName).toDateArray((Iterable<Date>) null);
+        break;
+      case TIMESTAMP:
+        builder.set(targetColName).toTimestampArray((Iterable<Timestamp>) null);
+        break;
+      case NUMERIC:
+        builder.set(targetColName).toNumericArray((Iterable<BigDecimal>) null);
         break;
       default:
-        builder.set(targetColName).to(Value.stringArray((Iterable<String>) null));
+        builder.set(targetColName).toStringArray((Iterable<String>) null);
     }
   }
 
@@ -336,7 +327,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   /**
    * Binds a custom-transformation {@link Object} to the mutation builder using the target column's
    * Spanner type. Strings are coerced into the correct primitive when needed; already-typed values
-   * are passed through.
+   * (e.g. from Java-based transformers) are bound directly.
    */
   private static void setCustomColumnValue(
       Mutation.WriteBuilder builder, String targetColName, Column col, Object value) {
@@ -386,15 +377,15 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case DATE:
-        if (value instanceof Date) {
-          builder.set(targetColName).to((Date) value);
+        if (value instanceof com.google.cloud.Date) {
+          builder.set(targetColName).to((com.google.cloud.Date) value);
         } else {
           builder.set(targetColName).to(Date.parseDate(value.toString()));
         }
         break;
       case TIMESTAMP:
-        if (value instanceof Timestamp) {
-          builder.set(targetColName).to((Timestamp) value);
+        if (value instanceof com.google.cloud.Timestamp) {
+          builder.set(targetColName).to((com.google.cloud.Timestamp) value);
         } else {
           builder.set(targetColName).to(Timestamp.parseTimestamp(value.toString()));
         }
@@ -408,7 +399,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         break;
       default:
         LOG.warn(
-            "Unrecognised Spanner type code {} for custom-transformation column '{}'; falling back to STRING.",
+            "Unrecognised Spanner type code {} for column '{}'; falling back to STRING.",
             type.getCode(),
             targetColName);
         builder.set(targetColName).to(value.toString());
@@ -416,14 +407,10 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   }
 
   /**
-   * Appends a custom-transformation primary-key {@link Object} to the {@link Key.Builder} using the
-   * source column's Spanner type. Mirrors {@link #setCustomColumnValue} for the DELETE path.
+   * Appends a custom-transformation {@link Object} to the primary-key {@link Key.Builder}. Mirrors
+   * {@link #setCustomColumnValue} for the DELETE path.
    */
   private static void appendCustomKeyComponent(Key.Builder keyBuilder, Column col, Object value) {
-    if (value == null) {
-      keyBuilder.append((String) null);
-      return;
-    }
     Type type = col.type();
     switch (type.getCode()) {
       case BOOL:
@@ -464,15 +451,15 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         }
         break;
       case DATE:
-        if (value instanceof Date) {
-          keyBuilder.append((Date) value);
+        if (value instanceof com.google.cloud.Date) {
+          keyBuilder.append((com.google.cloud.Date) value);
         } else {
           keyBuilder.append(Date.parseDate(value.toString()));
         }
         break;
       case TIMESTAMP:
-        if (value instanceof Timestamp) {
-          keyBuilder.append((Timestamp) value);
+        if (value instanceof com.google.cloud.Timestamp) {
+          keyBuilder.append((com.google.cloud.Timestamp) value);
         } else {
           keyBuilder.append(Timestamp.parseTimestamp(value.toString()));
         }
@@ -490,8 +477,8 @@ public class SpannerDMLGenerator implements IDMLGenerator {
   }
 
   /** Builds a Spanner {@link Value} representing a Spanner ARRAY column. */
-  private static Value buildArrayValue(Type elementType, JSONArray jsonArray) {
-    switch (elementType.getCode()) {
+  private static Value buildArrayValue(Type elementSpannerType, JSONArray jsonArray) {
+    switch (elementSpannerType.getCode()) {
       case BOOL:
         {
           List<Boolean> vals = new ArrayList<>();
@@ -504,7 +491,7 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         {
           List<Long> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
-            vals.add(jsonArray.isNull(i) ? null : Long.parseLong(jsonArray.getString(i)));
+            vals.add(jsonArray.isNull(i) ? null : jsonArray.getLong(i));
           }
           return Value.int64Array(vals);
         }
@@ -512,17 +499,17 @@ public class SpannerDMLGenerator implements IDMLGenerator {
         {
           List<Double> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
-            vals.add(jsonArray.isNull(i) ? null : jsonArray.getBigDecimal(i).doubleValue());
+            vals.add(jsonArray.isNull(i) ? null : jsonArray.getDouble(i));
           }
           return Value.float64Array(vals);
         }
-      case BYTES:
+      case FLOAT32:
         {
-          List<ByteArray> vals = new ArrayList<>();
+          List<Float> vals = new ArrayList<>();
           for (int i = 0; i < jsonArray.length(); i++) {
-            vals.add(jsonArray.isNull(i) ? null : ByteArray.fromBase64(jsonArray.getString(i)));
+            vals.add(jsonArray.isNull(i) ? null : (float) jsonArray.getDouble(i));
           }
-          return Value.bytesArray(vals);
+          return Value.float32Array(vals);
         }
       case DATE:
         {
@@ -547,6 +534,22 @@ public class SpannerDMLGenerator implements IDMLGenerator {
             vals.add(jsonArray.isNull(i) ? null : new BigDecimal(jsonArray.getString(i)));
           }
           return Value.numericArray(vals);
+        }
+      case JSON:
+        {
+          List<String> vals = new ArrayList<>();
+          for (int i = 0; i < jsonArray.length(); i++) {
+            vals.add(jsonArray.isNull(i) ? null : jsonArray.getString(i));
+          }
+          return Value.jsonArray(vals);
+        }
+      case BYTES:
+        {
+          List<ByteArray> vals = new ArrayList<>();
+          for (int i = 0; i < jsonArray.length(); i++) {
+            vals.add(jsonArray.isNull(i) ? null : ByteArray.fromBase64(jsonArray.getString(i)));
+          }
+          return Value.bytesArray(vals);
         }
       default:
         {

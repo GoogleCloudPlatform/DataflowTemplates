@@ -91,4 +91,28 @@ public class SpannerTargetDaoTest {
 
     verify(mockTxnContext).buffer(mutation);
   }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testWriteThrowsOnTransactionalCheck() {
+    IConnectionHelper<DatabaseClient> connectionHelper = mock(IConnectionHelper.class);
+    SpannerTargetDao dao = new SpannerTargetDao(CONNECTION_KEY, connectionHelper);
+    assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            dao.write(
+                new SpannerMutationResponse(null),
+                mock(
+                    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck
+                        .class)));
+    assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            dao.write(
+                new SpannerMutationResponse(null),
+                mock(
+                    com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck
+                        .class),
+                new Object()));
+  }
 }
