@@ -47,7 +47,7 @@ public class ModelBoilerplateTest {
   public void testSpannerMutationResponseBoilerplate() {
     Mutation m = Mutation.delete("T", com.google.cloud.spanner.Key.of(1));
     SpannerMutationResponse response = new SpannerMutationResponse(m);
-    
+
     assertEquals(m, response.getMutation());
     assertTrue(!response.isEmpty());
   }
