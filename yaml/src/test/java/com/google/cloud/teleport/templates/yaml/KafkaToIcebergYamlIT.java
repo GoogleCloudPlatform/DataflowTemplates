@@ -85,6 +85,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
+    icebergResourceManager.createNamespace(namespace);
 
     kafkaResourceManager =
         KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
