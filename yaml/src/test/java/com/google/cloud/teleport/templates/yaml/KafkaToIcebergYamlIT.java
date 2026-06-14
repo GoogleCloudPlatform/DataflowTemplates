@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
@@ -62,15 +63,20 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "kafka_iceberg_namespace";
+  private final String namespace =
+      "kafka_iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String ICEBERG_TABLE_NAME = "kafka_iceberg_table";
-  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
 
   @Before
   public void setUp() throws IOException {
     warehouseGcsResourceManager =
-        GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
-    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+        artifactBucketName != null && !artifactBucketName.isEmpty()
+            ? GcsResourceManager.builder(
+                    artifactBucketName, getClass().getSimpleName(), credentials)
+                .build()
+            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(namespace);
     LOG.info(
         "Warehouse GCS bucket created successfully: {}", warehouseGcsResourceManager.getBucket());
 
@@ -103,7 +109,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
             .addParameter(
                 "schema",
                 "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"},\"ignored\":{\"type\":\"string\"}}}")
-            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
@@ -131,7 +137,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
                 createConfig(info),
                 () -> {
                   try {
-                    List<Record> records = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+                    List<Record> records = icebergResourceManager.read(icebergTableIdentifier);
                     LOG.info("Number of records in Iceberg table: {}", records.size());
                     return records.size() >= 5;
                   } catch (Exception e) {
@@ -143,7 +149,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
 
     // Verify the records are written to the Iceberg table
-    List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+    List<Record> icebergRecords = icebergResourceManager.read(icebergTableIdentifier);
     LOG.info("Iceberg records: {}", icebergRecords);
     assertEquals(5, icebergRecords.size());
 
