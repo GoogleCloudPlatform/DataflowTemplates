@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -62,17 +63,22 @@ public class PostgreSQLToIcebergYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
+  private final String namespace =
+      "iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
-  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
 
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
     warehouseGcsResourceManager =
-        GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
-    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+        artifactBucketName != null && !artifactBucketName.isEmpty()
+            ? GcsResourceManager.builder(
+                    artifactBucketName, getClass().getSimpleName(), credentials)
+                .build()
+            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(namespace);
     LOG.info("warehouse bucket created {}", warehouseGcsResourceManager.getBucket());
 
     icebergResourceManager =
@@ -109,7 +115,7 @@ public class PostgreSQLToIcebergYamlIT extends TemplateTestBase {
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
             .addParameter("query", String.format(READ_QUERY, tableName))
-            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
@@ -123,7 +129,7 @@ public class PostgreSQLToIcebergYamlIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+    List<Record> icebergRecords = icebergResourceManager.read(icebergTableIdentifier);
     LOG.info("Iceberg records: {}", icebergRecords);
     assertNotNull(icebergRecords);
     assertEquals(2, icebergRecords.size());
