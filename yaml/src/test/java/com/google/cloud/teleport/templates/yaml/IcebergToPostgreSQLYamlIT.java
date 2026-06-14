@@ -91,6 +91,7 @@ public class IcebergToPostgreSQLYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
+    icebergResourceManager.createNamespace(namespace);
   }
 
   @After

@@ -83,6 +83,7 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
+    icebergResourceManager.createNamespace(namespace);
   }
 
   @After
