@@ -124,7 +124,7 @@ public class MongoDbUtilsTest {
     document.put("_id", "test-id");
     document.put("createdAt", testDate);
 
-    TableRow result = MongoDbUtils.getTableSchema(document, "FLATTEN");
+    TableRow result = MongoDbUtils.getTableSchema(document, "FLATTEN", true);
 
     assertNotNull(result);
     String dateValue = (String) result.get("createdAt");
@@ -133,6 +133,63 @@ public class MongoDbUtilsTest {
     assertTrue(
         "Date should be in ISO-8601 format",
         dateValue.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z"));
+  }
+
+  @Test
+  public void testGetTableSchemaFlattenWithDateFieldLegacyDefault() {
+    // With the flag disabled (the default), dates retain the previous Date.toString() output.
+    Date testDate = new Date(1738598501924L);
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("createdAt", testDate);
+
+    TableRow defaultResult = MongoDbUtils.getTableSchema(document, "FLATTEN");
+    TableRow explicitFalse = MongoDbUtils.getTableSchema(document, "FLATTEN", false);
+
+    assertEquals(
+        "2-arg overload must default to legacy behavior",
+        defaultResult.get("createdAt"),
+        explicitFalse.get("createdAt"));
+    assertEquals(
+        "Legacy FLATTEN date should be Date.toString()",
+        testDate.toString(),
+        defaultResult.get("createdAt"));
+  }
+
+  @Test
+  public void testGetTableSchemaFlattenWithDateFieldFallbackForOutOfRangeYear() {
+    // Relaxed extended JSON only emits an ISO string for years 1970-9999; outside that range it
+    // emits {"$date":{"$numberLong":...}}, so the ISO extraction fails and we fall back to
+    // Date.toString(). This exercises the catch branch.
+    Date outOfRangeDate = new Date(253402300800000L); // year 10000-01-01
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("createdAt", outOfRangeDate);
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "FLATTEN", true);
+
+    assertEquals(
+        "Out-of-range date should fall back to Date.toString()",
+        outOfRangeDate.toString(),
+        result.get("createdAt"));
+  }
+
+  @Test
+  public void testGetTableSchemaJsonIso8601DateSerialization() {
+    // ISO path: dates become $date Extended JSON and null fields are still omitted.
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("createdAt", new Date(1738598501924L));
+    document.put("nullField", null);
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "JSON", true);
+
+    @SuppressWarnings("unchecked")
+    java.util.Map<String, Object> sourceData =
+        (java.util.Map<String, Object>) result.get("source_data");
+    assertNotNull("source_data should be set", sourceData);
+    assertFalse("Null field should be omitted", sourceData.containsKey("nullField"));
+    assertTrue("Date field should be present", sourceData.containsKey("createdAt"));
   }
 
   @Test
@@ -186,7 +243,7 @@ public class MongoDbUtilsTest {
     document.put("nullField", null);
     document.put("createdAt", new Date(1738598501924L)); // 2026-02-03T15:31:41.924Z
 
-    TableRow result = MongoDbUtils.getTableSchema(document, "NONE");
+    TableRow result = MongoDbUtils.getTableSchema(document, "NONE", true);
 
     assertNotNull(result);
     // source_data is a raw JSON string for the NONE user option.
@@ -196,5 +253,20 @@ public class MongoDbUtilsTest {
     assertFalse("Null field should be omitted", sourceData.contains("nullField"));
     // Date fields must still serialize as ISO-8601 Extended JSON alongside null omission.
     assertTrue("Date should remain ISO-8601 $date", sourceData.contains("\"$date\""));
+  }
+
+  @Test
+  public void testGetTableSchemaNoneLegacyDefaultDoesNotUseExtendedJson() {
+    // With the flag disabled (the default), serialization stays on the previous Gson path, which
+    // does not emit Extended JSON $date markers. This guards the non-breaking default.
+    Document document = new Document();
+    document.put("_id", "test-id");
+    document.put("createdAt", new Date(1738598501924L));
+
+    TableRow result = MongoDbUtils.getTableSchema(document, "NONE");
+
+    String sourceData = (String) result.get("source_data");
+    assertNotNull("source_data should be set", sourceData);
+    assertFalse("Legacy output must not contain Extended JSON $date", sourceData.contains("$date"));
   }
 }

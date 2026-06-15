@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.mongodb.templates.MongoDbUtils;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -148,10 +147,7 @@ public abstract class JavascriptDocumentTransformer {
         throw new RuntimeException("No udf was loaded");
       }
 
-      Object result =
-          getInvocable()
-              .invokeFunction(
-                  functionName(), data.toJson(MongoDbUtils.EXTENDED_JSON_WRITER_SETTINGS));
+      Object result = getInvocable().invokeFunction(functionName(), data.toJson());
       if (result == null || ScriptObjectMirror.isUndefined(result)) {
         return null;
       } else if (result instanceof Document) {

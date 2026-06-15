@@ -130,6 +130,20 @@ public class MongoDbUtils implements Serializable {
   }
 
   public static TableRow getTableSchema(Document document, String userOption) {
+    // Preserve the historical (locale-dependent, second-precision) serialization by default.
+    return getTableSchema(document, userOption, false);
+  }
+
+  /**
+   * Builds a {@link TableRow} from a MongoDB {@link Document}.
+   *
+   * @param useIso8601DateFormat when {@code true}, dates and timestamps are serialized as ISO-8601
+   *     strings using MongoDB's relaxed extended JSON ({@link #EXTENDED_JSON_WRITER_SETTINGS}),
+   *     preserving millisecond precision. When {@code false}, the previous Gson-based behavior is
+   *     retained for backward compatibility.
+   */
+  public static TableRow getTableSchema(
+      Document document, String userOption, boolean useIso8601DateFormat) {
     TableRow row = new TableRow();
     LocalDateTime localDate = LocalDateTime.now(ZoneId.of("UTC"));
     if (userOption.equals("FLATTEN")) {
@@ -150,19 +164,26 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
-                String data = ((Document) value).toJson(EXTENDED_JSON_WRITER_SETTINGS);
+                String data =
+                    useIso8601DateFormat
+                        ? ((Document) value).toJson(EXTENDED_JSON_WRITER_SETTINGS)
+                        : GSON.toJson(value);
                 row.set(key, data);
                 break;
               case "java.util.Date":
-                // Format dates as ISO-8601 strings
-                Document tempDoc = new Document("date", value);
-                String dateJson = tempDoc.toJson(EXTENDED_JSON_WRITER_SETTINGS);
-                // Extract just the date value from {"date":{"$date":"2026-02-03T15:31:41.924Z"}}
-                try {
-                  JsonObject dateObj = GSON.fromJson(dateJson, JsonObject.class);
-                  String dateStr = dateObj.getAsJsonObject("date").get("$date").getAsString();
-                  row.set(key, dateStr);
-                } catch (Exception e) {
+                if (useIso8601DateFormat) {
+                  // Format dates as ISO-8601 strings
+                  Document tempDoc = new Document("date", value);
+                  String dateJson = tempDoc.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+                  // Extract just the value from {"date":{"$date":"2026-02-03T15:31:41.924Z"}}
+                  try {
+                    JsonObject dateObj = GSON.fromJson(dateJson, JsonObject.class);
+                    String dateStr = dateObj.getAsJsonObject("date").get("$date").getAsString();
+                    row.set(key, dateStr);
+                  } catch (Exception e) {
+                    row.set(key, value.toString());
+                  }
+                } else {
                   row.set(key, value.toString());
                 }
                 break;
@@ -172,9 +193,14 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
-      String jsonString =
-          ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS);
-      JsonObject sourceDataJsonObject = GSON.fromJson(jsonString, JsonObject.class);
+      JsonObject sourceDataJsonObject;
+      if (useIso8601DateFormat) {
+        String jsonString =
+            ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS);
+        sourceDataJsonObject = GSON.fromJson(jsonString, JsonObject.class);
+      } else {
+        sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
+      }
 
       // Convert to a Map
       Map<String, Object> sourceDataMap =
@@ -185,7 +211,9 @@ public class MongoDbUtils implements Serializable {
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
       String sourceData =
-          ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS);
+          useIso8601DateFormat
+              ? ((Document) stripNullValues(document)).toJson(EXTENDED_JSON_WRITER_SETTINGS)
+              : GSON.toJson(document);
 
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
@@ -241,8 +269,7 @@ public class MongoDbUtils implements Serializable {
     }
 
     Document doc;
-    Object result =
-        invocable.invokeFunction(udfFunctionName, document.toJson(EXTENDED_JSON_WRITER_SETTINGS));
+    Object result = invocable.invokeFunction(udfFunctionName, document.toJson());
     if (result == null || ScriptObjectMirror.isUndefined(result)) {
       return null;
     } else if (result instanceof Document) {
