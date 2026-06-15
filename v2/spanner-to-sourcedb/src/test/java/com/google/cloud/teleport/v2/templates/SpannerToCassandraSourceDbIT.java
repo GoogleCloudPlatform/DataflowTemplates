@@ -55,7 +55,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -99,7 +98,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
-  public static CassandraResourceManager cassandraResourceManager;
+  public static CassandraSslContainerWrapper cassandraResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
@@ -119,8 +118,22 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
+        try {
+
+          cassandraResourceManager =
+              CassandraSslContainerWrapper.builder(testId)
+                  .setKeyspaceName(
+                      testId.replace("-", "_").substring(0, Math.min(20, testId.length())))
+                  .build();
+        } catch (Exception e) {
+          throw new RuntimeException("Failed to start SSL Cassandra", e);
+        }
         gcsResourceManager = setUpSpannerITGcsResourceManager();
+
+        String truststoreGcsPath = getGcsPath("truststore.jks", gcsResourceManager);
+        gcsResourceManager.uploadArtifact(
+            "truststore.jks", cassandraResourceManager.getTrustStoreFile().getAbsolutePath());
+
         createAndUploadCassandraConfigToGcs(
             gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
@@ -132,6 +145,10 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 getGcsPath("dlq", gcsResourceManager)
                     .replace("gs://" + gcsResourceManager.getBucket(), ""),
                 gcsResourceManager);
+
+        Map<String, String> jobParameters = new HashMap<>();
+        jobParameters.put("extraFilesToStage", truststoreGcsPath);
+
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -144,7 +161,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 CASSANDRA_SOURCE_TYPE,
-                null);
+                jobParameters);
       }
     }
   }
@@ -161,8 +178,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
-        cassandraResourceManager,
         spannerMetadataResourceManager,
+        cassandraResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
   }
@@ -2336,5 +2353,60 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     }
     buffer.position(oldPosition); // reset to original position
     return hex.toString();
+  }
+
+  public void createAndUploadCassandraConfigToGcs(
+      GcsResourceManager gcsResourceManager,
+      CassandraSslContainerWrapper cassandraResourceManagers,
+      String cassandraConfigFile)
+      throws IOException {
+
+    String host = cassandraResourceManagers.getHost();
+    int port = cassandraResourceManagers.getPort();
+    String keyspaceName = cassandraResourceManagers.getKeyspaceName();
+    String cassandraConfigContents;
+    try (java.io.InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(cassandraConfigFile)) {
+      if (inputStream == null) {
+        throw new java.io.FileNotFoundException("Resource file not found: " + cassandraConfigFile);
+      }
+      cassandraConfigContents =
+          new String(inputStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    cassandraConfigContents =
+        cassandraConfigContents
+            .replace("##host##", host)
+            .replace("##port##", Integer.toString(port))
+            .replace("##keyspace##", keyspaceName);
+
+    cassandraConfigContents +=
+        "\n"
+            + "  datastax-java-driver.advanced.ssl-engine-factory {\n"
+            + "    class = DefaultSslEngineFactory\n"
+            + "    truststore-path = \"/extra_files/truststore.jks\"\n"
+            + "    truststore-password = \"cassandra_ssl_password\"\n"
+            + "    hostname-validation = false\n"
+            + "  }\n";
+
+    gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
+  }
+
+  protected void createCassandraSchema(
+      CassandraSslContainerWrapper cassandraResourceManager, String cassandraSchemaFile)
+      throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            com.google.common.io.Resources.readLines(
+                com.google.common.io.Resources.getResource(cassandraSchemaFile),
+                java.nio.charset.StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        cassandraResourceManager.executeStatement(d);
+      }
+    }
   }
 }
