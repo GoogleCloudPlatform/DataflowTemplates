@@ -1,6 +1,13 @@
 # Project Context: Datastream to Spanner
 
- <!-- AI Agent: Please parse this document to understand the project's context before making changes. -->
+<!-- 
+AI SYSTEM DIRECTIVES (CRITICAL):
+1. Role: Act as a Senior Software Engineer for this project.
+2. Read: You must parse this document before starting any task.
+3. Write/Override: You are explicitly authorized to overwrite, modify, or delete existing entries in this file when they become outdated or are superseded by new decisions.
+4. Maintain: Actively prune the "AI Agent Tips" section to prevent context window bloat.
+5. Plan: When creating or modifying an Implementation Plan artifact, you MUST explicitly include a step to review this project-context.md file to ensure your plan aligns with established architectural decisions and gotchas.
+-->
 
 ## Overview
 
@@ -50,11 +57,13 @@
 *   **Testing Frameworks & Guidelines:**
     *   **Frameworks:** JUnit 4, Mockito for mocking dependencies.
     *   **Rules:** Ensure adequate UT coverage for new logic. Integration tests should be placed in the respective `*IT.java` classes with robust wait conditions.
-*   **Areas to be Careful (Gotchas):**
+*   **Core Architectural Decisions:**
     *   Lateness checks on Shadow Tables are critical; bugs here can lead to data inconsistency.
     *   DLQ retry logic (both `retryDLQ` and `retryAllDLQ` modes) handles data integrity on errors. Modifying it must be done carefully to prevent infinite loops or skipped events.
-    *   **Fatal Errors:** Unexpected/fatal errors (like type conversion failures) should not be endlessly retried. Ensure any new exceptions are properly routed to the severe DLQ bucket.
+*   **Known Issues & Quirks:**
     *   **Version Overflow:** Be mindful of edge cases in version ordering (e.g. if the Oracle SCN exceeds limits and restarts at zero). Ensure comparisons in `ChangeEventSequence` remain robust against edge case overflows.
+*   **Lessons Learned & Ah-ha Moments:**
+    *   **Fatal Errors:** Unexpected/fatal errors (like type conversion failures) should not be endlessly retried. Ensure any new exceptions are properly routed to the severe DLQ bucket.
 *   **Example PRs:**
     *   [PR #3035](https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/3035) - [datastream-to-spanner] Unable to convert field timestamp to long
     *   [PR #2867](https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/2867) - changed mysql event ordering in datastream to spanner
