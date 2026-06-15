@@ -154,7 +154,10 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareCreateInstanceMock();
     prepareCreateDatabaseMock();
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(Database.class), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(InterruptedException.class);
     String statement =
         "CREATE TABLE Singers (\n"
@@ -191,10 +194,7 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
-        .updateDatabaseDdl(
-            databaseCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
     String actualInstanceId = testManager.getInstanceId();
     String actualDatabaseId = testManager.getDatabaseId();
@@ -222,7 +222,10 @@ public final class SpannerResourceManagerTest {
     RuntimeException resourceExhaustedException =
         new RuntimeException(
             "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(Database.class), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(resourceExhaustedException)
         .thenReturn(null);
 
@@ -234,10 +237,7 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(3))
-        .updateDatabaseDdl(
-            databaseCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
     String actualInstanceId = testManager.getInstanceId();
     String actualDatabaseId = testManager.getDatabaseId();
@@ -825,7 +825,11 @@ public final class SpannerResourceManagerTest {
 
   private void prepareUpdateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
-        .when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(Database.class), any(), any()).get())
+        .when(
+            spanner
+                .getDatabaseAdminClient()
+                .updateDatabaseDdl(any(Database.class), any(), any())
+                .get())
         .thenReturn(null);
   }
 
