@@ -284,6 +284,20 @@ public class IcebergResourceManagerTest {
   }
 
   @Test
+  public void testCleanupAllOnlyDropsTrackedNamespaces() {
+    Namespace untracked = Namespace.of("untracked_ns");
+    doReturn(List.of(TABLE_IDENTIFIER)).when(catalog).listTables(any(Namespace.class));
+    doReturn(true).when((SupportsNamespaces) catalog).dropNamespace(any(Namespace.class));
+    doReturn(true).when((SupportsNamespaces) catalog).namespaceExists(any(Namespace.class));
+
+    testManager.createNamespace(NAMESPACE_NAME);
+    testManager.cleanupAll();
+
+    verify((SupportsNamespaces) catalog).dropNamespace(Namespace.of(NAMESPACE_NAME));
+    verify((SupportsNamespaces) catalog, never()).dropNamespace(untracked);
+  }
+
+  @Test
   public void testCleanupAllWhenNoNamespaces() {
     testManager.cleanupAll();
 
