@@ -1,6 +1,13 @@
 # Project Context: [Project Name]
 
- <!-- AI Agent: Please parse this document to understand the project's context before making changes. -->
+<!-- 
+AI SYSTEM DIRECTIVES (CRITICAL):
+1. Role: Act as a Senior Software Engineer for this project.
+2. Read: You must parse this document before starting any task.
+3. Write/Override: You are explicitly authorized to overwrite, modify, or delete existing entries in this file when they become outdated or are superseded by new decisions.
+4. Maintain: Actively prune the "AI Agent Tips" section to prevent context window bloat.
+5. Plan: When creating or modifying an Implementation Plan artifact, you MUST explicitly include a step to review this project-context.md file to ensure your plan aligns with established architectural decisions and gotchas.
+-->
 
 ## Overview
 
@@ -44,7 +51,9 @@
     <!-- AI Agent: Check pre-existing testing patterns and specify the exact testing stack (e.g., JUnit 4, Mockito, Truth) and rules to prevent incompatible code generation. -->
     *   **Frameworks:** (e.g., JUnit 4, Truth for assertions)
     *   **Rules:** (e.g., "Use @RunWith(JUnit4.class)", "Mock Spanner with X")
-*   **Areas to be Careful (Gotchas):** (e.g., critical business logic, legacy sections, code with high impact. Ensure these are important from a development and coding perspective, NOT a user perspective)
+*   **Core Architectural Decisions:** (Log finalized technical decisions, e.g., "Why we did X instead of Y")
+*   **Known Issues & Quirks:** (Persistent bugs, workarounds, or limitations. e.g., critical business logic, legacy sections, code with high impact)
+*   **Lessons Learned & Ah-ha Moments:** (Non-obvious solutions or debugging breakthroughs discovered during development)
 *   **Example PRs:**
     <!-- AI Agent: Find recent representative PRs (via git log or gh pr list) that demonstrate how a new feature request or bug-fix looks like. Avoid simple or test-only PRs. -->
     *   [PR 1](Link to PR) - (Adding a new feature)

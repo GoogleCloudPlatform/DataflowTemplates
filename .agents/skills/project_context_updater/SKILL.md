@@ -43,6 +43,7 @@ Copy this checklist and track your progress:
 -   [ ] Step 4: Validate Tech Stack Versions
 -   [ ] Step 5: Update Coding Standards & Testing Frameworks
 -   [ ] Step 6: AI Agent Tips Updates
+-   [ ] Step 7: Prune Outdated Context
 
 ### Step 1: Validate Build Commands
 
@@ -70,13 +71,28 @@ Did you introduce a new design pattern, testing framework (e.g., migrating from 
 ### Step 6: AI Agent Tips Updates
 
 Did you encounter any particular challenges while working on your changes? If
-you found any subtle project quirks, "gotchas", or tricky API interactions,
-document these in the `AI Agent Tips > Areas to be Careful` section.
+you found any subtle project quirks, new architectural decisions, or tricky API interactions,
+document these in the respective `AI Agent Tips` subsections:
+*   **Core Architectural Decisions:** Log finalized "Why we did X instead of Y" decisions.
+*   **Known Issues & Quirks:** Persistent bugs, workarounds, or limitations.
+*   **Lessons Learned & Ah-ha Moments:** Non-obvious solutions or debugging breakthroughs.
 
 *   **Example PRs**: Add a placeholder for your PR (or another representative PR) to the Example
     PRs section, or update it with the actual PR link after creation to help guide future AI agents.
 
-## 3. Creating the PR
+### Step 7: Prune Outdated Context
+
+Review the `AI Agent Tips`. If any entries are no longer relevant due to your recent changes, or if the section has become overly verbose, condense or delete them. Actively manage the file to prevent context window bloat.
+
+## 3. Best Practices for Humans
+
+To keep the `project-context.md` valuable, interact with the agent frequently to explicitly save context:
+
+*   **The Session Starter:** Kick off new chats with: *"Read project-context.md, then let's work on..."*
+*   **The Explicit Save:** If you spend time debugging a complex issue, explicitly prompt the agent: *"Summarize the fix we just found and update the Lessons Learned section in project-context.md so we don't forget it."*
+*   **Keep it Pruned:** If the file is getting large, ask the agent: *"Review project-context.md and condense any outdated or overly verbose points."*
+
+## 4. Creating the PR
 
 Once updates are made, commit the project-context.md changes. If updating an existing PR, push the changes to the remote branch. If creating a new PR, use gh pr create.
 If needed, ask the user to authenticate to git/GitHub (e.g., `gh auth login`).
