@@ -35,6 +35,7 @@
 
 *   **Architecture Diagram & Dependency Tree:** [architecture.svg](architecture.svg) (Source: `architecture.dot`).
     *   **Rule:** Always keep the `.dot` and `.svg` files in sync. If you modify the architecture, you MUST regenerate the `.svg` from the `.dot` file.
+*   **User Guide & Advanced Config:** See [README_Cloud_Datastream_to_Spanner.md](README_Cloud_Datastream_to_Spanner.md) for detailed operational guidelines, troubleshooting, and advanced parameters (like `shardingContextFilePath`, `sessionFilePath`, `shadowTableSpannerInstanceId`, and custom Java transformations).
 
 ## AI Agent Tips
 
