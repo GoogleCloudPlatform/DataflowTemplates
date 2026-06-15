@@ -10,7 +10,7 @@
     *   Per-primary-key ordering guarantee (relaxed from per-shard ordering).
 *   **Terminology**:
     *   **Reverse Replication**: Replicating data from Spanner to the Source DB.
-    *   **Change Streams**: Spanner's CDC mechanism.
+    *   **Change Streams**: Spanner's CDC (Change Data Capture) mechanism that captures and emits row-level data modifications (inserts, updates, deletes) in near real-time, providing the source events for the reverse replication pipeline.
     *   **Shadow Table**: Spanner metadata table used to track `processed_commit_ts` per primary key to prevent out-of-order writes.
     *   **Data Freshness**: Pipeline lag indicator.
     *   **Cut-back**: The process of shifting application write traffic back to the source.
@@ -48,16 +48,50 @@
 *   **Architecture Diagram & Dependency Tree**: [architecture.svg](architecture.svg) (Source: `architecture.dot`).
     <!-- AI Agent: Deep dive into the code to understand the architecture and dependency tree. Generate a GraphViz DOT file, convert it to SVG, and embed the SVG into this document. Add the DOT and SVG files to the repository. -->
     *   **Rule**: Always keep the `.dot` and `.svg` files in sync. If you modify the architecture, you MUST regenerate the `.svg` from the `.dot` file.
+*   **User Guide**: [README.md](README.md) contains operational guidelines, prerequisites, troubleshooting, and customization instructions.
+
+## Sharding Configuration
+
+*   **Sharding and Routing**: Reverse replication uses a shard identifier column per table to route Spanner records to a given source shard. The value of this column corresponds to the `logicalShardId` specified in the shard configuration file.
+*   **MySQL vs Cassandra Configurations**:
+    *   **MySQL/PostgreSQL**: Uses a JSON array specifying connection details per logical shard.
+        ```json
+        [
+          {
+            "logicalShardId": "shard1",
+            "host": "10.11.12.13",
+            "user": "root",
+            "secretManagerUri": "projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
+            "port": "3306",
+            "dbName": "db1"
+          }
+        ]
+        ```
+    *   **Cassandra**: Uses a single HOCON format file since Cassandra inherently handles cluster routing, meaning no `logicalShardId` mapping is required at the Dataflow level.
+        ```hocon
+        datastax-java-driver {
+          basic.contact-points = ["10.244.21.233:9042"]
+          basic.session-keyspace = "keyspace_name"
+          basic.load-balancing-policy {
+            local-datacenter = "datacenter1"
+          }
+          advanced.auth-provider {
+            class = PlainTextAuthProvider
+            username = "root"
+            password = "admin"
+          }
+        }
+        ```
 
 ## AI Agent Tips
 
 *   **Common Tasks**: Adding DML generators for new databases, handling new types of schema overrides, improving unit test coverage, updating DLQ processing logic.
 *   **Coding Standards & Best Practices**:
-    *   **Parallelism**: Controlled via `maxShardConnections` per shard configuration.
+    *   **Parallelism and Connection Limits**: Parallelism for writing to the source database is constrained by the `maxShardConnections` setting in the shard configuration. This acts as a throttling mechanism to ensure Dataflow workers do not overwhelm the target source database with too many concurrent connections.
     *   **Stale Writes**: Any writes with an older timestamp than what is recorded in the shadow table must be explicitly skipped to prevent data corruption.
     *   **AutoValue**: Use `AutoValue` for POJOs and models. Ensure all required variables are set before building.
     *   **Beam Paradigms**: Strictly adhere to Apache Beam constructs (`PTransform`, `DoFn`). Use `TupleTag` for handling multiple outputs like DLQ side channels.
-    *   **Serializability**: All variables within `PTransform` and `DoFn` must be serializable. For non-serializable objects (like JDBC Connections, `HikariDataSource`, or `SpannerDao`), mark them as `transient` and initialize them within `@Setup` or `@StartBundle` methods.s
+    *   **Serializability**: All variables within `PTransform` and `DoFn` must be serializable. For non-serializable objects (like JDBC Connections, `HikariDataSource`, or `SpannerDao`), mark them as `transient` and initialize them within `@Setup` or `@StartBundle` methods.
     *   **Connection Management**: Use the Hikari connection pool (preferred over DBCP2). Always ensure connections are safely returned to the pool (using `try-with-resources` or `try-finally` blocks) to prevent connection leakages.
     *   **Security**: NEVER log sensitive credentials, connection strings, or customer PII. Use `structured-logging` instead of standard output.
     *   **Formatting**: Always run `mvn spotless:apply -pl v2/spanner-to-sourcedb -am` before committing to adhere to project formatting standards.

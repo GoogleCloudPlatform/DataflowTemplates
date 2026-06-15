@@ -21,7 +21,7 @@ digraph G {
   DLQReconsumer [label="DLQ Reconsumer\n(PubSub or Continuous)"];
 
   Spanner -> SpannerIOReader [label=" CDC Events"];
-  MetadataDb -> InformationSchema [label=" DDL / Metatdata"];
+  MetadataDb -> InformationSchema [label=" DDL / Metadata"];
   SpannerIOReader -> Reshuffle;
   Reshuffle -> Filter;
   Filter -> Preprocess;

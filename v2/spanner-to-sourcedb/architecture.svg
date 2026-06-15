@@ -50,7 +50,7 @@
 <title>MetadataDb&#45;&gt;InformationSchema</title>
 <path fill="none" stroke="black" d="M110.75,-201.93C110.75,-188.46 110.75,-172.27 110.75,-158.7"/>
 <polygon fill="black" stroke="black" points="114.25,-159.09 110.75,-149.09 107.25,-159.09 114.25,-159.09"/>
-<text xml:space="preserve" text-anchor="middle" x="159.12" y="-171.07" font-family="Times,serif" font-size="14.00"> DDL / Metatdata</text>
+<text xml:space="preserve" text-anchor="middle" x="157.25" y="-171.07" font-family="Times,serif" font-size="14.00"> DDL / Metadata</text>
 </g>
 <!-- SourceDb -->
 <g id="node3" class="node">
