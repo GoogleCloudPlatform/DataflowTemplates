@@ -1,6 +1,13 @@
 # Project Context: Spanner to SourceDb (Reverse Replication)
 
-<!-- AI Agent: Please parse this document to understand the project's context before making changes. -->
+<!-- 
+AI SYSTEM DIRECTIVES (CRITICAL):
+1. Role: Act as a Senior Software Engineer for this project.
+2. Read: You must parse this document before starting any task.
+3. Write/Override: You are explicitly authorized to overwrite, modify, or delete existing entries in this file when they become outdated or are superseded by new decisions.
+4. Maintain: Actively prune the "AI Agent Tips" section to prevent context window bloat.
+5. Plan: When creating or modifying an Implementation Plan artifact, you MUST explicitly include a step to review this project-context.md file to ensure your plan aligns with established architectural decisions and gotchas.
+-->
 
 ## Overview
 
@@ -100,14 +107,16 @@
     *   **Unit Tests**: Use `@RunWith(JUnit4.class)`. Strive for at least 80% coverage. Mock database responses with Mockito to ensure fast, isolated tests.
     *   **Non-Destructive Refactoring**: Append new dedicated test methods for new functionality. Do not arbitrarily delete or rewrite existing tests unless addressing a breaking API change.
     *   **100% Branch & Exception Coverage**: Ensure `if/else` paths and caught/thrown exceptions are fully asserted in tests using AssertJ's `assertThatThrownBy` or JUnit's `assertThrows`.
-*   **Areas to be Careful (Gotchas)**:
-    *   **Integration Tests**: NEVER execute `*IT.java` (Integration) or `*LT.java` (Load) test suites during local development/machine verification. Only execute `*Test.java` (Unit) locally.
-    *   **DML Generation Syntax**: When updating `MySQLDMLGenerator`, `PostgreSQLDMLGenerator`, or `CassandraDMLGenerator`, verify that the generated SQL/CQL syntax is strictly valid for that specific dialect and version.
-    *   **Shadow Table Lock Contention**: Be cautious when adding transactional reads/writes around shadow tables. High throughput updates increase Spanner's load and can create lock contention. Keep transactions fast and localized.
-    *   **Foreign Keys & Retries**: Parent-child ordering relies entirely on retry loops and SpannerIO's straggler handling. Changes to the error tag logic in `SourceWriterFn` or `AssignShardIdFn` can silently break foreign key insertions. Retryable errors expected in the DLQ include Foreign Key violations, Spanner `RESOURCE_EXHAUSTED` (shadow tables), and Source DB transient network issues.
-    *   **Metric Reliability**: Metrics like `success_record_count` may be skewed if worker restarts occur (causing re-processing). Do not rely on them for strict transactional accounting.
-    *   **Resume Strategy**: When resuming a paused job, users must supply a `startTimestamp` matching the previous `DataFreshness` minus a 10-minute buffer to ensure no events are dropped.
+*   **Core Architectural Decisions**:
     *   **1:1 Row Mapping Assumption**: The pipeline assumes a single Spanner row does not map to more than one source row.
+    *   **Resume Strategy**: When resuming a paused job, users must supply a `startTimestamp` matching the previous `DataFreshness` minus a 10-minute buffer to ensure no events are dropped.
+    *   **Foreign Keys & Retries**: Parent-child ordering relies entirely on retry loops and SpannerIO's straggler handling. Changes to the error tag logic in `SourceWriterFn` or `AssignShardIdFn` can silently break foreign key insertions. Retryable errors expected in the DLQ include Foreign Key violations, Spanner `RESOURCE_EXHAUSTED` (shadow tables), and Source DB transient network issues.
+*   **Known Issues & Quirks**:
+    *   **Shadow Table Lock Contention**: Be cautious when adding transactional reads/writes around shadow tables. High throughput updates increase Spanner's load and can create lock contention. Keep transactions fast and localized.
+    *   **Integration Tests**: NEVER execute `*IT.java` (Integration) or `*LT.java` (Load) test suites during local development/machine verification. Only execute `*Test.java` (Unit) locally.
+*   **Lessons Learned & Ah-ha Moments**:
+    *   **DML Generation Syntax**: When updating `MySQLDMLGenerator`, `PostgreSQLDMLGenerator`, or `CassandraDMLGenerator`, verify that the generated SQL/CQL syntax is strictly valid for that specific dialect and version.
+    *   **Metric Reliability**: Metrics like `success_record_count` may be skewed if worker restarts occur (causing re-processing). Do not rely on them for strict transactional accounting.
 *   **Example PRs**:
     *   [d1dbadb17](https://github.com/GoogleCloudPlatform/DataflowTemplates/commit/d1dbadb17) - Feature: Adding support for PostgreSQL as source in reverse replication.
     *   [74e5f1fe1](https://github.com/GoogleCloudPlatform/DataflowTemplates/commit/74e5f1fe1) - Feature/Fix: Fail fast if MySQL destination is read-only.
