@@ -753,22 +753,22 @@ public class InformationSchemaScannerIT {
           assertThat(udf2, notNullValue());
           assertThat(ddl.udf("s_simpleUdf.u_simpleUdf_default_values"), sameInstance(udf2));
 
-    Udf udf3 = ddl.udf("s1.remote_udf");
-    assertThat(udf3, notNullValue());
-    assertThat(ddl.udf("S1.REMOTE_UDF"), sameInstance(udf3));
+          Udf udf3 = ddl.udf("s1.remote_udf");
+          assertThat(udf3, notNullValue());
+          assertThat(ddl.udf("S1.REMOTE_UDF"), sameInstance(udf3));
 
           assertThat(udf1.name(), equalTo("s_simpleUdf.u_simpleUdf_foo"));
           assertThat(udf1.type(), equalTo("INT64"));
           assertEquals(udf1.language(), "SQL");
-    assertThat(udf1.options(), empty());
-    assertThat(udf1.definition(), equalTo("1"));
+          assertThat(udf1.options(), empty());
+          assertThat(udf1.definition(), equalTo("1"));
           assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
 
           assertThat(udf2.name(), equalTo("s_simpleUdf.u_simpleUdf_default_values"));
           assertThat(udf2.type(), equalTo("STRING"));
           assertEquals(udf2.language(), "SQL");
-    assertThat(udf2.options(), empty());
-    assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+          assertThat(udf2.options(), empty());
+          assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
           assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
           assertThat(
               udf2.parameters(),

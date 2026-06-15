@@ -52,10 +52,10 @@ import com.google.monitoring.v3.Aggregation.Aligner;
 import com.google.monitoring.v3.TimeInterval;
 import com.google.protobuf.Timestamp;
 import com.google.spanner.admin.instance.v1.CreateInstancePartitionRequest;
+import com.google.spanner.admin.instance.v1.Instance.Edition;
 import com.google.spanner.admin.instance.v1.InstanceConfigName;
 import com.google.spanner.admin.instance.v1.InstanceName;
 import com.google.spanner.admin.instance.v1.InstancePartition;
-import com.google.spanner.admin.instance.v1.Instance.Edition;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import java.time.Duration;
@@ -205,7 +205,7 @@ public final class SpannerResourceManager implements ResourceManager {
                 .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
                 .setDisplayName(instanceId)
                 .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
-              .setNodeCount(nodeCount)
+                .setNodeCount(nodeCount)
                 .build();
 
         // Retry creation if there's a quota error
