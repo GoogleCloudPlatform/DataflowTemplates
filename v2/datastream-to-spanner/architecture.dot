@@ -21,7 +21,7 @@ digraph Architecture {
     WriteSpanner [label="Write events to Cloud Spanner"];
     WriteFiltered [label="Write Filtered Events"];
     WriteDLQRetry [label="Write To DLQ\n(Retryable Errors)"];
-    WriteDLQSevere [label="Write To DLQ2\n(Severe Errors)"];
+    WriteDLQSevere [label="Write To Severe DLQ\n(Severe Errors)"];
   }
 
   Datastream -> GCS [label=" Change Events"];

@@ -54,7 +54,6 @@
     *   DLQ retry logic (both `retryDLQ` and `retryAllDLQ` modes) handles data integrity on errors. Modifying it must be done carefully to prevent infinite loops or skipped events.
     *   **Fatal Errors:** Unexpected/fatal errors (like type conversion failures) should not be endlessly retried. Ensure any new exceptions are properly routed to the severe DLQ bucket.
     *   **Version Overflow:** Be mindful of edge cases in version ordering (e.g. if the Oracle SCN exceeds limits and restarts at zero). Ensure comparisons in `ChangeEventSequence` remain robust against edge case overflows.
-    *   **Data Size Limits:** Datastream enforces a 3MB size limit per Change Event. Ensure no individual rows exceed this.
 *   **Example PRs:**
     *   [PR #3035](https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/3035) - [datastream-to-spanner] Unable to convert field timestamp to long
     *   [PR #2867](https://github.com/GoogleCloudPlatform/DataflowTemplates/pull/2867) - changed mysql event ordering in datastream to spanner
