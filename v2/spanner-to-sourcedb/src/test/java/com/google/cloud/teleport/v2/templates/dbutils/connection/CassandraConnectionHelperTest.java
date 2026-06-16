@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -26,11 +27,11 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
-import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -199,5 +200,11 @@ public class CassandraConnectionHelperTest {
     IllegalArgumentException exception =
         assertThrows(IllegalArgumentException.class, () -> connectionHelper.init(request));
     assertEquals("The options map must contain a profile named default", exception.getMessage());
+  }
+
+  @Test
+  public void testIsConnectionPoolInitialized_NullPool() {
+    connectionHelper.setConnectionPoolMap(null);
+    assertFalse(connectionHelper.isConnectionPoolInitialized());
   }
 }

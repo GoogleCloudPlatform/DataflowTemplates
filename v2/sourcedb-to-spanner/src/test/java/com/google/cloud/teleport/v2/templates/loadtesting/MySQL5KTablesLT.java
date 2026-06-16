@@ -46,7 +46,6 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -69,7 +68,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateLoadTest.class, SkipDirectRunnerTest.class})
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Waiting Dataflow release b/492014904")
 public class MySQL5KTablesLT extends SourceDbToSpannerLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQL5KTablesLT.class);
   private Instant startTime;

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
@@ -28,6 +29,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -108,10 +110,15 @@ public class RangePreparedStatementSetterTest {
   public void testSetParameters_throwsExceptionOnNullElement() throws Exception {
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -129,10 +136,15 @@ public class RangePreparedStatementSetterTest {
   public void testSetRangeParameters_throwsOnUnknownTable() throws Exception {
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("knownTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("knownTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -145,8 +157,13 @@ public class RangePreparedStatementSetterTest {
 
     Range unknownTableRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
-            .setTableIdentifier(TableIdentifier.builder().setTableName("unknownTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("unknownTable")
+                    .build())
             .setColName("col1")
             .setColClass(Integer.class)
             .setStart(10)
@@ -164,14 +181,20 @@ public class RangePreparedStatementSetterTest {
     ImmutableList<String> partitionCols = ImmutableList.of("col1", "col2");
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setPartitionColumns(
                 ImmutableList.of(
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col1")
                         .setColumnClass(Integer.class)
                         .build(),
                     PartitionColumn.builder()
+                        .setColumnTypeName("dummy")
                         .setColumnName("col2")
                         .setColumnClass(Integer.class)
                         .build()))
@@ -184,6 +207,7 @@ public class RangePreparedStatementSetterTest {
 
     Range singleColNonLastRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setColName("col1")
@@ -228,6 +252,7 @@ public class RangePreparedStatementSetterTest {
 
     Range bothColRange =
         Range.<Integer>builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(tableSplitSpecification.tableIdentifier())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
@@ -238,6 +263,7 @@ public class RangePreparedStatementSetterTest {
             .build()
             .withChildRange(
                 Range.<Integer>builder()
+                    .setColumnTypeName("dummy")
                     .setTableIdentifier(tableSplitSpecification.tableIdentifier())
                     .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
                     .setColName("col2")
@@ -270,5 +296,68 @@ public class RangePreparedStatementSetterTest {
   public void exitDerby() throws SQLException {
     dropDerbyTable();
     connection.close();
+  }
+
+  @Test
+  public void testSetParameters_withUuidColumn() throws Exception {
+    byte[] startBytes = new byte[16];
+    byte[] endBytes = new byte[16];
+    Arrays.fill(endBytes, (byte) 0xFF);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_uuid_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("uuid_col")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uuid") // UUID column type
+            .build();
+
+    Boundary<byte[]> boundary =
+        Boundary.<byte[]>builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumn(col)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setBoundarySplitter(
+                BoundarySplitterFactory.create(
+                    byte[].class)) // UUID is split using byte array splitter
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("uuid_col")
+            .setColClass(byte[].class)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    // Verify that raw 16-byte arrays (startBytes and endBytes) were successfully converted into
+    // native java.util.UUID instances before being bound to parameter indices 2 and 3.
+    // 0L, 0L represents 16 bytes of 0x00 (min UUID), and -1L, -1L represents 16 bytes of 0xFF (max
+    // UUID).
+    verify(mockStatement).setObject(2, new java.util.UUID(0L, 0L));
+    verify(mockStatement).setObject(3, new java.util.UUID(-1L, -1L));
   }
 }

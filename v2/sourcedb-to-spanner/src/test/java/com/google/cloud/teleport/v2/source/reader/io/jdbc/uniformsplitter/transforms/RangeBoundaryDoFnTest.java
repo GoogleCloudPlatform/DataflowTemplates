@@ -27,6 +27,7 @@ import static org.mockito.Mockito.withSettings;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProviderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
@@ -82,14 +83,21 @@ public class RangeBoundaryDoFnTest {
     when(mockResultSet.getLong(2)).thenReturn(42L);
     RangeBoundaryDoFn rangeBoundaryDoFn =
         new RangeBoundaryDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -101,12 +109,18 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col1")
             .setParentRange(null)
             .build();
     rangeBoundaryDoFn.setup();
+    rangeBoundaryDoFn.startBundle();
     rangeBoundaryDoFn.processElement(input, mockOut, mockProcessContext);
 
     verify(mockOut).output(rangeCaptor.capture());
@@ -114,7 +128,12 @@ public class RangeBoundaryDoFnTest {
     assertThat(newRange)
         .isEqualTo(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setColumnTypeName("dummy")
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable")
+                        .build())
                 .setStart(0L)
                 .setEnd(42L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
@@ -135,14 +154,21 @@ public class RangeBoundaryDoFnTest {
 
     RangeBoundaryDoFn rangeBoundaryDoFn =
         new RangeBoundaryDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -154,12 +180,18 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col1")
             .setParentRange(null)
             .build();
     rangeBoundaryDoFn.setup();
+    rangeBoundaryDoFn.startBundle();
 
     assertThrows(
         SQLException.class,
@@ -181,14 +213,21 @@ public class RangeBoundaryDoFnTest {
 
     RangeBoundaryDoFn rangeBoundaryDoFn =
         new RangeBoundaryDoFn(
-            mockDataSourceProviderFn,
+            DataSourceProviderImpl.builder()
+                .addDataSource("b1a1ec3b-195d-4755-b04b-02bc64dc4458", mockDataSourceProviderFn)
+                .build(),
             new MysqlDialectAdapter(MySqlVersion.DEFAULT),
             ImmutableList.of(
                 TableSplitSpecification.builder()
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -199,10 +238,14 @@ public class RangeBoundaryDoFnTest {
                     .build(),
                 TableSplitSpecification.builder()
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("testTable2").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable2")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col2")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -214,12 +257,18 @@ public class RangeBoundaryDoFnTest {
             null);
     ColumnForBoundaryQuery input =
         ColumnForBoundaryQuery.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable2")
+                    .build())
             .setColumnClass(Long.class)
             .setColumnName("col2")
             .setParentRange(null)
             .build();
     rangeBoundaryDoFn.setup();
+    rangeBoundaryDoFn.startBundle();
     rangeBoundaryDoFn.processElement(input, mockOut, mockProcessContext);
 
     verify(mockOut).output(rangeCaptor.capture());
@@ -227,7 +276,12 @@ public class RangeBoundaryDoFnTest {
     assertThat(newRange)
         .isEqualTo(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+                .setColumnTypeName("dummy")
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable2")
+                        .build())
                 .setStart(0L)
                 .setEnd(42L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))

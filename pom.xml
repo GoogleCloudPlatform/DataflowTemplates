@@ -38,9 +38,9 @@
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
-    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-    <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
-    <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
+    <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+    <maven-dependency-plugin.version>3.10.0</maven-dependency-plugin.version>
+    <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
     <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
     <extra.enforcer.rules.version>1.11.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
@@ -51,8 +51,8 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.72.0</beam.version>
-    <beam-python.version>2.72.0</beam-python.version>
+    <beam.version>2.74.0</beam.version>
+    <beam-python.version>2.74.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -64,7 +64,7 @@
     <checkstyle.version>12.3.0</checkstyle.version>
     <commons-codec.version>1.21.0</commons-codec.version>
     <commons-compress.version>1.28.0</commons-compress.version>
-    <commons-io.version>2.18.0</commons-io.version>
+    <commons-io.version>2.21.0</commons-io.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-configuration2.version>2.13.0</commons-configuration2.version>
     <commons-text.version>1.10.0</commons-text.version>
@@ -77,12 +77,12 @@
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
+    <hbase.client.version>2.6.5-hadoop3</hbase.client.version>
     <jackson.version>2.21.2</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
-    <log4j-2.version>2.25.3</log4j-2.version>
+    <log4j-2.version>2.25.4</log4j-2.version>
     <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <mockito.version>4.11.0</mockito.version>
     <nashorn.version>15.4</nashorn.version>
@@ -94,8 +94,9 @@
     <surefire.version>3.5.5</surefire.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <truth.version>1.4.5</truth.version>
-    <netty.version>4.1.132.Final</netty.version>
-    <zookeeper.version>3.8.6</zookeeper.version>
+    <netty.version>4.2.15.Final</netty.version>
+    <zookeeper.version>3.9.5</zookeeper.version>
+    <sqladmin-api.version>v1beta4-rev20240115-2.0.0</sqladmin-api.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -107,9 +108,9 @@
     <postgresql.version>42.6.1</postgresql.version>
     <ojdbc8.version>23.26.1.0.0</ojdbc8.version>
     <mssql-jdbc.version>13.4.0.jre11</mssql-jdbc.version>
-    <neo4j-driver.version>4.4.18</neo4j-driver.version>
+    <neo4j-driver.version>5.28.12</neo4j-driver.version>
     <okio.version>3.16.4</okio.version>
-    <jetty.version>12.1.8</jetty.version>
+    <jetty.version>12.1.9</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>
@@ -897,6 +898,34 @@
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>failureInjectionTest</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*FT.java</include>
+              </includes>
+              <excludedGroups></excludedGroups>
               <trimStackTrace>false</trimStackTrace>
             </configuration>
           </plugin>

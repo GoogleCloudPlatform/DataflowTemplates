@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.model.pipeline.v1.SchemaApi;
 import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
@@ -287,7 +288,7 @@ public class SpannerTransformRegistrar implements ExternalTransformRegistrar {
       private String table = "";
       private @Nullable Long maxBatchSizeBytes;
       private @Nullable Long maxNumberMutations;
-      private @Nullable Long maxNumberRows;
+      private @Nullable ValueProvider<Integer> maxNumberRows;
       private @Nullable Integer groupingFactor;
       private @Nullable Duration commitDeadline;
       private @Nullable Duration maxCumulativeBackoff;
@@ -306,7 +307,7 @@ public class SpannerTransformRegistrar implements ExternalTransformRegistrar {
         this.maxNumberMutations = maxNumberMutations;
       }
 
-      public void setMaxNumberRows(@Nullable Long maxNumberRows) {
+      public void setMaxNumberRows(@Nullable ValueProvider<Integer> maxNumberRows) {
         this.maxNumberRows = maxNumberRows;
       }
 

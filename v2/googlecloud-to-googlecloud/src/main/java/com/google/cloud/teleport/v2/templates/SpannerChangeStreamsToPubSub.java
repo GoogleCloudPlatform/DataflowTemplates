@@ -24,7 +24,9 @@ import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -155,13 +157,31 @@ public class SpannerChangeStreamsToPubSub {
             ? null
             : options.getSpannerMetadataTableName();
 
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    List<String> tvfNameList = null;
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      tvfNameList =
+          Arrays.stream(tvfNameListString.split(";"))
+              .filter(name -> !name.trim().isEmpty())
+              .collect(Collectors.toList());
+    }
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(instanceId)
             .withDatabaseId(databaseId);
+
+    if (options.getUseSpannerEmulatorHost() != null && options.getUseSpannerEmulatorHost()) {
+      spannerConfig =
+          spannerConfig.withEmulatorHost(
+              ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    } else {
+      spannerConfig =
+          spannerConfig.withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    }
+
     // Propagate database role for fine-grained access control on change stream.
     if (options.getSpannerDatabaseRole() != null) {
       spannerConfig =
@@ -178,7 +198,8 @@ public class SpannerChangeStreamsToPubSub {
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(rpcPriority)
-                .withMetadataTable(metadataTableName))
+                .withMetadataTable(metadataTableName)
+                .withTvfNameList(tvfNameList))
         .apply(
             "Convert each record to a PubsubMessage",
             FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()

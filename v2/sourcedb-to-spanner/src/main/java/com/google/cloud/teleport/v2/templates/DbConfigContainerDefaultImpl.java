@@ -17,12 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.source.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
-import org.jetbrains.annotations.Nullable;
 
 /** Default Implementation for {@link DbConfigContainer} for non-Sharded sources. */
 public final class DbConfigContainerDefaultImpl implements DbConfigContainer {
@@ -36,17 +32,5 @@ public final class DbConfigContainerDefaultImpl implements DbConfigContainer {
   @Override
   public IoWrapper getIOWrapper(List<String> sourceTables, OnSignal<?> waitOnSignal) {
     return this.ioWrapperFactory.getIOWrapper(sourceTables, waitOnSignal);
-  }
-
-  @Nullable
-  @Override
-  public String getShardId() {
-    return null;
-  }
-
-  @Override
-  public Map<String, String> getSrcTableToShardIdColumnMap(
-      ISchemaMapper schemaMapper, List<String> spannerTables) {
-    return new HashMap<>();
   }
 }

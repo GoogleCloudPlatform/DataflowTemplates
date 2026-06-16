@@ -80,7 +80,7 @@ public class SourceReaderTransformTest implements Serializable {
     // FileIO in beam support a variety of paths dynamically, such as GCS, S3 and TempFolder
     // This allows us to pass a tempFolder into the same transform that accepts a GCS path
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 
@@ -123,7 +123,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 2. Run Pipeline with input path that has no avro files
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
 
     pipeline.apply(transform);
 
@@ -162,7 +162,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
 
     pipeline.apply(transform);
 
@@ -204,7 +204,7 @@ public class SourceReaderTransformTest implements Serializable {
     // 3. Run Pipeline
     String inputPath = tempFolder.getRoot().getAbsolutePath();
     SourceReaderTransform transform =
-        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new);
+        new SourceReaderTransform(inputPath, ddlView, IdentityMapper::new, null);
 
     PCollection<ComparisonRecord> output = pipeline.apply(transform);
 

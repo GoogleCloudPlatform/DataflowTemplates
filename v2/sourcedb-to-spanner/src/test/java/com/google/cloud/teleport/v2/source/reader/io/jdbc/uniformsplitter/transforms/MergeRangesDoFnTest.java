@@ -55,10 +55,15 @@ public class MergeRangesDoFnTest {
                 TableSplitSpecification.builder()
                     .setMaxPartitionsHint(2L)
                     .setApproxRowCount(3200L)
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -97,10 +102,15 @@ public class MergeRangesDoFnTest {
                 TableSplitSpecification.builder()
                     .setMaxPartitionsHint(2L)
                     .setApproxRowCount(3200L)
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -142,10 +152,14 @@ public class MergeRangesDoFnTest {
                         .setMaxPartitionsHint(2L)
                         .setApproxRowCount(3200L)
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("testTable").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("testTable")
+                                .build())
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Long.class)
                                     .build()))
@@ -156,10 +170,14 @@ public class MergeRangesDoFnTest {
                         .setMaxPartitionsHint(2L)
                         .setApproxRowCount(3200L)
                         .setTableIdentifier(
-                            TableIdentifier.builder().setTableName("testTable2").build())
+                            TableIdentifier.builder()
+                                .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                                .setTableName("testTable2")
+                                .build())
                         .setPartitionColumns(
                             ImmutableList.of(
                                 PartitionColumn.builder()
+                                    .setColumnTypeName("dummy")
                                     .setColumnName("col1")
                                     .setColumnClass(Long.class)
                                     .build()))
@@ -184,10 +202,14 @@ public class MergeRangesDoFnTest {
                     .setMaxPartitionsHint(2L)
                     .setApproxRowCount(3200L)
                     .setTableIdentifier(
-                        TableIdentifier.builder().setTableName("someOtherTable").build())
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("someOtherTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -211,10 +233,15 @@ public class MergeRangesDoFnTest {
                 TableSplitSpecification.builder()
                     .setMaxPartitionsHint(2L)
                     .setApproxRowCount(3200L)
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -227,7 +254,11 @@ public class MergeRangesDoFnTest {
         ImmutableList.of(
             getDummyRanges(mockProcessContext).get(0),
             getDummyRanges(mockProcessContext).get(0).toBuilder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable2").build())
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable2")
+                        .build())
                 .build());
     assertThrows(
         RuntimeException.class,
@@ -244,10 +275,15 @@ public class MergeRangesDoFnTest {
                 TableSplitSpecification.builder()
                     .setMaxPartitionsHint(2L)
                     .setApproxRowCount(3200L)
-                    .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                    .setTableIdentifier(
+                        TableIdentifier.builder()
+                            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                            .setTableName("testTable")
+                            .build())
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -262,8 +298,16 @@ public class MergeRangesDoFnTest {
 
   @Test
   public void testMergeRangesForTable_withMismatchedRange_throwsException() {
-    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
+    TableIdentifier table1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier table2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table2")
+            .build();
     MergeRangesDoFn mergeRangesDoFn =
         MergeRangesDoFn.builder()
             .setTableSplitSpecification(
@@ -274,6 +318,7 @@ public class MergeRangesDoFnTest {
                     .setPartitionColumns(
                         ImmutableList.of(
                             PartitionColumn.builder()
+                                .setColumnTypeName("dummy")
                                 .setColumnName("col1")
                                 .setColumnClass(Long.class)
                                 .build()))
@@ -285,6 +330,7 @@ public class MergeRangesDoFnTest {
 
     Range range1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setStart(0L)
             .setEnd(10L)
@@ -306,7 +352,12 @@ public class MergeRangesDoFnTest {
     Range testRange =
         dummyCounter(
             Range.builder()
-                .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+                .setColumnTypeName("dummy")
+                .setTableIdentifier(
+                    TableIdentifier.builder()
+                        .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                        .setTableName("testTable")
+                        .build())
                 .setStart(0L)
                 .setEnd(64L)
                 .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))

@@ -141,6 +141,9 @@ public abstract class Boundary<T extends Serializable>
       BigDecimal b2 = new BigDecimal(d2.toString());
       return bigDecimalEqual(b1, b2);
     }
+    if (valueA instanceof byte[] b1 && valueB instanceof byte[] b2) {
+      return java.util.Arrays.equals(b1, b2);
+    }
 
     return Objects.equal(valueA, valueB);
   }
@@ -148,6 +151,55 @@ public abstract class Boundary<T extends Serializable>
   private boolean bigDecimalEqual(BigDecimal b1, BigDecimal b2) {
     BigDecimal diff = b1.subtract(b2).abs();
     return diff.compareTo(decimalStepSize()) < 0;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) {
+      return true;
+    }
+    if (!(obj instanceof Boundary)) {
+      return false;
+    }
+    Boundary<?> that = (Boundary<?>) obj;
+    return Objects.equal(this.tableIdentifier(), that.tableIdentifier())
+        && Objects.equal(this.partitionColumn(), that.partitionColumn())
+        && Objects.equal(this.splitIndex(), that.splitIndex())
+        && java.util.Objects.deepEquals(this.start(), that.start())
+        && java.util.Objects.deepEquals(this.end(), that.end())
+        && Objects.equal(this.boundarySplitter(), that.boundarySplitter())
+        && Objects.equal(this.boundaryTypeMapper(), that.boundaryTypeMapper());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(
+        tableIdentifier(),
+        partitionColumn(),
+        splitIndex(),
+        hashObjectOrArray(start()),
+        hashObjectOrArray(end()),
+        boundarySplitter(),
+        boundaryTypeMapper());
+  }
+
+  // Note: Currently, java.util.Arrays.hashCode() is only used for byte arrays (e.g. UUIDs),
+  // which is the only array type supported for partitioning. If support for other primitive
+  // array types (like int[], long[], etc.) is added in the future, this helper method must
+  // be expanded with corresponding instanceof checks to compute their hash codes correctly,
+  // as Objects.hashCode() does not compute deep hashes of arrays.
+  private static int hashObjectOrArray(Object a) {
+    if (a == null) {
+      return 0;
+    }
+    if (a instanceof byte[] b) {
+      return java.util.Arrays.hashCode(b);
+    }
+    if (a instanceof Object[] objArr) {
+      return java.util.Arrays.deepHashCode(objArr);
+    }
+
+    return Objects.hashCode(a);
   }
 
   /**
@@ -315,6 +367,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setDatetimePrecision(Integer value) {
       this.partitionColumnBuilder().setDatetimePrecision(value);
+      return this;
+    }
+
+    public Builder<T> setColumnTypeName(String value) {
+      this.partitionColumnBuilder().setColumnTypeName(value);
       return this;
     }
 

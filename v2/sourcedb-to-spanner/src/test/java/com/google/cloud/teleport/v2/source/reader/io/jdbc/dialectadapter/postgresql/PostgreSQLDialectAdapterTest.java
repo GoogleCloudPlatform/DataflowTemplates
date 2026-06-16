@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -238,7 +239,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getString("collation")).thenReturn(null, "en_US", "en_US", null);
     when(mockResultSet.getInt("type_length")).thenReturn(100, 0);
     when(mockResultSet.wasNull()).thenReturn(false, true);
-    when(mockResultSet.getString("type_name")).thenReturn("char", "text");
+    when(mockResultSet.getString("type_name")).thenReturn("bigint", "char", "text", "timestamp");
     when(mockResultSet.getString("charset")).thenReturn("UTF8", "UTF8");
 
     assertThat(adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables))
@@ -253,6 +254,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setCardinality(1L)
                     .setOrdinalPosition(1L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.NUMERIC)
+                    .setColumnTypeName("bigint")
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col1")
@@ -269,6 +271,7 @@ public class PostgreSQLDialectAdapterTest {
                             .setPadSpace(true)
                             .build())
                     .setStringMaxLength(100)
+                    .setColumnTypeName("char")
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col2")
@@ -285,6 +288,7 @@ public class PostgreSQLDialectAdapterTest {
                             .setPadSpace(false)
                             .build())
                     .setStringMaxLength(65535)
+                    .setColumnTypeName("text")
                     .build(),
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col3")
@@ -294,7 +298,92 @@ public class PostgreSQLDialectAdapterTest {
                     .setCardinality(2L)
                     .setOrdinalPosition(2L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
+                    .setColumnTypeName("timestamp")
                     .build()));
+  }
+
+  @Test
+  public void testDiscoverTableIndexesWithUuid()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getString("column_name")).thenReturn("col_uuid");
+    when(mockResultSet.getString("index_name")).thenReturn("table_uuid_idx");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("type_category")).thenReturn("U");
+    when(mockResultSet.getString("type_name")).thenReturn("uuid");
+    when(mockResultSet.getInt("type_length")).thenReturn(0);
+    when(mockResultSet.wasNull()).thenReturn(true);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    // 1. Assert discovered index info matches expected schema mapping with standard C collation
+    assertThat(indexes)
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_uuid")
+                    .setIndexName("table_uuid_idx")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.BINARY)
+                    .setColumnTypeName("uuid")
+                    .build()));
+
+    SourceColumnIndexInfo info = indexes.get("my_schema.table1").get(0);
+
+    // 2. Assert that a PartitionColumn can be built successfully from this index info (precondition
+    // check)
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName(info.columnName())
+            .setColumnClass(byte[].class)
+            .setColumnTypeName(info.columnTypeName())
+            .build();
+
+    assertThat(partitionColumn).isNotNull();
+    assertThat(partitionColumn.columnClass()).isEqualTo(byte[].class);
+    assertThat(partitionColumn.columnTypeName()).isEqualTo("uuid");
+
+    // 3. Assert that getBoundaryQuery correctly wraps this discovered UUID column in optimized
+    // subqueries
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_uuid"))
+        .isEqualTo(
+            "SELECT (SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_uuid FROM my_schema.table1 ORDER BY col_uuid DESC NULLS LAST LIMIT 1)");
+
+    // 3b. Assert that getBoundaryQuery generates correct partitioned query for UUID column (using
+    // CTE with subqueries)
+    assertThat(
+            adapter.getBoundaryQuery(
+                "my_schema.table1", ImmutableList.of("parent_col"), "col_uuid"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM my_schema.table1 "
+                + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "
+                + "SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY col_uuid ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_uuid FROM filtered_uuid ORDER BY col_uuid DESC NULLS LAST LIMIT 1)");
+
+    // 4. Assert that getReadQuery generates the correct query for UUID column
+    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_uuid")))
+        .isEqualTo(
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
+
+    // 5. Assert that getCountQuery generates the correct query for UUID column
+    assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_uuid"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_uuid >= ? AND (col_uuid < ? OR (? = TRUE AND col_uuid = ?))))");
   }
 
   @Test
@@ -314,6 +403,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
     when(mockResultSet.getString("type_category")).thenReturn("N", "N");
+    when(mockResultSet.getString("type_name")).thenReturn("bigint", "bigint");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
@@ -498,6 +588,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getLong("cardinality")).thenReturn(10L, 20L);
     when(mockResultSet.getLong("ordinal_position")).thenReturn(1L, 1L);
     when(mockResultSet.getString("type_category")).thenReturn("N", "N");
+    when(mockResultSet.getString("type_name")).thenReturn("bigint", "bigint");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);

@@ -28,7 +28,11 @@ public class TableReadSpecificationTest {
 
   @Test
   public void testTableReadSpecificationBuilder() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = mock(JdbcIO.RowMapper.class);
 
     TableReadSpecification<String> spec =
@@ -45,7 +49,11 @@ public class TableReadSpecificationTest {
 
   @Test
   public void testTableReadSpecificationDefaultFetchSize() {
-    TableIdentifier tableId = TableIdentifier.builder().setTableName("test_table").build();
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("test_table")
+            .build();
     JdbcIO.RowMapper<String> mockMapper = mock(JdbcIO.RowMapper.class);
 
     TableReadSpecification<String> spec =

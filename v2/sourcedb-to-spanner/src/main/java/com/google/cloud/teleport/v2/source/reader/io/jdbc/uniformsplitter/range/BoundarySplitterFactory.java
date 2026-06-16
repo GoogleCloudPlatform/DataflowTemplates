@@ -235,13 +235,59 @@ public class BoundarySplitterFactory {
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
-    BigInteger startBigInt = (start == null) ? null : new BigInteger(start);
-    BigInteger endBigInt = (end == null) ? null : new BigInteger(end);
+    if (start == null && end == null) {
+      return null;
+    }
+
+    BigInteger startBigInt = (start == null) ? null : new BigInteger(1, start);
+    BigInteger endBigInt = (end == null) ? null : new BigInteger(1, end);
     BigInteger split = splitBigIntegers(startBigInt, endBigInt);
     if (split == null) {
       return null;
     }
+
+    if (start != null && end != null && start.length == end.length) {
+      return toFixedLengthByteArray(split, start.length);
+    }
     return split.toByteArray();
+  }
+
+  /**
+   * Formats a {@link BigInteger} into a byte array of exactly {@code expectedLength}, handling
+   * two's complement serialization edge cases (leading sign-byte truncation for values >= 0x80...
+   * and zero-padding for small values) to maintain precise byte alignment.
+   */
+  private static byte[] toFixedLengthByteArray(BigInteger bigInt, int expectedLength) {
+    final byte[] array = bigInt.toByteArray();
+    if (array.length == expectedLength) {
+      return array;
+    }
+    if (array.length > expectedLength) {
+      return truncateLeadingSignByte(array, expectedLength);
+    }
+    return padLeadingZeroBytes(array, expectedLength);
+  }
+
+  /**
+   * When BigInteger returns a positive number, it adds an extra leading 0x00 byte for values >=
+   * 0x80... to ensure that the most significant bit is 0 for positive numbers. This method removes
+   * that extra leading 0x00 byte to maintain precise byte alignment.
+   */
+  private static byte[] truncateLeadingSignByte(byte[] array, int expectedLength) {
+    final byte[] result = new byte[expectedLength];
+    System.arraycopy(array, array.length - expectedLength, result, 0, expectedLength);
+    return result;
+  }
+
+  /**
+   * BigInteger.toByteArray() strips leading zero bytes from positive numbers, returning arrays
+   * shorter than expected for small values. This method prepends leading 0x00 bytes to reconstruct
+   * the full expected byte length (e.g., 16 bytes for UUIDs).
+   */
+  private static byte[] padLeadingZeroBytes(byte[] array, int expectedLength) {
+    final byte[] result = new byte[expectedLength];
+    System.arraycopy(array, 0, result, expectedLength - array.length, array.length);
+    return result;
   }
 
   private static String splitStrings(

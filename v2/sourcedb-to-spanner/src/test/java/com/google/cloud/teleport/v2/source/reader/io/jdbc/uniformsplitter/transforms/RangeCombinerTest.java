@@ -41,7 +41,12 @@ public class RangeCombinerTest {
 
     Range rangeBase =
         Range.builder()
-            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(
+                TableIdentifier.builder()
+                    .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+                    .setTableName("testTable")
+                    .build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Long.class))
             .setColName("long_col_base")
             .setColClass(Long.class)
@@ -89,11 +94,20 @@ public class RangeCombinerTest {
   public void testPerKeyBatched() {
     // Arrange
     final int numBatches = 10;
-    TableIdentifier table1 = TableIdentifier.builder().setTableName("table1").build();
-    TableIdentifier table2 = TableIdentifier.builder().setTableName("table2").build();
+    TableIdentifier table1 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table1")
+            .build();
+    TableIdentifier table2 =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("table2")
+            .build();
 
     Range range1 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table1)
             .setColName("col1")
             .setColClass(Long.class)
@@ -107,6 +121,7 @@ public class RangeCombinerTest {
 
     Range range2 =
         Range.builder()
+            .setColumnTypeName("dummy")
             .setTableIdentifier(table2)
             .setColName("col2")
             .setColClass(Long.class)

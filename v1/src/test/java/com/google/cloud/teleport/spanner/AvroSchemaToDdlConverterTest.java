@@ -857,7 +857,7 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
-  public void udfAllOptions() {
+  public void udfSqlAllOptions() {
     String avroString =
         "{"
             + "  \"type\" : \"record\","
@@ -885,6 +885,104 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION `Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
                 + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 1)"));
+  }
+
+  @Test
+  public void pgUdfSqlAllOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfType\" : \"TEXT\","
+            + "  \"spannerUdfSecurity\" : \"INVOKER\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 TEXT\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 TEXT DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT \"bar\")"
+                + " RETURNS TEXT SQL SECURITY INVOKER RETURN SELECT 1"));
+  }
+
+  @Test
+  public void udfRemote() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UdfSchema_Foo\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"spannerName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfLanguage\" : \"REMOTE\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerOption_0\" : \"endpoint=\\\"https://us-central1-myproject.cloudfunctions.net/myfunc\\\"\","
+            + "  \"spannerOption_1\" : \"max_batching_rows=50\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `UdfSchema`.`Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
+                + " RETURNS STRING NOT DETERMINISTIC LANGUAGE REMOTE"
+                + " OPTIONS (endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\", max_batching_rows=50)"));
+  }
+
+  @Test
+  public void pgUdfRemote() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"UdfSchema.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfName\" : \"UdfSchema.Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfLanguage\" : \"REMOTE\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"{\\\"endpoint\\\": \\\"https://us-central1-myproject.cloudfunctions.net/myfunc\\\", \\\"max_batching_rows\\\": 50}\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"UdfSchema\".\"Foo\"(\"arg0\" STRING, \"arg1\" STRING DEFAULT \"bar\")"
+                + " RETURNS STRING VOLATILE LANGUAGE REMOTE"
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'"));
   }
 
   @Test

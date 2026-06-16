@@ -63,7 +63,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.PipelineOperator.Config;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
@@ -364,11 +363,35 @@ public abstract class TemplateTestBase {
             LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
             try {
-              Process exec = Runtime.getRuntime().exec(mavenCmd);
+              ProcessBuilder pb = new ProcessBuilder(mavenCmd);
+              pb.redirectErrorStream(true);
+              Process exec = pb.start();
 
-              if (exec.waitFor() != 0) {
-                IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-                IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+              List<String> outputLines = Collections.synchronizedList(new ArrayList<>());
+              Thread streamReaderThread =
+                  new Thread(
+                      () -> {
+                        try (java.io.BufferedReader reader =
+                            new java.io.BufferedReader(
+                                new java.io.InputStreamReader(exec.getInputStream(), UTF_8))) {
+                          String line;
+                          while ((line = reader.readLine()) != null) {
+                            outputLines.add(line);
+                          }
+                        } catch (IOException e) {
+                          LOG.error("Error reading process output", e);
+                        }
+                      });
+              streamReaderThread.start();
+
+              int exitCode = exec.waitFor();
+              streamReaderThread.join();
+
+              if (exitCode != 0) {
+                LOG.error("Error staging template, check Maven logs below:");
+                for (String line : outputLines) {
+                  LOG.error(line);
+                }
                 throw new RuntimeException("Error staging template, check Maven logs.");
               }
 

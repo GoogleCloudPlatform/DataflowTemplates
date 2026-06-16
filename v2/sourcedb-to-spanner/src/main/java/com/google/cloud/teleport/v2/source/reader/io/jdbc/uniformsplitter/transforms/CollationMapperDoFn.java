@@ -15,9 +15,8 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
-import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.DataSourceProvider;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
@@ -27,48 +26,44 @@ import java.sql.SQLException;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Discover the Collation Mapping information for a given {@link CollationReference}. */
 public class CollationMapperDoFn
-    extends DoFn<CollationReference, KV<CollationReference, CollationMapper>>
+    extends DoFn<KV<String, CollationReference>, KV<CollationReference, CollationMapper>>
     implements Serializable {
 
   private static final Logger logger = LoggerFactory.getLogger(CollationMapper.class);
-  private final SerializableFunction<Void, DataSource> dataSourceProviderFn;
+  private final DataSourceProvider dataSourceProvider;
   private final UniformSplitterDBAdapter dbAdapter;
+  private transient DataSourceManager dataSourceManager;
 
   @JsonIgnore private transient @Nullable DataSource dataSource;
 
   public CollationMapperDoFn(
-      SerializableFunction<Void, DataSource> dataSourceProviderFn,
-      UniformSplitterDBAdapter dbAdapter) {
-    this.dataSourceProviderFn = dataSourceProviderFn;
+      DataSourceProvider dataSourceProvider, UniformSplitterDBAdapter dbAdapter) {
+    this.dataSourceProvider = dataSourceProvider;
     this.dbAdapter = dbAdapter;
     this.dataSource = null;
   }
 
-  @Setup
-  public void setup() throws Exception {
-    dataSource = dataSourceProviderFn.apply(null);
-  }
-
-  private Connection acquireConnection() throws SQLException {
-    return checkStateNotNull(this.dataSource).getConnection();
+  @StartBundle
+  public void startBundle() throws Exception {
+    this.dataSourceManager =
+        DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }
 
   @ProcessElement
   public void processElement(
-      @Element CollationReference input,
+      @Element KV<String, CollationReference> input,
       OutputReceiver<KV<CollationReference, CollationMapper>> out)
       throws SQLException {
-
-    try (Connection conn = acquireConnection()) {
-      CollationMapper mapper = CollationMapper.fromDB(conn, dbAdapter, input);
-      out.output(KV.of(input, mapper));
+    DataSource dataSource = dataSourceManager.getDatasource(input.getKey());
+    try (Connection conn = dataSource.getConnection()) {
+      CollationMapper mapper = CollationMapper.fromDB(conn, dbAdapter, input.getValue());
+      out.output(KV.of(input.getValue(), mapper));
     } catch (Exception e) {
       logger.error(
           "Exception: {} while generating collationMapper for dataSource: {}, collationReference: {}",
@@ -77,6 +72,23 @@ public class CollationMapperDoFn
           input);
       // Beam will re-try exceptions generation during pipeline-run phase.
       throw e;
+    }
+  }
+
+  @FinishBundle
+  public void finishBundle() throws Exception {
+    cleanupDataSource();
+  }
+
+  @Teardown
+  public void tearDown() throws Exception {
+    cleanupDataSource();
+  }
+
+  void cleanupDataSource() {
+    if (this.dataSourceManager != null) {
+      this.dataSourceManager.closeAll();
+      this.dataSourceManager = null;
     }
   }
 }

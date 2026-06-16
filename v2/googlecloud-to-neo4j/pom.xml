@@ -27,7 +27,6 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <neo4j-java-driver.version>5.27.0</neo4j-java-driver.version>
     <jackson.version>2.21.0</jackson.version>
   </properties>
 
@@ -38,11 +37,6 @@
         <artifactId>snakeyaml</artifactId>
         <version>2.4</version>
       </dependency>
-      <dependency>
-        <groupId>org.neo4j.driver</groupId>
-        <artifactId>neo4j-java-driver</artifactId>
-        <version>${neo4j-java-driver.version}</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -50,7 +44,7 @@
     <dependency>
       <groupId>org.neo4j.importer</groupId>
       <artifactId>import-spec</artifactId>
-      <version>1.0.0-rc11</version>
+      <version>1.0.0-rc14</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
@@ -77,7 +71,7 @@
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-cypher-dsl-schema-name-support</artifactId>
-      <version>2025.2.5</version>
+      <version>2025.2.6</version>
     </dependency>
 
     <!-- Test dependencies -->

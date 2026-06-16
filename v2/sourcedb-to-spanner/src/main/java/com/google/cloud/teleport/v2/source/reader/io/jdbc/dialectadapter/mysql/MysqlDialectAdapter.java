@@ -513,8 +513,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         datetimePrecision);
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
     // Column.
-    String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
-    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
+    String columnType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
+    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columnType, IndexType.OTHER);
     CollationReference collationReference = null;
     if (indexType.equals(IndexType.STRING)) {
       collationReference =
@@ -557,6 +557,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         .setNumericScale(hasNumericScale ? numericScale : null)
         .setDecimalStepSize(decimalStepSize)
         .setDatetimePrecision(datetimePrecision)
+        .setColumnTypeName(columnType)
         .build();
   }
 

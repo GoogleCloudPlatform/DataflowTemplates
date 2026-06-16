@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader;
 
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
+import com.google.common.collect.ImmutableList;
 
 /**
  * The Reader interfaces with the source-db allowing the pipeline to read from various data sources
@@ -62,7 +63,17 @@ import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
  * </ol>
  */
 public interface Reader {
-  SourceSchema getSourceSchema();
+  /**
+   * Returns the schemas discovered from the source database(s).
+   *
+   * @return A list of {@link SourceSchema} objects representing the structure of the sources.
+   */
+  ImmutableList<SourceSchema> getSourceSchema();
 
+  /**
+   * Returns the reader transform to be applied to the pipeline.
+   *
+   * @return The {@link ReaderTransform} for reading data.
+   */
   ReaderTransform getReaderTransform();
 }

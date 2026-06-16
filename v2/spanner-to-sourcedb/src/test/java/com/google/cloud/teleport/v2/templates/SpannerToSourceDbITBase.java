@@ -20,10 +20,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -95,8 +95,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
+    spannerMetadataResourceManager.ensureUsableAndCreateResources();
     return spannerMetadataResourceManager;
   }
 
@@ -133,22 +132,52 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager,
+      Map<String, JDBCResourceManager> shardNameToJdbcResourceManagerMaps)
       throws IOException {
-    Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
-    shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost(jdbcResourceManager.getHost());
-    shard.setPassword(jdbcResourceManager.getPassword());
-    shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
-    shard.setDbName(jdbcResourceManager.getDatabaseName());
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
+
+    List<Shard> shards =
+        shardNameToJdbcResourceManagerMaps.entrySet().stream()
+            .map(e -> createShardConfig(e.getValue(), e.getKey()))
+            .toList();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManagers)
+      throws IOException {
+    List<Shard> shards =
+        Collections.singletonList(createShardConfig(jdbcResourceManagers, "Shard1"));
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  private Shard createShardConfig(JDBCResourceManager jdbcResourceManager, String shardId) {
+    Shard shard = new Shard();
+    shard.setLogicalShardId(shardId);
+    shard.setUser(jdbcResourceManager.getUsername());
+    shard.setPassword(jdbcResourceManager.getPassword());
+    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
+      shard.setHost(pgRm.getHost());
+      shard.setPort(String.valueOf(pgRm.getPort()));
+      shard.setDbName(pgRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
+      shard.setHost(mySqlRm.getHost());
+      shard.setPort(String.valueOf(mySqlRm.getPort()));
+      shard.setDbName(mySqlRm.getDatabaseName());
+    } else {
+      throw new IllegalArgumentException("Unsupported JDBC resource manager type");
+    }
+    return shard;
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
@@ -230,12 +259,15 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put(
                 "sourceShardsFilePath",
                 getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                    (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                            && !Objects.equals(
+                                sourceType,
+                                com.google.cloud.teleport.v2.templates.constants.Constants
+                                    .SOURCE_POSTGRESQL))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
@@ -244,6 +276,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("workerMachineType", "n2-standard-4");
           }
         };
+
+    if (subscriptionName != null) {
+      params.put("dlqGcsPubSubSubscription", subscriptionName);
+    }
+
     if (jobParameters != null) {
       params.putAll(jobParameters);
     }
@@ -264,6 +301,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       params.put(
           "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+      if (customTransformation.customParameters() != null) {
+        params.put("transformationCustomParameters", customTransformation.customParameters());
+      }
     }
 
     // Construct template
@@ -278,6 +318,36 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
+  }
+
+  protected void loadSQLFileResource(JDBCResourceManager jdbcResourceManager, String resourcePath)
+      throws Exception {
+    String sql =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(resourcePath), java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      java.sql.Connection connection =
+          java.sql.DriverManager.getConnection(
+              jdbcResourceManager.getUri(),
+              jdbcResourceManager.getUsername(),
+              jdbcResourceManager.getPassword());
+
+      sql = sql.replaceAll("\r\n", " ").replaceAll("\n", " ");
+      String[] statements = sql.split(";");
+
+      java.sql.Statement statement = connection.createStatement();
+      for (String stmt : statements) {
+        if (!stmt.trim().isEmpty()) {
+          if (!stmt.trim().toUpperCase().startsWith("SELECT")) {
+            statement.executeUpdate(stmt);
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new Exception("Failed to load SQL into database", e);
+    }
   }
 
   protected void createMySQLSchema(MySQLResourceManager jdbcResourceManager, String mySqlSchemaFile)

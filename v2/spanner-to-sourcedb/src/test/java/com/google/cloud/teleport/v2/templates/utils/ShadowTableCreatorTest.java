@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.collect.ImmutableList;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -249,5 +251,93 @@ public final class ShadowTableCreatorTest {
             .endTable()
             .build();
     return ddl;
+  }
+
+  @Test
+  public void testConstructShadowTable_DescKey() {
+    Ddl primaryDbDdl =
+        Ddl.builder()
+            .createTable("table_desc")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .desc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            Ddl.builder().build(), // empty metadata ddl
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    Table shadowTable = shadowTableCreator.constructShadowTable("table_desc");
+    assertThat(shadowTable.name()).isEqualTo("shadow_table_desc");
+    assertThat(shadowTable.primaryKeys().get(0).order()).isEqualTo(IndexColumn.Order.DESC);
+  }
+
+  @Test
+  public void testCreateShadowTables_NoNewTables() {
+    Ddl primaryDbDdl =
+        Ddl.builder()
+            .createTable("table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    Ddl metadataDbDdl =
+        Ddl.builder()
+            .createTable("shadow_table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    shadowTableCreator.createShadowTablesInSpanner();
+
+    // Verify that updateDatabaseDdl was NOT called!
+    verify(mockDatabaseClient, never()).updateDatabaseDdl(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testCreateShadowTables_Exception() throws Exception {
+    Ddl primaryDbDdl = getPrimaryDbDdl();
+    Ddl metadataDbDdl = getMetadataDbDdl();
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            Dialect.GOOGLE_STANDARD_SQL,
+            "shadow_",
+            primaryDbDdl,
+            metadataDbDdl,
+            mockSpannerAccessor,
+            testSpannerConfig);
+
+    when(mockUpdateDatabaseDdlFuture.get(5, TimeUnit.MINUTES))
+        .thenThrow(new ExecutionException(new RuntimeException("Spanner error")));
+
+    assertThrows(RuntimeException.class, () -> shadowTableCreator.createShadowTablesInSpanner());
   }
 }

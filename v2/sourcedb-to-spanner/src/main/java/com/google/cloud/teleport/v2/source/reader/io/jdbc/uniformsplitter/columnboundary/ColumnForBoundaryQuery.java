@@ -92,6 +92,11 @@ public abstract class ColumnForBoundaryQuery implements Serializable {
       return this;
     }
 
+    public Builder setColumnTypeName(String value) {
+      this.partitionColumnBuilder().setColumnTypeName(value);
+      return this;
+    }
+
     public abstract Builder setParentRange(Range value);
 
     public abstract ColumnForBoundaryQuery build();

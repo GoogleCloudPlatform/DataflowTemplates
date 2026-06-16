@@ -15,13 +15,20 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.HashSet;
 import java.util.Set;
 import org.bson.Document;
+import org.bson.types.Binary;
+import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -131,12 +138,115 @@ public class UtilsTest {
   @Test
   public void testJsonToDocument() {
     String jsonString =
-        "{\"_id\":\"{\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"}\",\"data\":\"{\\\"_id\\\": {\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"},\\\"arrayField\\\": [\\\"hello\\\",10],\\\"dateField\\\": {\\\"$date\\\": 1565546054692},\\\"dateBefore1970\\\": {\\\"$date\\\": -1577923200000},\\\"decimal128Field\\\": {\\\"$numberDecimal\\\": \\\"10.99\\\"},\\\"documentField\\\": {\\\"a\\\": \\\"hello\\\"},\\\"doubleField\\\": 10.5,\\\"infiniteNumber\\\": Infinity,\\\"int32field\\\": 10,\\\"int64Field\\\": {\\\"$numberLong\\\": \\\"50\\\"},\\\"minKeyField\\\": {\\\"$minKey\\\": 1},\\\"maxKeyField\\\": {\\\"$maxKey\\\": 1},\\\"regexField\\\": {\\\"$regex\\\": \\\"^H\\\",\\\"$options\\\": \\\"i\\\"},\\\"timestampField\\\": {\\\"$timestamp\\\": {\\\"t\\\": 1565545664,\\\"i\\\": 1}},\\\"uuid\\\": {\\\"$binary\\\": \\\"OyQRAeK7QlWMr0E2xWapYg==\\\",\\\"$type\\\": \\\"04\\\"}}\",\"_metadata_stream\":\"extended-types-test\",\"_metadata_timestamp\":1745957556,\"_metadata_read_timestamp\":1745957556,\"_metadata_dataflow_timestamp\":1745963670,\"_metadata_read_method\":\"backfill\",\"_metadata_source_type\":\"backfill\",\"_metadata_deleted\":false,\"_metadata_table\":null,\"_metadata_change_type\":\"READ\",\"_metadata_primary_keys\":null,\"_metadata_uuid\":\"2a9cf8eb-4f35-433c-899a-39921d4c8587\",\"_metadata_timestamp_seconds\":\"1745957556\",\"_metadata_timestamp_nanos\":\"184498000\",\"_metadata_source\":{\"database\":\"extended_types\",\"collection\":\"mycol\",\"change_type\":\"READ\",\"is_deleted\":false,\"primary_key\":[\"_id\"]},\"_metadata_error\":null,\"_metadata_retry_count\":116}";
+        "{\"_id\":\"{\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"}\",\"data\":\"{\\\"_id\\\":"
+            + " {\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"},\\\"arrayField\\\":"
+            + " [\\\"hello\\\",10],\\\"dateField\\\": {\\\"$date\\\":"
+            + " 1565546054692},\\\"dateBefore1970\\\": {\\\"$date\\\":"
+            + " -1577923200000},\\\"decimal128Field\\\": {\\\"$numberDecimal\\\":"
+            + " \\\"10.99\\\"},\\\"documentField\\\": {\\\"a\\\":"
+            + " \\\"hello\\\"},\\\"doubleField\\\": 10.5,\\\"infiniteNumber\\\":"
+            + " Infinity,\\\"int32field\\\": 10,\\\"int64Field\\\": {\\\"$numberLong\\\":"
+            + " \\\"50\\\"},\\\"minKeyField\\\": {\\\"$minKey\\\": 1},\\\"maxKeyField\\\":"
+            + " {\\\"$maxKey\\\": 1},\\\"regexField\\\": {\\\"$regex\\\":"
+            + " \\\"^H\\\",\\\"$options\\\": \\\"i\\\"},\\\"timestampField\\\":"
+            + " {\\\"$timestamp\\\": {\\\"t\\\": 1565545664,\\\"i\\\": 1}},\\\"uuid\\\":"
+            + " {\\\"$binary\\\": \\\"OyQRAeK7QlWMr0E2xWapYg==\\\",\\\"$type\\\":"
+            + " \\\"04\\\"}}\",\"_metadata_stream\":\"extended-types-test\",\"_metadata_timestamp\":1745957556,\"_metadata_read_timestamp\":1745957556,\"_metadata_dataflow_timestamp\":1745963670,\"_metadata_read_method\":\"backfill\",\"_metadata_source_type\":\"backfill\",\"_metadata_deleted\":false,\"_metadata_table\":null,\"_metadata_change_type\":\"READ\",\"_metadata_primary_keys\":null,\"_metadata_uuid\":\"2a9cf8eb-4f35-433c-899a-39921d4c8587\",\"_metadata_timestamp_seconds\":\"1745957556\",\"_metadata_timestamp_nanos\":\"184498000\",\"_metadata_source\":{\"database\":\"extended_types\",\"collection\":\"mycol\",\"change_type\":\"READ\",\"is_deleted\":false,\"primary_key\":[\"_id\"]},\"_metadata_error\":null,\"_metadata_retry_count\":116}";
     Document result = Utils.jsonToDocument(jsonString, 1L);
     assertTrue(
         result
             .toJson()
             .equals(
-                "{\"_id\": 1, \"arrayField\": [\"hello\", 10], \"dateField\": {\"$date\": \"2019-08-11T17:54:14.692Z\"}, \"dateBefore1970\": {\"$date\": {\"$numberLong\": \"-1577923200000\"}}, \"decimal128Field\": {\"$numberDecimal\": \"10.99\"}, \"documentField\": {\"a\": \"hello\"}, \"doubleField\": 10.5, \"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}, \"int32field\": 10, \"int64Field\": 50, \"minKeyField\": {\"$minKey\": 1}, \"maxKeyField\": {\"$maxKey\": 1}, \"regexField\": {\"$regularExpression\": {\"pattern\": \"^H\", \"options\": \"i\"}}, \"timestampField\": {\"$timestamp\": {\"t\": 1565545664, \"i\": 1}}, \"uuid\": {\"$binary\": {\"base64\": \"OyQRAeK7QlWMr0E2xWapYg==\", \"subType\": \"04\"}}}"));
+                "{\"_id\": 1, \"arrayField\": [\"hello\", 10], \"dateField\": {\"$date\":"
+                    + " \"2019-08-11T17:54:14.692Z\"}, \"dateBefore1970\": {\"$date\":"
+                    + " {\"$numberLong\": \"-1577923200000\"}}, \"decimal128Field\":"
+                    + " {\"$numberDecimal\": \"10.99\"}, \"documentField\": {\"a\": \"hello\"},"
+                    + " \"doubleField\": 10.5, \"infiniteNumber\": {\"$numberDouble\":"
+                    + " \"Infinity\"}, \"int32field\": 10, \"int64Field\": 50, \"minKeyField\":"
+                    + " {\"$minKey\": 1}, \"maxKeyField\": {\"$maxKey\": 1}, \"regexField\":"
+                    + " {\"$regularExpression\": {\"pattern\": \"^H\", \"options\": \"i\"}},"
+                    + " \"timestampField\": {\"$timestamp\": {\"t\": 1565545664, \"i\": 1}},"
+                    + " \"uuid\": {\"$binary\": {\"base64\": \"OyQRAeK7QlWMr0E2xWapYg==\","
+                    + " \"subType\": \"04\"}}}"));
+  }
+
+  @Test
+  public void testDocumentIdToString() {
+    assertEquals("test_id", Utils.documentIdToString("test_id"));
+    assertEquals("123", Utils.documentIdToString(123L));
+    assertEquals("123.456", Utils.documentIdToString(123.456));
+    assertEquals("true", Utils.documentIdToString(true));
+    assertEquals("null", Utils.documentIdToString(null));
+
+    ObjectId objectId = new ObjectId("645c9a7e7b8b1a0e9c0f8b3a");
+    assertEquals("645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
+
+    Binary binary = new Binary(new byte[] {1, 2, 3});
+    assertEquals("AQID", Utils.documentIdToString(binary));
+
+    Document doc = new Document("a", 1).append("b", "test");
+    assertEquals("{\"a\": 1, \"b\": \"test\"}", Utils.documentIdToString(doc));
+  }
+
+  @Test
+  public void testGetCanonicalJsonOfDataField_StringInput() {
+    String jsonString =
+        "{\"data\":\"{\\\"doubleField\\\": 10.5, \\\"infiniteNumber\\\": Infinity,"
+            + " \\\"negativeInfiniteNumber\\\": -Infinity, \\\"nanNumber\\\": NaN,"
+            + " \\\"int64Field\\\": {\\\"$numberLong\\\": \\\"50\\\"}}\"}";
+    String result = Utils.getCanonicalJsonOfDataField(jsonString);
+
+    assertTrue(result.contains("\"doubleField\": {\"$numberDouble\": \"10.5\"}"));
+    assertTrue(result.contains("\"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}"));
+    assertTrue(result.contains("\"negativeInfiniteNumber\": {\"$numberDouble\": \"-Infinity\"}"));
+    assertTrue(result.contains("\"nanNumber\": {\"$numberDouble\": \"NaN\"}"));
+    assertTrue(result.contains("\"int64Field\": {\"$numberLong\": \"50\"}"));
+  }
+
+  @Test
+  public void testGetCanonicalJsonOfDataField_ObjectInput() {
+    String jsonString =
+        "{\"data\":{\"doubleField\": 10.5, \"infiniteNumber\": Infinity,"
+            + " \"negativeInfiniteNumber\": -Infinity, \"int64Field\": {\"$numberLong\": \"50\"}}}";
+    String result = Utils.getCanonicalJsonOfDataField(jsonString);
+
+    assertTrue(result.contains("\"doubleField\": {\"$numberDouble\": \"10.5\"}"));
+    assertTrue(result.contains("\"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}"));
+    assertTrue(result.contains("\"negativeInfiniteNumber\": {\"$numberDouble\": \"-Infinity\"}"));
+    assertTrue(result.contains("\"int64Field\": {\"$numberLong\": \"50\"}"));
+  }
+
+  @Test
+  public void testJsonToDocument_fallbackCase() {
+    // data is an object, not a string
+    String jsonString = "{\"data\": {\"name\": \"John\"}}";
+    Document result = Utils.jsonToDocument(jsonString, "id1");
+
+    assertEquals("John", result.get("name"));
+    assertEquals("id1", result.get("_id"));
+  }
+
+  @Test
+  public void testExtractInnerEvent_Document() {
+    // Test case where the document is wrapped in a "changeEvent" field (common for DLQ records)
+    Document inner = new Document("field", "value");
+    Document wrapped = new Document(DatastreamConstants.CHANGE_EVENT, inner);
+
+    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the document is NOT wrapped
+    assertEquals(inner, Utils.extractInnerEvent(inner));
+  }
+
+  @Test
+  public void testExtractInnerEvent_JsonNode() throws Exception {
+    // Test case where the JSON node is wrapped in a "changeEvent" field
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode inner = mapper.readTree("{\"field\":\"value\"}");
+    ObjectNode wrapped = mapper.createObjectNode();
+    wrapped.set(DatastreamConstants.CHANGE_EVENT, inner);
+
+    assertEquals(inner, Utils.extractInnerEvent(wrapped));
+    // Test case where the JSON node is NOT wrapped
+    assertEquals(inner, Utils.extractInnerEvent(inner));
   }
 }

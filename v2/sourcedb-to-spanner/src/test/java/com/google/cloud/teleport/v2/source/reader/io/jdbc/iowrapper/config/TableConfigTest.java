@@ -30,12 +30,17 @@ public class TableConfigTest {
   public void testTableConfigBuildsWithDefaults() {
     final String testTable = "testTable";
     final PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col_1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col_1")
+            .setColumnClass(Integer.class)
+            .build();
 
     TableConfig tableConfig =
         TableConfig.builder(testTable)
             .withPartitionColum(partitionColumn)
             .setApproxRowCount(42L)
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
             .build();
     assertThat(tableConfig.tableName()).isEqualTo(testTable);
     assertThat(tableConfig.maxPartitions()).isNull();
@@ -47,11 +52,16 @@ public class TableConfigTest {
   public void testTableConfigBuilds() {
     final String testTable = "testTable";
     final PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col_1").setColumnClass(Integer.class).build();
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col_1")
+            .setColumnClass(Integer.class)
+            .build();
     final int maxPartitions = 100;
 
     TableConfig tableConfig =
         TableConfig.builder(testTable)
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
             .withPartitionColum(partitionColumn)
             .setMaxPartitions(maxPartitions)
             .setApproxRowCount(42L)

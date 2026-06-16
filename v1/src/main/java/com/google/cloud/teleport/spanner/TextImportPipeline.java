@@ -298,6 +298,17 @@ public class TextImportPipeline {
     ValueProvider<String> getInvalidOutputPath();
 
     void setInvalidOutputPath(ValueProvider<String> value);
+
+    @TemplateParameter.Integer(
+        order = 17,
+        groupName = "Source",
+        optional = true,
+        description = "Maximum number of rows",
+        helpText = "The maximum number of rows to write to Spanner. The default value is 500.")
+    @Default.Integer(500)
+    ValueProvider<Integer> getMaxNumRows();
+
+    void setMaxNumRows(ValueProvider<Integer> value);
   }
 
   public static void main(String[] args) {
@@ -326,7 +337,10 @@ public class TextImportPipeline {
 
     p.apply(
         new TextImportTransform(
-            spannerConfig, options.getImportManifest(), options.getInvalidOutputPath()));
+            spannerConfig,
+            options.getImportManifest(),
+            options.getInvalidOutputPath(),
+            options.getMaxNumRows()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()

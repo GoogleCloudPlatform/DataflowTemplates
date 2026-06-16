@@ -923,17 +923,45 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
               manifest.getFilesList(),
               f -> GcsPath.fromUri(importDirectory.get()).resolve(f.getName()));
       List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+
+      // Fetch CRC32C checksums if MD5 is not present in the manifest.
+      List<String> crc32cs = null;
+      if (!gcsPaths.isEmpty() && Strings.isNullOrEmpty(manifest.getFiles(0).getMd5())) {
+        crc32cs = FileChecksum.getGcsFileChecksumsCrc32c(gcsUtil, gcsPaths);
+      }
+
       for (int i = 0; i < gcsPaths.size(); i++) {
         GcsPath path = gcsPaths.get(i);
         String fileName = gcsPaths.get(i).getFileName().getObject();
-        String expectedHash = manifest.getFiles(i).getMd5();
-        String actualHash = checksums.get(i);
-        Verify.verify(
-            expectedHash.equals(actualHash),
-            "Inconsistent file: %s expected hash %s actual hash %s",
-            fileName,
-            expectedHash,
-            actualHash);
+        TableManifest.File file = manifest.getFiles(i);
+        String expectedHash = file.getMd5();
+
+        if (!Strings.isNullOrEmpty(expectedHash)) {
+          String actualHash = checksums.get(i);
+          Verify.verify(
+              expectedHash.equals(actualHash),
+              "Inconsistent file: %s expected hash %s actual hash %s",
+              fileName,
+              expectedHash,
+              actualHash);
+        } else {
+          // This check must be duplicated because we do not want to send a LIST call to GCS for
+          // retrieving CRC32C
+          // checksums unless required. So, the array `crc32cs` will be empty unless the manifest
+          // has crc32c_hash.
+          String expectedCrc32c = file.getCrc32C();
+          if (!Strings.isNullOrEmpty(expectedCrc32c)) {
+            String actualCrc32c = crc32cs.get(i);
+            Verify.verify(
+                expectedCrc32c.equals(actualCrc32c),
+                "Inconsistent file: %s expected CRC32C %s actual CRC32C %s",
+                fileName,
+                expectedCrc32c,
+                actualCrc32c);
+          } else {
+            throw new RuntimeException("No checksum found in manifest for file: " + fileName);
+          }
+        }
         c.output(KV.of(table, path.toString()));
       }
     }
@@ -941,14 +969,30 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private void validateLocalFiles(ProcessContext c, String table, TableManifest manifest) {
       for (TableManifest.File file : manifest.getFilesList()) {
         Path filePath = Paths.get(importDirectory.get(), file.getName());
-        String actualHash = FileChecksum.getLocalFileChecksum(filePath);
         String expectedHash = file.getMd5();
-        Verify.verify(
-            expectedHash.equals(actualHash),
-            "Inconsistent file: %s expected hash %s actual hash %s",
-            filePath,
-            expectedHash,
-            actualHash);
+
+        if (!Strings.isNullOrEmpty(expectedHash)) {
+          String actualHash = FileChecksum.getLocalFileChecksum(filePath);
+          Verify.verify(
+              expectedHash.equals(actualHash),
+              "Inconsistent file: %s expected hash %s actual hash %s",
+              filePath,
+              expectedHash,
+              actualHash);
+        } else {
+          String expectedCrc32c = file.getCrc32C();
+          if (!Strings.isNullOrEmpty(expectedCrc32c)) {
+            String actualCrc32c = FileChecksum.getLocalFileChecksumCrc32c(filePath);
+            Verify.verify(
+                expectedCrc32c.equals(actualCrc32c),
+                "Inconsistent file: %s expected CRC32C %s actual CRC32C %s",
+                filePath,
+                expectedCrc32c,
+                actualCrc32c);
+          } else {
+            throw new RuntimeException("No checksum found in manifest for file: " + file.getName());
+          }
+        }
         c.output(KV.of(table, filePath.toString()));
       }
     }

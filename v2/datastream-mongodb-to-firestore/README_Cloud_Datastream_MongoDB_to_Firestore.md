@@ -60,7 +60,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **streamName**: The name or template for the stream to poll for schema information and source type.
 * **dlqGcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
+
+## User-Defined functions (UDFs)
+
+The Datastream to Firestore Template supports User-Defined functions (UDFs).
+UDFs allow you to customize functionality by providing a JavaScript function
+without having to maintain or build the entire template code.
+
+Check [Create user-defined functions for Dataflow templates](https://cloud.google.com/dataflow/docs/guides/templates/create-template-udf)
+and [Using UDFs](https://github.com/GoogleCloudPlatform/DataflowTemplates#using-udfs)
+for more information about how to create and test those functions.
 
 
 ## Getting Started
@@ -173,6 +186,9 @@ export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export STREAM_NAME=<streamName>
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
+export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 gcloud dataflow flex-template run "cloud-datastream-mongodb-to-firestore-job" \
   --project "$PROJECT" \
@@ -196,7 +212,10 @@ gcloud dataflow flex-template run "cloud-datastream-mongodb-to-firestore-job" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
   --parameters "streamName=$STREAM_NAME" \
-  --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION"
+  --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+  --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
+  --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+  --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
 ```
 
 For more information about the command, please check:
@@ -236,6 +255,9 @@ export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export STREAM_NAME=<streamName>
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
+export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
+export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
+export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -244,7 +266,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-mongodb-to-firestore-job" \
 -DtemplateName="Cloud_Datastream_MongoDB_to_Firestore" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,processBackfillFirst=$PROCESS_BACKFILL_FIRST,useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,streamName=$STREAM_NAME,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,processBackfillFirst=$PROCESS_BACKFILL_FIRST,useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,streamName=$STREAM_NAME,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -f v2/datastream-mongodb-to-firestore
 ```
 
@@ -308,6 +330,9 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_mongodb_to_firest
     # directoryWatchDurationInMinutes = "10"
     # streamName = "<streamName>"
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
+    # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
+    # javascriptTextTransformReloadIntervalMinutes = "0"
   }
 }
 ```

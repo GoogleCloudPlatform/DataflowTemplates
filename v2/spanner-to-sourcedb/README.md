@@ -86,9 +86,9 @@ A few prerequisites must be considered before starting with reverse replication.
 8. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
 9. Configuration Files Upload
     - **For MySQL:**
-      [Source shards file](./RunnigReverseReplication.md#sample-source-shards-file-for-MySQL) already uploaded to GCS.
+      [Source shards file](#sample-source-shards-file-for-MySQL) already uploaded to GCS.
     - **For Cassandra:**
-      [Source file](./RunnigReverseReplication.md#Sample-source-File-for-Cassandra) already uploaded to GCS.
+      [Source file](#sample-source-file-for-Cassandra) already uploaded to GCS.
 10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
 11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-MySQL).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped.
 12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
@@ -141,24 +141,26 @@ The database user password should be kept in [Secret Manager](#https://cloud.goo
 The file should be a list of JSONs as:
 
 ```json
-[
-  {
-    "logicalShardId": "shard1",
-    "host": "10.11.12.13",
-    "user": "root",
-    "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
-    "port": "3306",
-    "dbName": "db1"
-  },
-  {
-    "logicalShardId": "shard2",
-    "host": "10.11.12.14",
-    "user": "root",
-    "secretManagerUri":"projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
-    "port": "3306",
-    "dbName": "db2"
-  }
-]
+{
+   "shardConfigs": [
+     {
+       "logicalShardId": "shard1",
+       "host": "10.11.12.13",
+       "user": "root",
+       "secretManagerUri": "projects/123/secrets/rev-cmek-cred-shard1/versions/latest",
+       "port": "3306",
+       "dbName": "db1"
+     },
+     {
+       "logicalShardId": "shard2",
+       "host": "10.11.12.14",
+       "user": "root",
+       "secretManagerUri": "projects/123/secrets/rev-cmek-cred-shard2/versions/latest",
+       "port": "3306",
+       "dbName": "db2"
+     }
+   ]
+}
 ```
 
 

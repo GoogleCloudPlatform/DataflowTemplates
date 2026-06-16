@@ -29,9 +29,13 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Factory to construct {@link BoundaryExtractor} for supported {@link class}. */
 public class BoundaryExtractorFactory {
+
+  private static final Logger logger = LoggerFactory.getLogger(BoundaryExtractorFactory.class);
 
   @FunctionalInterface
   public interface BoundaryDurationExtractor extends Serializable {
@@ -172,8 +176,10 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
-    byte[] start = resultSet.getBytes(1);
-    byte[] end = resultSet.getBytes(2);
+    boolean isUuid =
+        partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
+    byte[] start = isUuid ? extractUuidBytes(resultSet, 1) : resultSet.getBytes(1);
+    byte[] end = isUuid ? extractUuidBytes(resultSet, 2) : resultSet.getBytes(2);
     return Boundary.<byte[]>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
@@ -182,6 +188,22 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(BYTE_ARRAY_CLASS))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  /**
+   * Extracts exactly 16 raw binary bytes from a PostgreSQL UUID column.
+   *
+   * <p>{@code rs.getBytes()} returns 36 ASCII string bytes instead of 16 raw binary bytes, which
+   * corrupts range calculations.
+   */
+  private static byte[] extractUuidBytes(ResultSet rs, int colIndex) throws SQLException {
+    java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
+    if (uuid == null) {
+      return null;
+    }
+    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    return bb.array();
   }
 
   private static Boundary<String> fromStrings(

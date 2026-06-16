@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransformTestUtils;
+import com.google.common.collect.ImmutableList;
 
 /** Fake Implementation of {@link Reader} interface. */
 public class FakeReader implements Reader {
@@ -41,12 +42,12 @@ public class FakeReader implements Reader {
   }
 
   @Override
-  public SourceSchema getSourceSchema() {
+  public ImmutableList<SourceSchema> getSourceSchema() {
     var builder = SourceSchema.builder().setSchemaReference(this.sourceSchemaReference);
     this.readerTransformTestUtils
         .getTestTableSchemas()
         .forEach(tableSchema -> builder.addTableSchema(tableSchema));
-    return builder.build();
+    return ImmutableList.of(builder.build());
   }
 
   @Override

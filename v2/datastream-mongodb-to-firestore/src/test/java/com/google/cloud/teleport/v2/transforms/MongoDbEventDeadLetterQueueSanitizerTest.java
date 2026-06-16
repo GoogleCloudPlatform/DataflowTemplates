@@ -45,7 +45,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     mockContext.setErrorMessage("MongoDbChangeEventContext processing error");
     mockChangeEvent = OBJECT_MAPPER.readTree("{\"key\": \"value\"}");
 
-    when(mockChangeEventContext.getChangeEvent()).thenReturn(mockChangeEvent);
+    when(mockChangeEventContext.getOriginalChangeEvent()).thenReturn(mockChangeEvent);
     when(mockChangeEventContext.getDataCollection()).thenReturn("test_collection");
     when(mockChangeEventContext.getShadowCollection()).thenReturn("shadow_test_collection");
     when(mockChangeEventContext.getDocumentId()).thenReturn("test_id");
@@ -67,8 +67,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
 
   @Test
   public void testGetJsonMessageEmptyChangeEvent() throws Exception {
-    // Simulate JsonProcessingException by making getChangeEvent return null
-    when(mockContext.getOriginalPayload().getChangeEvent()).thenReturn(null);
+    // Simulate JsonProcessingException by making getOriginalChangeEvent return null
+    when(mockContext.getOriginalPayload().getOriginalChangeEvent()).thenReturn(null);
 
     String expectedJson =
         "{\"changeEvent\":null,"
@@ -96,7 +96,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     when(mockContext.getOriginalPayload().getDataCollection()).thenReturn(null);
 
     assertEquals(
-        "{\"errorType\":\"MongoDbChangeEventContext processing error\",\"documentId\":\"test_id\",\"collection\":null}",
+        "{\"errorType\":\"MongoDbChangeEventContext processing"
+            + " error\",\"documentId\":\"test_id\",\"collection\":null}",
         sanitizer.getErrorMessageJson(mockContext));
   }
 
@@ -104,17 +105,15 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
   public void testGetJsonMessageWithComplexChangeEvent() throws Exception {
     JsonNode complexChangeEvent =
         OBJECT_MAPPER.readTree(
-            "{\"_id\": {\"$oid\": \"645c9a7e7b8b1a0e9c0f8b3a\"}, \"data\": {\"field1\": \"value1\", \"field2\": 123}}");
-    when(mockContext.getOriginalPayload().getChangeEvent()).thenReturn(complexChangeEvent);
+            "{\"_id\": {\"$oid\": \"645c9a7e7b8b1a0e9c0f8b3a\"}, \"data\": {\"field1\": \"value1\","
+                + " \"field2\": 123}}");
+    when(mockContext.getOriginalPayload().getOriginalChangeEvent()).thenReturn(complexChangeEvent);
 
     String expectedJson =
         "{\"changeEvent\":{\"_id\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},\"data\":{\"field1\":\"value1\",\"field2\":123}},"
             + "\"dataCollection\":\"test_collection\","
-            + "\"shadowCollection\":\"shadow_test_collection\","
-            + "\"documentId\":\"test_id\","
-            + "\"isDeleteEvent\":false,"
-            + "\"isDlqReconsumed\":true,"
-            + "\"_metadata_retry_count\":1}";
+            + "\"shadowCollection\":\"shadow_test_collection\",\"documentId\":\"test_id\","
+            + "\"isDeleteEvent\":false,\"isDlqReconsumed\":true,\"_metadata_retry_count\":1}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 

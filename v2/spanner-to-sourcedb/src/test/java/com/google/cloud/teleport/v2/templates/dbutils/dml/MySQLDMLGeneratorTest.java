@@ -19,15 +19,19 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
@@ -49,6 +53,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public final class MySQLDMLGeneratorTest {
@@ -373,8 +378,6 @@ public final class MySQLDMLGeneratorTest {
                 FileSystems.matchNewResource(
                     "src/test/resources/bufferInputAllDatatypes.json", false)));
     String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
-
-    ObjectWriter ow = new ObjectMapper().writer();
     TrimmedShardedDataChangeRecord chrec =
         new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
@@ -425,11 +428,7 @@ public final class MySQLDMLGeneratorTest {
         sql.contains(
             "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
     assertTrue(datetimeFlag);
-    // The same assert below fails to run hence as a workaround we are using the above boolean
-    // flag
-    /*  assertTrue(
-    sql.contains(
-        "datetime_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
+
     assertTrue(sql.contains("`enum_column` = '1'"));
     assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
     assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
@@ -439,11 +438,77 @@ public final class MySQLDMLGeneratorTest {
         sql.contains(
             "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
     assertTrue(timestampFlag);
-    // The same assert below fails to run hence as a workaround we are using the above boolean
-    // flag
-    /* assertTrue(
-    sql.contains(
-        "timestamp_column = CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')"));*/
+
+    assertTrue(sql.contains("`float_column` = 4.2"));
+    assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
+    assertTrue(sql.contains("`bigint_column` = 4444"));
+    assertTrue(sql.contains("`time_column` = '10:10:10'"));
+    assertTrue(sql.contains("`tinytext_column` = '<tinytext_column>'"));
+    assertTrue(sql.contains("`set_column` = '1,2'"));
+    assertTrue(sql.contains("`longblob_column` = FROM_BASE64('YWJsb25nYmxvYmM=')"));
+    assertTrue(sql.contains("`mediumtext_column` = '<mediumtext_column>'"));
+    assertTrue(sql.contains("`year_column` = '2023'"));
+    assertTrue(sql.contains("`blob_column` = FROM_BASE64('YWJiaWdj')"));
+    assertTrue(sql.contains("`decimal_column` = 444.222"));
+    assertTrue(sql.contains("`bool_column` = false"));
+    assertTrue(sql.contains("`char_column` = '<char_c'"));
+    assertTrue(sql.contains("`date_column` = '2023-05-18'"));
+    assertTrue(sql.contains("`double_column` = 42.42"));
+  }
+
+  @Test
+  public void pgDialectAllDatatypesDML() throws Exception {
+    String sessionFile = "src/test/resources/pgDialectMySQLSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    InputStream stream =
+        Channels.newInputStream(
+            FileSystems.open(
+                FileSystems.matchNewResource(
+                    "src/test/resources/bufferInputAllDatatypes.json", false)));
+    String record = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    TrimmedShardedDataChangeRecord chrec =
+        new GsonBuilder()
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create()
+            .fromJson(record, TrimmedShardedDataChangeRecord.class);
+
+    String tableName = chrec.getTableName();
+    String modType = chrec.getModType().name();
+    String keysJsonStr = chrec.getMod().getKeysJson();
+    String newValueJsonStr = chrec.getMod().getNewValuesJson();
+    JSONObject newValuesJson = new JSONObject(newValueJsonStr);
+    JSONObject keyValuesJson = new JSONObject(keysJsonStr);
+
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`mediumint_column` = 333"));
+    assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
+    boolean datetimeFlag =
+        sql.contains(
+            "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
+    assertTrue(datetimeFlag);
+    assertTrue(sql.contains("`enum_column` = '1'"));
+    assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
+    assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
+    assertTrue(sql.contains("`text_column` = 'aaaaaddd'"));
+    assertTrue(sql.contains("`tinyint_column` = 1"));
+    boolean timestampFlag =
+        sql.contains(
+            "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
+    assertTrue(timestampFlag);
     assertTrue(sql.contains("`float_column` = 4.2"));
     assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
     assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
@@ -1389,20 +1454,17 @@ public final class MySQLDMLGeneratorTest {
             .primaryKeyColumns(ImmutableList.of("SingerId"))
             .columns(
                 ImmutableList.of(
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("SingerId")
                         .type("bigint")
                         .isGenerated(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("FirstName")
                         .type("varchar")
                         .isPrimaryKey(true)
                         .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
+                    SourceColumn.builder(SourceDatabaseType.MYSQL)
                         .name("LastName")
                         .type("varchar")
                         .build()))
@@ -1413,54 +1475,25 @@ public final class MySQLDMLGeneratorTest {
             .tables(ImmutableMap.of("GeneratedPKTable", sourceTable))
             .build();
 
-    ISchemaMapper mockSchemaMapper = org.mockito.Mockito.mock(ISchemaMapper.class);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSpannerColumns(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+    ISchemaMapper mockSchemaMapper = Mockito.mock(ISchemaMapper.class);
+    Mockito.when(mockSchemaMapper.getSpannerColumns(any(), eq("GeneratedPKTable")))
         .thenReturn(ImmutableList.of("SingerId", "FirstName", "LastName"));
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSpannerColumnName(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("LastName")))
+    Mockito.when(
+            mockSchemaMapper.getSpannerColumnName(any(), eq("GeneratedPKTable"), eq("LastName")))
         .thenReturn("LastName");
-    org.mockito.Mockito.when(
-            mockSchemaMapper.getSourceTableName(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable")))
+    Mockito.when(mockSchemaMapper.getSourceTableName(any(), eq("GeneratedPKTable")))
         .thenReturn("GeneratedPKTable");
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("FirstName")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("FirstName")))
         .thenReturn(true);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("SingerId")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("SingerId")))
         .thenReturn(false);
-    org.mockito.Mockito.when(
-            mockSchemaMapper.isGeneratedColumn(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                org.mockito.ArgumentMatchers.eq("LastName")))
+    Mockito.when(mockSchemaMapper.isGeneratedColumn(any(), eq("GeneratedPKTable"), eq("LastName")))
         .thenReturn(false);
 
     for (String col : new String[] {"SingerId", "FirstName", "LastName"}) {
-      org.mockito.Mockito.when(
-              mockSchemaMapper.colExistsAtSource(
-                  org.mockito.ArgumentMatchers.any(),
-                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                  org.mockito.ArgumentMatchers.eq(col)))
+      Mockito.when(mockSchemaMapper.colExistsAtSource(any(), eq("GeneratedPKTable"), eq(col)))
           .thenReturn(true);
-      org.mockito.Mockito.when(
-              mockSchemaMapper.getSourceColumnName(
-                  org.mockito.ArgumentMatchers.any(),
-                  org.mockito.ArgumentMatchers.eq("GeneratedPKTable"),
-                  org.mockito.ArgumentMatchers.eq(col)))
+      Mockito.when(mockSchemaMapper.getSourceColumnName(any(), eq("GeneratedPKTable"), eq(col)))
           .thenReturn(col);
     }
 
@@ -1490,5 +1523,130 @@ public final class MySQLDMLGeneratorTest {
     // because it's a generated PK and skipped during DML creation.
     assertEquals(0, countInSQL(sql, "FirstName"));
     assertEquals(0, countInSQL(sql, "SingerId"));
+  }
+
+  @Test
+  public void testBitTypeDML() throws Exception {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("bit_column");
+    Mockito.when(spannerCol.type()).thenReturn(Type.bytes());
+
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.name()).thenReturn("bit_column");
+    Mockito.when(sourceCol.type()).thenReturn("bit");
+
+    JSONObject json = new JSONObject("{\"bit_column\":\"SGVsbG8=\"}"); // "Hello" in base64
+
+    String res = MySQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00");
+    assertEquals("x'48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
+  }
+
+  @Test
+  public void testGetDMLStatement_NullRequest() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(null));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSchemaMapper() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(null);
+    Mockito.when(request.getSpannerDdl()).thenReturn(Mockito.mock(Ddl.class));
+    Mockito.when(request.getSourceSchema()).thenReturn(Mockito.mock(SourceSchema.class));
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSpannerDdl() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(Mockito.mock(ISchemaMapper.class));
+    Mockito.when(request.getSpannerDdl()).thenReturn(null);
+    Mockito.when(request.getSourceSchema()).thenReturn(Mockito.mock(SourceSchema.class));
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullSourceSchema() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(Mockito.mock(ISchemaMapper.class));
+    Mockito.when(request.getSpannerDdl()).thenReturn(Mockito.mock(Ddl.class));
+    Mockito.when(request.getSourceSchema()).thenReturn(null);
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_SourceTableNotFound() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(null); // Not found!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NoPrimaryKeys() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(ImmutableList.of());
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void testGetDMLStatement_NullPrimaryKeys() {
+    MySQLDMLGenerator generator = new MySQLDMLGenerator();
+    DMLGeneratorRequest request = Mockito.mock(DMLGeneratorRequest.class);
+    ISchemaMapper schemaMapper = Mockito.mock(ISchemaMapper.class);
+    SourceSchema sourceSchema = Mockito.mock(SourceSchema.class);
+    SourceTable sourceTable = Mockito.mock(SourceTable.class);
+    Ddl ddl = Mockito.mock(Ddl.class);
+    Table spannerTable = Mockito.mock(Table.class);
+
+    Mockito.when(request.getSpannerTableName()).thenReturn("Singers");
+    Mockito.when(request.getSchemaMapper()).thenReturn(schemaMapper);
+    Mockito.when(request.getSourceSchema()).thenReturn(sourceSchema);
+    Mockito.when(request.getSpannerDdl()).thenReturn(ddl);
+    Mockito.when(ddl.table("Singers")).thenReturn(spannerTable);
+
+    Mockito.when(schemaMapper.getSourceTableName("", "Singers")).thenReturn("Singers");
+    Mockito.when(sourceSchema.table("Singers")).thenReturn(sourceTable);
+    Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(null); // NULL!
+
+    assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
   }
 }

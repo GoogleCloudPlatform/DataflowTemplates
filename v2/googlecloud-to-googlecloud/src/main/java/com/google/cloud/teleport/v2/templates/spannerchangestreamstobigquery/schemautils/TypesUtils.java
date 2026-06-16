@@ -47,6 +47,8 @@ public class TypesUtils {
         return Type.string();
       case "TIMESTAMP":
         return Type.timestamp();
+      case "UUID":
+        return Type.uuid();
       default:
         if (type.startsWith("ARRAY")) {
           // Get array type, e.g. "ARRAY<STRING>" -> "STRING".
@@ -93,6 +95,8 @@ public class TypesUtils {
         return Type.timestamp();
       case "SPANNER.COMMIT_TIMESTAMP":
         return Type.timestamp();
+      case "UUID":
+        return Type.uuid();
       default:
         throw new IllegalArgumentException(
             String.format("Unsupported Spanner PostgreSQL type: %s", type));

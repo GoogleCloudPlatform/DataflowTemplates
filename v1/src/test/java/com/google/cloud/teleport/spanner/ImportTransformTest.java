@@ -108,6 +108,61 @@ public class ImportTransformTest {
     pipeline.run();
   }
 
+  @Test
+  public void validateInputFilesWithCrc32c() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+    Path f2 = Files.createTempFile("table1-file", "2");
+    Path f3 = Files.createTempFile("table2-file", "1");
+
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString()).setCrc32C("AAAAAA==");
+    builder.addFilesBuilder().setName(f2.getFileName().toString()).setCrc32C("AAAAAA==");
+    TableManifest manifest1 = builder.build();
+
+    builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f3.getFileName().toString()).setCrc32C("AAAAAA==");
+    TableManifest manifest2 = builder.build();
+
+    final Map<String, TableManifest> tablesAndManifests =
+        ImmutableMap.of(
+            "table1", manifest1,
+            "table2", manifest2);
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
+
+    // Execute the transform.
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Create", Create.of(tablesAndManifests))
+            .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
+
+    PAssert.that(tableAndFiles)
+        .containsInAnyOrder(
+            KV.of("table1", f1.toString()),
+            KV.of("table1", f2.toString()),
+            KV.of("table2", f3.toString()));
+
+    pipeline.run();
+  }
+
+  @Test(expected = PipelineExecutionException.class)
+  public void validateInputFilesNoChecksum() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString());
+    TableManifest manifest1 = builder.build();
+
+    final Map<String, TableManifest> tablesAndManifests = ImmutableMap.of("table1", manifest1);
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
+
+    pipeline
+        .apply("Create", Create.of(tablesAndManifests))
+        .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
+
+    pipeline.run();
+  }
+
   @Test(expected = PipelineExecutionException.class)
   public void validateInvalidInputFiles() throws Exception {
     Path f1 = Files.createTempFile("table1-file", "1");

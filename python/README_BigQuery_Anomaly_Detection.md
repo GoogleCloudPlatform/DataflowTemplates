@@ -3,8 +3,12 @@ BigQuery Anomaly Detection template
 ---
 [Experimental] Real-time anomaly detection on BigQuery change data (CDC). Reads
 streaming APPENDS/CHANGES data from a BigQuery table, computes a configurable
-windowed metric, runs anomaly detection (ZScore, IQR, or RobustZScore), and
-publishes anomalies to Pub/Sub.
+windowed metric, runs anomaly detection (ZScore, IQR, or RobustZScore), and emits
+anomalies to Pub/Sub and/or a REST webhook. Alerts to Pub/Sub and the REST
+webhook are rate-limited by default: per anomaly key, after the first alert fires
+further anomalies are suppressed until a 10-minute gap between consecutive
+anomalies elapses. Tune or disable via alert_cooldown_seconds (set to 0 to
+disable). The BigQuery sink table is unaffected and records every anomaly.
 
 
 
@@ -18,11 +22,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **table**: BigQuery table to monitor. Format: project:dataset.table.
 * **metric_spec**: JSON string defining the metric computation. Example: {"aggregation":{"window":{"type":"fixed","size_seconds":3600},"measures":[{"field":"amount","agg":"SUM","alias":"total"}]}}.
-* **detector_spec**: JSON string defining the anomaly detector. Example: {"type":"ZScore"} or {"type":"ZScore","config":{"threshold_criterion":{"type":"FixedThreshold","config":{"cutoff":10}}}}.
-* **topic**: Pub/Sub topic for anomaly results. Full path: projects/<project>/topics/<topic>.
+* **detector_spec**: JSON string defining the anomaly detector. Statistical: {"type":"ZScore"}, {"type":"IQR"}, {"type":"RobustZScore"}. Threshold: {"type":"Threshold","expression":"value >= 100"}. RelativeChange: {"type":"RelativeChange","direction":"decrease","threshold_pct":20,"lookback_windows":1}.
 
 ### Optional parameters
 
+* **topic**: Pub/Sub topic for anomaly results. Full path: projects/<project>/topics/<topic>. Optional: at least one of topic or webhook_spec must be set.
 * **poll_interval_sec**: Seconds between BigQuery CDC polls. Default: 60.
 * **change_function**: BigQuery change function: APPENDS or CHANGES. Default: APPENDS.
 * **buffer_sec**: Safety buffer behind now() in seconds. Default: 15.
@@ -31,9 +35,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **temp_dataset**: BigQuery dataset for temp tables. If unset, auto-created.
 * **log_all_results**: Log all anomaly detection results (normal, outlier, warmup) at WARNING level. Default: false.
 * **sink_table**: BigQuery table to write all anomaly detection results to. Format: project:dataset.table. If unset, results are not written to BigQuery.
-* **decompress_shards**: Number of shards for CDC Arrow batch decompression fan-out. Spreads decompression CPU across workers. 0 disables fan-out (decode inline). Default: 400.
 * **fanout_strategy**: Parallelism strategy for metric aggregation: sharded, hotkey_fanout, precombine, or none. Default: sharded.
 * **fanout**: Number of shards for sharded or hotkey_fanout strategies. Ignored for none and precombine. Default: 400.
+* **message_format**: Python format string for Pub/Sub anomaly messages. Available fields: {value}, {score}, {label}, {threshold}, {model_id}, {info}, {key}, {window_start}, {window_end}, plus any keys from message_metadata. If unset, a default JSON payload is used.
+* **message_metadata**: JSON object of static key-value pairs available as additional fields in message_format. Example: {"job_id": "pipeline-123", "env": "prod"}. Anomaly fields take precedence on key collision.
+* **webhook_spec**: JSON object configuring a REST webhook for anomaly results. Required keys: endpoint (http/https URL), body (JSON object/array). Optional keys: method (POST/PUT/PATCH, default POST), headers (object), scopes (list of OAuth scopes; default cloud-platform), timeout_seconds (default 600, i.e. 10 min), parallelism (max concurrent in-flight POSTs per worker, default 5), callback_frequency_seconds (how often the AsyncWrapper sweeps finished futures, default 30). String leaves in body and headers are Python-format-substituted against anomaly fields, message_metadata keys, and the {anomaly_message} field (which equals message_format output, or a default natural-language summary). At least one of topic or webhook_spec must be set.
+* **alert_cooldown_seconds**: Session-window gap for debouncing alerts to external systems (Pub/Sub, webhook). Per anomaly key, the first anomaly fires immediately; subsequent anomalies are suppressed (logged as "still active") until a gap of at least this many seconds passes between consecutive anomalies. Continuous anomalies extend the active-alert window. The BigQuery sink table is unaffected and records every anomaly. Set to 0 to disable rate limiting. Default: 600 (10 minutes).
 
 
 
@@ -129,9 +136,9 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/BigQuery_Anomaly_
 export TABLE=<table>
 export METRIC_SPEC=<metric_spec>
 export DETECTOR_SPEC=<detector_spec>
-export TOPIC=<topic>
 
 ### Optional
+export TOPIC=<topic>
 export POLL_INTERVAL_SEC=<poll_interval_sec>
 export CHANGE_FUNCTION=<change_function>
 export BUFFER_SEC=<buffer_sec>
@@ -140,9 +147,12 @@ export DURATION_SEC=<duration_sec>
 export TEMP_DATASET=<temp_dataset>
 export LOG_ALL_RESULTS=<log_all_results>
 export SINK_TABLE=<sink_table>
-export DECOMPRESS_SHARDS=<decompress_shards>
 export FANOUT_STRATEGY=<fanout_strategy>
 export FANOUT=<fanout>
+export MESSAGE_FORMAT=<message_format>
+export MESSAGE_METADATA=<message_metadata>
+export WEBHOOK_SPEC=<webhook_spec>
+export ALERT_COOLDOWN_SECONDS=<alert_cooldown_seconds>
 
 gcloud dataflow flex-template run "bigquery-anomaly-detection-job" \
   --project "$PROJECT" \
@@ -160,9 +170,12 @@ gcloud dataflow flex-template run "bigquery-anomaly-detection-job" \
   --parameters "temp_dataset=$TEMP_DATASET" \
   --parameters "log_all_results=$LOG_ALL_RESULTS" \
   --parameters "sink_table=$SINK_TABLE" \
-  --parameters "decompress_shards=$DECOMPRESS_SHARDS" \
   --parameters "fanout_strategy=$FANOUT_STRATEGY" \
-  --parameters "fanout=$FANOUT"
+  --parameters "fanout=$FANOUT" \
+  --parameters "message_format=$MESSAGE_FORMAT" \
+  --parameters "message_metadata=$MESSAGE_METADATA" \
+  --parameters "webhook_spec=$WEBHOOK_SPEC" \
+  --parameters "alert_cooldown_seconds=$ALERT_COOLDOWN_SECONDS"
 ```
 
 For more information about the command, please check:
@@ -184,9 +197,9 @@ export REGION=us-central1
 export TABLE=<table>
 export METRIC_SPEC=<metric_spec>
 export DETECTOR_SPEC=<detector_spec>
-export TOPIC=<topic>
 
 ### Optional
+export TOPIC=<topic>
 export POLL_INTERVAL_SEC=<poll_interval_sec>
 export CHANGE_FUNCTION=<change_function>
 export BUFFER_SEC=<buffer_sec>
@@ -195,9 +208,12 @@ export DURATION_SEC=<duration_sec>
 export TEMP_DATASET=<temp_dataset>
 export LOG_ALL_RESULTS=<log_all_results>
 export SINK_TABLE=<sink_table>
-export DECOMPRESS_SHARDS=<decompress_shards>
 export FANOUT_STRATEGY=<fanout_strategy>
 export FANOUT=<fanout>
+export MESSAGE_FORMAT=<message_format>
+export MESSAGE_METADATA=<message_metadata>
+export WEBHOOK_SPEC=<webhook_spec>
+export ALERT_COOLDOWN_SECONDS=<alert_cooldown_seconds>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -206,7 +222,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-anomaly-detection-job" \
 -DtemplateName="BigQuery_Anomaly_Detection" \
--Dparameters="table=$TABLE,metric_spec=$METRIC_SPEC,detector_spec=$DETECTOR_SPEC,topic=$TOPIC,poll_interval_sec=$POLL_INTERVAL_SEC,change_function=$CHANGE_FUNCTION,buffer_sec=$BUFFER_SEC,start_offset_sec=$START_OFFSET_SEC,duration_sec=$DURATION_SEC,temp_dataset=$TEMP_DATASET,log_all_results=$LOG_ALL_RESULTS,sink_table=$SINK_TABLE,decompress_shards=$DECOMPRESS_SHARDS,fanout_strategy=$FANOUT_STRATEGY,fanout=$FANOUT" \
+-Dparameters="table=$TABLE,metric_spec=$METRIC_SPEC,detector_spec=$DETECTOR_SPEC,topic=$TOPIC,poll_interval_sec=$POLL_INTERVAL_SEC,change_function=$CHANGE_FUNCTION,buffer_sec=$BUFFER_SEC,start_offset_sec=$START_OFFSET_SEC,duration_sec=$DURATION_SEC,temp_dataset=$TEMP_DATASET,log_all_results=$LOG_ALL_RESULTS,sink_table=$SINK_TABLE,fanout_strategy=$FANOUT_STRATEGY,fanout=$FANOUT,message_format=$MESSAGE_FORMAT,message_metadata=$MESSAGE_METADATA,webhook_spec=$WEBHOOK_SPEC,alert_cooldown_seconds=$ALERT_COOLDOWN_SECONDS" \
 -f python
 ```
 
@@ -254,7 +270,7 @@ resource "google_dataflow_flex_template_job" "bigquery_anomaly_detection" {
     table = "<table>"
     metric_spec = "<metric_spec>"
     detector_spec = "<detector_spec>"
-    topic = "<topic>"
+    # topic = "<topic>"
     # poll_interval_sec = "<poll_interval_sec>"
     # change_function = "<change_function>"
     # buffer_sec = "<buffer_sec>"
@@ -263,9 +279,12 @@ resource "google_dataflow_flex_template_job" "bigquery_anomaly_detection" {
     # temp_dataset = "<temp_dataset>"
     # log_all_results = "<log_all_results>"
     # sink_table = "<sink_table>"
-    # decompress_shards = "<decompress_shards>"
     # fanout_strategy = "<fanout_strategy>"
     # fanout = "<fanout>"
+    # message_format = "<message_format>"
+    # message_metadata = "<message_metadata>"
+    # webhook_spec = "<webhook_spec>"
+    # alert_cooldown_seconds = "<alert_cooldown_seconds>"
   }
 }
 ```
