@@ -29,9 +29,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
 * **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
-* **tableOverrides**: These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
-* **columnOverrides**: These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **tableOverrides**: These are the table name overrides from source to spanner. They are written in the following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}] This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from source to spanner. They are written in the following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
 * **runId**: A unique identifier for the validation run. If not provided, the Dataflow Job Name will be used. For example, `run_20230101_120000`.
+* **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
+* **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 
 
 
@@ -138,6 +141,9 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export RUN_ID=<runId>
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
 
 gcloud dataflow flex-template run "gcs-spanner-data-validator-job" \
   --project "$PROJECT" \
@@ -154,7 +160,10 @@ gcloud dataflow flex-template run "gcs-spanner-data-validator-job" \
   --parameters "tableOverrides=$TABLE_OVERRIDES" \
   --parameters "columnOverrides=$COLUMN_OVERRIDES" \
   --parameters "bigQueryDataset=$BIG_QUERY_DATASET" \
-  --parameters "runId=$RUN_ID"
+  --parameters "runId=$RUN_ID" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS"
 ```
 
 For more information about the command, please check:
@@ -187,6 +196,9 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export RUN_ID=<runId>
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -195,7 +207,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-spanner-data-validator-job" \
 -DtemplateName="GCS_Spanner_Data_Validator" \
--Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID" \
+-Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
 -f v2/gcs-spanner-dv
 ```
 
@@ -252,6 +264,9 @@ resource "google_dataflow_flex_template_job" "gcs_spanner_data_validator" {
     # tableOverrides = ""
     # columnOverrides = ""
     # runId = "<runId>"
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
   }
 }
 ```
