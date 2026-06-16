@@ -40,7 +40,12 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.LoggerFactory;
 
-/** Implements Debezium's Embedded Engine change consumer to push data to PubSub. */
+/**
+ * Implements Debezium's Embedded Engine change consumer to push data to PubSub.
+ *
+ * <p>TODO: Google Cloud Data Catalog is deprecated. Migrate schema registration to Google Cloud
+ * Dataplex Knowledge Catalog.
+ */
 public class PubSubChangeConsumer
     implements DebeziumEngine.ChangeConsumer<ChangeEvent<SourceRecord, SourceRecord>> {
 
@@ -126,13 +131,20 @@ public class PubSubChangeConsumer
         }
 
         if (!observedTables.contains(tableName)) {
+          // TODO: Migrate schema registration to Google Cloud Dataplex Knowledge Catalog and
+          // remove legacy non-fatal Data Catalog error handlers.
           try {
             Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
             if (result == null) {
-              LOG.warn("Failed to update schema in Data Catalog for {}. Continuing without Data Catalog.", tableName);
+              LOG.warn(
+                  "Failed to update schema in Data Catalog for {}. Continuing without Data Catalog.",
+                  tableName);
             }
           } catch (Exception e) {
-            LOG.warn("Error updating schema in Data Catalog for {}: {}. Continuing without Data Catalog.", tableName, e.getMessage());
+            LOG.warn(
+                "Error updating schema in Data Catalog for {}: {}. Continuing without Data Catalog.",
+                tableName,
+                e.getMessage());
           }
           observedTables.add(tableName);
         }

@@ -38,7 +38,12 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Class with utilities to communicate with Google Cloud Data Catalog. */
+/**
+ * Class with utilities to communicate with Google Cloud Data Catalog.
+ *
+ * <p>TODO: Google Cloud Data Catalog is deprecated. Migrate schema registration and discovery to
+ * Google Cloud Dataplex Knowledge Catalog.
+ */
 public class DataCatalogSchemaUtils {
 
   // TODO(pabloem)(#138): Avoid using a default location for schema catalog entities.
@@ -225,6 +230,8 @@ public class DataCatalogSchemaUtils {
               .setEntryGroup(entryGroup)
               .build();
 
+      // TODO: Migrate schema registration to Google Cloud Dataplex Knowledge Catalog and remove
+      // legacy non-fatal Data Catalog error handlers.
       try {
         LOG.info("Creating EntryGroup {}", entryGroupRequest);
         EntryGroup createdEntryGroup = client.createEntryGroup(entryGroupRequest);
@@ -234,7 +241,9 @@ public class DataCatalogSchemaUtils {
       } catch (AlreadyExistsException e) {
         // EntryGroup already exists. There is no further action needed.
       } catch (Exception e) {
-        LOG.warn("Error creating Data Catalog EntryGroup: {}. Continuing without EntryGroup.", e.getMessage());
+        LOG.warn(
+            "Error creating Data Catalog EntryGroup: {}. Continuing without EntryGroup.",
+            e.getMessage());
       }
     }
 
@@ -277,13 +286,18 @@ public class DataCatalogSchemaUtils {
 
       LOG.info("CreateEntryRequest: {}", createEntryRequest.toString());
 
+      // TODO: Migrate schema registration to Google Cloud Dataplex Knowledge Catalog and remove
+      // legacy non-fatal Data Catalog error handlers.
       try {
         return client.createEntry(createEntryRequest);
       } catch (AlreadyExistsException e) {
         // The Entry already exists. No further action is necessary.
         return createEntryRequest.getEntry();
       } catch (Exception e) {
-        LOG.warn("Error creating Data Catalog Entry for {}: {}. Continuing without Data Catalog entry.", tableName, e.getMessage());
+        LOG.warn(
+            "Error creating Data Catalog Entry for {}: {}. Continuing without Data Catalog entry.",
+            tableName,
+            e.getMessage());
         return createEntryRequest.getEntry();
       }
     }
@@ -326,10 +340,15 @@ public class DataCatalogSchemaUtils {
               .setEntry(beforeChangeEntry.toBuilder().setSchema(newEntrySchema).build())
               .build();
 
+      // TODO: Migrate schema registration to Google Cloud Dataplex Knowledge Catalog and remove
+      // legacy non-fatal Data Catalog error handlers.
       try {
         return client.updateEntry(updateEntryRequest);
       } catch (Exception e) {
-        LOG.warn("Error updating Data Catalog Entry for {}: {}. Continuing without Data Catalog update.", tableName, e.getMessage());
+        LOG.warn(
+            "Error updating Data Catalog Entry for {}: {}. Continuing without Data Catalog update.",
+            tableName,
+            e.getMessage());
         return beforeChangeEntry;
       }
     }
