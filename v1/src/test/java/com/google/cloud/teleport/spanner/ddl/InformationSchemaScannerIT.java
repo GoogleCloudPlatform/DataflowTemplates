@@ -797,33 +797,32 @@ public class InformationSchemaScannerIT {
                       .type("STRING")
                       .defaultExpression("''")
                       .autoBuild()));
+          assertThat(udf3.name(), equalTo("s_simpleUdf.u_remote_udf"));
+          assertThat(udf3.type(), equalTo("INT64"));
+          assertEquals(udf3.language(), "REMOTE");
+          assertThat(
+              udf3.options(),
+              hasItems(
+                  "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
+                  "max_batching_rows=50"));
+          assertEquals(udf3.definition(), "");
+          assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(
+              udf3.parameters(),
+              hasItems(
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_remote_udf")
+                      .name("x")
+                      .type("INT64")
+                      .defaultExpression(null)
+                      .autoBuild(),
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_remote_udf")
+                      .name("y")
+                      .type("INT64")
+                      .defaultExpression(null)
+                      .autoBuild()));
         });
-
-    assertThat(udf3.name(), equalTo("s_simpleUdf.u_remote_udf"));
-    assertThat(udf3.type(), equalTo("INT64"));
-    assertEquals(udf3.language(), "REMOTE");
-    assertThat(
-        udf3.options(),
-        hasItems(
-            "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
-            "max_batching_rows=50"));
-    assertEquals(udf3.definition(), "");
-    assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
-    assertThat(
-        udf3.parameters(),
-        hasItems(
-            UdfParameter.builder()
-                .functionSpecificName("s_simpleUdf.u_remote_udf")
-                .name("x")
-                .type("INT64")
-                .defaultExpression(null)
-                .autoBuild(),
-            UdfParameter.builder()
-                .functionSpecificName("s_simpleUdf.u_remote_udf")
-                .name("y")
-                .type("INT64")
-                .defaultExpression(null)
-                .autoBuild()));
   }
 
   // TODO(b/485601737): Add PG UDFs.
