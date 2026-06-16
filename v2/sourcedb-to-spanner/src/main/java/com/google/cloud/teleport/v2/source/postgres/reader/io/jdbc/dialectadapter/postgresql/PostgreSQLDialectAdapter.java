@@ -600,6 +600,30 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         && TIMEOUT_SQL_STATES.contains(exception.getSQLState().toUpperCase());
   }
 
+  @Override
+  public boolean supportsApproximateCounts() {
+    return true;
+  }
+
+  @Override
+  public String getApproximateCountQuery(String tableName, ImmutableList<String> partitionColumns) {
+    return addWhereClause("EXPLAIN SELECT * FROM " + tableName, partitionColumns);
+  }
+
+  @Override
+  public long parseApproximateCount(ResultSet rs) throws SQLException {
+    if (rs.next()) {
+      String explainPlan = rs.getString(1);
+      // PostgreSQL default EXPLAIN format contains "rows=N"
+      java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("rows=(\\d+)");
+      java.util.regex.Matcher matcher = pattern.matcher(explainPlan);
+      if (matcher.find()) {
+        return Long.parseLong(matcher.group(1));
+      }
+    }
+    return -1L;
+  }
+
   /**
    * Ref <a href="https://www.db-fiddle.com/f/sJyGyFpqfnoxYFpEXPxR1/0"></a> Get Query that returns
    * order of collation. The query must return all the characters in the character set with the

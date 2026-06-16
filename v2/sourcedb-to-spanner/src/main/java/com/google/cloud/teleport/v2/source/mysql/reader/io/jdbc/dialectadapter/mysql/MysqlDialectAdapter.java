@@ -754,6 +754,24 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return false;
   }
 
+  @Override
+  public boolean supportsApproximateCounts() {
+    return true;
+  }
+
+  @Override
+  public String getApproximateCountQuery(String tableName, ImmutableList<String> partitionColumns) {
+    return addWhereClause("EXPLAIN SELECT * FROM " + tableName, partitionColumns);
+  }
+
+  @Override
+  public long parseApproximateCount(ResultSet rs) throws SQLException {
+    if (rs.next()) {
+      return rs.getLong("rows");
+    }
+    return -1L;
+  }
+
   /**
    * Get Query that returns order of collation. The query must return all the characters in the
    * character set with the columns listed in {@link CollationsOrderQueryColumns}.

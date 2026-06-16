@@ -888,6 +888,40 @@ public class MysqlDialectAdapterTest {
         .isEqualTo(java.time.Duration.ofHours(-838).minusMinutes(59).minusSeconds(59));
   }
 
+  @Test
+  public void testSupportsApproximateCounts() {
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).supportsApproximateCounts()).isTrue();
+  }
+
+  @Test
+  public void testGetApproximateCountQuery() {
+    String testTable = "testTable";
+    ImmutableList<String> cols = ImmutableList.of("col_1", "col_2");
+    String query =
+        new MysqlDialectAdapter(MySqlVersion.DEFAULT).getApproximateCountQuery(testTable, cols);
+    assertThat(query).contains("EXPLAIN SELECT * FROM testTable");
+    assertThat(query).contains("col_1");
+    assertThat(query).contains("col_2");
+  }
+
+  @Test
+  public void testParseApproximateCount() throws SQLException {
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getLong("rows")).thenReturn(1234L);
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).parseApproximateCount(mockResultSet))
+        .isEqualTo(1234L);
+  }
+
+  @Test
+  public void testParseApproximateCount_emptyResultSet() throws SQLException {
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(false);
+    assertThat(new MysqlDialectAdapter(MySqlVersion.DEFAULT).parseApproximateCount(mockResultSet))
+        .isEqualTo(-1L);
+  }
+
+  @Test
   public void testGetCollationsOrderQuery() {
     MysqlDialectAdapter adapter = new MysqlDialectAdapter(MySqlVersion.DEFAULT);
     String dbCharset = "utf8mb4";

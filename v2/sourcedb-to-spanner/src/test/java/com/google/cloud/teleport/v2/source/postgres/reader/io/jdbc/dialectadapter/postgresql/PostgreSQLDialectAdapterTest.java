@@ -819,4 +819,43 @@ public class PostgreSQLDialectAdapterTest {
     verify(mockBasicDataSource, never()).addConnectionProperty(eq("connectTimeout"), anyString());
     verify(mockBasicDataSource, never()).addConnectionProperty(eq("socketTimeout"), anyString());
   }
+
+  @Test
+  public void testSupportsApproximateCounts() {
+    assertThat(adapter.supportsApproximateCounts()).isTrue();
+  }
+
+  @Test
+  public void testGetApproximateCountQuery() {
+    String tableName = "testTable";
+    ImmutableList<String> partitionColumns = ImmutableList.of("col1", "col2");
+    String query = adapter.getApproximateCountQuery(tableName, partitionColumns);
+    assertThat(query).contains("EXPLAIN SELECT * FROM testTable");
+    assertThat(query).contains("col1");
+    assertThat(query).contains("col2");
+  }
+
+  @Test
+  public void testParseApproximateCount() throws SQLException {
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getString(1))
+        .thenReturn("Seq Scan on testTable  (cost=0.00..1.01 rows=42 width=4)");
+    assertThat(adapter.parseApproximateCount(mockRs)).isEqualTo(42L);
+  }
+
+  @Test
+  public void testParseApproximateCount_emptyResultSet() throws SQLException {
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.next()).thenReturn(false);
+    assertThat(adapter.parseApproximateCount(mockRs)).isEqualTo(-1L);
+  }
+
+  @Test
+  public void testParseApproximateCount_parsingFailure() throws SQLException {
+    ResultSet mockRs = mock(ResultSet.class);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getString(1)).thenReturn("Some unrecognized output");
+    assertThat(adapter.parseApproximateCount(mockRs)).isEqualTo(-1L);
+  }
 }
