@@ -1336,8 +1336,8 @@ public class InformationSchemaScanner {
       String tablesJson;
       try {
         tablesJson = resultSet.getJson(2);
-      } catch (Exception edgeTableException) {
-        LOG.debug(propertyGraphNameQualified + " does not contain any edge tables");
+      } catch (Exception tableException) {
+        LOG.debug(propertyGraphNameQualified + " does not contain any {}", tableType);
         continue;
       }
 
