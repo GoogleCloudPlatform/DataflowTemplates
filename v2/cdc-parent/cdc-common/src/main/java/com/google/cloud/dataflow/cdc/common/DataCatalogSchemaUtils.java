@@ -233,6 +233,8 @@ public class DataCatalogSchemaUtils {
         this.entryGroupCreated = true;
       } catch (AlreadyExistsException e) {
         // EntryGroup already exists. There is no further action needed.
+      } catch (Exception e) {
+        LOG.warn("Error creating Data Catalog EntryGroup: {}. Continuing without EntryGroup.", e.getMessage());
       }
     }
 
@@ -280,6 +282,9 @@ public class DataCatalogSchemaUtils {
       } catch (AlreadyExistsException e) {
         // The Entry already exists. No further action is necessary.
         return createEntryRequest.getEntry();
+      } catch (Exception e) {
+        LOG.warn("Error creating Data Catalog Entry for {}: {}. Continuing without Data Catalog entry.", tableName, e.getMessage());
+        return createEntryRequest.getEntry();
       }
     }
   }
@@ -321,7 +326,12 @@ public class DataCatalogSchemaUtils {
               .setEntry(beforeChangeEntry.toBuilder().setSchema(newEntrySchema).build())
               .build();
 
-      return client.updateEntry(updateEntryRequest);
+      try {
+        return client.updateEntry(updateEntryRequest);
+      } catch (Exception e) {
+        LOG.warn("Error updating Data Catalog Entry for {}: {}. Continuing without Data Catalog update.", tableName, e.getMessage());
+        return beforeChangeEntry;
+      }
     }
   }
 }

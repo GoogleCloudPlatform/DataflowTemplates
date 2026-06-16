@@ -126,10 +126,13 @@ public class PubSubChangeConsumer
         }
 
         if (!observedTables.contains(tableName)) {
-          Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
-          if (result == null) {
-            throw new InterruptedException(
-                "A problem occurred when communicating with Cloud Data Catalog");
+          try {
+            Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
+            if (result == null) {
+              LOG.warn("Failed to update schema in Data Catalog for {}. Continuing without Data Catalog.", tableName);
+            }
+          } catch (Exception e) {
+            LOG.warn("Error updating schema in Data Catalog for {}: {}. Continuing without Data Catalog.", tableName, e.getMessage());
           }
           observedTables.add(tableName);
         }
