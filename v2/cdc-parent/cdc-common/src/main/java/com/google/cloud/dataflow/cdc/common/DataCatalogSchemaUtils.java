@@ -17,56 +17,43 @@ package com.google.cloud.dataflow.cdc.common;
 
 import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.api.gax.rpc.ApiException;
-import com.google.cloud.datacatalog.v1.EntryGroupName;
-import com.google.cloud.datacatalog.v1beta1.CreateEntryGroupRequest;
-import com.google.cloud.datacatalog.v1beta1.CreateEntryRequest;
-import com.google.cloud.datacatalog.v1beta1.DataCatalogClient;
-import com.google.cloud.datacatalog.v1beta1.Entry;
-import com.google.cloud.datacatalog.v1beta1.EntryGroup;
-import com.google.cloud.datacatalog.v1beta1.ListEntriesRequest;
-import com.google.cloud.datacatalog.v1beta1.ListEntriesResponse;
-import com.google.cloud.datacatalog.v1beta1.LocationName;
-import com.google.cloud.datacatalog.v1beta1.LookupEntryRequest;
-import com.google.cloud.datacatalog.v1beta1.UpdateEntryRequest;
-import com.google.common.base.Strings;
+import com.google.cloud.dataplex.v1.Aspect;
+import com.google.cloud.dataplex.v1.CatalogServiceClient;
+import com.google.cloud.dataplex.v1.CreateEntryGroupRequest;
+import com.google.cloud.dataplex.v1.CreateEntryRequest;
+import com.google.cloud.dataplex.v1.Entry;
+import com.google.cloud.dataplex.v1.EntryGroup;
+import com.google.cloud.dataplex.v1.EntryGroupName;
+import com.google.cloud.dataplex.v1.EntrySource;
+import com.google.cloud.dataplex.v1.SearchEntriesRequest;
+import com.google.cloud.dataplex.v1.SearchEntriesResult;
+import com.google.cloud.dataplex.v1.UpdateEntryRequest;
+import com.google.protobuf.FieldMask;
+import com.google.protobuf.Struct;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Class with utilities to communicate with Google Cloud Data Catalog. */
+/** Class with utilities to communicate with Google Cloud Dataplex Catalog. */
 public class DataCatalogSchemaUtils {
 
-  // TODO(pabloem)(#138): Avoid using a default location for schema catalog entities.
   public static final String DEFAULT_LOCATION = "us-central1";
-
-  /** Template for the URI of a Pub/Sub topic {@link Entry} in Data Catalog. */
-  private static final String DATA_CATALOG_PUBSUB_URI_TEMPLATE =
-      "//pubsub.googleapis.com/projects/%s/topics/%s";
 
   private static final Logger LOG = LoggerFactory.getLogger(DataCatalogSchemaUtils.class);
 
-  /**
-   * Builds an {@link EntryGroup} name for a particular pubsubTopic.
-   *
-   * <p>This method is intended for use in single-topic mode, where an {@link EntryGroup} with
-   * multiple {@link Entry}s is created for a single Pub/Sub topic.
-   */
   public static String entryGroupNameForTopic(String pubsubTopic) {
-    return String.format("cdc_%s", pubsubTopic);
+    return String.format("cdc_%s", pubsubTopic).replace('-', '_').replace('.', '_');
   }
 
-  /** Build a {@link DataCatalogSchemaManager} given certain parameters. */
   public static DataCatalogSchemaManager getSchemaManager(
       String gcpProject, String pubsubTopicPrefix, Boolean singleTopic) {
     return getSchemaManager(gcpProject, pubsubTopicPrefix, DEFAULT_LOCATION, singleTopic);
   }
 
-  /** Build a {@link DataCatalogSchemaManager} given certain parameters. */
   public static DataCatalogSchemaManager getSchemaManager(
       String gcpProject, String pubsubTopicPrefix, String location, Boolean singleTopic) {
     if (singleTopic) {
@@ -76,55 +63,51 @@ public class DataCatalogSchemaUtils {
     }
   }
 
-  /** Retrieve all of the {@link Schema}s associated to {@link Entry}s in an {@link EntryGroup}. */
   public static Map<String, Schema> getSchemasForEntryGroup(
       String gcpProject, String entryGroupId) {
-    DataCatalogClient client = null;
+    CatalogServiceClient client = null;
     try {
-      client = DataCatalogClient.create();
+      client = CatalogServiceClient.create();
     } catch (IOException e) {
-      throw new RuntimeException("Unable to create a DataCatalogClient", e);
+      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     }
     if (client == null) {
       return null;
     }
 
-    String formattedParent =
-        String.format(
-            "projects/%s/locations/%s/entryGroups/%s", gcpProject, DEFAULT_LOCATION, entryGroupId);
+    String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
+    String query = String.format("entry_group:%s", entryGroupId);
 
-    List<Entry> entries = new ArrayList<>();
-    ListEntriesRequest request = ListEntriesRequest.newBuilder().setParent(formattedParent).build();
-    while (true) {
-      ListEntriesResponse response = client.listEntriesCallable().call(request);
-      entries.addAll(response.getEntriesList());
-      String nextPageToken = response.getNextPageToken();
-      if (!Strings.isNullOrEmpty(nextPageToken)) {
-        request = request.toBuilder().setPageToken(nextPageToken).build();
-      } else {
-        break;
+    SearchEntriesRequest request =
+        SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();
+
+    Map<String, Schema> schemas = new HashMap<>();
+
+    try {
+      CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
+      for (SearchEntriesResult result : response.iterateAll()) {
+        String entryName = result.getDataplexEntry().getName();
+        Entry entry = client.getEntry(entryName);
+        if (entry.containsAspects("dataplex-types.global.schema")) {
+          Struct schemaData = entry.getAspectsMap().get("dataplex-types.global.schema").getData();
+          String description =
+              entry.hasEntrySource() ? entry.getEntrySource().getDescription() : entry.getName();
+          schemas.put(description, SchemaUtils.toBeamSchema(schemaData));
+        }
       }
+    } catch (Exception e) {
+      LOG.error("Failed to search entries: ", e);
     }
 
-    LOG.debug("Fetched entries: {}", entries);
-
-    return entries.stream()
-        .collect(
-            Collectors.toMap(Entry::getDescription, e -> SchemaUtils.toBeamSchema(e.getSchema())));
+    return schemas;
   }
 
-  /**
-   * Retrieve the {@link Schema} associated to a Pub/Sub topics in an.
-   *
-   * <p>This method is to be used in multi-topic mode, where a single {@link Schema} is associated
-   * to a single Pub/Sub topic.
-   */
   public static Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
-    DataCatalogClient client = null;
+    CatalogServiceClient client = null;
     try {
-      client = DataCatalogClient.create();
+      client = CatalogServiceClient.create();
     } catch (IOException e) {
-      throw new RuntimeException("Unable to create a DataCatalogClient", e);
+      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     }
     if (client == null) {
       return null;
@@ -132,41 +115,39 @@ public class DataCatalogSchemaUtils {
 
     Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
     if (entry == null) {
-      return null; // TODO(pabloem) Handle a failed entry lookup
-    }
-
-    return SchemaUtils.toBeamSchema(entry.getSchema());
-  }
-
-  static Entry lookupPubSubEntry(DataCatalogClient client, String pubsubTopic, String gcpProject) {
-    String linkedResource =
-        String.format(DATA_CATALOG_PUBSUB_URI_TEMPLATE, gcpProject, pubsubTopic);
-
-    LOG.info("Looking up LinkedResource {}", linkedResource);
-
-    LookupEntryRequest request =
-        LookupEntryRequest.newBuilder().setLinkedResource(linkedResource).build();
-
-    try {
-      Entry entry = client.lookupEntry(request);
-      return entry;
-    } catch (ApiException e) {
-      System.out.println("CANT LOOKUP ENTRY" + e.toString());
-      e.printStackTrace();
-      LOG.error("ApiException thrown by Data Catalog API:", e);
       return null;
     }
+
+    if (entry.containsAspects("dataplex-types.global.schema")) {
+      return SchemaUtils.toBeamSchema(
+          entry.getAspectsMap().get("dataplex-types.global.schema").getData());
+    }
+    return null;
   }
 
-  /**
-   * Abstract class to manage Data Catalog clients and schemas from the Debezium connector.
-   *
-   * <p>It provides methods to store and retrieve schemas for given source tables in Data Catalog.
-   */
+  static Entry lookupPubSubEntry(
+      CatalogServiceClient client, String pubsubTopic, String gcpProject) {
+    String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
+    String query = String.format("name:%s", pubsubTopic.replace('-', '_').replace('.', '_'));
+
+    SearchEntriesRequest request =
+        SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();
+
+    try {
+      CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
+      for (SearchEntriesResult result : response.iterateAll()) {
+        return client.getEntry(result.getDataplexEntry().getName());
+      }
+    } catch (ApiException e) {
+      LOG.error("ApiException thrown by Dataplex API:", e);
+    }
+    return null;
+  }
+
   public abstract static class DataCatalogSchemaManager {
     final String gcpProject;
     final String location;
-    DataCatalogClient client;
+    CatalogServiceClient client;
 
     public abstract String getPubSubTopicForTable(String tableName);
 
@@ -187,9 +168,9 @@ public class DataCatalogSchemaUtils {
       }
 
       try {
-        client = DataCatalogClient.create();
+        client = CatalogServiceClient.create();
       } catch (IOException e) {
-        throw new RuntimeException("Unable to create a DataCatalogClient", e);
+        throw new RuntimeException("Unable to create a CatalogServiceClient", e);
       }
     }
   }
@@ -217,22 +198,28 @@ public class DataCatalogSchemaUtils {
                       + "being replicated for CDC.")
               .build();
 
-      // Construct the EntryGroup request to be sent by the client.
       CreateEntryGroupRequest entryGroupRequest =
           CreateEntryGroupRequest.newBuilder()
-              .setParent(LocationName.of(getGcpProject(), location).toString())
+              .setParent(String.format("projects/%s/locations/%s", getGcpProject(), location))
               .setEntryGroupId(entryGroupNameForTopic(pubsubTopic))
               .setEntryGroup(entryGroup)
               .build();
 
       try {
         LOG.info("Creating EntryGroup {}", entryGroupRequest);
-        EntryGroup createdEntryGroup = client.createEntryGroup(entryGroupRequest);
-        LOG.info("Created EntryGroup: {}", createdEntryGroup.toString());
+        client.createEntryGroupAsync(entryGroupRequest).get();
+        LOG.info("Created EntryGroup: {}", entryGroupNameForTopic(pubsubTopic));
 
         this.entryGroupCreated = true;
       } catch (AlreadyExistsException e) {
-        // EntryGroup already exists. There is no further action needed.
+        // EntryGroup already exists.
+        this.entryGroupCreated = true;
+      } catch (InterruptedException | ExecutionException e) {
+        if (e.getCause() instanceof AlreadyExistsException) {
+          this.entryGroupCreated = true;
+        } else {
+          LOG.error("Failed to create EntryGroup", e);
+        }
       }
     }
 
@@ -242,21 +229,33 @@ public class DataCatalogSchemaUtils {
     }
 
     private static String sanitizeEntryName(String tableName) {
-      // Remove the instance name
-      String unsanitizedEntry = tableName.split("\\.", 2)[1];
+      String unsanitizedEntry = tableName;
+      if (tableName.contains(".")) {
+        unsanitizedEntry = tableName.split("\\.", 2)[1];
+      }
       return unsanitizedEntry.replace('-', '_').replace('.', '_');
     }
 
     @Override
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
-      LOG.debug("Converting Beam schema {} into a Data Catalog schema", beamSchema);
-      com.google.cloud.datacatalog.v1beta1.Schema newEntrySchema =
-          SchemaUtils.fromBeamSchema(beamSchema);
-      LOG.info("Beam schema {} converted to Data Catalog schema {}", beamSchema, newEntrySchema);
-      LOG.error(
-          "Entry group name: {}",
-          EntryGroupName.of(getGcpProject(), location, entryGroupNameForTopic(pubsubTopic))
-              .toString());
+      Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
+
+      Entry entry =
+          Entry.newBuilder()
+              .setEntryType("projects/dataplex-types/locations/global/entryTypes/generic")
+              .setEntrySource(
+                  EntrySource.newBuilder()
+                      .setDescription(tableName)
+                      .setSystem("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
+                      .putLabels("user_specified_type", "BEAM_ROW_DATA")
+                      .build())
+              .putAspects(
+                  "dataplex-types.global.schema",
+                  Aspect.newBuilder()
+                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/schema")
+                      .setData(schemaData)
+                      .build())
+              .build();
 
       CreateEntryRequest createEntryRequest =
           CreateEntryRequest.newBuilder()
@@ -264,22 +263,34 @@ public class DataCatalogSchemaUtils {
                   EntryGroupName.of(getGcpProject(), location, entryGroupNameForTopic(pubsubTopic))
                       .toString())
               .setEntryId(sanitizeEntryName(tableName))
-              .setEntry(
-                  Entry.newBuilder()
-                      .setSchema(newEntrySchema)
-                      .setDescription(tableName)
-                      .setUserSpecifiedType("BEAM_ROW_DATA")
-                      .setUserSpecifiedSystem("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
-                      .build())
+              .setEntry(entry)
               .build();
-
-      LOG.info("CreateEntryRequest: {}", createEntryRequest.toString());
 
       try {
         return client.createEntry(createEntryRequest);
       } catch (AlreadyExistsException e) {
-        // The Entry already exists. No further action is necessary.
-        return createEntryRequest.getEntry();
+        // If it exists, update it
+        String entryName =
+            String.format(
+                "projects/%s/locations/%s/entryGroups/%s/entries/%s",
+                getGcpProject(),
+                location,
+                entryGroupNameForTopic(pubsubTopic),
+                sanitizeEntryName(tableName));
+
+        Entry updateEntry = entry.toBuilder().setName(entryName).build();
+        UpdateEntryRequest updateRequest =
+            UpdateEntryRequest.newBuilder()
+                .setEntry(updateEntry)
+                .setUpdateMask(
+                    FieldMask.newBuilder()
+                        .addPaths("aspects")
+                        .addPaths("entry_source.description")
+                        .addPaths("entry_source.system")
+                        .addPaths("entry_source.labels")
+                        .build())
+                .build();
+        return client.updateEntry(updateRequest);
       }
     }
   }
@@ -301,24 +312,32 @@ public class DataCatalogSchemaUtils {
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
       setupDataCatalogClient();
       if (client == null) {
-        return null; // TODO(pabloem) Handle a missing client
+        return null;
       }
 
       String pubsubTopic = getPubSubTopicForTable(tableName);
-
       Entry beforeChangeEntry = lookupPubSubEntry(client, pubsubTopic, this.gcpProject);
-      if (beforeChangeEntry == null) {
-        return null; // TODO(pabloem) Handle a failed entry lookup
-      }
-      LOG.info("Converting Beam schema {} into a Data Catalog schema", beamSchema);
-      com.google.cloud.datacatalog.v1beta1.Schema newEntrySchema =
-          SchemaUtils.fromBeamSchema(beamSchema);
-      LOG.debug("Beam schema {} converted to Data Catalog schema {}", beamSchema, newEntrySchema);
 
-      LOG.info("Publishing schema for table {} corresponding to topic {}", tableName, pubsubTopic);
+      if (beforeChangeEntry == null) {
+        return null;
+      }
+
+      Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
+
+      Entry updatedEntry =
+          beforeChangeEntry.toBuilder()
+              .putAspects(
+                  "dataplex-types.global.schema",
+                  Aspect.newBuilder()
+                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/schema")
+                      .setData(schemaData)
+                      .build())
+              .build();
+
       UpdateEntryRequest updateEntryRequest =
           UpdateEntryRequest.newBuilder()
-              .setEntry(beforeChangeEntry.toBuilder().setSchema(newEntrySchema).build())
+              .setEntry(updatedEntry)
+              .setUpdateMask(FieldMask.newBuilder().addPaths("aspects").build())
               .build();
 
       return client.updateEntry(updateEntryRequest);
