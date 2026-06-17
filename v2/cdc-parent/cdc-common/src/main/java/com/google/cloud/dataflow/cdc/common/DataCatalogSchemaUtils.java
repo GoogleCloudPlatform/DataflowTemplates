@@ -238,21 +238,33 @@ public class DataCatalogSchemaUtils {
     @Override
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
       Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
+      Struct genericData =
+          Struct.newBuilder()
+              .putFields(
+                  "system",
+                  com.google.protobuf.Value.newBuilder()
+                      .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
+                      .build())
+              .putFields(
+                  "type",
+                  com.google.protobuf.Value.newBuilder().setStringValue("BEAM_ROW_DATA").build())
+              .build();
 
       Entry entry =
           Entry.newBuilder()
               .setEntryType("projects/dataplex-types/locations/global/entryTypes/generic")
-              .setEntrySource(
-                  EntrySource.newBuilder()
-                      .setDescription(tableName)
-                      .setSystem("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
-                      .putLabels("user_specified_type", "BEAM_ROW_DATA")
-                      .build())
+              .setEntrySource(EntrySource.newBuilder().setDescription(tableName).build())
               .putAspects(
                   "dataplex-types.global.schema",
                   Aspect.newBuilder()
                       .setAspectType("projects/dataplex-types/locations/global/aspectTypes/schema")
                       .setData(schemaData)
+                      .build())
+              .putAspects(
+                  "dataplex-types.global.generic",
+                  Aspect.newBuilder()
+                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/generic")
+                      .setData(genericData)
                       .build())
               .build();
 
@@ -285,8 +297,6 @@ public class DataCatalogSchemaUtils {
                     FieldMask.newBuilder()
                         .addPaths("aspects")
                         .addPaths("entry_source.description")
-                        .addPaths("entry_source.system")
-                        .addPaths("entry_source.labels")
                         .build())
                 .build();
         return client.updateEntry(updateRequest);
@@ -322,6 +332,17 @@ public class DataCatalogSchemaUtils {
       }
 
       Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
+      Struct genericData =
+          Struct.newBuilder()
+              .putFields(
+                  "system",
+                  com.google.protobuf.Value.newBuilder()
+                      .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
+                      .build())
+              .putFields(
+                  "type",
+                  com.google.protobuf.Value.newBuilder().setStringValue("BEAM_ROW_DATA").build())
+              .build();
 
       Entry updatedEntry =
           beforeChangeEntry.toBuilder()
@@ -330,6 +351,12 @@ public class DataCatalogSchemaUtils {
                   Aspect.newBuilder()
                       .setAspectType("projects/dataplex-types/locations/global/aspectTypes/schema")
                       .setData(schemaData)
+                      .build())
+              .putAspects(
+                  "dataplex-types.global.generic",
+                  Aspect.newBuilder()
+                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/generic")
+                      .setData(genericData)
                       .build())
               .build();
 
