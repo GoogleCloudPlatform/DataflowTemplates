@@ -129,10 +129,7 @@ public class DataCatalogSchemaUtils {
       CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
       for (SearchEntriesResult result : response.iterateAll()) {
         String entryName = result.getDataplexEntry().getName();
-        // Ensure we only return entries from the system-managed '@pubsub' entry group
-        if (entryName.contains("/entryGroups/@pubsub/")) {
-          return client.getEntry(entryName);
-        }
+        return client.getEntry(entryName);
       }
     } catch (ApiException e) {
       LOG.error("ApiException thrown by Dataplex API:", e);
