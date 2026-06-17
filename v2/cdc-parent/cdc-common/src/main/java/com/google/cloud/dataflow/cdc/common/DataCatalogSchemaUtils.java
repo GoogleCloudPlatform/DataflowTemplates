@@ -45,8 +45,14 @@ public class DataCatalogSchemaUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataCatalogSchemaUtils.class);
 
+  /**
+   * Builds an {@link EntryGroup} name for a particular pubsubTopic.
+   *
+   * <p>This method is intended for use in single-topic mode, where an {@link EntryGroup} with
+   * multiple {@link Entry}s is created for a single Pub/Sub topic.
+   */
   public static String entryGroupNameForTopic(String pubsubTopic) {
-    return String.format("cdc_%s", pubsubTopic).replace('-', '_').replace('.', '_');
+    return String.format("cdc-%s", pubsubTopic).replace('_', '-').replace('.', '-').toLowerCase();
   }
 
   public static DataCatalogSchemaManager getSchemaManager(
@@ -233,7 +239,7 @@ public class DataCatalogSchemaUtils {
       if (tableName.contains(".")) {
         unsanitizedEntry = tableName.split("\\.", 2)[1];
       }
-      return unsanitizedEntry.replace('-', '_').replace('.', '_');
+      return unsanitizedEntry.replace('_', '-').replace('.', '-').toLowerCase();
     }
 
     @Override
