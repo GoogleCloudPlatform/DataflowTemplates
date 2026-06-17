@@ -1188,8 +1188,7 @@ public class CopyDbTest {
             .spannerDeterminism("DETERMINISTIC")
             .addParameter(UdfParameter.parse("arg0 text", "s1.Foo2", Dialect.POSTGRESQL))
             .addParameter(
-                UdfParameter.parse(
-                    "arg1 text DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+                UdfParameter.parse("arg1 text DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
             .endUdf()
             .build();
     createAndPopulate(ddl, 0);

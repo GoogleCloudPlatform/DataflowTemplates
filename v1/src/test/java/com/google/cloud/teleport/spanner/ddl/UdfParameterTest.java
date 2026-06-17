@@ -36,8 +36,12 @@ public class UdfParameterTest {
   @Test
   public void testBasicPgUdfParameter() {
     UdfParameter udfParameter =
-        UdfParameter.builder().functionSpecificName("s1.foo").name("p1").type("TEXT")
-            .dialect(Dialect.POSTGRESQL).autoBuild();
+        UdfParameter.builder()
+            .functionSpecificName("s1.foo")
+            .name("p1")
+            .type("TEXT")
+            .dialect(Dialect.POSTGRESQL)
+            .autoBuild();
 
     assertThat(udfParameter.toString(), equalToCompressingWhiteSpace("\"p1\" TEXT"));
   }
@@ -89,8 +93,7 @@ public class UdfParameterTest {
 
   @Test
   public void testUdfParameterParsePgQuoted() {
-    UdfParameter udfParameter =
-        UdfParameter.parse("\"p 1\" TEXT", "s1.foo", Dialect.POSTGRESQL);
+    UdfParameter udfParameter = UdfParameter.parse("\"p 1\" TEXT", "s1.foo", Dialect.POSTGRESQL);
 
     assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p 1\" TEXT"));
     assertThat(udfParameter.name(), equalToCompressingWhiteSpace("\"p 1\""));

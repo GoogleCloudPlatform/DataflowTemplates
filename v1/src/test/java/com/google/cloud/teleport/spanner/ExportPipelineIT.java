@@ -387,7 +387,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     Schema udfMultiplySchema =
         new org.apache.avro.file.DataFileReader<>(
-                new org.apache.avro.file.SeekableByteArrayInput(udfMultiplyArtifacts.get(0).contents()),
+                new org.apache.avro.file.SeekableByteArrayInput(
+                    udfMultiplyArtifacts.get(0).contents()),
                 new org.apache.avro.generic.GenericDatumReader<>())
             .getSchema();
     assertThat(udfMultiplySchema.getProp("spannerEntity")).isEqualTo("spannerUdf");
