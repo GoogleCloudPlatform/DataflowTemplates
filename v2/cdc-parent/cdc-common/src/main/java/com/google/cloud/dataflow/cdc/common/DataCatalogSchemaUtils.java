@@ -71,29 +71,18 @@ public class DataCatalogSchemaUtils {
 
   public static Map<String, Schema> getSchemasForEntryGroup(
       String gcpProject, String entryGroupId) {
-    CatalogServiceClient client = null;
-    try {
-      client = CatalogServiceClient.create();
-    } catch (IOException e) {
-      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
-    }
-    if (client == null) {
-      return null;
-    }
-
-    String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
-    String query = String.format("entry_group:%s", entryGroupId);
-
-    SearchEntriesRequest request =
-        SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();
-
     Map<String, Schema> schemas = new HashMap<>();
-
-    try {
-      CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
-      for (SearchEntriesResult result : response.iterateAll()) {
-        String entryName = result.getDataplexEntry().getName();
-        Entry entry = client.getEntry(entryName);
+    try (CatalogServiceClient client = CatalogServiceClient.create()) {
+      String formattedParent =
+          String.format(
+              "projects/%s/locations/%s/entryGroups/%s",
+              gcpProject, DEFAULT_LOCATION, entryGroupId);
+      com.google.cloud.dataplex.v1.ListEntriesRequest request =
+          com.google.cloud.dataplex.v1.ListEntriesRequest.newBuilder()
+              .setParent(formattedParent)
+              .build();
+      CatalogServiceClient.ListEntriesPagedResponse response = client.listEntries(request);
+      for (Entry entry : response.iterateAll()) {
         if (entry.containsAspects("dataplex-types.global.schema")) {
           Struct schemaData = entry.getAspectsMap().get("dataplex-types.global.schema").getData();
           String description =
@@ -101,34 +90,31 @@ public class DataCatalogSchemaUtils {
           schemas.put(description, SchemaUtils.toBeamSchema(schemaData));
         }
       }
+    } catch (IOException e) {
+      LOG.error("Unable to create a CatalogServiceClient", e);
+      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     } catch (Exception e) {
-      LOG.error("Failed to search entries: ", e);
+      LOG.error("Failed to list entries: ", e);
     }
-
     return schemas;
   }
 
   public static Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
-    CatalogServiceClient client = null;
-    try {
-      client = CatalogServiceClient.create();
+    try (CatalogServiceClient client = CatalogServiceClient.create()) {
+      Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
+      if (entry == null) {
+        return null;
+      }
+
+      if (entry.containsAspects("dataplex-types.global.schema")) {
+        return SchemaUtils.toBeamSchema(
+            entry.getAspectsMap().get("dataplex-types.global.schema").getData());
+      }
+      return null;
     } catch (IOException e) {
+      LOG.error("Unable to create a CatalogServiceClient", e);
       throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     }
-    if (client == null) {
-      return null;
-    }
-
-    Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
-    if (entry == null) {
-      return null;
-    }
-
-    if (entry.containsAspects("dataplex-types.global.schema")) {
-      return SchemaUtils.toBeamSchema(
-          entry.getAspectsMap().get("dataplex-types.global.schema").getData());
-    }
-    return null;
   }
 
   static Entry lookupPubSubEntry(
@@ -220,7 +206,10 @@ public class DataCatalogSchemaUtils {
       } catch (AlreadyExistsException e) {
         // EntryGroup already exists.
         this.entryGroupCreated = true;
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.error("Interrupted while creating EntryGroup", e);
+      } catch (ExecutionException e) {
         if (e.getCause() instanceof AlreadyExistsException) {
           this.entryGroupCreated = true;
         } else {

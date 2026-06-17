@@ -71,7 +71,10 @@ public class SchemaUtils {
   }
 
   private static Field toBeamField(Struct columnSchema) {
-    String name = columnSchema.getFieldsMap().get("name").getStringValue();
+    String name =
+        columnSchema.containsFields("name")
+            ? columnSchema.getFieldsMap().get("name").getStringValue()
+            : "";
     FieldType beamFieldType = getBeamFieldType(columnSchema);
 
     Field field = Field.of(name, beamFieldType);
@@ -96,7 +99,10 @@ public class SchemaUtils {
   }
 
   private static FieldType getBeamFieldType(Struct column) {
-    String dcFieldType = column.getFieldsMap().get("dataType").getStringValue();
+    String dcFieldType =
+        column.containsFields("dataType")
+            ? column.getFieldsMap().get("dataType").getStringValue()
+            : "";
 
     if (LOGICAL_FIELD_TYPES.containsKey(dcFieldType)) {
       return LOGICAL_FIELD_TYPES.get(dcFieldType);
@@ -116,12 +122,12 @@ public class SchemaUtils {
       }
     }
 
-    throw new UnsupportedOperationException(
-        "Field type '"
-            + dcFieldType
-            + "' is not supported (field '"
-            + column.getFieldsMap().get("name").getStringValue()
-            + "')");
+    String fieldName =
+        column.containsFields("name") ? column.getFieldsMap().get("name").getStringValue() : "";
+    String errorMessage =
+        "Field type '" + dcFieldType + "' is not supported (field '" + fieldName + "')";
+    LOG.error(errorMessage);
+    throw new UnsupportedOperationException(errorMessage);
   }
 
   static Struct fromBeamSchema(Schema beamSchema) {
