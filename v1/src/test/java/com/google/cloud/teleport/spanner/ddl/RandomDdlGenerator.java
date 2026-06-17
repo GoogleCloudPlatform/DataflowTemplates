@@ -472,7 +472,8 @@ public abstract class RandomDdlGenerator {
         if (interleaved) {
           columns.set(pk);
           if (rnd.nextBoolean()) {
-            filters.add("\"" + pk.name() + "\" IS NOT NULL");
+            String q = getDialect() == Dialect.POSTGRESQL ? "\"" : "`";
+            filters.add(q + pk.name() + q + " IS NOT NULL");
           }
         }
         pks.add(pk.name());
@@ -534,7 +535,8 @@ public abstract class RandomDdlGenerator {
           }
           columns.endIndexColumn();
           if (rnd.nextBoolean()) {
-            filters.add("\"" + columnName + "\" IS NOT NULL");
+            String q = getDialect() == Dialect.POSTGRESQL ? "\"" : "`";
+            filters.add(q + columnName + q + " IS NOT NULL");
           }
         }
       }

@@ -639,6 +639,10 @@ public final class SpannerResourceManager implements ResourceManager {
     }
   }
 
+  public List<String> getDatabaseDdl() {
+    return databaseAdminClient.getDatabaseDdl(instanceId, databaseId);
+  }
+
   /**
    * Deletes all created resources (instance, database, and tables) and cleans up all Spanner
    * sessions, making the manager object unusable.
