@@ -145,6 +145,30 @@ public class SchemaUtils {
         .build();
   }
 
+  private static String getMetadataType(FieldType type) {
+    switch (type.getTypeName()) {
+      case BOOLEAN:
+        return "BOOLEAN";
+      case BYTES:
+        return "BYTES";
+      case DATETIME:
+        return "TIMESTAMP";
+      case DECIMAL:
+      case DOUBLE:
+      case FLOAT:
+      case INT16:
+      case INT32:
+      case INT64:
+        return "NUMBER";
+      case STRING:
+        return "STRING";
+      case ROW:
+        return "STRUCT";
+      default:
+        return "OTHER";
+    }
+  }
+
   private static Value fromBeamField(Field beamField) {
     Struct.Builder columnBuilder = Struct.newBuilder();
     columnBuilder.putFields("name", Value.newBuilder().setStringValue(beamField.getName()).build());
@@ -155,27 +179,18 @@ public class SchemaUtils {
       columnBuilder.putFields("mode", Value.newBuilder().setStringValue("REQUIRED").build());
     }
 
+    String metadataType = getMetadataType(beamField.getType());
+    columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(metadataType).build());
+    columnBuilder.putFields(
+        "metadataType", Value.newBuilder().setStringValue(metadataType).build());
+
     if (beamField.getType().getTypeName() == TypeName.ROW) {
-      columnBuilder.putFields("dataType", Value.newBuilder().setStringValue("record").build());
-      columnBuilder.putFields("metadataType", Value.newBuilder().setStringValue("record").build());
       Struct subSchema = fromBeamSchema(beamField.getType().getRowSchema());
       if (subSchema.containsFields("fields")) {
         columnBuilder.putFields("fields", subSchema.getFieldsMap().get("fields"));
       }
-      return Value.newBuilder().setStructValue(columnBuilder.build()).build();
-    } else if (LOGICAL_FIELD_TYPES.inverse().containsKey(beamField.getType())) {
-      String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType());
-      columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
-      columnBuilder.putFields("metadataType", Value.newBuilder().setStringValue(columnType).build());
-      return Value.newBuilder().setStructValue(columnBuilder.build()).build();
-    } else {
-      String columnType = FIELD_TYPE_NAMES.inverse().get(beamField.getType().getTypeName());
-      if (columnType == null) {
-        columnType = "string"; // fallback
-      }
-      columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
-      columnBuilder.putFields("metadataType", Value.newBuilder().setStringValue(columnType).build());
-      return Value.newBuilder().setStructValue(columnBuilder.build()).build();
     }
+
+    return Value.newBuilder().setStructValue(columnBuilder.build()).build();
   }
 }
