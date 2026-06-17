@@ -109,6 +109,7 @@ public class DataCatalogSchemaUtils {
 
       Struct schemaData = getSchemaAspectData(entry);
       if (schemaData != null) {
+        LOG.warn("PubSub schema found, {}", schemaData);
         return SchemaUtils.toBeamSchema(schemaData);
       }
       LOG.warn("PubSub entry without aspect, returning null schema, {}", entry);
@@ -126,6 +127,7 @@ public class DataCatalogSchemaUtils {
         return aspectEntry.getValue().getData();
       }
     }
+
     return null;
   }
 
@@ -289,6 +291,7 @@ public class DataCatalogSchemaUtils {
               .build();
 
       try {
+        LOG.info("Dataplex updating schema {}", createEntryRequest);
         return client.createEntry(createEntryRequest);
       } catch (AlreadyExistsException e) {
         // If it exists, update it
@@ -310,6 +313,7 @@ public class DataCatalogSchemaUtils {
                         .addPaths("entry_source.description")
                         .build())
                 .build();
+        LOG.info("Dataplex updating schema {}", updateRequest);
         return client.updateEntry(updateRequest);
       }
     }
