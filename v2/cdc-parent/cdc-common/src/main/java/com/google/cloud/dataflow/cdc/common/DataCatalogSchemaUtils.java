@@ -83,8 +83,8 @@ public class DataCatalogSchemaUtils {
               .build();
       CatalogServiceClient.ListEntriesPagedResponse response = client.listEntries(request);
       for (Entry entry : response.iterateAll()) {
-        if (entry.containsAspects("dataplex-types.global.schema")) {
-          Struct schemaData = entry.getAspectsMap().get("dataplex-types.global.schema").getData();
+        Struct schemaData = getSchemaAspectData(entry);
+        if (schemaData != null) {
           String description =
               entry.hasEntrySource() ? entry.getEntrySource().getDescription() : entry.getName();
           schemas.put(description, SchemaUtils.toBeamSchema(schemaData));
@@ -107,9 +107,9 @@ public class DataCatalogSchemaUtils {
         return null;
       }
 
-      if (entry.containsAspects("dataplex-types.global.schema")) {
-        return SchemaUtils.toBeamSchema(
-            entry.getAspectsMap().get("dataplex-types.global.schema").getData());
+      Struct schemaData = getSchemaAspectData(entry);
+      if (schemaData != null) {
+        return SchemaUtils.toBeamSchema(schemaData);
       }
       LOG.warn("PubSub entry without aspect, returning null schema, {}", entry);
       return null;
@@ -117,6 +117,15 @@ public class DataCatalogSchemaUtils {
       LOG.error("Unable to create a CatalogServiceClient", e);
       throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     }
+  }
+
+  static Struct getSchemaAspectData(Entry entry) {
+    for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
+      if (aspectEntry.getKey().endsWith(".global.schema") || aspectEntry.getKey().equals("dataplex-types.global.schema")) {
+        return aspectEntry.getValue().getData();
+      }
+    }
+    return null;
   }
 
   static Entry lookupPubSubEntry(
