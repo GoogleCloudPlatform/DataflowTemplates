@@ -101,7 +101,7 @@ public class SchemaUtils {
   private static FieldType getBeamFieldType(Struct column) {
     String dcFieldType =
         column.containsFields("dataType")
-            ? column.getFieldsMap().get("dataType").getStringValue()
+            ? column.getFieldsMap().get("dataType").getStringValue().toLowerCase()
             : "";
 
     if (LOGICAL_FIELD_TYPES.containsKey(dcFieldType)) {
@@ -110,7 +110,7 @@ public class SchemaUtils {
       return FieldType.of(FIELD_TYPE_NAMES.get(dcFieldType));
     }
 
-    if ("record".equals(dcFieldType) || "STRUCT".equals(dcFieldType)) {
+    if ("record".equals(dcFieldType) || "struct".equals(dcFieldType)) {
       if (column.containsFields("fields")) {
         List<Struct> subcols =
             column.getFieldsMap().get("fields").getListValue().getValuesList().stream()
