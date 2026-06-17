@@ -112,9 +112,9 @@ public class SchemaUtils {
     }
 
     if ("record".equals(dcFieldType) || "struct".equals(dcFieldType)) {
-      if (column.containsFields("fields")) {
+      if (column.containsFields("recordFields")) {
         List<Struct> subcols =
-            column.getFieldsMap().get("fields").getListValue().getValuesList().stream()
+            column.getFieldsMap().get("recordFields").getListValue().getValuesList().stream()
                 .map(Value::getStructValue)
                 .collect(Collectors.toList());
         return FieldType.row(beamSchemaFromColumnList(subcols));
@@ -136,7 +136,6 @@ public class SchemaUtils {
         beamSchema.getFields().stream()
             .map(SchemaUtils::fromBeamField)
             .collect(Collectors.toList());
-
     return Struct.newBuilder()
         .putFields(
             "fields",
@@ -189,7 +188,7 @@ public class SchemaUtils {
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue("STRUCT").build());
       Struct subSchema = fromBeamSchema(beamField.getType().getRowSchema());
       if (subSchema.containsFields("fields")) {
-        columnBuilder.putFields("fields", subSchema.getFieldsMap().get("fields"));
+        columnBuilder.putFields("recordFields", subSchema.getFieldsMap().get("fields"));
       }
     } else if (LOGICAL_FIELD_TYPES.inverse().containsKey(beamField.getType())) {
       String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType()).toUpperCase();
@@ -198,7 +197,9 @@ public class SchemaUtils {
       String columnType = FIELD_TYPE_NAMES.inverse().get(beamField.getType().getTypeName());
       if (columnType == null) {
         columnType = "STRING"; // fallback
-      } else if (columnType.equals("long") || columnType.equals("integer") || columnType.equals("int16")) {
+      } else if (columnType.equals("long")
+          || columnType.equals("integer")
+          || columnType.equals("int16")) {
         columnType = "INTEGER";
       } else if (columnType.equals("double") || columnType.equals("decimal")) {
         columnType = "DOUBLE";

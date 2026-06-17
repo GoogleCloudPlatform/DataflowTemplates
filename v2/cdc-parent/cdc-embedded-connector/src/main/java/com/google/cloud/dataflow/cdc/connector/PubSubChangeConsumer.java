@@ -130,6 +130,8 @@ public class PubSubChangeConsumer
           if (result == null) {
             throw new InterruptedException(
                 "A problem occurred when communicating with Knowledge Catalog");
+          } else {
+            LOG.info("New entry {}", result);
           }
           observedTables.add(tableName);
         }
