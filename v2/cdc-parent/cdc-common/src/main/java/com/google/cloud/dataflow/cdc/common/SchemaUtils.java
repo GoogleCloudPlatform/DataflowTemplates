@@ -184,19 +184,32 @@ public class SchemaUtils {
     columnBuilder.putFields(
         "metadataType", Value.newBuilder().setStringValue(metadataType).build());
 
+    // In Dataplex v1, dataType often mirrors metadataType or must be valid standard SQL types
     if (beamField.getType().getTypeName() == TypeName.ROW) {
-      columnBuilder.putFields("dataType", Value.newBuilder().setStringValue("record").build());
+      columnBuilder.putFields("dataType", Value.newBuilder().setStringValue("STRUCT").build());
       Struct subSchema = fromBeamSchema(beamField.getType().getRowSchema());
       if (subSchema.containsFields("fields")) {
         columnBuilder.putFields("fields", subSchema.getFieldsMap().get("fields"));
       }
     } else if (LOGICAL_FIELD_TYPES.inverse().containsKey(beamField.getType())) {
-      String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType());
+      String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType()).toUpperCase();
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
     } else {
       String columnType = FIELD_TYPE_NAMES.inverse().get(beamField.getType().getTypeName());
       if (columnType == null) {
-        columnType = "string"; // fallback
+        columnType = "STRING"; // fallback
+      } else if (columnType.equals("long") || columnType.equals("integer") || columnType.equals("int16")) {
+        columnType = "INTEGER";
+      } else if (columnType.equals("double") || columnType.equals("decimal")) {
+        columnType = "DOUBLE";
+      } else if (columnType.equals("boolean")) {
+        columnType = "BOOLEAN";
+      } else if (columnType.equals("bytes")) {
+        columnType = "BYTES";
+      } else if (columnType.equals("timestamp")) {
+        columnType = "TIMESTAMP";
+      } else {
+        columnType = columnType.toUpperCase();
       }
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
     }
