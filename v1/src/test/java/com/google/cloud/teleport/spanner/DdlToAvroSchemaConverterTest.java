@@ -737,7 +737,6 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }
 
-
   @Test
   public void pgUdfSimple() {
     DdlToAvroSchemaConverter converter =

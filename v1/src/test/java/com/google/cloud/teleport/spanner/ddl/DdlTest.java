@@ -1493,11 +1493,9 @@ public class DdlTest {
             .security(SqlSecurity.INVOKER)
             .type("TEXT")
             .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo2", Dialect.POSTGRESQL))
             .addParameter(
-                UdfParameter.parse("arg0 TEXT", "spanner.Foo2", Dialect.POSTGRESQL))
-            .addParameter(
-                UdfParameter.parse(
-                    "arg1 TEXT DEFAULT 'bar'", "spanner.Foo2", Dialect.POSTGRESQL))
+                UdfParameter.parse("arg1 TEXT DEFAULT 'bar'", "spanner.Foo2", Dialect.POSTGRESQL))
             .endUdf()
             .createUdf("spanner.Foo3")
             .dialect(Dialect.POSTGRESQL)
@@ -1505,8 +1503,7 @@ public class DdlTest {
             .definition("(SELECT 'bar')")
             .type("TEXT")
             .spannerDeterminism("NOT_DETERMINISTIC_STABLE")
-            .addParameter(
-                UdfParameter.parse("arg0 TEXT", "spanner.Foo3", Dialect.POSTGRESQL))
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo3", Dialect.POSTGRESQL))
             .endUdf();
     assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
     assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
@@ -1531,8 +1528,9 @@ public class DdlTest {
                 + " RETURNS TEXT SECURITY INVOKER IMMUTABLE RETURN (SELECT 'bar')"));
     assertThat(
         statements.get(2),
-        equalToCompressingWhiteSpace("CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT)"
-            + " RETURNS TEXT STABLE RETURN (SELECT 'bar')"));
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT)"
+                + " RETURNS TEXT STABLE RETURN (SELECT 'bar')"));
     assertNotNull(ddl.hashCode());
 
     assertThat(
@@ -1552,7 +1550,8 @@ public class DdlTest {
             .endUdf()
             .build();
 
-    String expectedDdlString = "CREATE FUNCTION \"Foo\"() RETURNS TEXT VOLATILE RETURN (SELECT 'bar')";
+    String expectedDdlString =
+        "CREATE FUNCTION \"Foo\"() RETURNS TEXT VOLATILE RETURN (SELECT 'bar')";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
 

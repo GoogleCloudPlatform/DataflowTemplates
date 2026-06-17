@@ -58,7 +58,8 @@ public abstract class UdfParameter implements Serializable {
     // Group 3: Unquoted Name
     // Group 4: The rest (type and optional DEFAULT)
     String regex =
-        String.format("^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", java.util.regex.Pattern.quote(quote));
+        String.format(
+            "^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", java.util.regex.Pattern.quote(quote));
     java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(parameter);
 
     if (!matcher.find()) {
