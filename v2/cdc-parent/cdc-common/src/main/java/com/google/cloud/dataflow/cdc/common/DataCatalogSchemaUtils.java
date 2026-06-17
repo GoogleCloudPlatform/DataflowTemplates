@@ -111,7 +111,7 @@ public class DataCatalogSchemaUtils {
         return SchemaUtils.toBeamSchema(
             entry.getAspectsMap().get("dataplex-types.global.schema").getData());
       }
-      LOG.warn("PubSub entry without aspect, returning null schema");
+      LOG.warn("PubSub entry without aspect, returning null schema, {}", entry);
       return null;
     } catch (IOException e) {
       LOG.error("Unable to create a CatalogServiceClient", e);
@@ -131,6 +131,7 @@ public class DataCatalogSchemaUtils {
       CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
       for (SearchEntriesResult result : response.iterateAll()) {
         String entryName = result.getDataplexEntry().getName();
+        LOG.info("Dataplex entry found {}", entryName);
         return client.getEntry(entryName);
       }
     } catch (ApiException e) {
@@ -321,6 +322,7 @@ public class DataCatalogSchemaUtils {
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
       setupDataCatalogClient();
       if (client == null) {
+        LOG.warn("Knowledge Catalog client missing");
         return null;
       }
 
@@ -328,6 +330,7 @@ public class DataCatalogSchemaUtils {
       Entry beforeChangeEntry = lookupPubSubEntry(client, pubsubTopic, this.gcpProject);
 
       if (beforeChangeEntry == null) {
+        LOG.warn("No entry for PubSub topic {}", pubsubTopic);
         return null;
       }
 
@@ -365,7 +368,7 @@ public class DataCatalogSchemaUtils {
               .setEntry(updatedEntry)
               .setUpdateMask(FieldMask.newBuilder().addPaths("aspects").build())
               .build();
-
+      LOG.info("Dataplex updating schema {}", updateEntryRequest);
       return client.updateEntry(updateEntryRequest);
     }
   }
