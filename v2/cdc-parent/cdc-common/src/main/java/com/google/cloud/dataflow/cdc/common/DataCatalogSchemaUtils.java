@@ -121,7 +121,8 @@ public class DataCatalogSchemaUtils {
 
   static Struct getSchemaAspectData(Entry entry) {
     for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
-      if (aspectEntry.getKey().endsWith(".global.schema") || aspectEntry.getKey().equals("dataplex-types.global.schema")) {
+      if (aspectEntry.getKey().endsWith(".global.schema")
+          || aspectEntry.getKey().equals("dataplex-types.global.schema")) {
         return aspectEntry.getValue().getData();
       }
     }
