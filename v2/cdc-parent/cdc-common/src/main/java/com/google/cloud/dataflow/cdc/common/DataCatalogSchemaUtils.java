@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 /** Class with utilities to communicate with Google Cloud Dataplex Catalog. */
 public class DataCatalogSchemaUtils {
 
-  public static final String DEFAULT_LOCATION = "us-central1";
+  public static final String DEFAULT_LOCATION = "global";
 
   private static final Logger LOG = LoggerFactory.getLogger(DataCatalogSchemaUtils.class);
 
@@ -103,6 +103,7 @@ public class DataCatalogSchemaUtils {
     try (CatalogServiceClient client = CatalogServiceClient.create()) {
       Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
       if (entry == null) {
+        LOG.warn("PubSub entry not found, returning null schema");
         return null;
       }
 
@@ -110,6 +111,7 @@ public class DataCatalogSchemaUtils {
         return SchemaUtils.toBeamSchema(
             entry.getAspectsMap().get("dataplex-types.global.schema").getData());
       }
+      LOG.warn("PubSub entry without aspect, returning null schema");
       return null;
     } catch (IOException e) {
       LOG.error("Unable to create a CatalogServiceClient", e);
@@ -134,6 +136,7 @@ public class DataCatalogSchemaUtils {
     } catch (ApiException e) {
       LOG.error("ApiException thrown by Dataplex API:", e);
     }
+    LOG.warn("PubSub entry not found");
     return null;
   }
 
