@@ -120,7 +120,7 @@ public class DataCatalogSchemaUtils {
   static Entry lookupPubSubEntry(
       CatalogServiceClient client, String pubsubTopic, String gcpProject) {
     String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
-    String query = String.format("name:%s", pubsubTopic.replace('-', '_').replace('.', '_'));
+    String query = String.format("name:%s", pubsubTopic);
 
     SearchEntriesRequest request =
         SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();

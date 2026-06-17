@@ -129,7 +129,7 @@ public class PubSubChangeConsumer
           Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
           if (result == null) {
             throw new InterruptedException(
-                "A problem occurred when communicating with Cloud Data Catalog");
+                "A problem occurred when communicating with Knowledge Catalog");
           }
           observedTables.add(tableName);
         }
