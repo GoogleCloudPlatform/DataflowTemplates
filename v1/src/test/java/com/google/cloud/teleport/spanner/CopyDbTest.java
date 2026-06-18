@@ -1160,7 +1160,7 @@ public class CopyDbTest {
   }
 
   @Test
-  public void pgUdfs() throws Exception {
+  public void pgUdfsWithDeterminism() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
     dbOptionList.add(

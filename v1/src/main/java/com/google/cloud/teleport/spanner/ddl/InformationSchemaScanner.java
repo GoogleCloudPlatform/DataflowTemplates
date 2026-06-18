@@ -1066,7 +1066,7 @@ public class InformationSchemaScanner {
       String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
       String spannerDeterminism = null;
       if (dialect == Dialect.POSTGRESQL) {
-        spannerDeterminism = resultSet.isNull(7) ? null : resultSet.getString(7);
+        spannerDeterminism = resultSet.isNull(8) ? null : resultSet.getString(8);
       }
 
       // Built-in functions such as Change Stream READ_X are marked as External.
@@ -1210,9 +1210,7 @@ public class InformationSchemaScanner {
       // and a 0 if not.
       resultSet.next();
       if (resultSet.getLong(0) == 0) {
-        LOG.info(
-            "information_schema.routines.spanner_determinism is not present. Cannot export"
-                + " PostgreSQL dialect user-defined functions.");
+        LOG.info("Cannot export user-defined functions.");
         return false;
       }
     }

@@ -115,4 +115,48 @@ public class UdfParameterTest {
     assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("\"p1\" double precision"));
     assertThat(udfParameter.type(), equalToCompressingWhiteSpace("double precision"));
   }
+
+  @Test
+  public void testUdfParameterParseGsqlExtraKeyword() {
+    // GSQL should throw if there is a space in the type and no DEFAULT keyword is present
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> UdfParameter.parse("p1 int32 xyz", "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testUdfParameterParseCaseInsensitiveDefault() {
+    UdfParameter udfParameter =
+        UdfParameter.parse("p1 int32 dEfAuLt 5", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` int32 DEFAULT 5"));
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("5"));
+  }
+
+  @Test
+  public void testUdfParameterParseDefaultExpressionWithDefault() {
+    // Tests when the default expression itself contains the word 'default'
+    UdfParameter udfParameter =
+        UdfParameter.parse(
+            "p1 string DEFAULT 'default string'", "s1.foo", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertThat(
+        udfParameter.prettyPrint(),
+        equalToCompressingWhiteSpace("`p1` string DEFAULT 'default string'"));
+    assertThat(udfParameter.defaultExpression(), equalToCompressingWhiteSpace("'default string'"));
+  }
+
+  @Test
+  public void testUdfParameterParseEmptyString() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> UdfParameter.parse("", "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testUdfParameterParseNullString() {
+    assertThrows(
+        NullPointerException.class,
+        () -> UdfParameter.parse(null, "s1.foo", Dialect.GOOGLE_STANDARD_SQL));
+  }
 }
