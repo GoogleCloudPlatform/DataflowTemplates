@@ -25,13 +25,18 @@ import com.google.cloud.dataplex.v1.Entry;
 import com.google.cloud.dataplex.v1.EntryGroup;
 import com.google.cloud.dataplex.v1.EntryGroupName;
 import com.google.cloud.dataplex.v1.EntrySource;
+import com.google.cloud.dataplex.v1.EntryView;
+import com.google.cloud.dataplex.v1.GetEntryRequest;
 import com.google.cloud.dataplex.v1.SearchEntriesRequest;
 import com.google.cloud.dataplex.v1.SearchEntriesResult;
 import com.google.cloud.dataplex.v1.UpdateEntryRequest;
 import com.google.protobuf.FieldMask;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
+import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.schemas.Schema;
@@ -52,7 +57,7 @@ public class DataCatalogSchemaUtils {
    * multiple {@link Entry}s is created for a single Pub/Sub topic.
    */
   public static String entryGroupNameForTopic(String pubsubTopic) {
-    return String.format("cdc-%s", pubsubTopic).replace('_', '-').replace('.', '-').toLowerCase();
+    return String.format("cdc-%s", pubsubTopic).toLowerCase();
   }
 
   public static DataCatalogSchemaManager getSchemaManager(
@@ -106,11 +111,14 @@ public class DataCatalogSchemaUtils {
         LOG.warn("PubSub entry not found, returning null schema");
         return null;
       }
+      LOG.warn("Entry found, {}", entry);
 
       Struct schemaData = getSchemaAspectData(entry);
       if (schemaData != null) {
         LOG.warn("PubSub schema found, {}", schemaData);
-        return SchemaUtils.toBeamSchema(schemaData);
+        Struct.Builder builder = Struct.newBuilder();
+        JsonFormat.parser().merge(schemaData.getFieldsOrThrow("type").getStringValue(), builder);
+        return SchemaUtils.toBeamSchema(builder.build());
       }
       LOG.warn("PubSub entry without aspect, returning null schema, {}", entry);
       return null;
@@ -122,8 +130,7 @@ public class DataCatalogSchemaUtils {
 
   static Struct getSchemaAspectData(Entry entry) {
     for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
-      if (aspectEntry.getKey().endsWith(".global.schema")
-          || aspectEntry.getKey().equals("dataplex-types.global.schema")) {
+      if (aspectEntry.getKey().endsWith(".global.generic")) {
         return aspectEntry.getValue().getData();
       }
     }
@@ -144,7 +151,8 @@ public class DataCatalogSchemaUtils {
       for (SearchEntriesResult result : response.iterateAll()) {
         String entryName = result.getDataplexEntry().getName();
         LOG.info("Dataplex entry found {}", entryName);
-        return client.getEntry(entryName);
+        return client.getEntry(
+            GetEntryRequest.newBuilder().setName(entryName).setView(EntryView.ALL).build());
       }
     } catch (ApiException e) {
       LOG.error("ApiException thrown by Dataplex API:", e);
@@ -349,26 +357,27 @@ public class DataCatalogSchemaUtils {
       }
 
       Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
-      Struct genericData =
-          Struct.newBuilder()
-              .putFields(
-                  "system",
-                  com.google.protobuf.Value.newBuilder()
-                      .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
-                      .build())
-              .putFields(
-                  "type",
-                  com.google.protobuf.Value.newBuilder().setStringValue("BEAM_ROW_DATA").build())
-              .build();
+      Struct genericData = null;
+      try {
+        genericData =
+            Struct.newBuilder()
+                .putFields(
+                    "system",
+                    com.google.protobuf.Value.newBuilder()
+                        .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
+                        .build())
+                .putFields(
+                    "type",
+                    com.google.protobuf.Value.newBuilder()
+                        .setStringValue(JsonFormat.printer().print(schemaData))
+                        .build())
+                .build();
+      } catch (InvalidProtocolBufferException e) {
+        throw new RuntimeException(e);
+      }
 
       Entry updatedEntry =
           beforeChangeEntry.toBuilder()
-              .putAspects(
-                  "dataplex-types.global.schema",
-                  Aspect.newBuilder()
-                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/schema")
-                      .setData(schemaData)
-                      .build())
               .putAspects(
                   "dataplex-types.global.generic",
                   Aspect.newBuilder()
@@ -380,6 +389,11 @@ public class DataCatalogSchemaUtils {
       UpdateEntryRequest updateEntryRequest =
           UpdateEntryRequest.newBuilder()
               .setEntry(updatedEntry)
+              .addAllAspectKeys(
+                  List.of(
+                      "dataplex-types.global.generic"
+                      // ,"dataplex-types.global.schema"
+                      ))
               .setUpdateMask(FieldMask.newBuilder().addPaths("aspects").build())
               .build();
       LOG.info("Dataplex updating schema {}", updateEntryRequest);
