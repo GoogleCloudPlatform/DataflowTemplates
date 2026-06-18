@@ -636,6 +636,7 @@ public class SpannerToSourceDb {
 
     // for sources that support sharding, shards size and IsShardedMigration option are used below
     // to further refine shardingMode.
+    // TODO Simplify this check
     String shardingMode =
         source.isShardingSupported()
             ? Constants.SHARDING_MODE_MULTI_SHARD
