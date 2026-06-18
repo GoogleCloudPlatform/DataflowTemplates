@@ -611,6 +611,7 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
         "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967295", "NULL"));
+    expectedData.put("uuid", createRows("uuid", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "NULL"));
     return expectedData;
   }
 

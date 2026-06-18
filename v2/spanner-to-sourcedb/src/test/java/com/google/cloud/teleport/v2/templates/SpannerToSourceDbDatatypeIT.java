@@ -25,7 +25,6 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -356,13 +355,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
   }
 
   private void deleteRowsInSpanner() {
-    List<Struct> t2 = spannerResourceManager.readTableRecords(TABLE2, "uuid_column");
-    List<Struct> t3 = spannerResourceManager.readTableRecords(TABLE3, "uuid_column");
-
-    LOG.error("T2 uuid: {}", t2);
-    LOG.error("T3 uuid: {}", t3);
-    LOG.error("T2 uuid: {}", t2.get(0).getValue("uuid_column").getUuid().toString());
-    LOG.error("T3 uuid: {}", t3.get(0).getValue("uuid_column").getUuid().toString());
     // Write a single record to Spanner
     Mutation m = Mutation.delete(TABLE1, Key.newBuilder().append("value1").build());
     spannerResourceManager.write(m);
@@ -374,11 +366,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
-    t2 = spannerResourceManager.readTableRecords(TABLE2, "uuid_column");
-    t3 = spannerResourceManager.readTableRecords(TABLE3, "uuid_column");
-
-    LOG.error("T2 after delete uuid: {}", t2);
-    LOG.error("T3 after delete uuid: {}", t3);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();

@@ -424,3 +424,8 @@ CREATE TABLE IF NOT EXISTS `generated_to_non_generated_column_table` (
 	`generated_column_col` STRING(100) DEFAULT(NULL),
 	`generated_column_pk_col` STRING(100) DEFAULT(NULL),
 ) PRIMARY KEY (`generated_column_pk_col`);
+
+CREATE TABLE IF NOT EXISTS uuid_table (
+  id INT64 NOT NULL,
+  uuid_col UUID,
+) PRIMARY KEY(id);

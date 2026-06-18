@@ -572,21 +572,10 @@ public class GenericRecordTypeConvertor {
       throw new NullPointerException("schemaMapper returned null spanner dialect.");
     }
     if (AvroToValueMapper.convertorMap().get(dialect).containsKey(spannerType)) {
-      try {
-        return AvroToValueMapper.convertorMap()
-            .get(dialect)
-            .get(spannerType)
-            .apply(value, fieldSchema);
-      } catch (Exception e) {
-        LOG.error(
-            "Exception while converting record value {} to Field Schema: {}, colName: {}, spannerType: {}",
-            value,
-            fieldSchema,
-            recordColName,
-            spannerType,
-            e);
-        throw e;
-      }
+      return AvroToValueMapper.convertorMap()
+          .get(dialect)
+          .get(spannerType)
+          .apply(value, fieldSchema);
     } else {
       throw new IllegalArgumentException(
           "Found unsupported Spanner column type("
