@@ -152,7 +152,8 @@ public class PostgreSQLSourceConnectorTest {
     shard.setHost("localhost");
     shard.setPort("5432");
     shard.setDbName("test_db");
-    Assert.assertEquals("jdbc:postgresql://localhost:5432/test_db", connector.getConnectionUrl(shard));
+    Assert.assertEquals(
+        "jdbc:postgresql://localhost:5432/test_db", connector.getConnectionUrl(shard));
   }
 
   @Test

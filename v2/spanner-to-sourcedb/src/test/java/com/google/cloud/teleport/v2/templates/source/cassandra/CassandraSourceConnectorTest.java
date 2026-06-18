@@ -134,7 +134,8 @@ public class CassandraSourceConnectorTest {
     when(shard.getKeySpaceName()).thenReturn("my_keyspace");
 
     try (MockedStatic<CqlSession> mockedCqlSession = Mockito.mockStatic(CqlSession.class);
-         MockedStatic<CassandraDriverConfigLoader> mockedConfigLoader = Mockito.mockStatic(CassandraDriverConfigLoader.class)) {
+        MockedStatic<CassandraDriverConfigLoader> mockedConfigLoader =
+            Mockito.mockStatic(CassandraDriverConfigLoader.class)) {
 
       CqlSessionBuilder mockBuilder = mock(CqlSessionBuilder.class);
       mockedCqlSession.when(CqlSession::builder).thenReturn(mockBuilder);
