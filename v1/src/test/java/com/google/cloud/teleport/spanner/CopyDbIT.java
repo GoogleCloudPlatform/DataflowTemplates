@@ -31,7 +31,11 @@ import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.spannerio.MutationGroup;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.Resources;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -192,6 +196,21 @@ public class CopyDbIT extends TemplateTestBase {
     // ----------------------------------------------------------------------
     // 3. Schema & Data Assertions
     // ----------------------------------------------------------------------
+    // We are asserting that the schema of the source database matches the destination database
+    // exactly. To do this, we read the parsed, tabular metadata from both databases using
+    // InformationSchemaScanner and reconstruct them into Ddl object models. We then print these
+    // models canonically and compare their strings.
+    //
+    // IMPORTANT: We cannot use SpannerResourceManager.getDatabaseDdl() directly for this assertion.
+    // getDatabaseDdl() returns the raw strings used to create the tables. For randomly generated
+    // schemas, these strings contain un-normalized formatting (e.g., randomized WHERE column
+    // order).
+    // The Dataflow Export pipeline normalizes the schema (alphabetizes columns, etc.) when writing
+    // it to spanner-export.json, which the Import pipeline then executes. As a result, the source
+    // and destination would have functionally identical but textually mismatched DDL strings.
+    //
+    // The InformationSchemaScanner guarantees a true structural comparison without arbitrary
+    // text-formatting false positives.
     Ddl destinationDdl = readDdl(destResourceManager, dialect);
     Ddl sourceDdl = readDdl(sourceResourceManager, dialect);
 
@@ -224,21 +243,60 @@ public class CopyDbIT extends TemplateTestBase {
     return ddl;
   }
 
+  private void createAndPopulate(String sqlFile, Dialect dialect, int numBatches) throws Exception {
+    sourceResourceManager =
+        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, dialect)
+            .maybeUseStaticInstance()
+            .build();
+    destResourceManager =
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, dialect)
+            .maybeUseStaticInstance()
+            .build();
+
+    // Read the SQL statements from the static file
+    String ddlString =
+        String.join(
+            " ",
+            Resources.readLines(Resources.getResource(sqlFile), StandardCharsets.UTF_8).stream()
+                .map(line -> line.replaceAll("\\s*--.*$", ""))
+                .collect(ImmutableList.toImmutableList()));
+    ddlString = ddlString.trim();
+    List<String> ddlStatements =
+        Arrays.stream(ddlString.split(";")).filter(d -> !d.isBlank()).collect(Collectors.toList());
+
+    // Execute the schema statements on the source database.
+    sourceResourceManager.executeDdlStatements(ddlStatements);
+    destResourceManager.executeDdlStatements(Collections.emptyList());
+
+    if (numBatches > 0) {
+      // Use InformationSchemaScanner to dynamically extract the loaded schema into our Ddl object
+      Ddl ddl = readDdl(sourceResourceManager, dialect);
+      final Iterator<MutationGroup> mutations =
+          new RandomInsertMutationGenerator(ddl).stream().iterator();
+
+      for (int i = 0; i < numBatches; i++) {
+        // We chunk the mutations into small batches of 10.
+        // This is strictly required to prevent exceeding Spanner's 100MB / 20k mutation limits,
+        // which would cause the integration test to crash on large random inserts.
+        List<Mutation> batchMutations = new ArrayList<>();
+        for (int j = 0; j < 10; j++) {
+          MutationGroup m = mutations.next();
+          m.forEach(batchMutations::add);
+        }
+        sourceResourceManager.write(batchMutations);
+      }
+    }
+  }
+
   @Test
   public void testAllSchemaAndDataGsql() throws Exception {
-    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
-    SchemaGenerationUtils.addBaseTables(builder);
-    Ddl ddl = builder.build();
-    createAndPopulate(ddl, 100);
+    createAndPopulate("CopyDbIT-gsql.sql", Dialect.GOOGLE_STANDARD_SQL, 100);
     runTest(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   @Test
   public void testAllSchemaAndDataPg() throws Exception {
-    Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
-    SchemaGenerationUtils.addPgBaseTables(builder);
-    Ddl ddl = builder.build();
-    createAndPopulate(ddl, 100);
+    createAndPopulate("CopyDbIT-pg.sql", Dialect.POSTGRESQL, 100);
     runTest(Dialect.POSTGRESQL);
   }
 
