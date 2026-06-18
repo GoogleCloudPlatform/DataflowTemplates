@@ -112,9 +112,9 @@ public class SchemaUtils {
     }
 
     if ("record".equals(dcFieldType) || "struct".equals(dcFieldType)) {
-      if (column.containsFields("recordFields")) {
+      if (column.containsFields("fields")) {
         List<Struct> subcols =
-            column.getFieldsMap().get("recordFields").getListValue().getValuesList().stream()
+            column.getFieldsMap().get("fields").getListValue().getValuesList().stream()
                 .map(Value::getStructValue)
                 .collect(Collectors.toList());
         return FieldType.row(beamSchemaFromColumnList(subcols));
@@ -188,7 +188,7 @@ public class SchemaUtils {
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue("STRUCT").build());
       Struct subSchema = fromBeamSchema(beamField.getType().getRowSchema());
       if (subSchema.containsFields("fields")) {
-        columnBuilder.putFields("recordFields", subSchema.getFieldsMap().get("fields"));
+        columnBuilder.putFields("fields", subSchema.getFieldsMap().get("fields"));
       }
     } else if (LOGICAL_FIELD_TYPES.inverse().containsKey(beamField.getType())) {
       String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType()).toUpperCase();
