@@ -15,16 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.POSTGRES_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
@@ -37,7 +31,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
@@ -45,17 +38,15 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfi
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
-import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
@@ -68,12 +59,6 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -123,14 +108,6 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDb {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDb.class);
-
-  // JDBC Drivers
-  private static final String MYSQL_DRIVER = "com.mysql.cj.jdbc.Driver";
-  private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
-
-  // JDBC URL Prefixes
-  private static final String MYSQL_JDBC_PREFIX = "jdbc:mysql://";
-  private static final String POSTGRESQL_JDBC_PREFIX = "jdbc:postgresql://";
 
   /**
    * Options supported by the pipeline.
@@ -655,15 +632,25 @@ public class SpannerToSourceDb {
 
     List<Shard> shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
 
-    // cassandra is always a single sharded migration.
-    // for JDBC, shards size and IsShardedMigration option is used below.
-    String shardingMode =
-        options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)
-            ? Constants.SHARDING_MODE_SINGLE_SHARD
-            : Constants.SHARDING_MODE_MULTI_SHARD;
+    boolean isShardingSupported = true;
+    try {
+      isShardingSupported = SourceProcessorFactory.getSource(options.getSourceType()).isShardingSupported();
+    } catch (Exception e) {
+      LOG.warn("Failed to check if sharding is supported for source: " + options.getSourceType() + ", defaulting to true", e);
+    }
 
-    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
-      validateMySQLNotReadOnly(shards);
+    // for sources that support sharding, shards size and IsShardedMigration option are used below to further refine shardingMode.
+    String shardingMode =
+        isShardingSupported
+            ? Constants.SHARDING_MODE_MULTI_SHARD
+            : Constants.SHARDING_MODE_SINGLE_SHARD;
+
+    try {
+      SourceProcessorFactory.getSource(options.getSourceType()).validateNotReadOnly(shards);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
 
     SourceSchema sourceSchema = fetchSourceSchema(options, shards);
@@ -1046,94 +1033,12 @@ public class SpannerToSourceDb {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
 
-  static Connection createJdbcConnection(
-      Shard shard, String driverClassName, String jdbcUrlPrefix) {
-    try {
-      String sourceConnectionUrl =
-          new StringBuilder()
-              .append(jdbcUrlPrefix)
-              .append(shard.getHost())
-              .append(":")
-              .append(shard.getPort())
-              .append("/")
-              .append(shard.getDbName())
-              .toString();
-      HikariConfig config = new HikariConfig();
-      config.setJdbcUrl(sourceConnectionUrl);
-      config.setUsername(shard.getUserName());
-      config.setPassword(shard.getPassword());
-      config.setDriverClassName(driverClassName);
-      HikariDataSource ds = new HikariDataSource(config);
-      return ds.getConnection();
-    } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering jdbc schema: {}", e);
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
-   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
-   *
-   * @param cassandraShard The shard containing connection details.
-   * @return A {@link CqlSession} instance.
-   */
-  static CqlSession createCqlSession(CassandraShard cassandraShard) {
-    CqlSessionBuilder builder = CqlSession.builder();
-    DriverConfigLoader configLoader =
-        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
-    builder.withConfigLoader(configLoader);
-    return builder.build();
-  }
-
-  static void validateMySQLNotReadOnly(List<Shard> shards) {
-    for (Shard shard : shards) {
-      try (Connection conn = createJdbcConnection(shard, MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
-            }
-          }
-        }
-      } catch (SQLException e) {
-        LOG.error(
-            "Error checking MySQL read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking MySQL read-only status", e);
-      }
-    }
-  }
-
   static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
     try {
-      return getSourceSchema(options, shards);
-    } catch (SQLException e) {
-      throw new RuntimeException("Unable to discover jdbc schema", e);
-    }
-  }
-
-  static SourceSchema getSourceSchema(Options options, List<Shard> shards) throws SQLException {
-    if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-      try (Connection connection =
-          createJdbcConnection(shards.get(0), MYSQL_DRIVER, MYSQL_JDBC_PREFIX)) {
-        return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
-      }
-    } else if (options.getSourceType().equals(POSTGRES_SOURCE_TYPE)) {
-      try (Connection connection =
-          createJdbcConnection(shards.get(0), POSTGRESQL_DRIVER, POSTGRESQL_JDBC_PREFIX)) {
-        return new PostgreSQLInformationSchemaScanner(
-                connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
-            .scan();
-      }
-    } else {
-      try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
-        return new CassandraInformationSchemaScanner(
-                session, ((CassandraShard) shards.get(0)).getKeySpaceName())
-            .scan();
-      }
+      ISourceConnector sourceInstance = SourceProcessorFactory.getSource(options.getSourceType());
+      return sourceInstance.getSourceSchema(shards.get(0));
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to discover source schema", e);
     }
   }
 

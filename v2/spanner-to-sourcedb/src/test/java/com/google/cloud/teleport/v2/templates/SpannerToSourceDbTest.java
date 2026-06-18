@@ -24,20 +24,27 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
 import com.google.common.collect.ImmutableMap;
+import com.zaxxer.hikari.HikariDataSource;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -147,72 +154,31 @@ public class SpannerToSourceDbTest {
     Assert.assertNotNull(dlqManager);
   }
 
-  @Test
-  public void testValidateMySQLNotReadOnly_NotReadOnly() throws Exception {
-    try (MockedStatic<SpannerToSourceDb> mocked =
-        Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-      Connection mockConnection = mock(Connection.class);
-      mocked
-          .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
-          .thenReturn(mockConnection);
-
-      Statement mockStatement = mock(Statement.class);
-      when(mockConnection.createStatement()).thenReturn(mockStatement);
-      ResultSet mockResultSet = mock(ResultSet.class);
-      when(mockStatement.executeQuery("SELECT @@read_only")).thenReturn(mockResultSet);
-      when(mockResultSet.next()).thenReturn(true);
-      when(mockResultSet.getInt(1)).thenReturn(0); // 0 means NOT read-only
-
-      Shard shard = new Shard();
-      shard.setLogicalShardId("shard1");
-      List<Shard> shards = List.of(shard);
-      SpannerToSourceDb.validateMySQLNotReadOnly(shards);
-
-      // Verify that it didn't throw exception
-      mocked.verify(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()));
-    }
-  }
-
-  @Test(expected = RuntimeException.class)
-  public void testValidateMySQLNotReadOnly_ReadOnly() throws Exception {
-    try (MockedStatic<SpannerToSourceDb> mocked =
-        Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-      Connection mockConnection = mock(Connection.class);
-      mocked
-          .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
-          .thenReturn(mockConnection);
-
-      Statement mockStatement = mock(Statement.class);
-      when(mockConnection.createStatement()).thenReturn(mockStatement);
-      ResultSet mockResultSet = mock(ResultSet.class);
-      when(mockStatement.executeQuery("SELECT @@read_only")).thenReturn(mockResultSet);
-      when(mockResultSet.next()).thenReturn(true);
-      when(mockResultSet.getInt(1)).thenReturn(1); // 1 means read-only
-
-      Shard shard = new Shard();
-      shard.setLogicalShardId("shard1");
-      List<Shard> shards = List.of(shard);
-      SpannerToSourceDb.validateMySQLNotReadOnly(shards);
-    }
-  }
 
   @Test
   public void testFetchSourceSchema_MySQL() throws Exception {
-    try (MockedStatic<SpannerToSourceDb> mocked =
-        Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-      SourceSchema dummySchema =
-          SourceSchema.builder(SourceDatabaseType.MYSQL)
-              .databaseName("testdb")
-              .tables(ImmutableMap.of())
-              .build();
+    SourceSchema dummySchema =
+        SourceSchema.builder(SourceDatabaseType.MYSQL)
+            .databaseName("testdb")
+            .tables(ImmutableMap.of())
+            .build();
 
-      mocked.when(() -> SpannerToSourceDb.getSourceSchema(any(), any())).thenReturn(dummySchema);
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mock(Connection.class));
+                });
+         MockedConstruction<MySqlInformationSchemaScanner> mockScannerConstruction =
+            Mockito.mockConstruction(
+                MySqlInformationSchemaScanner.class,
+                (mockScanner, context) -> {
+                  when(mockScanner.scan()).thenReturn(dummySchema);
+                })) {
 
-      Options options = mock(Options.class);
-      List<Shard> shards = List.of(new Shard());
-
-      SourceSchema result = SpannerToSourceDb.fetchSourceSchema(options, shards);
-
+      MySQLSourceConnector source =
+          new MySQLSourceConnector();
+      SourceSchema result = source.getSourceSchema(new Shard());
       Assert.assertSame(dummySchema, result);
     }
   }
@@ -236,56 +202,129 @@ public class SpannerToSourceDbTest {
     ResultSet mockRs = mock(ResultSet.class);
 
     when(mockConn.createStatement()).thenReturn(mockStmt);
+    when(mockStmt.executeQuery("SELECT @@read_only")).thenReturn(mockRs);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getInt(1)).thenReturn(0); // 0 means NOT read-only
 
-    try (MockedStatic<SpannerToSourceDb> mockedStatic =
-        Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-      mockedStatic
-          .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
-          .thenReturn(mockConn);
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mockConn);
+                })) {
 
-      SpannerToSourceDb.validateMySQLNotReadOnly(List.of(shard));
+      MySQLSourceConnector source =
+          new MySQLSourceConnector();
+      source.validateNotReadOnly(List.of(shard));
       // Should not throw exception!
+    }
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testValidateMySQLNotReadOnly_ReadOnly() throws Exception {
+    Shard shard = new Shard();
+    Connection mockConn = mock(Connection.class);
+    Statement mockStmt = mock(Statement.class);
+    ResultSet mockRs = mock(ResultSet.class);
+
+    when(mockConn.createStatement()).thenReturn(mockStmt);
+    when(mockStmt.executeQuery("SELECT @@read_only")).thenReturn(mockRs);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getInt(1)).thenReturn(1); // 1 means read-only
+
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mockConn);
+                })) {
+
+      MySQLSourceConnector source =
+          new MySQLSourceConnector();
+      source.validateNotReadOnly(List.of(shard));
+    }
+  }
+
+  @Test
+  public void testValidatePostgreSQLNotReadOnly_NoVariable() throws Exception {
+    Shard shard = new Shard();
+    Connection mockConn = mock(Connection.class);
+    Statement mockStmt = mock(Statement.class);
+    ResultSet mockRs = mock(ResultSet.class);
+
+    when(mockConn.createStatement()).thenReturn(mockStmt);
+    when(mockStmt.executeQuery("SELECT current_setting('transaction_read_only')")).thenReturn(mockRs);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getString(1)).thenReturn("off"); // "off" means NOT read-only
+
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mockConn);
+                })) {
+
+      PostgreSQLSourceConnector source = new PostgreSQLSourceConnector();
+      source.validateNotReadOnly(List.of(shard));
+      // Should not throw exception!
+    }
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testValidatePostgreSQLNotReadOnly_ReadOnly() throws Exception {
+    Shard shard = new Shard();
+    Connection mockConn = mock(Connection.class);
+    Statement mockStmt = mock(Statement.class);
+    ResultSet mockRs = mock(ResultSet.class);
+
+    when(mockConn.createStatement()).thenReturn(mockStmt);
+    when(mockStmt.executeQuery("SELECT current_setting('transaction_read_only')")).thenReturn(mockRs);
+    when(mockRs.next()).thenReturn(true);
+    when(mockRs.getString(1)).thenReturn("on"); // "on" means read-only
+
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mockConn);
+                })) {
+
+      PostgreSQLSourceConnector source = new PostgreSQLSourceConnector();
+      source.validateNotReadOnly(List.of(shard));
     }
   }
 
   @Test
   public void testGetSourceSchema_PostgreSQL() throws Exception {
-    Options options = mock(Options.class);
-    when(options.getSourceType()).thenReturn(Constants.SOURCE_POSTGRESQL);
-    List<Shard> shards = List.of(new Shard());
-
     SourceSchema dummySchema =
         SourceSchema.builder(SourceDatabaseType.POSTGRESQL)
             .databaseName("db")
             .tables(ImmutableMap.of())
             .build();
 
-    try (MockedConstruction<PostgreSQLInformationSchemaScanner> mocked =
-        Mockito.mockConstruction(
-            PostgreSQLInformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(dummySchema);
-            })) {
+    try (MockedConstruction<HikariDataSource> mockDsConstruction =
+            Mockito.mockConstruction(
+                HikariDataSource.class,
+                (mockDs, context) -> {
+                  when(mockDs.getConnection()).thenReturn(mock(Connection.class));
+                });
+         MockedConstruction<PostgreSQLInformationSchemaScanner> mockScannerConstruction =
+            Mockito.mockConstruction(
+                PostgreSQLInformationSchemaScanner.class,
+                (mockScanner, context) -> {
+                  when(mockScanner.scan()).thenReturn(dummySchema);
+                })) {
 
-      try (MockedStatic<SpannerToSourceDb> mockedStatic =
-          Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-        mockedStatic
-            .when(() -> SpannerToSourceDb.createJdbcConnection(any(), any(), any()))
-            .thenReturn(mock(Connection.class));
-
-        SourceSchema result = SpannerToSourceDb.getSourceSchema(options, shards);
-        Assert.assertSame(dummySchema, result);
-      }
+      PostgreSQLSourceConnector source = new PostgreSQLSourceConnector();
+      SourceSchema result = source.getSourceSchema(new Shard());
+      Assert.assertSame(dummySchema, result);
     }
   }
 
   @Test
   public void testGetSourceSchema_Cassandra() throws Exception {
-    Options options = mock(Options.class);
-    when(options.getSourceType()).thenReturn("cassandra");
     CassandraShard mockShard = mock(CassandraShard.class);
     when(mockShard.getKeySpaceName()).thenReturn("keyspace");
-    List<Shard> shards = List.of(mockShard);
 
     SourceSchema dummySchema =
         SourceSchema.builder(SourceDatabaseType.CASSANDRA)
@@ -293,22 +332,27 @@ public class SpannerToSourceDbTest {
             .tables(ImmutableMap.of())
             .build();
 
-    try (MockedConstruction<CassandraInformationSchemaScanner> mocked =
-        Mockito.mockConstruction(
-            CassandraInformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(dummySchema);
-            })) {
+    try (MockedStatic<CqlSession> mockedCqlSession = Mockito.mockStatic(CqlSession.class);
+         MockedStatic<CassandraDriverConfigLoader> mockedConfigLoader = Mockito.mockStatic(CassandraDriverConfigLoader.class);
+         MockedConstruction<CassandraInformationSchemaScanner> mockScannerConstruction =
+            Mockito.mockConstruction(
+                CassandraInformationSchemaScanner.class,
+                (mockScanner, context) -> {
+                  when(mockScanner.scan()).thenReturn(dummySchema);
+                })) {
 
-      try (MockedStatic<SpannerToSourceDb> mockedStatic =
-          Mockito.mockStatic(SpannerToSourceDb.class, Mockito.CALLS_REAL_METHODS)) {
-        mockedStatic
-            .when(() -> SpannerToSourceDb.createCqlSession(any()))
-            .thenReturn(mock(CqlSession.class));
+      CqlSessionBuilder mockBuilder = mock(CqlSessionBuilder.class);
+      mockedCqlSession.when(CqlSession::builder).thenReturn(mockBuilder);
+      when(mockBuilder.withConfigLoader(any())).thenReturn(mockBuilder);
+      when(mockBuilder.build()).thenReturn(mock(CqlSession.class));
 
-        SourceSchema result = SpannerToSourceDb.getSourceSchema(options, shards);
-        Assert.assertSame(dummySchema, result);
-      }
+      mockedConfigLoader
+          .when(() -> CassandraDriverConfigLoader.fromOptionsMap(any()))
+          .thenReturn(mock(DriverConfigLoader.class));
+
+      CassandraSourceConnector source = new CassandraSourceConnector();
+      SourceSchema result = source.getSourceSchema(mockShard);
+      Assert.assertSame(dummySchema, result);
     }
   }
 
