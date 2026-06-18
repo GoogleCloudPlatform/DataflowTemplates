@@ -88,11 +88,14 @@ public class DataCatalogSchemaUtils {
               .build();
       CatalogServiceClient.ListEntriesPagedResponse response = client.listEntries(request);
       for (Entry entry : response.iterateAll()) {
-        Struct schemaData = getSchemaAspectData(entry);
+        entry= client.getEntry(GetEntryRequest.newBuilder()
+                .setName(entry.getName()).setView(EntryView.ALL).build());
+        Struct schemaData = getSchemaAspectDataFromEntryGroup(entry);
         if (schemaData != null) {
           String description =
               entry.hasEntrySource() ? entry.getEntrySource().getDescription() : entry.getName();
-          schemas.put(description, SchemaUtils.toBeamSchema(schemaData));
+          Schema beamSchema = SchemaUtils.toBeamSchema(schemaData);
+          schemas.put(description, beamSchema);
         }
       }
     } catch (IOException e) {
@@ -131,6 +134,16 @@ public class DataCatalogSchemaUtils {
   static Struct getSchemaAspectData(Entry entry) {
     for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
       if (aspectEntry.getKey().endsWith(".global.generic")) {
+        return aspectEntry.getValue().getData();
+      }
+    }
+
+    return null;
+  }
+
+  static Struct getSchemaAspectDataFromEntryGroup(Entry entry) {
+    for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
+      if (aspectEntry.getKey().endsWith(".global.schema")) {
         return aspectEntry.getValue().getData();
       }
     }
