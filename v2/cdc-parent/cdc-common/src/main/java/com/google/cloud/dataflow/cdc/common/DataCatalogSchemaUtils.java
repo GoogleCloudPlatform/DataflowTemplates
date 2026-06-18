@@ -88,8 +88,12 @@ public class DataCatalogSchemaUtils {
               .build();
       CatalogServiceClient.ListEntriesPagedResponse response = client.listEntries(request);
       for (Entry entry : response.iterateAll()) {
-        entry= client.getEntry(GetEntryRequest.newBuilder()
-                .setName(entry.getName()).setView(EntryView.ALL).build());
+        entry =
+            client.getEntry(
+                GetEntryRequest.newBuilder()
+                    .setName(entry.getName())
+                    .setView(EntryView.ALL)
+                    .build());
         Struct schemaData = getSchemaAspectDataFromEntryGroup(entry);
         if (schemaData != null) {
           String description =
