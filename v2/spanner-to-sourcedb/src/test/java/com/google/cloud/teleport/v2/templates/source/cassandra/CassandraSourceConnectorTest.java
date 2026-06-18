@@ -28,6 +28,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConf
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import org.junit.Assert;
@@ -78,6 +80,74 @@ public class CassandraSourceConnectorTest {
       CassandraSourceConnector source = new CassandraSourceConnector();
       SourceSchema result = source.getSourceSchema(mockShard);
       Assert.assertSame(dummySchema, result);
+    }
+  }
+
+  @Test
+  public void testGetDmlGenerator() {
+    CassandraSourceConnector connector = new CassandraSourceConnector();
+    Assert.assertTrue(connector.getDmlGenerator() instanceof CassandraDMLGenerator);
+  }
+
+  @Test
+  public void testGetConnectionHelper() {
+    CassandraSourceConnector connector = new CassandraSourceConnector();
+    Assert.assertTrue(connector.getConnectionHelper() instanceof CassandraConnectionHelper);
+  }
+
+  @Test
+  public void testIsShardingSupported() {
+    CassandraSourceConnector connector = new CassandraSourceConnector();
+    Assert.assertFalse(connector.isShardingSupported());
+  }
+
+  @Test
+  public void testGetConnectionUrl() {
+    CassandraSourceConnector connector = new CassandraSourceConnector();
+    CassandraShard shard = mock(CassandraShard.class);
+    when(shard.getHost()).thenReturn("localhost");
+    when(shard.getPort()).thenReturn("9042");
+    when(shard.getUserName()).thenReturn("cassandra");
+    when(shard.getKeySpaceName()).thenReturn("my_keyspace");
+    Assert.assertEquals("localhost:9042/cassandra/my_keyspace", connector.getConnectionUrl(shard));
+  }
+
+  @Test
+  public void testGetDao() {
+    CassandraSourceConnector connector = new CassandraSourceConnector();
+    CassandraShard shard = mock(CassandraShard.class);
+    when(shard.getLogicalShardId()).thenReturn("shard1");
+    when(shard.getHost()).thenReturn("localhost");
+    when(shard.getPort()).thenReturn("9042");
+    when(shard.getUserName()).thenReturn("cassandra");
+    when(shard.getKeySpaceName()).thenReturn("my_keyspace");
+    Assert.assertTrue(connector.getDao(shard) instanceof CassandraDao);
+  }
+
+  @Test
+  public void testInitConnectionHelper() throws Exception {
+    CassandraShard shard = mock(CassandraShard.class);
+    when(shard.getLogicalShardId()).thenReturn("shard1");
+    when(shard.getHost()).thenReturn("localhost");
+    when(shard.getPort()).thenReturn("9042");
+    when(shard.getUserName()).thenReturn("cassandra");
+    when(shard.getKeySpaceName()).thenReturn("my_keyspace");
+
+    try (MockedStatic<CqlSession> mockedCqlSession = Mockito.mockStatic(CqlSession.class);
+         MockedStatic<CassandraDriverConfigLoader> mockedConfigLoader = Mockito.mockStatic(CassandraDriverConfigLoader.class)) {
+
+      CqlSessionBuilder mockBuilder = mock(CqlSessionBuilder.class);
+      mockedCqlSession.when(CqlSession::builder).thenReturn(mockBuilder);
+      when(mockBuilder.withConfigLoader(any())).thenReturn(mockBuilder);
+      when(mockBuilder.build()).thenReturn(mock(CqlSession.class));
+
+      mockedConfigLoader
+          .when(() -> CassandraDriverConfigLoader.fromOptionsMap(any()))
+          .thenReturn(mock(DriverConfigLoader.class));
+
+      CassandraSourceConnector connector = new CassandraSourceConnector();
+      connector.initConnectionHelper(List.of(shard), 10);
+      Assert.assertTrue(connector.getConnectionHelper().isConnectionPoolInitialized());
     }
   }
 }
