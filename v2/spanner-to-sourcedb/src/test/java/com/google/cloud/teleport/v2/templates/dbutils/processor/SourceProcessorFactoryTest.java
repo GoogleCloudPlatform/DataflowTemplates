@@ -27,7 +27,10 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -69,15 +72,15 @@ public class SourceProcessorFactoryTest {
                 "projects/myproject/secrets/mysecret/versions/latest",
                 ""));
     int maxConnections = 10;
-    
+
     ISourceConnector mockSource = Mockito.mock(ISourceConnector.class);
     JdbcConnectionHelper mockConnectionHelper = Mockito.mock(JdbcConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
-    
+
     Mockito.when(mockSource.getDmlGenerator()).thenReturn(new MySQLDMLGenerator());
     Mockito.when(mockSource.getConnectionHelper()).thenReturn(mockConnectionHelper);
     Mockito.when(mockSource.getDao(any())).thenReturn(Mockito.mock(JdbcDao.class));
-    
+
     SourceProcessorFactory.registerSource(Constants.SOURCE_MYSQL, mockSource);
 
     SourceProcessor processor =
@@ -122,11 +125,11 @@ public class SourceProcessorFactoryTest {
     ISourceConnector mockSource = Mockito.mock(ISourceConnector.class);
     CassandraConnectionHelper mockConnectionHelper = Mockito.mock(CassandraConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
-    
+
     Mockito.when(mockSource.getDmlGenerator()).thenReturn(new CassandraDMLGenerator());
     Mockito.when(mockSource.getConnectionHelper()).thenReturn(mockConnectionHelper);
     Mockito.when(mockSource.getDao(any())).thenReturn(Mockito.mock(CassandraDao.class));
-    
+
     SourceProcessorFactory.registerSource(Constants.SOURCE_CASSANDRA, mockSource);
 
     SourceProcessor processor =
@@ -138,5 +141,21 @@ public class SourceProcessorFactoryTest {
     Assert.assertEquals(1, processor.getSourceDaoMap().size());
     Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof CassandraDao);
   }
-}
 
+  @Test
+  public void testGetSource_Success() throws Exception {
+    ISourceConnector mysqlSource = SourceProcessorFactory.getSource("mysql");
+    Assert.assertTrue(mysqlSource instanceof MySQLSourceConnector);
+
+    ISourceConnector postgresSource = SourceProcessorFactory.getSource("postgresql");
+    Assert.assertTrue(postgresSource instanceof PostgreSQLSourceConnector);
+
+    ISourceConnector cassandraSource = SourceProcessorFactory.getSource("cassandra");
+    Assert.assertTrue(cassandraSource instanceof CassandraSourceConnector);
+  }
+
+  @Test(expected = UnsupportedSourceException.class)
+  public void testGetSource_UnsupportedSourceException() throws Exception {
+    SourceProcessorFactory.getSource("unsupported_db");
+  }
+}

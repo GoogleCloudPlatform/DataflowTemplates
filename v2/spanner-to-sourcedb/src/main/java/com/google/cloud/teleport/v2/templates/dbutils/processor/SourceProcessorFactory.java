@@ -75,12 +75,11 @@ public class SourceProcessorFactory {
 
   public static ISourceConnector getSource(String source) throws UnsupportedSourceException {
     return Optional.ofNullable(sourceMap.get(source))
-        .orElseThrow(
-            () ->
-                new UnsupportedSourceException("Invalid source type: " + source));
+        .orElseThrow(() -> new UnsupportedSourceException("Invalid source type: " + source));
   }
 
-  private static Map<String, IDao> createSourceDaoMap(ISourceConnector sourceInstance, List<Shard> shards) {
+  private static Map<String, IDao> createSourceDaoMap(
+      ISourceConnector sourceInstance, List<Shard> shards) {
     Map<String, IDao> sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       sourceDaoMap.put(shard.getLogicalShardId(), sourceInstance.getDao(shard));
@@ -88,4 +87,3 @@ public class SourceProcessorFactory {
     return sourceDaoMap;
   }
 }
-

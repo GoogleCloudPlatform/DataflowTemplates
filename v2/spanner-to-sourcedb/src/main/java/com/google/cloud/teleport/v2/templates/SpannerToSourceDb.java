@@ -630,28 +630,18 @@ public class SpannerToSourceDb {
             .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
+    ISourceConnector source = getSourceConnector(options);
+
     List<Shard> shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
 
-    boolean isShardingSupported = true;
-    try {
-      isShardingSupported = SourceProcessorFactory.getSource(options.getSourceType()).isShardingSupported();
-    } catch (Exception e) {
-      LOG.warn("Failed to check if sharding is supported for source: " + options.getSourceType() + ", defaulting to true", e);
-    }
-
-    // for sources that support sharding, shards size and IsShardedMigration option are used below to further refine shardingMode.
+    // for sources that support sharding, shards size and IsShardedMigration option are used below
+    // to further refine shardingMode.
     String shardingMode =
-        isShardingSupported
+        source.isShardingSupported()
             ? Constants.SHARDING_MODE_MULTI_SHARD
             : Constants.SHARDING_MODE_SINGLE_SHARD;
 
-    try {
-      SourceProcessorFactory.getSource(options.getSourceType()).validateNotReadOnly(shards);
-    } catch (RuntimeException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    source.validateNotReadOnly(shards);
 
     SourceSchema sourceSchema = fetchSourceSchema(options, shards);
     LOG.info("Source schema: {}", sourceSchema);
@@ -681,6 +671,16 @@ public class SpannerToSourceDb {
         maxNumWorkers);
 
     return pipeline.run();
+  }
+
+  static ISourceConnector getSourceConnector(Options options) {
+    ISourceConnector source = null;
+    try {
+      return SourceProcessorFactory.getSource(options.getSourceType());
+    } catch (Exception e) {
+      LOG.warn("can not run for unsupported source: " + options.getSourceType(), e);
+      throw new RuntimeException("can not run for unsupported source:" + options.getSourceType());
+    }
   }
 
   static void buildPipeline(

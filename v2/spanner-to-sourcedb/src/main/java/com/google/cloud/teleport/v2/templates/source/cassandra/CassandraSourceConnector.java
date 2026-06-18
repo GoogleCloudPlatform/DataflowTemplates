@@ -86,7 +86,8 @@ public class CassandraSourceConnector implements ISourceConnector {
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
     builder.withConfigLoader(configLoader);
     try (CqlSession session = builder.build()) {
-      return new CassandraInformationSchemaScanner(session, cassandraShard.getKeySpaceName()).scan();
+      return new CassandraInformationSchemaScanner(session, cassandraShard.getKeySpaceName())
+          .scan();
     }
   }
 

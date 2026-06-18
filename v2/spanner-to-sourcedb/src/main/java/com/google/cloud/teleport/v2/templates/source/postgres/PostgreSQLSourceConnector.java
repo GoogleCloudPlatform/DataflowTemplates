@@ -49,12 +49,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
 
   @Override
   public String getConnectionUrl(Shard shard) {
-    return "jdbc:postgresql://"
-        + shard.getHost()
-        + ":"
-        + shard.getPort()
-        + "/"
-        + shard.getDbName();
+    return "jdbc:postgresql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -67,12 +62,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "org.postgresql.Driver",
-              null,
-              "jdbc:postgresql://");
+              shards, null, maxConnections, "org.postgresql.Driver", null, "jdbc:postgresql://");
       connectionHelper.init(request);
     }
   }
@@ -85,7 +75,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
     config.setPassword(shard.getPassword());
     config.setDriverClassName("org.postgresql.Driver");
     try (HikariDataSource ds = new HikariDataSource(config);
-         Connection connection = ds.getConnection()) {
+        Connection connection = ds.getConnection()) {
       return new PostgreSQLInformationSchemaScanner(
               connection, shard.getDbName(), shard.getNamespace())
           .scan();
@@ -103,18 +93,21 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
       config.setPassword(shard.getPassword());
       config.setDriverClassName("org.postgresql.Driver");
       try (HikariDataSource ds = new HikariDataSource(config);
-           Connection conn = ds.getConnection()) {
+          Connection conn = ds.getConnection()) {
         if (conn != null) {
           try (Statement stmt = conn.createStatement();
               ResultSet rs = stmt.executeQuery("SELECT current_setting('transaction_read_only')")) {
             if (rs != null && rs.next() && "on".equalsIgnoreCase(rs.getString(1))) {
               throw new RuntimeException(
-                  "PostgreSQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
+                  "PostgreSQL destination is in read-only mode for shard: "
+                      + shard.getLogicalShardId());
             }
           }
         }
       } catch (SQLException e) {
-        throw new RuntimeException("Error checking PostgreSQL read-only status for shard: " + shard.getLogicalShardId(), e);
+        throw new RuntimeException(
+            "Error checking PostgreSQL read-only status for shard: " + shard.getLogicalShardId(),
+            e);
       }
     }
   }
