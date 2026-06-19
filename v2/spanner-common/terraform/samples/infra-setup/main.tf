@@ -35,13 +35,13 @@ locals {
       default_version = "8_0"
       default_port    = 3306
       # MySQL binds users to connection origins; "%" allows external access.
-      user_host       = "%"
+      user_host = "%"
     }
     POSTGRES = {
       default_version = "14"
       default_port    = 5432
       # PostgreSQL does not support host-bound users in the GCP API; must be null.
-      user_host       = null
+      user_host = null
     }
   }
 
@@ -127,7 +127,7 @@ resource "null_resource" "private_vpc_connection" {
   }
 
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     environment = {
       NETWORK_NAME = self.triggers.network_name
       PROJECT_ID   = self.triggers.project_id
@@ -245,8 +245,8 @@ resource "google_storage_bucket_object" "schema_file" {
 
 # Grant IAM permissions to all Cloud SQL service accounts to read schema from the GCS bucket in a single API call to prevent ETag lock collision delays
 resource "google_storage_bucket_iam_binding" "sql_gcs_reader" {
-  bucket  = google_storage_bucket.schema_bucket.name
-  role    = "roles/storage.objectViewer"
+  bucket = google_storage_bucket.schema_bucket.name
+  role   = "roles/storage.objectViewer"
   members = [
     for inst in google_sql_database_instance.instances :
     "serviceAccount:${inst.service_account_email_address}"
@@ -307,7 +307,7 @@ resource "google_spanner_instance" "spanner_instance" {
 
   # Automated teardown of Spanner backups to prevent destroy failures
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     environment = {
       INSTANCE_NAME = self.name
       PROJECT_ID    = self.project
