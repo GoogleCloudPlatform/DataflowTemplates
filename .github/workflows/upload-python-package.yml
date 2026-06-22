@@ -5,7 +5,7 @@
 #   The workflow:
 #     1. Sets up Python and installs build dependencies.
 #     2. Builds the Python package (wheel and sdist).
-#     3. Uploads the built artifacts to a specified GCS bucket.
+#     3. Uploads the built artifacts and Beam YAML provider listing to a specified GCS bucket.
 #
 # How to Run:
 #   This workflow is triggered manually via GitHub Actions `workflow_dispatch`.
@@ -24,6 +24,15 @@ on:
       version:
         description: 'Version number for the package (e.g., 0.1.0)'
         required: true
+      only_upload_listing:
+        description: 'If true, skips uploading the Python package to GCS and only uploads the provider listing'
+        required: false
+        type: boolean
+        default: false
+      date_override:
+        description: 'Optional date string to use instead of generating one'
+        required: false
+        type: string
 
 jobs:
   build-and-upload:
@@ -31,10 +40,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.11'
 
@@ -59,6 +68,14 @@ jobs:
         env:
           BUCKET_PATH: ${{ github.event.inputs.bucket_path }}
           VERSION: ${{ github.event.inputs.version }}
+          ONLY_UPLOAD_LISTING: ${{ github.event.inputs.only_upload_listing }}
+          DATE_OVERRIDE: ${{ github.event.inputs.date_override }}
         run: |
-          DATE=$(date +'%Y-%m-%d')
-          gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
+          DATE="${DATE_OVERRIDE:-$(date +'%Y-%m-%d')}"
+          GCS_PACKAGE_PATH="$BUCKET_PATH/$DATE/job_builder_util_transforms-$VERSION.tar.gz"
+          if [ "$ONLY_UPLOAD_LISTING" != "true" ]; then
+            gcloud storage cp python/src/main/python/job-builder-util-transforms/dist/job_builder_util_transforms-*.tar.gz "$GCS_PACKAGE_PATH"
+          fi
+          PACKAGE_PATH_NO_GS="${GCS_PACKAGE_PATH#gs://}"
+          sed "s|<package_path>|$PACKAGE_PATH_NO_GS|g" python/src/main/python/job-builder-util-transforms/provider_listing_template.yaml > "python/src/main/python/job-builder-util-transforms/yaml_provider_listing_$VERSION.yaml"
+          gcloud storage cp "python/src/main/python/job-builder-util-transforms/yaml_provider_listing_$VERSION.yaml" "$BUCKET_PATH/$DATE/yaml_provider_listing_$VERSION.yaml"

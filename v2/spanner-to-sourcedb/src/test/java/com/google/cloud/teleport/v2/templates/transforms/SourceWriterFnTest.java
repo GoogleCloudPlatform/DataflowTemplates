@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,9 +53,11 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
@@ -62,6 +65,8 @@ import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.sql.SQLDataException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
@@ -80,6 +85,7 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -156,21 +162,17 @@ public class SourceWriterFnTest {
     when(mockSpannerConfig.getRpcPriority())
         .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
     doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
-    doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
+    doThrow(new SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
         .write(
             contains("2300"),
             any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "transient connection error", "HY000", 1161))
+    doThrow(new SQLNonTransientConnectionException("transient connection error", "HY000", 1161))
         .when(mockSqlDao)
         .write(contains("1161"), any()); // This is the child_id for which we want to retryable
     // connection error
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "permanent connection error", "HY000", 4242))
+    doThrow(new SQLNonTransientConnectionException("permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
         .write(contains("4242"), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
@@ -830,6 +832,58 @@ public class SourceWriterFnTest {
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("sql data error"));
+  }
+
+  @Test
+  public void testProcessElementTransactionalCheckException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    try (MockedStatic<InputRecordProcessor> mockedInputRecordProcessor =
+        mockStatic(InputRecordProcessor.class)) {
+      mockedInputRecordProcessor
+          .when(
+              () ->
+                  InputRecordProcessor.processRecord(
+                      any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+          .thenThrow(
+              new TransactionalCheckException("Shadow table sequence changed during transaction"));
+
+      sourceWriterFn.processElement(processContext);
+    }
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(
+        actualError.getErrorMessage().contains("Shadow table sequence changed during transaction"));
   }
 
   @Test

@@ -31,7 +31,7 @@ jobs:
     runs-on: [ self-hosted, spanner-it ]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
     - name: Setup Environment
@@ -48,7 +48,7 @@ jobs:
         --it-cloud-proxy-host="10.128.0.16" \
         --test="${{ github.event.inputs.test_name }}"
     - name: Upload Test Report
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
       with:
         name: surefire-test-results
@@ -58,7 +58,7 @@ jobs:
           **/surefire-reports/html/**
         retention-days: 20
     - name: Failure Injection Test report on GitHub
-      uses: dorny/test-reporter@v3
+      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       if: always()
       with:
         name: Failure Injection Test report on GitHub

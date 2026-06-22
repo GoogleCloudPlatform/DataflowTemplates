@@ -20,6 +20,9 @@ import json
 import logging
 import time
 import unittest
+from unittest import mock
+
+import requests
 
 logging.basicConfig(level=logging.INFO)
 
@@ -42,6 +45,9 @@ from bqmonitor.pipeline import _parse_detector_spec
 from bqmonitor.pipeline import _parse_table_ref
 from bqmonitor.pipeline import _parse_webhook_spec
 from bqmonitor.pipeline import _PostAnomalyToWebhook
+from bqmonitor.pipeline import _WEBHOOK_BASE_BACKOFF_SEC
+from bqmonitor.pipeline import _WEBHOOK_MAX_BACKOFF_SEC
+from bqmonitor.pipeline import _WEBHOOK_MAX_RETRIES
 from bqmonitor.pipeline import _RateLimitAlerts
 from bqmonitor.pipeline import _substitute_template_tree
 from bqmonitor.pipeline import _ThresholdAlert
@@ -915,8 +921,50 @@ class _StubSession:
     return _StubResponse(status_code=self._status_code)
 
 
+class _SequenceSession:
+  """Session stub that returns a scripted outcome per request() call.
+
+  Each entry in ``outcomes`` is either an int HTTP status (returns a
+  ``_StubResponse`` with that code) or an ``Exception`` instance (raised,
+  to emulate a network-level failure like a dropped connection). Once the
+  script is exhausted the final entry repeats, so an "always failing"
+  endpoint is expressed with a single-element script.
+  """
+
+  def __init__(self, outcomes):
+    self._outcomes = list(outcomes)
+    self.calls = []
+
+  def request(self, method, url, json=None, headers=None, timeout=None):
+    self.calls.append({
+        'method': method, 'url': url, 'json': json,
+        'headers': headers, 'timeout': timeout,
+    })
+    idx = min(len(self.calls) - 1, len(self._outcomes) - 1)
+    outcome = self._outcomes[idx]
+    if isinstance(outcome, Exception):
+      raise outcome
+    return _StubResponse(status_code=outcome)
+
+
 class PostAnomalyToWebhookTest(unittest.TestCase):
   """Tests for _PostAnomalyToWebhook DoFn (session stubbed; no network)."""
+
+  def setUp(self):
+    # The DoFn sleeps between transient retries; patch it out so the
+    # retry/backoff tests run instantly. Tests that never hit a transient
+    # path simply leave this mock uncalled. The captured call args also
+    # let the backoff-schedule test assert the exact sleep sequence.
+    patcher = mock.patch('bqmonitor.pipeline.time.sleep')
+    self.sleep_mock = patcher.start()
+    self.addCleanup(patcher.stop)
+
+  def _make_dofn_with_outcomes(self, outcomes, body=None):
+    """Build a DoFn whose session replays ``outcomes`` (see
+    _SequenceSession) across successive request() calls."""
+    dofn = self._make_dofn(body or {'q': '{value}'})
+    dofn._session = _SequenceSession(outcomes)
+    return dofn
 
   def _make_result(self, label, value=42.0, score=5.0, model_id='ZScore'):
     row = beam.Row(
@@ -1041,29 +1089,126 @@ class PostAnomalyToWebhookTest(unittest.TestCase):
         posted['dataAgentContext']['dataAgent'],
         'projects/p/dataAgents/a')
 
-  def test_5xx_raises_for_retry(self):
-    """5xx → transient; bundle retry covers server-side flapping."""
+  def test_persistent_5xx_retries_then_drops(self):
+    """A persistently-5xx endpoint is retried inline _WEBHOOK_MAX_RETRIES
+    times (so 1 initial + N retries attempts) and then dropped -- NOT
+    raised. We retry inline rather than via Beam bundle retry because
+    AsyncWrapper does not reliably re-deliver a raising bundle, and for the
+    same reason we drop rather than raise once retries are exhausted
+    (raising would only risk wedging the bundle)."""
     dofn = self._make_dofn({'q': '{value}'}, status_code=500)
-    with self.assertRaises(RuntimeError):
-      dofn.process(self._make_result(label=1))
-    # The POST was attempted even though it failed.
-    self.assertEqual(len(dofn._session.calls), 1)
+    # Must not raise.
+    dofn.process(self._make_result(label=1))
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
+    self.assertEqual(self.sleep_mock.call_count, _WEBHOOK_MAX_RETRIES)
 
-  def test_503_raises_for_retry(self):
+  def test_503_retries_then_drops(self):
     dofn = self._make_dofn({'q': '{value}'}, status_code=503)
-    with self.assertRaises(RuntimeError):
-      dofn.process(self._make_result(label=1))
+    dofn.process(self._make_result(label=1))  # must not raise
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
 
-  def test_429_raises_for_retry(self):
+  def test_429_retries_then_drops(self):
     """429 Too Many Requests → transient; back off and retry."""
     dofn = self._make_dofn({'q': '{value}'}, status_code=429)
-    with self.assertRaises(RuntimeError):
-      dofn.process(self._make_result(label=1))
+    dofn.process(self._make_result(label=1))  # must not raise
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
 
-  def test_408_raises_for_retry(self):
+  def test_408_retries_then_drops(self):
     dofn = self._make_dofn({'q': '{value}'}, status_code=408)
-    with self.assertRaises(RuntimeError):
-      dofn.process(self._make_result(label=1))
+    dofn.process(self._make_result(label=1))  # must not raise
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
+
+  def test_transient_status_then_success_does_not_raise(self):
+    """A few transient 503s followed by a 200 succeeds without raising;
+    the anomaly is delivered on the first non-transient response and no
+    further attempts are made."""
+    dofn = self._make_dofn_with_outcomes([503, 503, 503, 200])
+    # Must not raise.
+    dofn.process(self._make_result(label=1, value=99.0))
+    # 3 failures + 1 success = 4 attempts, then it stops.
+    self.assertEqual(len(dofn._session.calls), 4)
+    # One sleep before each of the 3 retries.
+    self.assertEqual(self.sleep_mock.call_count, 3)
+    # The successful POST carried the substituted body.
+    self.assertEqual(dofn._session.calls[-1]['json'], {'q': '99.0'})
+
+  def test_backoff_schedule_is_exponential_and_capped(self):
+    """The sleep between retries grows exponentially from the base delay
+    and saturates at the max-backoff cap: 0.5, 1, 2, 4, 8, 15, 15, ...
+    There is exactly one sleep per retry (none before the first attempt)."""
+    dofn = self._make_dofn({'q': '{value}'}, status_code=500)
+    dofn.process(self._make_result(label=1))
+
+    actual_delays = [c.args[0] for c in self.sleep_mock.call_args_list]
+    expected_delays = [
+        min(_WEBHOOK_MAX_BACKOFF_SEC,
+            _WEBHOOK_BASE_BACKOFF_SEC * (2 ** n))
+        for n in range(_WEBHOOK_MAX_RETRIES)
+    ]
+    self.assertEqual(actual_delays, expected_delays)
+    # Sanity-check the literal schedule the constants are meant to produce.
+    self.assertEqual(
+        actual_delays[:6], [0.5, 1.0, 2.0, 4.0, 8.0, 15.0])
+    # Every later delay sits exactly on the cap.
+    for delay in actual_delays[5:]:
+      self.assertEqual(delay, _WEBHOOK_MAX_BACKOFF_SEC)
+
+  def test_network_error_retried_then_succeeds(self):
+    """A transient network-level error (e.g. dropped connection) is
+    retried with the same backoff as a transient status, and a later
+    success delivers the anomaly without raising."""
+    outcomes = [
+        requests.exceptions.ConnectionError('connection reset'),
+        200,
+    ]
+    dofn = self._make_dofn_with_outcomes(outcomes)
+    dofn.process(self._make_result(label=1, value=7.0))
+    self.assertEqual(len(dofn._session.calls), 2)
+    self.assertEqual(self.sleep_mock.call_count, 1)
+
+  def test_network_error_exhausts_retries_and_drops(self):
+    """A persistently failing connection exhausts the retry budget and is
+    then dropped, not raised (a raising bundle is not reliably retried by
+    AsyncWrapper, so raising would only risk wedging the bundle)."""
+    outcomes = [requests.exceptions.ConnectionError('boom')]
+    dofn = self._make_dofn_with_outcomes(outcomes)
+    dofn.process(self._make_result(label=1))  # must not raise
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
+    self.assertEqual(self.sleep_mock.call_count, _WEBHOOK_MAX_RETRIES)
+
+  def test_non_requests_exception_retried_then_succeeds(self):
+    """Exceptions that are NOT requests.RequestException (e.g. a
+    google.auth RefreshError surfaces as a plain exception, SSL errors,
+    etc.) are also caught and retried -- otherwise they would escape
+    process() and crash-loop the bundle under AsyncWrapper. A later
+    success still delivers the anomaly."""
+    outcomes = [RuntimeError('auth refresh failed'), 200]
+    dofn = self._make_dofn_with_outcomes(outcomes)
+    dofn.process(self._make_result(label=1, value=5.0))  # must not raise
+    self.assertEqual(len(dofn._session.calls), 2)
+    self.assertEqual(self.sleep_mock.call_count, 1)
+
+  def test_non_requests_exception_exhausts_retries_and_drops(self):
+    """A persistently raised non-requests exception is retried to the
+    budget and then dropped, never escaping process()."""
+    outcomes = [RuntimeError('persistent boom')]
+    dofn = self._make_dofn_with_outcomes(outcomes)
+    dofn.process(self._make_result(label=1))  # must not raise
+    self.assertEqual(
+        len(dofn._session.calls), _WEBHOOK_MAX_RETRIES + 1)
+
+  def test_permanent_4xx_not_retried(self):
+    """A permanent 4xx is dropped on the first response with no retries
+    and no sleeps, even if later attempts would have succeeded."""
+    dofn = self._make_dofn_with_outcomes([400, 200])
+    dofn.process(self._make_result(label=1))
+    self.assertEqual(len(dofn._session.calls), 1)
+    self.sleep_mock.assert_not_called()
 
   def test_permanent_4xx_dropped(self):
     """Permanent 4xx (e.g. 400 bad request) is logged and dropped, not

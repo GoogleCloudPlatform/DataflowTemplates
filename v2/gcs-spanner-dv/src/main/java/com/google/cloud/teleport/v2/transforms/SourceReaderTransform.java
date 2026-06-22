@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.IdentityGenericRecordFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -36,14 +37,17 @@ public class SourceReaderTransform
   private final String gcsInputDirectory;
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
+  private final CustomTransformation customTransformation;
 
   public SourceReaderTransform(
       String gcsInputDirectory,
       PCollectionView<Ddl> ddlView,
-      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
+      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
+      CustomTransformation customTransformation) {
     this.gcsInputDirectory = gcsInputDirectory;
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
+    this.customTransformation = customTransformation;
   }
 
   @Override
@@ -57,7 +61,8 @@ public class SourceReaderTransform
                 .withHintMatchesManyFiles())
         .apply(
             "CalculateSourceRecordsHash",
-            ParDo.of(new SourceHashFn(ddlView, schemaMapperProvider)).withSideInputs(ddlView));
+            ParDo.of(new SourceHashFn(ddlView, schemaMapperProvider, customTransformation))
+                .withSideInputs(ddlView));
   }
 
   private static String createAvroFilePattern(String inputPath) {

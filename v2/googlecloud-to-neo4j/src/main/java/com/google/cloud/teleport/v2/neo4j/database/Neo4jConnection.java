@@ -120,10 +120,13 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       }
     } catch (Exception exception) {
       LOG.error(
-          "Error resetting database: "
-              + "make sure the configured Neo4j user is allowed to run 'CREATE OR REPLACE DATABASE', "
-              + "'SHOW CONSTRAINTS', 'DROP CONSTRAINT', 'SHOW INDEXES' and 'DROP INDEXES'.\n"
-              + "Alternatively, disable database reset by setting 'reset_db' to false in the job specification.",
+          """
+                      Failed to reset Neo4j database. The reset uses CREATE OR REPLACE DATABASE when
+                        supported; otherwise, or if that fails, it deletes all nodes and relationships and
+                        drops constraints/indexes. Check that the configured Neo4j user can run either CREATE
+                        OR REPLACE DATABASE or the fallback operations: MATCH/DETACH DELETE, SHOW/DROP
+                        CONSTRAINTS, and SHOW/DROP INDEXES. To skip reset, set 'reset_db' to false in the job
+                        specification.""",
           exception);
     }
   }
@@ -163,10 +166,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       for (var constraint : constraints) {
         LOG.info("Dropping constraint {}", constraint);
 
-        runAutocommit(
-            String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
-            Map.of(),
-            databaseResetMetadata("drop-constraint"));
+        session
+            .run(
+                String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
+                Map.of(),
+                databaseResetMetadata("drop-constraint"))
+            .consume();
       }
 
       LOG.info("Dropping indexes");
@@ -180,10 +185,12 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       for (var index : indexes) {
         LOG.info("Dropping index {}", index);
 
-        runAutocommit(
-            String.format("DROP INDEX %s", CypherPatterns.sanitize(index)),
-            Map.of(),
-            databaseResetMetadata("drop-index"));
+        session
+            .run(
+                String.format("DROP INDEX %s", CypherPatterns.sanitize(index)),
+                Map.of(),
+                databaseResetMetadata("drop-index"))
+            .consume();
       }
     }
   }

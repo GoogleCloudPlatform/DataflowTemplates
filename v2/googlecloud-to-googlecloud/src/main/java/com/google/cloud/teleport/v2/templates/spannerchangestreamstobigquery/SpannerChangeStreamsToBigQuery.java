@@ -35,6 +35,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -322,6 +323,17 @@ public final class SpannerChangeStreamsToBigQuery {
     String spannerMetadataTableName = options.getSpannerMetadataTableName();
     if (spannerMetadataTableName != null) {
       readChangeStream = readChangeStream.withMetadataTable(spannerMetadataTableName);
+    }
+
+    String tvfNameListString = options.getSpannerChangeStreamTvfNameList();
+    if (tvfNameListString != null && !tvfNameListString.isEmpty()) {
+      List<String> tvfNameList =
+          Arrays.stream(tvfNameListString.split(";"))
+              .filter(name -> !name.trim().isEmpty())
+              .collect(Collectors.toList());
+      if (!tvfNameList.isEmpty()) {
+        readChangeStream = readChangeStream.withTvfNameList(tvfNameList);
+      }
     }
 
     PCollection<DataChangeRecord> dataChangeRecord =

@@ -19,6 +19,9 @@ import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.mapper.ComparisonRecordMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import java.util.Objects;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -30,13 +33,26 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
 
   private final PCollectionView<Ddl> ddlView;
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
+  private final CustomTransformation customTransformation;
 
   private transient ComparisonRecordMapper comparisonRecordMapper;
+  private transient ISpannerMigrationTransformer transformer;
 
   public SourceHashFn(
-      PCollectionView<Ddl> ddlView, SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
+      PCollectionView<Ddl> ddlView,
+      SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider,
+      CustomTransformation customTransformation) {
     this.ddlView = ddlView;
     this.schemaMapperProvider = schemaMapperProvider;
+    this.customTransformation = customTransformation;
+  }
+
+  @Setup
+  public void setup() {
+    if (customTransformation != null) {
+      transformer =
+          CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
+    }
   }
 
   @ProcessElement
@@ -46,7 +62,7 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
     // lazy initialization of the mapper.
     if (comparisonRecordMapper == null) {
       comparisonRecordMapper =
-          new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), null, ddl);
+          new ComparisonRecordMapper(schemaMapperProvider.apply(ddl), transformer, ddl);
     }
 
     ComparisonRecord comparisonRecord =

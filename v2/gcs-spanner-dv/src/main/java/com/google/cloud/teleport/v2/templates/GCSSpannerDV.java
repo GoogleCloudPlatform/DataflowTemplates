@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.transforms.MatchRecordsTransform;
 import com.google.cloud.teleport.v2.transforms.ReportResultsTransform;
 import com.google.cloud.teleport.v2.transforms.SourceReaderTransform;
@@ -51,7 +52,8 @@ import org.joda.time.Instant;
     category = TemplateCategory.BATCH,
     displayName = "GCS Spanner Data Validation",
     description =
-        "Batch pipeline that reads data from GCS and Spanner compares them to validate migration correctness.",
+        "Batch pipeline that reads data from GCS and Spanner compares them to validate migration"
+            + " correctness.",
     optionsClass = GCSSpannerDV.Options.class,
     flexContainerName = "gcs-spanner-dv",
     documentation =
@@ -165,8 +167,8 @@ public class GCSSpannerDV {
         example = "[{Singers, Vocalists}, {Albums, Records}]",
         helpText =
             "These are the table name overrides from source to spanner. They are written in the"
-                + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
-                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+                + " following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+                + " This example shows mapping Singers table to Vocalists and Albums table to Records.")
     @Default.String("")
     String getTableOverrides();
 
@@ -181,10 +183,13 @@ public class GCSSpannerDV {
         example =
             "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
         helpText =
-            "These are the column name overrides from source to spanner. They are written in the"
-                + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
-                + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
-                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+            "These are the column name overrides from source to spanner. They are written in"
+                + " the following format: [{SourceTableName1.SourceColumnName1,"
+                + " SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1,"
+                + " SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should"
+                + " remain the same in both the source and spanner pair. To override table names,"
+                + " use tableOverrides.The example shows mapping SingerName to TalentName and"
+                + " AlbumName to RecordName in Singers and Albums table respectively.")
     @Default.String("")
     String getColumnOverrides();
 
@@ -207,11 +212,48 @@ public class GCSSpannerDV {
         regexes = {"^[^ ;]*$"},
         description = "Run ID for the validation job",
         helpText =
-            "A unique identifier for the validation run. If not provided, the Dataflow Job Name will be used.",
+            "A unique identifier for the validation run. If not provided, the Dataflow Job Name"
+                + " will be used.",
         example = "run_20230101_120000")
     String getRunId();
 
     void setRunId(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 13,
+        optional = true,
+        description = "Custom jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for"
+                + " processing records.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 14,
+        optional = true,
+        description = "Custom class name",
+        helpText =
+            "Fully qualified class name having the custom transformation logic. It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 15,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation"
+                + " class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
   }
 
   public static void main(String[] args) {
@@ -241,12 +283,21 @@ public class GCSSpannerDV {
             options.getTableOverrides(),
             options.getColumnOverrides());
 
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
+
     // Get Source records hashes
     PCollection<ComparisonRecord> sourceRecords =
         pipeline.apply(
             "ReadSourceRecords",
             new SourceReaderTransform(
-                options.getGcsInputDirectory(), ddlView, schemaMapperProvider));
+                options.getGcsInputDirectory(),
+                ddlView,
+                schemaMapperProvider,
+                customTransformation));
 
     // Get Spanner records hashes
     PCollection<ComparisonRecord> spannerRecords =

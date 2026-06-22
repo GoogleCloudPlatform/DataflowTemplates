@@ -15,10 +15,9 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
-import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -37,8 +36,8 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.DdlToAvroSchemaConverter;
 import com.google.cloud.teleport.spanner.IntegrationTest;
-import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.tests.TestMessage;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
@@ -46,16 +45,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema;
-import org.junit.After;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 
 /**
  * Test coverage for {@link InformationSchemaScanner}. This requires an active GCP project with a
@@ -65,42 +68,154 @@ import org.junit.experimental.categories.Category;
 @Category(IntegrationTest.class)
 public class InformationSchemaScannerIT {
 
-  private final String dbId = "informationschemascannertest";
   public static final String INSTANCE_PARTITION_ID = "mr-partition";
 
-  /** Class rule for Spanner server resource. */
-  @ClassRule public static final SpannerServerResource SPANNER_SERVER = new SpannerServerResource();
+  @Rule public final TestName testName = new TestName();
 
-  @Before
-  public void setup() {
-    // Just to make sure an old database is not left over.
-    SPANNER_SERVER.dropDatabase(dbId);
-  }
+  public static SpannerResourceManager sharedSpannerResourceManager;
+  public static SpannerResourceManager sharedPgSpannerResourceManager;
 
-  @After
-  public void tearDown() {
-    // Drop database before deleting the partition.
-    SPANNER_SERVER.dropDatabase(dbId);
-  }
+  static class SharedTestCase {
+    private final List<String> ddlStatements;
+    private final Consumer<Ddl> assertions;
 
-  @BeforeClass
-  public static void setupInstancePartition() throws Exception {
-    // To avoid failure due to already existing instance partition
-    try {
-      SPANNER_SERVER.deleteInstancePartition(INSTANCE_PARTITION_ID);
-    } catch (Exception e) {
-      // Ignore exception if instance partition does not exist.
+    SharedTestCase(List<String> ddlStatements, Consumer<Ddl> assertions) {
+      this.ddlStatements = ddlStatements;
+      this.assertions = assertions;
     }
-    SPANNER_SERVER.createInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+
+    public List<String> getDdlStatements() {
+      return ddlStatements;
+    }
+
+    public Consumer<Ddl> getAssertions() {
+      return assertions;
+    }
+  }
+
+  private SpannerResourceManager spannerResourceManager;
+  private SpannerResourceManager pgSpannerResourceManager;
+
+  /*
+   * Guidelines for Contributing New Test Cases to InformationSchemaScannerIT:
+   *
+   * 1. Use Shared Test Cases Where Possible:
+   *    To avoid hitting the Spanner 100-database per instance limit and to dramatically reduce test
+   *    execution time, prefer adding tests to the shared test suites (e.g., `sharedInformationSchemaScannerTestGsql`
+   *    or `sharedInformationSchemaScannerTestPg`) over creating standalone `@Test` methods.
+   *
+   *    A shared test case returns a `SharedTestCase` object containing:
+   *    - A list of DDL statements to create the schema objects.
+   *    - A `Consumer<Ddl>` lambda containing assertions that validate the parsed schema.
+   *    The suite collects all statements, applies them together on the shared database (`sharedSpannerResourceManager`
+   *    for GSQL or `sharedPgSpannerResourceManager` for PostgreSQL), parses the schema once, and executes all assertions.
+   *
+   * 2. Shared Database Context:
+   *    Keep in mind that shared test cases execute within a single multiplexed database. This database will contain
+   *    other tables, views, indices, and schema objects created by sibling test cases.
+   *
+   * 3. Unique Naming Conventions:
+   *    Because the database is shared, DDL statement names must be globally unique to prevent collisions.
+   *    Always use the convention `<type_prefix>_<test_case_name>_<suffix>`. For example:
+   *    - Tables: `t_myNewTestCase_Users`
+   *    - Indices: `i_myNewTestCase_Users_NameIdx`
+   *    - Views: `v_myNewTestCase_ActiveUsers`
+   *
+   * 4. Targeted Assertions:
+   *    Do not write assertions that rely on global counts (e.g., asserting that the database has exactly 10 tables
+   *    or exactly 3 views in total). Instead, use the `Ddl` POJO methods to selectively retrieve your test's objects
+   *    (e.g., `ddl.table("t_myNewTestCase_Users")`) and assert their properties in isolation.
+   *
+   * 5. Independence of Execution:
+   *    Do not make assumptions about the order of execution. Shared test cases should be completely stateless and
+   *    independent of one another.
+   */
+  @BeforeClass
+  public static void setupSharedResourceManagers() {
+    String projectId = TestProperties.project();
+    String region = TestProperties.region();
+    String spannerHost = System.getProperty("spannerHost");
+
+    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
+    fileDescriptorSetBuilder.addFile(TestMessage.getDescriptor().getFile().toProto());
+    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+
+    SpannerResourceManager.Builder builder =
+        SpannerResourceManager.builder(
+                "sharedGsql-" + UUID.randomUUID().toString().substring(0, 8),
+                projectId,
+                region,
+                Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .setProtoDescriptors(protoDescriptorBytes.toByteArray())
+            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+    if (spannerHost != null) {
+      builder.useCustomHost(spannerHost);
+    }
+    sharedSpannerResourceManager = builder.build();
+
+    SpannerResourceManager.Builder pgBuilder =
+        SpannerResourceManager.builder(
+                "sharedPgsql-" + UUID.randomUUID().toString().substring(0, 8),
+                projectId,
+                region,
+                Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+    if (spannerHost != null) {
+      pgBuilder.useCustomHost(spannerHost);
+    }
+    sharedPgSpannerResourceManager = pgBuilder.build();
   }
 
   @AfterClass
-  public static void tearDownInstancePartition() throws Exception {
-    SPANNER_SERVER.deleteInstancePartition(INSTANCE_PARTITION_ID);
+  public static void teardownSharedResourceManagers() {
+    if (sharedSpannerResourceManager != null) {
+      sharedSpannerResourceManager.cleanupAll();
+    }
+    if (sharedPgSpannerResourceManager != null) {
+      sharedPgSpannerResourceManager.cleanupAll();
+    }
   }
 
-  private Ddl getDatabaseDdl() {
-    BatchClient batchClient = SPANNER_SERVER.getBatchClient(dbId);
+  private void setupResourceManager(Dialect dialect) {
+    setupResourceManager(dialect, null);
+  }
+
+  private void setupResourceManager(Dialect dialect, byte[] protoDescriptors) {
+    String projectId = TestProperties.project();
+    String region = TestProperties.region();
+    String spannerHost = System.getProperty("spannerHost");
+
+    SpannerResourceManager.Builder builder =
+        SpannerResourceManager.builder(
+                testName.getMethodName() + "-" + UUID.randomUUID().toString().substring(0, 8),
+                projectId,
+                region,
+                dialect)
+            .maybeUseStaticInstance()
+            .setInstancePartition(INSTANCE_PARTITION_ID, "nam3");
+    if (protoDescriptors != null) {
+      builder.setProtoDescriptors(protoDescriptors);
+    }
+    if (spannerHost != null) {
+      builder.useCustomHost(spannerHost);
+    }
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      if (spannerResourceManager != null) {
+        spannerResourceManager.cleanupAll();
+      }
+      spannerResourceManager = builder.build();
+    } else {
+      if (pgSpannerResourceManager != null) {
+        pgSpannerResourceManager.cleanupAll();
+      }
+      pgSpannerResourceManager = builder.build();
+    }
+  }
+
+  private Ddl getDatabaseDdl(SpannerResourceManager manager) {
+    BatchClient batchClient = manager.getBatchClient();
     BatchReadOnlyTransaction batchTx =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
 
@@ -108,30 +223,15 @@ public class InformationSchemaScannerIT {
     return scanner.scan();
   }
 
-  private Ddl getPgDatabaseDdl() {
-    BatchClient batchClient = SPANNER_SERVER.getBatchClient(dbId);
+  private Ddl getPgDatabaseDdl(SpannerResourceManager manager) {
+    BatchClient batchClient = manager.getBatchClient();
     BatchReadOnlyTransaction batchTx =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx, Dialect.POSTGRESQL);
     return scanner.scan();
   }
 
-  @Test
-  public void emptyDatabase() throws Exception {
-    SPANNER_SERVER.createDatabase(dbId, Collections.emptyList());
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl, equalTo(Ddl.builder().build()));
-  }
-
-  @Test
-  public void pgEmptyDatabase() throws Exception {
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.emptyList());
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl, equalTo(Ddl.builder(Dialect.POSTGRESQL).build()));
-  }
-
-  @Test
-  public void tableWithAllTypes() throws Exception {
+  private SharedTestCase tableWithAllTypes() {
     String createProtoBundleStmt =
         "CREATE PROTO BUNDLE ("
             + "\n\t`com.google.cloud.teleport.spanner.tests.TestMessage`,"
@@ -143,7 +243,7 @@ public class InformationSchemaScannerIT {
             + "\n\t`com.google.cloud.teleport.spanner.tests.OrderHistory`,)";
 
     String createTableStmt =
-        "CREATE TABLE `alltypes` ("
+        "CREATE TABLE `t_tableWithAllTypes_alltypes` ("
             + " `first_name`            STRING(MAX),"
             + " `last_name`             STRING(5),"
             + " `id`                    INT64 NOT NULL,"
@@ -175,106 +275,99 @@ public class InformationSchemaScannerIT {
             + " `hidden_column`         STRING(MAX) HIDDEN,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
-    FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
-    fileDescriptorSetBuilder.addFile(
-        com.google.cloud.teleport.spanner.tests.TestMessage.getDescriptor().getFile().toProto());
-    ByteString protoDescriptorBytes = fileDescriptorSetBuilder.build().toByteString();
+    return new SharedTestCase(
+        Arrays.asList(createProtoBundleStmt, createTableStmt),
+        ddl -> {
+          assertThat(ddl.table("t_tableWithAllTypes_alltypes"), notNullValue());
+          assertThat(ddl.table("t_tAbLEwITHAlLTYPeS_AlLtYPeS"), notNullValue());
 
-    List<String> statements = new ArrayList<>();
-    statements.add(createProtoBundleStmt);
-    statements.add(createTableStmt);
-    SPANNER_SERVER.createDatabase(dbId, statements, protoDescriptorBytes);
-    Ddl ddl = getDatabaseDdl();
+          Table table = ddl.table("t_tableWithAllTypes_alltypes");
+          assertThat(table.columns(), hasSize(29));
 
-    assertThat(ddl.allTables(), hasSize(1));
-    assertThat(ddl.table("alltypes"), notNullValue());
-    assertThat(ddl.table("aLlTYPeS"), notNullValue());
+          // Check case sensitiveness.
+          assertThat(table.column("first_name"), notNullValue());
+          assertThat(table.column("fIrst_NaME"), notNullValue());
+          assertThat(table.column("last_name"), notNullValue());
+          assertThat(table.column("LAST_name"), notNullValue());
 
-    Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(29));
+          // Check types/sizes.
+          assertThat(table.column("bool_field").type(), equalTo(Type.bool()));
+          assertThat(table.column("int64_field").type(), equalTo(Type.int64()));
+          assertThat(table.column("float32_field").type(), equalTo(Type.float32()));
+          assertThat(table.column("float64_field").type(), equalTo(Type.float64()));
+          assertThat(table.column("string_field").type(), equalTo(Type.string()));
+          assertThat(table.column("string_field").size(), equalTo(76));
+          assertThat(table.column("bytes_field").type(), equalTo(Type.bytes()));
+          assertThat(table.column("bytes_field").size(), equalTo(13));
+          assertThat(table.column("timestamp_field").type(), equalTo(Type.timestamp()));
+          assertThat(table.column("date_field").type(), equalTo(Type.date()));
+          assertThat(
+              table.column("proto_field").type(),
+              equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")));
+          assertThat(
+              table.column("proto_field_2").type(),
+              equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.Order")));
+          assertThat(
+              table.column("nested_enum").type(),
+              equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode")));
+          assertThat(
+              table.column("enum_field").type(),
+              equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")));
+          assertThat(table.column("arr_bool_field").type(), equalTo(Type.array(Type.bool())));
+          assertThat(table.column("arr_int64_field").type(), equalTo(Type.array(Type.int64())));
+          assertThat(table.column("arr_float32_field").type(), equalTo(Type.array(Type.float32())));
+          assertThat(table.column("arr_float64_field").type(), equalTo(Type.array(Type.float64())));
+          assertThat(table.column("arr_string_field").type(), equalTo(Type.array(Type.string())));
+          assertThat(table.column("arr_string_field").size(), equalTo(15));
+          assertThat(table.column("arr_bytes_field").type(), equalTo(Type.array(Type.bytes())));
+          assertThat(table.column("arr_bytes_field").size(), equalTo(-1 /*max*/));
+          assertThat(
+              table.column("arr_timestamp_field").type(), equalTo(Type.array(Type.timestamp())));
+          assertThat(table.column("arr_date_field").type(), equalTo(Type.array(Type.date())));
+          assertThat(table.column("embedding_vector").type(), equalTo(Type.array(Type.float64())));
+          assertThat(table.column("embedding_vector").arrayLength(), equalTo(16));
+          assertThat(
+              table.column("arr_proto_field").type(),
+              equalTo(
+                  Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))));
+          assertThat(
+              table.column("arr_proto_field_2").type(),
+              equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.Order"))));
+          assertThat(
+              table.column("arr_nested_enum").type(),
+              equalTo(
+                  Type.array(
+                      Type.protoEnum(
+                          "com.google.cloud.teleport.spanner.tests.Order.PaymentMode"))));
+          assertThat(
+              table.column("arr_enum_field").type(),
+              equalTo(
+                  Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
+          assertThat(table.column("hidden_column").type(), equalTo(Type.string()));
+          assertThat(table.column("hidden_column").isHidden(), is(true));
 
-    // Check case sensitiveness.
-    assertThat(table.column("first_name"), notNullValue());
-    assertThat(table.column("fIrst_NaME"), notNullValue());
-    assertThat(table.column("last_name"), notNullValue());
-    assertThat(table.column("LAST_name"), notNullValue());
+          // Check not-null.
+          assertThat(table.column("first_name").notNull(), is(false));
+          assertThat(table.column("last_name").notNull(), is(false));
+          assertThat(table.column("id").notNull(), is(true));
 
-    // Check types/sizes.
-    assertThat(table.column("bool_field").type(), equalTo(Type.bool()));
-    assertThat(table.column("int64_field").type(), equalTo(Type.int64()));
-    assertThat(table.column("float32_field").type(), equalTo(Type.float32()));
-    assertThat(table.column("float64_field").type(), equalTo(Type.float64()));
-    assertThat(table.column("string_field").type(), equalTo(Type.string()));
-    assertThat(table.column("string_field").size(), equalTo(76));
-    assertThat(table.column("bytes_field").type(), equalTo(Type.bytes()));
-    assertThat(table.column("bytes_field").size(), equalTo(13));
-    assertThat(table.column("timestamp_field").type(), equalTo(Type.timestamp()));
-    assertThat(table.column("date_field").type(), equalTo(Type.date()));
-    assertThat(
-        table.column("proto_field").type(),
-        equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage")));
-    assertThat(
-        table.column("proto_field_2").type(),
-        equalTo(Type.proto("com.google.cloud.teleport.spanner.tests.Order")));
-    assertThat(
-        table.column("nested_enum").type(),
-        equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode")));
-    assertThat(
-        table.column("enum_field").type(),
-        equalTo(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum")));
-    assertThat(table.column("arr_bool_field").type(), equalTo(Type.array(Type.bool())));
-    assertThat(table.column("arr_int64_field").type(), equalTo(Type.array(Type.int64())));
-    assertThat(table.column("arr_float32_field").type(), equalTo(Type.array(Type.float32())));
-    assertThat(table.column("arr_float64_field").type(), equalTo(Type.array(Type.float64())));
-    assertThat(table.column("arr_string_field").type(), equalTo(Type.array(Type.string())));
-    assertThat(table.column("arr_string_field").size(), equalTo(15));
-    assertThat(table.column("arr_bytes_field").type(), equalTo(Type.array(Type.bytes())));
-    assertThat(table.column("arr_bytes_field").size(), equalTo(-1 /*max*/));
-    assertThat(table.column("arr_timestamp_field").type(), equalTo(Type.array(Type.timestamp())));
-    assertThat(table.column("arr_date_field").type(), equalTo(Type.array(Type.date())));
-    assertThat(table.column("embedding_vector").type(), equalTo(Type.array(Type.float64())));
-    assertThat(table.column("embedding_vector").arrayLength(), equalTo(16));
-    assertThat(
-        table.column("arr_proto_field").type(),
-        equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.TestMessage"))));
-    assertThat(
-        table.column("arr_proto_field_2").type(),
-        equalTo(Type.array(Type.proto("com.google.cloud.teleport.spanner.tests.Order"))));
-    assertThat(
-        table.column("arr_nested_enum").type(),
-        equalTo(
-            Type.array(
-                Type.protoEnum("com.google.cloud.teleport.spanner.tests.Order.PaymentMode"))));
-    assertThat(
-        table.column("arr_enum_field").type(),
-        equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
-    assertThat(table.column("hidden_column").type(), equalTo(Type.string()));
-    assertThat(table.column("hidden_column").isHidden(), is(true));
-
-    // Check not-null.
-    assertThat(table.column("first_name").notNull(), is(false));
-    assertThat(table.column("last_name").notNull(), is(false));
-    assertThat(table.column("id").notNull(), is(true));
-
-    // Check primary key.
-    assertThat(table.primaryKeys(), hasSize(3));
-    List<IndexColumn> pk = table.primaryKeys();
-    assertThat(pk.get(0).name(), equalTo("first_name"));
-    assertThat(pk.get(0).order(), equalTo(IndexColumn.Order.ASC));
-    assertThat(pk.get(1).name(), equalTo("last_name"));
-    assertThat(pk.get(1).order(), equalTo(IndexColumn.Order.DESC));
-    assertThat(pk.get(2).name(), equalTo("id"));
-    assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
-
-    // Verify pretty print.
-    assertThat(
-        ddl.prettyPrint(), equalToCompressingWhiteSpace(createProtoBundleStmt + createTableStmt));
+          // Check primary key.
+          assertThat(table.primaryKeys(), hasSize(3));
+          List<IndexColumn> pk = table.primaryKeys();
+          assertThat(pk.get(0).name(), equalTo("first_name"));
+          assertThat(pk.get(0).order(), equalTo(IndexColumn.Order.ASC));
+          assertThat(pk.get(1).name(), equalTo("last_name"));
+          assertThat(pk.get(1).order(), equalTo(IndexColumn.Order.DESC));
+          assertThat(pk.get(2).name(), equalTo("id"));
+          assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
+        });
   }
 
-  @Test
-  public void tableWithAllPgTypes() throws Exception {
+  // This test safely uses the shared PostgreSQL ResourceManager because PostgreSQL databases
+  // do not support or use Proto Bundles, so there is no risk of database-level schema conflicts.
+  private SharedTestCase tableWithAllPgTypes() {
     String allTypes =
-        "CREATE TABLE \"alltypes\" ("
+        "CREATE TABLE \"t_tableWithAllPgTypes_alltypes\" ("
             + " \"first_name\"                            character varying NOT NULL,"
             + " \"last_name\"                             character varying(5) NOT NULL,"
             + " \"id\"                                    bigint NOT NULL,"
@@ -300,579 +393,643 @@ public class InformationSchemaScannerIT {
             + " PRIMARY KEY (\"first_name\", \"last_name\", \"id\")"
             + " )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(allTypes));
-    Ddl ddl = getPgDatabaseDdl();
+    return new SharedTestCase(
+        Collections.singletonList(allTypes),
+        ddl -> {
+          assertThat(ddl.table("t_tableWithAllPgTypes_alltypes"), notNullValue());
+          assertThat(ddl.table("t_tableWithAllPgTypes_aLlTYPeS"), notNullValue());
 
-    assertThat(ddl.allTables(), hasSize(1));
-    assertThat(ddl.table("alltypes"), notNullValue());
-    assertThat(ddl.table("aLlTYPeS"), notNullValue());
+          Table table = ddl.table("t_tableWithAllPgTypes_alltypes");
+          assertThat(table.columns(), hasSize(22));
 
-    Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(20));
+          // Check case sensitiveness.
+          assertThat(table.column("first_name"), notNullValue());
+          assertThat(table.column("fIrst_NaME"), notNullValue());
+          assertThat(table.column("last_name"), notNullValue());
+          assertThat(table.column("LAST_name"), notNullValue());
 
-    // Check case sensitiveness.
-    assertThat(table.column("first_name"), notNullValue());
-    assertThat(table.column("fIrst_NaME"), notNullValue());
-    assertThat(table.column("last_name"), notNullValue());
-    assertThat(table.column("LAST_name"), notNullValue());
+          // Check types/sizes.
+          assertThat(table.column("bool_field").type(), equalTo(Type.pgBool()));
+          assertThat(table.column("int64_field").type(), equalTo(Type.pgInt8()));
+          assertThat(table.column("float32_field").type(), equalTo(Type.pgFloat4()));
+          assertThat(table.column("float64_field").type(), equalTo(Type.pgFloat8()));
+          assertThat(table.column("string_field").type(), equalTo(Type.pgVarchar()));
+          assertThat(table.column("string_field").size(), equalTo(76));
+          assertThat(table.column("bytes_field").type(), equalTo(Type.pgBytea()));
+          assertThat(table.column("timestamp_field").type(), equalTo(Type.pgTimestamptz()));
+          assertThat(table.column("numeric_field").type(), equalTo(Type.pgNumeric()));
+          assertThat(table.column("date_field").type(), equalTo(Type.pgDate()));
+          assertThat(table.column("arr_bool_field").type(), equalTo(Type.pgArray(Type.pgBool())));
+          assertThat(table.column("arr_int64_field").type(), equalTo(Type.pgArray(Type.pgInt8())));
+          assertThat(
+              table.column("arr_float32_field").type(), equalTo(Type.pgArray(Type.pgFloat4())));
+          assertThat(
+              table.column("arr_float64_field").type(), equalTo(Type.pgArray(Type.pgFloat8())));
+          assertThat(
+              table.column("arr_string_field").type(), equalTo(Type.pgArray(Type.pgVarchar())));
+          assertThat(table.column("arr_string_field").size(), equalTo(15));
+          assertThat(table.column("arr_bytes_field").type(), equalTo(Type.pgArray(Type.pgBytea())));
+          assertThat(
+              table.column("arr_timestamp_field").type(),
+              equalTo(Type.pgArray(Type.pgTimestamptz())));
+          assertThat(table.column("arr_date_field").type(), equalTo(Type.pgArray(Type.pgDate())));
+          assertThat(
+              table.column("arr_numeric_field").type(), equalTo(Type.pgArray(Type.pgNumeric())));
+          assertThat(
+              table.column("embedding_vector").type(), equalTo(Type.pgArray(Type.pgFloat8())));
+          assertThat(table.column("embedding_vector").arrayLength(), equalTo(8));
 
-    // Check types/sizes.
-    assertThat(table.column("bool_field").type(), equalTo(Type.pgBool()));
-    assertThat(table.column("int64_field").type(), equalTo(Type.pgInt8()));
-    assertThat(table.column("float32_field").type(), equalTo(Type.pgFloat4()));
-    assertThat(table.column("float64_field").type(), equalTo(Type.pgFloat8()));
-    assertThat(table.column("string_field").type(), equalTo(Type.pgVarchar()));
-    assertThat(table.column("string_field").size(), equalTo(76));
-    assertThat(table.column("bytes_field").type(), equalTo(Type.pgBytea()));
-    assertThat(table.column("timestamp_field").type(), equalTo(Type.pgTimestamptz()));
-    assertThat(table.column("numeric_field").type(), equalTo(Type.pgNumeric()));
-    assertThat(table.column("date_field").type(), equalTo(Type.pgDate()));
-    assertThat(table.column("arr_bool_field").type(), equalTo(Type.pgArray(Type.pgBool())));
-    assertThat(table.column("arr_int64_field").type(), equalTo(Type.pgArray(Type.pgInt8())));
-    assertThat(table.column("arr_float32_field").type(), equalTo(Type.pgArray(Type.pgFloat4())));
-    assertThat(table.column("arr_float64_field").type(), equalTo(Type.pgArray(Type.pgFloat8())));
-    assertThat(table.column("arr_string_field").type(), equalTo(Type.pgArray(Type.pgVarchar())));
-    assertThat(table.column("arr_string_field").size(), equalTo(15));
-    assertThat(table.column("arr_bytes_field").type(), equalTo(Type.pgArray(Type.pgBytea())));
-    assertThat(
-        table.column("arr_timestamp_field").type(), equalTo(Type.pgArray(Type.pgTimestamptz())));
-    assertThat(table.column("arr_date_field").type(), equalTo(Type.pgArray(Type.pgDate())));
-    assertThat(table.column("arr_numeric_field").type(), equalTo(Type.pgArray(Type.pgNumeric())));
-    assertThat(table.column("embedding_vector").type(), equalTo(Type.pgArray(Type.pgFloat8())));
-    assertThat(table.column("embedding_vector").arrayLength(), equalTo(8));
+          // Check not-null. Primary keys are implicitly forced to be not-null.
+          assertThat(table.column("first_name").notNull(), is(true));
+          assertThat(table.column("last_name").notNull(), is(true));
+          assertThat(table.column("id").notNull(), is(true));
 
-    // Check not-null. Primary keys are implicitly forced to be not-null.
-    assertThat(table.column("first_name").notNull(), is(true));
-    assertThat(table.column("last_name").notNull(), is(true));
-    assertThat(table.column("id").notNull(), is(true));
-
-    // Check primary key.
-    assertThat(table.primaryKeys(), hasSize(3));
-    List<IndexColumn> pk = table.primaryKeys();
-    assertThat(pk.get(0).name(), equalTo("first_name"));
-    assertThat(pk.get(1).name(), equalTo("last_name"));
-    assertThat(pk.get(2).name(), equalTo("id"));
-
-    // Verify pretty print.
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+          // Check primary key.
+          assertThat(table.primaryKeys(), hasSize(3));
+          List<IndexColumn> pk = table.primaryKeys();
+          assertThat(pk.get(0).name(), equalTo("first_name"));
+          assertThat(pk.get(1).name(), equalTo("last_name"));
+          assertThat(pk.get(2).name(), equalTo("id"));
+        });
   }
 
-  @Test
-  public void simpleModel() throws Exception {
+  private SharedTestCase simpleModel() {
+    String endpoint =
+        String.format(
+            "\"//aiplatform.googleapis.com/projects/%s/locations/us-central1/publishers/google/models/text-bison\"",
+            TestProperties.project());
     String modelDef =
-        "CREATE MODEL `Iris` INPUT ( `f1` FLOAT64, `f2` FLOAT64, `f3` FLOAT64, `f4` FLOAT64, )"
-            + " OUTPUT ( `classes` ARRAY<STRING(MAX)>, `scores` ARRAY<FLOAT64>, ) REMOTE OPTIONS"
-            + " (endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\")";
+        "CREATE MODEL `m_simpleModel_text_bison` INPUT ( `prompt` STRING(MAX) )"
+            + " OUTPUT ( `content` STRING(MAX) ) REMOTE OPTIONS"
+            + " (endpoint="
+            + endpoint
+            + ")";
 
-    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(modelDef));
-    Ddl ddl = getDatabaseDdl();
-
-    assertThat(ddl.models(), hasSize(1));
-    Model model = ddl.model("Iris");
-    assertThat(model, notNullValue());
-    assertThat(ddl.model("iriS"), sameInstance(model));
-    assertThat(model.inputColumns(), hasSize(4));
-    assertThat(model.inputColumns().get(0).name(), is("f1"));
-    assertThat(model.inputColumns().get(0).type(), is(Type.float64()));
-    assertThat(model.inputColumns().get(0).columnOptions(), hasSize(1));
-    assertThat(model.inputColumns().get(0).columnOptions(), hasItems("required=TRUE"));
-    assertThat(model.outputColumns(), hasSize(2));
-    assertThat(model.remote(), equalTo(true));
-    assertThat(
-        model.options(),
-        hasItems(
-            "endpoint=\"//aiplatform.googleapis.com/projects/span-cloud-testing/locations/us-central1/endpoints/4608339105032437760\""));
-
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
+    return new SharedTestCase(
+        Arrays.asList(modelDef),
+        ddl -> {
+          Model model = ddl.model("m_simpleModel_text_bison");
+          assertThat(model, notNullValue());
+          assertThat(ddl.model("m_simpleModel_tExT_bIsOn"), sameInstance(model));
+          assertThat(model.inputColumns(), hasSize(1));
+          assertThat(model.inputColumns().get(0).name(), is("prompt"));
+          assertThat(model.inputColumns().get(0).type(), is(Type.string()));
+          assertThat(model.outputColumns(), hasSize(1));
+          assertThat(model.outputColumns().get(0).name(), is("content"));
+          assertThat(model.outputColumns().get(0).type(), is(Type.string()));
+          assertThat(model.remote(), equalTo(true));
+          assertThat(model.options(), hasItems("endpoint=" + endpoint));
+        });
   }
 
-  @Test
-  public void simplePropertyGraph() throws Exception {
+  private SharedTestCase simplePropertyGraph() {
     String nodeTableDef =
-        "CREATE TABLE NodeTest (\n" + "  Id INT64 NOT NULL,\n" + ") PRIMARY KEY(Id)";
+        "CREATE TABLE t_simplePropertyGraph_NodeTest (\n"
+            + "  Id INT64 NOT NULL,\n"
+            + ") PRIMARY KEY(Id)";
     String edgeTableDef =
-        "CREATE TABLE EdgeTest (\n"
+        "CREATE TABLE t_simplePropertyGraph_EdgeTest (\n"
             + "FromId INT64 NOT NULL,\n"
             + "ToId INT64 NOT NULL,\n"
             + ") PRIMARY KEY(FromId, ToId)";
     String propertyGraphDef =
-        "CREATE PROPERTY GRAPH testGraph\n"
+        "CREATE PROPERTY GRAPH g_simplePropertyGraph_testGraph\n"
             + "  NODE TABLES(\n"
-            + "    NodeTest\n"
+            + "    t_simplePropertyGraph_NodeTest\n"
             + "      KEY(Id)\n"
             + "      LABEL Test PROPERTIES(\n"
             + "        Id))"
             + "  EDGE TABLES(\n"
-            + "    EdgeTest\n"
+            + "    t_simplePropertyGraph_EdgeTest\n"
             + "      KEY(FromId, ToId)\n"
-            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
-            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      SOURCE KEY(FromId) REFERENCES t_simplePropertyGraph_NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES t_simplePropertyGraph_NodeTest(Id)\n"
             + "      DEFAULT LABEL PROPERTIES ALL COLUMNS)";
 
-    SPANNER_SERVER.createDatabase(
-        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
-    Ddl ddl = getDatabaseDdl();
+    return new SharedTestCase(
+        Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef),
+        ddl -> {
+          assertThat(ddl.table("t_simplePropertyGraph_NodeTest"), notNullValue());
 
-    assertThat(ddl.allTables(), hasSize(2));
-    assertThat(ddl.table("NodeTest"), notNullValue());
-    assertThat(ddl.propertyGraphs(), hasSize(1));
+          PropertyGraph testGraph = ddl.propertyGraph("g_simplePropertyGraph_testGraph");
 
-    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+          assertEquals(testGraph.name(), "g_simplePropertyGraph_testGraph");
+          assertThat(testGraph.propertyDeclarations(), hasSize(3));
+          assertThat(testGraph.getPropertyDeclaration("Id"), notNullValue());
+          assertThat(testGraph.getPropertyDeclaration("FromId"), notNullValue());
+          assertThat(testGraph.getPropertyDeclaration("ToId"), notNullValue());
 
-    assertEquals(testGraph.name(), "testGraph");
-    assertThat(testGraph.propertyDeclarations(), hasSize(3));
-    assertThat(testGraph.getPropertyDeclaration("Id"), notNullValue());
-    assertThat(testGraph.getPropertyDeclaration("FromId"), notNullValue());
-    assertThat(testGraph.getPropertyDeclaration("ToId"), notNullValue());
+          assertThat(testGraph.labels(), hasSize(2));
+          assertThat(testGraph.getLabel("Test"), notNullValue());
+          assertThat(testGraph.getLabel("t_simplePropertyGraph_EdgeTest"), notNullValue());
 
-    assertThat(testGraph.labels(), hasSize(2));
-    assertThat(testGraph.getLabel("Test"), notNullValue());
-    assertThat(testGraph.getLabel("EdgeTest"), notNullValue());
+          assertThat(testGraph.nodeTables(), hasSize(1));
+          assertThat(testGraph.getNodeTable("t_simplePropertyGraph_NodeTest"), notNullValue());
 
-    assertThat(testGraph.nodeTables(), hasSize(1));
-    assertThat(testGraph.getNodeTable("NodeTest"), notNullValue());
+          assertThat(testGraph.edgeTables(), hasSize(1));
+          assertThat(testGraph.getEdgeTable("t_simplePropertyGraph_EdgeTest"), notNullValue());
 
-    assertThat(testGraph.edgeTables(), hasSize(1));
-    assertThat(testGraph.getEdgeTable("EdgeTest"), notNullValue());
+          // --- Assertions for Node Table ---
+          GraphElementTable nodeTestTable =
+              testGraph.getNodeTable("t_simplePropertyGraph_NodeTest");
+          assertThat(nodeTestTable, notNullValue());
+          assertThat(nodeTestTable.name(), equalTo("t_simplePropertyGraph_NodeTest"));
+          assertThat(nodeTestTable.baseTableName(), equalTo("t_simplePropertyGraph_NodeTest"));
+          assertThat(nodeTestTable.kind(), equalTo(GraphElementTable.Kind.NODE));
+          assertIterableEquals(List.of("Id"), nodeTestTable.keyColumns());
 
-    // --- Assertions for Node Table ---
-    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
-    assertThat(nodeTestTable, notNullValue());
-    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
-    assertThat(nodeTestTable.baseTableName(), equalTo("NodeTest"));
-    assertThat(nodeTestTable.kind(), equalTo(GraphElementTable.Kind.NODE));
-    assertIterableEquals(List.of("Id"), nodeTestTable.keyColumns());
+          assertThat(nodeTestTable.labelToPropertyDefinitions(), hasSize(1));
+          GraphElementTable.LabelToPropertyDefinitions nodeTestLabel =
+              nodeTestTable.getLabelToPropertyDefinitions("Test");
+          assertThat(nodeTestLabel, notNullValue());
+          assertThat(nodeTestLabel.labelName, equalTo("Test"));
+          assertThat(nodeTestLabel.propertyDefinitions(), hasSize(1));
+          GraphElementTable.PropertyDefinition nodeTestIdProperty =
+              nodeTestLabel.getPropertyDefinition("Id");
+          assertThat(nodeTestIdProperty, notNullValue());
+          assertThat(nodeTestIdProperty.name, equalTo("Id"));
+          assertThat(nodeTestIdProperty.valueExpressionString, equalTo("Id"));
 
-    assertThat(nodeTestTable.labelToPropertyDefinitions(), hasSize(1));
-    GraphElementTable.LabelToPropertyDefinitions nodeTestLabel =
-        nodeTestTable.getLabelToPropertyDefinitions("Test");
-    assertThat(nodeTestLabel, notNullValue());
-    assertThat(nodeTestLabel.labelName, equalTo("Test"));
-    assertThat(nodeTestLabel.propertyDefinitions(), hasSize(1));
-    GraphElementTable.PropertyDefinition nodeTestIdProperty =
-        nodeTestLabel.getPropertyDefinition("Id");
-    assertThat(nodeTestIdProperty, notNullValue());
-    assertThat(nodeTestIdProperty.name, equalTo("Id"));
-    assertThat(nodeTestIdProperty.valueExpressionString, equalTo("Id"));
+          // --- Assertions for Edge Table ---
+          GraphElementTable edgeTestTable =
+              testGraph.getEdgeTable("t_simplePropertyGraph_EdgeTest");
+          assertThat(edgeTestTable, notNullValue());
+          assertThat(edgeTestTable.name(), equalTo("t_simplePropertyGraph_EdgeTest"));
+          assertThat(edgeTestTable.baseTableName(), equalTo("t_simplePropertyGraph_EdgeTest"));
+          assertThat(edgeTestTable.kind(), equalTo(GraphElementTable.Kind.EDGE));
+          assertIterableEquals(List.of("FromId", "ToId"), edgeTestTable.keyColumns());
 
-    // --- Assertions for Edge Table ---
-    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
-    assertThat(edgeTestTable, notNullValue());
-    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
-    assertThat(edgeTestTable.baseTableName(), equalTo("EdgeTest"));
-    assertThat(edgeTestTable.kind(), equalTo(GraphElementTable.Kind.EDGE));
-    assertIterableEquals(List.of("FromId", "ToId"), edgeTestTable.keyColumns());
+          assertThat(edgeTestTable.labelToPropertyDefinitions(), hasSize(1));
+          GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+              edgeTestTable.getLabelToPropertyDefinitions("t_simplePropertyGraph_EdgeTest");
+          assertThat(edgeTestLabel, notNullValue());
+          assertThat(edgeTestLabel.labelName, equalTo("t_simplePropertyGraph_EdgeTest"));
+          assertThat(edgeTestLabel.propertyDefinitions(), hasSize(2)); // FromId and ToId
 
-    assertThat(edgeTestTable.labelToPropertyDefinitions(), hasSize(1));
-    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
-        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
-    assertThat(edgeTestLabel, notNullValue());
-    assertThat(edgeTestLabel.labelName, equalTo("EdgeTest"));
-    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(2)); // FromId and ToId
+          GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+              edgeTestLabel.getPropertyDefinition("FromId");
+          assertThat(edgeTestFromIdProperty, notNullValue());
+          assertThat(edgeTestFromIdProperty.name, equalTo("FromId"));
+          assertThat(edgeTestFromIdProperty.valueExpressionString, equalTo("FromId"));
 
-    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
-        edgeTestLabel.getPropertyDefinition("FromId");
-    assertThat(edgeTestFromIdProperty, notNullValue());
-    assertThat(edgeTestFromIdProperty.name, equalTo("FromId"));
-    assertThat(edgeTestFromIdProperty.valueExpressionString, equalTo("FromId"));
+          GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+              edgeTestLabel.getPropertyDefinition("ToId");
+          assertThat(edgeTestToIdProperty, notNullValue());
+          assertThat(edgeTestToIdProperty.name, equalTo("ToId"));
+          assertThat(edgeTestToIdProperty.valueExpressionString, equalTo("ToId"));
 
-    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
-        edgeTestLabel.getPropertyDefinition("ToId");
-    assertThat(edgeTestToIdProperty, notNullValue());
-    assertThat(edgeTestToIdProperty.name, equalTo("ToId"));
-    assertThat(edgeTestToIdProperty.valueExpressionString, equalTo("ToId"));
+          // --- Assertions for Edge Table References ---
+          assertThat(
+              edgeTestTable.sourceNodeTable().nodeTableName,
+              equalTo("t_simplePropertyGraph_NodeTest"));
+          assertIterableEquals(List.of("Id"), edgeTestTable.sourceNodeTable().nodeKeyColumns);
 
-    // --- Assertions for Edge Table References ---
-    assertThat(edgeTestTable.sourceNodeTable().nodeTableName, equalTo("NodeTest"));
-    assertIterableEquals(List.of("Id"), edgeTestTable.sourceNodeTable().nodeKeyColumns);
+          assertIterableEquals(List.of("FromId"), edgeTestTable.sourceNodeTable().edgeKeyColumns);
 
-    assertIterableEquals(List.of("FromId"), edgeTestTable.sourceNodeTable().edgeKeyColumns);
-
-    assertThat(edgeTestTable.targetNodeTable().nodeTableName, equalTo("NodeTest"));
-    assertIterableEquals(List.of("Id"), edgeTestTable.targetNodeTable().nodeKeyColumns);
-    assertIterableEquals(List.of("ToId"), edgeTestTable.targetNodeTable().edgeKeyColumns);
+          assertThat(
+              edgeTestTable.targetNodeTable().nodeTableName,
+              equalTo("t_simplePropertyGraph_NodeTest"));
+          assertIterableEquals(List.of("Id"), edgeTestTable.targetNodeTable().nodeKeyColumns);
+          assertIterableEquals(List.of("ToId"), edgeTestTable.targetNodeTable().edgeKeyColumns);
+        });
   }
 
-  @Test
-  public void dynamicPropertyGraph() throws Exception {
+  private SharedTestCase dynamicPropertyGraph() {
     String nodeTableDef =
-        "CREATE TABLE NodeTest (\n"
+        "CREATE TABLE t_dynamicPropertyGraph_NodeTest (\n"
             + "  Id INT64 NOT NULL,\n"
             + "  DynamicLabelCol STRING(MAX)\n"
             + ") PRIMARY KEY(Id)";
     String edgeTableDef =
-        "CREATE TABLE EdgeTest (\n"
+        "CREATE TABLE t_dynamicPropertyGraph_EdgeTest (\n"
             + "  FromId INT64 NOT NULL,\n"
             + "  ToId INT64 NOT NULL,\n"
             + "  DynamicPropsCol JSON\n"
             + ") PRIMARY KEY(FromId, ToId)";
     String propertyGraphDef =
-        "CREATE PROPERTY GRAPH testGraph\n"
+        "CREATE PROPERTY GRAPH g_dynamicPropertyGraph_testGraph\n"
             + "  NODE TABLES(\n"
-            + "    NodeTest\n"
+            + "    t_dynamicPropertyGraph_NodeTest\n"
             + "      KEY(Id)\n"
             + "      LABEL Test PROPERTIES(\n"
             + "        Id)\n"
             // Add the DYNAMIC LABEL clause
             + "      DYNAMIC LABEL(DynamicLabelCol))\n"
             + "  EDGE TABLES(\n"
-            + "    EdgeTest\n"
+            + "    t_dynamicPropertyGraph_EdgeTest\n"
             + "      KEY(FromId, ToId)\n"
-            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
-            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      SOURCE KEY(FromId) REFERENCES t_dynamicPropertyGraph_NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES t_dynamicPropertyGraph_NodeTest(Id)\n"
             + "      DEFAULT LABEL PROPERTIES ALL COLUMNS\n"
             // Add the DYNAMIC PROPERTIES clause
             + "      DYNAMIC PROPERTIES(DynamicPropsCol))";
 
-    SPANNER_SERVER.createDatabase(
-        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
-    Ddl ddl = getDatabaseDdl();
+    return new SharedTestCase(
+        Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef),
+        ddl -> {
+          assertThat(ddl.table("t_dynamicPropertyGraph_NodeTest"), notNullValue());
 
-    assertThat(ddl.allTables(), hasSize(2));
-    assertThat(ddl.table("NodeTest"), notNullValue());
-    assertThat(ddl.propertyGraphs(), hasSize(1));
+          PropertyGraph testGraph = ddl.propertyGraph("g_dynamicPropertyGraph_testGraph");
 
-    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+          assertEquals(testGraph.name(), "g_dynamicPropertyGraph_testGraph");
+          assertThat(testGraph.propertyDeclarations(), hasSize(4));
 
-    assertEquals(testGraph.name(), "testGraph");
-    assertThat(testGraph.propertyDeclarations(), hasSize(4));
+          // --- Assertions for Node Table ---
+          GraphElementTable nodeTestTable =
+              testGraph.getNodeTable("t_dynamicPropertyGraph_NodeTest");
+          assertThat(nodeTestTable, notNullValue());
+          assertThat(nodeTestTable.name(), equalTo("t_dynamicPropertyGraph_NodeTest"));
+          // Assert that the dynamic label expression is correctly captured
+          assertThat(
+              nodeTestTable.dynamicLabelExpression().dynamicLabelExpression,
+              equalTo("DynamicLabelCol"));
 
-    // --- Assertions for Node Table ---
-    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
-    assertThat(nodeTestTable, notNullValue());
-    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
-    // Assert that the dynamic label expression is correctly captured
-    assertThat(
-        nodeTestTable.dynamicLabelExpression().dynamicLabelExpression, equalTo("DynamicLabelCol"));
+          // --- Assertions for Edge Table ---
+          GraphElementTable edgeTestTable =
+              testGraph.getEdgeTable("t_dynamicPropertyGraph_EdgeTest");
+          assertThat(edgeTestTable, notNullValue());
+          assertThat(edgeTestTable.name(), equalTo("t_dynamicPropertyGraph_EdgeTest"));
+          // Assert that the dynamic properties expression is correctly captured
+          assertThat(
+              edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
+              equalTo("DynamicPropsCol"));
 
-    // --- Assertions for Edge Table ---
-    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
-    assertThat(edgeTestTable, notNullValue());
-    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
-    // Assert that the dynamic properties expression is correctly captured
-    assertThat(
-        edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
-        equalTo("DynamicPropsCol"));
+          // Assertions for the edge's default label properties
+          GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+              edgeTestTable.getLabelToPropertyDefinitions("t_dynamicPropertyGraph_EdgeTest");
+          assertThat(edgeTestLabel, notNullValue());
+          // The number of properties for the default label now includes the new column
+          assertThat(
+              edgeTestLabel.propertyDefinitions(), hasSize(3)); // FromId, ToId, DynamicPropsCol
 
-    // Assertions for the edge's default label properties
-    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
-        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
-    assertThat(edgeTestLabel, notNullValue());
-    // The number of properties for the default label now includes the new column
-    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(3)); // FromId, ToId, DynamicPropsCol
+          GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+              edgeTestLabel.getPropertyDefinition("FromId");
+          assertThat(edgeTestFromIdProperty, notNullValue());
 
-    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
-        edgeTestLabel.getPropertyDefinition("FromId");
-    assertThat(edgeTestFromIdProperty, notNullValue());
+          GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+              edgeTestLabel.getPropertyDefinition("ToId");
+          assertThat(edgeTestToIdProperty, notNullValue());
 
-    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
-        edgeTestLabel.getPropertyDefinition("ToId");
-    assertThat(edgeTestToIdProperty, notNullValue());
-
-    GraphElementTable.PropertyDefinition edgeTestDynamicPropsProperty =
-        edgeTestLabel.getPropertyDefinition("DynamicPropsCol");
-    assertThat(edgeTestDynamicPropsProperty, notNullValue());
-    assertThat(edgeTestDynamicPropsProperty.name, equalTo("DynamicPropsCol"));
-    assertThat(edgeTestDynamicPropsProperty.valueExpressionString, equalTo("DynamicPropsCol"));
+          GraphElementTable.PropertyDefinition edgeTestDynamicPropsProperty =
+              edgeTestLabel.getPropertyDefinition("DynamicPropsCol");
+          assertThat(edgeTestDynamicPropsProperty, notNullValue());
+          assertThat(edgeTestDynamicPropsProperty.name, equalTo("DynamicPropsCol"));
+          assertThat(
+              edgeTestDynamicPropsProperty.valueExpressionString, equalTo("DynamicPropsCol"));
+        });
   }
 
-  @Test
-  public void simpleView() throws Exception {
+  private SharedTestCase simpleView() {
     String tableDef =
-        "CREATE TABLE Users ("
+        "CREATE TABLE t_simpleView_Users ("
             + " id INT64 NOT NULL,"
             + " name STRING(MAX),"
             + ") PRIMARY KEY (id)";
-    String viewDef = "CREATE VIEW Names SQL SECURITY INVOKER AS SELECT u.name FROM Users u";
+    String viewDef =
+        "CREATE VIEW v_simpleView_Names SQL SECURITY INVOKER AS SELECT u.name FROM t_simpleView_Users u";
 
-    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(tableDef, viewDef));
-    Ddl ddl = getDatabaseDdl();
+    return new SharedTestCase(
+        Arrays.asList(tableDef, viewDef),
+        ddl -> {
+          assertThat(ddl.table("t_simpleView_Users"), notNullValue());
+          assertThat(ddl.table("t_simpleView_uSers"), notNullValue());
 
-    assertThat(ddl.allTables(), hasSize(1));
-    assertThat(ddl.table("Users"), notNullValue());
-    assertThat(ddl.table("uSers"), notNullValue());
+          View view = ddl.view("v_simpleView_Names");
+          assertThat(view, notNullValue());
+          assertThat(ddl.view("v_simpleView_nAmes"), sameInstance(view));
 
-    assertThat(ddl.views(), hasSize(1));
-    View view = ddl.view("Names");
-    assertThat(view, notNullValue());
-    assertThat(ddl.view("nAmes"), sameInstance(view));
-
-    assertThat(view.query(), equalTo("SELECT u.name FROM Users u"));
+          assertThat(view.query(), equalTo("SELECT u.name FROM t_simpleView_Users u"));
+        });
   }
 
-  @Test
-  public void pgSimpleView() throws Exception {
+  private SharedTestCase pgSimpleView() {
     String tableDef =
-        "CREATE TABLE \"Users\" ("
+        "CREATE TABLE \"t_pgSimpleView_Users\" ("
             + " id bigint NOT NULL,"
             + " name character varying,"
             + " PRIMARY KEY (id)) ";
-    String viewDef = "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT name FROM \"Users\"";
+    String viewDef =
+        "CREATE VIEW \"v_pgSimpleView_Names\" SQL SECURITY INVOKER AS SELECT name FROM \"t_pgSimpleView_Users\"";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Arrays.asList(tableDef, viewDef));
-    Ddl ddl = getPgDatabaseDdl();
+    return new SharedTestCase(
+        Arrays.asList(tableDef, viewDef),
+        ddl -> {
+          assertThat(ddl.table("t_pgSimpleView_Users"), notNullValue());
+          assertThat(ddl.table("t_pgSimpleView_uSers"), notNullValue());
 
-    assertThat(ddl.allTables(), hasSize(1));
-    assertThat(ddl.table("Users"), notNullValue());
-    assertThat(ddl.table("uSers"), notNullValue());
+          View view = ddl.view("v_pgSimpleView_Names");
+          assertThat(view, notNullValue());
+          assertThat(ddl.view("v_pgSimpleView_nAmes"), sameInstance(view));
 
-    assertThat(ddl.views(), hasSize(1));
-    View view = ddl.view("Names");
-    assertThat(view, notNullValue());
-    assertThat(ddl.view("nAmes"), sameInstance(view));
-
-    assertThat(view.query(), equalTo("SELECT name FROM \"Users\""));
+          assertThat(view.query(), equalTo("SELECT name FROM \"t_pgSimpleView_Users\""));
+        });
   }
 
-  @Test
-  public void simpleUdf() throws Exception {
-    String namedSchemaDef = "CREATE SCHEMA s1";
-    String udfDef1 = "CREATE FUNCTION s1.foo() AS (1)";
+  private SharedTestCase simpleUdf() {
+    String namedSchemaDef = "CREATE SCHEMA s_simpleUdf";
+    String udfDef1 = "CREATE FUNCTION s_simpleUdf.u_simpleUdf_foo() AS (1)";
     String udfDef2 =
-        "CREATE FUNCTION s1.default_values("
+        "CREATE FUNCTION s_simpleUdf.u_simpleUdf_default_values("
             + "A STRING, "
             + "B STRING DEFAULT NULL, "
             + "C STRING DEFAULT 'NULL', "
             + "D STRING DEFAULT '') "
             + "RETURNS STRING AS (CONCAT(A, '::', B, '::', C, '::', D))";
+    String udfDef3 =
+        "CREATE FUNCTION s_simpleUdf.u_remote_udf(x INT64, y INT64) "
+            + "RETURNS INT64 NOT DETERMINISTIC LANGUAGE REMOTE "
+            + "OPTIONS ( endpoint = 'https://us-central1-myproject.cloudfunctions.net/myfunc', max_batching_rows = 50 )";
 
-    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2));
-    Ddl ddl = getDatabaseDdl();
+    return new SharedTestCase(
+        Arrays.asList(namedSchemaDef, udfDef1, udfDef2, udfDef3),
+        ddl -> {
+          assertThat(ddl.schema("s_simpleUdf"), notNullValue());
 
-    assertThat(ddl.schemas(), hasSize(1));
-    assertThat(ddl.schema("s1"), notNullValue());
+          Udf udf1 = ddl.udf("s_simpleUdf.u_simpleUdf_foo");
+          assertThat(udf1, notNullValue());
+          assertThat(ddl.udf("s_simpleUdf.u_simpleUdf_foo"), sameInstance(udf1));
 
-    assertThat(ddl.udfs(), hasSize(2));
-    Udf udf1 = ddl.udf("s1.foo");
-    assertThat(udf1, notNullValue());
-    assertThat(ddl.udf("S1.FOO"), sameInstance(udf1));
+          Udf udf2 = ddl.udf("s_simpleUdf.u_simpleUdf_default_values");
+          assertThat(udf2, notNullValue());
+          assertThat(ddl.udf("s_simpleUdf.u_simpleUdf_default_values"), sameInstance(udf2));
 
-    Udf udf2 = ddl.udf("s1.default_values");
-    assertThat(udf2, notNullValue());
-    assertThat(ddl.udf("S1.DEFault_values"), sameInstance(udf2));
+          Udf udf3 = ddl.udf("s1.remote_udf");
+          assertThat(udf3, notNullValue());
+          assertThat(ddl.udf("S1.REMOTE_UDF"), sameInstance(udf3));
 
-    assertThat(udf1.name(), equalTo("s1.foo"));
-    assertThat(udf1.type(), equalTo("INT64"));
-    assertThat(udf1.definition(), equalTo("1"));
-    assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(udf1.name(), equalTo("s_simpleUdf.u_simpleUdf_foo"));
+          assertThat(udf1.type(), equalTo("INT64"));
+          assertEquals(udf1.language(), "SQL");
+          assertThat(udf1.options(), empty());
+          assertThat(udf1.definition(), equalTo("1"));
+          assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
 
-    assertThat(udf2.name(), equalTo("s1.default_values"));
-    assertThat(udf2.type(), equalTo("STRING"));
-    assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
-    assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
-    assertThat(
-        udf2.parameters(),
-        hasItems(
-            UdfParameter.builder()
-                .functionSpecificName("s1.default_values")
-                .name("A")
-                .type("STRING")
-                .defaultExpression(null)
-                .autoBuild(),
-            UdfParameter.builder()
-                .functionSpecificName("s1.default_values")
-                .name("B")
-                .type("STRING")
-                .defaultExpression("NULL")
-                .autoBuild(),
-            UdfParameter.builder()
-                .functionSpecificName("s1.default_values")
-                .name("C")
-                .type("STRING")
-                .defaultExpression("'NULL'")
-                .autoBuild(),
-            UdfParameter.builder()
-                .functionSpecificName("s1.default_values")
-                .name("D")
-                .type("STRING")
-                .defaultExpression("''")
-                .autoBuild()));
+          assertThat(udf2.name(), equalTo("s_simpleUdf.u_simpleUdf_default_values"));
+          assertThat(udf2.type(), equalTo("STRING"));
+          assertEquals(udf2.language(), "SQL");
+          assertThat(udf2.options(), empty());
+          assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+          assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(
+              udf2.parameters(),
+              hasItems(
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_simpleUdf_default_values")
+                      .name("A")
+                      .type("STRING")
+                      .defaultExpression(null)
+                      .autoBuild(),
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_simpleUdf_default_values")
+                      .name("B")
+                      .type("STRING")
+                      .defaultExpression("NULL")
+                      .autoBuild(),
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_simpleUdf_default_values")
+                      .name("C")
+                      .type("STRING")
+                      .defaultExpression("'NULL'")
+                      .autoBuild(),
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_simpleUdf_default_values")
+                      .name("D")
+                      .type("STRING")
+                      .defaultExpression("''")
+                      .autoBuild()));
+          assertThat(udf3.name(), equalTo("s_simpleUdf.u_remote_udf"));
+          assertThat(udf3.type(), equalTo("INT64"));
+          assertEquals(udf3.language(), "REMOTE");
+          assertThat(
+              udf3.options(),
+              hasItems(
+                  "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
+                  "max_batching_rows=50"));
+          assertEquals(udf3.definition(), "");
+          assertEquals(udf3.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(
+              udf3.parameters(),
+              hasItems(
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_remote_udf")
+                      .name("x")
+                      .type("INT64")
+                      .defaultExpression(null)
+                      .autoBuild(),
+                  UdfParameter.builder()
+                      .functionSpecificName("s_simpleUdf.u_remote_udf")
+                      .name("y")
+                      .type("INT64")
+                      .defaultExpression(null)
+                      .autoBuild()));
+        });
   }
 
-  @Test
-  public void interleavedIn() throws Exception {
+  // TODO(b/485601737): Add PG UDFs.
+
+  private SharedTestCase interleavedIn() {
     List<String> statements =
         Arrays.asList(
-            " CREATE TABLE lEVEl0 ("
+            " CREATE TABLE t_interleavedIn_lEVEl0 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " val0                                  STRING(MAX),"
                 + " ) PRIMARY KEY (id0 ASC)",
-            " CREATE TABLE level1 ("
+            " CREATE TABLE t_interleavedIn_level1 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " id1                                   INT64 NOT NULL,"
                 + " val1                                  STRING(MAX),"
-                + " ) PRIMARY KEY (id0 ASC, id1 ASC), INTERLEAVE IN PARENT lEVEl0",
-            " CREATE TABLE level2 ("
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC), INTERLEAVE IN PARENT t_interleavedIn_lEVEl0",
+            " CREATE TABLE t_interleavedIn_level2 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " id1                                   INT64 NOT NULL,"
                 + " id2                                   INT64 NOT NULL,"
                 + " val2                                  STRING(MAX),"
-                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2 ASC), INTERLEAVE IN PARENT level1",
-            " CREATE TABLE level2_1 ("
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2 ASC), INTERLEAVE IN PARENT t_interleavedIn_level1",
+            " CREATE TABLE t_interleavedIn_level2_1 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " id1                                   INT64 NOT NULL,"
                 + " id2_1                                 INT64 NOT NULL,"
                 + " val2                                  STRING(MAX),"
                 + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC),"
-                + " INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
+                + " INTERLEAVE IN PARENT t_interleavedIn_level1 ON DELETE CASCADE");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          HashMultimap<Integer, String> levels = ddl.perLevelView();
+          // Since we use a shared database, level 0 will contain many other tables.
+          // Therefore, we only assert that our specific tables exist at the correct levels.
+          assertThat(levels.get(0), hasItems("t_interleavedin_level0"));
+          assertThat(levels.get(1), hasItems("t_interleavedin_level1"));
+          assertThat(levels.get(2), hasItems("t_interleavedin_level2", "t_interleavedin_level2_1"));
 
-    assertThat(ddl.allTables(), hasSize(4));
-    HashMultimap<Integer, String> levels = ddl.perLevelView();
-    assertThat(levels.get(0), hasSize(1));
-    assertThat(levels.get(1), hasSize(1));
-    assertThat(levels.get(2), hasSize(2));
-    assertThat(levels.get(3), hasSize(0));
-    assertThat(levels.get(4), hasSize(0));
-    assertThat(levels.get(5), hasSize(0));
-    assertThat(levels.get(6), hasSize(0));
-    assertThat(levels.get(7), hasSize(0));
-
-    assertThat(ddl.table("lEVEl0").interleaveInParent(), nullValue());
-    assertThat(ddl.table("level1").interleaveInParent(), equalTo("lEVEl0"));
-    assertThat(ddl.table("level2").interleaveInParent(), equalTo("level1"));
-    assertThat(ddl.table("level2").onDeleteCascade(), is(false));
-    assertThat(ddl.table("level2_1").interleaveInParent(), equalTo("level1"));
-    assertThat(ddl.table("level2_1").onDeleteCascade(), is(true));
+          assertThat(ddl.table("t_interleavedIn_lEVEl0").interleaveInParent(), nullValue());
+          assertThat(
+              ddl.table("t_interleavedIn_level1").interleaveInParent(),
+              equalTo("t_interleavedIn_lEVEl0"));
+          assertThat(
+              ddl.table("t_interleavedIn_level2").interleaveInParent(),
+              equalTo("t_interleavedIn_level1"));
+          assertThat(ddl.table("t_interleavedIn_level2").onDeleteCascade(), is(false));
+          assertThat(
+              ddl.table("t_interleavedIn_level2_1").interleaveInParent(),
+              equalTo("t_interleavedIn_level1"));
+          assertThat(ddl.table("t_interleavedIn_level2_1").onDeleteCascade(), is(true));
+        });
   }
 
-  @Test
-  public void pgInterleavedIn() throws Exception {
+  private SharedTestCase pgInterleavedIn() {
     List<String> statements =
         Arrays.asList(
-            " CREATE TABLE level0 ("
+            " CREATE TABLE \"t_pgInterleavedIn_level0\" ("
                 + " id0                                   bigint NOT NULL,"
                 + " val0                                  character varying,"
                 + " PRIMARY KEY (id0)"
                 + " )",
-            " CREATE TABLE level1 ("
+            " CREATE TABLE \"t_pgInterleavedIn_level1\" ("
                 + " id0                                   bigint NOT NULL,"
                 + " id1                                   bigint NOT NULL,"
                 + " val1                                  character varying,"
                 + " PRIMARY KEY (id0, id1)"
-                + " ) INTERLEAVE IN PARENT level0",
-            " CREATE TABLE level2 ("
+                + " ) INTERLEAVE IN PARENT \"t_pgInterleavedIn_level0\"",
+            " CREATE TABLE \"t_pgInterleavedIn_level2\" ("
                 + " id0                                   bigint NOT NULL,"
                 + " id1                                   bigint NOT NULL,"
                 + " id2                                   bigint NOT NULL,"
                 + " val2                                  character varying,"
                 + " PRIMARY KEY (id0, id1, id2)"
-                + " ) INTERLEAVE IN PARENT level1",
-            " CREATE TABLE level2_1 ("
+                + " ) INTERLEAVE IN PARENT \"t_pgInterleavedIn_level1\"",
+            " CREATE TABLE \"t_pgInterleavedIn_level2_1\" ("
                 + " id0                                   bigint NOT NULL,"
                 + " id1                                   bigint NOT NULL,"
                 + " id2_1                                 bigint NOT NULL,"
                 + " val2                                  character varying,"
                 + " PRIMARY KEY (id0, id1, id2_1)"
-                + " ) INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
+                + " ) INTERLEAVE IN PARENT \"t_pgInterleavedIn_level1\" ON DELETE CASCADE");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          HashMultimap<Integer, String> levels = ddl.perLevelView();
+          // Since we use a shared database, level 0 will contain many other tables.
+          // Therefore, we only assert that our specific tables exist at the correct levels.
+          assertThat(levels.get(0), hasItems("t_pginterleavedin_level0"));
+          assertThat(levels.get(1), hasItems("t_pginterleavedin_level1"));
+          assertThat(
+              levels.get(2), hasItems("t_pginterleavedin_level2", "t_pginterleavedin_level2_1"));
 
-    assertThat(ddl.allTables(), hasSize(4));
-    HashMultimap<Integer, String> levels = ddl.perLevelView();
-    assertThat(levels.get(0), hasSize(1));
-    assertThat(levels.get(1), hasSize(1));
-    assertThat(levels.get(2), hasSize(2));
-    assertThat(levels.get(3), hasSize(0));
-    assertThat(levels.get(4), hasSize(0));
-    assertThat(levels.get(5), hasSize(0));
-    assertThat(levels.get(6), hasSize(0));
-    assertThat(levels.get(7), hasSize(0));
-
-    assertThat(ddl.table("lEVEl0").interleaveInParent(), nullValue());
-    assertThat(ddl.table("level1").interleaveInParent(), equalTo("level0"));
-    assertThat(ddl.table("level2").interleaveInParent(), equalTo("level1"));
-    assertThat(ddl.table("level2").onDeleteCascade(), is(false));
-    assertThat(ddl.table("level2_1").interleaveInParent(), equalTo("level1"));
-    assertThat(ddl.table("level2_1").onDeleteCascade(), is(true));
+          assertThat(ddl.table("t_pgInterleavedIn_level0").interleaveInParent(), nullValue());
+          assertThat(
+              ddl.table("t_pgInterleavedIn_level1").interleaveInParent(),
+              equalTo("t_pgInterleavedIn_level0"));
+          assertThat(
+              ddl.table("t_pgInterleavedIn_level2").interleaveInParent(),
+              equalTo("t_pgInterleavedIn_level1"));
+          assertThat(ddl.table("t_pgInterleavedIn_level2").onDeleteCascade(), is(false));
+          assertThat(
+              ddl.table("t_pgInterleavedIn_level2_1").interleaveInParent(),
+              equalTo("t_pgInterleavedIn_level1"));
+          assertThat(ddl.table("t_pgInterleavedIn_level2_1").onDeleteCascade(), is(true));
+        });
   }
 
-  @Test
-  public void reserved() throws Exception {
+  private SharedTestCase reserved() {
     String statement =
-        "CREATE TABLE `where` ("
+        "CREATE TABLE `t_reserved_where` ("
             + " `JOIN`                                  STRING(MAX) NOT NULL,"
             + " `TABLE`                                 INT64,"
             + " `NULL`                                  INT64,"
             + " ) PRIMARY KEY (`NULL` ASC)";
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getDatabaseDdl();
-
-    assertThat(ddl.allTables(), hasSize(1));
-
-    assertThat(ddl.table("where"), notNullValue());
-    Table table = ddl.table("where");
-    assertThat(table.column("join"), notNullValue());
-    assertThat(table.column("table"), notNullValue());
-    assertThat(table.column("null"), notNullValue());
-
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_reserved_where"), notNullValue());
+          Table table = ddl.table("t_reserved_where");
+          assertThat(table.column("join"), notNullValue());
+          assertThat(table.column("table"), notNullValue());
+          assertThat(table.column("null"), notNullValue());
+        });
   }
 
-  @Test
-  public void pgReserved() throws Exception {
+  private SharedTestCase pgReserved() {
     String statement =
-        "CREATE TABLE \"where\" ("
+        "CREATE TABLE \"t_pgReserved_where\" ("
             + " \"JOIN\"                                  character varying NOT NULL,"
             + " \"TABLE\"                                 bigint,"
             + " \"NULL\"                                  bigint NOT NULL,"
             + " PRIMARY KEY (\"NULL\")"
             + " )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getPgDatabaseDdl();
-
-    assertThat(ddl.allTables(), hasSize(1));
-
-    assertThat(ddl.table("where"), notNullValue());
-    Table table = ddl.table("where");
-    assertThat(table.column("JOIN"), notNullValue());
-    assertThat(table.column("Table"), notNullValue());
-    assertThat(table.column("NULL"), notNullValue());
-
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_pgReserved_where"), notNullValue());
+          Table table = ddl.table("t_pgReserved_where");
+          assertThat(table.column("JOIN"), notNullValue());
+          assertThat(table.column("Table"), notNullValue());
+          assertThat(table.column("NULL"), notNullValue());
+        });
   }
 
-  @Test
-  public void indexes() throws Exception {
+  private SharedTestCase indexes() {
     // Prefix indexes to ensure ordering.
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `Users` ("
+            "CREATE TABLE `t_indexes_Users` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                            STRING(10),"
                 + " `last_name`                             STRING(MAX),"
                 + " `age`                                   INT64,"
                 + " ) PRIMARY KEY (`id` ASC)",
-            " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
-                + " `Users`(`last_name` ASC) STORING (`first_name`)",
-            " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC) WHERE age IS NOT NULL",
-            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)",
-            " CREATE TABLE `Logs` ("
+            " CREATE UNIQUE NULL_FILTERED INDEX `i_indexes_a_last_name_idx` ON "
+                + " `t_indexes_Users`(`last_name` ASC) STORING (`first_name`)",
+            " CREATE INDEX `i_indexes_b_age_idx` ON `t_indexes_Users`(`age` DESC) WHERE age IS NOT NULL",
+            " CREATE UNIQUE INDEX `i_indexes_c_first_name_idx` ON `t_indexes_Users`(`first_name` ASC)",
+            " CREATE TABLE `t_indexes_Logs` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `log_id`                                INT64 NOT NULL,"
                 + " `message`                               STRING(MAX),"
-                + " ) PRIMARY KEY (`id` ASC, `log_id` ASC), INTERLEAVE IN PARENT `Users`",
-            " CREATE INDEX `d_log_message_idx` ON `Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `Users`");
+                + " ) PRIMARY KEY (`id` ASC, `log_id` ASC), INTERLEAVE IN PARENT `t_indexes_Users`",
+            " CREATE INDEX `i_indexes_d_log_message_idx` ON `t_indexes_Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `t_indexes_Users`");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table usersTable = ddl.table("t_indexes_Users");
+          assertThat(usersTable, notNullValue());
+          assertThat(usersTable.indexes(), hasSize(3));
+          assertThat(
+              usersTable.indexes().get(0),
+              equalTo(
+                  "CREATE UNIQUE NULL_FILTERED INDEX `i_indexes_a_last_name_idx` ON `t_indexes_Users`(`last_name` ASC) STORING (`first_name`)"));
+          assertThat(
+              usersTable.indexes().get(1),
+              equalTo(
+                  "CREATE INDEX `i_indexes_b_age_idx` ON `t_indexes_Users`(`age` DESC) WHERE age IS NOT NULL"));
+          assertThat(
+              usersTable.indexes().get(2),
+              equalTo(
+                  "CREATE UNIQUE INDEX `i_indexes_c_first_name_idx` ON `t_indexes_Users`(`first_name` ASC)"));
+
+          Table logsTable = ddl.table("t_indexes_Logs");
+          assertThat(logsTable, notNullValue());
+          assertThat(logsTable.indexes(), hasSize(1));
+          assertThat(
+              logsTable.indexes().get(0),
+              equalTo(
+                  "CREATE INDEX `i_indexes_d_log_message_idx` ON `t_indexes_Logs`(`id` ASC, `message` ASC) WHERE message IS NOT NULL, INTERLEAVE IN `t_indexes_Users`"));
+        });
   }
 
-  @Test
-  public void searchIndexes() throws Exception {
+  private SharedTestCase searchIndexes() {
     // Prefix indexes to ensure ordering.
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `Users` ("
+            "CREATE TABLE `t_searchIndexes_Users` ("
                 + "  `UserId`                                INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`UserId` ASC)",
-            " CREATE TABLE `Messages` ("
+            " CREATE TABLE `t_searchIndexes_Messages` ("
                 + "  `UserId`                                INT64 NOT NULL,"
                 + "  `MessageId`                             INT64 NOT NULL,"
                 + "  `Subject`                               STRING(MAX),"
@@ -880,28 +1037,35 @@ public class InformationSchemaScannerIT {
                 + "  `Body`                                  STRING(MAX),"
                 + "  `Body_Tokens`                           TOKENLIST AS (TOKENIZE_FULLTEXT(`Body`)) HIDDEN,"
                 + "  `Data`                                  STRING(MAX),"
-                + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `Users`",
-            " CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
+                + " ) PRIMARY KEY (`UserId` ASC, `MessageId` ASC), INTERLEAVE IN PARENT `t_searchIndexes_Users`",
+            " CREATE SEARCH INDEX `i_searchIndexes_SearchIndex` ON `t_searchIndexes_Messages`(`Subject_Tokens` , `Body_Tokens` )"
                 + " STORING (`Data`)"
                 + " PARTITION BY `UserId`,"
-                + " INTERLEAVE IN `Users`"
+                + " INTERLEAVE IN `t_searchIndexes_Users`"
                 + " OPTIONS (sort_order_sharding=TRUE)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table messagesTable = ddl.table("t_searchIndexes_Messages");
+          assertThat(messagesTable, notNullValue());
+          assertThat(messagesTable.indexes(), hasSize(1));
+          assertThat(
+              messagesTable.indexes().get(0),
+              equalTo(
+                  "CREATE SEARCH INDEX `i_searchIndexes_SearchIndex` ON `t_searchIndexes_Messages`(`Subject_Tokens` , `Body_Tokens` ) STORING (`Data`) PARTITION BY `UserId`, INTERLEAVE IN `t_searchIndexes_Users` OPTIONS (sort_order_sharding=TRUE)"));
+        });
   }
 
-  @Test
-  public void pgSearchIndexes() throws Exception {
+  private SharedTestCase pgSearchIndexes() {
     // Prefix indexes to ensure ordering.
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE \"Users\" ("
+            "CREATE TABLE \"t_pgSearchIndexes_Users\" ("
                 + "  \"userid\"                              bigint NOT NULL,"
                 + "  PRIMARY KEY (\"userid\")"
                 + " )",
-            " CREATE TABLE \"Messages\" ("
+            " CREATE TABLE \"t_pgSearchIndexes_Messages\" ("
                 + "  \"userid\"                              bigint NOT NULL,"
                 + "  \"messageid\"                           bigint NOT NULL,"
                 + "  \"orderid\"                             bigint NOT NULL,"
@@ -912,954 +1076,1023 @@ public class InformationSchemaScannerIT {
                 + "  \"body_tokens\"                         spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(body)) STORED HIDDEN,"
                 + "  \"data\"                                character varying,"
                 + "   PRIMARY KEY (\"userid\", \"messageid\")"
-                + " ) INTERLEAVE IN PARENT \"Users\"",
-            " CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " ) INTERLEAVE IN PARENT \"t_pgSearchIndexes_Users\"",
+            " CREATE SEARCH INDEX \"i_pgSearchIndexes_SearchIndex\" ON \"t_pgSearchIndexes_Messages\"(\"subject_tokens\" , \"body_tokens\" )"
                 + " INCLUDE (\"data\")"
                 + " PARTITION BY \"userid\""
                 + " ORDER BY \"orderid\""
-                + " INTERLEAVE IN \"Users\""
+                + " INTERLEAVE IN \"t_pgSearchIndexes_Users\""
                 + " WITH (sort_order_sharding=TRUE)");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_pgSearchIndexes_Messages");
+          assertThat(
+              table.indexes(),
+              hasItems(
+                  "CREATE SEARCH INDEX \"i_pgSearchIndexes_SearchIndex\" ON \"t_pgSearchIndexes_Messages\"(\"subject_tokens\" , \"body_tokens\" ) INCLUDE (\"data\") PARTITION BY \"userid\" ORDER BY \"orderid\" INTERLEAVE IN \"t_pgSearchIndexes_Users\" WITH (sort_order_sharding=TRUE)"));
+        });
   }
 
-  @Test
-  public void vectorIndexes() throws Exception {
+  private SharedTestCase vectorIndexes() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `Base` ("
+            "CREATE TABLE `t_vectorIndexes_Base` ("
                 + " `K`                                     INT64,"
                 + " `V`                                     INT64,"
                 + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
                 + " ) PRIMARY KEY (`K` ASC)",
-            " CREATE VECTOR INDEX `VI` ON `Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
+            " CREATE VECTOR INDEX `i_vectorIndexes_VI` ON `t_vectorIndexes_Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
                 + " OPTIONS (distance_type=\"COSINE\")");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_vectorIndexes_Base");
+          assertThat(
+              table.indexes(),
+              hasItems(
+                  "CREATE VECTOR INDEX `i_vectorIndexes_VI` ON `t_vectorIndexes_Base`(`Embeddings` ) WHERE Embeddings IS NOT NULL OPTIONS (distance_type=\"COSINE\")"));
+        });
   }
 
   // CREATE INDEX vector_index ON Base USING ScaNN (embedding_column)
   // INCLUDE (v1, v2) WITH (distance_type = 'COSINE', tree_depth = 3)
   // WHERE (embedding_column IS NOT NULL);
-  @Test
-  public void pgVectorIndexes() throws Exception {
+  private SharedTestCase pgVectorIndexes() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE \"Base\" ("
+            "CREATE TABLE \"t_pgVectorIndexes_Base\" ("
                 + " \"K\"                                     bigint NOT NULL,"
                 + " \"V\"                                     bigint,"
                 + " \"Embeddings\"                            double precision[] vector length 128,"
                 + " PRIMARY KEY (\"K\")"
                 + " )",
-            " CREATE INDEX \"VI\" ON \"Base\" USING ScaNN (\"Embeddings\" )"
+            " CREATE INDEX \"i_pgVectorIndexes_VI\" ON \"t_pgVectorIndexes_Base\" USING ScaNN (\"Embeddings\" )"
                 + " WITH (distance_type='COSINE') WHERE \"Embeddings\" IS NOT NULL");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_pgVectorIndexes_Base");
+          assertThat(
+              table.indexes(),
+              hasItems(
+                  "CREATE INDEX \"i_pgVectorIndexes_VI\" ON \"t_pgVectorIndexes_Base\" USING ScaNN (\"Embeddings\" ) WITH (distance_type='COSINE') WHERE \"Embeddings\" IS NOT NULL"));
+        });
   }
 
-  @Test
-  public void pgIndexes() throws Exception {
+  private SharedTestCase pgIndexes() {
     // Prefix indexes to ensure ordering.
     // Unique index is implicitly null-filtered.
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE \"Users\" ("
+            "CREATE TABLE \"t_pgIndexes_Users\" ("
                 + " \"id\"                                    bigint NOT NULL,"
                 + " \"first_name\"                            character varying(10),"
                 + " \"last_name\"                             character varying,"
                 + " \"AGE\"                                   bigint,"
                 + " PRIMARY KEY (\"id\")"
                 + " )",
-            " CREATE UNIQUE INDEX \"a_last_name_idx\" ON  \"Users\"(\"last_name\" ASC) INCLUDE"
+            " CREATE UNIQUE INDEX \"i_pgIndexes_a_last_name_idx\" ON  \"t_pgIndexes_Users\"(\"last_name\" ASC) INCLUDE"
                 + " (\"first_name\") WHERE first_name IS NOT NULL AND last_name IS NOT"
                 + " NULL",
-            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"id\" ASC, \"AGE\" DESC) INTERLEAVE IN"
-                + " \"Users\" WHERE \"AGE\" IS NOT NULL",
-            " CREATE UNIQUE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC) WHERE"
+            " CREATE INDEX \"i_pgIndexes_b_age_idx\" ON \"t_pgIndexes_Users\"(\"id\" ASC, \"AGE\" DESC) INTERLEAVE IN"
+                + " \"t_pgIndexes_Users\" WHERE \"AGE\" IS NOT NULL",
+            " CREATE UNIQUE INDEX \"i_pgIndexes_c_first_name_idx\" ON \"t_pgIndexes_Users\"(\"first_name\" ASC) WHERE"
                 + " first_name IS NOT NULL",
-            " CREATE INDEX \"null_ordering_idx\" ON \"Users\"(\"id\" ASC NULLS FIRST,"
+            " CREATE INDEX \"i_pgIndexes_null_ordering_idx\" ON \"t_pgIndexes_Users\"(\"id\" ASC NULLS FIRST,"
                 + " \"first_name\" ASC, \"last_name\" DESC, \"AGE\" DESC NULLS LAST)");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table usersTable = ddl.table("t_pgIndexes_Users");
+          assertThat(usersTable, notNullValue());
+          assertThat(usersTable.indexes(), hasSize(4));
+          assertThat(
+              usersTable.indexes().get(0),
+              equalTo(
+                  "CREATE UNIQUE INDEX \"i_pgIndexes_a_last_name_idx\" ON \"t_pgIndexes_Users\"(\"last_name\" ASC) INCLUDE (\"first_name\") WHERE first_name IS NOT NULL AND last_name IS NOT NULL"));
+          assertThat(
+              usersTable.indexes().get(1),
+              equalTo(
+                  "CREATE INDEX \"i_pgIndexes_b_age_idx\" ON \"t_pgIndexes_Users\"(\"id\" ASC, \"AGE\" DESC) INTERLEAVE IN \"t_pgIndexes_Users\" WHERE \"AGE\" IS NOT NULL"));
+          assertThat(
+              usersTable.indexes().get(2),
+              equalTo(
+                  "CREATE UNIQUE INDEX \"i_pgIndexes_c_first_name_idx\" ON \"t_pgIndexes_Users\"(\"first_name\" ASC) WHERE first_name IS NOT NULL"));
+          assertThat(
+              usersTable.indexes().get(3),
+              equalTo(
+                  "CREATE INDEX \"i_pgIndexes_null_ordering_idx\" ON \"t_pgIndexes_Users\"(\"id\" ASC NULLS FIRST, \"first_name\" ASC, \"last_name\" DESC, \"AGE\" DESC NULLS LAST)"));
+        });
   }
 
-  @Test
-  public void foreignKeys() throws Exception {
+  private SharedTestCase foreignKeys() {
     List<String> dbCreationStatements =
         Arrays.asList(
-            "CREATE TABLE `Ref` ("
+            "CREATE TABLE `t_foreignKeys_Ref` ("
                 + " `id1`                               INT64 NOT NULL,"
                 + " `id2`                               INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`id1` ASC, `id2` ASC)",
-            " CREATE TABLE `Tab` ("
+            " CREATE TABLE `t_foreignKeys_Tab` ("
                 + " `key`                               INT64 NOT NULL,"
                 + " `id1`                               INT64 NOT NULL,"
                 + " `id2`                               INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`key` ASC)",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id2`, `id1`)",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE ENFORCED",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) NOT ENFORCED",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
+            " ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `t_foreignKeys_Ref` (`id2`, `id1`)",
+            " ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_2` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) ON DELETE CASCADE ENFORCED",
+            " ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_3` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) NOT ENFORCED",
+            " ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_4` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
 
-    List<String> dbVerificationStatements =
-        Arrays.asList(
-            "CREATE TABLE `Ref` ("
-                + " `id1`                               INT64 NOT NULL,"
-                + " `id2`                               INT64 NOT NULL,"
-                + " ) PRIMARY KEY (`id1` ASC, `id2` ASC)",
-            " CREATE TABLE `Tab` ("
-                + " `key`                               INT64 NOT NULL,"
-                + " `id1`                               INT64 NOT NULL,"
-                + " `id2`                               INT64 NOT NULL,"
-                + " ) PRIMARY KEY (`key` ASC)",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
-                // Unspecified DELETE action defaults to "NO ACTION"
-                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION",
-            // "ENFORCED" keyword is dropped.
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED",
-            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
-
-    SPANNER_SERVER.createDatabase(dbId, dbCreationStatements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(
-        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
+    return new SharedTestCase(
+        dbCreationStatements,
+        ddl -> {
+          Table tabTable = ddl.table("t_foreignKeys_Tab");
+          assertThat(tabTable, notNullValue());
+          assertThat(tabTable.foreignKeys(), hasSize(4));
+          assertThat(
+              tabTable.foreignKeys(),
+              hasItems(
+                  "ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk` FOREIGN KEY (`id1`, `id2`) REFERENCES `t_foreignKeys_Ref` (`id2`, `id1`) ON DELETE NO ACTION",
+                  "ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_2` FOREIGN KEY (`id1`, `id2`) REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) ON DELETE CASCADE",
+                  "ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_3` FOREIGN KEY (`id1`, `id2`) REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED",
+                  "ALTER TABLE `t_foreignKeys_Tab` ADD CONSTRAINT `c_foreignKeys_fk_4` FOREIGN KEY (`id1`, `id2`) REFERENCES `t_foreignKeys_Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED"));
+        });
   }
 
-  @Test
-  public void pgForeignKeys() throws Exception {
+  private SharedTestCase pgForeignKeys() {
     List<String> dbCreationStatements =
         Arrays.asList(
-            "CREATE TABLE \"Ref\" ("
+            "CREATE TABLE \"t_pgForeignKeys_Ref\" ("
                 + " \"id1\"                               bigint NOT NULL,"
                 + " \"id2\"                               bigint NOT NULL,"
                 + " PRIMARY KEY (\"id1\", \"id2\")"
                 + " )",
-            " CREATE TABLE \"Tab\" ("
+            " CREATE TABLE \"t_pgForeignKeys_Tab\" ("
                 + " \"key\"                               bigint NOT NULL,"
                 + " \"id1\"                               bigint NOT NULL,"
                 + " \"id2\"                               bigint NOT NULL,"
                 + " PRIMARY KEY (\"key\")"
                 + " )",
-            " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
-                + " REFERENCES \"Ref\" (\"id2\", \"id1\")");
-    List<String> dbVerificationStatements =
-        Arrays.asList(
-            "CREATE TABLE \"Ref\" ("
-                + " \"id1\"                               bigint NOT NULL,"
-                + " \"id2\"                               bigint NOT NULL,"
-                + " PRIMARY KEY (\"id1\", \"id2\")"
-                + " )",
-            " CREATE TABLE \"Tab\" ("
-                + " \"key\"                               bigint NOT NULL,"
-                + " \"id1\"                               bigint NOT NULL,"
-                + " \"id2\"                               bigint NOT NULL,"
-                + " PRIMARY KEY (\"key\")"
-                + " )",
-            " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
-                // Unspecified DELETE action defaults to "NO ACTION"
-                + " REFERENCES \"Ref\" (\"id2\", \"id1\") ON DELETE NO ACTION");
+            " ALTER TABLE \"t_pgForeignKeys_Tab\" ADD CONSTRAINT \"c_pgForeignKeys_fk\" FOREIGN KEY (\"id1\", \"id2\")"
+                + " REFERENCES \"t_pgForeignKeys_Ref\" (\"id2\", \"id1\")");
 
-    SPANNER_SERVER.createPgDatabase(dbId, dbCreationStatements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(
-        ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", dbVerificationStatements)));
+    return new SharedTestCase(
+        dbCreationStatements,
+        ddl -> {
+          Table pgTabTable = ddl.table("t_pgForeignKeys_Tab");
+          assertThat(pgTabTable, notNullValue());
+          assertThat(pgTabTable.foreignKeys(), hasSize(1));
+          assertThat(
+              pgTabTable.foreignKeys(),
+              hasItems(
+                  "ALTER TABLE \"t_pgForeignKeys_Tab\" ADD CONSTRAINT \"c_pgForeignKeys_fk\" FOREIGN KEY (\"id1\", \"id2\") REFERENCES \"t_pgForeignKeys_Ref\" (\"id2\", \"id1\") ON DELETE NO ACTION"));
+        });
   }
 
-  // TODO: enable this test once CHECK constraints are enabled
-  // @Test
-  public void checkConstraints() throws Exception {
+  private SharedTestCase checkConstraints() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `T` ("
+            "CREATE TABLE `t_checkConstraints_T` ("
                 + " `id`     INT64 NOT NULL,"
                 + " `A`      INT64 NOT NULL,"
-                + " CONSTRAINT `ck` CHECK(A>0),"
+                + " CONSTRAINT `c_checkConstraints_ck` CHECK(A>0),"
                 + " ) PRIMARY KEY (`id` ASC)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_checkConstraints_T");
+          assertThat(table, notNullValue());
+          assertThat(
+              table.checkConstraints(), hasItems("CONSTRAINT `c_checkConstraints_ck` CHECK (A>0)"));
+        });
   }
 
-  @Test
-  public void pgCheckConstraints() throws Exception {
+  private SharedTestCase pgCheckConstraints() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE \"T\" ("
+            "CREATE TABLE \"t_pgCheckConstraints_T\" ("
                 + " \"id\"     bigint NOT NULL,"
                 + " \"A\"      bigint NOT NULL,"
-                + " CONSTRAINT \"ck\" CHECK ((\"A\" > '0'::bigint)),"
+                + " CONSTRAINT \"c_pgCheckConstraints_ck\" CHECK ((\"A\" > '0'::bigint)),"
                 + " PRIMARY KEY (\"id\")"
                 + " )");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table pgTable = ddl.table("t_pgCheckConstraints_T");
+          assertThat(pgTable, notNullValue());
+          assertThat(
+              pgTable.checkConstraints(),
+              hasItems("CONSTRAINT \"c_pgCheckConstraints_ck\" CHECK ((\"A\" > '0'::bigint))"));
+        });
   }
 
-  @Test
-  public void commitTimestamp() throws Exception {
+  private SharedTestCase commitTimestamp() {
     String statement =
-        "CREATE TABLE `Users` ("
+        "CREATE TABLE `t_commitTimestamp_Users` ("
             + " `id`                                    INT64 NOT NULL,"
             + " `birthday`                              TIMESTAMP NOT NULL "
             + " OPTIONS (allow_commit_timestamp=TRUE),"
             + " ) PRIMARY KEY (`id` ASC)";
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_commitTimestamp_Users"), notNullValue());
+          assertThat(
+              ddl.table("t_commitTimestamp_Users").column("birthday").columnOptions(),
+              hasItems("allow_commit_timestamp=TRUE"));
+        });
   }
 
-  @Test
-  public void pgCommitTimestamp() throws Exception {
+  private SharedTestCase pgCommitTimestamp() {
     String statement =
-        "CREATE TABLE \"Users\" ("
+        "CREATE TABLE \"t_pgCommitTimestamp_Users\" ("
             + " \"id\"                                    bigint NOT NULL,"
             + " \"birthday\"                              spanner.commit_timestamp NOT NULL,"
             + " PRIMARY KEY (\"id\") )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_pgCommitTimestamp_Users"), notNullValue());
+          assertThat(
+              ddl.table("t_pgCommitTimestamp_Users").column("birthday").type().toString(),
+              equalTo("PG_SPANNER_COMMIT_TIMESTAMP"));
+        });
   }
 
-  // TODO: enable this test once generated columns are supported.
-  // @Test
-  public void generatedColumns() throws Exception {
+  private SharedTestCase generatedColumns() {
     String statement =
-        "CREATE TABLE `T` ("
+        "CREATE TABLE `t_generatedColumns_T` ("
             + " `id`                                     INT64 NOT NULL,"
             + " `generated`                              INT64 NOT NULL AS (`id`) STORED, "
             + " ) PRIMARY KEY (`id` ASC)";
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_generatedColumns_T"), notNullValue());
+          assertThat(
+              ddl.table("t_generatedColumns_T").column("generated").generationExpression(),
+              equalTo("`id`"));
+        });
   }
 
-  @Test
-  public void pgGeneratedColumns() throws Exception {
+  private SharedTestCase pgGeneratedColumns() {
     String statement =
-        "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
+        "CREATE TABLE \"t_pgGeneratedColumns_T\" ( \"id\"                     bigint NOT NULL,"
             + " \"generated_stored\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
             + " \"generated_virtual\" bigint GENERATED ALWAYS AS ((id / '1'::bigint)) VIRTUAL, "
             + " PRIMARY KEY (\"id\") )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          assertThat(ddl.table("t_pgGeneratedColumns_T"), notNullValue());
+          assertThat(
+              ddl.table("t_pgGeneratedColumns_T").column("generated_stored").generationExpression(),
+              equalTo("(id / '1'::bigint)"));
+          assertThat(
+              ddl.table("t_pgGeneratedColumns_T")
+                  .column("generated_virtual")
+                  .generationExpression(),
+              equalTo("(id / '1'::bigint)"));
+        });
   }
 
-  @Test
-  public void defaultColumns() throws Exception {
+  private SharedTestCase defaultColumns() {
     String statement =
-        "CREATE TABLE `T` ("
+        "CREATE TABLE `t_defaultColumns_T` ("
             + " `id`                                     INT64 NOT NULL,"
             + " `generated`                              INT64 NOT NULL DEFAULT (10), "
             + " ) PRIMARY KEY (`id` ASC)";
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          Table table = ddl.table("t_defaultColumns_T");
+          assertThat(table.column("generated").defaultExpression(), equalTo("10"));
+        });
   }
 
-  @Test
-  public void pgDefaultColumns() throws Exception {
+  private SharedTestCase pgDefaultColumns() {
     String statement =
-        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+        "CREATE TABLE \"t_pgDefaultColumns_T\" ( \"id\"                       bigint NOT NULL,"
             + " \"generated\"                              bigint NOT NULL DEFAULT '10'::bigint,"
             + " PRIMARY KEY (\"id\") )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          Table table = ddl.table("t_pgDefaultColumns_T");
+          assertThat(table.column("generated").defaultExpression(), equalTo("'10'::bigint"));
+        });
   }
 
-  @Test
-  public void onUpdateColumns() throws Exception {
+  private SharedTestCase onUpdateColumns() {
     String statement =
-        "CREATE TABLE `T` ("
+        "CREATE TABLE `t_onUpdateColumns_T` ("
             + " `id` INT64 NOT NULL,"
             + " `on_update` TIMESTAMP DEFAULT (PENDING_COMMIT_TIMESTAMP()) "
             + "    ON UPDATE (PENDING_COMMIT_TIMESTAMP()) "
             + "    OPTIONS (allow_commit_timestamp=TRUE),"
             + " ) PRIMARY KEY (`id` ASC)";
 
-    SPANNER_SERVER.createDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          Table table = ddl.table("t_onUpdateColumns_T");
+          assertThat(
+              table.column("on_update").onUpdateExpression(),
+              equalTo("PENDING_COMMIT_TIMESTAMP()"));
+        });
   }
 
-  @Test
-  public void pgOnUpdateColumns() throws Exception {
+  private SharedTestCase pgOnUpdateColumns() {
     String statement =
-        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+        "CREATE TABLE \"t_pgOnUpdateColumns_T\" ( \"id\"                       bigint NOT NULL,"
             + " \"on_update\" SPANNER.COMMIT_TIMESTAMP "
             + "    DEFAULT (SPANNER.PENDING_COMMIT_TIMESTAMP()) "
             + "    ON UPDATE (SPANNER.PENDING_COMMIT_TIMESTAMP()),"
             + " PRIMARY KEY (\"id\") )";
 
-    SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+    return new SharedTestCase(
+        Collections.singletonList(statement),
+        ddl -> {
+          Table table = ddl.table("t_pgOnUpdateColumns_T");
+          assertThat(
+              table.column("on_update").onUpdateExpression(),
+              equalTo("spanner.pending_commit_timestamp()"));
+        });
   }
 
-  @Test
-  public void identityColumns() throws Exception {
+  private SharedTestCase identityColumns() {
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE `"
-                + dbId
+                + sharedSpannerResourceManager.getDatabaseId()
                 + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )",
-            "CREATE TABLE `T` ("
+            "CREATE TABLE `t_identityColumns_T` ("
                 + " `id` INT64 NOT NULL GENERATED BY DEFAULT AS IDENTITY,"
                 + " `non_key_col` INT64 NOT NULL GENERATED BY DEFAULT AS IDENTITY (BIT_REVERSED_POSITIVE),"
                 + " ) PRIMARY KEY (`id` ASC)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_identityColumns_T");
+          assertThat(table.column("non_key_col").sequenceKind(), equalTo("bit_reversed_positive"));
+        });
   }
 
-  @Test
-  public void pgIdentityColumns() throws Exception {
+  private SharedTestCase pgIdentityColumns() {
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE \""
-                + dbId
+                + sharedPgSpannerResourceManager.getDatabaseId()
                 + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'",
-            "CREATE TABLE \"T\" ("
+            "CREATE TABLE \"t_pgIdentityColumns_T\" ("
                 + " \"id\" bigint NOT NULL GENERATED BY DEFAULT AS IDENTITY,"
                 + " \"non_key_col\" bigint NOT NULL GENERATED BY DEFAULT AS IDENTITY (BIT_REVERSED_POSITIVE),"
                 + " PRIMARY KEY (\"id\") )");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          Table table = ddl.table("t_pgIdentityColumns_T");
+          assertThat(table.column("non_key_col").sequenceKind(), equalTo("bit_reversed_positive"));
+        });
   }
 
-  @Test
-  public void databaseOptions() throws Exception {
+  private SharedTestCase databaseOptions() {
     List<String> statements =
         Arrays.asList(
-            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( version_retention_period = \"5d\" )\n",
-            "CREATE TABLE `Users` ("
+            "ALTER DATABASE `"
+                + sharedSpannerResourceManager.getDatabaseId()
+                + "` SET OPTIONS ( version_retention_period = \"5d\" )\n",
+            "CREATE TABLE `t_databaseOptions_Users` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                            STRING(10),"
                 + " `last_name`                             STRING(MAX),"
                 + " `age`                                   INT64,"
                 + " ) PRIMARY KEY (`id` ASC)",
-            " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
-                + " `Users`(`last_name` ASC) STORING (`first_name`)",
-            " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
-            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
+            " CREATE UNIQUE NULL_FILTERED INDEX `i_databaseOptions_a_last_name_idx` ON "
+                + " `t_databaseOptions_Users`(`last_name` ASC) STORING (`first_name`)",
+            " CREATE INDEX `i_databaseOptions_b_age_idx` ON `t_databaseOptions_Users`(`age` DESC)",
+            " CREATE UNIQUE INDEX `i_databaseOptions_c_first_name_idx` ON `t_databaseOptions_Users`(`first_name` ASC)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String alterStatement = statements.get(0);
-    statements.set(0, alterStatement.replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.databaseOptions().isEmpty(), is(false));
+          assertThat(
+              ddl.databaseOptions().stream().map(Object::toString).collect(Collectors.toList()),
+              hasItem(
+                  "option_name: \"version_retention_period\"\noption_type: \"STRING\"\noption_value: \"5d\"\n"));
+        });
   }
 
-  @Test
-  public void pgDatabaseOptions() throws Exception {
+  private SharedTestCase pgDatabaseOptions() {
     List<String> statements =
         Arrays.asList(
-            "ALTER DATABASE \"" + dbId + "\" SET spanner.version_retention_period = '5d'\n",
-            "CREATE TABLE \"Users\" ("
+            "ALTER DATABASE \""
+                + sharedPgSpannerResourceManager.getDatabaseId()
+                + "\" SET spanner.version_retention_period = '5d'\n",
+            "CREATE TABLE \"t_pgDatabaseOptions_Users\" ("
                 + " \"id\"                                    bigint NOT NULL,"
                 + " \"first_name\"                            character varying(10),"
                 + " \"last_name\"                             character varying,"
                 + " \"age\"                                   bigint,"
                 + " PRIMARY KEY (\"id\")"
                 + " ) ",
-            " CREATE INDEX \"a_last_name_idx\" ON "
-                + " \"Users\"(\"last_name\" ASC) INCLUDE (\"first_name\")",
-            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"age\" DESC)",
-            " CREATE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC)");
+            " CREATE INDEX \"i_pgDatabaseOptions_a_last_name_idx\" ON "
+                + " \"t_pgDatabaseOptions_Users\"(\"last_name\" ASC) INCLUDE (\"first_name\")",
+            " CREATE INDEX \"i_pgDatabaseOptions_b_age_idx\" ON \"t_pgDatabaseOptions_Users\"(\"age\" DESC)",
+            " CREATE INDEX \"i_pgDatabaseOptions_c_first_name_idx\" ON \"t_pgDatabaseOptions_Users\"(\"first_name\" ASC)");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    String alterStatement = statements.get(0);
-    statements.set(0, alterStatement.replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.databaseOptions().isEmpty(), is(false));
+          assertThat(
+              ddl.databaseOptions().stream().map(Object::toString).collect(Collectors.toList()),
+              hasItem(
+                  "option_name: \"version_retention_period\"\noption_type: \"character varying\"\noption_value: \"5d\"\n"));
+        });
   }
 
-  @Test
-  public void changeStreams() throws Exception {
+  private SharedTestCase changeStreams() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE `Account` ("
+            "CREATE TABLE `t_changeStreams_Account` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `balanceId`                             INT64 NOT NULL,"
                 + " `balance`                               FLOAT64 NOT NULL,"
                 + " ) PRIMARY KEY (`id` ASC)",
-            " CREATE TABLE `Users` ("
+            " CREATE TABLE `t_changeStreams_Users` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                            STRING(10),"
                 + " `last_name`                             STRING(MAX),"
                 + " `age`                                   INT64,"
                 + " ) PRIMARY KEY (`id` ASC)",
-            " CREATE CHANGE STREAM `ChangeStreamAll` FOR ALL"
+            " CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamAll` FOR ALL"
                 + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")",
-            " CREATE CHANGE STREAM `ChangeStreamEmpty` OPTIONS (retention_period=\"24h\")",
-            " CREATE CHANGE STREAM `ChangeStreamKeyColumns` FOR `Account`(), `Users`()",
-            " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
-                + " FOR `Account`, `Users`(`first_name`, `last_name`)");
+            " CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamEmpty` OPTIONS (retention_period=\"24h\")",
+            " CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamKeyColumns` FOR `t_changeStreams_Account`(), `t_changeStreams_Users`()",
+            " CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamTableColumns`"
+                + " FOR `t_changeStreams_Account`, `t_changeStreams_Users`(`first_name`, `last_name`)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.changeStreams().isEmpty(), is(false));
+          List<String> changeStreamStrings =
+              ddl.changeStreams().stream().map(Object::toString).collect(Collectors.toList());
+          assertThat(
+              changeStreamStrings,
+              hasItems(
+                  "CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamAll`\n\tFOR ALL\n\tOPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")",
+                  "CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamEmpty`\n\tOPTIONS (retention_period=\"24h\")",
+                  "CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamKeyColumns`\n\tFOR `t_changeStreams_Account`(), `t_changeStreams_Users`()",
+                  "CREATE CHANGE STREAM `cs_changeStreams_ChangeStreamTableColumns`\n\tFOR `t_changeStreams_Account`, `t_changeStreams_Users`(`first_name`, `last_name`)"));
+        });
   }
 
-  // TODO: Enable the test once change streams are supported in PG.
-  // @Test
-  public void pgChangeStreams() throws Exception {
+  private SharedTestCase pgChangeStreams() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE \"Account\" ("
+            "CREATE TABLE \"t_pgChangeStreams_Account\" ("
                 + " \"id\"                                    bigint NOT NULL,"
                 + " \"balanceId\"                             bigint NOT NULL,"
                 + " \"balance\"                               double precision NOT NULL,"
                 + " PRIMARY KEY (\"id\")"
                 + " )",
-            " CREATE TABLE \"Users\" ("
+            " CREATE TABLE \"t_pgChangeStreams_Users\" ("
                 + " \"id\"                                    bigint NOT NULL,"
                 + " \"first_name\"                            character varying(10),"
                 + " \"last_name\"                             character varying,"
                 + " \"age\"                                   bigint,"
                 + " PRIMARY KEY (\"id\")"
                 + " )",
-            " CREATE CHANGE STREAM \"ChangeStreamAll\" FOR ALL"
+            " CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamAll\" FOR ALL"
                 + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')",
-            " CREATE CHANGE STREAM \"ChangeStreamEmpty\" WITH (retention_period='24h')",
-            " CREATE CHANGE STREAM \"ChangeStreamKeyColumns\" FOR \"Account\"(), \"Users\"()",
-            " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
-                + " FOR \"Account\", \"Users\"(\"first_name\", \"last_name\")");
+            " CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamEmpty\" WITH (retention_period='24h')",
+            " CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamKeyColumns\" FOR \"t_pgChangeStreams_Account\"(), \"t_pgChangeStreams_Users\"()",
+            " CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamTableColumns\""
+                + " FOR \"t_pgChangeStreams_Account\", \"t_pgChangeStreams_Users\"(\"first_name\", \"last_name\")");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.changeStreams().isEmpty(), is(false));
+          List<String> pgChangeStreamStrings =
+              ddl.changeStreams().stream().map(Object::toString).collect(Collectors.toList());
+          assertThat(
+              pgChangeStreamStrings,
+              hasItems(
+                  "CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamAll\"\n\tFOR ALL\n\tWITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')",
+                  "CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamEmpty\"\n\tWITH (retention_period='24h')",
+                  "CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamKeyColumns\"\n\tFOR \"t_pgChangeStreams_Account\"(), \"t_pgChangeStreams_Users\"()",
+                  "CREATE CHANGE STREAM \"cs_pgChangeStreams_ChangeStreamTableColumns\"\n\tFOR \"t_pgChangeStreams_Account\", \"t_pgChangeStreams_Users\"(\"first_name\", \"last_name\")"));
+        });
   }
 
-  @Test
-  public void sequences() throws Exception {
+  private SharedTestCase sequences() {
     DdlToAvroSchemaConverter converter =
         new DdlToAvroSchemaConverter("spannertest", "booleans", true);
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE `"
-                + dbId
+                + sharedSpannerResourceManager.getDatabaseId()
                 + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )",
-            "CREATE SEQUENCE `MySequence` OPTIONS (" + "sequence_kind = \"bit_reversed_positive\")",
-            "CREATE SEQUENCE `MySequence2` OPTIONS ("
+            "CREATE SEQUENCE `s_sequences_mySequence` OPTIONS ("
+                + "sequence_kind = \"bit_reversed_positive\")",
+            "CREATE SEQUENCE `s_sequences_mySequence2` OPTIONS ("
                 + "sequence_kind = \"bit_reversed_positive\","
                 + "skip_range_min = 1,"
                 + "skip_range_max = 1000,"
                 + "start_with_counter = 100)",
-            "CREATE SEQUENCE `MySequence3` OPTIONS ("
+            "CREATE SEQUENCE `s_sequences_mySequence3` OPTIONS ("
                 + "skip_range_min = 1,"
                 + "skip_range_max = 1000,"
                 + "start_with_counter = 100)",
-            "CREATE SEQUENCE `MySequence4`",
-            "CREATE SEQUENCE `MySequence5` BIT_REVERSED_POSITIVE SKIP RANGE 1, 1000 START COUNTER WITH 100",
-            "CREATE TABLE `Account` ("
-                + " `id`        INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
+            "CREATE SEQUENCE `s_sequences_mySequence4`",
+            "CREATE SEQUENCE `s_sequences_mySequence5` BIT_REVERSED_POSITIVE SKIP RANGE 1, 1000 START COUNTER WITH 100",
+            "CREATE TABLE `t_sequences_account` ("
+                + " `id`        INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE s_sequences_mySequence)),"
                 + " `balanceId` INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`id` ASC)");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "ALTER DATABASE `"
-            + dbId
-            + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )"
-            + "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
-            + "(sequence_kind=\"bit_reversed_positive\")\n"
-            + "\nCREATE SEQUENCE `MySequence2`\n\tOPTIONS "
-            + "(sequence_kind=\"bit_reversed_positive\","
-            + " skip_range_max=1000,"
-            + " skip_range_min=1,"
-            + " start_with_counter=100)"
-            + "\nCREATE SEQUENCE `MySequence3`\n\tOPTIONS "
-            + "(skip_range_max=1000,"
-            + " skip_range_min=1,"
-            + " start_with_counter=100)"
-            + "\nCREATE SEQUENCE `MySequence4`"
-            + "\nCREATE SEQUENCE `MySequence5` BIT_REVERSED_POSITIVE SKIP RANGE 1, 1000 START COUNTER WITH 100"
-            + "CREATE TABLE `Account` ("
-            + "\n\t`id`                                    INT64 DEFAULT"
-            + "  (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
-            + "\n\t`balanceId`                             INT64 NOT NULL,"
-            + "\n) PRIMARY KEY (`id` ASC)\n\n";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.databaseOptions().stream().map(Object::toString).collect(Collectors.toList()),
+              hasItem(
+                  "option_name: \"default_sequence_kind\"\noption_type: \"STRING\"\noption_value: \"bit_reversed_positive\"\n"));
 
-    Collection<Schema> result = converter.convert(ddl);
-    assertThat(result, hasSize(6));
-    Iterator<Schema> it = result.iterator();
-    Schema avroSchema1 = it.next();
-    assertThat(avroSchema1.getName(), equalTo("MySequence"));
-    assertThat(
-        avroSchema1.getProp("sequenceOption_0"),
-        equalTo("sequence_kind=\"bit_reversed_positive\""));
-    assertThat(avroSchema1.getProp("sequenceOption_1"), equalTo(null));
+          assertThat(
+              ddl.sequence("s_sequences_mySequence").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE `s_sequences_mySequence` OPTIONS (sequence_kind=\"bit_reversed_positive\")"));
 
-    Schema avroSchema2 = it.next();
-    assertThat(avroSchema2.getName(), equalTo("MySequence2"));
-    assertThat(
-        avroSchema2.getProp("sequenceOption_0"),
-        equalTo("sequence_kind=\"bit_reversed_positive\""));
-    assertThat(avroSchema2.getProp("sequenceOption_1"), equalTo("skip_range_max=1000"));
-    assertThat(avroSchema2.getProp("sequenceOption_2"), equalTo("skip_range_min=1"));
-    assertThat(avroSchema2.getProp("sequenceOption_3"), equalTo("start_with_counter=100"));
-    assertThat(avroSchema2.getProp("sequenceOption_4"), equalTo(null));
+          assertThat(
+              ddl.sequence("s_sequences_mySequence2").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE `s_sequences_mySequence2` OPTIONS (sequence_kind=\"bit_reversed_positive\", skip_range_max=1000, skip_range_min=1, start_with_counter=100)"));
 
-    Schema avroSchema3 = it.next();
-    assertThat(avroSchema3.getName(), equalTo("MySequence3"));
-    assertThat(avroSchema3.getProp("sequenceOption_0"), equalTo("skip_range_max=1000"));
-    assertThat(avroSchema3.getProp("sequenceOption_1"), equalTo("skip_range_min=1"));
-    assertThat(avroSchema3.getProp("sequenceOption_2"), equalTo("start_with_counter=100"));
-    assertThat(avroSchema3.getProp("sequenceOption_3"), equalTo("sequence_kind=\"default\""));
-    assertThat(avroSchema3.getProp("sequenceOption_4"), equalTo(null));
+          assertThat(
+              ddl.sequence("s_sequences_mySequence3").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE `s_sequences_mySequence3` OPTIONS (skip_range_max=1000, skip_range_min=1, start_with_counter=100)"));
 
-    Schema avroSchema4 = it.next();
-    assertThat(avroSchema4.getName(), equalTo("MySequence4"));
-    assertThat(avroSchema4.getProp("sequenceOption_0"), equalTo("sequence_kind=\"default\""));
-    assertThat(avroSchema4.getProp("sequenceOption_1"), equalTo(null));
+          assertThat(
+              ddl.sequence("s_sequences_mySequence4").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE `s_sequences_mySequence4` OPTIONS (sequence_kind=\"default\")"));
 
-    Schema avroSchema5 = it.next();
-    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
-    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("1"));
-    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("1000"));
-    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("100"));
-    assertThat(avroSchema5.getProp("sequenceOption_0"), equalTo(null));
+          assertThat(
+              ddl.sequence("s_sequences_mySequence5").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE `s_sequences_mySequence5` OPTIONS (sequence_kind=\"bit_reversed_positive\", skip_range_max=1000, skip_range_min=1, start_with_counter=100)"));
+
+          assertThat(
+              ddl.table("t_sequences_account").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE `t_sequences_account` ( `id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE s_sequences_mySequence)), `balanceId` INT64 NOT NULL, ) PRIMARY KEY (`id` ASC)"));
+
+          Collection<Schema> result = converter.convert(ddl);
+
+          // Convert to a map to avoid iterator order flakiness
+          Map<String, Schema> schemas =
+              result.stream().collect(Collectors.toMap(Schema::getName, s -> s));
+
+          Schema avroSchema1 = schemas.get("s_sequences_mySequence");
+          assertThat(avroSchema1.getName(), equalTo("s_sequences_mySequence"));
+          assertThat(
+              avroSchema1.getProp("sequenceOption_0"),
+              equalTo("sequence_kind=\"bit_reversed_positive\""));
+          assertThat(avroSchema1.getProp("sequenceOption_1"), equalTo(null));
+
+          Schema avroSchema2 = schemas.get("s_sequences_mySequence2");
+          assertThat(avroSchema2.getName(), equalTo("s_sequences_mySequence2"));
+          assertThat(
+              avroSchema2.getProp("sequenceOption_0"),
+              equalTo("sequence_kind=\"bit_reversed_positive\""));
+          assertThat(avroSchema2.getProp("sequenceOption_1"), equalTo("skip_range_max=1000"));
+          assertThat(avroSchema2.getProp("sequenceOption_2"), equalTo("skip_range_min=1"));
+          assertThat(avroSchema2.getProp("sequenceOption_3"), equalTo("start_with_counter=100"));
+          assertThat(avroSchema2.getProp("sequenceOption_4"), equalTo(null));
+
+          Schema avroSchema3 = schemas.get("s_sequences_mySequence3");
+          assertThat(avroSchema3.getName(), equalTo("s_sequences_mySequence3"));
+          assertThat(avroSchema3.getProp("sequenceOption_0"), equalTo("skip_range_max=1000"));
+          assertThat(avroSchema3.getProp("sequenceOption_1"), equalTo("skip_range_min=1"));
+          assertThat(avroSchema3.getProp("sequenceOption_2"), equalTo("start_with_counter=100"));
+          assertThat(avroSchema3.getProp("sequenceOption_3"), equalTo(null));
+
+          Schema avroSchema4 = schemas.get("s_sequences_mySequence4");
+          assertThat(avroSchema4.getName(), equalTo("s_sequences_mySequence4"));
+          assertThat(avroSchema4.getProp("sequenceOption_0"), equalTo("sequence_kind=\"default\""));
+
+          Schema avroSchema5 = schemas.get("s_sequences_mySequence5");
+          assertThat(
+              avroSchema5.getProp("sequenceOption_0"),
+              equalTo("sequence_kind=\"bit_reversed_positive\""));
+          assertThat(avroSchema5.getProp("sequenceOption_1"), equalTo("skip_range_max=1000"));
+          assertThat(avroSchema5.getProp("sequenceOption_2"), equalTo("skip_range_min=1"));
+          assertThat(avroSchema5.getProp("sequenceOption_3"), equalTo("start_with_counter=100"));
+        });
   }
 
-  @Test
-  public void pgSequences() throws Exception {
+  private SharedTestCase pgSequences() {
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE \""
-                + dbId
+                + sharedPgSpannerResourceManager.getDatabaseId()
                 + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'",
-            "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE",
-            "CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+            "CREATE SEQUENCE \"s_pgSequences_myPGSequence\" BIT_REVERSED_POSITIVE",
+            "CREATE SEQUENCE \"s_pgSequences_myPGSequence2\" BIT_REVERSED_POSITIVE"
                 + " SKIP RANGE 1 1000 START COUNTER WITH 100",
-            "CREATE SEQUENCE \"MyPGSequence3\"" + " SKIP RANGE 1 1000 START COUNTER WITH 100",
-            "CREATE TABLE \"Account\" ("
-                + " \"id\"        bigint DEFAULT nextval('\"MyPGSequence\"'),"
+            "CREATE SEQUENCE \"s_pgSequences_myPGSequence3\""
+                + " SKIP RANGE 1 1000 START COUNTER WITH 100",
+            "CREATE TABLE \"t_pgSequences_Account\" ("
+                + " \"id\"        bigint DEFAULT nextval('\"s_pgSequences_myPGSequence\"'),"
                 + " \"balanceId\" bigint NOT NULL,"
                 + " PRIMARY KEY (\"id\"))");
 
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    String expectedDdl =
-        "ALTER DATABASE \""
-            + dbId
-            + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'"
-            + "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
-            + " START COUNTER WITH 1"
-            + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
-            + " SKIP RANGE 1 1000 START COUNTER WITH 100"
-            + "\nCREATE SEQUENCE \"MyPGSequence3\""
-            + " SKIP RANGE 1 1000 START COUNTER WITH 100"
-            + "CREATE TABLE \"Account\" ("
-            + "\n\t\"id\"                                    bigint NOT NULL"
-            + " DEFAULT nextval('\"MyPGSequence\"'::text),\n\t"
-            + "\"balanceId\"                             bigint NOT NULL,"
-            + "\n\tPRIMARY KEY (\"id\")\n)\n\n";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.databaseOptions().stream().map(Object::toString).collect(Collectors.toList()),
+              hasItem(
+                  "option_name: \"default_sequence_kind\"\noption_type: \"character varying\"\noption_value: \"bit_reversed_positive\"\n"));
+
+          assertThat(
+              ddl.sequence("s_pgSequences_myPGSequence").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE \"s_pgSequences_myPGSequence\" BIT_REVERSED_POSITIVE START COUNTER WITH 1"));
+
+          assertThat(
+              ddl.sequence("s_pgSequences_myPGSequence2").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE \"s_pgSequences_myPGSequence2\" BIT_REVERSED_POSITIVE SKIP RANGE 1 1000 START COUNTER WITH 100"));
+
+          assertThat(
+              ddl.sequence("s_pgSequences_myPGSequence3").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE SEQUENCE \"s_pgSequences_myPGSequence3\" SKIP RANGE 1 1000 START COUNTER WITH 100"));
+
+          assertThat(
+              ddl.table("t_pgSequences_Account").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE \"t_pgSequences_Account\" ( \"id\" bigint NOT NULL DEFAULT nextval('\"s_pgSequences_myPGSequence\"'::text), \"balanceId\" bigint NOT NULL, PRIMARY KEY (\"id\") )"));
+        });
   }
 
-  @Test
-  public void placements() throws Exception {
-    List<String> statements =
-        // Create placements pointing to MR partition, which uses nam3 config.
-        Arrays.asList(
-            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
-            "CREATE PLACEMENT `pl1`\n\tOPTIONS (instance_partition=\""
-                + INSTANCE_PARTITION_ID
-                + "\")\n",
-            "CREATE PLACEMENT `pl2`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
-                + INSTANCE_PARTITION_ID
-                + "\")\n",
-            "CREATE PLACEMENT `pl3`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
-                + INSTANCE_PARTITION_ID
-                + "\")");
-
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-  }
-
-  // TODO: Add PG test once placements and placement_options are available.
-
-  // TODO: Re-enable once placement table constraints are available.
-  // @Test
-  public void placementTables() throws Exception {
+  private SharedTestCase propertyGraphOnViewGroupBy() {
     List<String> statements =
         Arrays.asList(
-            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
-            "CREATE TABLE `PlacementKeyAsPrimaryKey` (\n\t"
-                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
-                + "`val`                                   STRING(MAX),\n"
-                + ") PRIMARY KEY (`location` ASC)\n\n\n",
-            "CREATE TABLE `PlacedUsers` (\n\t"
-                + "`location`                              STRING(MAX) NOT NULL,\n\t"
-                + "`user_id`                               INT64 NOT NULL,\n"
-                + ") PRIMARY KEY (`location` ASC, `user_id` ASC),\n"
-                + "INTERLEAVE IN PARENT `PlacementKeyAsPrimaryKey`\n\n\n",
-            "CREATE TABLE `UsersByPlacement` (\n\t"
-                + "`user_id`                               INT64 NOT NULL,\n\t"
-                + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
-                + ") PRIMARY KEY (`user_id` ASC)\n\n");
-
-    // Validate the PLACEMENT KEY constraint is available in placement tables.
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-  }
-
-  // TODO: Re-enable once placement table constraints are available.
-  // @Test
-  public void pgPlacementTables() throws Exception {
-    List<String> statements =
-        Arrays.asList(
-            "ALTER DATABASE \"" + dbId + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
-            " CREATE TABLE \"PlacementKeyAsPrimaryKey\" ("
-                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
-                + " \"val\"                                   character varying,"
-                + " PRIMARY KEY (\"location\")"
-                + " )",
-            " CREATE TABLE \"PlacedUsers\" ("
-                + " \"location\"                              character varying NOT NULL,"
-                + " \"user_id\"                               character varying NOT NULL,"
-                + " PRIMARY KEY (\"location\", \"user_id\") "
-                + ") INTERLEAVE IN PARENT \"PlacementKeyAsPrimaryKey\"",
-            " CREATE TABLE \"UsersWithPlacement\" ("
-                + " \"user_id\"                               bigint NOT NULL,"
-                + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
-                + " PRIMARY KEY (\"user_id\")"
-                + " )");
-    // Validate the PLACEMENT KEY constraint is available in placement tables.
-    SPANNER_SERVER.createPgDatabase(dbId, statements);
-    Ddl ddl = getPgDatabaseDdl();
-    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-  }
-
-  @Test
-  public void defaultTimeZone() throws Exception {
-    List<String> statements =
-        Arrays.asList(
-            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( default_time_zone = \"UTC\" )\n\n");
-
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-  }
-
-  @Test
-  public void pgDefaultTimeZone() throws Exception {
-    List<String> statements =
-        Arrays.asList("ALTER DATABASE \"" + dbId + "\" SET spanner.default_time_zone = 'UTC'\n");
-
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
-  }
-
-  @Test
-  public void propertyGraphOnViewGroupBy() throws Exception {
-    List<String> statements =
-        Arrays.asList(
-            "CREATE TABLE GraphTablePerson(loc_id INT64, pid INT64) PRIMARY KEY(loc_id, pid)",
-            "CREATE TABLE GraphTableAccount(loc_id INT64, aid INT64, owner_id INT64, name"
+            "CREATE TABLE t_propertyGraphOnViewGroupBy_GraphTablePerson(loc_id INT64, pid INT64) PRIMARY KEY(loc_id, pid)",
+            "CREATE TABLE t_propertyGraphOnViewGroupBy_GraphTableAccount(loc_id INT64, aid INT64, owner_id INT64, name"
                 + " STRING(MAX), account_kind INT64, ProtoColumn BYTES(MAX), generated_enum_field"
                 + " INT64, another_enum_field INT64) PRIMARY KEY(loc_id, aid)",
-            "CREATE VIEW V_GroupByPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid, COUNT(*)"
-                + " AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER BY cnt DESC",
-            "CREATE VIEW V_FilteredPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
-                + " GraphTablePerson AS t WHERE t.loc_id = 1",
-            "CREATE PROPERTY GRAPH aml_view_complex\n"
+            "CREATE VIEW v_propertyGraphOnViewGroupBy_V_GroupByPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid, COUNT(*)"
+                + " AS cnt FROM t_propertyGraphOnViewGroupBy_GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER BY cnt DESC",
+            "CREATE VIEW v_propertyGraphOnViewGroupBy_V_FilteredPerson SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
+                + " t_propertyGraphOnViewGroupBy_GraphTablePerson AS t WHERE t.loc_id = 1",
+            "CREATE PROPERTY GRAPH g_propertyGraphOnViewGroupBy_aml_view_complex\n"
                 + "  NODE TABLES (\n"
-                + "    V_GroupByPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid, cnt),\n"
-                + "    V_FilteredPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid),\n"
-                + "    GraphTableAccount KEY(loc_id, aid) PROPERTIES(loc_id, aid, owner_id, name,"
+                + "    v_propertyGraphOnViewGroupBy_V_GroupByPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid, cnt),\n"
+                + "    v_propertyGraphOnViewGroupBy_V_FilteredPerson KEY (loc_id, pid) PROPERTIES(loc_id, pid),\n"
+                + "    t_propertyGraphOnViewGroupBy_GraphTableAccount KEY(loc_id, aid) PROPERTIES(loc_id, aid, owner_id, name,"
                 + " account_kind, ProtoColumn, generated_enum_field, another_enum_field)\n"
                 + "  )\n"
                 + "  EDGE TABLES (\n"
-                + "    GraphTableAccount AS Owns KEY(loc_id, aid)\n"
-                + "      SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id, pid)\n"
-                + "      DESTINATION KEY(loc_id, aid) REFERENCES GraphTableAccount(loc_id, aid)"
+                + "    t_propertyGraphOnViewGroupBy_GraphTableAccount AS Owns KEY(loc_id, aid)\n"
+                + "      SOURCE KEY(loc_id, owner_id) REFERENCES v_propertyGraphOnViewGroupBy_V_FilteredPerson(loc_id, pid)\n"
+                + "      DESTINATION KEY(loc_id, aid) REFERENCES t_propertyGraphOnViewGroupBy_GraphTableAccount(loc_id, aid)"
                 + " PROPERTIES(loc_id, aid, owner_id)\n"
                 + "  )");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "CREATE TABLE `GraphTableAccount` (\n"
-            + "\t`loc_id`                                INT64,\n"
-            + "\t`aid`                                   INT64,\n"
-            + "\t`owner_id`                              INT64,\n"
-            + "\t`name`                                  STRING(MAX),\n"
-            + "\t`account_kind`                          INT64,\n"
-            + "\t`ProtoColumn`                           BYTES(MAX),\n"
-            + "\t`generated_enum_field`                  INT64,\n"
-            + "\t`another_enum_field`                    INT64,\n"
-            + ") PRIMARY KEY (`loc_id` ASC, `aid` ASC)\n\n\n"
-            + "CREATE TABLE `GraphTablePerson` (\n"
-            + "\t`loc_id`                                INT64,\n"
-            + "\t`pid`                                   INT64,\n"
-            + ") PRIMARY KEY (`loc_id` ASC, `pid` ASC)\n\n\n"
-            + "CREATE VIEW `V_FilteredPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
-            + " GraphTablePerson AS t WHERE t.loc_id = 1\n"
-            + "CREATE VIEW `V_GroupByPerson` SQL SECURITY INVOKER AS SELECT t.loc_id,"
-            + " t.pid, COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER"
-            + " BY cnt DESC\n"
-            + "CREATE PROPERTY GRAPH aml_view_complex\n"
-            + "NODE TABLES(\n"
-            + "GraphTableAccount AS GraphTableAccount\n"
-            + " KEY (loc_id, aid)\n"
-            + "LABEL GraphTableAccount PROPERTIES(account_kind, aid, another_enum_field,"
-            + " generated_enum_field, loc_id, name, owner_id, ProtoColumn), V_FilteredPerson AS"
-            + " V_FilteredPerson\n"
-            + " KEY (loc_id, pid)\n"
-            + "LABEL V_FilteredPerson PROPERTIES(loc_id, pid), V_GroupByPerson AS V_GroupByPerson\n"
-            + " KEY (loc_id, pid)\n"
-            + "LABEL V_GroupByPerson PROPERTIES(cnt, loc_id, pid))\n"
-            + "EDGE TABLES(\n"
-            + "GraphTableAccount AS Owns\n"
-            + " KEY (loc_id, aid)\n"
-            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
-            + " KEY(aid, loc_id) REFERENCES GraphTableAccount(aid,loc_id)\n"
-            + "LABEL Owns PROPERTIES(aid, loc_id, owner_id))";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.propertyGraphs().toString(),
+              containsString(
+                  "CREATE PROPERTY GRAPH g_propertyGraphOnViewGroupBy_aml_view_complex"));
+        });
   }
 
-  @Test
-  public void propertyGraphOnViewSimple() throws Exception {
+  private SharedTestCase propertyGraphOnViewSimple() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE TableA(id INT64) PRIMARY KEY(id)",
-            "CREATE VIEW ViewA SQL SECURITY INVOKER AS SELECT TableA.id FROM TableA",
-            "CREATE TABLE TableB(id INT64) PRIMARY KEY(id)",
-            "CREATE VIEW ViewB SQL SECURITY INVOKER AS SELECT TableB.id FROM TableB",
-            "CREATE PROPERTY GRAPH aml_view_complex\n"
+            "CREATE TABLE t_propertyGraphOnViewSimple_TableA(id INT64) PRIMARY KEY(id)",
+            "CREATE VIEW v_propertyGraphOnViewSimple_ViewA SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewSimple_TableA.id FROM t_propertyGraphOnViewSimple_TableA",
+            "CREATE TABLE t_propertyGraphOnViewSimple_TableB(id INT64) PRIMARY KEY(id)",
+            "CREATE VIEW v_propertyGraphOnViewSimple_ViewB SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewSimple_TableB.id FROM t_propertyGraphOnViewSimple_TableB",
+            "CREATE PROPERTY GRAPH g_propertyGraphOnViewSimple_aml_view_complex\n"
                 + "  NODE TABLES (\n"
-                + "    ViewA KEY (id),\n"
-                + "    ViewB KEY (id)\n"
+                + "    v_propertyGraphOnViewSimple_ViewA KEY (id),\n"
+                + "    v_propertyGraphOnViewSimple_ViewB KEY (id)\n"
                 + "  )\n");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "CREATE TABLE `TableA` (\n"
-            + "\t`id`                                    INT64,\n"
-            + ") PRIMARY KEY (`id` ASC)\n\n\n"
-            + "CREATE TABLE `TableB` (\n"
-            + "\t`id`                                    INT64,\n"
-            + ") PRIMARY KEY (`id` ASC)\n\n\n"
-            + "CREATE VIEW `ViewA` SQL SECURITY INVOKER AS SELECT TableA.id FROM TableA\n"
-            + "CREATE VIEW `ViewB` SQL SECURITY INVOKER AS SELECT TableB.id FROM TableB\n"
-            + "CREATE PROPERTY GRAPH aml_view_complex\n"
-            + "NODE TABLES(\n"
-            + "ViewA AS ViewA\n"
-            + " KEY (id)\n"
-            + "LABEL ViewA PROPERTIES(id), ViewB AS ViewB\n"
-            + " KEY (id)\n"
-            + "LABEL ViewB PROPERTIES(id))";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.propertyGraphs().toString(),
+              containsString("CREATE PROPERTY GRAPH g_propertyGraphOnViewSimple_aml_view_complex"));
+        });
   }
 
-  @Test
-  public void propertyGraphOnViewMixedOrder() throws Exception {
+  private SharedTestCase propertyGraphOnViewMixedOrder() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE Parts(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
-            "CREATE VIEW PartView SQL SECURITY INVOKER AS SELECT Parts.part_id, Parts.part_name FROM Parts",
-            "CREATE TABLE Suppliers(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
+            "CREATE TABLE t_propertyGraphOnViewMixedOrder_Parts(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
+            "CREATE VIEW v_propertyGraphOnViewMixedOrder_PartView SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewMixedOrder_Parts.part_id, t_propertyGraphOnViewMixedOrder_Parts.part_name FROM t_propertyGraphOnViewMixedOrder_Parts",
+            "CREATE TABLE t_propertyGraphOnViewMixedOrder_Suppliers(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
                 + " KEY(supplier_id)",
-            "CREATE VIEW SupplierView SQL SECURITY INVOKER AS SELECT Suppliers.supplier_id, Suppliers.supplier_name"
-                + " FROM Suppliers",
-            "CREATE TABLE PartSuppliers(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
+            "CREATE VIEW v_propertyGraphOnViewMixedOrder_SupplierView SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewMixedOrder_Suppliers.supplier_id, t_propertyGraphOnViewMixedOrder_Suppliers.supplier_name"
+                + " FROM t_propertyGraphOnViewMixedOrder_Suppliers",
+            "CREATE TABLE t_propertyGraphOnViewMixedOrder_PartSuppliers(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
                 + " supplier_id)",
-            "CREATE VIEW PartSuppliersView SQL SECURITY INVOKER AS SELECT PartSuppliers.part_id, PartSuppliers.supplier_id"
-                + " FROM PartSuppliers",
-            "CREATE PROPERTY GRAPH SupplyChainGraph\n"
+            "CREATE VIEW v_propertyGraphOnViewMixedOrder_PartSuppliersView SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewMixedOrder_PartSuppliers.part_id, t_propertyGraphOnViewMixedOrder_PartSuppliers.supplier_id"
+                + " FROM t_propertyGraphOnViewMixedOrder_PartSuppliers",
+            "CREATE PROPERTY GRAPH g_propertyGraphOnViewMixedOrder_SupplyChainGraph\n"
                 + "  NODE TABLES (\n"
-                + "    PartView KEY (part_id),\n"
-                + "    SupplierView KEY (supplier_id)\n"
+                + "    v_propertyGraphOnViewMixedOrder_PartView KEY (part_id),\n"
+                + "    v_propertyGraphOnViewMixedOrder_SupplierView KEY (supplier_id)\n"
                 + "  )\n"
                 + "  EDGE TABLES (\n"
-                + "    PartSuppliersView KEY (part_id, supplier_id)\n"
-                + "      SOURCE KEY (part_id) REFERENCES PartView(part_id)\n"
-                + "      DESTINATION KEY (supplier_id) REFERENCES SupplierView(supplier_id)\n"
+                + "    v_propertyGraphOnViewMixedOrder_PartSuppliersView KEY (part_id, supplier_id)\n"
+                + "      SOURCE KEY (part_id) REFERENCES v_propertyGraphOnViewMixedOrder_PartView(part_id)\n"
+                + "      DESTINATION KEY (supplier_id) REFERENCES v_propertyGraphOnViewMixedOrder_SupplierView(supplier_id)\n"
                 + "  )");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "CREATE TABLE `Parts` (\n"
-            + "\t`part_id`                               INT64,\n"
-            + "\t`part_name`                             STRING(MAX),\n"
-            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
-            + "CREATE TABLE `PartSuppliers` (\n"
-            + "\t`part_id`                               INT64,\n"
-            + "\t`supplier_id`                           INT64,\n"
-            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
-            + "CREATE TABLE `Suppliers` (\n"
-            + "\t`supplier_id`                           INT64,\n"
-            + "\t`supplier_name`                         STRING(MAX),\n"
-            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
-            + "CREATE VIEW `PartSuppliersView` SQL SECURITY INVOKER AS SELECT PartSuppliers.part_id,"
-            + " PartSuppliers.supplier_id FROM PartSuppliers\n"
-            + "CREATE VIEW `PartView` SQL SECURITY INVOKER AS SELECT Parts.part_id, Parts.part_name"
-            + " FROM Parts\n"
-            + "CREATE VIEW `SupplierView` SQL SECURITY INVOKER AS SELECT Suppliers.supplier_id,"
-            + " Suppliers.supplier_name FROM Suppliers\n"
-            + "CREATE PROPERTY GRAPH SupplyChainGraph\n"
-            + "NODE TABLES(\n"
-            + "PartView AS PartView\n"
-            + " KEY (part_id)\n"
-            + "LABEL PartView PROPERTIES(part_id, part_name), SupplierView AS SupplierView\n"
-            + " KEY (supplier_id)\n"
-            + "LABEL SupplierView PROPERTIES(supplier_id, supplier_name))\n"
-            + "EDGE TABLES(\n"
-            + "PartSuppliersView AS PartSuppliersView\n"
-            + " KEY (part_id, supplier_id)\n"
-            + "SOURCE KEY(part_id) REFERENCES PartView(part_id)\n"
-            + "DESTINATION KEY(supplier_id) REFERENCES SupplierView(supplier_id)\n"
-            + "LABEL PartSuppliersView PROPERTIES(part_id, supplier_id))";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.propertyGraphs().toString(),
+              containsString(
+                  "CREATE PROPERTY GRAPH g_propertyGraphOnViewMixedOrder_SupplyChainGraph"));
+        });
   }
 
-  @Test
-  public void propertyGraphOnViewTablesFirst() throws Exception {
+  private SharedTestCase propertyGraphOnViewTablesFirst() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE Parts2(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
-            "CREATE TABLE Suppliers2(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
+            "CREATE TABLE t_propertyGraphOnViewTablesFirst_Parts2(part_id INT64, part_name STRING(MAX)) PRIMARY KEY(part_id)",
+            "CREATE TABLE t_propertyGraphOnViewTablesFirst_Suppliers2(supplier_id INT64, supplier_name STRING(MAX)) PRIMARY"
                 + " KEY(supplier_id)",
-            "CREATE TABLE PartSuppliers2(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
+            "CREATE TABLE t_propertyGraphOnViewTablesFirst_PartSuppliers2(part_id INT64, supplier_id INT64) PRIMARY KEY(part_id,"
                 + " supplier_id)",
-            "CREATE VIEW PartView2 SQL SECURITY INVOKER AS SELECT Parts2.part_id, Parts2.part_name FROM"
-                + " Parts2",
-            "CREATE VIEW SupplierView2 SQL SECURITY INVOKER AS SELECT Suppliers2.supplier_id, Suppliers2.supplier_name"
-                + " FROM Suppliers2",
-            "CREATE VIEW PartSuppliersView2 SQL SECURITY INVOKER AS SELECT PartSuppliers2.part_id, PartSuppliers2.supplier_id"
-                + " FROM PartSuppliers2",
-            "CREATE PROPERTY GRAPH SupplyChainGraph2\n"
+            "CREATE VIEW v_propertyGraphOnViewTablesFirst_PartView2 SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewTablesFirst_Parts2.part_id, t_propertyGraphOnViewTablesFirst_Parts2.part_name FROM"
+                + " t_propertyGraphOnViewTablesFirst_Parts2",
+            "CREATE VIEW v_propertyGraphOnViewTablesFirst_SupplierView2 SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewTablesFirst_Suppliers2.supplier_id, t_propertyGraphOnViewTablesFirst_Suppliers2.supplier_name"
+                + " FROM t_propertyGraphOnViewTablesFirst_Suppliers2",
+            "CREATE VIEW v_propertyGraphOnViewTablesFirst_PartSuppliersView2 SQL SECURITY INVOKER AS SELECT t_propertyGraphOnViewTablesFirst_PartSuppliers2.part_id, t_propertyGraphOnViewTablesFirst_PartSuppliers2.supplier_id"
+                + " FROM t_propertyGraphOnViewTablesFirst_PartSuppliers2",
+            "CREATE PROPERTY GRAPH g_propertyGraphOnViewTablesFirst_SupplyChainGraph2\n"
                 + "  NODE TABLES (\n"
-                + "    PartView2 KEY (part_id),\n"
-                + "    SupplierView2 KEY (supplier_id)\n"
+                + "    v_propertyGraphOnViewTablesFirst_PartView2 KEY (part_id),\n"
+                + "    v_propertyGraphOnViewTablesFirst_SupplierView2 KEY (supplier_id)\n"
                 + "  )\n"
                 + "  EDGE TABLES (\n"
-                + "    PartSuppliersView2 KEY (part_id, supplier_id)\n"
-                + "      SOURCE KEY (part_id) REFERENCES PartView2(part_id)\n"
-                + "      DESTINATION KEY (supplier_id) REFERENCES SupplierView2(supplier_id)\n"
+                + "    v_propertyGraphOnViewTablesFirst_PartSuppliersView2 KEY (part_id, supplier_id)\n"
+                + "      SOURCE KEY (part_id) REFERENCES v_propertyGraphOnViewTablesFirst_PartView2(part_id)\n"
+                + "      DESTINATION KEY (supplier_id) REFERENCES v_propertyGraphOnViewTablesFirst_SupplierView2(supplier_id)\n"
                 + "  )");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "CREATE TABLE `Parts2` (\n"
-            + "\t`part_id`                               INT64,\n"
-            + "\t`part_name`                             STRING(MAX),\n"
-            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
-            + "CREATE TABLE `PartSuppliers2` (\n"
-            + "\t`part_id`                               INT64,\n"
-            + "\t`supplier_id`                           INT64,\n"
-            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
-            + "CREATE TABLE `Suppliers2` (\n"
-            + "\t`supplier_id`                           INT64,\n"
-            + "\t`supplier_name`                         STRING(MAX),\n"
-            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
-            + "CREATE VIEW `PartSuppliersView2` SQL SECURITY INVOKER AS SELECT"
-            + " PartSuppliers2.part_id, PartSuppliers2.supplier_id FROM PartSuppliers2\n"
-            + "CREATE VIEW `PartView2` SQL SECURITY INVOKER AS SELECT Parts2.part_id,"
-            + " Parts2.part_name FROM Parts2\n"
-            + "CREATE VIEW `SupplierView2` SQL SECURITY INVOKER AS SELECT"
-            + " Suppliers2.supplier_id, Suppliers2.supplier_name FROM Suppliers2\n"
-            + "CREATE PROPERTY GRAPH SupplyChainGraph2\n"
-            + "NODE TABLES(\n"
-            + "PartView2 AS PartView2\n"
-            + " KEY (part_id)\n"
-            + "LABEL PartView2 PROPERTIES(part_id, part_name), SupplierView2 AS SupplierView2\n"
-            + " KEY (supplier_id)\n"
-            + "LABEL SupplierView2 PROPERTIES(supplier_id, supplier_name))\n"
-            + "EDGE TABLES(\n"
-            + "PartSuppliersView2 AS PartSuppliersView2\n"
-            + " KEY (part_id, supplier_id)\n"
-            + "SOURCE KEY(part_id) REFERENCES PartView2(part_id)\n"
-            + "DESTINATION KEY(supplier_id) REFERENCES SupplierView2(supplier_id)\n"
-            + "LABEL PartSuppliersView2 PROPERTIES(part_id, supplier_id))";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.propertyGraphs().toString(),
+              containsString(
+                  "CREATE PROPERTY GRAPH g_propertyGraphOnViewTablesFirst_SupplyChainGraph2"));
+        });
   }
 
-  @Test
-  public void propertyGraphOnViewWithNamedSchema() throws Exception {
+  private SharedTestCase propertyGraphOnViewWithNamedSchema() {
     List<String> statements =
         Arrays.asList(
-            "CREATE SCHEMA Sch1",
-            "CREATE SCHEMA Sch2",
-            "CREATE TABLE Sch1.Account("
+            "CREATE SCHEMA s_propertyGraphOnViewWithNamedSchema_Sch1",
+            "CREATE SCHEMA s_propertyGraphOnViewWithNamedSchema_Sch2",
+            "CREATE TABLE s_propertyGraphOnViewWithNamedSchema_Sch1.Account("
                 + "    AccountID INT64 NOT NULL,"
                 + "    Money FLOAT64,"
                 + "    AnotherMoney FLOAT64"
                 + "  ) PRIMARY KEY(AccountID)",
-            "CREATE VIEW V0 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
-            "CREATE VIEW Sch1.V1 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
-            "CREATE VIEW Sch2.V2 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
-            "CREATE PROPERTY GRAPH aml "
+            "CREATE VIEW v_propertyGraphOnViewWithNamedSchema_V0 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM s_propertyGraphOnViewWithNamedSchema_Sch1.Account",
+            "CREATE VIEW s_propertyGraphOnViewWithNamedSchema_Sch1.V1 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM s_propertyGraphOnViewWithNamedSchema_Sch1.Account",
+            "CREATE VIEW s_propertyGraphOnViewWithNamedSchema_Sch2.V2 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM s_propertyGraphOnViewWithNamedSchema_Sch1.Account",
+            "CREATE PROPERTY GRAPH g_propertyGraphOnViewWithNamedSchema_aml "
                 + "    NODE TABLES ("
-                + "      V0 KEY(AccountID) PROPERTIES(AccountID, Money),"
-                + "      Sch1.V1 KEY(AccountID) PROPERTIES(AccountID, Money),"
-                + "      Sch2.V2 KEY(AccountID) PROPERTIES(AccountID, Money)"
+                + "      v_propertyGraphOnViewWithNamedSchema_V0 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      s_propertyGraphOnViewWithNamedSchema_Sch1.V1 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      s_propertyGraphOnViewWithNamedSchema_Sch2.V2 KEY(AccountID) PROPERTIES(AccountID, Money)"
                 + "    )");
 
-    SPANNER_SERVER.createDatabase(dbId, statements);
-    Ddl ddl = getDatabaseDdl();
-    String expectedDdl =
-        "\nCREATE SCHEMA `Sch1`\n"
-            + "CREATE SCHEMA `Sch2`CREATE TABLE `Sch1`.`Account` (\n"
-            + "\t`AccountID`                             INT64 NOT NULL,\n"
-            + "\t`Money`                                 FLOAT64,\n"
-            + "\t`AnotherMoney`                          FLOAT64,\n"
-            + ") PRIMARY KEY (`AccountID` ASC)\n\n\n"
-            + "CREATE VIEW `Sch1`.`V1` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
-            + "CREATE VIEW `Sch2`.`V2` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
-            + "CREATE VIEW `V0` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
-            + "CREATE PROPERTY GRAPH aml\n"
-            + "NODE TABLES(\n"
-            + "V0 AS V0\n"
-            + " KEY (AccountID)\n"
-            + "LABEL V0 PROPERTIES(AccountID, Money), Sch1.V1 AS V1\n"
-            + " KEY (AccountID)\n"
-            + "LABEL V1 PROPERTIES(AccountID, Money), Sch2.V2 AS V2\n"
-            + " KEY (AccountID)\n"
-            + "LABEL V2 PROPERTIES(AccountID, Money))";
-    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(
+              ddl.propertyGraphs().toString(),
+              containsString("CREATE PROPERTY GRAPH g_propertyGraphOnViewWithNamedSchema_aml"));
+        });
+  }
+
+  @Test
+  public void sharedInformationSchemaScannerTestGsql() throws Exception {
+    List<SharedTestCase> testCases =
+        Arrays.asList(
+            tableWithAllTypes(),
+            simpleModel(),
+            simplePropertyGraph(),
+            dynamicPropertyGraph(),
+            simpleView(),
+            simpleUdf(),
+            interleavedIn(),
+            reserved(),
+            indexes(),
+            searchIndexes(),
+            vectorIndexes(),
+            foreignKeys(),
+            checkConstraints(),
+            commitTimestamp(),
+            generatedColumns(),
+            defaultColumns(),
+            onUpdateColumns(),
+            identityColumns(),
+            databaseOptions(),
+            changeStreams(),
+            sequences(),
+            propertyGraphOnViewGroupBy(),
+            propertyGraphOnViewSimple(),
+            propertyGraphOnViewMixedOrder(),
+            propertyGraphOnViewTablesFirst(),
+            propertyGraphOnViewWithNamedSchema());
+
+    List<String> allStatements = new ArrayList<>();
+    for (SharedTestCase testCase : testCases) {
+      allStatements.addAll(testCase.getDdlStatements());
+    }
+    sharedSpannerResourceManager.executeDdlStatements(allStatements);
+    Ddl ddl = getDatabaseDdl(sharedSpannerResourceManager);
+
+    for (SharedTestCase testCase : testCases) {
+      testCase.getAssertions().accept(ddl);
+    }
+  }
+
+  @Test
+  public void sharedInformationSchemaScannerTestPg() throws Exception {
+    List<SharedTestCase> testCases =
+        Arrays.asList(
+            tableWithAllPgTypes(),
+            pgSimpleView(),
+            pgInterleavedIn(),
+            pgReserved(),
+            pgSearchIndexes(),
+            pgVectorIndexes(),
+            pgIndexes(),
+            pgForeignKeys(),
+            pgCheckConstraints(),
+            pgCommitTimestamp(),
+            pgGeneratedColumns(),
+            pgDefaultColumns(),
+            pgOnUpdateColumns(),
+            pgIdentityColumns(),
+            pgDatabaseOptions(),
+            pgChangeStreams(),
+            pgSequences());
+
+    List<String> allStatements = new ArrayList<>();
+    for (SharedTestCase testCase : testCases) {
+      allStatements.addAll(testCase.getDdlStatements());
+    }
+    sharedPgSpannerResourceManager.executeDdlStatements(allStatements);
+    Ddl ddl = getPgDatabaseDdl(sharedPgSpannerResourceManager);
+
+    for (SharedTestCase testCase : testCases) {
+      testCase.getAssertions().accept(ddl);
+    }
+  }
+
+  @Test
+  public void placementsAndPlacementTables() throws Exception {
+    setupResourceManager(Dialect.GOOGLE_STANDARD_SQL);
+    try {
+      List<String> statements =
+          Arrays.asList(
+              "ALTER DATABASE `"
+                  + spannerResourceManager.getDatabaseId()
+                  + "` SET OPTIONS ( opt_in_dataplacement_preview = TRUE )\n\n",
+              "CREATE PLACEMENT `pl1_placements`\n\tOPTIONS (instance_partition=\""
+                  + INSTANCE_PARTITION_ID
+                  + "\")\n",
+              "CREATE PLACEMENT `pl2_placements`\n\tOPTIONS (default_leader=\"us-east1\", instance_partition=\""
+                  + INSTANCE_PARTITION_ID
+                  + "\")\n",
+              "CREATE PLACEMENT `pl3_placements`\n\tOPTIONS (default_leader=\"us-east4\", instance_partition=\""
+                  + INSTANCE_PARTITION_ID
+                  + "\")",
+              "CREATE TABLE `t_placementTables_PlacementKeyAsPrimaryKey` (\n\t"
+                  + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n\t"
+                  + "`val`                                   STRING(MAX),\n"
+                  + ") PRIMARY KEY (`location` ASC)\n\n\n",
+              "CREATE TABLE `t_placementTables_PlacedUsers` (\n\t"
+                  + "`location`                              STRING(MAX) NOT NULL,\n\t"
+                  + "`user_id`                               INT64 NOT NULL,\n"
+                  + ") PRIMARY KEY (`location` ASC, `user_id` ASC),\n"
+                  + "INTERLEAVE IN PARENT `t_placementTables_PlacementKeyAsPrimaryKey`\n\n\n",
+              "CREATE TABLE `t_placementTables_UsersByPlacement` (\n\t"
+                  + "`user_id`                               INT64 NOT NULL,\n\t"
+                  + "`location`                              STRING(MAX) NOT NULL PLACEMENT KEY,\n"
+                  + ") PRIMARY KEY (`user_id` ASC)\n\n");
+
+      spannerResourceManager.executeDdlStatements(statements);
+      Ddl ddl = getDatabaseDdl(spannerResourceManager);
+      assertThat(
+          ddl.placement("pl1_placements").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(1)));
+      assertThat(
+          ddl.placement("pl2_placements").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(2)));
+      assertThat(
+          ddl.placement("pl3_placements").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(3)));
+      assertThat(
+          ddl.table("t_placementTables_PlacementKeyAsPrimaryKey").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(4)));
+      assertThat(
+          ddl.table("t_placementTables_PlacedUsers").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(5)));
+      assertThat(
+          ddl.table("t_placementTables_UsersByPlacement").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(6)));
+    } finally {
+      if (spannerResourceManager != null) {
+        spannerResourceManager.cleanupAll();
+      }
+    }
+  }
+
+  @Test
+  public void pgPlacementTables() throws Exception {
+    setupResourceManager(Dialect.POSTGRESQL);
+    try {
+      List<String> statements =
+          Arrays.asList(
+              "ALTER DATABASE \""
+                  + pgSpannerResourceManager.getDatabaseId()
+                  + "\" SET spanner.opt_in_dataplacement_preview = TRUE\n",
+              " CREATE TABLE \"t_pgPlacementTables_PlacementKeyAsPrimaryKey\" ("
+                  + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                  + " \"val\"                                   character varying,"
+                  + " PRIMARY KEY (\"location\")"
+                  + " )",
+              " CREATE TABLE \"t_pgPlacementTables_PlacedUsers\" ("
+                  + " \"location\"                              character varying NOT NULL,"
+                  + " \"user_id\"                               character varying NOT NULL,"
+                  + " PRIMARY KEY (\"location\", \"user_id\") "
+                  + ") INTERLEAVE IN PARENT \"t_pgPlacementTables_PlacementKeyAsPrimaryKey\"",
+              " CREATE TABLE \"t_pgPlacementTables_UsersWithPlacement\" ("
+                  + " \"user_id\"                               bigint NOT NULL,"
+                  + " \"location\"                              character varying NOT NULL PLACEMENT KEY,"
+                  + " PRIMARY KEY (\"user_id\")"
+                  + " )");
+      // Validate the PLACEMENT KEY constraint is available in placement tables.
+      pgSpannerResourceManager.executeDdlStatements(statements);
+      Ddl ddl = getPgDatabaseDdl(pgSpannerResourceManager);
+      assertThat(
+          ddl.table("t_pgPlacementTables_PlacementKeyAsPrimaryKey").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(1)));
+      assertThat(
+          ddl.table("t_pgPlacementTables_PlacedUsers").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(2)));
+      assertThat(
+          ddl.table("t_pgPlacementTables_UsersWithPlacement").prettyPrint(),
+          equalToCompressingWhiteSpace(statements.get(3)));
+    } finally {
+      if (pgSpannerResourceManager != null) {
+        pgSpannerResourceManager.cleanupAll();
+      }
+    }
   }
 }

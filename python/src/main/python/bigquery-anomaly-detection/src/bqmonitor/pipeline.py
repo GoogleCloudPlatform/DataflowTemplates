@@ -96,6 +96,18 @@ _WEBHOOK_KNOWN_KEYS = frozenset({
 # retried indefinitely.
 _TRANSIENT_RETRY_STATUSES = frozenset({408, 425, 429})
 
+# Inline retry policy for transient webhook failures (5xx, the statuses in
+# _TRANSIENT_RETRY_STATUSES, and any exception raised by the request). We
+# retry inside process() rather than re-raising and leaning on bundle retry,
+# because AsyncWrapper does not reliably re-deliver bundles whose DoFn
+# raises -- so a raise would effectively drop the anomaly instead of
+# retrying it. Backoff grows exponentially from _WEBHOOK_BASE_BACKOFF_SEC
+# and is capped at _WEBHOOK_MAX_BACKOFF_SEC, yielding the sequence
+# 0.5, 1, 2, 4, 8, 15, 15, 15, 15, 15 seconds across the 10 retries.
+_WEBHOOK_MAX_RETRIES = 10
+_WEBHOOK_BASE_BACKOFF_SEC = 0.5
+_WEBHOOK_MAX_BACKOFF_SEC = 15.0
+
 # Synthetic key attached to unkeyed pipelines' elements so they can flow
 # through stateful DoFns. _unpack_result translates it back to None.
 _UNKEYED_SENTINEL = '__bqm_unkeyed__'
@@ -460,18 +472,14 @@ class _PostAnomalyToWebhook(beam.DoFn):
 
   String leaves in ``body`` and ``headers`` are format-substituted with
   ``anomaly fields | message_metadata | {anomaly_message}``.
-
-  Response handling (because streaming Dataflow retries bundles
-  indefinitely, we cannot blindly raise on every non-2xx — that would
-  block the pipeline on a misconfigured request):
-    * 2xx → success.
-    * 5xx, 408, 425, 429 → raise (transient; bundle retries).
-    * Other 4xx → log + drop + increment ``dropped_permanent_4xx`` metric.
-  Network errors propagate as-is so Beam's bundle retry handles them.
+  No exception is allowed to escape ``process``: anything reaching
+  ``AsyncWrapper`` would crash-loop the bundle.
   """
 
   _DROPPED_4XX_COUNTER = Metrics.counter(
       'bqmonitor.webhook', 'dropped_permanent_4xx')
+  _DROPPED_RETRIES_COUNTER = Metrics.counter(
+      'bqmonitor.webhook', 'dropped_exhausted_retries')
 
   def __init__(self, webhook_spec, message_format, message_metadata):
     self._webhook_spec = webhook_spec
@@ -496,44 +504,60 @@ class _PostAnomalyToWebhook(beam.DoFn):
     body = _substitute_template_tree(self._webhook_spec['body'], merged)
     headers = _substitute_template_tree(self._webhook_spec['headers'], merged)
 
-    window_str = f"{fields['window_start']}/{fields['window_end']}"
-    model_id = fields['model_id'] or '<none>'
+    method = self._webhook_spec['method']
+    endpoint = self._webhook_spec['endpoint']
+    ctx = (
+        f"{method} {endpoint} "
+        f"window={fields['window_start']}/{fields['window_end']} "
+        f"model_id={fields['model_id'] or '<none>'}")
 
-    start_monotonic = time.monotonic()
-    resp = self._session.request(
-        method=self._webhook_spec['method'],
-        url=self._webhook_spec['endpoint'],
-        json=body,
-        headers=headers or None,
-        timeout=self._webhook_spec['timeout_seconds'])
-    elapsed_sec = time.monotonic() - start_monotonic
+    # Retry transient failures (5xx, 408/425/429, and any error raised by
+    # the request) inline with exponential backoff capped at
+    # _WEBHOOK_MAX_BACKOFF_SEC. We retry here instead of raising for Beam to
+    # retry the bundle, because AsyncWrapper enters a crash loop if we raise.
+    last_error = None
+    for attempt in range(_WEBHOOK_MAX_RETRIES + 1):
+      if attempt:
+        time.sleep(min(_WEBHOOK_MAX_BACKOFF_SEC,
+                       _WEBHOOK_BASE_BACKOFF_SEC * 2 ** (attempt - 1)))
 
-    status = resp.status_code
-    if 200 <= status < 300:
-      _LOGGER.info(
-          'Webhook %s %s posted anomaly window=%s model_id=%s '
-          'in %.2fs (status=%d).',
-          self._webhook_spec['method'], self._webhook_spec['endpoint'],
-          window_str, model_id, elapsed_sec, status)
-      return
+      start = time.monotonic()
+      try:
+        resp = self._session.request(
+            method=method, url=endpoint, json=body,
+            headers=headers or None,
+            timeout=self._webhook_spec['timeout_seconds'])
+      except Exception as exc:  # pylint: disable=broad-except
+        last_error = f'request error: {exc!r}'
+        _LOGGER.warning('Webhook %s attempt %d/%d: %s',
+                        ctx, attempt, _WEBHOOK_MAX_RETRIES, last_error)
+        continue
 
-    if status >= 500 or status in _TRANSIENT_RETRY_STATUSES:
-      _LOGGER.warning(
-          'Webhook %s %s returned transient status %d after %.2fs for '
-          'anomaly window=%s model_id=%s; bundle will retry. '
-          'Response: %s',
-          self._webhook_spec['method'], self._webhook_spec['endpoint'],
-          status, elapsed_sec, window_str, model_id, resp.text[:500])
-      raise RuntimeError(
-          f'Webhook returned transient status {status}; retrying bundle.')
+      status = resp.status_code
+      if 200 <= status < 300:
+        _LOGGER.info('Webhook %s posted anomaly in %.2fs (status=%d, '
+                     'attempt=%d).', ctx, time.monotonic() - start,
+                     status, attempt)
+        return
 
-    _LOGGER.error(
-        'Webhook %s %s returned permanent status %d after %.2fs for '
-        'anomaly window=%s model_id=%s; dropping anomaly. '
-        'Response: %s',
-        self._webhook_spec['method'], self._webhook_spec['endpoint'],
-        status, elapsed_sec, window_str, model_id, resp.text[:500])
-    self._DROPPED_4XX_COUNTER.inc()
+      # Permanent client error (bad URL/auth/payload): drop, don't retry.
+      if status < 500 and status not in _TRANSIENT_RETRY_STATUSES:
+        _LOGGER.error('Webhook %s returned permanent status %d; dropping '
+                      'anomaly. Response: %s', ctx, status, resp.text[:500])
+        self._DROPPED_4XX_COUNTER.inc()
+        return
+
+      last_error = f'status {status}'
+      _LOGGER.warning('Webhook %s attempt %d/%d: transient status %d. '
+                      'Response: %s', ctx, attempt, _WEBHOOK_MAX_RETRIES,
+                      status, resp.text[:500])
+
+    # Exhausted all retries. Drop rather than raise: raising would feed
+    # Beam's bundle retry, which AsyncWrapper does not honor reliably, so
+    # it would risk wedging the bundle without ever delivering the anomaly.
+    _LOGGER.error('Webhook %s still failing (%s) after %d retries; '
+                  'dropping anomaly.', ctx, last_error, _WEBHOOK_MAX_RETRIES)
+    self._DROPPED_RETRIES_COUNTER.inc()
 
 
 class _FormatResultForBQ(beam.DoFn):
