@@ -54,6 +54,9 @@ public class InputRecordProcessor {
    *
    * <p>Use this when the write must be deferred to a point outside an enclosing transaction (e.g.
    * to avoid nested Spanner transactions for the {@code SOURCE_SPANNER} path).
+   *
+   * @throws InvalidDMLGenerationException if the generated DML is empty or cannot be generated.
+   * @throws Exception for other processing errors.
    */
   public static DMLGeneratorResponse generateDMLResponse(
       TrimmedShardedDataChangeRecord spannerRecord,
