@@ -26,7 +26,6 @@ import java.lang.reflect.Type;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
@@ -92,8 +91,14 @@ public class SpannerShardFileReader {
             databaseId);
       }
 
-      shards.sort(Comparator.comparing(Shard::getLogicalShardId));
-      LOG.info("Read {} Spanner shard(s) from {}", shards.size(), shardsFilePath);
+      if (shards.size() != 1) {
+        throw new IllegalArgumentException(
+            "For Spanner targets, exactly 1 shard must be specified in the configuration file. "
+                + "Found: "
+                + shards.size());
+      }
+
+      LOG.info("Read {} Spanner shard from {}", shards.size(), shardsFilePath);
       return shards;
 
     } catch (IOException e) {
