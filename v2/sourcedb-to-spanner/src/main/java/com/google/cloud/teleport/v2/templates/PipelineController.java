@@ -43,7 +43,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -374,10 +373,7 @@ public class PipelineController {
           // Read data from source
           String shardId = entry.getValue();
 
-          // If a namespace is configured for a shard uses that, otherwise uses the namespace
-          // configured in the options if there is one.
-          String namespace =
-              Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
+          String namespace = shard.getNamespace();
           String dbName = entry.getKey();
           JdbcIOWrapperConfig shardConfig =
               OptionsToConfigBuilder.getJdbcIOWrapperConfig(
