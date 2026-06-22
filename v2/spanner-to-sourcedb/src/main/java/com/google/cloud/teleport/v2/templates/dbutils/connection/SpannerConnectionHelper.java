@@ -16,9 +16,6 @@
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
@@ -27,6 +24,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,7 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
   private static final Logger LOG = LoggerFactory.getLogger(SpannerConnectionHelper.class);
 
   private static Map<String, DatabaseClient> clientMap = new ConcurrentHashMap<>();
-  private static Spanner spannerService;
+  private static final Map<String, SpannerAccessor> accessorMap = new ConcurrentHashMap<>();
 
   @Override
   public synchronized void init(ConnectionHelperRequest connectionHelperRequest) {
@@ -46,8 +45,6 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
     }
 
     List<Shard> shards = connectionHelperRequest.getShards();
-    String projectId = ((SpannerShard) shards.get(0)).getProjectId();
-    spannerService = SpannerOptions.newBuilder().setProjectId(projectId).build().getService();
 
     for (Shard shard : shards) {
       if (!(shard instanceof SpannerShard)) {
@@ -56,13 +53,16 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
       }
       SpannerShard spannerShard = (SpannerShard) shard;
       String key = connectionKey(spannerShard);
-      DatabaseClient client =
-          spannerService.getDatabaseClient(
-              DatabaseId.of(
-                  spannerShard.getProjectId(),
-                  spannerShard.getInstanceId(),
-                  spannerShard.getDatabaseId()));
-      clientMap.put(key, client);
+
+      SpannerConfig config =
+          SpannerConfig.create()
+              .withProjectId(spannerShard.getProjectId())
+              .withInstanceId(spannerShard.getInstanceId())
+              .withDatabaseId(spannerShard.getDatabaseId());
+
+      SpannerAccessor accessor = SpannerAccessor.getOrCreate(config);
+      accessorMap.put(key, accessor);
+      clientMap.put(key, accessor.getDatabaseClient());
       LOG.info("Initialized Spanner connection for key: {}", key);
     }
   }
@@ -94,9 +94,10 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
   }
 
   public void close() {
-    if (spannerService != null) {
-      spannerService.close();
+    for (SpannerAccessor accessor : accessorMap.values()) {
+      accessor.close();
     }
+    accessorMap.clear();
     clientMap.clear();
   }
 }

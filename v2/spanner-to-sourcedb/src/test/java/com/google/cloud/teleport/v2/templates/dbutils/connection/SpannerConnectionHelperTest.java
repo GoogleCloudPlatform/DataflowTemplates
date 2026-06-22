@@ -17,16 +17,24 @@ package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
@@ -34,8 +42,35 @@ public final class SpannerConnectionHelperTest {
 
   @After
   public void tearDown() {
-    // Reset the static client map so tests don't leak between cases.
-    new SpannerConnectionHelper().setClientMap(new HashMap<>());
+    // Reset the static maps so tests don't leak between cases.
+    new SpannerConnectionHelper().close();
+  }
+
+  @Test
+  public void testInit() {
+    SpannerShard shard = new SpannerShard("p", "i", "d");
+    ConnectionHelperRequest request =
+        new ConnectionHelperRequest(List.of(shard), null, 10, null, null, null);
+
+    SpannerAccessor mockAccessor = mock(SpannerAccessor.class);
+    DatabaseClient mockClient = mock(DatabaseClient.class);
+    when(mockAccessor.getDatabaseClient()).thenReturn(mockClient);
+
+    try (MockedStatic<SpannerAccessor> spannerAccessorMockedStatic =
+        mockStatic(SpannerAccessor.class)) {
+      spannerAccessorMockedStatic
+          .when(() -> SpannerAccessor.getOrCreate(any()))
+          .thenReturn(mockAccessor);
+
+      SpannerConnectionHelper helper = new SpannerConnectionHelper();
+      helper.init(request);
+
+      assertThat(helper.isConnectionPoolInitialized()).isTrue();
+      assertThat(helper.getConnection(SpannerConnectionHelper.connectionKey(shard)))
+          .isSameAs(mockClient);
+    } catch (ConnectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Test
