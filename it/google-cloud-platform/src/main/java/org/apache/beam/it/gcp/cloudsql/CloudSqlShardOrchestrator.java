@@ -420,9 +420,7 @@ public class CloudSqlShardOrchestrator {
   protected String generateAndUploadConfig(String artifactName) {
     LOG.info("Generating and uploading shard configuration...");
     JSONObject config = new JSONObject();
-    config.put("configType", "dataflow");
-    JSONObject shardConfigBulk = new JSONObject();
-    JSONArray dataShards = new JSONArray();
+    JSONArray shardConfigs = new JSONArray();
 
     int shardIdx = 0;
     for (Map.Entry<String, List<String>> entry : requestedShardMap.entrySet()) {
@@ -430,28 +428,20 @@ public class CloudSqlShardOrchestrator {
       String ip = instanceIpMap.get(instanceName);
       List<String> dbNames = entry.getValue();
 
-      JSONObject dataShard = new JSONObject();
-      dataShard.put("dataShardId", instanceName);
-      dataShard.put("host", ip);
-      dataShard.put("port", port);
-      dataShard.put("user", username);
-      dataShard.put("password", password);
-
-      JSONArray databases = new JSONArray();
       for (String dbName : dbNames) {
-        JSONObject db = new JSONObject();
-        db.put("dbName", dbName);
-        db.put("databaseId", String.format("%s%02d%s", "shard_", shardIdx, dbName));
-        db.put("refDataShardId", instanceName);
-        databases.put(db);
+        JSONObject shardConfig = new JSONObject();
+        shardConfig.put("logicalShardId", String.format("%s%02d_%s", "shard_", shardIdx, dbName));
+        shardConfig.put("host", ip);
+        shardConfig.put("port", port);
+        shardConfig.put("user", username);
+        shardConfig.put("password", password);
+        shardConfig.put("dbName", dbName);
+        shardConfigs.put(shardConfig);
       }
       shardIdx++;
-      dataShard.put("databases", databases);
-      dataShards.put(dataShard);
     }
 
-    shardConfigBulk.put("dataShards", dataShards);
-    config.put("shardConfigurationBulk", shardConfigBulk);
+    config.put("shardConfigs", shardConfigs);
 
     String configContent = config.toString();
     GcsArtifact artifact =

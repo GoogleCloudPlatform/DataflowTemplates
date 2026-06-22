@@ -19,8 +19,11 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
+import com.google.gson.Gson;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -233,7 +236,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {
-      params.putAll(getJdbcParameters((JDBCResourceManager) sourceResourceManager));
+      params.putAll(
+          getJdbcParameters(
+              (JDBCResourceManager) sourceResourceManager, gcsPathPrefix, jobParameters));
     } else if (sourceResourceManager instanceof CassandraResourceManager) {
       params.putAll(
           getCassandraParameters((CassandraResourceManager) sourceResourceManager, gcsPathPrefix));
@@ -260,6 +265,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     // overridden parameters
     if (jobParameters != null) {
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
+        if ("namespace".equals(entry.getKey())) {
+          continue;
+        }
         params.put(entry.getKey(), entry.getValue());
       }
     }
@@ -280,13 +288,70 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     return jobInfo;
   }
 
-  private Map<String, String> getJdbcParameters(JDBCResourceManager jdbcResourceManager) {
+  protected String createAndUploadShardConfigToGcs(
+      String gcsPathPrefix,
+      JDBCResourceManager jdbcResourceManager,
+      Map<String, String> jobParameters)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(jdbcResourceManager.getUsername());
+    shard.setPassword(jdbcResourceManager.getPassword());
+    if (jdbcResourceManager instanceof PostgresResourceManager pgRm) {
+      shard.setHost(pgRm.getHost());
+      shard.setPort(String.valueOf(pgRm.getPort()));
+      shard.setDbName(pgRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
+      shard.setHost(mySqlRm.getHost());
+      shard.setPort(String.valueOf(mySqlRm.getPort()));
+      shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager
+        instanceof org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager cloudRm) {
+      shard.setHost(cloudRm.getHost());
+      shard.setPort(String.valueOf(cloudRm.getPort()));
+      shard.setDbName(cloudRm.getDatabaseName());
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported JDBC resource manager type: " + jdbcResourceManager.getClass().getName());
+    }
+
+    if (jobParameters != null && jobParameters.containsKey("namespace")) {
+      shard.setNamespace(jobParameters.get("namespace"));
+    }
+
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(List.of(shard));
+    String shardFileContents = new Gson().toJson(jdbcShardConfig);
+    LOG.info("Shard file contents: {}", shardFileContents);
+
+    String configBasePath = (gcsPathPrefix == null) ? "null" : gcsPathPrefix;
+    if (configBasePath.endsWith("/")) {
+      configBasePath = configBasePath.substring(0, configBasePath.length() - 1);
+    }
+    String configGcsPath = getGcsPath(configBasePath + "/shard.json");
+
+    gcsClient.createArtifact(configBasePath + "/shard.json", shardFileContents);
+
+    return configGcsPath;
+  }
+
+  private Map<String, String> getJdbcParameters(
+      JDBCResourceManager jdbcResourceManager,
+      String gcsPathPrefix,
+      Map<String, String> jobParameters) {
 
     Map<String, String> params =
         new HashMap<>() {
           {
             put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
-            put("sourceConfigURL", jdbcResourceManager.getUri());
+            try {
+              put(
+                  "sourceConfigURL",
+                  createAndUploadShardConfigToGcs(
+                      gcsPathPrefix, jdbcResourceManager, jobParameters));
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
             put("username", jdbcResourceManager.getUsername());
             put("password", jdbcResourceManager.getPassword());
             put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
