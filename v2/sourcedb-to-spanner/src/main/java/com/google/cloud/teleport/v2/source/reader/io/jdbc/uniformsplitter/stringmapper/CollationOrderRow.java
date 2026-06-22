@@ -114,15 +114,15 @@ public abstract class CollationOrderRow {
         isSpace);
 
     Preconditions.checkArgument(
-        charSetChar.length() == Character.charCount(charSetChar.codePointAt(0)),
+        charSetChar.codePointCount(0, charSetChar.length()) == 1,
         "Found an invalid character length in collation output " + charSetChar);
     Preconditions.checkArgument(
-        equivalentCharsetChar.length() == Character.charCount(equivalentCharsetChar.codePointAt(0)),
+        equivalentCharsetChar.codePointCount(0, equivalentCharsetChar.length()) == 1,
         "Found an invalid equivalent character length in collation output "
             + equivalentCharsetChar);
     Preconditions.checkArgument(
-        equivalentCharsetCharPadSpace.length()
-            == Character.charCount(equivalentCharsetCharPadSpace.codePointAt(0)),
+        equivalentCharsetCharPadSpace.codePointCount(0, equivalentCharsetCharPadSpace.length())
+            == 1,
         "Found an invalid equivalent character for pad space length in collation output "
             + equivalentCharsetCharPadSpace);
 
