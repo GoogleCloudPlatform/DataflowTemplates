@@ -703,6 +703,7 @@ public class CollationMapperTest {
         .isEqualTo((int) '\uFFFD');
 
     // Verify that \uFFFD maps to the first seen index (1L)
-    assertThat(collationMapper.allPositionsIndex().getOrdinalPosition((int) '\uFFFD')).isEqualTo(1L);
+    assertThat(collationMapper.allPositionsIndex().getOrdinalPosition((int) '\uFFFD'))
+        .isEqualTo(1L);
   }
 }

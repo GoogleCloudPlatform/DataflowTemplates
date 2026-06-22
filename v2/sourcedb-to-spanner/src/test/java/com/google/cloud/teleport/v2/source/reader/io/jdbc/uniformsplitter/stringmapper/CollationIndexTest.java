@@ -142,7 +142,8 @@ public class CollationIndexTest {
             .addCharacter((int) 'a', (int) 'A', 0L)
             .addCharacter((int) 'A', (int) 'A', 0L)
             .addCharacter((int) '\uFFFD', (int) '\uFFFD', 1L)
-            .addCharacter((int) '\uFFFE', (int) '\uFFFD', 2L) // Duplicate \uFFFD with different index
+            .addCharacter(
+                (int) '\uFFFE', (int) '\uFFFD', 2L) // Duplicate \uFFFD with different index
             .build();
 
     assertThat(collationIndex.getCharacterFromPosition(1L)).isEqualTo((int) '\uFFFD');
