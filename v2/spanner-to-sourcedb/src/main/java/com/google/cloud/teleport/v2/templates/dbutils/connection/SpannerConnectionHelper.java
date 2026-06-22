@@ -34,12 +34,11 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerConnectionHelper.class);
 
-  private static Map<String, DatabaseClient> clientMap = new ConcurrentHashMap<>();
   private static final Map<String, SpannerAccessor> accessorMap = new ConcurrentHashMap<>();
 
   @Override
   public synchronized void init(ConnectionHelperRequest connectionHelperRequest) {
-    if (!clientMap.isEmpty()) {
+    if (!accessorMap.isEmpty()) {
       LOG.info("Spanner connection pool is already initialized.");
       return;
     }
@@ -62,26 +61,25 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
 
       SpannerAccessor accessor = SpannerAccessor.getOrCreate(config);
       accessorMap.put(key, accessor);
-      clientMap.put(key, accessor.getDatabaseClient());
       LOG.info("Initialized Spanner connection for key: {}", key);
     }
   }
 
   @Override
   public DatabaseClient getConnection(String connectionRequestKey) throws ConnectionException {
-    if (clientMap.isEmpty()) {
+    if (accessorMap.isEmpty()) {
       throw new ConnectionException("Spanner connection pool is not initialized.");
     }
-    DatabaseClient client = clientMap.get(connectionRequestKey);
-    if (client == null) {
+    SpannerAccessor accessor = accessorMap.get(connectionRequestKey);
+    if (accessor == null) {
       throw new ConnectionException("No Spanner connection found for key: " + connectionRequestKey);
     }
-    return client;
+    return accessor.getDatabaseClient();
   }
 
   @Override
   public boolean isConnectionPoolInitialized() {
-    return !clientMap.isEmpty();
+    return !accessorMap.isEmpty();
   }
 
   public static String connectionKey(SpannerShard shard) {
@@ -89,8 +87,9 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
   }
 
   /** For unit testing only. */
-  public void setClientMap(Map<String, DatabaseClient> inputMap) {
-    clientMap = inputMap;
+  public void setAccessorMap(Map<String, SpannerAccessor> inputMap) {
+    accessorMap.clear();
+    accessorMap.putAll(inputMap);
   }
 
   public void close() {
@@ -98,6 +97,5 @@ public class SpannerConnectionHelper implements IConnectionHelper<DatabaseClient
       accessor.close();
     }
     accessorMap.clear();
-    clientMap.clear();
   }
 }

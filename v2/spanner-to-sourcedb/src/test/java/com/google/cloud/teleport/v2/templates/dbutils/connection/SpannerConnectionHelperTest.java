@@ -90,18 +90,21 @@ public final class SpannerConnectionHelperTest {
   @Test
   public void getConnectionReturnsClientForRegisteredKey() throws Exception {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    DatabaseClient client = Mockito.mock(DatabaseClient.class);
-    Map<String, DatabaseClient> map = new HashMap<>();
-    map.put("p/i/d", client);
-    helper.setClientMap(map);
+    SpannerAccessor mockAccessor = Mockito.mock(SpannerAccessor.class);
+    DatabaseClient mockClient = Mockito.mock(DatabaseClient.class);
+    when(mockAccessor.getDatabaseClient()).thenReturn(mockClient);
 
-    assertThat(helper.getConnection("p/i/d")).isSameAs(client);
+    Map<String, SpannerAccessor> map = new HashMap<>();
+    map.put("p/i/d", mockAccessor);
+    helper.setAccessorMap(map);
+
+    assertThat(helper.getConnection("p/i/d")).isSameAs(mockClient);
   }
 
   @Test
   public void getConnectionThrowsWhenPoolEmpty() {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    helper.setClientMap(new HashMap<>());
+    helper.setAccessorMap(new HashMap<>());
 
     assertThatThrownBy(() -> helper.getConnection("any-key"))
         .isInstanceOf(ConnectionException.class);
@@ -110,9 +113,9 @@ public final class SpannerConnectionHelperTest {
   @Test
   public void getConnectionThrowsForUnknownKey() {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    Map<String, DatabaseClient> map = new HashMap<>();
-    map.put("a/b/c", Mockito.mock(DatabaseClient.class));
-    helper.setClientMap(map);
+    Map<String, SpannerAccessor> map = new HashMap<>();
+    map.put("a/b/c", Mockito.mock(SpannerAccessor.class));
+    helper.setAccessorMap(map);
 
     assertThatThrownBy(() -> helper.getConnection("does/not/exist"))
         .isInstanceOf(ConnectionException.class);
@@ -121,21 +124,21 @@ public final class SpannerConnectionHelperTest {
   @Test
   public void isConnectionPoolInitializedReflectsClientMapState() {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    helper.setClientMap(new HashMap<>());
+    helper.setAccessorMap(new HashMap<>());
     assertThat(helper.isConnectionPoolInitialized()).isFalse();
 
-    Map<String, DatabaseClient> map = new HashMap<>();
-    map.put("p/i/d", Mockito.mock(DatabaseClient.class));
-    helper.setClientMap(map);
+    Map<String, SpannerAccessor> map = new HashMap<>();
+    map.put("p/i/d", Mockito.mock(SpannerAccessor.class));
+    helper.setAccessorMap(map);
     assertThat(helper.isConnectionPoolInitialized()).isTrue();
   }
 
   @Test
   public void initDoesNotReinitializeIfNotEmpty() throws Exception {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    Map<String, DatabaseClient> map = new HashMap<>();
-    map.put("p/i/d", Mockito.mock(DatabaseClient.class));
-    helper.setClientMap(map);
+    Map<String, SpannerAccessor> map = new HashMap<>();
+    map.put("p/i/d", Mockito.mock(SpannerAccessor.class));
+    helper.setAccessorMap(map);
 
     // This should just return without doing anything (and log it)
     helper.init(null);
@@ -145,9 +148,9 @@ public final class SpannerConnectionHelperTest {
   @Test
   public void testGetConnection_nonExistentKey() throws Exception {
     SpannerConnectionHelper helper = new SpannerConnectionHelper();
-    Map<String, DatabaseClient> map = new HashMap<>();
-    map.put("p/i/d", Mockito.mock(DatabaseClient.class));
-    helper.setClientMap(map);
+    Map<String, SpannerAccessor> map = new HashMap<>();
+    map.put("p/i/d", Mockito.mock(SpannerAccessor.class));
+    helper.setAccessorMap(map);
 
     assertThatThrownBy(() -> helper.getConnection("non-existent"))
         .isInstanceOf(ConnectionException.class)
