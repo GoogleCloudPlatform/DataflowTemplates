@@ -256,8 +256,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 20,
       optional = true,
       description = "Namespace",
-      helpText =
-          "Namespace to be exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Note: Custom non-public namespaces are currently unsupported for PostgreSQL and will cause the job to fail immediately.")
+      helpText = "This field is no longer used.")
   @Default.String("")
   String getNamespace();
 
