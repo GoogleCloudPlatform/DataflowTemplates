@@ -1027,7 +1027,8 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listUdfs(Ddl.Builder builder) {
+  @VisibleForTesting
+  void listUdfs(Ddl.Builder builder) {
     Statement queryStatement;
 
     switch (dialect) {
