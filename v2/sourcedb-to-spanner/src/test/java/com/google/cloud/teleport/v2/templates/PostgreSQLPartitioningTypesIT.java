@@ -41,7 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test to reproduce the parallel read partition issues with specific PostgreSQL data types.
+ * An integration test to reproduce the parallel read partition issues with specific PostgreSQL data
+ * types.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -52,8 +53,10 @@ public class PostgreSQLPartitioningTypesIT extends SourceDbToSpannerITBase {
   public static PostgresResourceManager postgreSQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String POSTGRESQL_DDL_RESOURCE = "PartitioningTypesIT/postgresql-partitioning-types.sql";
-  private static final String SPANNER_DDL_RESOURCE = "PartitioningTypesIT/postgresql-spanner-schema.sql";
+  private static final String POSTGRESQL_DDL_RESOURCE =
+      "PartitioningTypesIT/postgresql-partitioning-types.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "PartitioningTypesIT/postgresql-spanner-schema.sql";
 
   @Before
   public void setUp() {
@@ -85,13 +88,13 @@ public class PostgreSQLPartitioningTypesIT extends SourceDbToSpannerITBase {
             spannerResourceManager,
             jobParameters,
             null);
-            
+
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));
-        
+
     assertThatResult(result).isLaunchFinished();
 
-    // Verify if all the data made it to Spanner. If boundaries were rounded/truncated, 
+    // Verify if all the data made it to Spanner. If boundaries were rounded/truncated,
     // some rows with fractional parts might be skipped.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
@@ -112,8 +115,10 @@ public class PostgreSQLPartitioningTypesIT extends SourceDbToSpannerITBase {
     result.put("t_float", createRows(1.5, 2.5, 3.5));
     result.put("t_double", createRows(1.5, 2.5, 3.5));
     // For Spanner numeric, we might just compare as string or wait to see what comes back.
-    // For simplicity of verification, let's just make sure 3 rows exist and check contents as strings if needed.
-    // But truthmatchers handles Number types mostly fine. We can use String representations to be safe for dates/decimals.
+    // For simplicity of verification, let's just make sure 3 rows exist and check contents as
+    // strings if needed.
+    // But truthmatchers handles Number types mostly fine. We can use String representations to be
+    // safe for dates/decimals.
     return result;
   }
 
