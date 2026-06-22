@@ -27,6 +27,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -81,7 +83,7 @@ public abstract class CollationMapper implements Serializable {
    * using utf8mb4), 'b') = 'ab' COLLATE <collation>;} returns 1. TODO(vardhanvthigle): Check this
    * behavior for PG and other databases.
    */
-  public abstract ImmutableSet<Character> emptyCharacters();
+  public abstract ImmutableSet<Integer> emptyCharacters();
 
   /**
    * Space Characters. MySQL ignores trailing space characters in comparisons for PAD space
@@ -90,11 +92,13 @@ public abstract class CollationMapper implements Serializable {
    * (UNHEX(C2H0)) when the collation is Pad Space. These have same behavior to ascii space as far
    * as trailing or non-trailing comparison is concerned.
    */
-  public abstract ImmutableSet<Character> spaceCharacters();
+  public abstract ImmutableSet<Integer> spaceCharacters();
 
   @Memoized
   String allSpaceCharacters() {
-    return this.spaceCharacters().stream().map(String::valueOf).collect(Collectors.joining(""));
+    return this.spaceCharacters().stream()
+        .map(c -> new String(Character.toChars(c)))
+        .collect(Collectors.joining(""));
   }
 
   @Memoized
@@ -104,7 +108,9 @@ public abstract class CollationMapper implements Serializable {
     }
     return "["
         + Pattern.quote(
-            this.emptyCharacters().stream().map(String::valueOf).collect(Collectors.joining("")))
+            this.emptyCharacters().stream()
+                .map(c -> new String(Character.toChars(c)))
+                .collect(Collectors.joining("")))
         + "]";
   }
 
@@ -150,14 +156,15 @@ public abstract class CollationMapper implements Serializable {
     }
 
     // Convert the string to BigInteger.
-    for (int index = 0; index < element.length(); index++) {
-      Character c = element.charAt(index);
+    int[] codepoints = element.codePoints().toArray();
+    for (int index = 0; index < codepoints.length; index++) {
+      int c = codepoints[index];
       ret =
-          ret.multiply(BigInteger.valueOf(getCharsetSize(index == (element.length() - 1))))
-              .add(BigInteger.valueOf(getOrdinalPosition(c, index == (element.length() - 1))));
+          ret.multiply(BigInteger.valueOf(getCharsetSize(index == (codepoints.length - 1))))
+              .add(BigInteger.valueOf(getOrdinalPosition(c, index == (codepoints.length - 1))));
     }
-    for (int index = element.length(); index < lengthToPad; index++) {
-      ret = ret.multiply(BigInteger.valueOf(getCharsetSize(index == (element.length() - 1))));
+    for (int index = codepoints.length; index < lengthToPad; index++) {
+      ret = ret.multiply(BigInteger.valueOf(getCharsetSize(index == (lengthToPad - 1))));
     }
     return ret;
   }
@@ -189,16 +196,16 @@ public abstract class CollationMapper implements Serializable {
 
     // Base Case that the string just represents single character
     if (element == BigInteger.ZERO) {
-      char c = getCharacterFromPosition(element.longValue(), true);
-      return String.valueOf(c);
+      int c = getCharacterFromPosition(element.longValue(), true);
+      return new String(Character.toChars(c));
     }
 
     while (element != BigInteger.ZERO) {
       long charsetSize = getCharsetSize(index == 0);
 
       BigInteger reminder = element.mod(BigInteger.valueOf(charsetSize));
-      char c = getCharacterFromPosition(reminder.longValue(), (index == 0));
-      word.append(c);
+      int c = getCharacterFromPosition(reminder.longValue(), (index == 0));
+      word.append(Character.toChars(c));
 
       element = element.divide(BigInteger.valueOf(charsetSize));
       index++;
@@ -227,11 +234,30 @@ public abstract class CollationMapper implements Serializable {
       UniformSplitterDBAdapter dbAdapter,
       CollationReference collationReference)
       throws SQLException {
+
+    if (dbAdapter.supportsRanksRetrieval()) {
+      String dbCharset = collationReference.dbCharacterSet();
+      String cleanCharset = dbCharset.replace("`", "");
+      Optional<java.nio.charset.Charset> javaCharset = CharsetMapper.toJavaCharset(cleanCharset);
+      if (javaCharset.isPresent()) {
+        logger.info("Using Java-side rank retrieval for {}", collationReference);
+        List<Integer> codepoints = CodepointGenerator.getValidCodepoints(javaCharset.get());
+        List<UniformSplitterDBAdapter.CharacterRank> ranks =
+            dbAdapter.getRanks(connection, codepoints, collationReference.dbCollation());
+        return fromRanks(ranks, collationReference);
+      } else {
+        logger.warn(
+            "Could not map DB charset {} to Java charset. Falling back to SQL query.", dbCharset);
+      }
+    }
+
+    int maxBytes = dbAdapter.getCharsetMaxLength(connection, collationReference.dbCharacterSet());
     String query =
         dbAdapter.getCollationsOrderQuery(
             collationReference.dbCharacterSet(),
             collationReference.dbCollation(),
-            collationReference.padSpace());
+            collationReference.padSpace(),
+            maxBytes);
     CollationMapper mapper = null;
     try (Statement statement = connection.createStatement()) {
       statement.setEscapeProcessing(false);
@@ -269,19 +295,42 @@ public abstract class CollationMapper implements Serializable {
     return mapper;
   }
 
+  private static CollationMapper fromRanks(
+      List<UniformSplitterDBAdapter.CharacterRank> ranks, CollationReference collationReference) {
+    Builder builder = builder(collationReference);
+    for (UniformSplitterDBAdapter.CharacterRank rank : ranks) {
+      if (rank.isEmpty()) {
+        builder.emptyCharactersBuilder().add(rank.codepoint());
+        continue;
+      }
+      if (rank.isSpace()) {
+        builder.spaceCharactersBuilder().add(rank.codepoint());
+      }
+      builder
+          .allPositionsIndexBuilder()
+          .addCharacter(rank.codepoint(), rank.codepoint(), rank.rank());
+      if (!rank.isSpace()) {
+        builder
+            .trailingPositionsPadSpaceBuilder()
+            .addCharacter(rank.codepoint(), rank.codepoint(), rank.rankPadSpace());
+      }
+    }
+    return builder.build();
+  }
+
   private long getCharsetSize(boolean lastCharacter) {
     return (lastCharacter && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getCharsetSize()
         : this.allPositionsIndex().getCharsetSize();
   }
 
-  private long getOrdinalPosition(Character c, boolean lastCharacter) {
+  private long getOrdinalPosition(Integer c, boolean lastCharacter) {
     return (lastCharacter && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getOrdinalPosition(c)
         : this.allPositionsIndex().getOrdinalPosition(c);
   }
 
-  private Character getCharacterFromPosition(long ordinalPosition, boolean firstIteration) {
+  private Integer getCharacterFromPosition(long ordinalPosition, boolean firstIteration) {
     return (firstIteration && collationReference().padSpace())
         ? this.trailingPositionsPadSpace().getCharacterFromPosition(ordinalPosition)
         : this.allPositionsIndex().getCharacterFromPosition(ordinalPosition);
@@ -307,9 +356,9 @@ public abstract class CollationMapper implements Serializable {
 
     abstract CollationIndex.Builder trailingPositionsPadSpaceBuilder();
 
-    abstract ImmutableSet.Builder<Character> emptyCharactersBuilder();
+    abstract ImmutableSet.Builder<Integer> emptyCharactersBuilder();
 
-    abstract ImmutableSet.Builder<Character> spaceCharactersBuilder();
+    abstract ImmutableSet.Builder<Integer> spaceCharactersBuilder();
 
     public Builder addCharacter(CollationOrderRow collationOrderRow) {
 

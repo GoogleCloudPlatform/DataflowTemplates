@@ -25,6 +25,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
@@ -32,6 +33,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.M
 import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -48,7 +50,13 @@ public class CollationMapperTest {
 
   @Mock Statement mockStatement;
 
+  @Mock PreparedStatement mockCharsetPreparedStatement;
+
+  @Mock PreparedStatement mockWeightsPreparedStatement;
+
   @Mock ResultSet mockResultSet;
+
+  @Mock ResultSet mockCharsetResultSet;
 
   @Test
   public void testCollationMapperBasic() {
@@ -71,9 +79,9 @@ public class CollationMapperTest {
     for (Character c : enAlphabetsBuilder.build()) {
       CollationOrderRow collationOrderRow =
           CollationOrderRow.builder()
-              .setCharsetChar(c)
-              .setEquivalentChar(Character.toUpperCase(c))
-              .setEquivalentCharPadSpace(Character.toUpperCase(c))
+              .setCharsetChar((int) c)
+              .setEquivalentChar((int) Character.toUpperCase(c))
+              .setEquivalentCharPadSpace((int) Character.toUpperCase(c))
               .setCodepointRank((long) (Character.toUpperCase(c) - 'A'))
               .setCodepointRankPadSpace((long) (Character.toUpperCase(c) - 'A'))
               .setIsEmpty(false)
@@ -84,9 +92,9 @@ public class CollationMapperTest {
     /** Add blank character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('\0')
-            .setEquivalentChar('\0')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar((int) '\0')
+            .setEquivalentChar((int) '\0')
+            .setEquivalentCharPadSpace((int) '\0')
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(true)
@@ -136,9 +144,9 @@ public class CollationMapperTest {
     for (Character c : enAlphabetsBuilder.build()) {
       CollationOrderRow collationOrderRow =
           CollationOrderRow.builder()
-              .setCharsetChar(c)
-              .setEquivalentChar(Character.toUpperCase(c))
-              .setEquivalentCharPadSpace(Character.toUpperCase(c))
+              .setCharsetChar((int) c)
+              .setEquivalentChar((int) Character.toUpperCase(c))
+              .setEquivalentCharPadSpace((int) Character.toUpperCase(c))
               .setCodepointRank((long) (Character.toUpperCase(c) - 'A' + 1))
               .setCodepointRankPadSpace((long) (Character.toUpperCase(c) - 'A'))
               .setIsEmpty(false)
@@ -149,9 +157,9 @@ public class CollationMapperTest {
     /** Add Space Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar(' ')
-            .setEquivalentChar(' ')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar((int) ' ')
+            .setEquivalentChar((int) ' ')
+            .setEquivalentCharPadSpace((int) '\0')
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -183,9 +191,9 @@ public class CollationMapperTest {
     /* Add space character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar(' ')
-            .setEquivalentChar(' ')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar((int) ' ')
+            .setEquivalentChar((int) ' ')
+            .setEquivalentCharPadSpace((int) '\0')
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -194,9 +202,9 @@ public class CollationMapperTest {
     /* Add empty Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('\0')
-            .setEquivalentChar('\0')
-            .setEquivalentCharPadSpace('\0')
+            .setCharsetChar((int) '\0')
+            .setEquivalentChar((int) '\0')
+            .setEquivalentCharPadSpace((int) '\0')
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(true)
@@ -224,9 +232,9 @@ public class CollationMapperTest {
     /* Add Single Character */
     collationMapperBuilder.addCharacter(
         CollationOrderRow.builder()
-            .setCharsetChar('a')
-            .setEquivalentChar('a')
-            .setEquivalentCharPadSpace('a')
+            .setCharsetChar((int) 'a')
+            .setEquivalentChar((int) 'a')
+            .setEquivalentCharPadSpace((int) 'a')
             .setCodepointRank(0L)
             .setCodepointRankPadSpace(0L)
             .setIsEmpty(false)
@@ -245,6 +253,11 @@ public class CollationMapperTest {
             .setDbCollation("testCollation")
             .setPadSpace(false)
             .build();
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false).thenReturn(true);
@@ -276,6 +289,12 @@ public class CollationMapperTest {
             .setDbCollation("testCollation")
             .setPadSpace(false)
             .build();
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     int expectedSqlExceptionsCount = 0;
     when(mockConnection.createStatement())
         .thenThrow(new SQLException("test"))
@@ -307,6 +326,12 @@ public class CollationMapperTest {
             .setDbCollation("testCollation")
             .setPadSpace(false)
             .build();
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false).thenReturn(false);
@@ -328,6 +353,12 @@ public class CollationMapperTest {
             .setDbCollation("testCollation")
             .setPadSpace(false)
             .build();
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     when(mockConnection.createStatement()).thenReturn(mockStatement);
     when(mockStatement.execute(any())).thenReturn(false);
     when(mockStatement.getMoreResults()).thenReturn(false);
@@ -358,9 +389,16 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-ai-ci.tsv", mockResultSet);
+    MysqlDialectAdapter adapter = org.mockito.Mockito.spy(new MysqlDialectAdapter(MySqlVersion.DEFAULT));
+    when(adapter.supportsRanksRetrieval()).thenReturn(false);
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromDB(mockConnection, adapter, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -410,9 +448,16 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-0900-as-cs.tsv", mockResultSet);
+    MysqlDialectAdapter adapter = org.mockito.Mockito.spy(new MysqlDialectAdapter(MySqlVersion.DEFAULT));
+    when(adapter.supportsRanksRetrieval()).thenReturn(false);
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromDB(mockConnection, adapter, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()
@@ -449,9 +494,16 @@ public class CollationMapperTest {
     int numRows =
         TestUtils.wireMockResultSet(
             "TestCollations/collation-output-mysql-utf8mb4-unicode-ci.tsv", mockResultSet);
+    MysqlDialectAdapter adapter = org.mockito.Mockito.spy(new MysqlDialectAdapter(MySqlVersion.DEFAULT));
+    when(adapter.supportsRanksRetrieval()).thenReturn(false);
+
+    when(mockConnection.prepareStatement(contains("CHARACTER_SETS"))).thenReturn(mockCharsetPreparedStatement);
+    when(mockCharsetPreparedStatement.executeQuery()).thenReturn(mockCharsetResultSet);
+    when(mockCharsetResultSet.next()).thenReturn(true);
+    when(mockCharsetResultSet.getInt("MAXLEN")).thenReturn(4);
+
     CollationMapper collationMapper =
-        CollationMapper.fromDB(
-            mockConnection, new MysqlDialectAdapter(MySqlVersion.DEFAULT), collationReference);
+        CollationMapper.fromDB(mockConnection, adapter, collationReference);
     // All characters are mapped.
     assertThat(
             collationMapper.allPositionsIndex().characterToIndex().size()

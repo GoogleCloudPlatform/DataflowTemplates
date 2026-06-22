@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -47,8 +47,10 @@ import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -727,25 +729,266 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return false;
   }
 
-  /**
-   * Get Query that returns order of collation. The query must return all the characters in the
-   * character set with the columns listed in {@link CollationsOrderQueryColumns}.
-   *
-   * @param dbCharset character set used by the database for which collation ordering has to be
-   *     found.
-   * @param dbCollation collation set used by the database for which collation ordering has to be
-   *     found.
-   * @param padSpace pad space used by the database for which collation ordering has to be found.
-   */
+  @Override
+  public CollationQueryResultType collationQueryResultType() {
+    return CollationQueryResultType.WEIGHT_BYTES;
+  }
+
+  @Override
+  public boolean supportsRanksRetrieval() {
+    return true;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterRank> getRanks(
+      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
+    String cleanCollation = cleanBackticks(collation);
+    String cleanCharset = cleanCollation.split("_")[0];
+    String escapedCharset = escapeMySql(cleanCharset);
+    String escapedCollation = escapeMySql(cleanCollation);
+
+    List<CharacterWeight> weights = new ArrayList<>();
+    int batchSize = 1000;
+    for (int i = 0; i < codepoints.size(); i += batchSize) {
+      List<Integer> batch = codepoints.subList(i, Math.min(i + batchSize, codepoints.size()));
+      weights.addAll(getWeightsBatch(conn, batch, escapedCharset, escapedCollation));
+    }
+    return computeRanksFromWeights(weights);
+  }
+
+  private List<CharacterWeight> getWeightsBatch(
+      Connection conn, List<Integer> batch, String charset, String collation) throws SQLException {
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("SELECT charset_char, ");
+    sb.append("WEIGHT_STRING(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS weight_non_trailing, ");
+    sb.append("WEIGHT_STRING(charset_char COLLATE ")
+        .append(collation)
+        .append(") AS weight_trailing, ");
+    sb.append("(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) = CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS is_empty, ");
+    sb.append("(CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), charset_char, CONVERT('a' USING ")
+        .append(charset)
+        .append(")) = CONCAT(CONVERT('a' USING ")
+        .append(charset)
+        .append("), CONVERT(' ' USING ")
+        .append(charset)
+        .append("), CONVERT('a' USING ")
+        .append(charset)
+        .append(")) COLLATE ")
+        .append(collation)
+        .append(") AS is_space ");
+    sb.append("FROM (");
+    for (int i = 0; i < batch.size(); i++) {
+      if (i > 0) {
+        sb.append(" UNION ALL ");
+      }
+      sb.append("SELECT ? AS charset_char");
+    }
+    sb.append(") AS t");
+
+    List<CharacterWeight> result = new ArrayList<>();
+    try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
+      for (int i = 0; i < batch.size(); i++) {
+        String s = new String(Character.toChars(batch.get(i)));
+        stmt.setString(i + 1, s);
+      }
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String charsetChar = rs.getString("charset_char");
+          if (charsetChar == null || charsetChar.isEmpty()) {
+            continue;
+          }
+          int cp = charsetChar.codePointAt(0);
+          byte[] wNt = rs.getBytes("weight_non_trailing");
+          byte[] wT = rs.getBytes("weight_trailing");
+          boolean isEmpty = rs.getBoolean("is_empty");
+          boolean isSpace = rs.getBoolean("is_space");
+          result.add(new CharacterWeight(cp, wNt, wT, isEmpty, isSpace));
+        }
+      }
+    }
+    return result;
+  }
+
+  private List<UniformSplitterDBAdapter.CharacterRank> computeRanksFromWeights(
+      List<CharacterWeight> rows) {
+    java.util.Comparator<String> weightKeyOrder = java.util.Comparator.naturalOrder();
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty) {
+        byte[] wNt = row.weightNonTrailing;
+        String keyNt =
+            (wNt != null) ? new String(wNt, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
+        ntGroups
+            .computeIfAbsent(keyNt, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+    Map<Integer, Long> ntRank = new HashMap<>();
+    long rank = 0;
+    for (java.util.TreeMap<Integer, Integer> group : ntGroups.values()) {
+      for (Integer c : group.values()) {
+        ntRank.put(c, rank);
+      }
+      rank++;
+    }
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty && !row.isSpace) {
+        byte[] wT = row.weightTrailing;
+        String keyT =
+            (wT != null) ? new String(wT, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
+        tGroups
+            .computeIfAbsent(keyT, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+    Map<Integer, Long> tRank = new HashMap<>();
+    long tRankCounter = 0;
+    for (java.util.TreeMap<Integer, Integer> group : tGroups.values()) {
+      for (Integer c : group.values()) {
+        tRank.put(c, tRankCounter);
+      }
+      tRankCounter++;
+    }
+
+    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
+    for (CharacterWeight row : rows) {
+      long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
+      long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
+      result.add(
+          new UniformSplitterDBAdapter.CharacterRank(
+              row.codepoint, codepointRank, codepointRankPs, row.isEmpty, row.isSpace));
+    }
+    return result;
+  }
+
+  @Override
+  public List<UniformSplitterDBAdapter.CharacterRank> processCollationResultSet(
+      ResultSet rs, CollationReference collationReference) throws SQLException {
+    List<CharacterWeight> list = new ArrayList<>();
+    while (rs.next()) {
+      String charsetChar = rs.getString("charset_char");
+      if (charsetChar == null || charsetChar.isEmpty()) {
+        continue;
+      }
+      int c = charsetChar.codePointAt(0);
+      byte[] wNt = rs.getBytes("weight_non_trailing");
+      byte[] wT = rs.getBytes("weight_trailing");
+      boolean isEmpty = rs.getBoolean("is_empty");
+      boolean isSpace = rs.getBoolean("is_space");
+
+      if (wNt == null && !isEmpty) {
+        logger.warn(
+            "Skipping character codepoint={} for {} because weight_non_trailing is NULL",
+            c,
+            collationReference);
+        continue;
+      }
+      list.add(new CharacterWeight(c, wNt, wT, isEmpty, isSpace));
+    }
+    return computeRanksFromWeights(list);
+  }
+
+  private static class CharacterWeight {
+    private final int codepoint;
+    private final byte[] weightNonTrailing;
+    private final byte[] weightTrailing;
+    private final boolean isEmpty;
+    private final boolean isSpace;
+
+    public CharacterWeight(
+        int codepoint,
+        byte[] weightNonTrailing,
+        byte[] weightTrailing,
+        boolean isEmpty,
+        boolean isSpace) {
+      this.codepoint = codepoint;
+      this.weightNonTrailing = weightNonTrailing;
+      this.weightTrailing = weightTrailing;
+      this.isEmpty = isEmpty;
+      this.isSpace = isSpace;
+    }
+  }
+
+  @Override
+  public int getCharsetMaxLength(Connection conn, String charsetName) throws SQLException {
+    String cleanCharset = cleanBackticks(charsetName);
+    String query =
+        "SELECT MAXLEN FROM INFORMATION_SCHEMA.CHARACTER_SETS WHERE CHARACTER_SET_NAME = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(query)) {
+      stmt.setString(1, cleanCharset);
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return rs.getInt("MAXLEN");
+        }
+      }
+    }
+    return 4; // Fallback
+  }
+
+  private String cleanBackticks(String s) {
+    if (s == null) {
+      return null;
+    }
+    return s.replace("`", "");
+  }
+
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace, 4);
+  }
+
+  @Override
+  public String getCollationsOrderQuery(
+      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    if (maxBytes < 4) {
+      query = removeSegment(query, "4_BYTE");
+    }
+    if (maxBytes < 3) {
+      query = removeSegment(query, "3_BYTE");
+    }
+    if (maxBytes < 2) {
+      query = removeSegment(query, "2_BYTE");
+    }
     Map<String, String> tags = new HashMap<>();
-    tags.put("'" + CHARSET_REPLACEMENT_TAG + "'", "'" + dbCharset + "'");
-    tags.put("'" + COLLATION_REPLACEMENT_TAG + "'", "'" + dbCollation + "'");
-    // Queries with size > max_allowed_packet get rejected by
-    // the db. max_allowed_packet is generally around 16Mb which is a lot for our use case.
+    tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
+    tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
     return replaceTagsAndSanitize(query, tags);
+  }
+
+  private String removeSegment(String sql, String byteSize) {
+    String startTag = "/*START_" + byteSize + "*/";
+    String endTag = "/*END_" + byteSize + "*/";
+    int startIndex = sql.indexOf(startTag);
+    int endIndex = sql.indexOf(endTag);
+    if (startIndex != -1 && endIndex != -1) {
+      return sql.substring(0, startIndex) + sql.substring(endIndex + endTag.length());
+    }
+    return sql;
   }
 
   /**
