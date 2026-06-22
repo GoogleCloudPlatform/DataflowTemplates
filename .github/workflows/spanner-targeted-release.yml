@@ -15,9 +15,6 @@
 name: Spanner Targeted Release
 
 on:
-  push:
-    branches:
-      - targeted-release
   workflow_dispatch:
     inputs:
       projectId:
@@ -33,7 +30,7 @@ on:
       stagePrefix:
         description: 'Prefix for staging the template (e.g., templates-2025-10-31). If blank, defaults to templates-YYYY-MM-DD using current date.'
         type: string
-        required: true
+        required: false
         default: ''
       templateName:
         description: 'Template Name to build and stage'
@@ -45,11 +42,6 @@ on:
         type: string
         required: true
         default: 'v2/spanner-to-sourcedb'
-      runnerLabels:
-        description: 'Runner labels formatted as a JSON array'
-        type: string
-        required: true
-        default: '["self-hosted", "spanner-release"]'
       runIntegrationTests:
         description: 'Run Spanner integration tests before staging templates'
         type: boolean
@@ -75,7 +67,7 @@ permissions:
 jobs:
   targeted_release:
     name: Targeted Template Release
-    runs-on: ${{ fromJSON(github.event.inputs.runnerLabels || '["self-hosted", "spanner-release"]') }}
+    runs-on: [ self-hosted, spanner-release ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
