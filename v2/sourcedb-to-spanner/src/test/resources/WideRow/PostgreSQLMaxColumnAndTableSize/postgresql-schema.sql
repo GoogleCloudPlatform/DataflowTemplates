@@ -1,6 +1,6 @@
-CREATE TABLE testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO (
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvyzpaegeqio (
     id VARCHAR(20) NOT NULL PRIMARY KEY,
-    col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY VARCHAR(20)
+    col_qcbf69rmxtre3b_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvy VARCHAR(20)
 );
 
-INSERT INTO testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO (id, col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY) VALUES ('1', repeat('a', 10));
+INSERT INTO testtable_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvyzpaegeqio (id, col_qcbf69rmxtre3b_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvy) VALUES ('1', repeat('a', 10));

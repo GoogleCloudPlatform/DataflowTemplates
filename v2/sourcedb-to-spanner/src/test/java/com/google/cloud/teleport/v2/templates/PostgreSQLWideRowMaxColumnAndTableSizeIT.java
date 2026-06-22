@@ -53,7 +53,7 @@ public class PostgreSQLWideRowMaxColumnAndTableSizeIT extends SourceDbToSpannerI
       "WideRow/PostgreSQLMaxColumnAndTableSize/pg-dialect-spanner-schema.sql";
 
   private static final String TABLE =
-      "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO";
+      "testtable_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvyzpaegeqio";
 
   @Before
   public void setUp() throws Exception {
@@ -117,7 +117,7 @@ public class PostgreSQLWideRowMaxColumnAndTableSizeIT extends SourceDbToSpannerI
   private void verifyData(SpannerResourceManager resourceManager) {
     ImmutableList<Struct> wideRowData =
         resourceManager.readTableRecords(
-            TABLE, "id", "col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY");
+            TABLE, "id", "col_qcbf69rmxtre3b_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvy");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }

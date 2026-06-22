@@ -1,4 +1,4 @@
-CREATE TABLE testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO (
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvyzpaegeqio (
     id STRING(100) NOT NULL,
-    col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY STRING(100)
+    col_qcbf69rmxtre3b_03tpcovf16ed0klxm3v808ch3btgq0uk_fexuzhbttvy STRING(100)
 ) PRIMARY KEY (id);
