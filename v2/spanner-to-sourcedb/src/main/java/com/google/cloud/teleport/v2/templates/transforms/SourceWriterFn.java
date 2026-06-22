@@ -257,6 +257,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                     (TransactionRunner.TransactionCallable<Boolean>)
                         shadowTransaction -> {
                           boolean isSourceAhead = false;
+                          // Boolean reference to capture if the record was written in the
+                          // transaction
                           AtomicBoolean isRecordWritten = new AtomicBoolean(false);
                           ShadowTableRecord shadowTableRecord =
                               spannerDao.readShadowTableRecordWithExclusiveLock(
@@ -266,8 +268,12 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                   && ((shadowTableRecord
                                               .getProcessedCommitTimestamp()
                                               .compareTo(spannerRec.getCommitTimestamp())
-                                          > 0)
-                                      || (shadowTableRecord
+                                          > 0) // either the source already has record with greater
+                                      // commit
+                                      // timestamp
+                                      || (shadowTableRecord // or the source has the same commit
+                                                  // timestamp but
+                                                  // greater record sequence
                                                   .getProcessedCommitTimestamp()
                                                   .compareTo(spannerRec.getCommitTimestamp())
                                               == 0
