@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
 import java.sql.Connection;
@@ -128,7 +127,11 @@ public interface UniformSplitterDBAdapter extends Serializable {
   }
 
   default List<CharacterRank> processCollationResultSet(
-      ResultSet rs, CollationReference collationReference) throws SQLException {
+      ResultSet rs,
+      com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+              .CollationReference
+          collationReference)
+      throws SQLException {
     throw new UnsupportedOperationException("Processing collation result set not supported");
   }
 

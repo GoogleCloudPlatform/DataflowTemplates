@@ -47,7 +47,7 @@ public class CollationIndexTest {
     assertThat(collationIndex.collationReference()).isEqualTo(testCollationReference);
     assertThat(collationIndex.getCharsetSize()).isEqualTo(1);
     assertThat(collationIndex.characterToIndex().size()).isEqualTo(2);
-    assertThat(collationIndex.getCharacterFromPosition(0L)).isEqualTo((int) 'A');
+    assertThat(collationIndex.getCharacterFromPosition(0L)).isEqualTo('A');
     assertThat(collationIndex.getOrdinalPosition((int) 'a')).isEqualTo(0L);
   }
 
@@ -124,5 +124,30 @@ public class CollationIndexTest {
                 .addCharacter((int) 'z', (int) 'Z', 10L)
                 .addCharacter((int) 'Z', (int) 'Z', 10L)
                 .build());
+  }
+
+  @Test
+  public void testCollationIndexLenientForReplacementChar() {
+    CollationReference testCollationReference =
+        CollationReference.builder()
+            .setDbCharacterSet("testCharSet")
+            .setDbCollation("testCollation")
+            .setPadSpace(true)
+            .build();
+
+    CollationIndex collationIndex =
+        CollationIndex.builder()
+            .setCollationReference(testCollationReference)
+            .setIndexType(CollationIndex.CollationIndexType.ALL_POSITIONS)
+            .addCharacter((int) 'a', (int) 'A', 0L)
+            .addCharacter((int) 'A', (int) 'A', 0L)
+            .addCharacter((int) '\uFFFD', (int) '\uFFFD', 1L)
+            .addCharacter((int) '\uFFFE', (int) '\uFFFD', 2L) // Duplicate \uFFFD with different index
+            .build();
+
+    assertThat(collationIndex.getCharacterFromPosition(1L)).isEqualTo((int) '\uFFFD');
+    assertThat(collationIndex.getCharacterFromPosition(2L)).isEqualTo((int) '\uFFFD');
+    assertThat(collationIndex.getOrdinalPosition((int) '\uFFFD'))
+        .isEqualTo(1L); // Maps to first seen index
   }
 }

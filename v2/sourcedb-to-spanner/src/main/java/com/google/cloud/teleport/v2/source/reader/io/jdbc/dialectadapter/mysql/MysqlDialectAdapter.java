@@ -469,10 +469,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         return resultSet.getString(InformationSchemaStatsCols.PAD_SPACE_COL);
       }
     }
-    // For MySql5.7 there is no pad-space column in the INFORMATION_SCHEMA.COLLATIONS table.
-    // In these older versions, non-binary string comparisons (like VARCHAR) always follow
-    // PAD SPACE rules (where trailing spaces are ignored). We default to this behavior
-    // to ensure correct partitioning across both MySQL 5.7 and 8.x.
+    // MySQL 5.7 does not have a PAD_ATTRIBUTE column in INFORMATION_SCHEMA.COLLATIONS.
+    // In 5.7 all non-binary string comparisons follow PAD SPACE rules (trailing spaces ignored).
+    // We default to that behaviour so that partitioning is correct on both 5.7 and 8.x.
     logger.info(
         "Did not find {} column in INFORMATION_SCHEMA.COLLATIONS table. Assuming PAD-SPACE collation for non-binary strings as per MySQL5.7 spec",
         InformationSchemaStatsCols.PAD_SPACE_COL);
@@ -513,10 +512,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         padSpace,
         numericScale,
         datetimePrecision);
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
-    // Column.
-    String columnType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
-    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columnType, IndexType.OTHER);
+    String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
+    IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
     CollationReference collationReference = null;
     if (indexType.equals(IndexType.STRING)) {
       collationReference =
@@ -559,7 +556,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         .setNumericScale(hasNumericScale ? numericScale : null)
         .setDecimalStepSize(decimalStepSize)
         .setDatetimePrecision(datetimePrecision)
-        .setColumnTypeName(columnType)
         .build();
   }
 
@@ -729,9 +725,58 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return false;
   }
 
+  /**
+   * Get Query that returns order of collation. The query returns one row per valid character with
+   * columns {@code charset_char}, {@code weight_non_trailing}, {@code weight_trailing}, {@code
+   * is_empty}, and {@code is_space}. All grouping, ranking and equivalent-character resolution is
+   * performed in Java by {@link
+   * com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper}.
+   *
+   * <p>The query uses {@code WEIGHT_STRING()} (available since MySQL 5.6) and plain {@code CROSS
+   * JOIN} hex-nibble tables, making it fully compatible with MySQL 5.7+. No window functions, no
+   * {@code SET} variables, and no {@code PREPARE}/{@code EXECUTE} are required.
+   *
+   * @param dbCharset character set used by the database for which collation ordering has to be
+   *     found.
+   * @param dbCollation collation used by the database for which collation ordering has to be found.
+   * @param padSpace pad space attribute of the collation.
+   */
   @Override
-  public CollationQueryResultType collationQueryResultType() {
-    return CollationQueryResultType.WEIGHT_BYTES;
+  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
+    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace, 4);
+  }
+
+  @Override
+  public String getCollationsOrderQuery(
+      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
+    String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
+    if (maxBytes < 4) {
+      query = removeSegment(query, "4_BYTE");
+    }
+    if (maxBytes < 3) {
+      query = removeSegment(query, "3_BYTE");
+    }
+    if (maxBytes < 2) {
+      query = removeSegment(query, "2_BYTE");
+    }
+
+    Map<String, String> tags = new HashMap<>();
+    // The SQL template uses bare tags (no surrounding quotes) because the charset and collation
+    // names appear in USING and COLLATE clauses which do not accept quoted identifiers.
+    tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
+    tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
+    return replaceTagsAndSanitize(query, tags);
+  }
+
+  private String removeSegment(String sql, String byteSize) {
+    String startTag = "/*START_" + byteSize + "*/";
+    String endTag = "/*END_" + byteSize + "*/";
+    int startIndex = sql.indexOf(startTag);
+    int endIndex = sql.indexOf(endTag);
+    if (startIndex != -1 && endIndex != -1) {
+      return sql.substring(0, startIndex) + sql.substring(endIndex + endTag.length());
+    }
+    return sql;
   }
 
   @Override
@@ -890,15 +935,30 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       ResultSet rs, CollationReference collationReference) throws SQLException {
     List<CharacterWeight> list = new ArrayList<>();
     while (rs.next()) {
-      String charsetChar = rs.getString("charset_char");
+      String charsetChar =
+          rs.getString(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
       if (charsetChar == null || charsetChar.isEmpty()) {
         continue;
       }
       int c = charsetChar.codePointAt(0);
-      byte[] wNt = rs.getBytes("weight_non_trailing");
-      byte[] wT = rs.getBytes("weight_trailing");
-      boolean isEmpty = rs.getBoolean("is_empty");
-      boolean isSpace = rs.getBoolean("is_space");
+      byte[] wNt =
+          rs.getBytes(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_NON_TRAILING_COL);
+      byte[] wT =
+          rs.getBytes(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.WEIGHT_TRAILING_COL);
+      boolean isEmpty =
+          rs.getBoolean(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.IS_EMPTY_COL);
+      boolean isSpace =
+          rs.getBoolean(
+              com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
+                  .CollationOrderRow.CollationsOrderQueryColumns.IS_SPACE_COL);
 
       if (wNt == null && !isEmpty) {
         logger.warn(
@@ -956,47 +1016,24 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return s.replace("`", "");
   }
 
-  @Override
-  public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
-    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace, 4);
-  }
-
-  @Override
-  public String getCollationsOrderQuery(
-      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
-    String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
-    if (maxBytes < 4) {
-      query = removeSegment(query, "4_BYTE");
-    }
-    if (maxBytes < 3) {
-      query = removeSegment(query, "3_BYTE");
-    }
-    if (maxBytes < 2) {
-      query = removeSegment(query, "2_BYTE");
-    }
-    Map<String, String> tags = new HashMap<>();
-    tags.put(CHARSET_REPLACEMENT_TAG, dbCharset);
-    tags.put(COLLATION_REPLACEMENT_TAG, dbCollation);
-    return replaceTagsAndSanitize(query, tags);
-  }
-
-  private String removeSegment(String sql, String byteSize) {
-    String startTag = "/*START_" + byteSize + "*/";
-    String endTag = "/*END_" + byteSize + "*/";
-    int startIndex = sql.indexOf(startTag);
-    int endIndex = sql.indexOf(endTag);
-    if (startIndex != -1 && endIndex != -1) {
-      return sql.substring(0, startIndex) + sql.substring(endIndex + endTag.length());
-    }
-    return sql;
-  }
-
   /**
-   * Version of MySql. As of now the code does not need to distinguish between versions of Mysql.
-   * Having the type allows the implementation do finer distinctions if needed in the future.
+   * Version of MySql.
+   *
+   * <p>The collation order query (used for string range splitting) works on both {@link #DEFAULT}
+   * (MySQL 8.0+) and {@link #MYSQL_5_7} using the same SQL file. The file uses temporary tables and
+   * GROUP BY joins instead of window functions (FIRST_VALUE / DENSE_RANK), which are only available
+   * in MySQL 8.0+. This approach is also a performance improvement on 8.0 because the expensive
+   * codepoint cross-join is materialised once rather than being re-evaluated as a nested subquery
+   * inside each window partition.
+   *
+   * <p>The count query uses the {@code MAX_EXECUTION_TIME} optimizer hint, which is supported from
+   * MySQL 5.7.8+. For earlier 5.7 patch releases the hint is silently ignored by MySQL.
    */
   public enum MySqlVersion {
+    /** MySQL 8.0 and later (default). */
     DEFAULT,
+    /** MySQL 5.7.x. */
+    MYSQL_5_7,
   }
 
   protected static final class InformationSchemaCols {
@@ -1027,7 +1064,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
     public static final String DATETIME_PRECISION_COL = "cols.DATETIME_PRECISION";
 
-    // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
+    // MySQL 5.7 does not expose PAD_ATTRIBUTE; the adapter defaults to PAD SPACE in that case.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
 
     public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";

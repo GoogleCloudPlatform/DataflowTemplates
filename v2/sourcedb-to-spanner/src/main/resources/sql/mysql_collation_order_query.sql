@@ -47,6 +47,7 @@ SELECT
     ) AS is_space
 FROM (
 
+
     /*START_3_BYTE*/
     -- 3-byte codepoints: cross-join 6 hex nibbles to produce every 3-byte sequence.
     SELECT charset_char FROM (

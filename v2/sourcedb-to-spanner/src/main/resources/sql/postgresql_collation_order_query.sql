@@ -27,40 +27,37 @@ charset_chars AS (
   WHERE LENGTH(charset_char) <= 1 AND charset_char IS NOT NULL
 ),
 
--- It is possible to have equivalent characters in PostgreSQL under certain collations.
--- For example, ICU collations (https://www.postgresql.org/docs/current/collation.html#ICU-CUSTOM-COLLATIONS)
--- allow for ignoring case sensitivity, spaces and punctuation.
-charset_chars_with_codepoints AS (
+-- Compute is_empty and is_space flags.
+-- equivalent_charset_char and codepoint_rank are computed in Java (CollationMapper)
+-- from the DENSE_RANK values returned here, removing the need for the FIRST_VALUE
+-- window-function CTEs that were previously required.
+charset_chars_with_flags AS (
   SELECT
     codepoint,
     charset_char,
-    CONCAT('a', charset_char, 'a') AS charset_char_non_trailing,
     CONCAT('a', charset_char, 'a') = 'aa' COLLATE "collation_replacement_tag" AS is_empty,
     CONCAT('a', charset_char, 'a') = 'a a' COLLATE "collation_replacement_tag" AS is_space
   FROM charset_chars
 ),
 
-find_equivalents_query AS (
+-- Assign dense ranks per collation order.
+-- Java uses these ranks to determine equivalent characters (min codepoint per rank group)
+-- without needing the database to compute FIRST_VALUE over collation-partitioned windows.
+ranked AS (
   SELECT
     *,
-    FIRST_VALUE(codepoint) OVER (PARTITION BY (charset_char COLLATE "collation_replacement_tag"), is_empty ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_codepoint,
-    FIRST_VALUE(charset_char) OVER (PARTITION BY (charset_char COLLATE "collation_replacement_tag"), is_empty ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_charset_char,
-    FIRST_VALUE(codepoint) OVER (PARTITION BY (charset_char_non_trailing COLLATE "collation_replacement_tag"), is_empty ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_codepoint_non_trailing,
-    FIRST_VALUE(charset_char) OVER (PARTITION BY (charset_char_non_trailing COLLATE "collation_replacement_tag"), is_empty ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_charset_char_non_trailing,
-    FIRST_VALUE(codepoint) OVER (PARTITION BY (charset_char COLLATE "collation_replacement_tag"), is_empty, is_space ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_codepoint_pad_space,
-    FIRST_VALUE(charset_char) OVER (PARTITION BY (charset_char COLLATE "collation_replacement_tag"), is_empty, is_space ORDER BY (charset_char COLLATE "collation_replacement_tag"), codepoint) AS equivalent_charset_char_pad_space
-  FROM charset_chars_with_codepoints
-),
-
-find_rank_query AS (
-  SELECT
-    *,
-    DENSE_RANK() OVER (PARTITION BY is_empty ORDER BY (equivalent_charset_char_non_trailing COLLATE "collation_replacement_tag")) -1 AS codepoint_rank,
-    DENSE_RANK() OVER (PARTITION BY is_empty, is_space ORDER BY (equivalent_charset_char_pad_space COLLATE "collation_replacement_tag")) -1 AS codepoint_rank_pad_space
-  FROM find_equivalents_query
+    DENSE_RANK() OVER (
+      PARTITION BY is_empty
+      ORDER BY (CONCAT('a', charset_char, 'a') COLLATE "collation_replacement_tag")
+    ) - 1 AS codepoint_rank,
+    DENSE_RANK() OVER (
+      PARTITION BY is_empty, is_space
+      ORDER BY (charset_char COLLATE "collation_replacement_tag")
+    ) - 1 AS codepoint_rank_pad_space
+  FROM charset_chars_with_flags
   ORDER BY codepoint ASC
 )
 
 SELECT *
-FROM find_rank_query
+FROM ranked
 ORDER BY codepoint ASC;

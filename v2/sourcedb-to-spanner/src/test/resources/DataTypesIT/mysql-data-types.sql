@@ -1,4 +1,5 @@
 SET GLOBAL max_connections = 300;
+SET NAMES utf8mb4;
 
 CREATE TABLE `varchar_table` (
     `id` INT PRIMARY KEY,
@@ -455,6 +456,11 @@ CREATE TABLE varchar_pk_table (
    varchar_pk_col VARCHAR(20) NOT NULL
 ) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci;
 
+CREATE TABLE varchar_utf8mb4_pk_table (
+   id VARCHAR(20) PRIMARY KEY,
+   varchar_utf8mb4_pk_col VARCHAR(20) NOT NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
 CREATE TABLE tiny_text_pk_table (
    id TINYTEXT,
    tiny_text_pk_col TINYTEXT NOT NULL,
@@ -716,6 +722,7 @@ INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (X'78
 INSERT INTO `varbinary_to_string_table` (`varbinary_to_string_col`) VALUES (REPEAT(X'FF', 65000));
 INSERT INTO `varchar_table` (`varchar_col`) VALUES ('abc');
 INSERT INTO `varchar_table` (`varchar_col`) VALUES (REPEAT('a', 21000));
+
 INSERT INTO `year_table` (`year_col`) VALUES (2022);
 INSERT INTO `year_table` (`year_col`) VALUES (1901);
 INSERT INTO `year_table` (`year_col`) VALUES (2155);
@@ -737,6 +744,7 @@ INSERT INTO `varbinary_pk_table` (`id`, `varbinary_pk_col`) VALUES (FROM_BASE64(
 INSERT INTO `tiny_blob_pk_table` (`id`, `tiny_blob_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
 INSERT INTO `char_pk_table` (`id`, `char_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
 INSERT INTO `varchar_pk_table` (`id`, `varchar_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
+INSERT INTO `varchar_utf8mb4_pk_table` (`id`, `varchar_utf8mb4_pk_col`) VALUES ('😊', '😊');
 INSERT INTO `tiny_text_pk_table` (`id`, `tiny_text_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
 INSERT INTO `date_time_pk_table` (`id`, `date_time_pk_col`) VALUES ('1000-01-01 00:00:00', '1000-01-01 00:00:00'), ('1000-01-01 00:00:01', '1000-01-01 00:00:01'),
                                                                    ('2001-01-01 00:01:54.123456', '2001-01-01 00:01:54.123456'),
