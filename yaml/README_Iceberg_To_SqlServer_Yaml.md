@@ -35,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mssql`.
 * **query**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
-* **autosharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
+* **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
 
 
 
@@ -148,7 +148,7 @@ export CONNECTION_INIT_SQL=<connectionInitSql>
 export JDBC_TYPE=mssql
 export QUERY=<query>
 export BATCH_SIZE=1000
-export AUTOSHARDING=<autosharding>
+export AUTO_SHARDING=<autoSharding>
 
 gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --project "$PROJECT" \
@@ -172,7 +172,7 @@ gcloud dataflow flex-template run "iceberg-to-sqlserver-yaml-job" \
   --parameters "location=$LOCATION" \
   --parameters "query=$QUERY" \
   --parameters "batchSize=$BATCH_SIZE" \
-  --parameters "autosharding=$AUTOSHARDING"
+  --parameters "autoSharding=$AUTO_SHARDING"
 ```
 
 For more information about the command, please check:
@@ -211,7 +211,7 @@ export CONNECTION_INIT_SQL=<connectionInitSql>
 export JDBC_TYPE=mssql
 export QUERY=<query>
 export BATCH_SIZE=1000
-export AUTOSHARDING=<autosharding>
+export AUTO_SHARDING=<autoSharding>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -220,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-sqlserver-yaml-job" \
 -DtemplateName="Iceberg_To_SqlServer_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING" \
 -f yaml
 ```
 
@@ -283,7 +283,7 @@ resource "google_dataflow_flex_template_job" "iceberg_to_sqlserver_yaml" {
     # jdbcType = "mssql"
     # query = "<query>"
     # batchSize = "1000"
-    # autosharding = "<autosharding>"
+    # autoSharding = "<autoSharding>"
   }
 }
 ```

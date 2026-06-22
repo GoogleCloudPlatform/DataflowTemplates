@@ -48,7 +48,7 @@ pipeline:
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
-        auto_sharding: {{ autosharding }}
+        auto_sharding: {{ autoSharding }}
         connection_init_sql: {{ connectionInitSql }}
         connection_properties: {{ connectionProperties }}
         query: {{ insertQuery }}
