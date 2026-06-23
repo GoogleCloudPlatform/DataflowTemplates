@@ -15,31 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.SpannerTargetDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.PostgreSQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.SpannerDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSourceConnector;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +37,7 @@ public class SourceProcessorFactory {
     sourceMap.put(Constants.SOURCE_MYSQL, new MySQLSourceConnector());
     sourceMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLSourceConnector());
     sourceMap.put(Constants.SOURCE_CASSANDRA, new CassandraSourceConnector());
-    sourceMap.put(Constants.SOURCE_SPANNER, new CassandraSourceConnector());
+    sourceMap.put(Constants.SOURCE_SPANNER, new SpannerSourceConnector());
   }
 
   public static void registerSource(String sourceName, ISourceConnector source) {
