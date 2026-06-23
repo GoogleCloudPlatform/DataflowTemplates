@@ -382,8 +382,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThat(udfSchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_add");
     assertThat(udfSchema.getProp("spannerUdfDefinition")).isEqualTo("a + b");
     assertThat(udfSchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
-    assertThat(udfSchema.getProp("spannerUdfParameter0")).isEqualTo("a integer");
-    assertThat(udfSchema.getProp("spannerUdfParameter1")).isEqualTo("b integer");
+    assertThat(udfSchema.getProp("spannerUdfParameter_0")).isEqualTo("a integer");
+    assertThat(udfSchema.getProp("spannerUdfParameter_1")).isEqualTo("b integer");
 
     Schema udfMultiplySchema =
         new org.apache.avro.file.DataFileReader<>(
@@ -395,8 +395,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThat(udfMultiplySchema.getProp("spannerUdfName")).isEqualTo(prefix + "pg_multiply");
     assertThat(udfMultiplySchema.getProp("spannerUdfDefinition")).isEqualTo("SELECT a * b");
     assertThat(udfMultiplySchema.getProp("spannerUdfSecurity")).isEqualTo("INVOKER");
-    assertThat(udfMultiplySchema.getProp("spannerUdfParameter0")).isEqualTo("a integer");
-    assertThat(udfMultiplySchema.getProp("spannerUdfParameter1")).isEqualTo("b integer");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_0")).isEqualTo("a integer");
+    assertThat(udfMultiplySchema.getProp("spannerUdfParameter_1")).isEqualTo("b integer");
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
