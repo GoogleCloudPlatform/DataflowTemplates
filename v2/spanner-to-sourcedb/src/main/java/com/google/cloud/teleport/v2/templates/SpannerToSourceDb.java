@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_REGULAR;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_ALL_DLQ;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.RUN_MODE_RETRY_DLQ;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SPANNER_SOURCE_TYPE;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -41,6 +42,7 @@ import com.google.cloud.teleport.v2.options.CommonTemplateOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
@@ -51,10 +53,12 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConf
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SpannerShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SpannerInformationSchemaScanner;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -429,7 +433,8 @@ public class SpannerToSourceDb {
         enumOptions = {
           @TemplateEnumOption("mysql"),
           @TemplateEnumOption("cassandra"),
-          @TemplateEnumOption("postgresql")
+          @TemplateEnumOption("postgresql"),
+          @TemplateEnumOption("spanner")
         },
         helpText = "The type of source database to reverse replicate to.")
     @Default.String("mysql")
@@ -658,14 +663,26 @@ public class SpannerToSourceDb {
             .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
-    List<Shard> shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
+    List<Shard> shards;
+    if (SPANNER_SOURCE_TYPE.equals(options.getSourceType())) {
+      SpannerShardFileReader spannerShardFileReader = new SpannerShardFileReader();
+      shards = spannerShardFileReader.getSpannerShards(options.getSourceShardsFilePath());
+    } else {
+      shards = getShardList(options.getSourceType(), options.getSourceShardsFilePath());
+    }
 
-    // cassandra is always a single sharded migration.
+    // cassandra and spanner are always a single sharded migration.
     // for JDBC, shards size and IsShardedMigration option is used below.
     String shardingMode =
-        options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)
+        (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)
+                || options.getSourceType().equals(SPANNER_SOURCE_TYPE))
             ? Constants.SHARDING_MODE_SINGLE_SHARD
             : Constants.SHARDING_MODE_MULTI_SHARD;
+
+    if (SPANNER_SOURCE_TYPE.equals(options.getSourceType())) {
+      LOG.info("Spanner target shard config: {}", shards.get(0));
+      validateSpannerColocation(options, (SpannerShard) shards.get(0));
+    }
 
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       validateMySQLNotReadOnly(shards);
@@ -677,7 +694,7 @@ public class SpannerToSourceDb {
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
-      if (shard.getLogicalShardId() == null) {
+      if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
         shard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
         LOG.info(
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
@@ -699,6 +716,15 @@ public class SpannerToSourceDb {
         maxNumWorkers);
 
     return pipeline.run();
+  }
+
+  static void validateSpannerColocation(Options options, SpannerShard spannerShard) {
+    if (!options.getSpannerProjectId().equals(spannerShard.getProjectId())
+        || !options.getMetadataInstance().equals(spannerShard.getInstanceId())
+        || !options.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
+      throw new IllegalArgumentException(
+          "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
+    }
   }
 
   static void buildPipeline(
@@ -1133,6 +1159,14 @@ public class SpannerToSourceDb {
                 connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
             .scan();
       }
+    } else if (options.getSourceType().equals(SPANNER_SOURCE_TYPE)) {
+      SpannerShard spannerShard = (SpannerShard) shards.get(0);
+      SpannerConfig targetSpannerConfig =
+          SpannerConfig.create()
+              .withProjectId(spannerShard.getProjectId())
+              .withInstanceId(spannerShard.getInstanceId())
+              .withDatabaseId(spannerShard.getDatabaseId());
+      return new SpannerInformationSchemaScanner(targetSpannerConfig).scan();
     } else {
       try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
         return new CassandraInformationSchemaScanner(

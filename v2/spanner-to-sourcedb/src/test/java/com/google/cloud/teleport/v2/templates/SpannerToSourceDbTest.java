@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
@@ -363,6 +364,27 @@ public class SpannerToSourceDbTest {
     assertEquals("test-user", shard.getUserName());
     assertEquals("secret-pass", shard.getPassword());
     assertEquals("testdb", shard.getDbName());
+  }
+
+  @Test
+  public void testSpannerColocationValidation() {
+    options.setSourceType(Constants.SOURCE_SPANNER);
+    options.setSpannerProjectId("p1");
+    options.setMetadataInstance("i1");
+    options.setMetadataDatabase("d1");
+
+    // Shard that matches (colocated)
+    SpannerShard matchedShard = new SpannerShard("p1", "i1", "d1");
+
+    // This should NOT throw
+    SpannerToSourceDb.validateSpannerColocation(options, matchedShard);
+
+    // Shard that doesn't match
+    SpannerShard mismatchedShard = new SpannerShard("p2", "i1", "d1");
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> SpannerToSourceDb.validateSpannerColocation(options, mismatchedShard));
   }
 
   @Test

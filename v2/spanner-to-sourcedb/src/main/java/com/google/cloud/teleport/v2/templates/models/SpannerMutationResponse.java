@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,22 +15,27 @@
  */
 package com.google.cloud.teleport.v2.templates.models;
 
-public class DMLGeneratorResponse {
-  private String dmlStatement;
+import com.google.cloud.spanner.Mutation;
 
-  public String getDmlStatement() {
-    return dmlStatement;
+/**
+ * A {@link DMLGeneratorResponse} subclass that carries a Spanner {@link Mutation} instead of a raw
+ * SQL string. Used by the Spanner-to-Spanner reverse-replication path.
+ */
+public class SpannerMutationResponse extends DMLGeneratorResponse {
+
+  private final Mutation mutation;
+
+  public SpannerMutationResponse(Mutation mutation) {
+    super("");
+    this.mutation = mutation;
   }
 
-  public void setDmlStatement(String dmlStatement) {
-    this.dmlStatement = dmlStatement;
+  public Mutation getMutation() {
+    return mutation;
   }
 
+  @Override
   public boolean isEmpty() {
-    return dmlStatement == null || dmlStatement.isEmpty();
-  }
-
-  public DMLGeneratorResponse(String dmlStatement) {
-    this.dmlStatement = dmlStatement;
+    return mutation == null;
   }
 }
