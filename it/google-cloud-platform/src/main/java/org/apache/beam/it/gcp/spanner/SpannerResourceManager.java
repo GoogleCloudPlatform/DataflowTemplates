@@ -202,7 +202,14 @@ public final class SpannerResourceManager implements ResourceManager {
       try {
         InstanceInfo instanceInfo =
             InstanceInfo.newBuilder(InstanceId.of(projectId, instanceId))
-                .setInstanceConfigId(InstanceConfigId.of(projectId, "regional-" + region))
+                .setInstanceConfigId(
+                    InstanceConfigId.of(
+                        projectId,
+                        (region.startsWith("nam")
+                                || region.startsWith("eur")
+                                || region.startsWith("asia"))
+                            ? region
+                            : "regional-" + region))
                 .setDisplayName(instanceId)
                 .setEdition(Edition.ENTERPRISE_PLUS) // Needed by Full Text Search.
                 .setNodeCount(nodeCount)

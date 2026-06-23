@@ -95,12 +95,10 @@ public class CopyDbIT extends TemplateTestBase {
   private void createAndPopulate(Ddl ddl, int numBatches) {
     // Initialize the databases with the appropriate dialect dynamically.
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, ddl.dialect())
-            .maybeUseStaticInstance()
+        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, ddl.dialect())
-            .maybeUseStaticInstance()
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
             .build();
 
     // Execute the schema statements on the source database.
@@ -222,7 +220,13 @@ public class CopyDbIT extends TemplateTestBase {
     // identical.
     for (Table table : destinationDdl.allTables()) {
       List<String> columnNames =
-          table.columns().stream().map(Column::name).collect(Collectors.toList());
+          table.columns().stream()
+              .filter(
+                  c ->
+                      !(c.isGenerated() && !c.isStored())
+                          && !c.typeString().toUpperCase().contains("TOKENLIST"))
+              .map(Column::name)
+              .collect(Collectors.toList());
 
       List<Struct> sourceRecords =
           sourceResourceManager.readTableRecords(table.name(), columnNames);
@@ -245,12 +249,10 @@ public class CopyDbIT extends TemplateTestBase {
 
   private void createAndPopulate(String sqlFile, Dialect dialect, int numBatches) throws Exception {
     sourceResourceManager =
-        SpannerResourceManager.builder(testName + "-source", PROJECT, REGION, dialect)
-            .maybeUseStaticInstance()
+        SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", dialect)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, REGION, dialect)
-            .maybeUseStaticInstance()
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", dialect)
             .build();
 
     // Read the SQL statements from the static file
@@ -260,7 +262,7 @@ public class CopyDbIT extends TemplateTestBase {
             Resources.readLines(Resources.getResource(sqlFile), StandardCharsets.UTF_8).stream()
                 .map(line -> line.replaceAll("\\s*--.*$", ""))
                 .collect(ImmutableList.toImmutableList()));
-    ddlString = ddlString.trim();
+    ddlString = ddlString.trim().replaceAll("%PROJECT_ID%", PROJECT).replaceAll("%DATABASE_NAME%", sourceResourceManager.getDatabaseId());
     List<String> ddlStatements =
         Arrays.stream(ddlString.split(";")).filter(d -> !d.isBlank()).collect(Collectors.toList());
 
