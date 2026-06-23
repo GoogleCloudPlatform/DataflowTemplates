@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceCo
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
