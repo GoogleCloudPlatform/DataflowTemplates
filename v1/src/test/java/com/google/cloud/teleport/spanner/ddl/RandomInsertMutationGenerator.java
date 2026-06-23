@@ -154,7 +154,7 @@ public class RandomInsertMutationGenerator {
       for (IndexColumn primaryKey : table.primaryKeys()) {
         notNullNameSet.add(primaryKey.name().toLowerCase());
       }
-      
+
       // Infer unique indexes to avoid null duplicates
       for (String indexStr : table.indexes()) {
         if (indexStr.toLowerCase().contains("unique ")) {
@@ -188,42 +188,59 @@ public class RandomInsertMutationGenerator {
         if (!column.isGenerated() && !column.isIdentityColumn()) {
           Iterator<Value> iterator;
           String colNameLower = column.name().toLowerCase();
-          
+
           if (checkConstraintValues.containsKey(colNameLower)) {
             List<String> allowed = checkConstraintValues.get(colNameLower);
             if (notNullNameSet.contains(colNameLower)) {
-              iterator = new Iterator<Value>() {
-                int index = 0;
-                @Override
-                public boolean hasNext() { return true; }
-                @Override
-                public Value next() {
-                  if (index < allowed.size()) {
-                    return Value.string(allowed.get(index++));
-                  }
-                  // Return null when exhausted to avoid unique index collision
-                  return Value.string(null);
-                }
-              };
+              iterator =
+                  new Iterator<Value>() {
+                    int index = 0;
+
+                    @Override
+                    public boolean hasNext() {
+                      return true;
+                    }
+
+                    @Override
+                    public Value next() {
+                      if (index < allowed.size()) {
+                        return Value.string(allowed.get(index++));
+                      }
+                      // Return null when exhausted to avoid unique index collision
+                      return Value.string(null);
+                    }
+                  };
             } else {
-              iterator = Stream.generate(() -> Value.string(allowed.get(rand.nextInt(allowed.size())))).iterator();
+              iterator =
+                  Stream.generate(() -> Value.string(allowed.get(rand.nextInt(allowed.size()))))
+                      .iterator();
             }
-          } else if (notNullNameSet.contains(colNameLower) && 
-              (column.type().getCode() == com.google.cloud.teleport.spanner.common.Type.Code.STRING || 
-               column.type().getCode() == com.google.cloud.teleport.spanner.common.Type.Code.PG_VARCHAR || 
-               column.type().getCode() == com.google.cloud.teleport.spanner.common.Type.Code.PG_TEXT)) {
+          } else if (notNullNameSet.contains(colNameLower)
+              && (column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.STRING
+                  || column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.PG_VARCHAR
+                  || column.type().getCode()
+                      == com.google.cloud.teleport.spanner.common.Type.Code.PG_TEXT)) {
             // Ensure unique strings for unique indexes to avoid collision
-            iterator = Stream.generate(() -> {
-              String base = column.name() + "_" + rand.nextInt(100000) + rand.nextInt(100000);
-              if (column.size() != null && column.size() > 0 && base.length() > column.size()) {
-                base = base.substring(0, column.size());
-              }
-              return Value.string(base);
-            }).iterator();
+            iterator =
+                Stream.generate(
+                        () -> {
+                          String base =
+                              column.name() + "_" + rand.nextInt(100000) + rand.nextInt(100000);
+                          if (column.size() != null
+                              && column.size() > 0
+                              && base.length() > column.size()) {
+                            base = base.substring(0, column.size());
+                          }
+                          return Value.string(base);
+                        })
+                    .iterator();
           } else {
-            iterator = randomValueGenerator
-                .valueStream(column, notNullNameSet.contains(colNameLower))
-                .iterator();
+            iterator =
+                randomValueGenerator
+                    .valueStream(column, notNullNameSet.contains(colNameLower))
+                    .iterator();
           }
 
           valueGenerators.put(column.name(), iterator);
