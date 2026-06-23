@@ -44,12 +44,12 @@ public class SourceProcessorFactory {
     sourceMap.put(sourceName, source);
   }
 
-  // for unit testing purposes
+  @VisibleForTesting
   public static Map<String, ISourceConnector> getSourceMap() {
     return new HashMap<>(sourceMap);
   }
 
-  // for unit testing purposes
+  @VisibleForTesting
   public static void setSourceMap(Map<String, ISourceConnector> map) {
     sourceMap.clear();
     sourceMap.putAll(map);

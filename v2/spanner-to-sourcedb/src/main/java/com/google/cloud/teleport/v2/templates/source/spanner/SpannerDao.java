@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
-
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ResultSet;

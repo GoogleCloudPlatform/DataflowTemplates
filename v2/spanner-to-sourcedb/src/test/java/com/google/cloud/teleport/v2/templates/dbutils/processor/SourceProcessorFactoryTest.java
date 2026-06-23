@@ -153,7 +153,7 @@ public class SourceProcessorFactoryTest {
 
     ISourceConnector cassandraSource = SourceProcessorFactory.getSource("cassandra");
     Assert.assertTrue(cassandraSource instanceof CassandraSourceConnector);
-    
+
     ISourceConnector spannerSource = SourceProcessorFactory.getSource("spanner");
     Assert.assertTrue(spannerSource instanceof SpannerSourceConnector);
   }

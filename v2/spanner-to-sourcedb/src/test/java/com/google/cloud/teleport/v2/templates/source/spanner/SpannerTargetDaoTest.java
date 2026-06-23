@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
-
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.mock;
