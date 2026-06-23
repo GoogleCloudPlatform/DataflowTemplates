@@ -24,11 +24,21 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 
 public class CassandraSourceConnector implements ISourceConnector {
 
-  private final IConnectionHelper connectionHelper = new CassandraConnectionHelper();
+  private final IConnectionHelper connectionHelper;
+
+  public CassandraSourceConnector() {
+    this.connectionHelper = new CassandraConnectionHelper();
+  }
+
+  @VisibleForTesting
+  CassandraSourceConnector(IConnectionHelper connectionHelper) {
+    this.connectionHelper = connectionHelper;
+  }
 
   @Override
   public IDMLGenerator getDmlGenerator() {

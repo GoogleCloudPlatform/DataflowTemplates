@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 
 /**
@@ -31,7 +32,16 @@ import java.util.List;
  */
 public class SpannerSourceConnector implements ISourceConnector {
 
-  private final IConnectionHelper<DatabaseClient> connectionHelper = new SpannerConnectionHelper();
+  private final IConnectionHelper<DatabaseClient> connectionHelper;
+
+  public SpannerSourceConnector() {
+    this.connectionHelper = new SpannerConnectionHelper();
+  }
+
+  @VisibleForTesting
+  SpannerSourceConnector(IConnectionHelper<DatabaseClient> connectionHelper) {
+    this.connectionHelper = connectionHelper;
+  }
 
   @Override
   public IDMLGenerator getDmlGenerator() {

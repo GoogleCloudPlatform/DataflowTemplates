@@ -23,11 +23,21 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 
 public class PostgreSQLSourceConnector implements ISourceConnector {
 
-  private final IConnectionHelper connectionHelper = new JdbcConnectionHelper();
+  private final IConnectionHelper connectionHelper;
+
+  public PostgreSQLSourceConnector() {
+    this.connectionHelper = new JdbcConnectionHelper();
+  }
+
+  @VisibleForTesting
+  PostgreSQLSourceConnector(IConnectionHelper connectionHelper) {
+    this.connectionHelper = connectionHelper;
+  }
 
   @Override
   public IDMLGenerator getDmlGenerator() {
