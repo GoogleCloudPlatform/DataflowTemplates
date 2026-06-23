@@ -80,12 +80,12 @@ public class UdfTest {
     assertThat(
         udf.toString(),
         equalToCompressingWhiteSpace(
-            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text SECURITY INVOKER VOLATILE RETURN (SELECT 1)"));
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text VOLATILE SECURITY INVOKER RETURN (SELECT 1)"));
 
     assertThat(
         udf.toBuilder().build().toString(),
         equalToCompressingWhiteSpace(
-            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text SECURITY INVOKER VOLATILE RETURN (SELECT 1)"));
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text VOLATILE SECURITY INVOKER RETURN (SELECT 1)"));
   }
 
   @Test
