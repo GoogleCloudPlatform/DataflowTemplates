@@ -162,9 +162,9 @@ annotated-types==0.7.0 \
     --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53 \
     --hash=sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89
     # via pydantic
-anyio==4.13.0 \
-    --hash=sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708 \
-    --hash=sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc
+anyio==4.14.0 \
+    --hash=sha256:b47c1f9ccf73e67021df785332508f99379c68fa7d0684e8e3492cb1d4b23f89 \
+    --hash=sha256:dd9b7a2a9799ed6552fde617b2c5df02b7fdd7d88392fc48101e51bae46164d9
     # via
     #   google-genai
     #   httpx
@@ -220,9 +220,9 @@ cachetools==6.2.6 \
     --hash=sha256:16c33e1f276b9a9c0b49ab5782d901e3ad3de0dd6da9bf9bcd29ac5672f2f9e6 \
     --hash=sha256:8c9717235b3c651603fff0076db52d6acbfd1b338b8ed50256092f7ce9c85bda
     # via apache-beam
-certifi==2026.5.20 \
-    --hash=sha256:3c52e209ba0a4ad7aebe60436a4ab349c39e1e602e8c134221e546902ad25897 \
-    --hash=sha256:69dea482ab64caa7b9f6aba1c6bf48bb6a5448d1c0f1b17ab42ad8c763a5344d
+certifi==2026.6.17 \
+    --hash=sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432 \
+    --hash=sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db
     # via
     #   google-cloud-aiplatform
     #   httpcore
@@ -503,6 +503,7 @@ cryptography==47.0.0 \
     #   apache-beam
     #   cloud-sql-python-connector
     #   google-auth
+    #   pyopenssl
     #   secretstorage
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
@@ -743,9 +744,9 @@ google-apitools==0.5.31 \
     --hash=sha256:4af0dd6dd4582810690251f0b57a97c1873dadfda54c5bc195844c8907624170 \
     --hash=sha256:6be92c1c3e93485450420bb0e365d47eb4d8a835d03ebe1963dc6da4d39a7b0e
     # via apache-beam
-google-auth[requests]==2.54.0 \
-    --hash=sha256:130f6fd5e3f497fdad897a23ed9489973437edf561238c4b92a4d02c435f8af9 \
-    --hash=sha256:784e9837f92244141250470d47c893df50cbab485ce491aca5e9deb558ad2b48
+google-auth[pyopenssl,requests]==2.55.0 \
+    --hash=sha256:a17cef9dedf98c4ebae2fb0c48c8f75952c877cbc2efe09f329ef16c2783d88a \
+    --hash=sha256:fcd3a130f575fa36403d38774af1c64a4fbfbca09215f0589d2372b5119697cb
     # via
     #   apache-beam
     #   cloud-sql-python-connector
@@ -776,13 +777,13 @@ google-auth-httplib2==0.2.1 \
     --hash=sha256:1be94c611db91c01f9703e7f62b0a59bbd5587a95571c7b6fade510d648bc08b \
     --hash=sha256:5ef03be3927423c87fb69607b42df23a444e434ddb2555b73b3679793187b7de
     # via apache-beam
-google-cloud-aiplatform==1.157.0 \
-    --hash=sha256:0ca499ac5648988916fc089f9e94bd99667eefba13f6936475247f4a0bf86634 \
-    --hash=sha256:ce8413ed3584c4896f7656b663214c24e91c2c89426f1c91fbd1d220ffda23af
+google-cloud-aiplatform==1.158.0 \
+    --hash=sha256:85b6bedc3823824617db1ea83e07fa07f00681d7ab63c42cdc584066a844737b \
+    --hash=sha256:8ed07f866fe9a49c31f0ba9fc8049c5cd5b47ff7f833ca3d9d8ce480f871d715
     # via apache-beam
-google-cloud-bigquery==3.41.0 \
-    --hash=sha256:2217e488b47ed576360c9b2cc07d59d883a54b83167c0ef37f915c26b01a06fe \
-    --hash=sha256:2a5b5a737b401cbd824a6e5eac7554100b878668d908e6548836b5d8aaa4dcaa
+google-cloud-bigquery==3.42.0 \
+    --hash=sha256:4491a75f82d905101e75b690ca4c6791984bf4f50653706747537b05baa90213 \
+    --hash=sha256:9df6a73043363cad17000c29591ed829be5f630ec30b85b29bc29062ab8b19a4
     # via
     #   apache-beam
     #   google-cloud-aiplatform
@@ -900,9 +901,9 @@ google-crc32c==1.8.0 \
     #   google-cloud-bigtable
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==2.8.0 \
-    --hash=sha256:37a9b3cb127d763e7f4ca47452ae3562c87728773bd1b149f7b559c239da2bc1 \
-    --hash=sha256:4da0a223a100f4b37f609a68b835e3326ab0fa313314dc0fd9d34e76ee293844
+google-genai==2.9.0 \
+    --hash=sha256:2a79e2b08e8439f5f25c2b42f98e3f3e8ea4be9c9265f5d7321580dbaf2764f4 \
+    --hash=sha256:a8a10e9113f460cc668c1d9deeb62ba393ad1ba704bf3166d5a0f32a434f9415
     # via google-cloud-aiplatform
 google-resumable-media==2.10.0 \
     --hash=sha256:88152884bee37b2bf36a0ab81ad8c7fd12212c9803dd981d77c1b35b02d34e7c \
@@ -2161,6 +2162,10 @@ pymysql==1.2.0 \
     --hash=sha256:62169ce6d5510f08e140c5e7990ee884a9764024e4a9a27b2cc11f1099322ae0 \
     --hash=sha256:6c7b17ca686988104d7426c27895b455cdeea3e9d3ceb1270f0c3704fead8c33
     # via apache-beam
+pyopenssl==26.2.0 \
+    --hash=sha256:4f9d971bc5298b8bc1fab282803da04bf000c755d4ad9d99b52de2569ca19a70 \
+    --hash=sha256:8c6fcecd1183a7fc897548dfe388b0cdb7f37e018200d8409cf33959dbe35387
+    # via google-auth
 pyparsing==3.3.2 \
     --hash=sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d \
     --hash=sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc
@@ -2389,9 +2394,9 @@ rsa==4.9.1 \
     --hash=sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762 \
     --hash=sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75
     # via oauth2client
-scramp==1.4.8 \
-    --hash=sha256:87c2f15976845a2872fe5490a06097f0d01813cceb53774ea168c911f2ad025c \
-    --hash=sha256:bd018fabfe46343cceeb9f1c3e8d23f55770271e777e3accbfaee3ff0a316e71
+scramp==1.4.9 \
+    --hash=sha256:a05477ccb8c27c28b551ea53c48f3e0ccadd8bb60a25dd9f4efa02194372bf24 \
+    --hash=sha256:e8640d915ab4109085b20c464bd7fa664a777fd7f361f90cd2af36e978839614
     # via pg8000
 secretstorage==3.5.0 \
     --hash=sha256:0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137 \
@@ -2437,6 +2442,7 @@ typing-extensions==4.15.0 \
     #   opentelemetry-semantic-conventions
     #   pydantic
     #   pydantic-core
+    #   pyopenssl
     #   typing-inspection
 typing-inspection==0.4.2 \
     --hash=sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7 \
