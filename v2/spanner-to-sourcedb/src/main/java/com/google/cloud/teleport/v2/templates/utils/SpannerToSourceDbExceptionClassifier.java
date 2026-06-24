@@ -58,9 +58,6 @@ public class SpannerToSourceDbExceptionClassifier {
       SpannerException exception, ISourceConnector connector) {
     // child exceptions are wrapped inside SpannerException.
     Throwable cause = exception.getCause();
-    if (cause == null) {
-      return Constants.RETRYABLE_ERROR_TAG;
-    }
 
     if (cause instanceof InvalidTransformationException
         || cause instanceof ChangeEventConvertorException
