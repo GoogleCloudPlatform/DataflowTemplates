@@ -81,7 +81,13 @@ public class CassandraSourceConnector implements ISourceConnector {
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
-          new ConnectionHelperRequest(shards, null, maxConnections, "com.datastax.oss.driver.api.core.CqlSession", null, null);
+          new ConnectionHelperRequest(
+              shards,
+              null,
+              maxConnections,
+              "com.datastax.oss.driver.api.core.CqlSession",
+              null,
+              null);
       connectionHelper.init(request);
     }
   }
