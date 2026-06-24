@@ -126,21 +126,18 @@ public class MySQLSourceConnectorTest {
 
   @Test
   public void testClassifyException_Permanent() {
-    Exception syntaxEx =
-        new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
+    Throwable syntaxEx = new java.sql.SQLSyntaxErrorException("syntax error");
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(syntaxEx));
 
-    Exception dataEx = new Exception("wrapper", new java.sql.SQLDataException("data error"));
+    Throwable dataEx = new java.sql.SQLDataException("data error");
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(dataEx));
 
-    Exception connEx =
-        new Exception(
-            "wrapper",
-            new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999));
+    Throwable connEx =
+        new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999);
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(connEx));
@@ -150,17 +147,15 @@ public class MySQLSourceConnectorTest {
   public void testClassifyException_Retryable() {
     int[] retryableSqlCodes = {1053, 1159, 1161};
     for (int code : retryableSqlCodes) {
-      Exception connEx =
-          new Exception(
-              "wrapper",
-              new java.sql.SQLNonTransientConnectionException("conn error", "state", code));
+      Throwable connEx =
+          new java.sql.SQLNonTransientConnectionException("conn error", "state", code);
       org.junit.Assert.assertNull(connector.classifyException(connEx));
     }
   }
 
   @Test
   public void testClassifyException_Fallback() {
-    Exception genericEx = new Exception("wrapper", new RuntimeException("generic error"));
+    Throwable genericEx = new RuntimeException("generic error");
     org.junit.Assert.assertNull(connector.classifyException(genericEx));
   }
 

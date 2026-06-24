@@ -131,23 +131,24 @@ public class SpannerToSourceDbExceptionClassifierTest {
 
   @Test
   public void testClassifyDelegatesToConnector() {
-    Exception ex = new RuntimeException("dialect exception");
+    Throwable dialectEx = new RuntimeException("dialect exception");
+    SpannerException spannerEx = SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, dialectEx);
     ISourceConnector mockConnector = mock(ISourceConnector.class);
 
     // 1. Connector returns permanent
-    when(mockConnector.classifyException(ex)).thenReturn(Constants.PERMANENT_ERROR_TAG);
-    TupleTag<String> tag1 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    when(mockConnector.classifyException(dialectEx)).thenReturn(Constants.PERMANENT_ERROR_TAG);
+    TupleTag<String> tag1 = SpannerToSourceDbExceptionClassifier.classify(spannerEx, mockConnector);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag1);
 
     // 2. Connector returns retryable
-    when(mockConnector.classifyException(ex)).thenReturn(Constants.RETRYABLE_ERROR_TAG);
-    TupleTag<String> tag2 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    when(mockConnector.classifyException(dialectEx)).thenReturn(Constants.RETRYABLE_ERROR_TAG);
+    TupleTag<String> tag2 = SpannerToSourceDbExceptionClassifier.classify(spannerEx, mockConnector);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag2);
 
     // 3. Connector returns null (fallback to general, which should be retryable for generic
-    // RuntimeException)
-    when(mockConnector.classifyException(ex)).thenReturn(null);
-    TupleTag<String> tag3 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    // RuntimeException, and generic SpannerException with UNKNOWN error code is retryable)
+    when(mockConnector.classifyException(dialectEx)).thenReturn(null);
+    TupleTag<String> tag3 = SpannerToSourceDbExceptionClassifier.classify(spannerEx, mockConnector);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag3);
   }
 }

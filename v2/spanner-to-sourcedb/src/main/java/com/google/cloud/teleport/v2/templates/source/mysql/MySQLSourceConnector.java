@@ -155,16 +155,15 @@ public class MySQLSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
-    Throwable cause = exception.getCause();
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
     if (cause instanceof java.sql.SQLSyntaxErrorException
         || cause instanceof java.sql.SQLDataException) {
       return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
     }
-    if (cause instanceof java.sql.SQLNonTransientConnectionException) {
-      java.sql.SQLNonTransientConnectionException e =
-          (java.sql.SQLNonTransientConnectionException) cause;
+    if (cause instanceof java.sql.SQLNonTransientConnectionException e) {
       if (e.getErrorCode() != 1053 && e.getErrorCode() != 1159 && e.getErrorCode() != 1161) {
+        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+        // error codes 1053,1161 and 1159 can be retried
         return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
       }
     }

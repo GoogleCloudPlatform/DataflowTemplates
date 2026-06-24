@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import java.sql.SQLDataException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.Set;
 import org.apache.beam.sdk.values.TupleTag;
 
@@ -41,14 +43,8 @@ public class SpannerToSourceDbExceptionClassifier {
           ErrorCode.INTERNAL);
 
   public static TupleTag<String> classify(Exception exception, ISourceConnector connector) {
-    if (connector != null) {
-      TupleTag<String> dialectTag = connector.classifyException(exception);
-      if (dialectTag != null) {
-        return dialectTag;
-      }
-    }
     if (exception instanceof SpannerException e) {
-      return classifySpannerException(e);
+      return classifySpannerException(e, connector);
     } else if (exception instanceof ChangeEventConvertorException
         || exception instanceof IllegalArgumentException
         || exception instanceof InvalidDMLGenerationException
@@ -58,7 +54,7 @@ public class SpannerToSourceDbExceptionClassifier {
     return Constants.RETRYABLE_ERROR_TAG;
   }
 
-  private static TupleTag<String> classifySpannerException(SpannerException exception) {
+  private static TupleTag<String> classifySpannerException(SpannerException exception, ISourceConnector connector) {
     // child exceptions are wrapped inside SpannerException.
     Throwable cause = exception.getCause();
 
@@ -66,6 +62,16 @@ public class SpannerToSourceDbExceptionClassifier {
         || cause instanceof ChangeEventConvertorException
         || cause instanceof InvalidDMLGenerationException) {
       return Constants.PERMANENT_ERROR_TAG;
+    } else if (cause instanceof SQLSyntaxErrorException
+        || cause instanceof SQLDataException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+
+    if (connector != null) {
+      TupleTag<String> dialectTag = connector.classifyException(cause);
+      if (dialectTag != null) {
+        return dialectTag;
+      }
     }
 
     if (permanentSpannerErrorCodes.contains(exception.getErrorCode())) {

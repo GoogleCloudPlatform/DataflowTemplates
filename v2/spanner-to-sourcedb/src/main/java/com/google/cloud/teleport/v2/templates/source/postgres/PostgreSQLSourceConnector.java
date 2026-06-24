@@ -128,13 +128,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
-    Throwable cause = exception.getCause();
-    if (cause instanceof java.sql.SQLSyntaxErrorException
-        || cause instanceof java.sql.SQLDataException
-        || cause instanceof java.sql.SQLNonTransientConnectionException) {
-      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
-    }
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
     return null;
   }
 }

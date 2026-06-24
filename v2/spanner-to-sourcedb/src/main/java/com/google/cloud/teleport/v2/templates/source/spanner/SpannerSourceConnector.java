@@ -72,12 +72,6 @@ public class SpannerSourceConnector implements ISourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     // SpannerConnectionHelper does not need complex initialization in the same way as JDBC,
-    // but we can pass the shards to it if needed.
-    // Actually, SpannerConnectionHelper.init is currently a no-op or simple.
-    // Let's check what SpannerSourceConnector did before:
-    // It didn't do much in init, but let's check if it needs to call init.
-    // In our previous unit tests, we mocked connectionHelper.init.
-    // Let's just call init with a default request.
     if (!connectionHelper.isConnectionPoolInitialized()) {
       connectionHelper.init(
           new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(
@@ -139,7 +133,7 @@ public class SpannerSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
     return null;
   }
 }

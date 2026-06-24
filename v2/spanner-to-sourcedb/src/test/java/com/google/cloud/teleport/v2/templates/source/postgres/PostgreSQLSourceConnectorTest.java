@@ -125,28 +125,17 @@ public class PostgreSQLSourceConnectorTest {
   }
 
   @Test
-  public void testClassifyException_Permanent() {
-    Exception syntaxEx =
-        new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
-    assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(syntaxEx));
+  public void testClassifyException() {
+    Throwable syntaxEx = new java.sql.SQLSyntaxErrorException("syntax error");
+    org.junit.Assert.assertNull(connector.classifyException(syntaxEx));
 
-    Exception dataEx = new Exception("wrapper", new java.sql.SQLDataException("data error"));
-    assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(dataEx));
+    Throwable dataEx = new java.sql.SQLDataException("data error");
+    org.junit.Assert.assertNull(connector.classifyException(dataEx));
 
-    Exception connEx =
-        new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error"));
-    assertEquals(
-        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(connEx));
-  }
+    Throwable connEx = new java.sql.SQLNonTransientConnectionException("conn error");
+    org.junit.Assert.assertNull(connector.classifyException(connEx));
 
-  @Test
-  public void testClassifyException_Fallback() {
-    Exception genericEx = new Exception("wrapper", new RuntimeException("generic error"));
+    Throwable genericEx = new RuntimeException("generic error");
     org.junit.Assert.assertNull(connector.classifyException(genericEx));
   }
 

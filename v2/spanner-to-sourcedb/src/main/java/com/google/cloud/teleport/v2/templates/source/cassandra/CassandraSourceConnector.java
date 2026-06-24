@@ -147,8 +147,7 @@ public class CassandraSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
-    Throwable cause = exception.getCause();
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
     if (cause instanceof com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException) {
       return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
     }

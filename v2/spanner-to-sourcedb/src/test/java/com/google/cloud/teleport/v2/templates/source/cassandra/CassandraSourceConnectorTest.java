@@ -127,15 +127,14 @@ public class CassandraSourceConnectorTest {
     com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException mockException =
         org.mockito.Mockito.mock(
             com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException.class);
-    Exception codecEx = new Exception("wrapper", mockException);
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
-        connector.classifyException(codecEx));
+        connector.classifyException(mockException));
   }
 
   @Test
   public void testClassifyException_Fallback() {
-    Exception genericEx = new Exception("wrapper", new RuntimeException("generic error"));
+    Throwable genericEx = new RuntimeException("generic error");
     org.junit.Assert.assertNull(connector.classifyException(genericEx));
   }
 

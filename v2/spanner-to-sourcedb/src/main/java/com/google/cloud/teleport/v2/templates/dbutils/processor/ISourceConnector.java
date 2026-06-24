@@ -109,9 +109,9 @@ public interface ISourceConnector {
   /**
    * Classifies a dialect-specific exception into retryable or permanent.
    *
-   * @param exception The exception to classify.
+   * @param cause The cause to classify.
    * @return The TupleTag (Constants.PERMANENT_ERROR_TAG or Constants.RETRYABLE_ERROR_TAG) if
    *     classified, or null to fallback to general classification.
    */
-  org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception);
+  org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause);
 }
