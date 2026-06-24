@@ -16,18 +16,17 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
-import java.sql.SQLDataException;
-import java.sql.SQLNonTransientConnectionException;
-import java.sql.SQLSyntaxErrorException;
 import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,7 +52,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
 
     for (ErrorCode code : permanentCodes) {
       SpannerException ex = SpannerExceptionFactory.newSpannerException(code, "test");
-      TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+      TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
       assertEquals("Expected PERMANENT for " + code, Constants.PERMANENT_ERROR_TAG, tag);
     }
   }
@@ -71,7 +70,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
 
     for (ErrorCode code : retryableCodes) {
       SpannerException ex = SpannerExceptionFactory.newSpannerException(code, "test");
-      TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+      TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
       assertEquals("Expected RETRYABLE for " + code, Constants.RETRYABLE_ERROR_TAG, tag);
     }
   }
@@ -79,7 +78,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
   @Test
   public void testClassifyChangeEventConvertorException() {
     Exception ex = new ChangeEventConvertorException("test");
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
@@ -88,7 +87,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
     SpannerException ex =
         SpannerExceptionFactory.newSpannerException(
             ErrorCode.UNKNOWN, "test", new InvalidTransformationException("test"));
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
@@ -97,80 +96,28 @@ public class SpannerToSourceDbExceptionClassifierTest {
     SpannerException ex =
         SpannerExceptionFactory.newSpannerException(
             ErrorCode.UNKNOWN, "test", new ChangeEventConvertorException("test"));
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
-  }
-
-  @Test
-  public void testClassifyWrappedCodecNotFoundException() {
-    CodecNotFoundException mockException = org.mockito.Mockito.mock(CodecNotFoundException.class);
-    SpannerException ex =
-        SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "test", mockException);
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
-    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
-  }
-
-  @Test
-  public void testClassifyWrappedSQLSyntaxErrorException() {
-    SpannerException ex =
-        SpannerExceptionFactory.newSpannerException(
-            ErrorCode.UNKNOWN, "test", new SQLSyntaxErrorException("test"));
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
-    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
-  }
-
-  @Test
-  public void testClassifyWrappedSQLDataException() {
-    SpannerException ex =
-        SpannerExceptionFactory.newSpannerException(
-            ErrorCode.UNKNOWN, "test", new SQLDataException("test"));
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
-    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
-  }
-
-  @Test
-  public void testClassifyWrappedSQLNonTransientConnectionExceptionPermanent() {
-    SpannerException ex =
-        SpannerExceptionFactory.newSpannerException(
-            ErrorCode.UNKNOWN,
-            "test",
-            new SQLNonTransientConnectionException("test", "state", 9999));
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
-    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
-  }
-
-  @Test
-  public void testClassifyWrappedSQLNonTransientConnectionExceptionRetryable() {
-    int[] retryableSqlCodes = {1053, 1159, 1161};
-    for (int code : retryableSqlCodes) {
-      SpannerException ex =
-          SpannerExceptionFactory.newSpannerException(
-              ErrorCode.UNKNOWN,
-              "test",
-              new SQLNonTransientConnectionException("test", "state", code));
-      TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
-      assertEquals("Expected RETRYABLE for SQL code " + code, Constants.RETRYABLE_ERROR_TAG, tag);
-    }
   }
 
   @Test
   public void testClassifyIllegalArgumentException() {
     Exception ex = new IllegalArgumentException("test");
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyNullPointerException() {
     Exception ex = new NullPointerException("test");
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyGenericException() {
     Exception ex = new RuntimeException("test");
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag);
   }
 
@@ -178,7 +125,28 @@ public class SpannerToSourceDbExceptionClassifierTest {
   public void testClassifyInvalidDMLGenerationException() {
     InvalidDMLGenerationException exception =
         new InvalidDMLGenerationException("Unknown column present in source table");
-    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(exception);
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(exception, null);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
+  }
+
+  @Test
+  public void testClassifyDelegatesToConnector() {
+    Exception ex = new RuntimeException("dialect exception");
+    ISourceConnector mockConnector = mock(ISourceConnector.class);
+
+    // 1. Connector returns permanent
+    when(mockConnector.classifyException(ex)).thenReturn(Constants.PERMANENT_ERROR_TAG);
+    TupleTag<String> tag1 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    assertEquals(Constants.PERMANENT_ERROR_TAG, tag1);
+
+    // 2. Connector returns retryable
+    when(mockConnector.classifyException(ex)).thenReturn(Constants.RETRYABLE_ERROR_TAG);
+    TupleTag<String> tag2 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    assertEquals(Constants.RETRYABLE_ERROR_TAG, tag2);
+
+    // 3. Connector returns null (fallback to general, which should be retryable for generic RuntimeException)
+    when(mockConnector.classifyException(ex)).thenReturn(null);
+    TupleTag<String> tag3 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
+    assertEquals(Constants.RETRYABLE_ERROR_TAG, tag3);
   }
 }

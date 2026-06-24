@@ -19,7 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +43,9 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PostgreSQLSourceConnectorTest {
+
+  @org.junit.Rule
+  public org.junit.rules.TemporaryFolder tempFolder = new org.junit.rules.TemporaryFolder();
 
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private Shard mockShard;
@@ -116,5 +122,88 @@ public class PostgreSQLSourceConnectorTest {
     connector.initConnectionHelper(shards, maxConnections);
 
     verify(mockConnectionHelper, never()).init(any());
+  }
+
+  @Test
+  public void testClassifyException_Permanent() {
+    Exception syntaxEx = new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(syntaxEx));
+
+    Exception dataEx = new Exception("wrapper", new java.sql.SQLDataException("data error"));
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(dataEx));
+
+    Exception connEx = new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error"));
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(connEx));
+  }
+
+  @Test
+  public void testClassifyException_Fallback() {
+    Exception genericEx = new Exception("wrapper", new RuntimeException("generic error"));
+    org.junit.Assert.assertNull(connector.classifyException(genericEx));
+  }
+
+  @Test
+  public void testGetInformationSchema() throws Exception {
+    java.sql.Connection mockConnection = mock(java.sql.Connection.class);
+    when(mockShard.getDbName()).thenReturn("mydb");
+    when(mockShard.getNamespace()).thenReturn("public");
+    PostgreSQLSourceConnector spyConnector = spy(connector);
+    doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+            .databaseName("mydb")
+            .tables(com.google.common.collect.ImmutableMap.of())
+            .build();
+
+    try (org.mockito.MockedConstruction<com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner> mocked =
+        org.mockito.Mockito.mockConstruction(
+            com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner.class,
+            (mock, context) -> {
+              when(mock.scan()).thenReturn(dummySchema);
+            })) {
+
+      com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
+          spyConnector.getInformationSchema(List.of(mockShard));
+      assertEquals(dummySchema, result);
+    }
+  }
+
+  @Test
+  public void testParseShardList_validJsonWrapped() throws Exception {
+    java.io.File tempFile = tempFolder.newFile("jdbc-config-wrapped.json");
+    String wrappedJson =
+        "{\n"
+            + "  \"shardConfigs\": [\n"
+            + "    {\n"
+            + "      \"logicalShardId\": \"shard1\",\n"
+            + "      \"host\": \"localhost\",\n"
+            + "      \"port\": \"5432\",\n"
+            + "      \"user\": \"test-user\",\n"
+            + "      \"password\": \"secret-pass\",\n"
+            + "      \"dbName\": \"testdb\",\n"
+            + "      \"namespace\": \"public\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    java.nio.file.Files.writeString(tempFile.toPath(), wrappedJson);
+
+    List<Shard> shards = connector.parseShardList(tempFile.getAbsolutePath());
+    assertNotNull(shards);
+    assertEquals(1, shards.size());
+    Shard shard = shards.get(0);
+    assertEquals("shard1", shard.getLogicalShardId());
+    assertEquals("localhost", shard.getHost());
+    assertEquals("5432", shard.getPort());
+    assertEquals("test-user", shard.getUserName());
+    assertEquals("secret-pass", shard.getPassword());
+    assertEquals("testdb", shard.getDbName());
+    assertEquals("public", shard.getNamespace());
   }
 }

@@ -15,16 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
-import java.sql.SQLDataException;
-import java.sql.SQLNonTransientConnectionException;
-import java.sql.SQLSyntaxErrorException;
 import java.util.Set;
 import org.apache.beam.sdk.values.TupleTag;
 
@@ -43,7 +40,13 @@ public class SpannerToSourceDbExceptionClassifier {
           ErrorCode.UNIMPLEMENTED,
           ErrorCode.INTERNAL);
 
-  public static TupleTag<String> classify(Exception exception) {
+  public static TupleTag<String> classify(Exception exception, ISourceConnector connector) {
+    if (connector != null) {
+      TupleTag<String> dialectTag = connector.classifyException(exception);
+      if (dialectTag != null) {
+        return dialectTag;
+      }
+    }
     if (exception instanceof SpannerException e) {
       return classifySpannerException(e);
     } else if (exception instanceof ChangeEventConvertorException
@@ -56,26 +59,12 @@ public class SpannerToSourceDbExceptionClassifier {
   }
 
   private static TupleTag<String> classifySpannerException(SpannerException exception) {
-    // Since we have wrapped the logic inside Spanner transaction, the exceptions
-    // would also be
-    // wrapped inside a SpannerException.
-    // We need to get and inspect the cause while handling the exception.
+    // child exceptions are wrapped inside SpannerException.
     Throwable cause = exception.getCause();
 
     if (cause instanceof InvalidTransformationException
         || cause instanceof ChangeEventConvertorException
         || cause instanceof InvalidDMLGenerationException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof CodecNotFoundException
-        || cause instanceof SQLSyntaxErrorException
-        || cause instanceof SQLDataException) {
-      return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof SQLNonTransientConnectionException e
-        && e.getErrorCode() != 1053
-        && e.getErrorCode() != 1159
-        && e.getErrorCode() != 1161) {
-      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-      // error codes 1053,1161 and 1159 can be retried
       return Constants.PERMANENT_ERROR_TAG;
     }
 

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
+package com.google.cloud.teleport.v2.templates.source.cassandra;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -30,7 +30,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHel
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
-import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraTypeHandler;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;

@@ -19,14 +19,31 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelp
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.common.annotations.VisibleForTesting;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.List;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MySQLSourceConnector implements ISourceConnector {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLSourceConnector.class);
 
   private final IConnectionHelper connectionHelper;
 
@@ -72,5 +89,88 @@ public class MySQLSourceConnector implements ISourceConnector {
               "jdbc:mysql://");
       connectionHelper.init(request);
     }
+  }
+
+  @Override
+  public List<Shard> parseShardList(String shardFilePath) throws Exception {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig =
+        sourceConfigParser.parseConfiguration("mysql", shardFilePath);
+    if (sourceConnectionConfig instanceof JdbcShardConfig) {
+      return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+    }
+    throw new IllegalArgumentException(
+        "Expected JdbcShardConfig but got: " + sourceConnectionConfig.getClass());
+  }
+
+  @Override
+  public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
+    for (Shard shard : shards) {
+      try (Connection conn = createConnection(shard)) {
+        if (conn != null) {
+          try (Statement stmt = conn.createStatement();
+              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
+            if (rs != null && rs.next() && rs.getInt(1) == 1) {
+              throw new RuntimeException(
+                  "MySQL destination is in read-only mode for shard: "
+                      + shard.getLogicalShardId());
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Error checking MySQL read-only status for shard {}: {}",
+            shard.getLogicalShardId(),
+            e.getMessage());
+        throw new RuntimeException("Error checking MySQL read-only status", e);
+      }
+    }
+  }
+
+  @Override
+  public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
+    try (Connection connection = createConnection(shards.get(0))) {
+      return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
+    }
+  }
+
+  @VisibleForTesting
+  Connection createConnection(Shard shard) throws Exception {
+    HikariConfig config = new HikariConfig();
+    config.setJdbcUrl(getConnectionUrl(shard));
+    config.setUsername(shard.getUserName());
+    config.setPassword(shard.getPassword());
+    config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    HikariDataSource ds = new HikariDataSource(config);
+    return ds.getConnection();
+  }
+
+  @Override
+  public boolean isMultiSharded() {
+    return true;
+  }
+
+  @Override
+  public boolean shouldUpdateReadValuesToSpannerRecord() {
+    return true;
+  }
+
+  @Override
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
+    Throwable cause = exception.getCause();
+    if (cause instanceof java.sql.SQLSyntaxErrorException
+        || cause instanceof java.sql.SQLDataException) {
+      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+    }
+    if (cause instanceof java.sql.SQLNonTransientConnectionException) {
+      java.sql.SQLNonTransientConnectionException e = (java.sql.SQLNonTransientConnectionException) cause;
+      if (e.getErrorCode() != 1053
+          && e.getErrorCode() != 1159
+          && e.getErrorCode() != 1161) {
+        return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+      }
+    }
+    return null;
   }
 }

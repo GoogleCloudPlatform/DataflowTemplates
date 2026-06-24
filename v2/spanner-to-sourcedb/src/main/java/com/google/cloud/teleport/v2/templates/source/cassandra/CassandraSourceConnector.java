@@ -15,17 +15,28 @@
  */
 package com.google.cloud.teleport.v2.templates.source.cassandra;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 public class CassandraSourceConnector implements ISourceConnector {
 
@@ -52,14 +63,9 @@ public class CassandraSourceConnector implements ISourceConnector {
 
   @Override
   public String getConnectionUrl(Shard shard) {
-    CassandraShard cassandraShard = (CassandraShard) shard;
-    return cassandraShard.getHost()
-        + ":"
-        + cassandraShard.getPort()
-        + "/"
-        + cassandraShard.getUserName()
-        + "/"
-        + cassandraShard.getKeySpaceName();
+    // Cassandra does not use a simple connection URL string in the same way as JDBC,
+    // but we can return a identifier or host info.
+    return shard.getHost() + ":" + shard.getPort();
   }
 
   @Override
@@ -70,15 +76,72 @@ public class CassandraSourceConnector implements ISourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
-      ConnectionHelperRequest request =
-          new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "com.datastax.oss.driver.api.core.CqlSession",
-              null,
-              null);
+      ConnectionHelperRequest request = new ConnectionHelperRequest(shards, null, maxConnections, null, null, null);
       connectionHelper.init(request);
     }
+  }
+
+  @Override
+  public List<Shard> parseShardList(String shardFilePath) throws Exception {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig =
+        sourceConfigParser.parseConfiguration("cassandra", shardFilePath);
+    if (sourceConnectionConfig instanceof CassandraConnectionConfig) {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      return cassandraConfigFileReader.getCassandraShard(
+          ((CassandraConnectionConfig) sourceConnectionConfig).getOptionsMap());
+    }
+    throw new IllegalArgumentException(
+        "Expected CassandraConnectionConfig but got: " + sourceConnectionConfig.getClass());
+  }
+
+  @Override
+  public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
+    if (shards.size() != 1) {
+      throw new IllegalArgumentException("Cassandra migration must have exactly 1 shard.");
+    }
+    if (!(shards.get(0) instanceof CassandraShard)) {
+      throw new IllegalArgumentException(
+          "Expected CassandraShard but got: " + shards.get(0).getClass());
+    }
+  }
+
+  @Override
+  public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
+    CassandraShard cassandraShard = (CassandraShard) shards.get(0);
+    try (CqlSession session = createCqlSession(cassandraShard)) {
+      return new CassandraInformationSchemaScanner(
+              session, cassandraShard.getKeySpaceName())
+          .scan();
+    }
+  }
+
+  @VisibleForTesting
+  CqlSession createCqlSession(CassandraShard cassandraShard) {
+    CqlSessionBuilder builder = CqlSession.builder();
+    DriverConfigLoader configLoader =
+        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
+    builder.withConfigLoader(configLoader);
+    return builder.build();
+  }
+
+  @Override
+  public boolean isMultiSharded() {
+    return false;
+  }
+
+  @Override
+  public boolean shouldUpdateReadValuesToSpannerRecord() {
+    return false;
+  }
+
+  @Override
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
+    Throwable cause = exception.getCause();
+    if (cause instanceof com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException) {
+      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+    }
+    return null;
   }
 }

@@ -19,12 +19,23 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelp
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfigParser;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
+import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.common.annotations.VisibleForTesting;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
 import java.util.List;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 public class PostgreSQLSourceConnector implements ISourceConnector {
 
@@ -64,8 +75,72 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards, null, maxConnections, "org.postgresql.Driver", null, "jdbc:postgresql://");
+              shards,
+              null,
+              maxConnections,
+              "org.postgresql.Driver",
+              null,
+              "jdbc:postgresql://");
       connectionHelper.init(request);
     }
+  }
+
+  @Override
+  public List<Shard> parseShardList(String shardFilePath) throws Exception {
+    ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
+    SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    SourceConnectionConfig sourceConnectionConfig =
+        sourceConfigParser.parseConfiguration("postgresql", shardFilePath);
+    if (sourceConnectionConfig instanceof JdbcShardConfig) {
+      return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+    }
+    throw new IllegalArgumentException(
+        "Expected JdbcShardConfig but got: " + sourceConnectionConfig.getClass());
+  }
+
+  @Override
+  public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
+    // No-op for PostgreSQL
+  }
+
+  @Override
+  public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
+    try (Connection connection = createConnection(shards.get(0))) {
+      return new PostgreSQLInformationSchemaScanner(
+              connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
+          .scan();
+    }
+  }
+
+  @VisibleForTesting
+  Connection createConnection(Shard shard) throws Exception {
+    HikariConfig config = new HikariConfig();
+    config.setJdbcUrl(getConnectionUrl(shard));
+    config.setUsername(shard.getUserName());
+    config.setPassword(shard.getPassword());
+    config.setDriverClassName("org.postgresql.Driver");
+    HikariDataSource ds = new HikariDataSource(config);
+    return ds.getConnection();
+  }
+
+  @Override
+  public boolean isMultiSharded() {
+    return true;
+  }
+
+  @Override
+  public boolean shouldUpdateReadValuesToSpannerRecord() {
+    return true;
+  }
+
+  @Override
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Exception exception) {
+    Throwable cause = exception.getCause();
+    if (cause instanceof java.sql.SQLSyntaxErrorException
+        || cause instanceof java.sql.SQLDataException
+        || cause instanceof java.sql.SQLNonTransientConnectionException) {
+      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+    }
+    return null;
   }
 }

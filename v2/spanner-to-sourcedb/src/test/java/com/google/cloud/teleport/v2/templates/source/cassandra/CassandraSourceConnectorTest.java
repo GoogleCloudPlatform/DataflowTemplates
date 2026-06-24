@@ -19,7 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +30,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelp
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import java.util.Collections;
@@ -72,7 +74,7 @@ public class CassandraSourceConnectorTest {
     when(mockCassandraShard.getKeySpaceName()).thenReturn("mykeyspace");
 
     String url = connector.getConnectionUrl(mockCassandraShard);
-    assertEquals("localhost:9042/cassandra/mykeyspace", url);
+    assertEquals("localhost:9042", url);
   }
 
   @Test
@@ -103,7 +105,7 @@ public class CassandraSourceConnectorTest {
     ConnectionHelperRequest request = requestCaptor.getValue();
     assertEquals(shards, request.getShards());
     assertEquals(maxConnections, request.getMaxConnections());
-    assertEquals("com.datastax.oss.driver.api.core.CqlSession", request.getDriver());
+    assertEquals(null, request.getDriver());
     assertEquals(null, request.getConnectionInitQuery());
     assertEquals(null, request.getJdbcUrlPrefix());
   }
@@ -118,5 +120,74 @@ public class CassandraSourceConnectorTest {
     connector.initConnectionHelper(shards, maxConnections);
 
     verify(mockConnectionHelper, never()).init(any());
+  }
+
+  @Test
+  public void testClassifyException_Permanent() {
+    com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException mockException =
+        org.mockito.Mockito.mock(com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException.class);
+    Exception codecEx = new Exception("wrapper", mockException);
+    assertEquals(
+        com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
+        connector.classifyException(codecEx));
+  }
+
+  @Test
+  public void testClassifyException_Fallback() {
+    Exception genericEx = new Exception("wrapper", new RuntimeException("generic error"));
+    org.junit.Assert.assertNull(connector.classifyException(genericEx));
+  }
+
+  @Test
+  public void testGetInformationSchema() throws Exception {
+    com.datastax.oss.driver.api.core.CqlSession mockSession = mock(com.datastax.oss.driver.api.core.CqlSession.class);
+    when(mockCassandraShard.getKeySpaceName()).thenReturn("keyspace");
+
+    CassandraSourceConnector spyConnector = spy(connector);
+    doReturn(mockSession).when(spyConnector).createCqlSession(any());
+
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.CASSANDRA)
+            .databaseName("keyspace")
+            .tables(com.google.common.collect.ImmutableMap.of())
+            .build();
+
+    try (org.mockito.MockedConstruction<com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner> mocked =
+        org.mockito.Mockito.mockConstruction(
+            com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner.class,
+            (mock, context) -> {
+              when(mock.scan()).thenReturn(dummySchema);
+            })) {
+
+      com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
+          spyConnector.getInformationSchema(List.of(mockCassandraShard));
+      assertEquals(dummySchema, result);
+    }
+  }
+
+  @Test
+  public void testParseShardList_validConf() throws Exception {
+    try (org.mockito.MockedStatic<com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader> mockFileReader =
+        org.mockito.Mockito.mockStatic(com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader.class)) {
+      String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
+      java.net.URL testUrl = com.google.common.io.Resources.getResource("test-cassandra-config.conf");
+      mockFileReader
+          .when(() -> com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader.saveFilesLocally(testGcsPath))
+          .thenReturn(new java.net.URL[] {testUrl});
+
+      List<Shard> shards = connector.parseShardList(testGcsPath);
+      assertNotNull(shards);
+      assertEquals(1, shards.size());
+      Shard shard = shards.get(0);
+      assertEquals("127.0.0.1", shard.getHost());
+      assertEquals("9042", shard.getPort());
+
+      CassandraShard cassandraShard = (CassandraShard) shard;
+      assertEquals("cassandra", cassandraShard.getUsername());
+      assertEquals("my_keyspace", cassandraShard.getKeySpaceName());
+      assertEquals(
+          "cassandra",
+          cassandraShard.getOptionsMap().get(com.datastax.oss.driver.api.core.config.TypedDriverOption.AUTH_PROVIDER_PASSWORD));
+    }
   }
 }
