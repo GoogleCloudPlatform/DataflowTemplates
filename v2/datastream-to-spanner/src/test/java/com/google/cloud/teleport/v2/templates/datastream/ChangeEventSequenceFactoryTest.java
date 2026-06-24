@@ -29,6 +29,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresChangeEventSequence;
 import org.json.JSONObject;
 import org.junit.Test;
 

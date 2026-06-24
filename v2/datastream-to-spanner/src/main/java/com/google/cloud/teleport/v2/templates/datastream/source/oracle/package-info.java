@@ -13,17 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
 
-/**
- * Abstract class that will be the super class of classes that will contain event sequence
- * information for all databases.
- */
-public abstract class ChangeEventSequence implements Comparable<ChangeEventSequence> {
-
-  private final String sourceDatabaseType;
-
-  protected ChangeEventSequence(String sourceDatabaseType) {
-    this.sourceDatabaseType = sourceDatabaseType;
-  }
-}
+/** Package containing Oracle source specific classes for Datastream to Spanner template. */
+package com.google.cloud.teleport.v2.templates.datastream.source.oracle;

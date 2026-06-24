@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.templates.datastream.source.mysql;
 
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ResultSet;
@@ -25,6 +25,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of ChangeEventSequence for MySql database which stores change event sequence
  * information and implements the comparison method.
  */
-class MySqlChangeEventSequence extends ChangeEventSequence {
+public class MySqlChangeEventSequence extends ChangeEventSequence {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlChangeEventSequence.class);
 
@@ -146,15 +151,15 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     }
   }
 
-  Long getTimestamp() {
+  public Long getTimestamp() {
     return timestamp;
   }
 
-  String getLogFile() {
+  public String getLogFile() {
     return logFile;
   }
 
-  Long getLogPosition() {
+  public Long getLogPosition() {
     return logPosition;
   }
 

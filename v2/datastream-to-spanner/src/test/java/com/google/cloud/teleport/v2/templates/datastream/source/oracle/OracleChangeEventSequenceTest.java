@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -28,6 +28,8 @@ import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import org.junit.Test;
 
 /** Unit tests for testing change event comparison logic in Oracle database. */

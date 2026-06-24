@@ -53,7 +53,7 @@ public class ChangeEventConvertorTest {
     return null;
   }
 
-  static Ddl getTestDdl() {
+  public static Ddl getTestDdl() {
     /* Creates DDL with 2 tables with the same fields but with different primary key
      * columns and their associated shadow tables.
      */
@@ -268,7 +268,7 @@ public class ChangeEventConvertorTest {
   }
 
   // Returns a changeEvent with all fields populated.
-  static JSONObject getTestChangeEvent(String tableName) {
+  public static JSONObject getTestChangeEvent(String tableName) {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
@@ -292,7 +292,7 @@ public class ChangeEventConvertorTest {
   }
 
   // Returns the expected map for a change event with all the columns populated for User1 table.
-  static Map<String, Value> getExpectedMapForTestChangeEvent() {
+  public static Map<String, Value> getExpectedMapForTestChangeEvent() {
     Map<String, Value> expected =
         new HashMap<String, Value>() {
           {
@@ -322,7 +322,7 @@ public class ChangeEventConvertorTest {
   }
 
   // Returns the expected map for a change event with all the columns populated for User2 table.
-  static Map<String, Value> getExpectedMapForTestChangeEventWithoutJsonField() {
+  public static Map<String, Value> getExpectedMapForTestChangeEventWithoutJsonField() {
     Map<String, Value> expected =
         new HashMap<String, Value>() {
           {

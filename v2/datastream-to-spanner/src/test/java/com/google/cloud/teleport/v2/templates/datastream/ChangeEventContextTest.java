@@ -44,7 +44,7 @@ public class ChangeEventContextTest {
     }
 
     @Override
-    Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+    protected Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
         throws ChangeEventConvertorException {
       return Mutation.newInsertBuilder("shadow_table").build();
     }

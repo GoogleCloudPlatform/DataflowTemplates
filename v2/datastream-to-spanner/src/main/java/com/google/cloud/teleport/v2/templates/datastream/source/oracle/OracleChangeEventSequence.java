@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
 
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ResultSet;
@@ -25,57 +25,62 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.List;
 
 /**
- * Implementation of ChangeEventSequence for Postgres database which stores change event sequence
+ * Implementation of ChangeEventSequence for Oracle database which stores change event sequence
  * information and implements the Comparator method.
  */
-class PostgresChangeEventSequence extends ChangeEventSequence {
+public class OracleChangeEventSequence extends ChangeEventSequence {
 
   // Timestamp for change event
   private final Long timestamp;
 
-  // Postgres LSN for change event
-  private final String lsn;
+  // Oracle SCN for change event
+  private final Long scn;
 
-  PostgresChangeEventSequence(Long timestamp, String lsn) {
-    super(DatastreamConstants.POSTGRES_SOURCE_TYPE);
+  OracleChangeEventSequence(Long timestamp, Long scn) {
+    super(DatastreamConstants.ORACLE_SOURCE_TYPE);
     this.timestamp = timestamp;
-    this.lsn = lsn;
+    this.scn = scn;
   }
 
   /*
-   * Creates PostgresChangeEventSequence from change event
+   * Creates OracleChangeEventSequence from change event
    */
-  public static PostgresChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
+  public static OracleChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
-    /* Backfill events from Postgres "can" have only timestamp metadata filled in.
-     * Set LSN to a smaller value than any real value
+    /* Backfill events from Oracle "can" have only timestamp metadata filled in.
+     * Set SCN to a smaller value than any real value
      */
-    String lsn;
+    Long scn;
 
-    lsn =
-        ChangeEventTypeConvertor.toString(
-            ctx.getChangeEvent(), DatastreamConstants.POSTGRES_LSN_KEY, /* requiredField= */ false);
-    if (lsn == null) {
-      lsn = "";
+    scn =
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(), DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
+    if (scn == null) {
+      scn = new Long(-1);
     }
 
-    // Change events from Postgres have timestamp and lsn filled in always.
-    return new PostgresChangeEventSequence(
+    // Change events from Oracle have timestamp and SCN filled in always.
+    return new OracleChangeEventSequence(
         ChangeEventTypeConvertor.toLong(
             ctx.getChangeEvent(),
-            DatastreamConstants.POSTGRES_TIMESTAMP_KEY,
+            DatastreamConstants.ORACLE_TIMESTAMP_KEY,
             /* requiredField= */ true),
-        lsn);
+        scn);
   }
 
   /*
-   * Creates a PostgresChangeEventSequence by reading from a shadow table.
+   * Creates a OracleChangeEventSequence by reading from a shadow table.
    */
-  public static PostgresChangeEventSequence createFromShadowTable(
+  public static OracleChangeEventSequence createFromShadowTable(
       final TransactionContext transactionContext,
       ChangeEventContext context,
       Ddl shadowTableDdl,
@@ -88,8 +93,8 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
       // Read columns from shadow table
       List<String> readColumnList =
           java.util.Arrays.asList(
-              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY),
-              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY));
+              context.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.
@@ -106,62 +111,44 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
         // Use direct row read
         row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
       }
+
       // This is the first event for the primary key and hence the latest event.
       if (row == null) {
         return null;
       }
 
-      return new PostgresChangeEventSequence(
-          row.getLong(readColumnList.get(0)), row.getString(readColumnList.get(1)));
+      return new OracleChangeEventSequence(
+          row.getLong(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
     } catch (Exception e) {
       throw new ChangeEventSequenceCreationException(e);
     }
   }
 
-  Long getTimestamp() {
+  public Long getTimestamp() {
     return timestamp;
   }
 
-  String getLSN() {
-    return lsn;
-  }
-
-  /*
-   * Postgres LSN values are of the form 16/2A50F3.
-   */
-  Long getParsedLSN(int index) {
-    if (lsn == "") {
-      return 0L;
-    }
-    String[] parts = lsn.split("/");
-    if (parts.length <= index) {
-      return 0L;
-    }
-    return Long.parseLong(parts[index], 16);
+  public Long getSCN() {
+    return scn;
   }
 
   @Override
   public int compareTo(ChangeEventSequence o) {
-    if (!(o instanceof PostgresChangeEventSequence)) {
+    if (!(o instanceof OracleChangeEventSequence)) {
       throw new ChangeEventSequenceComparisonException(
-          "Expected: PostgresChangeEventSequence; Received: " + o.getClass().getSimpleName());
+          "Expected: OracleChangeEventSequence; Received: " + o.getClass().getSimpleName());
     }
-    PostgresChangeEventSequence other = (PostgresChangeEventSequence) o;
+    OracleChangeEventSequence other = (OracleChangeEventSequence) o;
 
     int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
 
-    if (timestampComparisonResult != 0) {
-      return timestampComparisonResult;
-    } else {
-      int parsedLeftLSNComparisonResult = this.getParsedLSN(0).compareTo(other.getParsedLSN(0));
-      return parsedLeftLSNComparisonResult != 0
-          ? parsedLeftLSNComparisonResult
-          : this.getParsedLSN(1).compareTo(other.getParsedLSN(1));
-    }
+    return (timestampComparisonResult != 0)
+        ? timestampComparisonResult
+        : (scn.compareTo(other.getSCN()));
   }
 
   @Override
   public String toString() {
-    return "PostgresChangeEventSequence{" + "timestamp=" + timestamp + ", lsn=" + lsn + '}';
+    return "OracleChangeEventSequence{" + "timestamp=" + timestamp + ", scn=" + scn + '}';
   }
 }

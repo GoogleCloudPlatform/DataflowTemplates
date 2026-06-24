@@ -15,15 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-/**
- * Abstract class that will be the super class of classes that will contain event sequence
- * information for all databases.
- */
-public abstract class ChangeEventSequence implements Comparable<ChangeEventSequence> {
-
-  private final String sourceDatabaseType;
-
-  protected ChangeEventSequence(String sourceDatabaseType) {
-    this.sourceDatabaseType = sourceDatabaseType;
+/** Exception thrown when comparing incompatible ChangeEventSequence objects. */
+public class ChangeEventSequenceComparisonException extends RuntimeException {
+  public ChangeEventSequenceComparisonException(String msg) {
+    super(msg);
   }
 }
