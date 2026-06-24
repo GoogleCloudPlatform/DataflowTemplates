@@ -133,7 +133,7 @@ public class RandomValueGenerator {
             return Value.pgJsonbArray(null);
           case UUID:
           case PG_UUID:
-            return Value.stringArray(null);
+            return Value.uuidArray(null);
           case DATE:
           case PG_DATE:
             return Value.dateArray(null);
@@ -182,8 +182,7 @@ public class RandomValueGenerator {
         return Value.pgJsonbArray(generateList(() -> "{\"key\":\"value\"}", column));
       case UUID:
       case PG_UUID:
-        return Value.stringArray(
-            generateList(() -> java.util.UUID.randomUUID().toString(), column));
+        return Value.uuidArray(generateList(() -> java.util.UUID.randomUUID(), column));
       case DATE:
       case PG_DATE:
         return Value.dateArray(generateList(this::randomDate, column));
@@ -255,7 +254,7 @@ public class RandomValueGenerator {
         return Value.pgJsonb("{\"key\":\"value\"}");
       case UUID:
       case PG_UUID:
-        return Value.string(java.util.UUID.randomUUID().toString());
+        return Value.uuid(java.util.UUID.randomUUID());
       case NUMERIC:
         return Value.numeric(randomNumeric());
       case PG_NUMERIC:

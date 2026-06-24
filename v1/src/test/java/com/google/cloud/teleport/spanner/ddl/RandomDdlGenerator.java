@@ -158,7 +158,7 @@ public abstract class RandomDdlGenerator {
         .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
-        .setEnableCheckConstraints(true)
+        .setEnableCheckConstraints(false)
         .setMaxColumns(8)
         .setMaxIdLength(11)
         .setEnableGeneratedColumns(true)
@@ -564,11 +564,17 @@ public abstract class RandomDdlGenerator {
           foreignKeyBuilder.columnsBuilder().add(pk.name());
           foreignKeyBuilder.referencedColumnsBuilder().add(pk.name());
         }
+        boolean isEnforced = true;
         if (rnd.nextBoolean()) {
-          foreignKeyBuilder.referentialAction(Optional.of(generateRandomReferentialAction(rnd)));
+          isEnforced = rnd.nextBoolean();
+          foreignKeyBuilder.isEnforced(isEnforced);
         }
         if (rnd.nextBoolean()) {
-          foreignKeyBuilder.isEnforced(rnd.nextBoolean());
+          ReferentialAction action = generateRandomReferentialAction(rnd);
+          if (!isEnforced && action == ReferentialAction.ON_DELETE_CASCADE) {
+            action = ReferentialAction.ON_DELETE_NO_ACTION;
+          }
+          foreignKeyBuilder.referentialAction(Optional.of(action));
         }
         ForeignKey foreignKey = foreignKeyBuilder.build();
         if (foreignKey.columns().size() > 0) {

@@ -150,8 +150,10 @@ public class RandomInsertMutationGenerator {
       this.table = checkNotNull(table);
       RandomValueGenerator randomValueGenerator = RandomValueGenerator.defaultInstance();
       Dialect dialect = table.dialect();
+      Set<String> pkNameSet = new HashSet<>();
       Set<String> notNullNameSet = new HashSet<>();
       for (IndexColumn primaryKey : table.primaryKeys()) {
+        pkNameSet.add(primaryKey.name().toLowerCase());
         notNullNameSet.add(primaryKey.name().toLowerCase());
       }
 
@@ -191,7 +193,11 @@ public class RandomInsertMutationGenerator {
 
           if (checkConstraintValues.containsKey(colNameLower)) {
             List<String> allowed = checkConstraintValues.get(colNameLower);
-            if (notNullNameSet.contains(colNameLower)) {
+            if (pkNameSet.contains(colNameLower)) {
+              iterator =
+                  Stream.generate(() -> Value.string(allowed.get(rand.nextInt(allowed.size()))))
+                      .iterator();
+            } else if (notNullNameSet.contains(colNameLower)) {
               iterator =
                   new Iterator<Value>() {
                     int index = 0;
@@ -296,6 +302,9 @@ public class RandomInsertMutationGenerator {
               builder.set(columnName).to(com.google.cloud.spanner.Value.pgJsonb(json));
             }
             break;
+          case UUID:
+            builder.set(columnName).to(value);
+            break;
           case TIMESTAMP:
             Timestamp timestamp = value.isNull() ? null : value.getTimestamp();
             builder.set(columnName).to(timestamp);
@@ -357,6 +366,9 @@ public class RandomInsertMutationGenerator {
               case PG_JSONB:
                 List<String> pgJsonbs = value.isNull() ? null : value.getStringArray();
                 builder.set(columnName).toPgJsonbArray(pgJsonbs);
+                break;
+              case UUID:
+                builder.set(columnName).to(value);
                 break;
             }
             break;
