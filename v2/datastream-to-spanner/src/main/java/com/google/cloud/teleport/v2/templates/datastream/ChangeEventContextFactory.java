@@ -20,6 +20,9 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresChangeEventContext;
 
 /** Factory classes that provides creation methods for ChangeEventContext. */
 public class ChangeEventContextFactory {

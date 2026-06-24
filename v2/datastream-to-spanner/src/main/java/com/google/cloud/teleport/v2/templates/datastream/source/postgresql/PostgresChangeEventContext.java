@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
@@ -24,6 +24,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,7 +34,7 @@ import java.util.stream.Collectors;
  * Postgres implementation of ChangeEventContext that provides implementation of the
  * generateShadowTableMutation method.
  */
-class PostgresChangeEventContext extends ChangeEventContext {
+public class PostgresChangeEventContext extends ChangeEventContext {
 
   public PostgresChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
@@ -53,7 +56,7 @@ class PostgresChangeEventContext extends ChangeEventContext {
    * Creates shadow table mutation for Postgres.
    */
   @Override
-  Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+  protected Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
       throws ChangeEventConvertorException {
     // Get shadow information from change event mutation context
     Mutation.WriteBuilder builder =

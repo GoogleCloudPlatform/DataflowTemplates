@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,17 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
 
-/**
- * Abstract class that will be the super class of classes that will contain event sequence
- * information for all databases.
- */
-public abstract class ChangeEventSequence implements Comparable<ChangeEventSequence> {
-
-  private final String sourceDatabaseType;
-
-  protected ChangeEventSequence(String sourceDatabaseType) {
-    this.sourceDatabaseType = sourceDatabaseType;
-  }
-}
+/** Package containing PostgreSQL source specific classes for Datastream to Spanner template. */
+package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;

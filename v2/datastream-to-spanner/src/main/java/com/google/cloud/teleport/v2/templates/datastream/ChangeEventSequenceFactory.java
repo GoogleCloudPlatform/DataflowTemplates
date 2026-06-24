@@ -20,6 +20,9 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleChangeEventSequence;
+import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresChangeEventSequence;
 
 /**
  * Factory classes for ChangeEventSequence classes which provides methods for 1) creating
