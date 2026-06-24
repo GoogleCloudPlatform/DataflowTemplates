@@ -54,16 +54,19 @@ public class SpannerToSourceDbExceptionClassifier {
     return Constants.RETRYABLE_ERROR_TAG;
   }
 
-  private static TupleTag<String> classifySpannerException(SpannerException exception, ISourceConnector connector) {
+  private static TupleTag<String> classifySpannerException(
+      SpannerException exception, ISourceConnector connector) {
     // child exceptions are wrapped inside SpannerException.
     Throwable cause = exception.getCause();
+    if (cause == null) {
+      return Constants.RETRYABLE_ERROR_TAG;
+    }
 
     if (cause instanceof InvalidTransformationException
         || cause instanceof ChangeEventConvertorException
         || cause instanceof InvalidDMLGenerationException) {
       return Constants.PERMANENT_ERROR_TAG;
-    } else if (cause instanceof SQLSyntaxErrorException
-        || cause instanceof SQLDataException) {
+    } else if (cause instanceof SQLSyntaxErrorException || cause instanceof SQLDataException) {
       return Constants.PERMANENT_ERROR_TAG;
     }
 

@@ -645,6 +645,11 @@ public class SpannerToSourceDb {
       throw new RuntimeException("Error parsing shard list", e);
     }
 
+    if (shards == null || shards.isEmpty()) {
+      LOG.error("Shard list should have at least 1 element.");
+      throw new IllegalArgumentException("Shard list should have at least 1 element.");
+    }
+
     String shardingMode =
         sourceConnector.supportsSharding()
             ? Constants.SHARDING_MODE_MULTI_SHARD

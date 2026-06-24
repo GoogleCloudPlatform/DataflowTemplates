@@ -136,8 +136,7 @@ public class MySQLSourceConnectorTest {
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(dataEx));
 
-    Throwable connEx =
-        new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999);
+    Throwable connEx = new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999);
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(connEx));

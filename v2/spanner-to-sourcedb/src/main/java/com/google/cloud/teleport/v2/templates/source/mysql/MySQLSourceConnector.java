@@ -135,6 +135,7 @@ public class MySQLSourceConnector implements ISourceConnector {
 
   @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
+    // TODO this looks like a connection leak. Look to fix this.
     HikariConfig config = new HikariConfig();
     config.setJdbcUrl(getConnectionUrl(shard));
     config.setUsername(shard.getUserName());

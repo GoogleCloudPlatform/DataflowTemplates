@@ -108,6 +108,8 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
 
   @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
+    // TODO this looks like a connection leak. Look to fix this.
+    // Maybe create a connection directly without a pool
     HikariConfig config = new HikariConfig();
     config.setJdbcUrl(getConnectionUrl(shard));
     config.setUsername(shard.getUserName());
