@@ -18,7 +18,6 @@ package com.google.cloud.teleport.spanner.ddl;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -233,12 +232,56 @@ public class InformationSchemaScannerTest {
         equalToCompressingWhiteSpace(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
                 + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
-                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name = r.specific_name and"
+                + " r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
                 + " p.specific_name, p.ordinal_position"));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
+    assertThat(
+        postgresSQLInfoScanner.listFunctionParametersSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog') and p.specific_schema = r.specific_schema and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position"));
+  }
+
+  @Test
+  public void testListUdfs() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any())).thenReturn(mockResultSet);
+
+    when(mockResultSet.next()).thenReturn(true, false);
+
+    // Mock the 9 column result set for PostgreSQL listUdfs
+    // 0: routine_schema, 1: routine_name, 2: specific_schema, 3: specific_name,
+    // 4: spanner_type, 5: routine_body, 6: routine_definition, 7: security_type, 8:
+    // spanner_determinism
+    when(mockResultSet.getString(0)).thenReturn("public"); // schema
+    when(mockResultSet.getString(1)).thenReturn("pg_add"); // functionName
+    when(mockResultSet.getString(2)).thenReturn("public"); // specific_schema
+    when(mockResultSet.getString(3)).thenReturn("pg_add"); // specificName
+    when(mockResultSet.getString(4)).thenReturn("integer"); // functionType
+    when(mockResultSet.getString(5)).thenReturn("SQL"); // language / routine_body
+    when(mockResultSet.getString(6)).thenReturn("a + b"); // definition
+    when(mockResultSet.getString(7)).thenReturn("INVOKER"); // securityType
+    when(mockResultSet.getString(8)).thenReturn("DETERMINISTIC"); // spannerDeterminism
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.POSTGRESQL);
+
+    Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
+    scanner.listUdfs(builder);
+
+    Ddl ddl = builder.build();
+    assertEquals(1, ddl.udfs().size());
+    Udf udf = ddl.udfs().iterator().next();
+    assertEquals("pg_add", udf.name());
+    assertEquals("integer", udf.type());
+    assertEquals("SQL", udf.language());
+    assertEquals("a + b", udf.definition());
+    assertEquals(Udf.SqlSecurity.INVOKER, udf.security());
+    assertEquals("DETERMINISTIC", udf.spannerDeterminism());
   }
 }

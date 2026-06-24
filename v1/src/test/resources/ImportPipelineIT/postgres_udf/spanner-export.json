@@ -1,0 +1,10 @@
+{
+  "udfs": [{
+    "name": "pg_add",
+    "manifestFile": "pg_add-manifest.json"
+  }, {
+    "name": "pg_multiply",
+    "manifestFile": "pg_multiply-manifest.json"
+  }],
+  "dialect": "POSTGRESQL"
+}

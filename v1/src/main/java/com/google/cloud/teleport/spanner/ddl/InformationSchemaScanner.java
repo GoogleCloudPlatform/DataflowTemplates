@@ -1026,7 +1026,8 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listUdfs(Ddl.Builder builder) {
+  @VisibleForTesting
+  void listUdfs(Ddl.Builder builder) {
     Statement queryStatement;
 
     switch (dialect) {
@@ -1043,14 +1044,13 @@ public class InformationSchemaScanner {
         queryStatement =
             Statement.of(
                 "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name,"
-                    + " r.data_type, r.routine_body, r.routine_definition, r.security_type"
+                    + " r.spanner_type, r.routine_body, r.routine_definition, r.security_type, r.spanner_determinism"
                     + " FROM information_schema.routines AS r WHERE"
                     + " r.routine_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
                     + " AND r.routine_type = 'FUNCTION'");
         break;
       default:
-        throw new IllegalArgumentException(
-            "User-defined functions are not supported in dialect: " + dialect);
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
 
     ResultSet resultSet = context.executeQuery(queryStatement);
@@ -1065,6 +1065,10 @@ public class InformationSchemaScanner {
       String language = resultSet.isNull(5) ? null : resultSet.getString(5);
       String functionDefinition = resultSet.isNull(6) ? null : resultSet.getString(6);
       String functionSecurityType = resultSet.isNull(7) ? null : resultSet.getString(7);
+      String spannerDeterminism = null;
+      if (dialect == Dialect.POSTGRESQL) {
+        spannerDeterminism = resultSet.isNull(8) ? null : resultSet.getString(8);
+      }
 
       // Built-in functions such as Change Stream READ_X are marked as External.
       // Skip and do not re-create they will be autmatically added by change streams.
@@ -1080,6 +1084,7 @@ public class InformationSchemaScanner {
           .language(language)
           .definition(functionDefinition)
           .security(Udf.SqlSecurity.valueOf(functionSecurityType))
+          .spannerDeterminism(spannerDeterminism)
           .endUdf();
     }
   }
@@ -1164,18 +1169,23 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p,"
-                + " information_schema.routines AS r WHERE p.specific_schema NOT IN"
-                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name = r.specific_name and"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_schema = r.specific_schema and p.specific_name = r.specific_name and"
                 + " r.routine_type = 'FUNCTION' ORDER BY"
                 + " p.specific_schema, p.specific_name, p.ordinal_position");
-
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.spanner_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('information_schema', 'spanner_sys', 'pg_catalog') and p.specific_schema = r.specific_schema and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
   }
 
-  // TODO: b/398890992 - Add support for UDFs in POSTGRESQL.
   private boolean isUdfSupported() {
     Statement preconditionStatement;
     switch (dialect) {
@@ -1186,6 +1196,13 @@ public class InformationSchemaScanner {
                     + " WHERE c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'PARAMETERS'"
                     + " AND c.COLUMN_NAME = 'PARAMETER_DEFAULT'");
         break;
+      case POSTGRESQL:
+        preconditionStatement =
+            Statement.of(
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c"
+                    + " WHERE c.TABLE_SCHEMA = 'information_schema' AND c.TABLE_NAME = 'routines'"
+                    + " AND c.COLUMN_NAME = 'spanner_determinism'");
+        break;
       default:
         return false;
     }
@@ -1194,9 +1211,7 @@ public class InformationSchemaScanner {
       // and a 0 if not.
       resultSet.next();
       if (resultSet.getLong(0) == 0) {
-        LOG.info(
-            "INFORMATION_SCHEMA.PARAMETERS.PARAMETER_DEFAULT is not present. Cannot export"
-                + " user-defined functions.");
+        LOG.info("Cannot export user-defined functions.");
         return false;
       }
     }

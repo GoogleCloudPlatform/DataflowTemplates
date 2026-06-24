@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.identifierQuote;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
 import com.google.auto.value.AutoValue;
@@ -49,36 +50,52 @@ public abstract class UdfParameter implements Serializable {
   }
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
-    String[] paramParts = parameter.split(" ");
-    if (paramParts.length < 2) {
+    String quote = identifierQuote(dialect);
+
+    // Regex to extract the name (quoted or unquoted) and the rest of the parameter string.
+    // Group 1: Name (quoted or unquoted)
+    // Group 2: Quoted Name
+    // Group 3: Unquoted Name
+    // Group 4: The rest (type and optional DEFAULT)
+    String regex =
+        String.format(
+            "^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", java.util.regex.Pattern.quote(quote));
+    java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(regex).matcher(parameter);
+
+    if (!matcher.find()) {
       throw new IllegalArgumentException(
           "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
               + " Parameter: "
               + parameter);
     }
+
+    String name = matcher.group(1);
+    String rest = matcher.group(4).trim();
+
+    // Split 'rest' into type and defaultExpression using a case-insensitive 'DEFAULT' keyword.
+    String[] parts = rest.split("(?i)\\s+DEFAULT\\s+", 2);
+    String type = parts[0].trim();
+    String defaultExpression = parts.length > 1 ? parts[1].trim() : null;
+
+    // The original logic for GoogleSQL restricted types to be a single word if no DEFAULT was
+    // present.
+    // We preserve this check for GSQL only to minimize behavioral changes.
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL && defaultExpression == null && type.contains(" ")) {
+      throw new IllegalArgumentException("Unexpected parameter keyword in " + functionSpecificName);
+    }
+
     UdfParameter.Builder udfParameter =
         UdfParameter.builder(dialect)
             .functionSpecificName(functionSpecificName)
-            .name(paramParts[0])
-            .type(paramParts[1]);
-    if (paramParts.length > 2) {
-      if (paramParts[2].equalsIgnoreCase("default")) {
-        if (paramParts.length == 3) {
-          throw new IllegalArgumentException(
-              "Missing default parameter expression in " + functionSpecificName);
-        }
-        String defaultExpression = "";
-        for (int i = 3; i < paramParts.length; i++) {
-          if (!defaultExpression.isEmpty()) {
-            defaultExpression += " ";
-          }
-          defaultExpression += paramParts[i];
-        }
-        udfParameter.defaultExpression(defaultExpression);
-      } else {
+            .name(name)
+            .type(type);
+
+    if (defaultExpression != null) {
+      if (defaultExpression.isEmpty()) {
         throw new IllegalArgumentException(
-            "Unexpected parameter keyword \"" + paramParts[2] + "\" in " + functionSpecificName);
+            "Missing default parameter expression in " + functionSpecificName);
       }
+      udfParameter.defaultExpression(defaultExpression);
     }
     return udfParameter.autoBuild();
   }
