@@ -74,7 +74,7 @@ public class CassandraSourceConnectorTest {
     when(mockCassandraShard.getKeySpaceName()).thenReturn("mykeyspace");
 
     String url = connector.getConnectionUrl(mockCassandraShard);
-    assertEquals("localhost:9042", url);
+    assertEquals("localhost:9042/cassandra/mykeyspace", url);
   }
 
   @Test
@@ -105,7 +105,7 @@ public class CassandraSourceConnectorTest {
     ConnectionHelperRequest request = requestCaptor.getValue();
     assertEquals(shards, request.getShards());
     assertEquals(maxConnections, request.getMaxConnections());
-    assertEquals(null, request.getDriver());
+    assertEquals("com.datastax.oss.driver.api.core.CqlSession", request.getDriver());
     assertEquals(null, request.getConnectionInitQuery());
     assertEquals(null, request.getJdbcUrlPrefix());
   }

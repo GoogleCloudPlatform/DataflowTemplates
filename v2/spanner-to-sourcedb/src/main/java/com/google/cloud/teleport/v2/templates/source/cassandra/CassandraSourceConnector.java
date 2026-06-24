@@ -62,9 +62,14 @@ public class CassandraSourceConnector implements ISourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    // Cassandra does not use a simple connection URL string in the same way as JDBC,
-    // but we can return a identifier or host info.
-    return shard.getHost() + ":" + shard.getPort();
+    CassandraShard cassandraShard = (CassandraShard) shard;
+    return cassandraShard.getHost()
+        + ":"
+        + cassandraShard.getPort()
+        + "/"
+        + cassandraShard.getUserName()
+        + "/"
+        + cassandraShard.getKeySpaceName();
   }
 
   @Override
@@ -76,7 +81,7 @@ public class CassandraSourceConnector implements ISourceConnector {
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
-          new ConnectionHelperRequest(shards, null, maxConnections, null, null, null);
+          new ConnectionHelperRequest(shards, null, maxConnections, "com.datastax.oss.driver.api.core.CqlSession", null, null);
       connectionHelper.init(request);
     }
   }

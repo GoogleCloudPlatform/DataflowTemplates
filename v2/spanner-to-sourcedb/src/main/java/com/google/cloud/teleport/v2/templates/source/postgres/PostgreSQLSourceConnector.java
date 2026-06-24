@@ -94,7 +94,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
 
   @Override
   public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
-    // No-op for PostgreSQL
+    // TODO- validate read only similar to mysql
   }
 
   @Override
