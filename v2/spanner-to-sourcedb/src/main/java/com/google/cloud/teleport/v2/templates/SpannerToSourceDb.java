@@ -640,13 +640,13 @@ public class SpannerToSourceDb {
     ISourceConnector sourceConnector;
     try {
       sourceConnector = SourceProcessorFactory.getSource(options.getSourceType());
-      shards = sourceConnector.parseShardList(options.getSourceShardsFilePath());
+      shards = sourceConnector.parseShardConfig(options.getSourceShardsFilePath());
     } catch (Exception e) {
       throw new RuntimeException("Error parsing shard list", e);
     }
 
     String shardingMode =
-        sourceConnector.isMultiSharded()
+        sourceConnector.supportsSharding()
             ? Constants.SHARDING_MODE_MULTI_SHARD
             : Constants.SHARDING_MODE_SINGLE_SHARD;
 

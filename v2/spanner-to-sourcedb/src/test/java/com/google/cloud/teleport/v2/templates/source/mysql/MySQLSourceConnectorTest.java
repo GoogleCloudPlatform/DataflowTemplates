@@ -260,7 +260,7 @@ public class MySQLSourceConnectorTest {
             + "}";
     java.nio.file.Files.writeString(tempFile.toPath(), wrappedJson);
 
-    List<Shard> shards = connector.parseShardList(tempFile.getAbsolutePath());
+    List<Shard> shards = connector.parseShardConfig(tempFile.getAbsolutePath());
     assertNotNull(shards);
     assertEquals(1, shards.size());
     Shard shard = shards.get(0);

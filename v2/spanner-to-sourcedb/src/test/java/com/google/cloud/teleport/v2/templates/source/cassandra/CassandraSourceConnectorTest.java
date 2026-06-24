@@ -188,7 +188,7 @@ public class CassandraSourceConnectorTest {
                       .saveFilesLocally(testGcsPath))
           .thenReturn(new java.net.URL[] {testUrl});
 
-      List<Shard> shards = connector.parseShardList(testGcsPath);
+      List<Shard> shards = connector.parseShardConfig(testGcsPath);
       assertNotNull(shards);
       assertEquals(1, shards.size());
       Shard shard = shards.get(0);

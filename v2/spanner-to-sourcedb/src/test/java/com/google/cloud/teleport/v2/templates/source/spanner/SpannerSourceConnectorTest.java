@@ -67,21 +67,6 @@ public class SpannerSourceConnectorTest {
   }
 
   @Test
-  public void testGetConnectionUrl() {
-    when(mockSpannerShard.getProjectId()).thenReturn("my-project");
-    when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");
-    when(mockSpannerShard.getDatabaseId()).thenReturn("my-database");
-
-    String url = connector.getConnectionUrl(mockSpannerShard);
-    assertEquals("my-project/my-instance/my-database", url);
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testGetConnectionUrl_invalidShardType() {
-    connector.getConnectionUrl(mockGenericShard);
-  }
-
-  @Test
   public void testGetDao() {
     when(mockSpannerShard.getProjectId()).thenReturn("my-project");
     when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");

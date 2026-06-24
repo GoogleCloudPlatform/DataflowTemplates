@@ -48,14 +48,6 @@ public interface ISourceConnector {
   IConnectionHelper getConnectionHelper();
 
   /**
-   * Constructs and returns the JDBC or connection URL for a given shard.
-   *
-   * @param shard The shard configuration containing host, port, and database name.
-   * @return The connection URL string.
-   */
-  String getConnectionUrl(Shard shard);
-
-  /**
    * Returns a dialect-specific Data Access Object (DAO) for a given shard.
    *
    * @param shard The shard configuration to initialize the DAO with.
@@ -78,7 +70,7 @@ public interface ISourceConnector {
    * @return A list of Shards.
    * @throws Exception If parsing fails.
    */
-  List<Shard> parseShardList(String shardFilePath) throws Exception;
+  List<Shard> parseShardConfig(String shardFilePath) throws Exception;
 
   /**
    * Validates the shards and pipeline options.
@@ -99,15 +91,16 @@ public interface ISourceConnector {
   SourceSchema getInformationSchema(List<Shard> shards) throws Exception;
 
   /**
-   * Returns whether this source supports multi-sharded migrations.
+   * Returns whether this source supports sharded migrations.
    *
-   * @return True if multi-sharded, false otherwise.
+   * @return True if supports sharding, false otherwise.
    */
-  boolean isMultiSharded();
+  boolean supportsSharding();
 
   /**
    * Returns whether the pipeline should update the Spanner record with values read from Spanner
-   * during stale reads (e.g. for DELETE events).
+   * during stale reads (e.g. for DELETE events). //TODO this flag is only required by cassandra. We
+   * should look for a way to remove it
    *
    * @return True if it should update, false otherwise.
    */

@@ -52,8 +52,7 @@ public class SpannerSourceConnector implements ISourceConnector {
     return connectionHelper;
   }
 
-  @Override
-  public String getConnectionUrl(Shard shard) {
+  String getConnectionUrl(Shard shard) {
     if (!(shard instanceof SpannerShard)) {
       throw new IllegalArgumentException(
           "Expected SpannerShard but got: "
@@ -66,7 +65,7 @@ public class SpannerSourceConnector implements ISourceConnector {
   @Override
   public IDao getDao(Shard shard) {
     return new SpannerTargetDao(
-        getConnectionUrl(shard),
+        SpannerConnectionHelper.connectionKey((SpannerShard) shard),
         (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper());
   }
 
@@ -87,7 +86,7 @@ public class SpannerSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public List<Shard> parseShardList(String shardFilePath) throws Exception {
+  public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     SpannerShardFileReader spannerShardFileReader = new SpannerShardFileReader();
     return spannerShardFileReader.getSpannerShards(shardFilePath);
   }
@@ -130,7 +129,7 @@ public class SpannerSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public boolean isMultiSharded() {
+  public boolean supportsSharding() {
     return false;
   }
 

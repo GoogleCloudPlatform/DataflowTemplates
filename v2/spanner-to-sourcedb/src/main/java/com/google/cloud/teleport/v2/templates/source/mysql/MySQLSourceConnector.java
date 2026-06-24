@@ -66,8 +66,7 @@ public class MySQLSourceConnector implements ISourceConnector {
     return connectionHelper;
   }
 
-  @Override
-  public String getConnectionUrl(Shard shard) {
+  String getConnectionUrl(Shard shard) {
     return "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
@@ -92,7 +91,7 @@ public class MySQLSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public List<Shard> parseShardList(String shardFilePath) throws Exception {
+  public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
     SourceConnectionConfig sourceConnectionConfig =
@@ -146,7 +145,7 @@ public class MySQLSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public boolean isMultiSharded() {
+  public boolean supportsSharding() {
     return true;
   }
 
