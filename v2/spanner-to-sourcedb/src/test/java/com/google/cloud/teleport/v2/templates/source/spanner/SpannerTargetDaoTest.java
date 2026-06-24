@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
+package com.google.cloud.teleport.v2.templates.source.spanner;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyIterable;

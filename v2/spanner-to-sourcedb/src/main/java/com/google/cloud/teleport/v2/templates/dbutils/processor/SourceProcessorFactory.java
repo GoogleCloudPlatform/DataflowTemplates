@@ -15,143 +15,45 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.SpannerTargetDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.PostgreSQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.SpannerDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class SourceProcessorFactory {
-  private static Map<String, IDMLGenerator> dmlGeneratorMap = new HashMap<>();
 
-  private static Map<String, IConnectionHelper> connectionHelperMap = new HashMap<>();
-
-  private static final Map<String, String> driverMap =
-      Map.of(
-          Constants.SOURCE_MYSQL,
-          "com.mysql.cj.jdbc.Driver", // MySQL JDBC Driver
-          Constants.SOURCE_CASSANDRA,
-          "com.datastax.oss.driver.api.core.CqlSession", // Cassandra Session Class
-          Constants.SOURCE_POSTGRESQL,
-          "org.postgresql.Driver", // PostgreSQL JDBC Driver
-          Constants.SOURCE_SPANNER,
-          "com.google.cloud.spanner.DatabaseClient" // Spanner DatabaseClient
-          );
-
-  private static Map<String, Function<Shard, String>> connectionUrl = new HashMap<>();
+  private static final Map<String, ISourceConnector> sourceMap = new HashMap<>();
 
   static {
-    dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
-    dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
-    dmlGeneratorMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLDMLGenerator());
-    dmlGeneratorMap.put(Constants.SOURCE_SPANNER, new SpannerDMLGenerator());
-
-    connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
-    connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
-    connectionHelperMap.put(Constants.SOURCE_POSTGRESQL, new JdbcConnectionHelper());
-    connectionHelperMap.put(Constants.SOURCE_SPANNER, new SpannerConnectionHelper());
-
-    connectionUrl.put(
-        Constants.SOURCE_MYSQL,
-        shard ->
-            "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName());
-    connectionUrl.put(
-        Constants.SOURCE_POSTGRESQL,
-        shard ->
-            "jdbc:postgresql://"
-                + shard.getHost()
-                + ":"
-                + shard.getPort()
-                + "/"
-                + shard.getDbName());
-    connectionUrl.put(
-        Constants.SOURCE_CASSANDRA,
-        shard -> {
-          CassandraShard cassandraShard = (CassandraShard) shard;
-          return cassandraShard.getHost()
-              + ":"
-              + cassandraShard.getPort()
-              + "/"
-              + cassandraShard.getUserName()
-              + "/"
-              + cassandraShard.getKeySpaceName();
-        });
-    connectionUrl.put(
-        Constants.SOURCE_SPANNER,
-        shard -> {
-          SpannerShard spannerShard = (SpannerShard) shard;
-          return SpannerConnectionHelper.connectionKey(spannerShard);
-        });
+    sourceMap.put(Constants.SOURCE_MYSQL, new MySQLSourceConnector());
+    sourceMap.put(Constants.SOURCE_POSTGRESQL, new PostgreSQLSourceConnector());
+    sourceMap.put(Constants.SOURCE_CASSANDRA, new CassandraSourceConnector());
+    sourceMap.put(Constants.SOURCE_SPANNER, new SpannerSourceConnector());
   }
 
-  private static Map<String, BiFunction<List<Shard>, Integer, ConnectionHelperRequest>>
-      connectionHelperRequestFactory =
-          Map.of(
-              Constants.SOURCE_MYSQL,
-              (shards, maxConnections) ->
-                  new ConnectionHelperRequest(
-                      shards,
-                      null,
-                      maxConnections,
-                      driverMap.get(Constants.SOURCE_MYSQL),
-                      "SET SESSION net_read_timeout=1200", // To avoid timeouts at the network layer
-                      "jdbc:mysql://"),
-              Constants.SOURCE_POSTGRESQL,
-              (shards, maxConnections) ->
-                  new ConnectionHelperRequest(
-                      shards,
-                      null,
-                      maxConnections,
-                      driverMap.get(Constants.SOURCE_POSTGRESQL),
-                      null,
-                      "jdbc:postgresql://"),
-              Constants.SOURCE_CASSANDRA,
-              (shards, maxConnections) ->
-                  new ConnectionHelperRequest(
-                      shards,
-                      null,
-                      maxConnections,
-                      driverMap.get(Constants.SOURCE_CASSANDRA),
-                      null, // No specific initialization query for Cassandra
-                      null),
-              Constants.SOURCE_SPANNER,
-              (shards, maxConnections) ->
-                  new ConnectionHelperRequest(
-                      shards,
-                      null,
-                      maxConnections,
-                      driverMap.get(Constants.SOURCE_SPANNER),
-                      null, // No JDBC init query for Spanner
-                      null));
-
-  // for unit testing purposes
-  public static void setConnectionHelperMap(Map<String, IConnectionHelper> connectionHelper) {
-    connectionHelperMap = connectionHelper;
+  public static void registerSource(String sourceName, ISourceConnector source) {
+    sourceMap.put(sourceName, source);
   }
 
-  static Map<String, IConnectionHelper> getConnectionHelperMap() {
-    return connectionHelperMap;
+  @VisibleForTesting
+  public static Map<String, ISourceConnector> getSourceMap() {
+    return new HashMap<>(sourceMap);
+  }
+
+  @VisibleForTesting
+  public static void setSourceMap(Map<String, ISourceConnector> map) {
+    sourceMap.clear();
+    sourceMap.putAll(map);
   }
 
   /**
@@ -165,72 +67,25 @@ public class SourceProcessorFactory {
    */
   public static SourceProcessor createSourceProcessor(
       String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
-    IDMLGenerator dmlGenerator = getDMLGenerator(source);
-    initializeConnectionHelper(source, shards, maxConnections);
-    Map<String, IDao> sourceDaoMap = createSourceDaoMap(source, shards);
+    ISourceConnector sourceInstance = getSource(source);
+
+    IDMLGenerator dmlGenerator = sourceInstance.getDmlGenerator();
+    sourceInstance.initConnectionHelper(shards, maxConnections);
+    Map<String, IDao> sourceDaoMap = createSourceDaoMap(sourceInstance, shards);
 
     return SourceProcessor.builder().dmlGenerator(dmlGenerator).sourceDaoMap(sourceDaoMap).build();
   }
 
-  private static IDMLGenerator getDMLGenerator(String source) throws UnsupportedSourceException {
-    return Optional.ofNullable(dmlGeneratorMap.get(source))
-        .orElseThrow(
-            () ->
-                new UnsupportedSourceException("Invalid source type for DML generator: " + source));
+  public static ISourceConnector getSource(String source) throws UnsupportedSourceException {
+    return Optional.ofNullable(sourceMap.get(source))
+        .orElseThrow(() -> new UnsupportedSourceException("Invalid source type: " + source));
   }
 
-  private static IConnectionHelper getConnectionHelper(String source)
-      throws UnsupportedSourceException {
-    return Optional.ofNullable(connectionHelperMap.get(source))
-        .orElseThrow(
-            () ->
-                new UnsupportedSourceException(
-                    "Invalid source type for connection helper: " + source));
-  }
-
-  private static void initializeConnectionHelper(
-      String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
-    IConnectionHelper connectionHelper = getConnectionHelper(source);
-    if (!connectionHelper.isConnectionPoolInitialized()) {
-      ConnectionHelperRequest request =
-          createConnectionHelperRequest(source, shards, maxConnections);
-      connectionHelper.init(request);
-    }
-  }
-
-  private static ConnectionHelperRequest createConnectionHelperRequest(
-      String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
-    return Optional.ofNullable(connectionHelperRequestFactory.get(source))
-        .map(factory -> factory.apply(shards, maxConnections))
-        .orElseThrow(
-            () ->
-                new UnsupportedSourceException(
-                    "Invalid source type for ConnectionHelperRequest: " + source));
-  }
-
-  private static Map<String, IDao> createSourceDaoMap(String source, List<Shard> shards)
-      throws UnsupportedSourceException {
-    Function<Shard, String> urlGenerator =
-        Optional.ofNullable(connectionUrl.get(source))
-            .orElseThrow(
-                () ->
-                    new UnsupportedSourceException(
-                        "Invalid source type for URL generation: " + source));
-
+  private static Map<String, IDao> createSourceDaoMap(
+      ISourceConnector sourceInstance, List<Shard> shards) {
     Map<String, IDao> sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
-      String connectionUrl = urlGenerator.apply(shard);
-      IDao sqlDao;
-      if (source.equals(Constants.SOURCE_MYSQL) || source.equals(Constants.SOURCE_POSTGRESQL)) {
-        sqlDao = new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
-      } else if (source.equals(Constants.SOURCE_SPANNER)) {
-        sqlDao =
-            new SpannerTargetDao(
-                connectionUrl, (IConnectionHelper<DatabaseClient>) getConnectionHelper(source));
-      } else {
-        sqlDao = new CassandraDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
-      }
-      sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
+      sourceDaoMap.put(shard.getLogicalShardId(), sourceInstance.getDao(shard));
     }
     return sourceDaoMap;
   }

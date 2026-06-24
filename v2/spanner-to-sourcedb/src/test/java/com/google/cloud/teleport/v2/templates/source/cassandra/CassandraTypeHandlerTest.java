@@ -13,10 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.dbutils.dml;
+package com.google.cloud.teleport.v2.templates.source.cassandra;
 
-import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHandler.castToExpectedType;
-import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHandler.getColumnValueByType;
+import static com.google.cloud.teleport.v2.templates.source.cassandra.CassandraTypeHandler.castToExpectedType;
+import static com.google.cloud.teleport.v2.templates.source.cassandra.CassandraTypeHandler.getColumnValueByType;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
