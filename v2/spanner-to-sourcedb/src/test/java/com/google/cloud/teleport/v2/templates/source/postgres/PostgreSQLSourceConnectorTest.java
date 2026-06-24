@@ -126,7 +126,8 @@ public class PostgreSQLSourceConnectorTest {
 
   @Test
   public void testClassifyException_Permanent() {
-    Exception syntaxEx = new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
+    Exception syntaxEx =
+        new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(syntaxEx));
@@ -136,7 +137,8 @@ public class PostgreSQLSourceConnectorTest {
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(dataEx));
 
-    Exception connEx = new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error"));
+    Exception connEx =
+        new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error"));
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(connEx));
@@ -157,17 +159,21 @@ public class PostgreSQLSourceConnectorTest {
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.POSTGRESQL)
             .databaseName("mydb")
             .tables(com.google.common.collect.ImmutableMap.of())
             .build();
 
-    try (org.mockito.MockedConstruction<com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner> mocked =
-        org.mockito.Mockito.mockConstruction(
-            com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(dummySchema);
-            })) {
+    try (org.mockito.MockedConstruction<
+            com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner>
+        mocked =
+            org.mockito.Mockito.mockConstruction(
+                com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner
+                    .class,
+                (mock, context) -> {
+                  when(mock.scan()).thenReturn(dummySchema);
+                })) {
 
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
           spyConnector.getInformationSchema(List.of(mockShard));

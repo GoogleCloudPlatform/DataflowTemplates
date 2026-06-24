@@ -126,7 +126,8 @@ public class MySQLSourceConnectorTest {
 
   @Test
   public void testClassifyException_Permanent() {
-    Exception syntaxEx = new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
+    Exception syntaxEx =
+        new Exception("wrapper", new java.sql.SQLSyntaxErrorException("syntax error"));
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(syntaxEx));
@@ -136,7 +137,10 @@ public class MySQLSourceConnectorTest {
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(dataEx));
 
-    Exception connEx = new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999));
+    Exception connEx =
+        new Exception(
+            "wrapper",
+            new java.sql.SQLNonTransientConnectionException("conn error", "state", 9999));
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
         connector.classifyException(connEx));
@@ -146,7 +150,10 @@ public class MySQLSourceConnectorTest {
   public void testClassifyException_Retryable() {
     int[] retryableSqlCodes = {1053, 1159, 1161};
     for (int code : retryableSqlCodes) {
-      Exception connEx = new Exception("wrapper", new java.sql.SQLNonTransientConnectionException("conn error", "state", code));
+      Exception connEx =
+          new Exception(
+              "wrapper",
+              new java.sql.SQLNonTransientConnectionException("conn error", "state", code));
       org.junit.Assert.assertNull(connector.classifyException(connEx));
     }
   }
@@ -199,7 +206,8 @@ public class MySQLSourceConnectorTest {
 
     java.sql.Statement mockStatement = mock(java.sql.Statement.class);
     when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.executeQuery("SELECT @@read_only")).thenThrow(new java.sql.SQLException("unknown variable"));
+    when(mockStatement.executeQuery("SELECT @@read_only"))
+        .thenThrow(new java.sql.SQLException("unknown variable"));
 
     List<Shard> shards = List.of(mockShard);
     spyConnector.validate(shards, null);
@@ -213,17 +221,20 @@ public class MySQLSourceConnectorTest {
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.MYSQL)
             .databaseName("mydb")
             .tables(com.google.common.collect.ImmutableMap.of())
             .build();
 
-    try (org.mockito.MockedConstruction<com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner> mocked =
-        org.mockito.Mockito.mockConstruction(
-            com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(dummySchema);
-            })) {
+    try (org.mockito.MockedConstruction<
+            com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner>
+        mocked =
+            org.mockito.Mockito.mockConstruction(
+                com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner.class,
+                (mock, context) -> {
+                  when(mock.scan()).thenReturn(dummySchema);
+                })) {
 
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
           spyConnector.getInformationSchema(List.of(mockShard));

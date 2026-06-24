@@ -125,7 +125,8 @@ public class CassandraSourceConnectorTest {
   @Test
   public void testClassifyException_Permanent() {
     com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException mockException =
-        org.mockito.Mockito.mock(com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException.class);
+        org.mockito.Mockito.mock(
+            com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException.class);
     Exception codecEx = new Exception("wrapper", mockException);
     assertEquals(
         com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG,
@@ -140,24 +141,29 @@ public class CassandraSourceConnectorTest {
 
   @Test
   public void testGetInformationSchema() throws Exception {
-    com.datastax.oss.driver.api.core.CqlSession mockSession = mock(com.datastax.oss.driver.api.core.CqlSession.class);
+    com.datastax.oss.driver.api.core.CqlSession mockSession =
+        mock(com.datastax.oss.driver.api.core.CqlSession.class);
     when(mockCassandraShard.getKeySpaceName()).thenReturn("keyspace");
 
     CassandraSourceConnector spyConnector = spy(connector);
     doReturn(mockSession).when(spyConnector).createCqlSession(any());
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
-        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.CASSANDRA)
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+                com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType.CASSANDRA)
             .databaseName("keyspace")
             .tables(com.google.common.collect.ImmutableMap.of())
             .build();
 
-    try (org.mockito.MockedConstruction<com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner> mocked =
-        org.mockito.Mockito.mockConstruction(
-            com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(dummySchema);
-            })) {
+    try (org.mockito.MockedConstruction<
+            com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner>
+        mocked =
+            org.mockito.Mockito.mockConstruction(
+                com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner
+                    .class,
+                (mock, context) -> {
+                  when(mock.scan()).thenReturn(dummySchema);
+                })) {
 
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema result =
           spyConnector.getInformationSchema(List.of(mockCassandraShard));
@@ -167,12 +173,19 @@ public class CassandraSourceConnectorTest {
 
   @Test
   public void testParseShardList_validConf() throws Exception {
-    try (org.mockito.MockedStatic<com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader> mockFileReader =
-        org.mockito.Mockito.mockStatic(com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader.class)) {
+    try (org.mockito.MockedStatic<
+            com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader>
+        mockFileReader =
+            org.mockito.Mockito.mockStatic(
+                com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader.class)) {
       String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
-      java.net.URL testUrl = com.google.common.io.Resources.getResource("test-cassandra-config.conf");
+      java.net.URL testUrl =
+          com.google.common.io.Resources.getResource("test-cassandra-config.conf");
       mockFileReader
-          .when(() -> com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader.saveFilesLocally(testGcsPath))
+          .when(
+              () ->
+                  com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader
+                      .saveFilesLocally(testGcsPath))
           .thenReturn(new java.net.URL[] {testUrl});
 
       List<Shard> shards = connector.parseShardList(testGcsPath);
@@ -187,7 +200,11 @@ public class CassandraSourceConnectorTest {
       assertEquals("my_keyspace", cassandraShard.getKeySpaceName());
       assertEquals(
           "cassandra",
-          cassandraShard.getOptionsMap().get(com.datastax.oss.driver.api.core.config.TypedDriverOption.AUTH_PROVIDER_PASSWORD));
+          cassandraShard
+              .getOptionsMap()
+              .get(
+                  com.datastax.oss.driver.api.core.config.TypedDriverOption
+                      .AUTH_PROVIDER_PASSWORD));
     }
   }
 }

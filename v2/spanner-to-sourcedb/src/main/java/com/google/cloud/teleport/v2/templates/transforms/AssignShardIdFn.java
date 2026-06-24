@@ -336,7 +336,8 @@ public class AssignShardIdFn
               staleInstant.getEpochSecond(), staleInstant.getNano());
       ModType modType = record.getModType();
 
-      boolean updateReadValuesToSpannerRecord = sourceConnector.shouldUpdateReadValuesToSpannerRecord();
+      boolean updateReadValuesToSpannerRecord =
+          sourceConnector.shouldUpdateReadValuesToSpannerRecord();
 
       List<String> columns =
           ddl.table(tableName).columns().stream()

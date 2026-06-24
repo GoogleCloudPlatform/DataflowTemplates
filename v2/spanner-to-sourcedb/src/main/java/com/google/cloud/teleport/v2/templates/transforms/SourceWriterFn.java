@@ -391,7 +391,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
-        TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
+        TupleTag<String> errorTag =
+            SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
         outputWithTag(c, errorTag, message, spannerRec);
         UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }

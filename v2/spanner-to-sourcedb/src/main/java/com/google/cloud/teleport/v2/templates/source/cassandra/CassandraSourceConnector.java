@@ -76,7 +76,8 @@ public class CassandraSourceConnector implements ISourceConnector {
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
-      ConnectionHelperRequest request = new ConnectionHelperRequest(shards, null, maxConnections, null, null, null);
+      ConnectionHelperRequest request =
+          new ConnectionHelperRequest(shards, null, maxConnections, null, null, null);
       connectionHelper.init(request);
     }
   }
@@ -111,8 +112,7 @@ public class CassandraSourceConnector implements ISourceConnector {
   public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
     CassandraShard cassandraShard = (CassandraShard) shards.get(0);
     try (CqlSession session = createCqlSession(cassandraShard)) {
-      return new CassandraInformationSchemaScanner(
-              session, cassandraShard.getKeySpaceName())
+      return new CassandraInformationSchemaScanner(session, cassandraShard.getKeySpaceName())
           .scan();
     }
   }

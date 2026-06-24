@@ -113,8 +113,7 @@ public class MySQLSourceConnector implements ISourceConnector {
               ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
             if (rs != null && rs.next() && rs.getInt(1) == 1) {
               throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: "
-                      + shard.getLogicalShardId());
+                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
             }
           }
         }
@@ -164,10 +163,9 @@ public class MySQLSourceConnector implements ISourceConnector {
       return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
     }
     if (cause instanceof java.sql.SQLNonTransientConnectionException) {
-      java.sql.SQLNonTransientConnectionException e = (java.sql.SQLNonTransientConnectionException) cause;
-      if (e.getErrorCode() != 1053
-          && e.getErrorCode() != 1159
-          && e.getErrorCode() != 1161) {
+      java.sql.SQLNonTransientConnectionException e =
+          (java.sql.SQLNonTransientConnectionException) cause;
+      if (e.getErrorCode() != 1053 && e.getErrorCode() != 1159 && e.getErrorCode() != 1161) {
         return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
       }
     }

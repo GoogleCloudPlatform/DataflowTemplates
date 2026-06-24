@@ -127,9 +127,13 @@ public class SpannerSourceConnectorTest {
 
   @Test
   public void testValidate_Colocation_Success() throws Exception {
-    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions = mock(org.apache.beam.sdk.options.PipelineOptions.class);
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions = mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    when(mockPipelineOptions.as(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class)).thenReturn(mockOptions);
+    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
+        mock(org.apache.beam.sdk.options.PipelineOptions.class);
+    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
+        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
+    when(mockPipelineOptions.as(
+            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
+        .thenReturn(mockOptions);
 
     when(mockOptions.getSpannerProjectId()).thenReturn("p1");
     when(mockOptions.getMetadataInstance()).thenReturn("i1");
@@ -144,9 +148,13 @@ public class SpannerSourceConnectorTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testValidate_Colocation_Failure() throws Exception {
-    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions = mock(org.apache.beam.sdk.options.PipelineOptions.class);
-    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions = mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
-    when(mockPipelineOptions.as(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class)).thenReturn(mockOptions);
+    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
+        mock(org.apache.beam.sdk.options.PipelineOptions.class);
+    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
+        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
+    when(mockPipelineOptions.as(
+            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
+        .thenReturn(mockOptions);
 
     when(mockOptions.getSpannerProjectId()).thenReturn("p1");
     when(mockOptions.getMetadataInstance()).thenReturn("i1");

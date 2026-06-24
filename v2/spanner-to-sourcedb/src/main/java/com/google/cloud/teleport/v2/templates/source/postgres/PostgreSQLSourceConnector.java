@@ -75,12 +75,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "org.postgresql.Driver",
-              null,
-              "jdbc:postgresql://");
+              shards, null, maxConnections, "org.postgresql.Driver", null, "jdbc:postgresql://");
       connectionHelper.init(request);
     }
   }

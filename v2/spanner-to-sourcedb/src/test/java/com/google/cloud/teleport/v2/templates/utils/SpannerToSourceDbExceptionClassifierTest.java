@@ -144,7 +144,8 @@ public class SpannerToSourceDbExceptionClassifierTest {
     TupleTag<String> tag2 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag2);
 
-    // 3. Connector returns null (fallback to general, which should be retryable for generic RuntimeException)
+    // 3. Connector returns null (fallback to general, which should be retryable for generic
+    // RuntimeException)
     when(mockConnector.classifyException(ex)).thenReturn(null);
     TupleTag<String> tag3 = SpannerToSourceDbExceptionClassifier.classify(ex, mockConnector);
     assertEquals(Constants.RETRYABLE_ERROR_TAG, tag3);

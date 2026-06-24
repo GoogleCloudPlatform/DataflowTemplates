@@ -691,8 +691,6 @@ public class SpannerToSourceDb {
     return pipeline.run();
   }
 
-
-
   static void buildPipeline(
       Pipeline pipeline,
       Options options,
@@ -948,8 +946,6 @@ public class SpannerToSourceDb {
                 .build());
   }
 
-
-
   public static SpannerIO.ReadChangeStream getReadChangeStreamDoFn(
       Options options, SpannerConfig spannerConfig) {
 
@@ -997,8 +993,6 @@ public class SpannerToSourceDb {
     options.setDeadLetterQueueDirectory(dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount(), true);
   }
-
-
 
   static int calculateConnectionPoolSizePerWorker(Long maxShardConnections, int maxNumWorkers) {
     int connectionPoolSizePerWorker = (int) (maxShardConnections / maxNumWorkers);

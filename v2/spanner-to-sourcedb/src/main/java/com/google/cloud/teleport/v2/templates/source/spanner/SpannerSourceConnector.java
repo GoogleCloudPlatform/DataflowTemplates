@@ -56,7 +56,8 @@ public class SpannerSourceConnector implements ISourceConnector {
   public String getConnectionUrl(Shard shard) {
     if (!(shard instanceof SpannerShard)) {
       throw new IllegalArgumentException(
-          "Expected SpannerShard but got: " + (shard != null ? shard.getClass().getName() : "null"));
+          "Expected SpannerShard but got: "
+              + (shard != null ? shard.getClass().getName() : "null"));
     }
     SpannerShard spannerShard = (SpannerShard) shard;
     return SpannerConnectionHelper.connectionKey(spannerShard);
@@ -79,7 +80,9 @@ public class SpannerSourceConnector implements ISourceConnector {
     // In our previous unit tests, we mocked connectionHelper.init.
     // Let's just call init with a default request.
     if (!connectionHelper.isConnectionPoolInitialized()) {
-      connectionHelper.init(new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(shards, null, maxConnections, null, null, null));
+      connectionHelper.init(
+          new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(
+              shards, null, maxConnections, null, null, null));
     }
   }
 
