@@ -132,7 +132,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
   @Test
   public void testClassifyDelegatesToConnector() {
     Throwable dialectEx = new RuntimeException("dialect exception");
-    SpannerException spannerEx = SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, dialectEx);
+    SpannerException spannerEx = SpannerExceptionFactory.newSpannerException(dialectEx);
     ISourceConnector mockConnector = mock(ISourceConnector.class);
 
     // 1. Connector returns permanent
