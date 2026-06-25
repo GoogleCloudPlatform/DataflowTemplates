@@ -108,6 +108,7 @@ public class SpannerSourceConnector implements ISourceConnector {
         throw new IllegalArgumentException(
             "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
       }
+      //TODO check for read only as well ?
     }
   }
 

@@ -96,6 +96,7 @@ public class MySQLSourceConnector implements ISourceConnector {
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
     SourceConnectionConfig sourceConnectionConfig =
         sourceConfigParser.parseConfiguration("mysql", shardFilePath);
+    //TODO checks for null and minimum size of 1
     if (sourceConnectionConfig instanceof JdbcShardConfig) {
       return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
     }

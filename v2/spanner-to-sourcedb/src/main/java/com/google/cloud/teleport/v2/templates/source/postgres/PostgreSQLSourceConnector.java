@@ -83,6 +83,7 @@ public class PostgreSQLSourceConnector implements ISourceConnector {
   public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    //TODO checks for null and minimum size of 1
     SourceConnectionConfig sourceConnectionConfig =
         sourceConfigParser.parseConfiguration("postgresql", shardFilePath);
     if (sourceConnectionConfig instanceof JdbcShardConfig) {
