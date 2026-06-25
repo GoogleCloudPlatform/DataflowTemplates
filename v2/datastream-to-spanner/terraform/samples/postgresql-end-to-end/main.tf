@@ -9,7 +9,6 @@ locals {
 # Setup network firewalls for datastream if creating a private connection.
 resource "google_compute_firewall" "allow-datastream" {
   depends_on = [google_project_service.enabled_apis]
-  # count       = var.datastream_params.create_firewall_rule == true ? 1 : 0
   count       = (var.datastream_params.create_firewall_rule == true && var.datastream_params.private_connectivity != null) ? 1 : 0
   project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
   name        = "allow-datastream"

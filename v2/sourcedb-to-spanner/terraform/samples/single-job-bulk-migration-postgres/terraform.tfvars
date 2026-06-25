@@ -16,15 +16,9 @@ instance_id              = "my-spanner-instance"
 database_id              = "my-spanner-database"
 spanner_project_id       = "my-spanner-project"
 spanner_host             = "https://batch-spanner.googleapis.com"
-# local_session_file_path  = "/local/path/to/smt/session/file"
-
-#network               = "network-name"
-#subnetwork            = "subnetwork-name"
-#service_account_email = "your-service-account-email@your-project-id.iam.gserviceaccount.com"
 launcher_machine_type = "n1-highmem-32" # Recommend using larger launcher VMs
 machine_type          = "n1-highmem-4"
 max_workers           = 50
-#ip_configuration      = "WORKER_IP_PRIVATE"
 num_workers       = 1
 default_log_level = "INFO"
 
