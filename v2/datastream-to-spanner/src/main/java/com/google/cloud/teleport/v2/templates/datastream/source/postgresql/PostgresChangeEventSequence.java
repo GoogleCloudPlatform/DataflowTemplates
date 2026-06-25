@@ -36,7 +36,7 @@ import java.util.List;
  * Implementation of ChangeEventSequence for Postgres database which stores change event sequence
  * information and implements the Comparator method.
  */
-public class PostgresChangeEventSequence extends ChangeEventSequence {
+class PostgresChangeEventSequence extends ChangeEventSequence {
 
   // Timestamp for change event
   private final Long timestamp;
@@ -123,11 +123,11 @@ public class PostgresChangeEventSequence extends ChangeEventSequence {
     }
   }
 
-  public Long getTimestamp() {
+  Long getTimestamp() {
     return timestamp;
   }
 
-  public String getLSN() {
+  String getLSN() {
     return lsn;
   }
 

@@ -36,7 +36,7 @@ import java.util.List;
  * Implementation of ChangeEventSequence for Oracle database which stores change event sequence
  * information and implements the Comparator method.
  */
-public class OracleChangeEventSequence extends ChangeEventSequence {
+class OracleChangeEventSequence extends ChangeEventSequence {
 
   // Timestamp for change event
   private final Long timestamp;
@@ -124,11 +124,11 @@ public class OracleChangeEventSequence extends ChangeEventSequence {
     }
   }
 
-  public Long getTimestamp() {
+  Long getTimestamp() {
     return timestamp;
   }
 
-  public Long getSCN() {
+  Long getSCN() {
     return scn;
   }
 

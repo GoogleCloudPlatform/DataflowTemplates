@@ -141,7 +141,6 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
   }
 
   @Test
-  @Ignore("This test is flaky, and Oracle is not fully supported migration source yet")
   public void testDataStreamOracleToSpanner() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(
@@ -178,7 +177,6 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
   }
 
   @Test
-  @Ignore("This test is flaky, and Oracle is not fully supported migration source yet")
   public void testDataStreamOracleToSpannerJson() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(
@@ -211,7 +209,14 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
       throws IOException {
 
     simpleJdbcToSpannerTest(
-        JDBCType.ORACLE, fileFormat, spannerDialect, config -> paramsAdder.apply(config));
+        JDBCType.ORACLE,
+        fileFormat,
+        spannerDialect,
+        config ->
+            paramsAdder.apply(
+                config.addParameter(
+                    "sessionFilePath",
+                    getGcsPath("input/oracle-session.json", gcsResourceManager))));
   }
 
   private void simpleJdbcToSpannerTest(
@@ -246,7 +251,16 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
       gcsResourceManager.createArtifact(
           "input/mysql-session.json",
           generateSessionFile(
+              "mysql",
               cloudSqlResourceManager.getDatabaseName(),
+              spannerResourceManager.getDatabaseId(),
+              tableNames));
+    } else if (jdbcType.equals(JDBCType.ORACLE)) {
+      gcsResourceManager.createArtifact(
+          "input/oracle-session.json",
+          generateSessionFile(
+              "oracle",
+              cloudSqlResourceManager.getUsername().toUpperCase(),
               spannerResourceManager.getDatabaseId(),
               tableNames));
     }
@@ -358,14 +372,23 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     assertThatResult(result).meetsConditions();
   }
 
-  private String generateSessionFile(String srcDb, String spannerDb, List<String> tableNames)
+  private String generateSessionFile(
+      String databaseType, String srcDb, String spannerDb, List<String> tableNames)
       throws IOException {
+    String sessionTemplate =
+        databaseType.equals("mysql") ? "mysql-session.json" : "oracle-session.json";
     String sessionFile =
         Files.readString(
-            Paths.get(Resources.getResource("DataStreamToSpannerIT/mysql-session.json").getPath()));
+            Paths.get(Resources.getResource("DataStreamToSpannerIT/" + sessionTemplate).getPath()));
+    sessionFile =
+        sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
+    if (databaseType.equals("oracle")) {
+      sessionFile =
+          sessionFile
+              .replaceAll("TABLE1_UPPER", tableNames.get(0).toUpperCase())
+              .replaceAll("TABLE2_UPPER", tableNames.get(1).toUpperCase());
+    }
     return sessionFile
-        .replaceAll("SRC_DATABASE", srcDb)
-        .replaceAll("SP_DATABASE", spannerDb)
         .replaceAll("TABLE1", tableNames.get(0))
         .replaceAll("TABLE2", tableNames.get(1));
   }

@@ -1,0 +1,431 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "oracle",
+  "DatabaseName": "SP_DATABASE",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "TABLE1",
+      "ColIds": [
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c3": {
+          "Name": "row_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: ROW_ID NUMBER",
+          "Id": "c3"
+        },
+        "c4": {
+          "Name": "entry_added",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: ENTRY_ADDED VARCHAR2(200)",
+          "Id": "c4"
+        },
+        "c5": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: NAME VARCHAR2(200)",
+          "Id": "c5"
+        },
+        "c6": {
+          "Name": "member",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: MEMBER VARCHAR2(200)",
+          "Id": "c6"
+        },
+        "c7": {
+          "Name": "age",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: AGE NUMBER",
+          "Id": "c7"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table TABLE1",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "TABLE2",
+      "ColIds": [
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c10": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: NAME VARCHAR2(200)",
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "member",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: MEMBER VARCHAR2(200)",
+          "Id": "c11"
+        },
+        "c12": {
+          "Name": "age",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: AGE NUMBER",
+          "Id": "c12"
+        },
+        "c8": {
+          "Name": "row_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: ROW_ID NUMBER",
+          "Id": "c8"
+        },
+        "c9": {
+          "Name": "entry_added",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: ENTRY_ADDED VARCHAR2(200)",
+          "Id": "c9"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c8",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table TABLE2",
+      "Id": "t2"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "TABLE1_UPPER",
+      "Schema": "SRC_DATABASE",
+      "ColIds": [
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ColDefs": {
+        "c3": {
+          "Name": "ROW_ID",
+          "Type": {
+            "Name": "NUMBER",
+            "Mods": [],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3"
+        },
+        "c4": {
+          "Name": "ENTRY_ADDED",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4"
+        },
+        "c5": {
+          "Name": "NAME",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5"
+        },
+        "c6": {
+          "Name": "MEMBER",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6"
+        },
+        "c7": {
+          "Name": "AGE",
+          "Type": {
+            "Name": "NUMBER",
+            "Mods": [],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "TABLE2_UPPER",
+      "Schema": "SRC_DATABASE",
+      "ColIds": [
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "ColDefs": {
+        "c10": {
+          "Name": "NAME",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "MEMBER",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11"
+        },
+        "c12": {
+          "Name": "AGE",
+          "Type": {
+            "Name": "NUMBER",
+            "Mods": [],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12"
+        },
+        "c8": {
+          "Name": "ROW_ID",
+          "Type": {
+            "Name": "NUMBER",
+            "Mods": [],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c8"
+        },
+        "c9": {
+          "Name": "ENTRY_ADDED",
+          "Type": {
+            "Name": "VARCHAR2",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c9"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c8",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t2"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
+    },
+    "t2": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false
+}

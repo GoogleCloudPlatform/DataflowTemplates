@@ -27,7 +27,6 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
@@ -63,12 +62,8 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.POSTGRES_SOURCE_TYPE);
+        new PostgresqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -101,12 +96,8 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.POSTGRES_SOURCE_TYPE);
+        new PostgresqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -138,12 +129,8 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.POSTGRES_SOURCE_TYPE);
+        new PostgresqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -210,8 +197,9 @@ public final class PostgresChangeEventContextTest {
     changeEvent.put(DatastreamConstants.POSTGRES_LSN_KEY, "1/ABC");
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_", "postgresql");
+        new PostgresqlSourceConnector()
+            .createChangeEventContext(
+                getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 

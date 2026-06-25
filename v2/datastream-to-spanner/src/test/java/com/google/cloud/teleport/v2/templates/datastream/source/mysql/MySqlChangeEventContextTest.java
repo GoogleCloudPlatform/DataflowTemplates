@@ -35,7 +35,6 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
@@ -74,12 +73,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -117,12 +112,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -158,12 +149,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -232,12 +219,9 @@ public final class MySqlChangeEventContextTest {
     changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            shadowDdl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(
+                getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -260,12 +244,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext context =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
 
     TransactionContext transactionContext = mock(TransactionContext.class);
     ResultSet resultSet = mock(ResultSet.class);
@@ -355,12 +335,8 @@ public final class MySqlChangeEventContextTest {
     changeEvent.put("id", "aa");
 
     ChangeEventContext context =
-        ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()),
-            ddl,
-            ddl,
-            "shadow_",
-            DatastreamConstants.MYSQL_SOURCE_TYPE);
+        new MySqlSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
 
     Statement dmlStatement = context.getDataDmlStatement(ddl);
 
