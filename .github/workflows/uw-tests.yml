@@ -29,9 +29,11 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       # Defines releaseTag as latest successful release to avoid running tests failing at HEAD
       - name: Declare runner image and release tag
         id: variables
@@ -48,6 +50,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.variables.outputs.releaseTag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
       - name: Create test branch
         run: git checkout -b $TEST_BRANCH_NAME $BRANCH_COMMIT
         env:
