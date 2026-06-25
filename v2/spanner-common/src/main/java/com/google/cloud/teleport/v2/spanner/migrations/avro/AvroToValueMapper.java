@@ -149,6 +149,10 @@ public class AvroToValueMapper {
                     recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
 
     gsqlFunctions.put(
+        Type.uuid(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+
+    gsqlFunctions.put(
         Type.json(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
@@ -245,6 +249,9 @@ public class AvroToValueMapper {
     pgFunctions.put(
         Type.pgDate(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    pgFunctions.put(
+        Type.pgUuid(),
+        (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     return pgFunctions;
   }
 

@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
 
 
 CREATE TABLE IF NOT EXISTS AllDatatypePkColumns1 (
-    uuid_column STRING(128) NOT NULL,
+    uuid_column UUID NOT NULL,
     varchar_column STRING(20),
     tinyint_column INT64,
     text_column STRING(MAX),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypePkColumns1 (
 ) PRIMARY KEY(uuid_column);
 
 CREATE TABLE IF NOT EXISTS AllDatatypePkColumns2 (
-    uuid_column STRING(128) NOT NULL,
+    uuid_column UUID NOT NULL,
     char_column STRING(10),
     tinyblob_column BYTES(MAX),
     tinytext_column STRING(MAX),
