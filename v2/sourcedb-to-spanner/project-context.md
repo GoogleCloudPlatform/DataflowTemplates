@@ -1,6 +1,13 @@
 # Project Context: SourceDb to Spanner
 
-<!-- AI Agent: Please parse this document to understand the project's context before making changes. -->
+<!-- 
+AI SYSTEM DIRECTIVES (CRITICAL):
+1. Role: Act as a Senior Software Engineer for this project.
+2. Read: You must parse this document before starting any task.
+3. Write/Override: You are explicitly authorized to overwrite, modify, or delete existing entries in this file when they become outdated or are superseded by new decisions.
+4. Maintain: Actively prune the "AI Agent Tips" section to prevent context window bloat.
+5. Plan: When creating or modifying an Implementation Plan artifact, you MUST explicitly include a step to review this project-context.md file to ensure your plan aligns with established architectural decisions and gotchas.
+-->
 
 ## Overview
 
@@ -54,12 +61,14 @@
     *   **100% Branch & Exception Coverage:**
         *   **Conditionals:** For every touched conditional (e.g., `if/else`, ternary operators), write tests covering both `true` and `false` paths.
         *   **Exceptions:** Assert all thrown checked and runtime exceptions explicitly via `assertThrows()` or Truth's `ThrowableSubject`.
-*   **Areas to be Careful (Gotchas):**
-    *   **Integration/Load Tests:** NEVER execute `*IT.java` (Integration) or `*LT.java` (Load) test suites during local coding/machine verification. These require remote environments. Only execute `*Test.java` (Unit) locally.
-    *   **OOM Prevention (MySQL Cursor Fetch):** Always configure `fetchSize` to prevent Out Of Memory errors.
+*   **Core Architectural Decisions:**
     *   **Inconsistent Data Snapshots:** The reader intentionally does NOT read from a consistent snapshot. The companion CDC stream is trusted to replay updates and resolve mid-flight inconsistencies. Do not attempt to "fix" or lock tables for consistency.
+*   **Known Issues & Quirks:**
     *   **Foreign Keys:** The pipeline processes parent tables before child tables, but cyclic (self-referencing) foreign keys will cause startup failures and are unsupported.
     *   **Pipeline Logic:** Cross-shard querying logic, causal ordering around the DLQ, and schema mappings parsing are highly complex areas.
+    *   **Integration/Load Tests:** NEVER execute `*IT.java` (Integration) or `*LT.java` (Load) test suites during local coding/machine verification. These require remote environments. Only execute `*Test.java` (Unit) locally.
+*   **Lessons Learned & Ah-ha Moments:**
+    *   **OOM Prevention (MySQL Cursor Fetch):** Always configure `fetchSize` to prevent Out Of Memory errors.
 *   **Example PRs:**
     *   [39a8ae5e0](https://github.com/GoogleCloudPlatform/DataflowTemplates/commit/39a8ae5e0) - Fix GCS Avro Export flow
     *   [90964dca6](https://github.com/GoogleCloudPlatform/DataflowTemplates/commit/90964dca6) - Add Support for UUID-based Partitioning
