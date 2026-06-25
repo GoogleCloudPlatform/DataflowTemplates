@@ -116,7 +116,7 @@ public class CassandraSourceConnector implements ISourceConnector {
       throw new IllegalArgumentException(
           "Expected CassandraShard but got: " + shards.get(0).getClass());
     }
-    //TODO Check for valid connection as well
+    // TODO Check for valid connection as well
   }
 
   @Override
