@@ -84,6 +84,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   private PubsubResourceManager pubsubResourceManager;
   private GcsResourceManager gcsResourceManager;
 
+  // comment
   @Before
   public void setUp() throws IOException {
     datastreamResourceManager =
