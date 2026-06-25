@@ -56,8 +56,7 @@ public class OracleSourceConnector implements ISourceConnector {
   public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    return new OracleChangeEventContext(
-        changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+    return new OracleChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
   }
 
   @Override

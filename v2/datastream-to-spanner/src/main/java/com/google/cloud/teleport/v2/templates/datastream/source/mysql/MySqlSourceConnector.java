@@ -56,8 +56,7 @@ public class MySqlSourceConnector implements ISourceConnector {
   public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    return new MySqlChangeEventContext(
-        changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+    return new MySqlChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
   }
 
   @Override

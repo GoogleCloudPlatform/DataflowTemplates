@@ -56,8 +56,7 @@ public class PostgresqlSourceConnector implements ISourceConnector {
   public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    return new PostgresChangeEventContext(
-        changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+    return new PostgresChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
   }
 
   @Override
