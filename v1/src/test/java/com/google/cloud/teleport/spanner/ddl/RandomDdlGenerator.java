@@ -535,7 +535,7 @@ public abstract class RandomDdlGenerator {
           }
           columns.endIndexColumn();
           if (rnd.nextBoolean()) {
-            String q = getDialect() == Dialect.POSTGRESQL ? "\"" : "`";
+            String q = (getDialect() == Dialect.POSTGRESQL) ? "\"" : "`";
             filters.add(q + columnName + q + " IS NOT NULL");
           }
         }

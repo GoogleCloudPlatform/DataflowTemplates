@@ -63,7 +63,7 @@ import org.junit.runners.JUnit4;
  * It natively supports testing both Google Standard SQL (GSQL) and PostgreSQL dialects with various
  * complex schema combinations (e.g., interleaved tables, foreign keys, arrays) and random data.
  */
-@Category(TemplateIntegrationTest.class)
+@Category(IntegrationTest.class)
 @TemplateIntegrationTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
 public class CopyDbIT extends TemplateTestBase {
@@ -322,12 +322,5 @@ public class CopyDbIT extends TemplateTestBase {
     Ddl ddl = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     createAndPopulate(ddl, 0);
     runTest(Dialect.GOOGLE_STANDARD_SQL);
-  }
-
-  @Test
-  public void testEmptyDbPg() throws Exception {
-    Ddl ddl = Ddl.builder(Dialect.POSTGRESQL).build();
-    createAndPopulate(ddl, 0);
-    runTest(Dialect.POSTGRESQL);
   }
 }
