@@ -16,9 +16,9 @@ instance_id              = "my-spanner-instance"
 database_id              = "my-spanner-database"
 spanner_project_id       = "my-spanner-project"
 spanner_host             = "https://batch-spanner.googleapis.com"
-launcher_machine_type = "n1-highmem-32" # Recommend using larger launcher VMs
-machine_type          = "n1-highmem-4"
-max_workers           = 50
-num_workers       = 1
-default_log_level = "INFO"
+launcher_machine_type    = "n1-highmem-32" # Recommend using larger launcher VMs
+machine_type             = "n1-highmem-4"
+max_workers              = 50
+num_workers              = 1
+default_log_level        = "INFO"
 
