@@ -34,18 +34,29 @@ public class SchemaUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
 
-  private static final ImmutableBiMap<String, TypeName> FIELD_TYPE_NAMES =
-      ImmutableBiMap.<String, TypeName>builder()
-          .put("boolean", TypeName.BOOLEAN)
-          .put("bytes", TypeName.BYTES)
-          .put("double", TypeName.DOUBLE)
-          .put("decimal", TypeName.DECIMAL)
-          .put("int16", TypeName.INT16)
-          .put("integer", TypeName.INT32)
-          .put("long", TypeName.INT64)
-          .put("string", TypeName.STRING)
-          .put("timestamp", TypeName.DATETIME)
-          .build();
+  private static final java.util.Map<String, TypeName> DATAPLEX_TO_BEAM_TYPE =
+      java.util.Map.of(
+          "boolean", TypeName.BOOLEAN,
+          "bytes", TypeName.BYTES,
+          "double", TypeName.DOUBLE,
+          "decimal", TypeName.DECIMAL,
+          "int16", TypeName.INT64,
+          "integer", TypeName.INT64,
+          "long", TypeName.INT64,
+          "string", TypeName.STRING,
+          "timestamp", TypeName.DATETIME);
+
+  private static final java.util.Map<TypeName, String> BEAM_TO_DATAPLEX_TYPE =
+      java.util.Map.of(
+          TypeName.BOOLEAN, "BOOLEAN",
+          TypeName.BYTES, "BYTES",
+          TypeName.DOUBLE, "DOUBLE",
+          TypeName.DECIMAL, "DECIMAL",
+          TypeName.INT16, "INTEGER",
+          TypeName.INT32, "INTEGER",
+          TypeName.INT64, "INTEGER",
+          TypeName.STRING, "STRING",
+          TypeName.DATETIME, "TIMESTAMP");
 
   private static final ImmutableBiMap<String, FieldType> LOGICAL_FIELD_TYPES =
       ImmutableBiMap.<String, FieldType>builder()
@@ -107,8 +118,8 @@ public class SchemaUtils {
 
     if (LOGICAL_FIELD_TYPES.containsKey(dcFieldType)) {
       return LOGICAL_FIELD_TYPES.get(dcFieldType);
-    } else if (FIELD_TYPE_NAMES.containsKey(dcFieldType)) {
-      return FieldType.of(FIELD_TYPE_NAMES.get(dcFieldType));
+    } else if (DATAPLEX_TO_BEAM_TYPE.containsKey(dcFieldType)) {
+      return FieldType.of(DATAPLEX_TO_BEAM_TYPE.get(dcFieldType));
     }
 
     if ("record".equals(dcFieldType) || "struct".equals(dcFieldType)) {
@@ -194,23 +205,9 @@ public class SchemaUtils {
       String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType()).toUpperCase();
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
     } else {
-      String columnType = FIELD_TYPE_NAMES.inverse().get(beamField.getType().getTypeName());
+      String columnType = BEAM_TO_DATAPLEX_TYPE.get(beamField.getType().getTypeName());
       if (columnType == null) {
         columnType = "STRING"; // fallback
-      } else if (columnType.equals("long")
-          || columnType.equals("integer")
-          || columnType.equals("int16")) {
-        columnType = "INTEGER";
-      } else if (columnType.equals("double") || columnType.equals("decimal")) {
-        columnType = "DOUBLE";
-      } else if (columnType.equals("boolean")) {
-        columnType = "BOOLEAN";
-      } else if (columnType.equals("bytes")) {
-        columnType = "BYTES";
-      } else if (columnType.equals("timestamp")) {
-        columnType = "TIMESTAMP";
-      } else {
-        columnType = columnType.toUpperCase();
       }
       columnBuilder.putFields("dataType", Value.newBuilder().setStringValue(columnType).build());
     }

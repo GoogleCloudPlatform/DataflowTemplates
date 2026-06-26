@@ -31,12 +31,10 @@ import com.google.cloud.dataplex.v1.SearchEntriesRequest;
 import com.google.cloud.dataplex.v1.SearchEntriesResult;
 import com.google.cloud.dataplex.v1.UpdateEntryRequest;
 import com.google.protobuf.FieldMask;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.schemas.Schema;
@@ -56,8 +54,33 @@ public class DataCatalogSchemaUtils {
    * <p>This method is intended for use in single-topic mode, where an {@link EntryGroup} with
    * multiple {@link Entry}s is created for a single Pub/Sub topic.
    */
-  public static String entryGroupNameForTopic(String pubsubTopic) {
-    return String.format("cdc-%s", pubsubTopic).toLowerCase();
+  private static final int MAX_ENTRY_GROUP_LIMIT = 63;
+
+  public static String entryGroupNameForTopic(String topicOrPrefix) {
+    String sanitized = topicOrPrefix.replace('_', '-').replace('.', '-').toLowerCase();
+    if (sanitized.endsWith("-")) {
+      sanitized = sanitized.substring(0, sanitized.length() - 1);
+    }
+    String entryGroupName;
+    if (sanitized.startsWith("cdc-")) {
+      entryGroupName = sanitized;
+    } else {
+      entryGroupName = "cdc-" + sanitized;
+    }
+
+    if (entryGroupName.length() > MAX_ENTRY_GROUP_LIMIT) {
+      String prefix = entryGroupName.substring(0, 54); // 63 - 1 (dash) - 8 (hash)
+      if (prefix.endsWith("-")) {
+        prefix = prefix.substring(0, 53);
+      }
+      String hash =
+          com.google.common.hash.Hashing.sha256()
+              .hashString(entryGroupName, java.nio.charset.StandardCharsets.UTF_8)
+              .toString()
+              .substring(0, 8);
+      entryGroupName = prefix + "-" + hash;
+    }
+    return entryGroupName;
   }
 
   public static DataCatalogSchemaManager getSchemaManager(
@@ -182,10 +205,11 @@ public class DataCatalogSchemaUtils {
     final String gcpProject;
     final String location;
     CatalogServiceClient client;
+    private final java.util.Set<String> createdEntryGroups = new java.util.HashSet<>();
+
+    public abstract String getEntryGroupId(String tableName);
 
     public abstract String getPubSubTopicForTable(String tableName);
-
-    public abstract Entry updateSchemaForTable(String tableName, Schema beamSchema);
 
     public String getGcpProject() {
       return gcpProject;
@@ -207,26 +231,15 @@ public class DataCatalogSchemaUtils {
         throw new RuntimeException("Unable to create a CatalogServiceClient", e);
       }
     }
-  }
 
-  static class SingleTopicSchemaManager extends DataCatalogSchemaManager {
-    private final String pubsubTopic;
-    private Boolean entryGroupCreated = false;
-
-    SingleTopicSchemaManager(String gcpProject, String location, String pubsubTopic) {
-      super(gcpProject, location);
-      this.pubsubTopic = pubsubTopic;
-      createEntryGroup();
-    }
-
-    private void createEntryGroup() {
-      if (this.entryGroupCreated) {
+    private void createEntryGroup(String entryGroupId) {
+      if (this.createdEntryGroups.contains(entryGroupId)) {
         return;
       }
       setupDataCatalogClient();
       EntryGroup entryGroup =
           EntryGroup.newBuilder()
-              .setDisplayName(String.format("CDC_Debezium_on_Dataflow_%s", pubsubTopic))
+              .setDisplayName(String.format("CDC_Debezium_on_Dataflow_%s", entryGroupId))
               .setDescription(
                   "This EntryGroup represents a set of change streams from tables "
                       + "being replicated for CDC.")
@@ -235,34 +248,29 @@ public class DataCatalogSchemaUtils {
       CreateEntryGroupRequest entryGroupRequest =
           CreateEntryGroupRequest.newBuilder()
               .setParent(String.format("projects/%s/locations/%s", getGcpProject(), location))
-              .setEntryGroupId(entryGroupNameForTopic(pubsubTopic))
+              .setEntryGroupId(entryGroupId)
               .setEntryGroup(entryGroup)
               .build();
 
       try {
         LOG.info("Creating EntryGroup {}", entryGroupRequest);
         client.createEntryGroupAsync(entryGroupRequest).get();
-        LOG.info("Created EntryGroup: {}", entryGroupNameForTopic(pubsubTopic));
+        LOG.info("Created EntryGroup: {}", entryGroupId);
 
-        this.entryGroupCreated = true;
+        this.createdEntryGroups.add(entryGroupId);
       } catch (AlreadyExistsException e) {
         // EntryGroup already exists.
-        this.entryGroupCreated = true;
+        this.createdEntryGroups.add(entryGroupId);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOG.error("Interrupted while creating EntryGroup", e);
       } catch (ExecutionException e) {
         if (e.getCause() instanceof AlreadyExistsException) {
-          this.entryGroupCreated = true;
+          this.createdEntryGroups.add(entryGroupId);
         } else {
           LOG.error("Failed to create EntryGroup", e);
         }
       }
-    }
-
-    @Override
-    public String getPubSubTopicForTable(String tableName) {
-      return pubsubTopic;
     }
 
     private static String sanitizeEntryName(String tableName) {
@@ -273,8 +281,10 @@ public class DataCatalogSchemaUtils {
       return unsanitizedEntry.replace('_', '-').replace('.', '-').toLowerCase();
     }
 
-    @Override
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
+      String entryGroupId = getEntryGroupId(tableName);
+      createEntryGroup(entryGroupId);
+
       Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
       Struct genericData =
           Struct.newBuilder()
@@ -308,9 +318,7 @@ public class DataCatalogSchemaUtils {
 
       CreateEntryRequest createEntryRequest =
           CreateEntryRequest.newBuilder()
-              .setParent(
-                  EntryGroupName.of(getGcpProject(), location, entryGroupNameForTopic(pubsubTopic))
-                      .toString())
+              .setParent(EntryGroupName.of(getGcpProject(), location, entryGroupId).toString())
               .setEntryId(sanitizeEntryName(tableName))
               .setEntry(entry)
               .build();
@@ -323,10 +331,7 @@ public class DataCatalogSchemaUtils {
         String entryName =
             String.format(
                 "projects/%s/locations/%s/entryGroups/%s/entries/%s",
-                getGcpProject(),
-                location,
-                entryGroupNameForTopic(pubsubTopic),
-                sanitizeEntryName(tableName));
+                getGcpProject(), location, entryGroupId, sanitizeEntryName(tableName));
 
         Entry updateEntry = entry.toBuilder().setName(entryName).build();
         UpdateEntryRequest updateRequest =
@@ -344,8 +349,26 @@ public class DataCatalogSchemaUtils {
     }
   }
 
-  static class MultiTopicSchemaManager extends DataCatalogSchemaManager {
+  static class SingleTopicSchemaManager extends DataCatalogSchemaManager {
+    private final String pubsubTopic;
 
+    SingleTopicSchemaManager(String gcpProject, String location, String pubsubTopic) {
+      super(gcpProject, location);
+      this.pubsubTopic = pubsubTopic;
+    }
+
+    @Override
+    public String getEntryGroupId(String tableName) {
+      return entryGroupNameForTopic(pubsubTopic);
+    }
+
+    @Override
+    public String getPubSubTopicForTable(String tableName) {
+      return pubsubTopic;
+    }
+  }
+
+  static class MultiTopicSchemaManager extends DataCatalogSchemaManager {
     private final String pubsubTopicPrefix;
 
     MultiTopicSchemaManager(String gcpProject, String location, String pubsubTopicPrefix) {
@@ -354,67 +377,13 @@ public class DataCatalogSchemaUtils {
     }
 
     @Override
-    public String getPubSubTopicForTable(String tableName) {
-      return String.format("%s%s", pubsubTopicPrefix, tableName);
+    public String getEntryGroupId(String tableName) {
+      return entryGroupNameForTopic(getPubSubTopicForTable(tableName));
     }
 
-    public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
-      setupDataCatalogClient();
-      if (client == null) {
-        LOG.warn("Knowledge Catalog client missing");
-        return null;
-      }
-
-      String pubsubTopic = getPubSubTopicForTable(tableName);
-      Entry beforeChangeEntry = lookupPubSubEntry(client, pubsubTopic, this.gcpProject);
-
-      if (beforeChangeEntry == null) {
-        LOG.warn("No entry for PubSub topic {}", pubsubTopic);
-        return null;
-      }
-
-      Struct schemaData = SchemaUtils.fromBeamSchema(beamSchema);
-      Struct genericData = null;
-      try {
-        genericData =
-            Struct.newBuilder()
-                .putFields(
-                    "system",
-                    com.google.protobuf.Value.newBuilder()
-                        .setStringValue("DATAFLOW_CDC_ON_DEBEZIUM_DATA")
-                        .build())
-                .putFields(
-                    "type",
-                    com.google.protobuf.Value.newBuilder()
-                        .setStringValue(JsonFormat.printer().print(schemaData))
-                        .build())
-                .build();
-      } catch (InvalidProtocolBufferException e) {
-        throw new RuntimeException(e);
-      }
-
-      Entry updatedEntry =
-          beforeChangeEntry.toBuilder()
-              .putAspects(
-                  "dataplex-types.global.generic",
-                  Aspect.newBuilder()
-                      .setAspectType("projects/dataplex-types/locations/global/aspectTypes/generic")
-                      .setData(genericData)
-                      .build())
-              .build();
-
-      UpdateEntryRequest updateEntryRequest =
-          UpdateEntryRequest.newBuilder()
-              .setEntry(updatedEntry)
-              .addAllAspectKeys(
-                  List.of(
-                      "dataplex-types.global.generic"
-                      // ,"dataplex-types.global.schema"
-                      ))
-              .setUpdateMask(FieldMask.newBuilder().addPaths("aspects").build())
-              .build();
-      LOG.info("Dataplex updating schema {}", updateEntryRequest);
-      return client.updateEntry(updateEntryRequest);
+    @Override
+    public String getPubSubTopicForTable(String tableName) {
+      return String.format("%s%s", pubsubTopicPrefix, tableName);
     }
   }
 }

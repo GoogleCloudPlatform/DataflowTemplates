@@ -257,7 +257,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
-                createConfig(info),
+                createConfig(info, java.time.Duration.ofMinutes(5)),
                 BigQueryRowsCheck.builder(
                         bigQueryResourceManager,
                         TableId.of(bigQueryResourceManager.getDatasetId(), PEOPLE))
