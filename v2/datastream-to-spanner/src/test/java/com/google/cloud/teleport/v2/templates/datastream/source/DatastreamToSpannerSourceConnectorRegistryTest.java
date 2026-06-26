@@ -24,18 +24,19 @@ import com.google.api.services.datastream.v1.model.MysqlSourceConfig;
 import com.google.api.services.datastream.v1.model.OracleSourceConfig;
 import com.google.api.services.datastream.v1.model.PostgresqlSourceConfig;
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlDsToSpSourceConnector;
 import java.util.Set;
 import org.junit.Test;
 
-/** Tests for {@link SourceConnectorRegistry}. */
-public class SourceConnectorRegistryTest {
+/** Tests for {@link DatastreamToSpannerSourceConnectorRegistry}. */
+public class DatastreamToSpannerSourceConnectorRegistryTest {
 
   @Test
   public void testGetSupportedSourceTypes() {
-    Set<String> supportedTypes = SourceConnectorRegistry.getSupportedSourceTypes();
+    Set<String> supportedTypes =
+        DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes();
     assertEquals(3, supportedTypes.size());
     assertTrue(supportedTypes.contains("mysql"));
     assertTrue(supportedTypes.contains("postgresql"));
@@ -45,51 +46,54 @@ public class SourceConnectorRegistryTest {
   @Test
   public void testGetSourceConnector() {
     assertThat(
-        SourceConnectorRegistry.getSourceConnector("mysql"),
-        instanceOf(MySqlSourceConnector.class));
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("mysql"),
+        instanceOf(MySqlDsToSpSourceConnector.class));
     assertThat(
-        SourceConnectorRegistry.getSourceConnector("MYSQL"),
-        instanceOf(MySqlSourceConnector.class));
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("MYSQL"),
+        instanceOf(MySqlDsToSpSourceConnector.class));
     assertThat(
-        SourceConnectorRegistry.getSourceConnector("postgresql"),
-        instanceOf(PostgresqlSourceConnector.class));
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("postgresql"),
+        instanceOf(PostgresqlDsToSpSourceConnector.class));
     assertThat(
-        SourceConnectorRegistry.getSourceConnector("oracle"),
-        instanceOf(OracleSourceConnector.class));
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("oracle"),
+        instanceOf(OracleDsToSpSourceConnector.class));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testGetSourceConnectorNotFound() {
-    SourceConnectorRegistry.getSourceConnector("invalid");
+    DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("invalid");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testGetSourceConnectorEmpty() {
-    SourceConnectorRegistry.getSourceConnector("");
+    DatastreamToSpannerSourceConnectorRegistry.getSourceConnector("");
   }
 
   @Test
   public void testGetSourceTypeFromConfigMysql() {
     SourceConfig config = new SourceConfig().setMysqlSourceConfig(new MysqlSourceConfig());
-    assertEquals("mysql", SourceConnectorRegistry.getSourceTypeFromConfig(config));
+    assertEquals(
+        "mysql", DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config));
   }
 
   @Test
   public void testGetSourceTypeFromConfigPostgresql() {
     SourceConfig config =
         new SourceConfig().setPostgresqlSourceConfig(new PostgresqlSourceConfig());
-    assertEquals("postgresql", SourceConnectorRegistry.getSourceTypeFromConfig(config));
+    assertEquals(
+        "postgresql", DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config));
   }
 
   @Test
   public void testGetSourceTypeFromConfigOracle() {
     SourceConfig config = new SourceConfig().setOracleSourceConfig(new OracleSourceConfig());
-    assertEquals("oracle", SourceConnectorRegistry.getSourceTypeFromConfig(config));
+    assertEquals(
+        "oracle", DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testGetSourceTypeFromConfigUnsupported() {
     SourceConfig config = new SourceConfig();
-    SourceConnectorRegistry.getSourceTypeFromConfig(config);
+    DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(config);
   }
 }

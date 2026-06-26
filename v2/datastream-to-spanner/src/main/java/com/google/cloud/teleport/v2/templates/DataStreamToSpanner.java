@@ -45,7 +45,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextRead
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.source.SourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -589,12 +589,13 @@ public class DataStreamToSpanner {
       return;
     }
     String sourceType = getSourceType(options);
-    if (!SourceConnectorRegistry.getSupportedSourceTypes().contains(sourceType)) {
+    if (!DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes()
+        .contains(sourceType)) {
       throw new IllegalArgumentException(
           "Unsupported source type found: "
               + sourceType
               + ". Specify one of the following source types: "
-              + SourceConnectorRegistry.getSupportedSourceTypes());
+              + DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes());
     }
     options.setDatastreamSourceType(sourceType);
   }
@@ -621,7 +622,7 @@ public class DataStreamToSpanner {
 
   static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
     try {
-      return SourceConnectorRegistry.getSourceTypeFromConfig(sourceConfig);
+      return DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(sourceConfig);
     } catch (IllegalArgumentException e) {
       LOG.error("Source Connection Profile Type Not Supported", e);
       throw e;

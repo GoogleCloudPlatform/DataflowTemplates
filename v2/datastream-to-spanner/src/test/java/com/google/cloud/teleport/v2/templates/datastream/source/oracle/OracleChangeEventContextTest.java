@@ -62,7 +62,7 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleSourceConnector()
+        new OracleDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -96,7 +96,7 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleSourceConnector()
+        new OracleDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -129,7 +129,7 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleSourceConnector()
+        new OracleDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -196,7 +196,7 @@ public final class OracleChangeEventContextTest {
     changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, 999L);
 
     ChangeEventContext changeEventContext =
-        new OracleSourceConnector()
+        new OracleDsToSpSourceConnector()
             .createChangeEventContext(
                 getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();

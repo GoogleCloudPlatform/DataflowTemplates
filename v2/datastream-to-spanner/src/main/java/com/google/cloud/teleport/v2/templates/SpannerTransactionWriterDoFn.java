@@ -40,8 +40,8 @@ import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConst
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.datastream.source.ISourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.SourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
@@ -105,7 +105,7 @@ class SpannerTransactionWriterDoFn
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-  private transient ISourceConnector sourceConnector;
+  private transient IDsToSpSourceConnector sourceConnector;
   /* SpannerAccessor for shadow table database must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor shadowTableSpannerAccessor;
 
@@ -219,7 +219,7 @@ class SpannerTransactionWriterDoFn
             : spannerAccessor;
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    sourceConnector = SourceConnectorRegistry.getSourceConnector(sourceType);
+    sourceConnector = DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
     // Setup and start the watchdog thread.
     transactionAttemptCount = new AtomicLong(0);
     isInTransaction = new AtomicBoolean(false);
@@ -598,14 +598,14 @@ class SpannerTransactionWriterDoFn
     return txnTag;
   }
 
-  private ISourceConnector getSourceConnector() {
+  private IDsToSpSourceConnector getSourceConnector() {
     if (sourceConnector == null) {
-      sourceConnector = SourceConnectorRegistry.getSourceConnector(sourceType);
+      sourceConnector = DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
     }
     return sourceConnector;
   }
 
-  void setSourceConnector(ISourceConnector sourceConnector) {
+  void setSourceConnector(IDsToSpSourceConnector sourceConnector) {
     this.sourceConnector = sourceConnector;
   }
 

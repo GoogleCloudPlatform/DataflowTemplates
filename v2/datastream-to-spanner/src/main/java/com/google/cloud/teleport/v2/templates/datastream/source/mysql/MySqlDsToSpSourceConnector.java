@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
+package com.google.cloud.teleport.v2.templates.datastream.source.mysql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.datastream.v1.model.SourceConfig;
@@ -27,43 +27,43 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.datastream.source.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
 import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
-/** PostgreSQL implementation of {@link ISourceConnector} connector. */
-public class PostgresqlSourceConnector implements ISourceConnector {
+/** MySQL implementation of {@link IDsToSpSourceConnector} connector. */
+public class MySqlDsToSpSourceConnector implements IDsToSpSourceConnector {
 
   @Override
   public String getSourceType() {
-    return DatastreamConstants.POSTGRES_SOURCE_TYPE;
+    return DatastreamConstants.MYSQL_SOURCE_TYPE;
   }
 
   @Override
   public boolean matches(SourceConfig sourceConfig) {
-    return sourceConfig.getPostgresqlSourceConfig() != null;
+    return sourceConfig.getMysqlSourceConfig() != null;
   }
 
   @Override
   public Map<String, Pair<String, String>> getSortOrder(Dialect dialect) {
     if (dialect == Dialect.POSTGRESQL) {
-      return DatastreamConstants.POSTGRES_SORT_ORDER_PG_DIALECT;
+      return DatastreamConstants.MYSQL_SORT_ORDER_PG_DIALECT;
     }
-    return DatastreamConstants.POSTGRES_SORT_ORDER;
+    return DatastreamConstants.MYSQL_SORT_ORDER;
   }
 
   @Override
   public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    return new PostgresChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+    return new MySqlChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
   }
 
   @Override
   public ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
       ChangeEventContext changeEventContext)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
+    return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
   }
 
   @Override
@@ -73,7 +73,7 @@ public class PostgresqlSourceConnector implements ISourceConnector {
       Ddl shadowDdl,
       boolean useSqlStatements)
       throws ChangeEventSequenceCreationException, InvalidChangeEventException {
-    return PostgresChangeEventSequence.createFromShadowTable(
+    return MySqlChangeEventSequence.createFromShadowTable(
         transactionContext, changeEventContext, shadowDdl, useSqlStatements);
   }
 }

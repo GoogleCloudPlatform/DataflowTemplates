@@ -62,7 +62,7 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new PostgresqlSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -96,7 +96,7 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new PostgresqlSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -129,7 +129,7 @@ public final class PostgresChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new PostgresqlSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -197,7 +197,7 @@ public final class PostgresChangeEventContextTest {
     changeEvent.put(DatastreamConstants.POSTGRES_LSN_KEY, "1/ABC");
 
     ChangeEventContext changeEventContext =
-        new PostgresqlSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(
                 getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();

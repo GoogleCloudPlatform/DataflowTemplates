@@ -20,8 +20,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.templates.datastream.source.ISourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.SourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +38,8 @@ public class ShadowTableCreator {
   ShadowTableCreator(String sourceType, String shadowTablePrefix, Dialect dialect) {
     this.sourceType = sourceType;
     this.shadowTablePrefix = shadowTablePrefix;
-    ISourceConnector connector = SourceConnectorRegistry.getSourceConnector(sourceType);
+    IDsToSpSourceConnector connector =
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
     this.sortOrderMap = connector.getSortOrder(dialect);
   }
 

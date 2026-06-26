@@ -73,7 +73,7 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -112,7 +112,7 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -149,7 +149,7 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -219,7 +219,7 @@ public final class MySqlChangeEventContextTest {
     changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
 
     ChangeEventContext changeEventContext =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(
                 getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
@@ -244,7 +244,7 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext context =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
 
     TransactionContext transactionContext = mock(TransactionContext.class);
@@ -335,7 +335,7 @@ public final class MySqlChangeEventContextTest {
     changeEvent.put("id", "aa");
 
     ChangeEventContext context =
-        new MySqlSourceConnector()
+        new MySqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
 
     Statement dmlStatement = context.getDataDmlStatement(ddl);

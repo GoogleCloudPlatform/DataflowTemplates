@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.v2.templates.datastream.source;
 
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlDsToSpSourceConnector;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,21 +27,20 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Registry that automatically discovers and loads {@link ISourceConnector} connectors using SPI.
- */
-public class SourceConnectorRegistry {
+/** Registry for datastream to spanner source connectors */
+public class DatastreamToSpannerSourceConnectorRegistry {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceConnectorRegistry.class);
-  private static final Map<String, ISourceConnector> CONNECTORS = new HashMap<>();
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DatastreamToSpannerSourceConnectorRegistry.class);
+  private static final Map<String, IDsToSpSourceConnector> CONNECTORS = new HashMap<>();
 
   static {
-    register(new MySqlSourceConnector());
-    register(new PostgresqlSourceConnector());
-    register(new OracleSourceConnector());
+    register(new MySqlDsToSpSourceConnector());
+    register(new PostgresqlDsToSpSourceConnector());
+    register(new OracleDsToSpSourceConnector());
   }
 
-  private static void register(ISourceConnector connector) {
+  private static void register(IDsToSpSourceConnector connector) {
     String type = connector.getSourceType().toLowerCase();
     if (CONNECTORS.containsKey(type)) {
       LOG.warn("Duplicate connector registered for type: {}. Overwriting.", type);
@@ -50,14 +49,14 @@ public class SourceConnectorRegistry {
     LOG.info("Registered Datastream source connector: {}", type);
   }
 
-  private SourceConnectorRegistry() {}
+  private DatastreamToSpannerSourceConnectorRegistry() {}
 
   /** Returns the connector for the given source type, or throws if not found. */
-  public static ISourceConnector getSourceConnector(String sourceType) {
+  public static IDsToSpSourceConnector getSourceConnector(String sourceType) {
     if (sourceType == null || sourceType.isEmpty()) {
       throw new IllegalArgumentException("Source type cannot be empty");
     }
-    ISourceConnector connector = CONNECTORS.get(sourceType.toLowerCase());
+    IDsToSpSourceConnector connector = CONNECTORS.get(sourceType.toLowerCase());
     if (connector == null) {
       throw new IllegalArgumentException(
           "Unsupported source type: " + sourceType + ". Registered types: " + CONNECTORS.keySet());
@@ -66,7 +65,7 @@ public class SourceConnectorRegistry {
   }
 
   /** Returns all registered connectors. */
-  public static Collection<ISourceConnector> getConnectors() {
+  public static Collection<IDsToSpSourceConnector> getConnectors() {
     return Collections.unmodifiableCollection(CONNECTORS.values());
   }
 
@@ -77,7 +76,7 @@ public class SourceConnectorRegistry {
 
   /** Identifies the source type from Datastream SourceConfig by querying all connectors. */
   public static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
-    for (ISourceConnector connector : CONNECTORS.values()) {
+    for (IDsToSpSourceConnector connector : CONNECTORS.values()) {
       if (connector.matches(sourceConfig)) {
         return connector.getSourceType();
       }

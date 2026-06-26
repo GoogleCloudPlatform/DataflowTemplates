@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source;
+package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.datastream.v1.model.SourceConfig;
@@ -26,39 +26,54 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeE
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
 import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
-/**
- * Interface for Datastream source connectors. Encapsulates all source-specific logic for processing
- * change events and managing sequences.
- */
-public interface ISourceConnector {
+/** PostgreSQL implementation of {@link IDsToSpSourceConnector} connector. */
+public class PostgresqlDsToSpSourceConnector implements IDsToSpSourceConnector {
 
-  /** Returns the unique identifier for this source type (e.g., "mysql", "postgresql", "oracle"). */
-  String getSourceType();
+  @Override
+  public String getSourceType() {
+    return DatastreamConstants.POSTGRES_SOURCE_TYPE;
+  }
 
-  /** Returns true if this connector matches the given Datastream SourceConfig. */
-  boolean matches(SourceConfig sourceConfig);
+  @Override
+  public boolean matches(SourceConfig sourceConfig) {
+    return sourceConfig.getPostgresqlSourceConfig() != null;
+  }
 
-  /** Returns the sort order mapping for shadow table columns based on the Spanner Dialect. */
-  Map<String, Pair<String, String>> getSortOrder(Dialect dialect);
+  @Override
+  public Map<String, Pair<String, String>> getSortOrder(Dialect dialect) {
+    if (dialect == Dialect.POSTGRESQL) {
+      return DatastreamConstants.POSTGRES_SORT_ORDER_PG_DIALECT;
+    }
+    return DatastreamConstants.POSTGRES_SORT_ORDER;
+  }
 
-  /** Creates a source-specific ChangeEventContext. */
-  ChangeEventContext createChangeEventContext(
+  @Override
+  public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
-      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException;
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
+    return new PostgresChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+  }
 
-  /** Creates a ChangeEventSequence from the current ChangeEventContext. */
-  ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
+  @Override
+  public ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
       ChangeEventContext changeEventContext)
-      throws ChangeEventConvertorException, InvalidChangeEventException;
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+    return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
+  }
 
-  /** Creates a ChangeEventSequence by reading from the shadow table. */
-  ChangeEventSequence createChangeEventSequenceFromShadowTable(
+  @Override
+  public ChangeEventSequence createChangeEventSequenceFromShadowTable(
       TransactionContext transactionContext,
       ChangeEventContext changeEventContext,
       Ddl shadowDdl,
       boolean useSqlStatements)
-      throws ChangeEventSequenceCreationException, InvalidChangeEventException;
+      throws ChangeEventSequenceCreationException, InvalidChangeEventException {
+    return PostgresChangeEventSequence.createFromShadowTable(
+        transactionContext, changeEventContext, shadowDdl, useSqlStatements);
+  }
 }
