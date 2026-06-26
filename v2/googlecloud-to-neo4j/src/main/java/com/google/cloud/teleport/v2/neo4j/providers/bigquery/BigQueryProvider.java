@@ -17,11 +17,11 @@ package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec.BigQuerySpecBuilder;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
-import com.google.cloud.teleport.v2.neo4j.providers.Provider;
+import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -32,21 +32,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Provider implementation for reading and writing BigQuery. */
-public class BigQueryImpl implements Provider {
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
+public class BigQueryProvider implements SourceProvider {
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryProvider.class);
   private final BigQuerySource source;
-  private final TargetSequence targetSequence;
-  private OptionsParams optionsParams;
+  private final StepSequence targetSequence;
 
-  public BigQueryImpl(BigQuerySource source, TargetSequence targetSequence) {
+  public BigQueryProvider(BigQuerySource source, StepSequence targetSequence) {
     this.source = source;
     this.targetSequence = targetSequence;
   }
 
   @Override
-  public void configure(OptionsParams optionsParams) {
-    this.optionsParams = optionsParams;
-  }
+  public void configure(OverlayTokens overlayTokens) {}
 
   @Override
   public boolean supportsSqlPushDown() {
@@ -54,12 +51,13 @@ public class BigQueryImpl implements Provider {
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> querySourceBeamRows(Schema schema) {
+  public PTransform<PBegin, PCollection<Row>> querySourceRows(Schema schema) {
     return new BqQueryToRow(getSourceQueryBeamSpec());
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
+  public PTransform<PBegin, PCollection<Row>> querySourceRowsForTarget(
+      TargetQuerySpec targetQuerySpec) {
     return new BqQueryToRow(getTargetQueryBeamSpec(targetQuerySpec));
   }
 
@@ -74,7 +72,6 @@ public class BigQueryImpl implements Provider {
    * @return helper object includes metadata and SQL
    */
   public BigQuerySpec getMetadataQueryBeamSpec() {
-
     String baseQuery = source.getQuery();
 
     ////////////////////////////
@@ -114,17 +111,12 @@ public class BigQueryImpl implements Provider {
    */
   private BigQuerySpec getTargetQueryBeamSpec(TargetQuerySpec spec) {
     var sourceFields = ModelUtils.getBeamFieldSet(spec.getSourceBeamSchema());
-    var target = spec.getTarget();
-    var startNodeTarget = spec.getStartNodeTarget();
-    var endNodeTarget = spec.getEndNodeTarget();
-    String sql =
-        ModelUtils.getTargetSql(
-            target, startNodeTarget, endNodeTarget, sourceFields, true, source.getQuery());
+    var step = spec.getTargetStep();
+    String sql = ModelUtils.getTargetSql(step, sourceFields, true, source.getQuery());
     return new BigQuerySpecBuilder()
-        .readDescription(
-            targetSequence.getSequenceNumber(target) + ": Read from BQ " + target.getName())
+        .readDescription(targetSequence.getSequenceNumber(step) + ": Read from BQ " + step.name())
         .castDescription(
-            targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
+            targetSequence.getSequenceNumber(step) + ": Cast to BeamRow " + step.name())
         .sql(sql)
         .queryTempProject(source.getQueryTempProject())
         .queryTempDataset(source.getQueryTempDataset())

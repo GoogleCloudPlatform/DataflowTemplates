@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
@@ -39,7 +39,7 @@ public class SourceMapperTest {
     json.put("ordered_field_names", "foo, bar,   qix\t\r");
     json.put("data", "foovalue,barvalue,qixvalue");
 
-    Source source = SourceMapper.parse(json, new OptionsParams());
+    Source source = SourceMapper.parse(json, new OverlayTokens(Map.of()));
 
     assertThat(source).isInstanceOf(InlineTextSource.class);
     InlineTextSource inlineTextSource = (InlineTextSource) source;
@@ -54,7 +54,7 @@ public class SourceMapperTest {
                 "type", "bigquery",
                 "query", "SELECT 42"));
 
-    Source source = SourceMapper.parse(json, new OptionsParams());
+    Source source = SourceMapper.parse(json, new OverlayTokens(Map.of()));
 
     assertThat(source).isEqualTo(new BigQuerySource("", "SELECT 42"));
   }
@@ -67,8 +67,7 @@ public class SourceMapperTest {
                 "type", "bigquery",
                 "query", "SELECT name FROM $table"));
 
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"table\": \"placeholder-table\"}");
+    OverlayTokens options = OverlayTokenParser.parse("{\"table\": \"placeholder-table\"}");
 
     Source source = SourceMapper.parse(json, options);
 
@@ -83,7 +82,7 @@ public class SourceMapperTest {
                 "ordered_field_names", "col1,col2,col3",
                 "uri", "https://example.com"));
 
-    Source source = SourceMapper.parse(json, new OptionsParams());
+    Source source = SourceMapper.parse(json, new OverlayTokens(Map.of()));
 
     assertThat(source)
         .isEqualTo(
@@ -107,8 +106,7 @@ public class SourceMapperTest {
                 "separator", "=",
                 "ordered_field_names", "col1,col2,col3",
                 "url", "https://example.$ext"));
-    OptionsParams options = new OptionsParams();
-    options.overlayTokens("{\"ext\": \"com\"}");
+    OverlayTokens options = OverlayTokenParser.parse("{\"ext\": \"com\"}");
 
     Source source = SourceMapper.parse(json, options);
 
@@ -131,7 +129,7 @@ public class SourceMapperTest {
                 "ordered_field_names", "col1,col2,col3",
                 "data", "value1,value2,value3\nvalue4,value5,value6"));
 
-    Source source = SourceMapper.parse(json, new OptionsParams());
+    Source source = SourceMapper.parse(json, new OverlayTokens(Map.of()));
 
     assertThat(source)
         .isEqualTo(
@@ -154,7 +152,7 @@ public class SourceMapperTest {
                         List.of("value1", "value2", "value3"),
                         List.of("value4", "value5", "value6"))));
 
-    Source source = SourceMapper.parse(json, new OptionsParams());
+    Source source = SourceMapper.parse(json, new OverlayTokens(Map.of()));
 
     assertThat(source)
         .isEqualTo(

@@ -13,18 +13,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.actions.preload;
+package com.google.cloud.teleport.v2.neo4j.model.job;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
-import java.util.List;
-import org.neo4j.importer.v1.actions.Action;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * Interface for running preload Actions. Before the pipeline loads, PCollections are not available.
- */
-public interface PreloadAction {
+/** Runtime options object that coalesces arbitrary options. */
+public record OverlayTokens(Map<String, String> tokens) implements Serializable {
 
-  void configure(Action action, ActionContext context);
+  @Override
+  public Map<String, String> tokens() {
+    return copyOf(tokens);
+  }
 
-  List<String> execute();
+  // allows nullable keys and value contrary
+  private static <K, V> Map<K, V> copyOf(Map<K, V> original) {
+    var result = new HashMap<K, V>(original.size());
+    result.putAll(original);
+    return result;
+  }
 }
