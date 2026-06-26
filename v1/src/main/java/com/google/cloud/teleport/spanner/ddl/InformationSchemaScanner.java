@@ -1287,12 +1287,14 @@ public class InformationSchemaScanner {
         for (int i = 0; i < labelsArray.length(); i++) {
           JSONObject label = labelsArray.getJSONObject(i);
           String name = label.getString("name");
-          JSONArray propertyDeclarationNamesArray = label.getJSONArray("propertyDeclarationNames");
+          JSONArray propertyDeclarationNamesArray = label.optJSONArray("propertyDeclarationNames");
 
           List<String> propertyNames = new ArrayList<>();
-          for (int j = 0; j < propertyDeclarationNamesArray.length(); j++) {
-            String propertyName = propertyDeclarationNamesArray.getString(j);
-            propertyNames.add(propertyName);
+          if (propertyDeclarationNamesArray != null) {
+            for (int j = 0; j < propertyDeclarationNamesArray.length(); j++) {
+              String propertyName = propertyDeclarationNamesArray.getString(j);
+              propertyNames.add(propertyName);
+            }
           }
 
           ImmutableList<String> immutablePropertyNames = ImmutableList.copyOf(propertyNames);
@@ -1361,7 +1363,7 @@ public class InformationSchemaScanner {
           String kind = table.getString("kind");
           JSONArray labelNamesArray = table.getJSONArray("labelNames");
           String name = table.getString("name");
-          JSONArray propertyDefinitionsArray = table.getJSONArray("propertyDefinitions");
+          JSONArray propertyDefinitionsArray = table.optJSONArray("propertyDefinitions");
 
           ImmutableList.Builder<String> keyColumnsBuilder = ImmutableList.builder();
           for (int j = 0; j < keyColumnsArray.length(); j++) {
@@ -1427,19 +1429,21 @@ public class InformationSchemaScanner {
                   propertyDefinitionsBuilder = ImmutableList.builder();
 
               for (String propertyName : propertyGraphLabel.properties) {
-                for (int k = 0; k < propertyDefinitionsArray.length(); k++) {
-                  JSONObject propertyDefinition = propertyDefinitionsArray.getJSONObject(k);
-                  String propertyDeclarationName =
-                      propertyDefinition.getString("propertyDeclarationName");
+                if (propertyDefinitionsArray != null) {
+                  for (int k = 0; k < propertyDefinitionsArray.length(); k++) {
+                    JSONObject propertyDefinition = propertyDefinitionsArray.getJSONObject(k);
+                    String propertyDeclarationName =
+                        propertyDefinition.getString("propertyDeclarationName");
 
-                  if (propertyName.equals(propertyDeclarationName)) {
-                    PropertyGraph.PropertyDeclaration propertyDeclaration =
-                        propertyGraph.getPropertyDeclaration(propertyDeclarationName);
-                    propertyDefinitionsBuilder.add(
-                        new GraphElementTable.PropertyDefinition(
-                            propertyDeclaration.name,
-                            propertyDefinition.getString("valueExpressionSql")));
-                    break;
+                    if (propertyName.equals(propertyDeclarationName)) {
+                      PropertyGraph.PropertyDeclaration propertyDeclaration =
+                          propertyGraph.getPropertyDeclaration(propertyDeclarationName);
+                      propertyDefinitionsBuilder.add(
+                          new GraphElementTable.PropertyDefinition(
+                              propertyDeclaration.name,
+                              propertyDefinition.getString("valueExpressionSql")));
+                      break;
+                    }
                   }
                 }
               }

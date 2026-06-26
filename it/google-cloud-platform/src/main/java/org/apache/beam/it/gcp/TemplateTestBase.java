@@ -306,7 +306,7 @@ public abstract class TemplateTestBase {
     }
   }
 
-  private String getSpecPath(
+  protected String getSpecPath(
       Class<?> dataflowTemplateClass, Template templateMetadata, String pomPath)
       throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
@@ -334,7 +334,7 @@ public abstract class TemplateTestBase {
           String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
       String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
 
-      String identifier = flex ? template.flexContainerName() : templateMetadata.name();
+      String identifier = flex ? templateMetadata.flexContainerName() : templateMetadata.name();
 
       stagedTemplates.get(
           identifier,
@@ -359,7 +359,8 @@ public abstract class TemplateTestBase {
               }
             }
 
-            String[] mavenCmd = buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, template);
+            String[] mavenCmd =
+                buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, templateMetadata);
             LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
             try {
