@@ -197,9 +197,9 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
         datastreamResourceManager.startStream(streamB);
         streamNameB = streamB.getName().substring(streamB.getName().lastIndexOf('/') + 1);
 
-        // Generate Shard Context JSON
-        String shardContextJson =
-            generateShardContextJson(
+        // Generate Shard Config
+        String shardConfig =
+            generateSourceConfig(
                 streamNameA,
                 jdbcResourceManagerShardA.getDatabaseName(),
                 "shard1",
@@ -208,7 +208,7 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
                 "shard2");
 
         gcsResourceManager.createArtifact(
-            "input/shardingContext.json", shardContextJson.getBytes(StandardCharsets.UTF_8));
+            "input/shardingConfig.conf", shardConfig.getBytes(StandardCharsets.UTF_8));
 
         // Prepare job parameters
         Map<String, String> jobParameters = new HashMap<>();
@@ -219,8 +219,7 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
         jobParameters.put(
             "dlqMaxRetryCount", "1000"); // High retry count to keep items in retry/ bucket
         jobParameters.put(
-            "shardingContextFilePath",
-            getGcsPath("input/shardingContext.json", gcsResourceManager));
+            "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
         jobParameters.put(
             "inputFilePattern", getGcsPath(GCS_PATH_PREFIX + "/cdc/", gcsResourceManager));
         jobParameters.put(
@@ -363,7 +362,7 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
     retryJobParameters.put(
         "deadLetterQueueDirectory", getGcsPath(GCS_PATH_PREFIX + "/dlq/", gcsResourceManager));
     retryJobParameters.put(
-        "shardingContextFilePath", getGcsPath("input/shardingContext.json", gcsResourceManager));
+        "sourceConfigURL", getGcsPath("input/shardingConfig.conf", gcsResourceManager));
 
     PipelineLauncher.LaunchInfo retryJobInfo =
         launchDataflowJob(
@@ -532,25 +531,33 @@ public class DataStreamToSpannerShardedMySQLRetryDLQIT extends DataStreamToSpann
     }
   }
 
-  private String generateShardContextJson(
+  private String generateSourceConfig(
       String streamA, String dbA, String shardA, String streamB, String dbB, String shardB) {
     return "{\n"
-        + "  \"StreamToDbAndShardMap\": {\n"
-        + "    \""
-        + streamA
-        + "\": {\""
-        + dbA
-        + "\": \""
+        + "  \"shardConfigs\": [\n"
+        + "    {\n"
+        + "      \"logicalShardId\": \""
         + shardA
-        + "\"},\n"
-        + "    \""
-        + streamB
-        + "\": {\""
-        + dbB
-        + "\": \""
+        + "\",\n"
+        + "      \"dbName\": \""
+        + dbA
+        + "\",\n"
+        + "      \"streamId\": \""
+        + streamA
+        + "\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "      \"logicalShardId\": \""
         + shardB
-        + "\"}\n"
-        + "  }\n"
+        + "\",\n"
+        + "      \"dbName\": \""
+        + dbB
+        + "\",\n"
+        + "      \"streamId\": \""
+        + streamB
+        + "\"\n"
+        + "    }\n"
+        + "  ]\n"
         + "}";
   }
 }
