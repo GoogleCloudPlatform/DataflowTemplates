@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of ChangeEventSequence for MySql database which stores change event sequence
  * information and implements the comparison method.
  */
-public class MySqlChangeEventSequence extends ChangeEventSequence {
+class MySqlChangeEventSequence extends ChangeEventSequence {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlChangeEventSequence.class);
 
@@ -151,15 +151,15 @@ public class MySqlChangeEventSequence extends ChangeEventSequence {
     }
   }
 
-  public Long getTimestamp() {
+  Long getTimestamp() {
     return timestamp;
   }
 
-  public String getLogFile() {
+  String getLogFile() {
     return logFile;
   }
 
-  public Long getLogPosition() {
+  Long getLogPosition() {
     return logPosition;
   }
 

@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * Oracle implementation of ChangeEventContext that provides implementation of the
  * generateShadowTableMutation method.
  */
-public class OracleChangeEventContext extends ChangeEventContext {
+class OracleChangeEventContext extends ChangeEventContext {
 
   public OracleChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)

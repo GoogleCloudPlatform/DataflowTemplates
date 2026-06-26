@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package containing MySQL source specific classes for Datastream to Spanner template. */
+/** MySQL source connector implementation. */
 package com.google.cloud.teleport.v2.templates.datastream.source.mysql;

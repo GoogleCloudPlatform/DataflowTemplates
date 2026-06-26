@@ -292,7 +292,7 @@ public class ChangeEventConvertorTest {
   }
 
   // Returns the expected map for a change event with all the columns populated for User1 table.
-  public static Map<String, Value> getExpectedMapForTestChangeEvent() {
+  static Map<String, Value> getExpectedMapForTestChangeEvent() {
     Map<String, Value> expected =
         new HashMap<String, Value>() {
           {
