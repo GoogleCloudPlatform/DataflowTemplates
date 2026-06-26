@@ -476,8 +476,18 @@ public class KafkaToBigQueryFlex {
              */
             .apply(
                 "ReadBytesFromKafka",
-                KafkaTransform.readBytesFromKafka(
-                    bootstrapServers, topicsList, kafkaConfig, options.getEnableCommitOffsets()))
+                shouldUseOptimizedKafkaReading(options)
+                    ? KafkaTransform.readBytesFromKafkaOptimized(
+                        bootstrapServers,
+                        topicsList,
+                        kafkaConfig,
+                        options.getEnableCommitOffsets(),
+                        options)
+                    : KafkaTransform.readBytesFromKafka(
+                        bootstrapServers,
+                        topicsList,
+                        kafkaConfig,
+                        options.getEnableCommitOffsets()))
             .setCoder(
                 KafkaRecordCoder.of(NullableCoder.of(ByteArrayCoder.of()), ByteArrayCoder.of()));
 
@@ -510,8 +520,18 @@ public class KafkaToBigQueryFlex {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaTransform.readStringFromKafka(
-                    bootstrapServers, topicsList, kafkaConfig, options.getEnableCommitOffsets()))
+                shouldUseOptimizedKafkaReading(options)
+                    ? KafkaTransform.readStringFromKafkaOptimized(
+                        bootstrapServers,
+                        topicsList,
+                        kafkaConfig,
+                        options.getEnableCommitOffsets(),
+                        options)
+                    : KafkaTransform.readStringFromKafka(
+                        bootstrapServers,
+                        topicsList,
+                        kafkaConfig,
+                        options.getEnableCommitOffsets()))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
@@ -613,6 +633,25 @@ public class KafkaToBigQueryFlex {
       throw new RuntimeException(e);
     }
     return failsafeElement;
+  }
+
+  /**
+   * Determines whether to use optimized Kafka reading methods based on the provided options.
+   *
+   * @param options The KafkaToBigQueryFlexOptions containing optimization parameters
+   * @return true if any optimization parameters are enabled, false otherwise
+   */
+  private static boolean shouldUseOptimizedKafkaReading(KafkaToBigQueryFlexOptions options) {
+    return (options.getEnableKafkaRedistribution() != null
+            && options.getEnableKafkaRedistribution())
+        || (options.getEnableOffsetDeduplication() != null
+            && options.getEnableOffsetDeduplication())
+        || (options.getAllowDuplicates() != null && options.getAllowDuplicates())
+        || (options.getMaxPollRecords() != null && options.getMaxPollRecords() > 0)
+        || (options.getFetchMinBytes() != null && options.getFetchMinBytes() > 0)
+        || (options.getFetchMaxWaitMs() != null && options.getFetchMaxWaitMs() > 0)
+        || (options.getReceiveBufferBytes() != null && options.getReceiveBufferBytes() > 0)
+        || (options.getSendBufferBytes() != null && options.getSendBufferBytes() > 0);
   }
 
   static class ThrowErrorFn<T, W> extends DoFn<FailsafeElement<T, W>, FailsafeElement<T, W>> {
