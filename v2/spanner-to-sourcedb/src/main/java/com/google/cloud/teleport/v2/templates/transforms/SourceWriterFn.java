@@ -41,6 +41,7 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
@@ -104,6 +105,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private transient SourceProcessor sourceProcessor;
+  private transient ISourceConnector sourceConnector;
   private final CustomTransformation customTransformation;
   private transient ISpannerMigrationTransformer spannerToSourceTransformer;
 
@@ -150,6 +152,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.schemaOverridesFilePath = schemaOverridesFilePath;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
+    try {
+      this.sourceConnector = SourceProcessorFactory.getSource(source);
+    } catch (com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // for unit testing purposes
@@ -190,6 +197,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceProcessor =
         SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
+    sourceConnector = SourceProcessorFactory.getSource(source);
     spannerDao = new SpannerDao(spannerConfig);
     spannerToSourceTransformer =
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
@@ -383,7 +391,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
-        TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(ex);
+        TupleTag<String> errorTag =
+            SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
         outputWithTag(c, errorTag, message, spannerRec);
         UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }

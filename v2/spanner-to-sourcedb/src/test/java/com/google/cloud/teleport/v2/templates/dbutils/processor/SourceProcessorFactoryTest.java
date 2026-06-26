@@ -22,11 +22,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnection
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraConnectionHelper;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDMLGenerator;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDao;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;

@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,21 +67,6 @@ public class SpannerSourceConnectorTest {
   }
 
   @Test
-  public void testGetConnectionUrl() {
-    when(mockSpannerShard.getProjectId()).thenReturn("my-project");
-    when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");
-    when(mockSpannerShard.getDatabaseId()).thenReturn("my-database");
-
-    String url = connector.getConnectionUrl(mockSpannerShard);
-    assertEquals("my-project/my-instance/my-database", url);
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testGetConnectionUrl_invalidShardType() {
-    connector.getConnectionUrl(mockGenericShard);
-  }
-
-  @Test
   public void testGetDao() {
     when(mockSpannerShard.getProjectId()).thenReturn("my-project");
     when(mockSpannerShard.getInstanceId()).thenReturn("my-instance");
@@ -122,5 +108,47 @@ public class SpannerSourceConnectorTest {
     connector.initConnectionHelper(shards, maxConnections);
 
     verify(mockConnectionHelper, never()).init(any());
+  }
+
+  @Test
+  public void testValidate_Colocation_Success() throws Exception {
+    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
+        mock(org.apache.beam.sdk.options.PipelineOptions.class);
+    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
+        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
+    when(mockPipelineOptions.as(
+            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
+        .thenReturn(mockOptions);
+
+    when(mockOptions.getSpannerProjectId()).thenReturn("p1");
+    when(mockOptions.getMetadataInstance()).thenReturn("i1");
+    when(mockOptions.getMetadataDatabase()).thenReturn("d1");
+
+    when(mockSpannerShard.getProjectId()).thenReturn("p1");
+    when(mockSpannerShard.getInstanceId()).thenReturn("i1");
+    when(mockSpannerShard.getDatabaseId()).thenReturn("d1");
+
+    connector.validate(List.of(mockSpannerShard), mockPipelineOptions);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_Colocation_Failure() throws Exception {
+    org.apache.beam.sdk.options.PipelineOptions mockPipelineOptions =
+        mock(org.apache.beam.sdk.options.PipelineOptions.class);
+    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options mockOptions =
+        mock(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
+    when(mockPipelineOptions.as(
+            com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class))
+        .thenReturn(mockOptions);
+
+    when(mockOptions.getSpannerProjectId()).thenReturn("p1");
+    when(mockOptions.getMetadataInstance()).thenReturn("i1");
+    when(mockOptions.getMetadataDatabase()).thenReturn("d1");
+
+    when(mockSpannerShard.getProjectId()).thenReturn("p2");
+    when(mockSpannerShard.getInstanceId()).thenReturn("i1");
+    when(mockSpannerShard.getDatabaseId()).thenReturn("d1");
+
+    connector.validate(List.of(mockSpannerShard), mockPipelineOptions);
   }
 }

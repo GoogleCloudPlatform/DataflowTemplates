@@ -17,9 +17,11 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import java.util.List;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
  * Interface representing a connector to the external source/destination database (e.g., MySQL,
@@ -46,14 +48,6 @@ public interface ISourceConnector {
   IConnectionHelper getConnectionHelper();
 
   /**
-   * Constructs and returns the JDBC or connection URL for a given shard.
-   *
-   * @param shard The shard configuration containing host, port, and database name.
-   * @return The connection URL string.
-   */
-  String getConnectionUrl(Shard shard);
-
-  /**
    * Returns a dialect-specific Data Access Object (DAO) for a given shard.
    *
    * @param shard The shard configuration to initialize the DAO with.
@@ -68,4 +62,56 @@ public interface ISourceConnector {
    * @param maxConnections The maximum number of connections allowed in the pool.
    */
   void initConnectionHelper(List<Shard> shards, int maxConnections);
+
+  /**
+   * Parses the shard configuration file to a list of shards.
+   *
+   * @param shardFilePath The GCS path to the shard configuration file.
+   * @return A list of Shards.
+   * @throws Exception If parsing fails.
+   */
+  List<Shard> parseShardConfig(String shardFilePath) throws Exception;
+
+  /**
+   * Validates the shards and pipeline options.
+   *
+   * @param shards The list of shards to validate.
+   * @param options The pipeline options.
+   * @throws Exception If validation fails.
+   */
+  void validate(List<Shard> shards, PipelineOptions options) throws Exception;
+
+  /**
+   * Scans the source/destination database to retrieve its information schema.
+   *
+   * @param shards The list of shards.
+   * @return The SourceSchema.
+   * @throws Exception If scanning fails.
+   */
+  SourceSchema getInformationSchema(List<Shard> shards) throws Exception;
+
+  /**
+   * Returns whether this source supports sharded migrations.
+   *
+   * @return True if supports sharding, false otherwise.
+   */
+  boolean supportsSharding();
+
+  /**
+   * Returns whether the pipeline should update the Spanner record with values read from Spanner
+   * during stale reads (e.g. for DELETE events). //TODO this flag is only required by cassandra. We
+   * should look for a way to remove it
+   *
+   * @return True if it should update, false otherwise.
+   */
+  boolean shouldUpdateReadValuesToSpannerRecord();
+
+  /**
+   * Classifies a dialect-specific exception into retryable or permanent.
+   *
+   * @param cause The cause to classify.
+   * @return The TupleTag (Constants.PERMANENT_ERROR_TAG or Constants.RETRYABLE_ERROR_TAG) if
+   *     classified, or null to fallback to general classification.
+   */
+  org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause);
 }

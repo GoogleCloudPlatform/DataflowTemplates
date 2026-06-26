@@ -15,31 +15,30 @@
  */
 package com.google.cloud.teleport.v2.templates.source.spanner;
 
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.SpannerShard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SpannerShardFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SpannerInformationSchemaScanner;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.PipelineOptions;
 
-/**
- * Spanner implementation of {@link ISourceConnector}. Encapsulates connection management, DML
- * generation, and DAO initialization for Cloud Spanner target databases.
- */
 public class SpannerSourceConnector implements ISourceConnector {
 
-  private final IConnectionHelper<DatabaseClient> connectionHelper;
+  private final IConnectionHelper connectionHelper;
 
   public SpannerSourceConnector() {
     this.connectionHelper = new SpannerConnectionHelper();
   }
 
   @VisibleForTesting
-  SpannerSourceConnector(IConnectionHelper<DatabaseClient> connectionHelper) {
+  SpannerSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
   }
 
@@ -49,30 +48,93 @@ public class SpannerSourceConnector implements ISourceConnector {
   }
 
   @Override
-  public IConnectionHelper<DatabaseClient> getConnectionHelper() {
+  public IConnectionHelper getConnectionHelper() {
     return connectionHelper;
   }
 
-  @Override
-  public String getConnectionUrl(Shard shard) {
+  String getConnectionUrl(Shard shard) {
     if (!(shard instanceof SpannerShard)) {
       throw new IllegalArgumentException(
-          "Expected SpannerShard but got: " + shard.getClass().getSimpleName());
+          "Expected SpannerShard but got: "
+              + (shard != null ? shard.getClass().getName() : "null"));
     }
-    return SpannerConnectionHelper.connectionKey((SpannerShard) shard);
+    SpannerShard spannerShard = (SpannerShard) shard;
+    return SpannerConnectionHelper.connectionKey(spannerShard);
   }
 
   @Override
   public IDao getDao(Shard shard) {
-    return new SpannerTargetDao(getConnectionUrl(shard), getConnectionHelper());
+    return new SpannerTargetDao(
+        SpannerConnectionHelper.connectionKey((SpannerShard) shard),
+        (IConnectionHelper<com.google.cloud.spanner.DatabaseClient>) getConnectionHelper());
   }
 
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
+    // SpannerConnectionHelper does not need complex initialization in the same way as JDBC,
     if (!connectionHelper.isConnectionPoolInitialized()) {
-      ConnectionHelperRequest request =
-          new ConnectionHelperRequest(shards, null, maxConnections, null, null, null);
-      connectionHelper.init(request);
+      connectionHelper.init(
+          new com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest(
+              shards, null, maxConnections, null, null, null));
     }
+  }
+
+  @Override
+  public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
+    SpannerShardFileReader spannerShardFileReader = new SpannerShardFileReader();
+    return spannerShardFileReader.getSpannerShards(shardFilePath);
+  }
+
+  @Override
+  public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
+    if (shards.size() != 1) {
+      throw new IllegalArgumentException("Spanner migration must have exactly 1 shard.");
+    }
+    if (!(shards.get(0) instanceof SpannerShard)) {
+      throw new IllegalArgumentException(
+          "Expected SpannerShard but got: " + shards.get(0).getClass());
+    }
+    SpannerShard spannerShard = (SpannerShard) shards.get(0);
+
+    com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options spannerOptions =
+        options.as(com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options.class);
+    if (spannerOptions != null
+        && spannerOptions.getSpannerProjectId() != null
+        && spannerOptions.getMetadataInstance() != null
+        && spannerOptions.getMetadataDatabase() != null) {
+      if (!spannerOptions.getSpannerProjectId().equals(spannerShard.getProjectId())
+          || !spannerOptions.getMetadataInstance().equals(spannerShard.getInstanceId())
+          || !spannerOptions.getMetadataDatabase().equals(spannerShard.getDatabaseId())) {
+        throw new IllegalArgumentException(
+            "For Cloud Spanner target, the metadata database and target database must be the same to ensure atomic operations.");
+      }
+      // TODO check for read only as well ?
+    }
+  }
+
+  @Override
+  public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
+    SpannerShard spannerShard = (SpannerShard) shards.get(0);
+    SpannerConfig targetSpannerConfig =
+        SpannerConfig.create()
+            .withProjectId(spannerShard.getProjectId())
+            .withInstanceId(spannerShard.getInstanceId())
+            .withDatabaseId(spannerShard.getDatabaseId());
+    return new SpannerInformationSchemaScanner(targetSpannerConfig).scan();
+  }
+
+  @Override
+  public boolean supportsSharding() {
+    return false;
+  }
+
+  @Override
+  public boolean shouldUpdateReadValuesToSpannerRecord() {
+    return true;
+  }
+
+  @Override
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
+    return null;
   }
 }
