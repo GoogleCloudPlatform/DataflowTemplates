@@ -20,13 +20,11 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -107,6 +105,9 @@ public class SourceDbToSpanner {
     DataflowWorkerMachineTypeUtils.validateMachineSpecs(workerMachineType, 4);
 
     SpannerConfig spannerConfig = createSpannerConfig(options);
+    SourceConnectionConfig sourceConnectionConfig =
+        PipelineController.getSourceConnectionConfig(
+            options.getSourceDbDialect(), options.getSourceConfigURL());
 
     // Decide type and source of migration
     // TODO(vardhanvthigle): Move this within pipelineController.
@@ -125,22 +126,11 @@ public class SourceDbToSpanner {
         Preconditions.checkArgument(
             StringUtils.isNotEmpty(options.getSourceConfigURL()),
             "JDBC based source needs sourceConfigURL to be set.");
-        return executeJdbcMigration(options, pipeline, spannerConfig);
-    }
-  }
-
-  // TODO(vardhanvthigle): Move this within pipelineController.
-  private static PipelineResult executeJdbcMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-    if (options.getSourceConfigURL().startsWith("gs://")) {
-      List<Shard> shards =
-          new ShardFileReader(new SecretManagerAccessorImpl())
-              .readForwardMigrationShardingConfig(options.getSourceConfigURL());
-      return PipelineController.executeJdbcShardedMigration(
-          options, pipeline, shards, spannerConfig);
-    } else {
-      return PipelineController.executeJdbcSingleInstanceMigration(
-          options, pipeline, spannerConfig);
+        Preconditions.checkArgument(
+            (sourceConnectionConfig instanceof JdbcShardConfig),
+            "Source config is not type of JdbcShardConfig.");
+        return PipelineController.executeJdbcMigration(
+            options, (JdbcShardConfig) sourceConnectionConfig, pipeline, spannerConfig);
     }
   }
 

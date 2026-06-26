@@ -353,9 +353,8 @@ public class PipelineControllerTest {
     sourceDbToSpannerOptions.setJdbcDriverClassName(testDriverClassName);
     sourceDbToSpannerOptions.setMaxConnections(150);
     sourceDbToSpannerOptions.setNumPartitions(4000);
-    sourceDbToSpannerOptions.setUsername(testUser);
-    sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
+    Shard shard = new Shard("", "localhost", "3306", "user", "password", "testDB", "", "", "");
     String sessionFilePath =
         Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
             .toString();
@@ -365,7 +364,7 @@ public class PipelineControllerTest {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     SingleInstanceJdbcDbConfigContainer dbConfigContainer =
-        new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions);
+        new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions, shard);
     JdbcIoWrapperConfigGroup configGroup =
         dbConfigContainer.getJdbcIoWrapperConfigGroup(
             List.of("table1", "table2"), Wait.on(dummyPCollection));
