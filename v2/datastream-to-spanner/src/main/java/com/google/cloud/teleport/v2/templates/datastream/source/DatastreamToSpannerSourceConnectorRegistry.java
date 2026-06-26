@@ -27,7 +27,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Registry for datastream to spanner source connectors */
+/** Registry for datastream to spanner source connectors. */
 public class DatastreamToSpannerSourceConnectorRegistry {
 
   private static final Logger LOG =
