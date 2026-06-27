@@ -203,6 +203,26 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void testListTableOptionsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listTableOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_catalog, t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.option_name"));
+
+    assertThat(
+        postgresSQLInfoScanner.listTableOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_catalog, t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.option_name"));
+  }
+
+  @Test
   public void testListColumnOptionsSQL() {
     assertThat(
         googleSQLInfoScanner.listColumnOptionsSQL().getSql(),
@@ -241,4 +261,5 @@ public class InformationSchemaScannerTest {
         IllegalArgumentException.class,
         () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
   }
+
 }
