@@ -37,8 +37,11 @@ class CustomConnectionParams extends ConnectionParams {
       @JsonProperty("credentials") String credentials,
       @JsonProperty("realm") String realm,
       @JsonProperty("scheme") String scheme,
-      @JsonProperty("parameters") Map<String, Object> parameters) {
-    super(serverUrl, database);
+      @JsonProperty("parameters") Map<String, Object> parameters,
+      @JsonProperty("max_connection_lifetime_millis") Long maxConnectionLifetimeMillis,
+      @JsonProperty("connection_liveness_check_timeout_millis")
+          Long connectionLivenessCheckTimeoutMillis) {
+    super(serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
     this.principal = principal;
     this.credentials = credentials;
     this.realm = realm;

@@ -34,10 +34,18 @@ public abstract class ConnectionParams implements Serializable {
 
   private final String serverUrl;
   private final String database;
+  private final Long maxConnectionLifetimeMillis;
+  private final Long connectionLivenessCheckTimeoutMillis;
 
-  public ConnectionParams(String serverUrl, String database) {
+  public ConnectionParams(
+      String serverUrl,
+      String database,
+      Long maxConnectionLifetimeMillis,
+      Long connectionLivenessCheckTimeoutMillis) {
     this.serverUrl = serverUrl;
     this.database = database == null ? "neo4j" : database;
+    this.maxConnectionLifetimeMillis = maxConnectionLifetimeMillis;
+    this.connectionLivenessCheckTimeoutMillis = connectionLivenessCheckTimeoutMillis;
   }
 
   public String getServerUrl() {
@@ -48,23 +56,31 @@ public abstract class ConnectionParams implements Serializable {
     return database;
   }
 
+  public Long getMaxConnectionLifetimeMillis() {
+    return maxConnectionLifetimeMillis;
+  }
+
+  public Long getConnectionLivenessCheckTimeoutMillis() {
+    return connectionLivenessCheckTimeoutMillis;
+  }
+
   public abstract AuthToken asAuthToken();
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof ConnectionParams that)) {
       return false;
     }
-
-    ConnectionParams that = (ConnectionParams) o;
-    return Objects.equals(serverUrl, that.serverUrl) && Objects.equals(database, that.database);
+    return Objects.equals(serverUrl, that.serverUrl)
+        && Objects.equals(database, that.database)
+        && Objects.equals(maxConnectionLifetimeMillis, that.maxConnectionLifetimeMillis)
+        && Objects.equals(
+            connectionLivenessCheckTimeoutMillis, that.connectionLivenessCheckTimeoutMillis);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(serverUrl, database);
+    return Objects.hash(
+        serverUrl, database, maxConnectionLifetimeMillis, connectionLivenessCheckTimeoutMillis);
   }
 }
