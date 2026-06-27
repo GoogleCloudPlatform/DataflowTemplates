@@ -89,8 +89,8 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    * Map {@link java.sql.Date} to <a href=https://avro.apache.org/docs/1.8.0/spec.html#Date>Date
    * LogicalType</a>.
    */
-  private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvroTimestampMicros =
-      (value, schema) -> TimeUnit.DAYS.toMicros(value.toLocalDate().toEpochDay());
+  private static final ResultSetValueMapper<java.sql.Date> sqlDateToAvroDate =
+      (value, schema) -> (int) value.toLocalDate().toEpochDay();
 
   /** Map {@link java.sql.Timestamp} to {@link DateTime#SCHEMA} generic record. */
   private static final ResultSetValueMapper<java.sql.Timestamp> sqlTimestampToAvroDateTime =
@@ -229,7 +229,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
            * binary data ref:
            * https://github.com/mysql/mysql-connector-j/blob/release/8.0/src/main/protocol-impl/java/com/mysql/cj/protocol/a/MysqlBinaryValueDecoder.java
            */
-          .put("DATE", utcDateExtractor, sqlDateToAvroTimestampMicros, 4)
+          .put("DATE", utcDateExtractor, sqlDateToAvroDate, 4)
           .put("DATETIME", utcTimeStampExtractor, sqlTimestampToAvroDateTime, 11)
           .put(
               "DECIMAL",
