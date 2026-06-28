@@ -32,7 +32,6 @@ class TestUtils {
   static final String TEST_PROJECT = "span-cloud-testing";
   static final String TEST_SPANNER_INSTANCE = "changestream";
   static final String TEST_SPANNER_DATABASE_PREFIX = "testdbchangestreams";
-  static final String TEST_SPANNER_HOST = "https://spanner.googleapis.com";
   static final String TEST_SPANNER_TABLE = "AllTypes";
   static final String TEST_SPANNER_CHANGE_STREAM = "AllTypesStream";
   static final String TEST_BIG_QUERY_DATESET = "dataset";
