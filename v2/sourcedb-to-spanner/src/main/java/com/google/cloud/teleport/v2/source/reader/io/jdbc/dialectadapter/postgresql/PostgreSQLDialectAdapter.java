@@ -88,6 +88,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private final PostgreSQLVersion version;
   private final Set<ColumnKey> uuidColumnKeys = ConcurrentHashMap.newKeySet();
 
+  // Stores parent tables so we can append 'ONLY' to their extraction queries and avoid duplicates.
+  private final Set<String> parentTables = ConcurrentHashMap.newKeySet();
+
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
   }
@@ -120,6 +123,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableList.Builder<String> tablesBuilder = ImmutableList.builder();
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(query)) {
+
+      discoverAndCacheParentTables(conn, sourceSchemaReference.namespace());
+
       stmt.setString(1, sourceSchemaReference.dbName());
       stmt.setString(2, sourceSchemaReference.namespace());
       try (ResultSet rs = stmt.executeQuery()) {
@@ -441,6 +447,53 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     return tableIndexes;
   }
 
+  /** Discovers and caches parent tables in an inheritance hierarchy. */
+  private void discoverAndCacheParentTables(Connection conn, String namespace)
+      throws SchemaDiscoveryException {
+    final String parentTableQuery =
+        "SELECT DISTINCT c.relname AS table_name "
+            + "FROM pg_catalog.pg_inherits i "
+            + "JOIN pg_catalog.pg_class c ON i.inhparent = c.oid "
+            + "JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid "
+            + "WHERE n.nspname = ?";
+
+    try (PreparedStatement parentStmt = conn.prepareStatement(parentTableQuery)) {
+      parentStmt.setString(1, namespace);
+      try (ResultSet parentRs = parentStmt.executeQuery()) {
+        while (parentRs.next()) {
+          parentTables.add(parentRs.getString("table_name"));
+        }
+        logger.info(
+            "Successfully cached inheritance parent tables for namespace '{}': {}",
+            namespace,
+            parentTables);
+      }
+    } catch (SQLException e) {
+      logger.error(
+          "Failed to discover inheritance parent tables for namespace={} "
+              + "(check pg_catalog permissions).",
+          namespace,
+          e);
+      schemaDiscoveryErrors.inc();
+      throw new SchemaDiscoveryException(e);
+    }
+  }
+
+  /**
+   * Helper function to append the ONLY keyword for parent tables in an inheritance hierarchy. This
+   * ensures we only extract rows belonging directly to the parent, avoiding duplicate extraction of
+   * child table rows which will be migrated independently.
+   *
+   * @param tableName The base table name.
+   * @return The optimized table name for extraction.
+   */
+  private String getExtractionTableName(String tableName) {
+    if (parentTables.contains(tableName)) {
+      return "ONLY " + tableName;
+    }
+    return tableName;
+  }
+
   /**
    * Get query for the prepared statement to read columns within a range.
    *
@@ -450,7 +503,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getReadQuery(String tableName, ImmutableList<String> partitionColumns) {
-    return addWhereClause("SELECT * FROM " + tableName, partitionColumns);
+    String extractionTableName = getExtractionTableName(tableName);
+    return addWhereClause("SELECT * FROM " + extractionTableName, partitionColumns);
   }
 
   /**
@@ -468,7 +522,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public String getCountQuery(
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
-    return addWhereClause(String.format("SELECT COUNT(*) FROM %s", tableName), partitionColumns);
+    String extractionTableName = getExtractionTableName(tableName);
+    return addWhereClause(
+        String.format("SELECT COUNT(*) FROM %s", extractionTableName), partitionColumns);
   }
 
   /**
@@ -484,12 +540,13 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    String extractionTableName = getExtractionTableName(tableName);
     if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
-      return getUuidBoundaryQuery(tableName, partitionColumns, colName);
+      return getUuidBoundaryQuery(extractionTableName, partitionColumns, colName);
     }
 
     return addWhereClause(
-        String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, tableName),
+        String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, extractionTableName),
         partitionColumns);
   }
 
