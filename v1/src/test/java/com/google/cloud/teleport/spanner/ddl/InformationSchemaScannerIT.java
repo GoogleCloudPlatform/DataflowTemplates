@@ -64,6 +64,11 @@ import org.junit.rules.TestName;
  * Test coverage for {@link InformationSchemaScanner}. This requires an active GCP project with a
  * Spanner instance. Hence this test can only be run locally with a project set up using 'gcloud
  * config'.
+ *
+ * <p>Note: {@link InformationSchemaScanner} and the resulting {@link Ddl} objects are actively used
+ * for canonical schema assertions in the end-to-end {@link CopyDbIT} integration test. Testing it
+ * comprehensively here is extremely important to complete the loop of testing the Export and Import
+ * Pipelines.
  */
 @Category(IntegrationTest.class)
 public class InformationSchemaScannerIT {
