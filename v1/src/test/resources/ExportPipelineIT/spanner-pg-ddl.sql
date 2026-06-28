@@ -42,3 +42,6 @@ DROP SEARCH INDEX IF EXISTS "%PREFIX%SearchIndex";
 CREATE SEARCH INDEX "%PREFIX%SearchIndex"
   ON "%PREFIX%Singers"("NameTokens") ORDER BY "Id" WHERE "Id" IS NOT NULL
   WITH (sort_order_sharding=TRUE);
+
+CREATE FUNCTION "%PREFIX%_pg_add"(a integer, b integer) RETURNS integer SECURITY INVOKER IMMUTABLE RETURN a + b;
+CREATE FUNCTION "%PREFIX%_pg_multiply"(a integer, b integer) RETURNS integer SECURITY INVOKER IMMUTABLE AS 'SELECT a * b' LANGUAGE SQL;

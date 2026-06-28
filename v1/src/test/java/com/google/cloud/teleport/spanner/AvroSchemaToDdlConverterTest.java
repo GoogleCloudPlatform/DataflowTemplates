@@ -915,7 +915,7 @@ public class AvroSchemaToDdlConverterTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT \"bar\")"
-                + " RETURNS TEXT SQL SECURITY INVOKER RETURN SELECT 1"));
+                + " RETURNS TEXT SECURITY INVOKER RETURN SELECT 1"));
   }
 
   @Test
