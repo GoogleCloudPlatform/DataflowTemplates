@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * MySql implementation of ChangeEventContext that provides implementation of the
  * generateShadowTableMutation method.
  */
-public class MySqlChangeEventContext extends ChangeEventContext {
+class MySqlChangeEventContext extends ChangeEventContext {
 
   public MySqlChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)

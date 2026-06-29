@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** PostgreSQL source connector implementation. */
-package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
+/** Source connectors for Datastream to Spanner template. */
+package com.google.cloud.teleport.v2.templates.datastream.source;

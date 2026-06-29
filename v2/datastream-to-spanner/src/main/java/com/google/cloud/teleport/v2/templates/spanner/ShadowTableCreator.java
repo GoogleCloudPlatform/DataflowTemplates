@@ -20,7 +20,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,16 +38,9 @@ public class ShadowTableCreator {
   ShadowTableCreator(String sourceType, String shadowTablePrefix, Dialect dialect) {
     this.sourceType = sourceType;
     this.shadowTablePrefix = shadowTablePrefix;
-    Map<String, Map<String, Pair<String, String>>> dialectToSortOrder;
-    dialectToSortOrder = DatastreamConstants.DIALECT_TO_SORT_ORDER.get(dialect);
-    if (dialectToSortOrder == null) {
-      throw new IllegalArgumentException("Unsupported dialect specified: " + dialect);
-    }
-    sortOrderMap = dialectToSortOrder.get(sourceType);
-    if (sortOrderMap == null) {
-      throw new IllegalArgumentException(
-          "Unsupported datastream source type specified: " + sourceType);
-    }
+    IDsToSpSourceConnector connector =
+        DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
+    this.sortOrderMap = connector.getSortOrder(dialect);
   }
 
   /*

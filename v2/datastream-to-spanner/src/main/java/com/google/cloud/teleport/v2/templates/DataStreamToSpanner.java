@@ -45,7 +45,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextRead
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -589,12 +589,13 @@ public class DataStreamToSpanner {
       return;
     }
     String sourceType = getSourceType(options);
-    if (!DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES.contains(sourceType)) {
+    if (!DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes()
+        .contains(sourceType)) {
       throw new IllegalArgumentException(
           "Unsupported source type found: "
               + sourceType
               + ". Specify one of the following source types: "
-              + DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES);
+              + DatastreamToSpannerSourceConnectorRegistry.getSupportedSourceTypes());
     }
     options.setDatastreamSourceType(sourceType);
   }
@@ -620,15 +621,12 @@ public class DataStreamToSpanner {
   }
 
   static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
-    if (sourceConfig.getMysqlSourceConfig() != null) {
-      return DatastreamConstants.MYSQL_SOURCE_TYPE;
-    } else if (sourceConfig.getOracleSourceConfig() != null) {
-      return DatastreamConstants.ORACLE_SOURCE_TYPE;
-    } else if (sourceConfig.getPostgresqlSourceConfig() != null) {
-      return DatastreamConstants.POSTGRES_SOURCE_TYPE;
+    try {
+      return DatastreamToSpannerSourceConnectorRegistry.getSourceTypeFromConfig(sourceConfig);
+    } catch (IllegalArgumentException e) {
+      LOG.error("Source Connection Profile Type Not Supported", e);
+      throw e;
     }
-    LOG.error("Source Connection Profile Type Not Supported");
-    throw new IllegalArgumentException("Unsupported source connection profile type in Datastream");
   }
 
   /**

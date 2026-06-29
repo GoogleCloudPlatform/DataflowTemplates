@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package containing Oracle source specific classes for Datastream to Spanner template. */
+/** Oracle source connector implementation. */
 package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
