@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.source.spanner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -41,7 +42,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class SpannerSourceConnectorTest {
+public class SpannerSpToSrcSourceConnectorTest {
 
   @Mock private IConnectionHelper<DatabaseClient> mockConnectionHelper;
   @Mock private SpannerShard mockSpannerShard;
@@ -150,5 +151,25 @@ public class SpannerSourceConnectorTest {
     when(mockSpannerShard.getDatabaseId()).thenReturn("d1");
 
     connector.validate(List.of(mockSpannerShard), mockPipelineOptions);
+  }
+
+  @Test
+  public void testSupportsSharding() {
+    assertFalse(connector.supportsSharding());
+  }
+
+  @Test
+  public void testShouldUpdateReadValuesToSpannerRecord() {
+    assertTrue(connector.shouldUpdateReadValuesToSpannerRecord());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_MultipleShards_Failure() throws Exception {
+    connector.validate(List.of(mockSpannerShard, mockSpannerShard), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_InvalidShardType_Failure() throws Exception {
+    connector.validate(List.of(mockGenericShard), null);
   }
 }
