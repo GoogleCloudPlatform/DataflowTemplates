@@ -1,0 +1,94 @@
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] Loaded 1 groupId for remote repository splunk-artifactory
+[[1;34mINFO[m] Loaded 1 groupId for remote repository apache.snapshots
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:gcs-spanner-dv:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 68, column 16
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:sourcedb-to-spanner:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.codahale.metrics:metrics-core:jar -> duplicate declaration of version 3.0.2 @ line 200, column 21
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for com.google.cloud.teleport.v2:spanner-to-sourcedb:jar:1.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencies.dependency.version' for org.mockito:mockito-inline:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 104, column 22
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] Detecting the operating system and CPU architecture
+[[1;34mINFO[m] ------------------------------------------------------------------------
+[[1;34mINFO[m] os.detected.name: linux
+[[1;34mINFO[m] os.detected.arch: x86_64
+[[1;34mINFO[m] os.detected.bitness: 64
+[[1;34mINFO[m] os.detected.version: 6.18
+[[1;34mINFO[m] os.detected.version.major: 6
+[[1;34mINFO[m] os.detected.version.minor: 18
+[[1;34mINFO[m] os.detected.release: debian
+[[1;34mINFO[m] os.detected.release.like.debian: true
+[[1;34mINFO[m] os.detected.classifier: linux-x86_64
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------< [0;36mcom.google.cloud.teleport.v2:spanner-to-sourcedb[0;1m >----------[m
+[[1;34mINFO[m] [1mBuilding spanner-to-sourcedb 1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[[1;34mINFO[m] Rule 1: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[[1;34mINFO[m] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32menforcer:3.6.2:enforce[m [1m(enforce-banned-dependencies)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.13:prepare-agent[m [1m(default-prepare-agent)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/usr/local/google/home/pratick/.m2/repository/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar=destfile=/usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/target-cli/jacoco.exec,excludes=**/*AutoValue_*:**/*Exception.*:**/constants/**:**/CustomTransformationImplFetcher.*:**/JarFileReader.*:**/CustomTransformationWithShardFor*IT.*:**/CustomTransformationWithCassandraForIT.*:**/models/*:**/exceptions/*
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 1 resource from src/main/resources to target-cli/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:compile[m [1m(default-compile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mprotobuf:0.6.1:test-compile[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] /usr/local/google/home/pratick/IdeaProjects/dataflow-poc-shadow-table/v2/spanner-to-sourcedb/src/test/proto does not exist. Review the configuration or consider disabling the plugin.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:testResources[m [1m(default-testResources)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Copying 105 resources from src/test/resources to target-cli/test-classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.15.0:testCompile[m [1m(default-testCompile)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcheckstyle:3.2.1:check[m [1m(default)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec:3.6.3:java[m [1m(default-cli)[m @ [36mspanner-to-sourcedb[0;1m ---[m
+Starting data validation...
+Querying Spanner for first 100 keys...
+Processed 100 rows...
+Validation complete!
+Total Rows Checked: 100
+Mismatches: 0
+Missing in MySQL: 0
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  12.689 s
+[[1;34mINFO[m] Finished at: 2026-07-20T16:07:19Z
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;33mWARNING[m] 
+[1;31mjava.lang.NoClassDefFoundError[m: [1;31mio/opentelemetry/sdk/common/CompletableResultCode[m
+    [1mat[m io.opentelemetry.sdk.metrics.export.PeriodicMetricReader.shutdown ([1mPeriodicMetricReader.java:89[m)
+    [1mat[m io.opentelemetry.sdk.metrics.SdkMeterProvider.shutdown ([1mSdkMeterProvider.java:159[m)
+    [1mat[m io.opentelemetry.sdk.metrics.SdkMeterProvider.close ([1mSdkMeterProvider.java:167[m)
+    [1mat[m java.lang.Thread.run ([1mThread.java:1656[m)
+[1mCaused by[m: java.lang.ClassNotFoundException: [1;31mio.opentelemetry.sdk.common.CompletableResultCode[m
+    [1mat[m org.codehaus.mojo.exec.URLClassLoaderBuilder$ExecJavaClassLoader.loadClass ([1mURLClassLoaderBuilder.java:211[m)
+    [1mat[m java.lang.ClassLoader.loadClass ([1mClassLoader.java:526[m)
+    [1mat[m io.opentelemetry.sdk.metrics.export.PeriodicMetricReader.shutdown ([1mPeriodicMetricReader.java:89[m)
+    [1mat[m io.opentelemetry.sdk.metrics.SdkMeterProvider.shutdown ([1mSdkMeterProvider.java:159[m)
+    [1mat[m io.opentelemetry.sdk.metrics.SdkMeterProvider.close ([1mSdkMeterProvider.java:167[m)
+    [1mat[m java.lang.Thread.run ([1mThread.java:1656[m)
