@@ -524,6 +524,27 @@ public class PostgreSQLDialectAdapterTest {
             "SELECT MIN(id), MAX(id) FROM ONLY \"my_parent_table\" "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getBoundaryQuery("\"public\".\"my_parent_table\"", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(
+            adapter.getBoundaryQuery(
+                "\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getBoundaryQuery("public.my_parent_table", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY public.my_parent_table");
+    assertThat(
+            adapter.getBoundaryQuery("public.my_parent_table", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY public.my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
   }
 
   @Test
@@ -562,6 +583,21 @@ public class PostgreSQLDialectAdapterTest {
                 + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
                 + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
                 + " col_uuid DESC NULLS LAST LIMIT 1)");
+
+    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper for UUIDs
+    assertThat(adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of(), "col_uuid"))
+        .isEqualTo(
+            "SELECT (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid ASC NULLS LAST"
+                + " LIMIT 1), (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid DESC"
+                + " NULLS LAST LIMIT 1)");
+    assertThat(
+            adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of("parent_col"), "col_uuid"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM ONLY \"my_parent_table\""
+                + " WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
+                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid DESC NULLS LAST LIMIT 1)");
   }
 
   @Test
@@ -592,6 +628,26 @@ public class PostgreSQLDialectAdapterTest {
     assertThat(adapter.getReadQuery("\"my_parent_table\"", ImmutableList.of("col1", "col2")))
         .isEqualTo(
             "SELECT * FROM ONLY \"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getReadQuery("\"public\".\"my_parent_table\"", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(adapter.getReadQuery("\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+    assertThat(adapter.getReadQuery("public.\"my_parent_table\"", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY public.\"my_parent_table\"");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getReadQuery("public.my_parent_table", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY public.my_parent_table");
+    assertThat(adapter.getReadQuery("public.my_parent_table", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY public.my_parent_table "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
   }
@@ -625,6 +681,28 @@ public class PostgreSQLDialectAdapterTest {
             adapter.getCountQuery("\"my_parent_table\"", ImmutableList.of("col1", "col2"), 1000L))
         .isEqualTo(
             "SELECT COUNT(*) FROM ONLY \"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getCountQuery("\"public\".\"my_parent_table\"", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(
+            adapter.getCountQuery(
+                "\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getCountQuery("public.my_parent_table", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY public.my_parent_table");
+    assertThat(
+            adapter.getCountQuery(
+                "public.my_parent_table", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY public.my_parent_table "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
   }

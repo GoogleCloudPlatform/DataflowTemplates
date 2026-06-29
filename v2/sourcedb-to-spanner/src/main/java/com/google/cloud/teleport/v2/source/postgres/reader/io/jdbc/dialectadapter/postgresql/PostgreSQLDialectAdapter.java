@@ -651,18 +651,35 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   private String getExtractionTableName(String tableName) {
-    // The Beam JdbcIoWrapper wraps table names in double quotes (e.g. '"my_table"').
-    // We must strip these quotes before checking against the parentTables cache,
-    // which stores unquoted table names populated directly from pg_catalog.
-    String unquotedTableName = tableName;
-    if (unquotedTableName.startsWith("\"") && unquotedTableName.endsWith("\"")) {
-      unquotedTableName =
-          unquotedTableName.substring(1, unquotedTableName.length() - 1).replace("\"\"", "\"");
-    }
+    // Extract the unquoted base table name (ignoring schema qualifiers) to check
+    // against the parentTables cache, which stores raw table names from pg_catalog.
+    String unquotedTableName = extractBaseTableName(tableName);
+
     if (parentTables.contains(unquotedTableName)) {
       return "ONLY " + tableName;
     }
     return tableName;
+  }
+
+  private String extractBaseTableName(String tableName) {
+    int lastDotIndex = -1;
+    boolean inQuotes = false;
+
+    for (int i = 0; i < tableName.length(); i++) {
+      if (tableName.charAt(i) == '"') {
+        inQuotes = !inQuotes;
+      } else if (tableName.charAt(i) == '.' && !inQuotes) {
+        lastDotIndex = i;
+      }
+    }
+
+    String baseName = tableName.substring(lastDotIndex + 1);
+
+    if (baseName.startsWith("\"") && baseName.endsWith("\"")) {
+      baseName = baseName.substring(1, baseName.length() - 1).replace("\"\"", "\"");
+    }
+
+    return baseName;
   }
 
   private static final class ColumnKey implements Serializable {
