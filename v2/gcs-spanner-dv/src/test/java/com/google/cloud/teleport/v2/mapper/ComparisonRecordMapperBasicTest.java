@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.mapper;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -90,7 +91,7 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
-    org.junit.Assert.assertNull(record.getShardId());
+    assertNull(record.getShardId());
   }
 
   @Test
