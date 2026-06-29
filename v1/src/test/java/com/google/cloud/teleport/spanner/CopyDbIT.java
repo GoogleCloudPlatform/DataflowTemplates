@@ -22,6 +22,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Column;
@@ -45,9 +46,9 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,10 +64,10 @@ import org.junit.runners.JUnit4;
  * It natively supports testing both Google Standard SQL (GSQL) and PostgreSQL dialects with various
  * complex schema combinations (e.g., interleaved tables, foreign keys, arrays) and random data.
  */
-@Category(IntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
-public class CopyDbIT extends TemplateTestBase {
+public class CopyDbIT extends SpannerTemplateITBase {
 
   // Resource managers for the source database (exported) and destination database (imported).
   private SpannerResourceManager sourceResourceManager;
@@ -96,9 +97,12 @@ public class CopyDbIT extends TemplateTestBase {
     // Initialize the databases with the appropriate dialect dynamically.
     sourceResourceManager =
         SpannerResourceManager.builder(testName + "-source", PROJECT, "nam3", ddl.dialect())
+            .useCustomHost(spannerHost)
             .build();
     destResourceManager =
-        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect()).build();
+        SpannerResourceManager.builder(testName + "-dest", PROJECT, "nam3", ddl.dialect())
+            .useCustomHost(spannerHost)
+            .build();
 
     // Execute the schema statements on the source database.
     // The destination database is intentionally left entirely empty (no tables) so the
@@ -147,6 +151,9 @@ public class CopyDbIT extends TemplateTestBase {
             .addParameter("databaseId", sourceResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("outputDir", outputDir);
+    if (spannerHost != null) {
+      exportConfig.addParameter("spannerHost", spannerHost);
+    }
 
     LaunchInfo exportInfo = launchTemplate(exportConfig);
     Result exportResult = pipelineOperator().waitUntilDone(createConfig(exportInfo));
@@ -185,6 +192,9 @@ public class CopyDbIT extends TemplateTestBase {
             .addParameter("waitForForeignKeys", "true")
             .addParameter("waitForChangeStreams", "true")
             .addParameter("waitForSequences", "true");
+    if (spannerHost != null) {
+      importConfig.addParameter("spannerHost", spannerHost);
+    }
 
     LaunchInfo importInfo = launchTemplate(importConfig, importTemplate);
     Result importResult = pipelineOperator().waitUntilDone(createConfig(importInfo));
@@ -293,13 +303,13 @@ public class CopyDbIT extends TemplateTestBase {
 
   @Test
   public void testAllSchemaAndDataGsql() throws Exception {
-    createAndPopulate("CopyDbIT-gsql.sql", Dialect.GOOGLE_STANDARD_SQL, 100);
+    createAndPopulate("CopyDbIT-AllSchemaAndData-gsql.sql", Dialect.GOOGLE_STANDARD_SQL, 100);
     runTest(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   @Test
   public void testAllSchemaAndDataPg() throws Exception {
-    createAndPopulate("CopyDbIT-pg.sql", Dialect.POSTGRESQL, 100);
+    createAndPopulate("CopyDbIT-AllSchemaAndData-pg.sql", Dialect.POSTGRESQL, 100);
     runTest(Dialect.POSTGRESQL);
   }
 
