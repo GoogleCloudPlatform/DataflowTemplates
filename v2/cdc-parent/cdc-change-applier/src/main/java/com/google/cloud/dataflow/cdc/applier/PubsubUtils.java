@@ -31,7 +31,9 @@ public class PubsubUtils {
   private static SubscriptionAdminClient subscriptionAdminClient;
 
   private static void setupSubscriptionClient() throws IOException {
-    subscriptionAdminClient = SubscriptionAdminClient.create();
+    if (subscriptionAdminClient == null) {
+      subscriptionAdminClient = SubscriptionAdminClient.create();
+    }
   }
 
   public static ProjectTopicName getPubSubTopicFromSubscription(

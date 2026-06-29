@@ -35,28 +35,32 @@ public class SchemaUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
 
   private static final java.util.Map<String, TypeName> DATAPLEX_TO_BEAM_TYPE =
-      java.util.Map.of(
-          "boolean", TypeName.BOOLEAN,
-          "bytes", TypeName.BYTES,
-          "double", TypeName.DOUBLE,
-          "decimal", TypeName.DECIMAL,
-          "int16", TypeName.INT64,
-          "integer", TypeName.INT64,
-          "long", TypeName.INT64,
-          "string", TypeName.STRING,
-          "timestamp", TypeName.DATETIME);
+      com.google.common.collect.ImmutableMap.<String, TypeName>builder()
+          .put("boolean", TypeName.BOOLEAN)
+          .put("bytes", TypeName.BYTES)
+          .put("double", TypeName.DOUBLE)
+          .put("decimal", TypeName.DECIMAL)
+          .put("int16", TypeName.INT16)
+          .put("int32", TypeName.INT32)
+          .put("int64", TypeName.INT64)
+          .put("integer", TypeName.INT32)
+          .put("long", TypeName.INT64)
+          .put("string", TypeName.STRING)
+          .put("timestamp", TypeName.DATETIME)
+          .build();
 
   private static final java.util.Map<TypeName, String> BEAM_TO_DATAPLEX_TYPE =
-      java.util.Map.of(
-          TypeName.BOOLEAN, "BOOLEAN",
-          TypeName.BYTES, "BYTES",
-          TypeName.DOUBLE, "DOUBLE",
-          TypeName.DECIMAL, "DECIMAL",
-          TypeName.INT16, "INTEGER",
-          TypeName.INT32, "INTEGER",
-          TypeName.INT64, "INTEGER",
-          TypeName.STRING, "STRING",
-          TypeName.DATETIME, "TIMESTAMP");
+      com.google.common.collect.ImmutableMap.<TypeName, String>builder()
+          .put(TypeName.BOOLEAN, "BOOLEAN")
+          .put(TypeName.BYTES, "BYTES")
+          .put(TypeName.DOUBLE, "DOUBLE")
+          .put(TypeName.DECIMAL, "DECIMAL")
+          .put(TypeName.INT16, "INT16")
+          .put(TypeName.INT32, "INT32")
+          .put(TypeName.INT64, "INT64")
+          .put(TypeName.STRING, "STRING")
+          .put(TypeName.DATETIME, "TIMESTAMP")
+          .build();
 
   private static final ImmutableBiMap<String, FieldType> LOGICAL_FIELD_TYPES =
       ImmutableBiMap.<String, FieldType>builder()
