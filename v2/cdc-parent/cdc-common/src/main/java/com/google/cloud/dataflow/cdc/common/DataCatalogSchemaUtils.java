@@ -16,7 +16,6 @@
 package com.google.cloud.dataflow.cdc.common;
 
 import com.google.api.gax.rpc.AlreadyExistsException;
-import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.dataplex.v1.Aspect;
 import com.google.cloud.dataplex.v1.CatalogServiceClient;
 import com.google.cloud.dataplex.v1.CreateEntryGroupRequest;
@@ -27,16 +26,15 @@ import com.google.cloud.dataplex.v1.EntryGroupName;
 import com.google.cloud.dataplex.v1.EntrySource;
 import com.google.cloud.dataplex.v1.EntryView;
 import com.google.cloud.dataplex.v1.GetEntryRequest;
-import com.google.cloud.dataplex.v1.SearchEntriesRequest;
-import com.google.cloud.dataplex.v1.SearchEntriesResult;
 import com.google.cloud.dataplex.v1.UpdateEntryRequest;
 import com.google.protobuf.FieldMask;
 import com.google.protobuf.Struct;
-import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,42 +128,9 @@ public class DataCatalogSchemaUtils {
       throw new RuntimeException("Unable to create a CatalogServiceClient", e);
     } catch (Exception e) {
       LOG.error("Failed to list entries: ", e);
+      throw new RuntimeException("Failed to list entries for entry group " + entryGroupId, e);
     }
     return schemas;
-  }
-
-  public static Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
-    try (CatalogServiceClient client = CatalogServiceClient.create()) {
-      Entry entry = lookupPubSubEntry(client, pubsubTopic, gcpProject);
-      if (entry == null) {
-        LOG.warn("PubSub entry not found, returning null schema");
-        return null;
-      }
-      LOG.warn("Entry found, {}", entry);
-
-      Struct schemaData = getSchemaAspectData(entry);
-      if (schemaData != null) {
-        LOG.warn("PubSub schema found, {}", schemaData);
-        Struct.Builder builder = Struct.newBuilder();
-        JsonFormat.parser().merge(schemaData.getFieldsOrThrow("type").getStringValue(), builder);
-        return SchemaUtils.toBeamSchema(builder.build());
-      }
-      LOG.warn("PubSub entry without aspect, returning null schema, {}", entry);
-      return null;
-    } catch (IOException e) {
-      LOG.error("Unable to create a CatalogServiceClient", e);
-      throw new RuntimeException("Unable to create a CatalogServiceClient", e);
-    }
-  }
-
-  static Struct getSchemaAspectData(Entry entry) {
-    for (Map.Entry<String, Aspect> aspectEntry : entry.getAspectsMap().entrySet()) {
-      if (aspectEntry.getKey().endsWith(".global.generic")) {
-        return aspectEntry.getValue().getData();
-      }
-    }
-
-    return null;
   }
 
   static Struct getSchemaAspectDataFromEntryGroup(Entry entry) {
@@ -178,34 +143,19 @@ public class DataCatalogSchemaUtils {
     return null;
   }
 
-  static Entry lookupPubSubEntry(
-      CatalogServiceClient client, String pubsubTopic, String gcpProject) {
-    String locationName = String.format("projects/%s/locations/%s", gcpProject, DEFAULT_LOCATION);
-    String query = String.format("name:%s", pubsubTopic);
-
-    SearchEntriesRequest request =
-        SearchEntriesRequest.newBuilder().setName(locationName).setQuery(query).build();
-
-    try {
-      CatalogServiceClient.SearchEntriesPagedResponse response = client.searchEntries(request);
-      for (SearchEntriesResult result : response.iterateAll()) {
-        String entryName = result.getDataplexEntry().getName();
-        LOG.info("Dataplex entry found {}", entryName);
-        return client.getEntry(
-            GetEntryRequest.newBuilder().setName(entryName).setView(EntryView.ALL).build());
-      }
-    } catch (ApiException e) {
-      LOG.error("ApiException thrown by Dataplex API:", e);
-    }
-    LOG.warn("PubSub entry not found");
-    return null;
-  }
-
-  public abstract static class DataCatalogSchemaManager {
+  public abstract static class DataCatalogSchemaManager implements AutoCloseable {
     final String gcpProject;
     final String location;
     CatalogServiceClient client;
     private final java.util.Set<String> createdEntryGroups = new java.util.HashSet<>();
+
+    @Override
+    public void close() {
+      if (client != null) {
+        client.close();
+        client = null;
+      }
+    }
 
     public abstract String getEntryGroupId(String tableName);
 
@@ -254,7 +204,7 @@ public class DataCatalogSchemaUtils {
 
       try {
         LOG.info("Creating EntryGroup {}", entryGroupRequest);
-        client.createEntryGroupAsync(entryGroupRequest).get();
+        client.createEntryGroupAsync(entryGroupRequest).get(1, TimeUnit.MINUTES);
         LOG.info("Created EntryGroup: {}", entryGroupId);
 
         this.createdEntryGroups.add(entryGroupId);
@@ -264,12 +214,17 @@ public class DataCatalogSchemaUtils {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOG.error("Interrupted while creating EntryGroup", e);
+        throw new RuntimeException("Interrupted while creating EntryGroup " + entryGroupId, e);
       } catch (ExecutionException e) {
         if (e.getCause() instanceof AlreadyExistsException) {
           this.createdEntryGroups.add(entryGroupId);
         } else {
           LOG.error("Failed to create EntryGroup", e);
+          throw new RuntimeException("Failed to create EntryGroup " + entryGroupId, e.getCause());
         }
+      } catch (TimeoutException e) {
+        LOG.error("Timeout while creating EntryGroup", e);
+        throw new RuntimeException("Timeout while creating EntryGroup " + entryGroupId, e);
       }
     }
 

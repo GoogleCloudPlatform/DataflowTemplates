@@ -73,7 +73,10 @@ class CdcPCollectionsFetchers {
       List<String> subscriptionList;
 
       if (options.getInputSubscriptions() != null && !options.getInputSubscriptions().isEmpty()) {
-        subscriptionList = Arrays.asList(options.getInputSubscriptions().split(","));
+        subscriptionList =
+            Arrays.stream(options.getInputSubscriptions().split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
         topicList =
             subscriptionList.stream()
                 .map(
@@ -89,7 +92,10 @@ class CdcPCollectionsFetchers {
         Preconditions.checkArgument(
             options.getInputTopics() != null && !options.getInputTopics().isEmpty(),
             "Must provide an inputSubscriptions or inputTopics parameter.");
-        topicList = Arrays.asList(options.getInputTopics().split(","));
+        topicList =
+            Arrays.stream(options.getInputTopics().split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
         subscriptionList = topicList.stream().map(t -> (String) null).collect(Collectors.toList());
       }
 
