@@ -26,8 +26,10 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
@@ -321,16 +323,16 @@ public class DeadLetterQueue implements Serializable {
   private void initializeJsonNode(JSONObject json, String tableName, long timeStamp) {
     json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.UPDATE_INSERT_EVENT);
     json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
-    json.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, timeStamp);
+    json.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, timeStamp);
     json.put("_metadata_read_timestamp", timeStamp);
     json.put("_metadata_dataflow_timestamp", timeStamp);
     switch (this.sqlDialect) {
       case POSTGRESQL:
-        json.put(
-            DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
+        // TODO- fix this. This should be dialect type not source type
+        json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
         break;
       default:
-        json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+        json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
     }
   }
 

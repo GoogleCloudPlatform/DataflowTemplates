@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
+package com.google.cloud.teleport.v2.templates.source.oracle;
 
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ResultSet;

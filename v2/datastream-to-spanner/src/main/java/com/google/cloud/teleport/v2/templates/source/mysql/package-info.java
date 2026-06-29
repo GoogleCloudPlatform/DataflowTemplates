@@ -15,4 +15,4 @@
  */
 
 /** MySQL source connector implementation. */
-package com.google.cloud.teleport.v2.templates.datastream.source.mysql;
+package com.google.cloud.teleport.v2.templates.source.mysql;

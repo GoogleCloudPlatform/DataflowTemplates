@@ -33,7 +33,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesPa
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.common.io.Resources;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -458,7 +458,7 @@ public class DataStreamToSpannerTest {
 
     String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
 
-    assertEquals(DatastreamConstants.MYSQL_SOURCE_TYPE, sourceType);
+    assertEquals(SourceConstants.MYSQL_SOURCE_TYPE, sourceType);
   }
 
   @Test
@@ -468,7 +468,7 @@ public class DataStreamToSpannerTest {
 
     String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
 
-    assertEquals(DatastreamConstants.ORACLE_SOURCE_TYPE, sourceType);
+    assertEquals(SourceConstants.ORACLE_SOURCE_TYPE, sourceType);
   }
 
   @Test
@@ -478,7 +478,7 @@ public class DataStreamToSpannerTest {
 
     String sourceType = DataStreamToSpanner.getSourceTypeFromConfig(sourceConfig);
 
-    assertEquals(DatastreamConstants.POSTGRES_SOURCE_TYPE, sourceType);
+    assertEquals(SourceConstants.POSTGRES_SOURCE_TYPE, sourceType);
   }
 
   @Test

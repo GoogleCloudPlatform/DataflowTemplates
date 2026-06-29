@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.mysql;
+package com.google.cloud.teleport.v2.templates.source.mysql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.datastream.v1.model.SourceConfig;
@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
-import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.IDsToSpSourceConnector;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;

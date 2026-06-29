@@ -13,12 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source;
+package com.google.cloud.teleport.v2.templates.source;
 
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlDsToSpSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleDsToSpSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgresql.PostgresqlDsToSpSourceConnector;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;

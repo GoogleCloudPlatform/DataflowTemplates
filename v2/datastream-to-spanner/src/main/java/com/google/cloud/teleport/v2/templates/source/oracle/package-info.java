@@ -15,4 +15,4 @@
  */
 
 /** Oracle source connector implementation. */
-package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
+package com.google.cloud.teleport.v2.templates.source.oracle;

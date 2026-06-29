@@ -15,4 +15,4 @@
  */
 
 /** Source connectors for Datastream to Spanner template. */
-package com.google.cloud.teleport.v2.templates.datastream.source;
+package com.google.cloud.teleport.v2.templates.source;

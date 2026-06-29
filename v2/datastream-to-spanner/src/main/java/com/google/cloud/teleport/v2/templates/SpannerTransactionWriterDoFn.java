@@ -40,8 +40,8 @@ import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConst
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
-import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
-import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.source.IDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;

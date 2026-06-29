@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source;
+package com.google.cloud.teleport.v2.templates.source;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.datastream.v1.model.SourceConfig;

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source;
+package com.google.cloud.teleport.v2.templates.source;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -24,7 +24,6 @@ import com.google.api.services.datastream.v1.model.MysqlSourceConfig;
 import com.google.api.services.datastream.v1.model.OracleSourceConfig;
 import com.google.api.services.datastream.v1.model.PostgresqlSourceConfig;
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.postgresql.PostgresqlDsToSpSourceConnector;
