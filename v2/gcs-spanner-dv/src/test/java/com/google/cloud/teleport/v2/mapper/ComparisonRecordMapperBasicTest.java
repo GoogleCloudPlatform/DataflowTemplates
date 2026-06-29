@@ -90,6 +90,7 @@ public class ComparisonRecordMapperBasicTest {
     assertEquals(1, record.getPrimaryKeyColumns().size());
     assertEquals("id", record.getPrimaryKeyColumns().get(0).getColName());
     assertEquals("1", record.getPrimaryKeyColumns().get(0).getColValue());
+    org.junit.Assert.assertNull(record.getShardId());
   }
 
   @Test
@@ -150,6 +151,7 @@ public class ComparisonRecordMapperBasicTest {
     assertNotNull(record);
     assertEquals(cleanTableName, record.getTableName());
     assertEquals("public", record.getSchemaName());
+    assertEquals("shard1", record.getShardId());
     assertNotNull(record.getHash());
   }
 

@@ -104,7 +104,8 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                         .set(MismatchedRecord.MISMATCH_TYPE_COLUMN_NAME, r.getMismatchType())
                         .set(MismatchedRecord.RECORD_KEY_COLUMN_NAME, r.getRecordKey())
                         .set(MismatchedRecord.SOURCE_COLUMN_NAME, r.getSource())
-                        .set(MismatchedRecord.HASH_COLUMN_NAME, r.getHash()))
+                        .set(MismatchedRecord.HASH_COLUMN_NAME, r.getHash())
+                        .set(MismatchedRecord.SHARD_ID_COLUMN_NAME, r.getShardId()))
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
             .withMethod(BigQueryIO.Write.Method.FILE_LOADS));
@@ -227,6 +228,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
                             .setSource(GCS_SOURCE)
                             .setHash(r.getHash())
+                            .setShardId(r.getShardId())
                             .build()));
 
     PCollection<MismatchedRecord> sourceMismatchedRecords =
@@ -243,6 +245,7 @@ public class ReportResultsTransform extends PTransform<PCollectionTuple, PDone> 
                             .setRecordKey(formatRecordKey(r.getPrimaryKeyColumns()))
                             .setSource(SPANNER_DESTINATION)
                             .setHash(r.getHash())
+                            .setShardId(r.getShardId())
                             .build()));
 
     return PCollectionList.of(spannerMismatchedRecords)
