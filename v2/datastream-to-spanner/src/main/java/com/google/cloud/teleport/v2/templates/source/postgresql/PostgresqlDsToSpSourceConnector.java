@@ -66,7 +66,7 @@ public class PostgresqlDsToSpSourceConnector implements IDsToSpSourceConnector {
   }
 
   @Override
-  public boolean matches(SourceConfig sourceConfig) {
+  public boolean matchesSourceConfig(SourceConfig sourceConfig) {
     return sourceConfig.getPostgresqlSourceConfig() != null;
   }
 

@@ -76,7 +76,7 @@ public class MySqlDsToSpSourceConnector implements IDsToSpSourceConnector {
   }
 
   @Override
-  public boolean matches(SourceConfig sourceConfig) {
+  public boolean matchesSourceConfig(SourceConfig sourceConfig) {
     return sourceConfig.getMysqlSourceConfig() != null;
   }
 

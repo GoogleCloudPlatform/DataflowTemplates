@@ -77,7 +77,7 @@ public class DatastreamToSpannerSourceConnectorRegistry {
   /** Identifies the source type from Datastream SourceConfig by querying all connectors. */
   public static String getSourceTypeFromConfig(SourceConfig sourceConfig) {
     for (IDsToSpSourceConnector connector : CONNECTORS.values()) {
-      if (connector.matches(sourceConfig)) {
+      if (connector.matchesSourceConfig(sourceConfig)) {
         return connector.getSourceType();
       }
     }

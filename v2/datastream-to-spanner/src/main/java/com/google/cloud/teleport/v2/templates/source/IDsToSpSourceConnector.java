@@ -39,7 +39,7 @@ public interface IDsToSpSourceConnector {
   String getSourceType();
 
   /** Returns true if this connector matches the given Datastream SourceConfig. */
-  boolean matches(SourceConfig sourceConfig);
+  boolean matchesSourceConfig(SourceConfig sourceConfig);
 
   /** Returns the sort order mapping for shadow table columns based on the Spanner Dialect. */
   Map<String, Pair<String, String>> getSortOrder(Dialect dialect);
