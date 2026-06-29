@@ -25,11 +25,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   private final Long logPosition;
 
   MySqlChangeEventSequence(Long timestamp, String logFile, Long logPosition) {
-    super(DatastreamConstants.MYSQL_SOURCE_TYPE);
+    super(SourceConstants.MYSQL_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.logFile = logFile;
     this.logPosition = logPosition;
@@ -75,7 +75,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     logFile =
         ChangeEventTypeConvertor.toString(
             ctx.getChangeEvent(),
-            DatastreamConstants.MYSQL_LOGFILE_KEY,
+            MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY,
             /* requiredField= */ false);
     if (logFile == null) {
       logFile = "";
@@ -84,7 +84,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     logPosition =
         ChangeEventTypeConvertor.toLong(
             ctx.getChangeEvent(),
-            DatastreamConstants.MYSQL_LOGPOSITION_KEY,
+            MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY,
             /* requiredField= */ false);
     if (logPosition == null) {
       logPosition = new Long(-1);
@@ -94,7 +94,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     return new MySqlChangeEventSequence(
         ChangeEventTypeConvertor.toLong(
             ctx.getChangeEvent(),
-            DatastreamConstants.MYSQL_TIMESTAMP_KEY,
+            MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY,
             /* requiredField= */ true),
         logFile,
         logPosition);
@@ -119,9 +119,9 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
       // Read columns from shadow table
       List<String> readColumnList =
           java.util.Arrays.asList(
-              context.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY),
-              context.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY),
-              context.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY));
+              context.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY),
+              context.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.

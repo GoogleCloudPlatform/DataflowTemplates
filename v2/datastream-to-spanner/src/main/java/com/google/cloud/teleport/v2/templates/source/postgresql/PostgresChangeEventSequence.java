@@ -25,11 +25,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.List;
 
 /**
@@ -45,7 +45,7 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
   private final String lsn;
 
   PostgresChangeEventSequence(Long timestamp, String lsn) {
-    super(DatastreamConstants.POSTGRES_SOURCE_TYPE);
+    super(SourceConstants.POSTGRES_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.lsn = lsn;
   }
@@ -63,7 +63,9 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
 
     lsn =
         ChangeEventTypeConvertor.toString(
-            ctx.getChangeEvent(), DatastreamConstants.POSTGRES_LSN_KEY, /* requiredField= */ false);
+            ctx.getChangeEvent(),
+            PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY,
+            /* requiredField= */ false);
     if (lsn == null) {
       lsn = "";
     }
@@ -72,7 +74,7 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
     return new PostgresChangeEventSequence(
         ChangeEventTypeConvertor.toLong(
             ctx.getChangeEvent(),
-            DatastreamConstants.POSTGRES_TIMESTAMP_KEY,
+            PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY,
             /* requiredField= */ true),
         lsn);
   }
@@ -93,8 +95,8 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
       // Read columns from shadow table
       List<String> readColumnList =
           java.util.Arrays.asList(
-              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY),
-              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY));
+              context.getSafeShadowColumn(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.

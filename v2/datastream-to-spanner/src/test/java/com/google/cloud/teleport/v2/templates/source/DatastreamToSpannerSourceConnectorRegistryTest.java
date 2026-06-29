@@ -24,9 +24,10 @@ import com.google.api.services.datastream.v1.model.MysqlSourceConfig;
 import com.google.api.services.datastream.v1.model.OracleSourceConfig;
 import com.google.api.services.datastream.v1.model.PostgresqlSourceConfig;
 import com.google.api.services.datastream.v1.model.SourceConfig;
-import com.google.cloud.teleport.v2.templates.datastream.source.mysql.MySqlDsToSpSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.oracle.OracleDsToSpSourceConnector;
-import com.google.cloud.teleport.v2.templates.datastream.source.postgresql.PostgresqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgresql.PostgresqlDsToSpSourceConnector;
 import java.util.Set;
 import org.junit.Test;
 

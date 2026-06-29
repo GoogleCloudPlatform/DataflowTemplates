@@ -29,7 +29,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import org.junit.Test;
 
 /** Unit tests for testing change event comparison logic in Oracle database. */
@@ -92,9 +91,10 @@ public final class OracleChangeEventSequenceTest {
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
     when(mockContext.getShadowTable()).thenReturn("shadow_table_oracle");
     when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
-    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
+    when(mockContext.getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY))
         .thenReturn("shadow_timestamp");
-    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY)).thenReturn("scn");
+    when(mockContext.getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_SCN_KEY))
+        .thenReturn("scn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);

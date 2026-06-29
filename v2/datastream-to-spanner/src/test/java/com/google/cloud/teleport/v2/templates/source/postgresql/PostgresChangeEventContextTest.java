@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
+package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
@@ -35,10 +36,10 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * Unit tests 1) ChangeEventContextFactory methods for oracle change events. 2) shadow table
- * generation for Oracle change events.
+ * Unit tests 1) ChangeEventContextFactory methods for Postgres change events. 2) shadow table
+ * generation for Postgres change events.
  */
-public final class OracleChangeEventContextTest {
+public final class PostgresChangeEventContextTest {
 
   private final long eventTimestamp = 1615159728L;
 
@@ -56,13 +57,13 @@ public final class OracleChangeEventContextTest {
 
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, "1");
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, "1/867");
     changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleDsToSpSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -71,11 +72,13 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(1));
+        PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(
+        PostgresqlDsToSpSourceConnector.POSTGRES_LSN_SHADOW_INFO.getLeft(), Value.string("1/867"));
 
-    // Verify if OracleChangeEventContext was actually created.
-    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify if PostgresChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(PostgresChangeEventContext.class));
     // Verify shadow mutation
     assertThat(actual, is(expected));
     assertEquals(shadowMutation.getTable(), "shadow_Users2");
@@ -90,13 +93,13 @@ public final class OracleChangeEventContextTest {
 
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, JSONObject.NULL);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, JSONObject.NULL);
     changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleDsToSpSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -105,11 +108,13 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
+        PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(
+        PostgresqlDsToSpSourceConnector.POSTGRES_LSN_SHADOW_INFO.getLeft(), Value.string(""));
 
-    // Verify if OracleChangeEventContext was actually created.
-    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify if PostgresChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(PostgresChangeEventContext.class));
     // Verify shadow mutation
     assertThat(actual, is(expected));
     assertEquals(shadowMutation.getTable(), "shadow_Users2");
@@ -124,12 +129,12 @@ public final class OracleChangeEventContextTest {
 
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        new OracleDsToSpSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
@@ -138,11 +143,13 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
+        PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(
+        PostgresqlDsToSpSourceConnector.POSTGRES_LSN_SHADOW_INFO.getLeft(), Value.string(""));
 
-    // Verify if OracleChangeEventContext was actually created.
-    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify if PostgresChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(PostgresChangeEventContext.class));
     // Verify shadow mutation
     assertThat(actual, is(expected));
     assertEquals(shadowMutation.getTable(), "shadow_Users2");
@@ -155,57 +162,58 @@ public final class OracleChangeEventContextTest {
     Ddl ddl =
         Ddl.builder()
             .createTable("MyTable")
-            .column("scn")
-            .string()
+            .column("lsn")
+            .int64()
+            .max()
             .endColumn()
             .column("data")
             .string()
             .max()
             .endColumn()
             .primaryKey()
-            .asc("scn")
+            .asc("lsn")
             .end()
             .endTable()
             .build();
     Ddl shadowDdl =
         Ddl.builder()
             .createTable("shadow_MyTable")
-            .column("scn")
-            .string()
+            .column("lsn")
+            .int64()
             .max()
             .endColumn()
             .column("data")
             .string()
             .max()
             .endColumn()
-            .column("shadow_scn")
-            .int64()
+            .column("shadow_lsn")
+            .string()
             .max()
             .endColumn()
             .primaryKey()
-            .asc("scn")
+            .asc("lsn")
             .end()
             .endTable()
             .build();
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put("scn", "scn_string");
+    changeEvent.put("lsn", 123);
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
     changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, 999L);
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, "1/ABC");
 
     ChangeEventContext changeEventContext =
-        new OracleDsToSpSourceConnector()
+        new PostgresqlDsToSpSourceConnector()
             .createChangeEventContext(
                 getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
-    // The PK column 'scn' should be present.
-    assertEquals(actual.get("scn"), Value.string("scn_string"));
-    // The conflicting shadow column should be renamed to 'shadow_scn'.
-    assertEquals(actual.get("shadow_scn"), Value.int64(999L));
+    // The PK column 'lsn' should be present.
+    assertEquals(actual.get("lsn"), Value.int64(123));
+    // The conflicting shadow column should be renamed to 'shadow_lsn'.
+    assertEquals(actual.get("shadow_lsn"), Value.string("1/ABC"));
     // The other shadow columns should be present with their default names.
     assertEquals(actual.get("timestamp"), Value.int64(eventTimestamp));
   }

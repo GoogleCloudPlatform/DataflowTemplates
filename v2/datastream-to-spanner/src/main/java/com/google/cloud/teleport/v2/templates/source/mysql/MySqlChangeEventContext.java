@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
+package com.google.cloud.teleport.v2.templates.datastream.source.mysql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
@@ -31,15 +31,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Oracle implementation of ChangeEventContext that provides implementation of the
+ * MySql implementation of ChangeEventContext that provides implementation of the
  * generateShadowTableMutation method.
  */
-class OracleChangeEventContext extends ChangeEventContext {
+class MySqlChangeEventContext extends ChangeEventContext {
 
-  public OracleChangeEventContext(
+  public MySqlChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    super(changeEvent, ddl, DatastreamConstants.ORACLE_SORT_ORDER);
+    super(changeEvent, ddl, MySqlDsToSpSourceConnector.MYSQL_SORT_ORDER);
     this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
@@ -53,7 +53,7 @@ class OracleChangeEventContext extends ChangeEventContext {
   }
 
   /*
-   * Creates shadow table mutation for Oracle.
+   * Creates shadow table mutation for MySql.
    */
   @Override
   protected Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
@@ -66,24 +66,35 @@ class OracleChangeEventContext extends ChangeEventContext {
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /* requiredField= */ true);
+            changeEvent, MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
     builder
-        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
+        .set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY))
         .to(Value.int64(changeEventTimestamp));
 
-    /* Oracle backfill events "can" have SCN value as null.
-     * Set the value to a value smaller than any real value.
+    /* MySql backfill events "can" have log file and log file position as null.
+     * Set their value to a value (lexicographically) smaller than any real value.
      */
-    Long changeEventSCN =
-        ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
-    if (changeEventSCN == null) {
-      changeEventSCN = new Long(-1);
+    String logFile =
+        ChangeEventTypeConvertor.toString(
+            changeEvent, MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, /* requiredField= */ false);
+    if (logFile == null) {
+      logFile = "";
     }
-    // Add scn information to shadow table mutation
+    // Add log file information to shadow table mutation
+    builder.set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY)).to(logFile);
+
+    Long logPosition =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent,
+            MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY,
+            /* requiredField= */ false);
+    if (logPosition == null) {
+      logPosition = new Long(-1);
+    }
+    // Add logfile position information to shadow table mutation
     builder
-        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
-        .to(Value.int64(changeEventSCN));
+        .set(getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY))
+        .to(Value.int64(logPosition));
 
     return builder.build();
   }

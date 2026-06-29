@@ -34,6 +34,7 @@ import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
@@ -66,11 +67,10 @@ public final class MySqlChangeEventContextTest {
 
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "file1.log");
-    changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 1L);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "file1.log");
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 1L);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new MySqlDsToSpSourceConnector()
@@ -82,10 +82,12 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
+        MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
     expected.put(
-        DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string("file1.log"));
-    expected.put(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(1));
+        MySqlDsToSpSourceConnector.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string("file1.log"));
+    expected.put(
+        MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(1));
 
     // Verify if MySqlChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(MySqlChangeEventContext.class));
@@ -105,11 +107,10 @@ public final class MySqlChangeEventContextTest {
 
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.MYSQL_LOGFILE_KEY, JSONObject.NULL);
-    changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, JSONObject.NULL);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, JSONObject.NULL);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, JSONObject.NULL);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new MySqlDsToSpSourceConnector()
@@ -121,9 +122,11 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));
-    expected.put(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(-1));
+        MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));
+    expected.put(
+        MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(-1));
 
     // Verify if MySqlChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(MySqlChangeEventContext.class));
@@ -144,9 +147,8 @@ public final class MySqlChangeEventContextTest {
 
     // Test Change Event which does not contain sort order fields like log file and log position.
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new MySqlDsToSpSourceConnector()
@@ -158,9 +160,11 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> expected =
         ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
-        DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));
-    expected.put(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(-1));
+        MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));
+    expected.put(
+        MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), Value.int64(-1));
 
     // Verify if MySqlChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(MySqlChangeEventContext.class));
@@ -212,11 +216,10 @@ public final class MySqlChangeEventContextTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("log_file", 3);
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.00001");
-    changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY, "mysql-bin.00001");
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY, 100L);
 
     ChangeEventContext changeEventContext =
         new MySqlDsToSpSourceConnector()
@@ -239,9 +242,8 @@ public final class MySqlChangeEventContextTest {
     long eventTimestamp = 1615159728L;
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users");
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext context =
         new MySqlDsToSpSourceConnector()
@@ -326,9 +328,8 @@ public final class MySqlChangeEventContextTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.DELETE_EVENT);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, eventTimestamp);
     // Source keys (mapped to non-generated columns in Spanner)
     changeEvent.put("first_name", "John");
     changeEvent.put("last_name", "Doe");

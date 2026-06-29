@@ -29,7 +29,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import org.junit.Test;
 
 /** Unit tests for testing change event comparison logic in MySql database. */
@@ -132,11 +131,11 @@ public final class MySqlChangeEventSequenceTest {
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
     when(mockContext.getShadowTable()).thenReturn("shadow_table1");
     when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
-    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
+    when(mockContext.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY))
         .thenReturn("shadow_timestamp");
-    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
+    when(mockContext.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGFILE_KEY))
         .thenReturn("log_file");
-    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
+    when(mockContext.getSafeShadowColumn(MySqlDsToSpSourceConnector.MYSQL_LOGPOSITION_KEY))
         .thenReturn("log_position");
 
     // Mock the behavior of the transaction context

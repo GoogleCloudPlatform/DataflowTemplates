@@ -39,7 +39,7 @@ public class PostgresChangeEventContext extends ChangeEventContext {
   public PostgresChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    super(changeEvent, ddl, DatastreamConstants.POSTGRES_SORT_ORDER);
+    super(changeEvent, ddl, PostgresqlDsToSpSourceConnector.POSTGRES_SORT_ORDER);
     this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
@@ -66,9 +66,11 @@ public class PostgresChangeEventContext extends ChangeEventContext {
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.POSTGRES_TIMESTAMP_KEY, /* requiredField= */ true);
+            changeEvent,
+            PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY,
+            /* requiredField= */ true);
     builder
-        .set(getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
+        .set(getSafeShadowColumn(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY))
         .to(Value.int64(changeEventTimestamp));
 
     /* Postgres backfill events "can" have LSN value as null.
@@ -76,13 +78,15 @@ public class PostgresChangeEventContext extends ChangeEventContext {
      */
     String changeEventLSN =
         ChangeEventTypeConvertor.toString(
-            changeEvent, DatastreamConstants.POSTGRES_LSN_KEY, /* requiredField= */ false);
+            changeEvent,
+            PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY,
+            /* requiredField= */ false);
     if (changeEventLSN == null) {
       changeEventLSN = "";
     }
     // Add lsn information to shadow table mutation
     builder
-        .set(getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY))
+        .set(getSafeShadowColumn(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY))
         .to(Value.string(changeEventLSN));
 
     return builder.build();

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream.source.oracle;
+package com.google.cloud.teleport.v2.templates.datastream.source.postgresql;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.services.datastream.v1.model.SourceConfig;
@@ -23,47 +23,73 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.source.IDsToSpSourceConnector;
+import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
-/** Oracle implementation of {@link IDsToSpSourceConnector} connector. */
-public class OracleDsToSpSourceConnector implements IDsToSpSourceConnector {
+/** PostgreSQL implementation of {@link IDsToSpSourceConnector} connector. */
+public class PostgresqlDsToSpSourceConnector implements IDsToSpSourceConnector {
+
+  /* List of Event keys, Shadow table information related to sort order in Postgres database. */
+  public static final String POSTGRES_TIMESTAMP_KEY = "_metadata_timestamp";
+  public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO =
+      Pair.of("timestamp", "INT64");
+  public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
+      Pair.of("timestamp", "bigint");
+  public static final String POSTGRES_LSN_KEY = "_metadata_lsn";
+  public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO = Pair.of("lsn", "STRING(MAX)");
+  public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO_PG_DIALECT =
+      Pair.of("lsn", "character varying(2621440)");
+  /* Mapping from Event keys to shadow table information for Postgres database with gsql dialect*/
+  public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER =
+      ImmutableMap.of(
+          PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY,
+          PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_SHADOW_INFO,
+          PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY,
+          PostgresqlDsToSpSourceConnector.POSTGRES_LSN_SHADOW_INFO);
+  /* Mapping from Event keys to shadow table information for Postgres database with postgres dialect*/
+  public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER_PG_DIALECT =
+      ImmutableMap.of(
+          PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY,
+          PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT,
+          PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY,
+          PostgresqlDsToSpSourceConnector.POSTGRES_LSN_SHADOW_INFO_PG_DIALECT);
 
   @Override
   public String getSourceType() {
-    return DatastreamConstants.ORACLE_SOURCE_TYPE;
+    return SourceConstants.POSTGRES_SOURCE_TYPE;
   }
 
   @Override
   public boolean matches(SourceConfig sourceConfig) {
-    return sourceConfig.getOracleSourceConfig() != null;
+    return sourceConfig.getPostgresqlSourceConfig() != null;
   }
 
   @Override
   public Map<String, Pair<String, String>> getSortOrder(Dialect dialect) {
     if (dialect == Dialect.POSTGRESQL) {
-      return DatastreamConstants.ORACLE_SORT_ORDER_PG_DIALECT;
+      return POSTGRES_SORT_ORDER_PG_DIALECT;
     }
-    return DatastreamConstants.ORACLE_SORT_ORDER;
+    return POSTGRES_SORT_ORDER;
   }
 
   @Override
   public ChangeEventContext createChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    return new OracleChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
+    return new PostgresChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
   }
 
   @Override
   public ChangeEventSequence createChangeEventSequenceFromChangeEventContext(
       ChangeEventContext changeEventContext)
       throws ChangeEventConvertorException, InvalidChangeEventException {
-    return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
+    return PostgresChangeEventSequence.createFromChangeEvent(changeEventContext);
   }
 
   @Override
@@ -73,7 +99,7 @@ public class OracleDsToSpSourceConnector implements IDsToSpSourceConnector {
       Ddl shadowDdl,
       boolean useSqlStatements)
       throws ChangeEventSequenceCreationException, InvalidChangeEventException {
-    return OracleChangeEventSequence.createFromShadowTable(
+    return PostgresChangeEventSequence.createFromShadowTable(
         transactionContext, changeEventContext, shadowDdl, useSqlStatements);
   }
 }

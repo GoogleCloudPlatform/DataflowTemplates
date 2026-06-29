@@ -25,11 +25,11 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceComparisonException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceCreationException;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.util.List;
 
 /**
@@ -45,7 +45,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
   private final Long scn;
 
   OracleChangeEventSequence(Long timestamp, Long scn) {
-    super(DatastreamConstants.ORACLE_SOURCE_TYPE);
+    super(SourceConstants.ORACLE_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.scn = scn;
   }
@@ -63,7 +63,9 @@ class OracleChangeEventSequence extends ChangeEventSequence {
 
     scn =
         ChangeEventTypeConvertor.toLong(
-            ctx.getChangeEvent(), DatastreamConstants.ORACLE_SCN_KEY, /* requiredField= */ false);
+            ctx.getChangeEvent(),
+            OracleDsToSpSourceConnector.ORACLE_SCN_KEY,
+            /* requiredField= */ false);
     if (scn == null) {
       scn = new Long(-1);
     }
@@ -72,7 +74,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
     return new OracleChangeEventSequence(
         ChangeEventTypeConvertor.toLong(
             ctx.getChangeEvent(),
-            DatastreamConstants.ORACLE_TIMESTAMP_KEY,
+            OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY,
             /* requiredField= */ true),
         scn);
   }
@@ -93,8 +95,8 @@ class OracleChangeEventSequence extends ChangeEventSequence {
       // Read columns from shadow table
       List<String> readColumnList =
           java.util.Arrays.asList(
-              context.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY),
-              context.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY));
+              context.getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_SCN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.
