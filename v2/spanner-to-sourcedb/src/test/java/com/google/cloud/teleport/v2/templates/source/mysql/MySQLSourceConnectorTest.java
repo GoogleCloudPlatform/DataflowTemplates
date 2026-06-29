@@ -50,11 +50,11 @@ public class MySQLSourceConnectorTest {
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private Shard mockShard;
 
-  private MySQLSourceConnector connector;
+  private MySQLSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new MySQLSourceConnector(mockConnectionHelper);
+    connector = new MySQLSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test
@@ -161,7 +161,7 @@ public class MySQLSourceConnectorTest {
   @Test
   public void testValidate_NotReadOnly() throws Exception {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
-    MySQLSourceConnector spyConnector = spy(connector);
+    MySQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     java.sql.Statement mockStatement = mock(java.sql.Statement.class);
@@ -178,7 +178,7 @@ public class MySQLSourceConnectorTest {
   @Test(expected = RuntimeException.class)
   public void testValidate_ReadOnly() throws Exception {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
-    MySQLSourceConnector spyConnector = spy(connector);
+    MySQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     java.sql.Statement mockStatement = mock(java.sql.Statement.class);
@@ -195,7 +195,7 @@ public class MySQLSourceConnectorTest {
   @Test(expected = RuntimeException.class)
   public void testValidate_NoVariable() throws Exception {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
-    MySQLSourceConnector spyConnector = spy(connector);
+    MySQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     java.sql.Statement mockStatement = mock(java.sql.Statement.class);
@@ -211,7 +211,7 @@ public class MySQLSourceConnectorTest {
   public void testGetInformationSchema() throws Exception {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
     when(mockShard.getDbName()).thenReturn("mydb");
-    MySQLSourceConnector spyConnector = spy(connector);
+    MySQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =

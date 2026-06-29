@@ -40,7 +40,7 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
@@ -637,7 +637,7 @@ public class SpannerToSourceDb {
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
-    ISourceConnector sourceConnector;
+    ISpToSrcSourceConnector sourceConnector;
     try {
       sourceConnector = SourceProcessorFactory.getSource(options.getSourceType());
       shards = sourceConnector.parseShardConfig(options.getSourceShardsFilePath());

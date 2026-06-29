@@ -47,11 +47,11 @@ public class SpannerSourceConnectorTest {
   @Mock private SpannerShard mockSpannerShard;
   @Mock private Shard mockGenericShard;
 
-  private SpannerSourceConnector connector;
+  private SpannerSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new SpannerSourceConnector(mockConnectionHelper);
+    connector = new SpannerSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test

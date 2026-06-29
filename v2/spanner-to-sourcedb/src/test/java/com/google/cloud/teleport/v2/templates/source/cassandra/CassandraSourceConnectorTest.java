@@ -47,11 +47,11 @@ public class CassandraSourceConnectorTest {
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private CassandraShard mockCassandraShard;
 
-  private CassandraSourceConnector connector;
+  private CassandraSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new CassandraSourceConnector(mockConnectionHelper);
+    connector = new CassandraSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test
@@ -144,7 +144,7 @@ public class CassandraSourceConnectorTest {
         mock(com.datastax.oss.driver.api.core.CqlSession.class);
     when(mockCassandraShard.getKeySpaceName()).thenReturn("keyspace");
 
-    CassandraSourceConnector spyConnector = spy(connector);
+    CassandraSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockSession).when(spyConnector).createCqlSession(any());
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =

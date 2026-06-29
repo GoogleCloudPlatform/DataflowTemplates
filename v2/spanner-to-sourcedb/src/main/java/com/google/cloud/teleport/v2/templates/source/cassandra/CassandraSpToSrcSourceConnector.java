@@ -33,21 +33,21 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchema
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptions;
 
-public class CassandraSourceConnector implements ISourceConnector {
+public class CassandraSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
 
-  public CassandraSourceConnector() {
+  public CassandraSpToSrcSourceConnector() {
     this.connectionHelper = new CassandraConnectionHelper();
   }
 
   @VisibleForTesting
-  CassandraSourceConnector(IConnectionHelper connectionHelper) {
+  CassandraSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
   }
 

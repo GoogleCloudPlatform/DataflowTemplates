@@ -25,7 +25,7 @@ import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Test;
@@ -133,7 +133,7 @@ public class SpannerToSourceDbExceptionClassifierTest {
   public void testClassifyDelegatesToConnector() {
     Throwable dialectEx = new RuntimeException("dialect exception");
     SpannerException spannerEx = SpannerExceptionFactory.newSpannerException(dialectEx);
-    ISourceConnector mockConnector = mock(ISourceConnector.class);
+    ISpToSrcSourceConnector mockConnector = mock(ISpToSrcSourceConnector.class);
 
     // 1. Connector returns permanent
     when(mockConnector.classifyException(dialectEx)).thenReturn(Constants.PERMANENT_ERROR_TAG);

@@ -50,11 +50,11 @@ public class PostgreSQLSourceConnectorTest {
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private Shard mockShard;
 
-  private PostgreSQLSourceConnector connector;
+  private PostgreSQLSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new PostgreSQLSourceConnector(mockConnectionHelper);
+    connector = new PostgreSQLSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test
@@ -144,7 +144,7 @@ public class PostgreSQLSourceConnectorTest {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
     when(mockShard.getDbName()).thenReturn("mydb");
     when(mockShard.getNamespace()).thenReturn("public");
-    PostgreSQLSourceConnector spyConnector = spy(connector);
+    PostgreSQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =

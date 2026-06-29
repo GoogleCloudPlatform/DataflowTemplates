@@ -23,22 +23,22 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SpannerInformationSchemaScanner;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptions;
 
-public class SpannerSourceConnector implements ISourceConnector {
+public class SpannerSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
 
-  public SpannerSourceConnector() {
+  public SpannerSpToSrcSourceConnector() {
     this.connectionHelper = new SpannerConnectionHelper();
   }
 
   @VisibleForTesting
-  SpannerSourceConnector(IConnectionHelper connectionHelper) {
+  SpannerSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
   }
 
