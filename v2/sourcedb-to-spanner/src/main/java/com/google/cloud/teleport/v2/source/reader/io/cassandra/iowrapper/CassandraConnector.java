@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraS
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +42,7 @@ public final class CassandraConnector implements AutoCloseable {
           case ASTRA -> getSessionAstra(cassandraDataSource.astra(), schemaReference);
           default -> getSessionOss(cassandraDataSource.oss(), schemaReference);
         };
-    Log.info(
+    LOG.info(
         "Connected to Cassandra Source dataSource = {}, schemaReference = {}",
         cassandraDataSource,
         schemaReference);
@@ -51,7 +50,7 @@ public final class CassandraConnector implements AutoCloseable {
 
   private CqlSession getSessionOss(
       CassandraDataSourceOss dataSourceOss, CassandraSchemaReference schemaReference) {
-    Log.info(
+    LOG.info(
         "Connecting to Cassandra OSS Source dataSource = {}, schemaReference = {}",
         dataSourceOss,
         schemaReference);
@@ -66,7 +65,7 @@ public final class CassandraConnector implements AutoCloseable {
 
   private CqlSession getSessionAstra(
       AstraDbDataSource astraDbDataSource, CassandraSchemaReference schemaReference) {
-    Log.info(
+    LOG.info(
         "Connecting to Cassandra Astra Source dataSource = {}, schemaReference = {}",
         astraDbDataSource,
         schemaReference);

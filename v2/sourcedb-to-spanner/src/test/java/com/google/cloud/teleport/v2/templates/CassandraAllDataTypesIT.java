@@ -51,7 +51,6 @@ import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.jetbrains.annotations.NotNull;
-import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -252,7 +251,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
                             : row.getValue(colName).toString()));
         readValues.add(rowMapBuilder.build());
       }
-      Log.info("Spanner Cassandra Values are: {}", readValues);
+      LOG.info("Spanner Cassandra Values are: {}", readValues);
       assertThat(readValues).isEqualTo(entry.getValue());
     }
   }

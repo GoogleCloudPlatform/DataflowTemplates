@@ -31,7 +31,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +53,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
   public ImmutableList<String> discoverTables(
       DataSource dataSource, SourceSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
-    Log.info(
+    LOG.info(
         "CassandraSchemaDiscovery discoverTables started dataSource = {}, sourceSchemaReference = {}",
         dataSource,
         sourceSchemaReference);
@@ -63,7 +62,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
         sourceSchemaReference.getKind().equals(SourceSchemaReference.Kind.CASSANDRA));
     ImmutableList<String> tables =
         discoverTables(dataSource.cassandra(), sourceSchemaReference.cassandra());
-    Log.info(
+    LOG.info(
         "CassandraSchemaDiscovery discoverTables completed dataSource = {}, sourceSchemaReference = {}, tables = {}",
         dataSource,
         sourceSchemaReference,
@@ -87,7 +86,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
           .map(n -> n.asCql(true))
           .collect(ImmutableList.toImmutableList());
     } catch (DriverException e) {
-      Log.error(
+      LOG.error(
           "CassandraSchemaDiscovery discoverTables dataSource = {}, sourceSchemaReference = {}",
           dataSource,
           sourceSchemaReference,
@@ -112,7 +111,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource, SourceSchemaReference schemaReference, ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
-    Log.info(
+    LOG.info(
         "CassandraSchemaDiscovery discoverTableSchema started dataSource = {}, sourceSchemaReference = {}, tables = {}",
         dataSource,
         schemaReference,
@@ -122,7 +121,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
         schemaReference.getKind().equals(SourceSchemaReference.Kind.CASSANDRA));
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> schema =
         this.discoverTableSchema(dataSource.cassandra(), schemaReference.cassandra(), tables);
-    Log.info(
+    LOG.info(
         "CassandraSchemaDiscovery discoverTableSchema completed dataSource = {}, sourceSchemaReference = {}, tables = {}, schema = {}",
         dataSource,
         schemaReference,
@@ -146,7 +145,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
       }
       return builder.build();
     } catch (DriverException e) {
-      Log.error(
+      LOG.error(
           "CassandraSchemaDiscovery discoverTableSchema dataSource = {}, sourceSchemaReference = {}, tables = {}",
           dataSource,
           schemaReference,

@@ -24,10 +24,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.jline.utils.Log;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ChangeEventToMapConvertor {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventToMapConvertor.class);
+
   public static Map<String, Object> convertChangeEventToMap(JsonNode changeEvent)
       throws InvalidChangeEventException {
     Map<String, Object> sourceRecord = new HashMap<>();
@@ -83,7 +87,7 @@ public class ChangeEventToMapConvertor {
       } else if (columnValue instanceof String) {
         ((ObjectNode) changeEvent).put(columnName, (String) columnValue);
       } else {
-        Log.error(
+        LOG.error(
             "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
         throw new InvalidTransformationException(
             "Column name(" + columnName + ") has unsupported column value(" + columnValue + ")");
