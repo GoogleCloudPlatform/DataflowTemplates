@@ -54,4 +54,20 @@ public class AstraConnectionConfig implements SourceConnectionConfig {
   public void setAstraDbRegion(String astraDbRegion) {
     this.astraDbRegion = astraDbRegion;
   }
+
+  @Override
+  public void validateFields() {
+    if (databaseId == null) {
+      throw new IllegalArgumentException("databaseId cannot be null");
+    }
+    if (astraToken == null) {
+      throw new IllegalArgumentException("astraToken cannot be null");
+    }
+    if (keySpace == null) {
+      throw new IllegalArgumentException("keySpace cannot be null");
+    }
+    if (astraDbRegion == null) {
+      throw new IllegalArgumentException("astraDbRegion cannot be null");
+    }
+  }
 }
