@@ -77,10 +77,6 @@ resource "google_storage_bucket_object" "session_file_object" {
 }
 
 locals {
-  host_to_stream_map = {
-    for shard in var.shard_list :
-    shard.datastream_params.mysql_host => shard.datastream_params.stream_id
-  }
 }
 
 # if the sharding context file is specified, use that, otherwise

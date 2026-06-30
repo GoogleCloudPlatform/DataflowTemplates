@@ -819,29 +819,7 @@ public class DataStreamToSpanner {
             options.getTransformationContextFilePath());
 
     // Ingest sharding context file into memory.
-    ShardingContext shardingContext = new ShardingContext();
-    if (options.getSourceConfigURL() != null && !options.getSourceConfigURL().isEmpty()) {
-      try {
-        SourceConfigParser parser = new SourceConfigParser(new SecretManagerAccessorImpl());
-        SourceConnectionConfig sourceConfig =
-            parser.parseConfiguration(
-                getSourceType(options), options.getSourceConfigURL(), /* resolveSecrets= */ false);
-
-        if (sourceConfig instanceof JdbcShardConfig) {
-          JdbcShardConfig jdbcShardConfig = (JdbcShardConfig) sourceConfig;
-          List<Shard> shards = jdbcShardConfig.getShardConfigs();
-          Map<String, Map<String, String>> streamToDbAndShardMap = new HashMap<>();
-          for (Shard shard : shards) {
-            streamToDbAndShardMap
-                .computeIfAbsent(shard.getStreamId(), k -> new HashMap<>())
-                .put(shard.getDbName(), shard.getLogicalShardId());
-          }
-          shardingContext = new ShardingContext(streamToDbAndShardMap);
-        }
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to parse source config URL", e);
-      }
-    }
+    ShardingContext shardingContext = getShardingContext(options);
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(
@@ -964,6 +942,34 @@ public class DataStreamToSpanner {
                 .setIncludePaneInfo(true)
                 .build());
     return pipeline;
+  }
+
+  static ShardingContext getShardingContext(Options options) {
+    // Ingest sharding context file into memory.
+    ShardingContext shardingContext = new ShardingContext();
+    if (options.getSourceConfigURL() != null && !options.getSourceConfigURL().isEmpty()) {
+      try {
+        SourceConfigParser parser = new SourceConfigParser(new SecretManagerAccessorImpl());
+        SourceConnectionConfig sourceConfig =
+            parser.parseConfiguration(
+                getSourceType(options), options.getSourceConfigURL(), /* resolveSecrets= */ false);
+
+        if (sourceConfig instanceof JdbcShardConfig jdbcShardConfig) {
+          List<Shard> shards = jdbcShardConfig.getShardConfigs();
+          Map<String, Map<String, String>> streamToDbAndShardMap = new HashMap<>();
+          for (Shard shard : shards) {
+            // TO-DO: add checks in SourceConfigParser to ensure not null fields.
+            streamToDbAndShardMap
+                .computeIfAbsent(shard.getStreamId(), k -> new HashMap<>())
+                .put(shard.getDbName(), shard.getLogicalShardId());
+          }
+          shardingContext = new ShardingContext(streamToDbAndShardMap);
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to parse source config URL", e);
+      }
+    }
+    return shardingContext;
   }
 
   static SpannerConfig getShadowTableSpannerConfig(Options options) {
