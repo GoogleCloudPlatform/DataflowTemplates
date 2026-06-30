@@ -62,8 +62,11 @@ public class ComparisonRecordMapper implements Serializable {
   public ComparisonRecord mapFrom(GenericRecord avroRecord) {
     try {
       String tableName = avroRecord.get("tableName").toString();
+      Object shardIdObj = avroRecord.get("shardId");
       String shardId =
-          avroRecord.get("shardId") != null ? avroRecord.get("shardId").toString() : "";
+          (shardIdObj != null && !shardIdObj.toString().trim().isEmpty())
+              ? shardIdObj.toString()
+              : null;
       GenericRecord payload = (GenericRecord) avroRecord.get("payload");
       GenericRecordTypeConvertor convertor =
           new GenericRecordTypeConvertor(schemaMapper, "", shardId, transformer);
@@ -81,7 +84,7 @@ public class ComparisonRecordMapper implements Serializable {
       }
       List<String> pkNames =
           table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
-      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames);
+      return buildRecord(spannerTableName, new TreeMap<>(values), pkNames, shardId);
     } catch (Exception e) {
       throw new RuntimeException(
           "Error mapping GenericRecord to ComparisonRecord: " + e.getMessage(), e);
@@ -103,7 +106,7 @@ public class ComparisonRecordMapper implements Serializable {
     List<String> pkNames =
         table.primaryKeys().stream().map(IndexColumn::name).collect(Collectors.toList());
 
-    return buildRecord(tableName, values, pkNames);
+    return buildRecord(tableName, values, pkNames, null);
   }
 
   /**
@@ -128,7 +131,7 @@ public class ComparisonRecordMapper implements Serializable {
    * on.
    */
   private ComparisonRecord buildRecord(
-      String tableName, TreeMap<String, Value> data, List<String> pkNames) {
+      String tableName, TreeMap<String, Value> data, List<String> pkNames, String shardId) {
 
     // 1. Use the record data to compute the hash
     Hasher hasher = Hashing.murmur3_128().newHasher();
@@ -167,6 +170,7 @@ public class ComparisonRecordMapper implements Serializable {
         .setHash(hash)
         .setPrimaryKeyColumns(primaryKeyColumns)
         .setSchemaName(schemaName)
+        .setShardId(shardId)
         .build();
   }
 

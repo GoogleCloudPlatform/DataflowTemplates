@@ -77,6 +77,7 @@ public class ReportResultsTransformTest implements Serializable {
         ComparisonRecord.builder()
             .setTableName("Table1")
             .setHash("hash1")
+            .setShardId("shard1")
             .setPrimaryKeyColumns(
                 Arrays.asList(Column.builder().setColName("id").setColValue("1").build()))
             .build();
@@ -105,6 +106,7 @@ public class ReportResultsTransformTest implements Serializable {
             .setRecordKey("[id:1]")
             .setSource(ReportResultsTransform.GCS_SOURCE)
             .setHash("hash1")
+            .setShardId("shard1")
             .build();
 
     MismatchedRecord expectedSourceMiss =

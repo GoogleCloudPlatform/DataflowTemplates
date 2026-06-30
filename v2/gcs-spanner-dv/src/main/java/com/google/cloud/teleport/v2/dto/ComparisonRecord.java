@@ -34,6 +34,9 @@ public abstract class ComparisonRecord {
   @Nullable
   public abstract String getSchemaName();
 
+  @Nullable
+  public abstract String getShardId();
+
   public static Builder builder() {
     return new AutoValue_ComparisonRecord.Builder();
   }
@@ -48,6 +51,8 @@ public abstract class ComparisonRecord {
     public abstract Builder setHash(String hash);
 
     public abstract Builder setSchemaName(String schemaName);
+
+    public abstract Builder setShardId(String shardId);
 
     public abstract ComparisonRecord build();
   }
