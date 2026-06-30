@@ -4,9 +4,13 @@ options:
       - order: 1
         name: "topic"
         description: "Pub/Sub input topic"
-        help: "Pub/Sub topic to read the input from."
+        help: >
+          Pub/Sub topic to read the input from. Exactly one of topic or
+          subscription must be provided. If a topic is given, a new
+          temporary subscription is created for each pipeline run, even if
+          a subscription for that topic already exists.
         example: "projects/your-project-id/topics/your-topic-name"
-        required: true
+        required: false
         type: text
       - order: 2
         name: "format"
@@ -84,7 +88,10 @@ options:
       - order: 1
         name: "subscription"
         description: "Pub/Sub subscription"
-        help: "Pub/Sub subscription to read the input from."
+        help: >
+          Pub/Sub subscription to read the input from. Exactly one of
+          subscription or topic must be provided. Use this when you want
+          to read from an existing subscription without creating a new one.
         example: "projects/your-project-id/subscriptions/your-subscription-name"
         required: false
         type: text
