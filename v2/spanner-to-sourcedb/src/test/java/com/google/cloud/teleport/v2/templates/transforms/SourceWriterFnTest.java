@@ -17,10 +17,8 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
-import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -61,6 +59,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
@@ -174,14 +173,20 @@ public class SourceWriterFnTest {
     // constraint failure.
     doThrow(new SQLNonTransientConnectionException("transient connection error", "HY000", 1161))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("1161")), any()); // This is the child_id for which we want to retryable
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("1161")),
+            any()); // This is the child_id for which we want to retryable
     // connection error
     doThrow(new SQLNonTransientConnectionException("permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("4242")), any()); // no retryable error
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("4242")),
+            any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("12345")), any()); // to test code path of generic exception
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("12345")),
+            any()); // to test code path of generic exception
     doThrow(new SQLSyntaxErrorException("sql syntax error"))
         .when(mockSqlDao)
         .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("6666")), any());
@@ -200,7 +205,9 @@ public class SourceWriterFnTest {
     doThrow(new IllegalArgumentException("illegal argument"))
         .when(mockSqlDao)
         .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("2222")), any());
-    doNothing().when(mockSqlDao).write(argThat(arg -> arg != null && arg.getDmlStatement().contains("parent1")), any());
+    doNothing()
+        .when(mockSqlDao)
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("parent1")), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -540,11 +547,16 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
-    ArgumentCaptor<DMLGeneratorResponse> argumentCaptor = ArgumentCaptor.forClass(DMLGeneratorResponse.class);
+    ArgumentCaptor<DMLGeneratorResponse> argumentCaptor =
+        ArgumentCaptor.forClass(DMLGeneratorResponse.class);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture(), any());
-    assertTrue(argumentCaptor.getValue().getDmlStatement().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
+    assertTrue(
+        argumentCaptor
+            .getValue()
+            .getDmlStatement()
+            .contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
@@ -1301,8 +1313,10 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.processElement(processContext);
-    verify(mockSqlDao, never()).write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
-    verify(mockSqlDao, never()).write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
+    verify(mockSqlDao, never())
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
+    verify(mockSqlDao, never())
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
   }
 
   @Test
