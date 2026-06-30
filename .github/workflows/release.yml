@@ -18,23 +18,19 @@ on:
         required: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
     name: Create Release
-    permissions:
-      contents: write
     runs-on: [self-hosted, release]
     env:
       IT_REGION: us-west2
     steps:
       - name: Get releaser identity
-        env:
-          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name "$ACTOR"
-          git config --global user.email "$ACTOR@users.noreply.github.com"
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -47,7 +43,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Create release branch
         run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
         env:
@@ -147,11 +142,9 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
-        env:
-          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name "$ACTOR"
-          git config --global user.email "$ACTOR@users.noreply.github.com"
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -165,7 +158,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -192,11 +184,9 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
-        env:
-          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name "$ACTOR"
-          git config --global user.email "$ACTOR@users.noreply.github.com"
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -210,7 +200,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -237,11 +226,9 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
-        env:
-          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name "$ACTOR"
-          git config --global user.email "$ACTOR@users.noreply.github.com"
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -255,7 +242,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -282,11 +268,9 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
-        env:
-          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name "$ACTOR"
-          git config --global user.email "$ACTOR@users.noreply.github.com"
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -300,7 +284,6 @@ jobs:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: false
       - name: Push tags
         run: |
           git push -u origin --tags
