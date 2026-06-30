@@ -151,12 +151,16 @@ public class PipelineController {
   }
 
   static PipelineResult executeCassandraMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+      SourceDbToSpannerOptions options,
+      SourceConnectionConfig sourceConnectionConfig,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig) {
     return executeSingleInstanceMigrationForDbConfigContainer(
         options,
         pipeline,
         spannerConfig,
-        new DbConfigContainerDefaultImpl(CassandraIOWrapperFactory.fromPipelineOptions(options)));
+        new DbConfigContainerDefaultImpl(
+            CassandraIOWrapperFactory.fromConfig(options, sourceConnectionConfig)));
   }
 
   @VisibleForTesting

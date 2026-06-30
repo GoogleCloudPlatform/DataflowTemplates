@@ -116,10 +116,11 @@ public class SourceDbToSpanner {
         Preconditions.checkArgument(
             StringUtils.isNotEmpty(options.getSourceConfigURL()),
             "Cassandra Dialect needs sourceConfigURL to be set.");
-        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+        return PipelineController.executeCassandraMigration(
+            options, sourceConnectionConfig, pipeline, spannerConfig);
       case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT:
-        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
-
+        return PipelineController.executeCassandraMigration(
+            options, sourceConnectionConfig, pipeline, spannerConfig);
       default:
         /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
         /* Making jdbc as default case which includes MYSQL and PG. */
