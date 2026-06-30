@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.common.base.Preconditions;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -80,7 +82,8 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
         astraDBRegion);
   }
 
-  public static CassandraIOWrapperFactory fromPipelineOptions(SourceDbToSpannerOptions options) {
+  public static CassandraIOWrapperFactory fromConfig(
+      SourceDbToSpannerOptions options, SourceConnectionConfig sourceConnectionConfig) {
     String gcsPath = options.getSourceConfigURL();
     // Implementation Details. the pipeline options are strings.
     Preconditions.checkArgument(
@@ -93,14 +96,28 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
         options.getSourceDbDialect().equals(SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT)
             || StringUtils.startsWith(gcsPath, "gs://"),
         "GCS path Expected in place of `" + gcsPath + "`.");
+
+    GuardedStringValueProvider astraDBToken = GuardedStringValueProvider.create("");
+    String astraDBDatabaseId = "";
+    String astraDBKeyspace = "";
+    String astraDBRegion = "";
+
+    if (sourceConnectionConfig instanceof AstraConnectionConfig) {
+      AstraConnectionConfig astraConfig = (AstraConnectionConfig) sourceConnectionConfig;
+      astraDBToken = GuardedStringValueProvider.create(astraConfig.getAstraToken());
+      astraDBDatabaseId = astraConfig.getDatabaseId();
+      astraDBKeyspace = astraConfig.getKeySpace();
+      astraDBRegion = astraConfig.getAstraDbRegion();
+    }
+
     return CassandraIOWrapperFactory.create(
         options.getSourceConfigURL(),
         options.getNumPartitions(),
         options.getSourceDbDialect(),
-        GuardedStringValueProvider.create(options.getAstraDBToken()),
-        options.getAstraDBDatabaseId(),
-        options.getAstraDBKeySpace(),
-        options.getAstraDBRegion());
+        astraDBToken,
+        astraDBDatabaseId,
+        astraDBKeyspace,
+        astraDBRegion);
   }
 
   /** Create an {@link IoWrapper} instance for a list of SourceTables. */
