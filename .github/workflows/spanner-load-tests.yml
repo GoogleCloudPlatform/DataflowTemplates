@@ -27,8 +27,7 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: read
+permissions: write-all
 
 jobs:
   load_tests:
@@ -41,7 +40,6 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
-        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -49,8 +47,6 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Tests
-      env:
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
@@ -61,7 +57,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-        --test="$SPECIFIC_TEST"
+        --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
@@ -97,7 +93,6 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
-        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -105,8 +100,6 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Test Observers
-      env:
-        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
         ./cicd/run-load-test-observer \
         --modules-to-build="lt/observability" \
@@ -116,7 +109,7 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-        --test="$SPECIFIC_TEST"
+        --test="${{ github.event.inputs.specific_test }}"
     - name: Upload Load Test Observer Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails

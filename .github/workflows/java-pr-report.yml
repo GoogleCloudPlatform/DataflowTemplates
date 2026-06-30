@@ -16,7 +16,6 @@
 
 name: Java PR Report
 on:
-  # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows:
       - Java PR

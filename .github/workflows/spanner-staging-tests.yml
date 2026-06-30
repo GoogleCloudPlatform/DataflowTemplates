@@ -52,20 +52,17 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         ref: ${{ inputs.commitOrTag }}
-        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Integration Tests
-      env:
-        SPANNER_HOST: ${{ inputs.spannerHost }}
       run: |
         ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="v1" \
         --it-region="us-central1" \
         --it-project="span-cloud-migrations-staging" \
         --it-artifact-bucket="dataflow-testing-it-spanner-staging" \
-        --it-spanner-host="$SPANNER_HOST"
+        --it-spanner-host=${{ inputs.spannerHost }}
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails

@@ -71,8 +71,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
 
       - name: Setup Environment
         id: setup-env
@@ -81,27 +79,27 @@ jobs:
       - name: Resolve Variables
         id: resolve-vars
         run: |
-          PROJECT_ID="${GITHUB_EVENT_INPUTS_PROJECTID}"
+          PROJECT_ID="${{ github.event.inputs.projectId }}"
           PROJECT_ID="${PROJECT_ID:-span-cloud-migrations-staging}"
           
-          BUCKET_NAME="${GITHUB_EVENT_INPUTS_BUCKETNAME}"
+          BUCKET_NAME="${{ github.event.inputs.bucketName }}"
           BUCKET_NAME="${BUCKET_NAME:-spanner-migrations-staging}"
           
-          TEMPLATE_NAME="${GITHUB_EVENT_INPUTS_TEMPLATENAME}"
+          TEMPLATE_NAME="${{ github.event.inputs.templateName }}"
           TEMPLATE_NAME="${TEMPLATE_NAME:-Spanner_to_SourceDb}"
           
-          MODULE_PATH="${GITHUB_EVENT_INPUTS_MODULEPATH}"
+          MODULE_PATH="${{ github.event.inputs.modulePath }}"
           MODULE_PATH="${MODULE_PATH:-v2/spanner-to-sourcedb}"
           
-          STAGE_PREFIX="${GITHUB_EVENT_INPUTS_STAGEPREFIX}"
+          STAGE_PREFIX="${{ github.event.inputs.stagePrefix }}"
           if [ -z "$STAGE_PREFIX" ]; then
             STAGE_PREFIX="templates-$(date +'%Y-%m-%d')"
           fi
 
-          RUN_INTEGRATION_TESTS="${GITHUB_EVENT_INPUTS_RUNINTEGRATIONTESTS}"
+          RUN_INTEGRATION_TESTS="${{ github.event.inputs.runIntegrationTests }}"
           RUN_INTEGRATION_TESTS="${RUN_INTEGRATION_TESTS:-true}"
 
-          SPECIFIC_TEST="${GITHUB_EVENT_INPUTS_SPECIFIC_TEST}"
+          SPECIFIC_TEST="${{ github.event.inputs.specific_test }}"
           SPECIFIC_TEST="${SPECIFIC_TEST:-}"
 
           echo "Resolved Variables:"
@@ -123,19 +121,9 @@ jobs:
           echo "runIntegrationTests=$RUN_INTEGRATION_TESTS" >> $GITHUB_OUTPUT
           echo "specificTest=$SPECIFIC_TEST" >> $GITHUB_OUTPUT
         shell: bash
-        env:
-          GITHUB_EVENT_INPUTS_PROJECTID: ${{ github.event.inputs.projectId }}
-          GITHUB_EVENT_INPUTS_BUCKETNAME: ${{ github.event.inputs.bucketName }}
-          GITHUB_EVENT_INPUTS_TEMPLATENAME: ${{ github.event.inputs.templateName }}
-          GITHUB_EVENT_INPUTS_MODULEPATH: ${{ github.event.inputs.modulePath }}
-          GITHUB_EVENT_INPUTS_STAGEPREFIX: ${{ github.event.inputs.stagePrefix }}
-          GITHUB_EVENT_INPUTS_RUNINTEGRATIONTESTS: ${{ github.event.inputs.runIntegrationTests }}
-          GITHUB_EVENT_INPUTS_SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
 
       - name: Run Integration Tests
         if: ${{ steps.resolve-vars.outputs.runIntegrationTests == 'true' }}
-        env:
-          SPECIFIC_TEST: ${{ steps.resolve-vars.outputs.specificTest }}
         run: |
           echo "Starting Spanner Integration Tests..."
           ./cicd/run-it-tests \
@@ -145,11 +133,11 @@ jobs:
             --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
             --it-private-connectivity="datastream-connect-2" \
             --it-cloud-proxy-host="10.128.0.16" \
-            --test="$SPECIFIC_TEST"
+            --test="${{ steps.resolve-vars.outputs.specificTest }}"
 
       - name: Upload Integration Tests Report
         if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@v7
         with:
           name: surefire-integration-test-results
           path: |
@@ -160,7 +148,7 @@ jobs:
 
       - name: Integration Test report on GitHub
         if: always() && (steps.resolve-vars.outputs.runIntegrationTests == 'true')
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
+        uses: dorny/test-reporter@v3
         with:
           name: Integration Test report on GitHub
           path: '**/surefire-reports/TEST-*.xml'
@@ -176,20 +164,14 @@ jobs:
           echo "Starting Spanner Targeted Release staging..."
           
           mvn clean package -PtemplatesStage \
-            -DprojectId="${STEPS_RESOLVE_VARS_OUTPUTS_PROJECTID}" \
-            -DbucketName="${STEPS_RESOLVE_VARS_OUTPUTS_BUCKETNAME}" \
-            -DstagePrefix="${STEPS_RESOLVE_VARS_OUTPUTS_STAGEPREFIX}" \
-            -DtemplateName="${STEPS_RESOLVE_VARS_OUTPUTS_TEMPLATENAME}" \
+            -DprojectId="${{ steps.resolve-vars.outputs.projectId }}" \
+            -DbucketName="${{ steps.resolve-vars.outputs.bucketName }}" \
+            -DstagePrefix="${{ steps.resolve-vars.outputs.stagePrefix }}" \
+            -DtemplateName="${{ steps.resolve-vars.outputs.templateName }}" \
             -Dmaven.test.skip \
             -DskipIntegrationTests \
-            -pl ${STEPS_RESOLVE_VARS_OUTPUTS_MODULEPATH} -am
+            -pl ${{ steps.resolve-vars.outputs.modulePath }} -am
         shell: bash
-        env:
-          STEPS_RESOLVE_VARS_OUTPUTS_PROJECTID: ${{ steps.resolve-vars.outputs.projectId }}
-          STEPS_RESOLVE_VARS_OUTPUTS_BUCKETNAME: ${{ steps.resolve-vars.outputs.bucketName }}
-          STEPS_RESOLVE_VARS_OUTPUTS_STAGEPREFIX: ${{ steps.resolve-vars.outputs.stagePrefix }}
-          STEPS_RESOLVE_VARS_OUTPUTS_TEMPLATENAME: ${{ steps.resolve-vars.outputs.templateName }}
-          STEPS_RESOLVE_VARS_OUTPUTS_MODULEPATH: ${{ steps.resolve-vars.outputs.modulePath }}
 
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env

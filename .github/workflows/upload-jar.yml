@@ -30,9 +30,6 @@ on:
         required: true
 
 
-permissions:
-  contents: read
-
 jobs:
   build-and-upload:
     runs-on:  [self-hosted, release]
@@ -49,14 +46,12 @@ jobs:
         with:
           repository: apache/beam
           path: beam
-          persist-credentials: false
 
       - name: Clone Beam Starter
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: apache/beam-starter-java-provider
           path: beam-starter-java-provider
-          persist-credentials: false
 
       - name: Remove default github maven configuration
         run: rm ~/.m2/settings.xml

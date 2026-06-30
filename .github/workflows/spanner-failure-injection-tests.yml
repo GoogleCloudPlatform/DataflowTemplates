@@ -34,13 +34,10 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
-        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Spanner failure injection tests
-      env:
-        TEST_NAME: ${{ github.event.inputs.test_name }}
       run: |
         ./cicd/run-failure-injection-tests \
         --modules-to-build="SPANNER" \
@@ -49,7 +46,7 @@ jobs:
         --it-artifact-bucket="span-cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-connect-2" \
         --it-cloud-proxy-host="10.128.0.16" \
-        --test="$TEST_NAME"
+        --test="${{ github.event.inputs.test_name }}"
     - name: Upload Test Report
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always() # always run even if the previous step fails
