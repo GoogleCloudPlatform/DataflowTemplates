@@ -36,6 +36,9 @@ import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceTableReference;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.net.InetSocketAddress;
@@ -138,12 +141,9 @@ public class CassandraIOWrapperFactoryTest {
     when(mockOptions.getSourceDbDialect()).thenReturn("CASSANDRA");
     when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
     when(mockOptions.getNumPartitions()).thenReturn(null);
-    when(mockOptions.getAstraDBToken()).thenReturn("");
-    when(mockOptions.getAstraDBDatabaseId()).thenReturn("");
-    when(mockOptions.getAstraDBRegion()).thenReturn("");
-    when(mockOptions.getAstraDBKeySpace()).thenReturn("");
+    CassandraConnectionConfig mockSourceConfig = mock(CassandraConnectionConfig.class);
     CassandraIOWrapperFactory cassandraIOWrapperFactory =
-        CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
+        CassandraIOWrapperFactory.fromConfig(mockOptions, mockSourceConfig);
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);
     assertThat(cassandraIOWrapperFactory.getIOWrapper(TABLES_TO_READ, null).discoverTableSchema())
         .isEqualTo(ImmutableList.of(mockSourceSchema));
@@ -163,12 +163,15 @@ public class CassandraIOWrapperFactoryTest {
     when(mockOptions.getSourceDbDialect()).thenReturn("ASTRA_DB");
     when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
     when(mockOptions.getNumPartitions()).thenReturn(null);
-    when(mockOptions.getAstraDBToken()).thenReturn("AstraCS:testToken");
-    when(mockOptions.getAstraDBDatabaseId()).thenReturn("testId");
-    when(mockOptions.getAstraDBRegion()).thenReturn("testRegion");
-    when(mockOptions.getAstraDBKeySpace()).thenReturn("testKeyspace");
+
+    AstraConnectionConfig mockSourceConfig = mock(AstraConnectionConfig.class);
+    when(mockSourceConfig.getAstraToken()).thenReturn("AstraCS:testToken");
+    when(mockSourceConfig.getDatabaseId()).thenReturn("testId");
+    when(mockSourceConfig.getAstraDbRegion()).thenReturn("testRegion");
+    when(mockSourceConfig.getKeySpace()).thenReturn("testKeyspace");
+
     CassandraIOWrapperFactory cassandraIOWrapperFactory =
-        CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
+        CassandraIOWrapperFactory.fromConfig(mockOptions, mockSourceConfig);
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);
     assertThat(cassandraIOWrapperFactory.cassandraDialect()).isEqualTo(CassandraDialect.ASTRA);
     assertThat(cassandraIOWrapperFactory.astraDBKeyspace()).isEqualTo("testKeyspace");
@@ -185,11 +188,12 @@ public class CassandraIOWrapperFactoryTest {
         mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
     when(mockOptions.getSourceDbDialect()).thenReturn("MYSQL").thenReturn("CASSANDRA");
     when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
+    SourceConnectionConfig mockConfig = mock(SourceConnectionConfig.class);
     assertThrows(
         IllegalArgumentException.class,
-        () -> CassandraIOWrapperFactory.fromPipelineOptions(mockOptions));
+        () -> CassandraIOWrapperFactory.fromConfig(mockOptions, mockConfig));
     assertThrows(
         IllegalArgumentException.class,
-        () -> CassandraIOWrapperFactory.fromPipelineOptions(mockOptions));
+        () -> CassandraIOWrapperFactory.fromConfig(mockOptions, mockConfig));
   }
 }
