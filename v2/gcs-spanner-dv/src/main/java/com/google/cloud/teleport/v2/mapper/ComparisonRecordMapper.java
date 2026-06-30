@@ -62,8 +62,11 @@ public class ComparisonRecordMapper implements Serializable {
   public ComparisonRecord mapFrom(GenericRecord avroRecord) {
     try {
       String tableName = avroRecord.get("tableName").toString();
+      Object shardIdObj = avroRecord.get("shardId");
       String shardId =
-          avroRecord.get("shardId") != null ? avroRecord.get("shardId").toString() : "";
+          (shardIdObj != null && !shardIdObj.toString().trim().isEmpty())
+              ? shardIdObj.toString()
+              : null;
       GenericRecord payload = (GenericRecord) avroRecord.get("payload");
       GenericRecordTypeConvertor convertor =
           new GenericRecordTypeConvertor(schemaMapper, "", shardId, transformer);
