@@ -25,7 +25,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCh
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 
-public class CassandraDao implements IDao<DMLGeneratorResponse> {
+public class CassandraDao implements IDao {
   private final String cassandraUrl;
   private final String cassandraUser;
   private final IConnectionHelper connectionHelper;

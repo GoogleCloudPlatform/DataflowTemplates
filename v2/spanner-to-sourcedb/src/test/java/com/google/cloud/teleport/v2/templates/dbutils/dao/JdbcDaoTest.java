@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
@@ -55,7 +56,7 @@ public final class JdbcDaoTest {
   @Test(expected = ConnectionException.class)
   public void testNullConnection() throws Exception {
     JdbcDao sqlDao = new JdbcDao("url", "user", new JdbcConnectionHelper());
-    sqlDao.write("sql", null);
+    sqlDao.write(new DMLGeneratorResponse("sql"), null);
   }
 
   @Test
@@ -65,7 +66,7 @@ public final class JdbcDaoTest {
     JdbcConnectionHelper jdbcConnectionHelper = new JdbcConnectionHelper();
     jdbcConnectionHelper.setConnectionPoolMap(connectionPoolMap);
     JdbcDao sqlDao = new JdbcDao("url", "user", jdbcConnectionHelper);
-    sqlDao.write("sql", null);
+    sqlDao.write(new DMLGeneratorResponse("sql"), null);
     verify(mockStatement).executeUpdate(eq("sql"));
   }
 }

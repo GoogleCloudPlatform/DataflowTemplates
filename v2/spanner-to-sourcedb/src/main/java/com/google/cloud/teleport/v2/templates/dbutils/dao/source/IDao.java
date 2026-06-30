@@ -15,31 +15,33 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
-public interface IDao<T> {
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+
+public interface IDao {
   /**
-   * Executes a given write statement against the data source then calls the transactionalCheck
+   * Executes a given write dmlGeneratorResponse against the data source then calls the transactionalCheck
    * callback function (if not null). The transaction will be committed only if the callback
    * function did not throw any exception. In any other case, an exception will be thrown.
    *
-   * @param statement Query statement.
+   * @param dmlGeneratorResponse Query dmlGeneratorResponse.
    * @param transactionalCheck Callback function which will be executed and checked before
    *     committing the transaction.
    * @throws Exception If the sqlStatement could not be successfully committed.
    */
-  void write(T statement, TransactionalCheck transactionalCheck) throws Exception;
+  void write(DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck) throws Exception;
 
   /**
-   * Executes a given write statement against the data source under a specific transaction context.
+   * Executes a given write dmlGeneratorResponse against the data source under a specific transaction context.
    * If the transaction context is null, it delegates to {@link #write(Object, TransactionalCheck)}.
    *
-   * @param statement Query statement.
+   * @param dmlGeneratorResponse Query dmlGeneratorResponse.
    * @param transactionalCheck Callback function which will be executed and checked before
    *     committing the transaction.
    * @param transactionContext The transaction context to execute the write under.
    * @throws Exception If the write could not be successfully executed.
    */
-  default void write(T statement, TransactionalCheck transactionalCheck, Object transactionContext)
+  default void write(DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck, Object transactionContext)
       throws Exception {
-    write(statement, transactionalCheck);
+    write(dmlGeneratorResponse, transactionalCheck);
   }
 }

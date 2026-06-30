@@ -151,7 +151,7 @@ public class InputRecordProcessor {
         return true; // filtered
       }
 
-      dao.write(dmlGeneratorResponse.getDmlStatement(), check);
+      dao.write(dmlGeneratorResponse, check);
       return false;
     } catch (Exception e) {
       // Not logging the error here since the error can be retryable error and high number of them
