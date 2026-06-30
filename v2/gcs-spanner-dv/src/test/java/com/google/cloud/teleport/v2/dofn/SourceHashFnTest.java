@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.dofn;
 
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -28,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.common.collect.ImmutableList;
+import java.util.Arrays;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -78,6 +80,12 @@ public class SourceHashFnTest {
             .type()
             .stringType()
             .noDefault()
+            .name("primaryKeys")
+            .type()
+            .array()
+            .items()
+            .stringType()
+            .noDefault()
             .name("payload")
             .type(payloadSchema)
             .noDefault()
@@ -86,6 +94,7 @@ public class SourceHashFnTest {
     GenericRecord avroRecord = new org.apache.avro.generic.GenericData.Record(avroSchema);
     avroRecord.put("tableName", "SourceTable");
     avroRecord.put("shardId", "shard1");
+    avroRecord.put("primaryKeys", Arrays.asList("col1"));
     avroRecord.put("payload", payload);
 
     when(context.element()).thenReturn(avroRecord);

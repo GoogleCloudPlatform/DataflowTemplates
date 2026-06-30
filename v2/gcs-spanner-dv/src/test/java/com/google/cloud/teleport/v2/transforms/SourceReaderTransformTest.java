@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -24,6 +25,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -171,7 +173,7 @@ public class SourceReaderTransformTest implements Serializable {
     assertTrue(
         e.getMessage()
             .contains(
-                "Error mapping GenericRecord to ComparisonRecord: Spanner table not found for source: 'InvalidTable'"));
+                "Spanner table not found for source: 'InvalidTable'"));
   }
 
   @Test
@@ -241,6 +243,12 @@ public class SourceReaderTransformTest implements Serializable {
             .fields()
             .requiredString("tableName")
             .requiredString("shardId")
+            .name("primaryKeys")
+            .type()
+            .array()
+            .items()
+            .stringType()
+            .noDefault()
             .name("payload")
             .type(payloadSchema)
             .noDefault()
@@ -257,6 +265,7 @@ public class SourceReaderTransformTest implements Serializable {
       GenericRecord record = new GenericData.Record(schema);
       record.put("tableName", tableName);
       record.put("shardId", "shard" + id);
+      record.put("primaryKeys", Arrays.asList("id"));
       record.put("payload", payload);
 
       dataFileWriter.append(record);
