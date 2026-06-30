@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
@@ -274,6 +275,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("numWorkers", "1");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
+            put("startTimestamp", Timestamp.now().toString());
           }
         };
 

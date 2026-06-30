@@ -860,12 +860,16 @@ public class DataStreamToSpanner {
             ? tempLocation + "filteredEvents/"
             : options.getFilteredEventsDirectory();
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
+    TextIO.Write filterEventsWrite = TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites();
+    if (options.getRunner() != null && options.getRunner().getSimpleName().equals("DirectRunner")) {
+      filterEventsWrite = filterEventsWrite.withNumShards(20);
+    }
     transformedRecords
         .get(DatastreamToSpannerConstants.FILTERED_EVENT_TAG)
         .apply(Window.into(FixedWindows.of(org.joda.time.Duration.standardMinutes(1))))
         .apply(
             "Write Filtered Events To GCS",
-            TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
+            filterEventsWrite);
 
     spannerConfig =
         SpannerServiceFactoryImpl.createSpannerService(
