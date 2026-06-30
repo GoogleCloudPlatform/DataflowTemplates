@@ -18,12 +18,14 @@ package com.google.cloud.teleport.v2.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
+import com.google.cloud.teleport.v2.datastream.utils.DataStreamClient;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.CaseFormat;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -35,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -59,7 +62,10 @@ public abstract class DatastreamToDML
   private static MappedObjectCache<List<String>, Map<String, String>> tableCache;
   private static MappedObjectCache<List<String>, List<String>> primaryKeyCache;
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
-  private DataSource dataSource;
+  private transient DataSource dataSource;
+  private DataStreamClient datastreamClient;
+  private String databaseType;
+  private transient DynamicJdbcDatabase dynamicJdbcDatabase;
   public String quoteCharacter;
   protected String defaultCasing = "LOWERCASE";
   protected String columnCasing = "LOWERCASE";
@@ -67,6 +73,20 @@ public abstract class DatastreamToDML
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
   protected Integer schemaCacheRefreshMinutes = 1440;
+
+  private static final Cache<String, Object> tableLockMap =
+      CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
+
+  private static Object getTableLock(String tableKey) {
+    synchronized (tableLockMap) {
+      Object lock = tableLockMap.getIfPresent(tableKey);
+      if (lock == null) {
+        lock = new Object();
+        tableLockMap.put(tableKey, lock);
+      }
+      return lock;
+    }
+  }
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -116,6 +136,26 @@ public abstract class DatastreamToDML
       this.schemaCacheRefreshMinutes = cacheMinutes;
     }
     return this;
+  }
+
+  public DatastreamToDML withDataStreamClient(DataStreamClient datastreamClient) {
+    this.datastreamClient = datastreamClient;
+    return this;
+  }
+
+  public DatastreamToDML withDatabaseType(String databaseType) {
+    this.databaseType = databaseType;
+    return this;
+  }
+
+  public DatastreamToDML withDynamicJdbcDatabase(DynamicJdbcDatabase dynamicJdbcDatabase) {
+    this.dynamicJdbcDatabase = dynamicJdbcDatabase;
+    return this;
+  }
+
+  public static void clearCaches() {
+    tableCache = null;
+    primaryKeyCache = null;
   }
 
   protected String applyCasing(String name) {
@@ -177,18 +217,21 @@ public abstract class DatastreamToDML
 
       // Null rows suggest no DML is required.
       if (dmlInfo != null) {
+        LOG.info(
+            "Processing record: Table={}, row_id={}, timestamp={}, PKs={}, SQL={}",
+            dmlInfo.getTableName(),
+            rowObj.has("row_id") ? rowObj.get("row_id").asText() : "N/A",
+            dmlInfo.getOrderByValueString(),
+            dmlInfo.getAllPkFields(),
+            dmlInfo.getDmlSql());
         LOG.debug("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
       } else {
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
-    } catch (IOException e) {
-      context.output(
-          ERROR_TAG,
-          FailsafeElement.of(element.getOriginalPayload(), jsonString)
-              .setErrorMessage(e.getMessage())
-              .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     } catch (Exception e) {
+      LOG.error(
+          "Failed to process record for DML. Row: {}, Error: {}", jsonString, e.getMessage(), e);
       context.output(
           ERROR_TAG,
           FailsafeElement.of(element.getOriginalPayload(), jsonString)
@@ -212,19 +255,16 @@ public abstract class DatastreamToDML
     return this.dataSource;
   }
 
-  private synchronized void setUpTableCache() {
+  private static synchronized void setUpTableCache(DataSource dataSource, int refreshMinutes) {
     if (tableCache == null) {
-      tableCache =
-          new JdbcTableCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+      tableCache = new JdbcTableCache(dataSource).withCacheResetTimeUnitValue(refreshMinutes);
     }
   }
 
-  private synchronized void setUpPrimaryKeyCache() {
+  private static synchronized void setUpPrimaryKeyCache(DataSource dataSource, int refreshMinutes) {
     if (primaryKeyCache == null) {
       primaryKeyCache =
-          new JdbcPrimaryKeyCache(this.getDataSource())
-              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
+          new JdbcPrimaryKeyCache(dataSource).withCacheResetTimeUnitValue(refreshMinutes);
     }
   }
 
@@ -232,11 +272,11 @@ public abstract class DatastreamToDML
       String catalogName, String schemaName, String tableName) {
     List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
 
-    if (this.tableCache == null) {
-      setUpTableCache();
+    if (tableCache == null) {
+      setUpTableCache(this.getDataSource(), this.schemaCacheRefreshMinutes);
     }
 
-    return this.tableCache.get(searchKey);
+    return tableCache.get(searchKey);
   }
 
   protected String getFullSourceTableName(DatastreamRow row) {
@@ -255,11 +295,11 @@ public abstract class DatastreamToDML
       String catalogName, String schemaName, String tableName, JsonNode rowObj) {
     List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
 
-    if (this.primaryKeyCache == null) {
-      setUpPrimaryKeyCache();
+    if (primaryKeyCache == null) {
+      setUpPrimaryKeyCache(this.getDataSource(), this.schemaCacheRefreshMinutes);
     }
 
-    List<String> destinationPrimaryKeys = this.primaryKeyCache.get(searchKey);
+    List<String> destinationPrimaryKeys = primaryKeyCache.get(searchKey);
 
     java.util.Set<String> casedSourceFieldNames = new java.util.HashSet<>();
     for (java.util.Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
@@ -280,22 +320,149 @@ public abstract class DatastreamToDML
     return quoteCharacter + name + quoteCharacter;
   }
 
+  public synchronized DynamicJdbcDatabase getDynamicJdbcDatabase() {
+    if (this.dynamicJdbcDatabase == null) {
+      this.dynamicJdbcDatabase = new DynamicJdbcDatabase(getDataSource(), datastreamClient);
+    }
+    return this.dynamicJdbcDatabase;
+  }
+
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
-    // Oracle uses upper case while Postgres uses all lowercase.
-    // We lowercase the values of these metadata fields to align with
-    // our schema conversion rules.
     String catalogName = this.getTargetCatalogName(row);
     String schemaName = this.getTargetSchemaName(row);
     String tableName = this.getTargetTableName(row);
+    String tableKey = String.format("%s:%s:%s", catalogName, schemaName, tableName);
 
-    Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
-    if (tableSchema.isEmpty()) {
-      throw new RuntimeException(
-          String.format("Target table not found: %s.%s", schemaName, tableName));
+    Map<String, String> tableSchema;
+    List<String> primaryKeys;
+
+    Object lock = getTableLock(tableKey);
+    synchronized (lock) {
+      tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+      if (tableSchema.isEmpty()) {
+        if (this.datastreamClient == null) {
+          throw new RuntimeException(
+              String.format("Target table not found: %s.%s", schemaName, tableName));
+        }
+
+        try {
+          LOG.info(
+              "Table not found, attempting Dynamic DDL to create: {}.{}", schemaName, tableName);
+          getDynamicJdbcDatabase()
+              .createTable(
+                  row.getStreamName(),
+                  row.getSchemaName(),
+                  row.getTableName(),
+                  schemaName,
+                  tableName,
+                  databaseType);
+          // Refresh cache
+          tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          if (primaryKeyCache != null) {
+            primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+          }
+          tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+
+          // If still empty, the JDBC metadata might be lagging.
+          // We perform a few retries with increasing backoff.
+          int retries = 0;
+          while (tableSchema.isEmpty() && retries < 3) {
+            LOG.warn(
+                "Target table {} not found in JDBC metadata after creation, retry {}/3.",
+                tableName,
+                retries + 1);
+            try {
+              Thread.sleep(2000L * (retries + 1));
+            } catch (InterruptedException ie) {
+              /* ignore */
+            }
+            tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+            tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+            retries++;
+          }
+          LOG.info("Schema after table creation for {}: {}", tableName, tableSchema);
+        } catch (Exception e) {
+          throw new RuntimeException("Failed to create table via Dynamic DDL", e);
+        }
+      }
+
+      if (tableSchema.isEmpty()) {
+        throw new RuntimeException(
+            String.format(
+                "Target table still empty after Dynamic DDL: %s.%s", schemaName, tableName));
+      }
+
+      // Check for missing columns
+      List<String> missingColumns = new ArrayList<>();
+      for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        if (sourceFieldName.startsWith("_metadata")) {
+          continue;
+        }
+        String casedColumnName = applyCasingLogic(sourceFieldName, this.columnCasing);
+        if (!tableSchema.containsKey(casedColumnName)) {
+          missingColumns.add(sourceFieldName);
+        }
+      }
+
+      if (!missingColumns.isEmpty()) {
+        if (this.datastreamClient != null) {
+          List<String> stillMissingColumns = new ArrayList<>();
+          for (String missingColumn : missingColumns) {
+            String casedColumnName = applyCasingLogic(missingColumn, this.columnCasing);
+            if (!tableSchema.containsKey(casedColumnName)) {
+              stillMissingColumns.add(missingColumn);
+            }
+          }
+
+          if (!stillMissingColumns.isEmpty()) {
+            try {
+              for (String missingColumn : stillMissingColumns) {
+                LOG.info(
+                    "Column not found, attempting Dynamic DDL to add: {}.{}.{}",
+                    schemaName,
+                    tableName,
+                    missingColumn);
+                getDynamicJdbcDatabase()
+                    .addColumn(
+                        row.getStreamName(),
+                        row.getSchemaName(),
+                        row.getTableName(),
+                        schemaName,
+                        tableName,
+                        missingColumn,
+                        databaseType);
+              }
+              // Refresh cache
+              tableCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+              tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+              LOG.info("Schema after column addition for {}: {}", tableName, tableSchema);
+            } catch (Exception e) {
+              LOG.error("Failed to add columns via Dynamic DDL", e);
+            }
+          }
+        }
+      }
+
+      primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+
+      // If PKs are empty but table exists, metadata might be lagging on a different worker.
+      // Forced refresh once to be sure.
+      if (primaryKeys.isEmpty() || primaryKeys.equals(getDefaultPrimaryKeys())) {
+        primaryKeyCache.reset(ImmutableList.of(catalogName, schemaName, tableName));
+        primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+      }
+
+      if (primaryKeys.isEmpty() || primaryKeys.equals(getDefaultPrimaryKeys())) {
+        LOG.warn(
+            "Processing record for {} without detected primary keys. This may cause data loss due to state collisions. PKs: {}, Row: {}",
+            tableName,
+            primaryKeys,
+            rowObj.toString());
+      }
     }
 
-    List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
     List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
     List<String> sourcePrimaryKeys = row.getPrimaryKeys();
     List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
@@ -373,7 +540,8 @@ public abstract class DatastreamToDML
     } else {
       columnValue = columnObj.toString();
     }
-    return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
+    String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+    return cleanDataTypeValueSql(columnValue, casedColumnName, tableSchema);
   }
 
   public String cleanDataTypeValueSql(
@@ -406,9 +574,9 @@ public abstract class DatastreamToDML
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+      if (overrideIsDeleted && "_metadata_deleted".equals(fieldName)) {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val == "true" ? "1" : "0");
+        fieldValues.add(val.equals("true") ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
