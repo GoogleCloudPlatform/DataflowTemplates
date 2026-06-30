@@ -1,0 +1,212 @@
+/*
+ * Copyright (C) 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.source.oracle;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import java.io.IOException;
+import java.util.Map;
+import org.json.JSONObject;
+import org.junit.Test;
+
+/**
+ * Unit tests 1) ChangeEventContextFactory methods for oracle change events. 2) shadow table
+ * generation for Oracle change events.
+ */
+public final class OracleChangeEventContextTest {
+
+  private final long eventTimestamp = 1615159728L;
+
+  private JsonNode getJsonNode(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    return mapper.readTree(json);
+  }
+
+  @Test
+  public void canGenerateShadowTableMutation() throws Exception {
+
+    // Test Ddl
+    Ddl ddl = ChangeEventConvertorTest.getTestDdl();
+
+    // Test Change Event
+    JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, "1");
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+
+    ChangeEventContext changeEventContext =
+        new OracleDsToSpSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // Expected result
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
+    expected.put(
+        OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(OracleDsToSpSourceConnector.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(1));
+
+    // Verify if OracleChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify shadow mutation
+    assertThat(actual, is(expected));
+    assertEquals(shadowMutation.getTable(), "shadow_Users2");
+    assertEquals(shadowMutation.getOperation(), Mutation.Op.INSERT_OR_UPDATE);
+  }
+
+  @Test
+  public void canGenerateShadowTableMutationForBackfillEvent() throws Exception {
+
+    // Test Ddl
+    Ddl ddl = ChangeEventConvertorTest.getTestDdl();
+
+    // Test Change Event
+    JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, JSONObject.NULL);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+
+    ChangeEventContext changeEventContext =
+        new OracleDsToSpSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // Expected result
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
+    expected.put(
+        OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(OracleDsToSpSourceConnector.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
+
+    // Verify if OracleChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify shadow mutation
+    assertThat(actual, is(expected));
+    assertEquals(shadowMutation.getTable(), "shadow_Users2");
+    assertEquals(shadowMutation.getOperation(), Mutation.Op.INSERT_OR_UPDATE);
+  }
+
+  @Test
+  public void canGenerateShadowTableMutationForBackfillEventWithMissingKeys() throws Exception {
+
+    // Test Ddl
+    Ddl ddl = ChangeEventConvertorTest.getTestDdl();
+
+    // Test Change Event
+    JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+
+    ChangeEventContext changeEventContext =
+        new OracleDsToSpSourceConnector()
+            .createChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // Expected result
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
+    expected.put(
+        OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
+        Value.int64(eventTimestamp));
+    expected.put(OracleDsToSpSourceConnector.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
+
+    // Verify if OracleChangeEventContext was actually created.
+    assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
+    // Verify shadow mutation
+    assertThat(actual, is(expected));
+    assertEquals(shadowMutation.getTable(), "shadow_Users2");
+    assertEquals(shadowMutation.getOperation(), Mutation.Op.INSERT_OR_UPDATE);
+  }
+
+  @Test
+  public void canGenerateShadowTableMutationWithCollision() throws Exception {
+    long eventTimestamp = 1615159728L;
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("scn")
+            .string()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("scn")
+            .end()
+            .endTable()
+            .build();
+    Ddl shadowDdl =
+        Ddl.builder()
+            .createTable("shadow_MyTable")
+            .column("scn")
+            .string()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .column("shadow_scn")
+            .int64()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("scn")
+            .end()
+            .endTable()
+            .build();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("scn", "scn_string");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, 999L);
+
+    ChangeEventContext changeEventContext =
+        new OracleDsToSpSourceConnector()
+            .createChangeEventContext(
+                getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // The PK column 'scn' should be present.
+    assertEquals(actual.get("scn"), Value.string("scn_string"));
+    // The conflicting shadow column should be renamed to 'shadow_scn'.
+    assertEquals(actual.get("shadow_scn"), Value.int64(999L));
+    // The other shadow columns should be present with their default names.
+    assertEquals(actual.get("timestamp"), Value.int64(eventTimestamp));
+  }
+}

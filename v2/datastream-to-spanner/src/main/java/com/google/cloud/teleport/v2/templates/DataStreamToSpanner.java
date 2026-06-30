@@ -45,7 +45,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextRead
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
