@@ -214,6 +214,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
 
     DebeziumToPubSubDataSender dataSender;
     try {
+      TimeUnit.SECONDS.sleep(30);
       // Start up Debezium connector in a separate thread
       dataSender = App.setup(new String[] {path.toString()});
       Thread embeddedConnector = new Thread(dataSender);
@@ -256,7 +257,7 @@ public class CdcToBigQueryChangeApplierPipelineIT extends JDBCBaseIT {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
-                createConfig(info),
+                createConfig(info, java.time.Duration.ofMinutes(5)),
                 BigQueryRowsCheck.builder(
                         bigQueryResourceManager,
                         TableId.of(bigQueryResourceManager.getDatasetId(), PEOPLE))
