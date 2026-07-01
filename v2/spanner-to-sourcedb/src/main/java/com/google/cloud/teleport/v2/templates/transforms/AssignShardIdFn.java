@@ -599,6 +599,8 @@ public class AssignShardIdFn
           case STRING:
           case PG_VARCHAR:
           case PG_TEXT:
+          case UUID:
+          case PG_UUID:
             pk.append(
                 DataChangeRecordTypeConvertor.toString(
                     keysJson, keyColName, /* requiredField= */ true));
@@ -658,6 +660,8 @@ public class AssignShardIdFn
         case STRING:
         case PG_VARCHAR:
         case PG_TEXT:
+        case UUID:
+        case PG_UUID:
           return DataChangeRecordTypeConvertor.toString(valuesJson, colName, false);
         case NUMERIC:
         case PG_NUMERIC:
@@ -704,6 +708,9 @@ public class AssignShardIdFn
         case PG_VARCHAR:
         case PG_TEXT:
           return value.getString();
+        case UUID:
+        case PG_UUID:
+          return value.getUuid();
         case NUMERIC:
         case PG_NUMERIC:
           return value.getNumeric();

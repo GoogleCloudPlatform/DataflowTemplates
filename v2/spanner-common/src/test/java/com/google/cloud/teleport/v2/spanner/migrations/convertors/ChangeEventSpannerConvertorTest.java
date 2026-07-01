@@ -432,4 +432,77 @@ public class ChangeEventSpannerConvertorTest {
     Truth.assertThat(actual.get("last_name").getAsString()).isEqualTo("B");
     Truth.assertThat(actual.containsKey("full_name")).isFalse();
   }
+
+  @Test
+  public void canConvertChangeEventWithUuidToPrimaryKey() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("UsersUuid")
+            .column("uuid_field")
+            .type(Type.uuid())
+            .endColumn()
+            .column("pg_uuid_field")
+            .type(Type.pgUuid())
+            .endColumn()
+            .primaryKey()
+            .asc("uuid_field")
+            .asc("pg_uuid_field")
+            .end()
+            .endTable()
+            .build();
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("uuid_field", "550e8400-e29b-41d4-a716-446655440000");
+    changeEvent.put("pg_uuid_field", "123e4567-e89b-12d3-a456-426614174000");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "UsersUuid");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    Key key =
+        ChangeEventSpannerConvertor.changeEventToPrimaryKey(
+            "UsersUuid", ddl, ce, /* convertNameToLowerCase= */ true);
+
+    Iterable<Object> keyParts = key.getParts();
+    ArrayList<Object> expectedKeyParts = new ArrayList<>();
+    expectedKeyParts.add("550e8400-e29b-41d4-a716-446655440000");
+    expectedKeyParts.add("123e4567-e89b-12d3-a456-426614174000");
+
+    assertThat(keyParts, is(expectedKeyParts));
+  }
+
+  @Test
+  public void mutationFromEventWithUuid() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("UsersUuid")
+            .column("uuid_field")
+            .type(Type.uuid())
+            .endColumn()
+            .column("pg_uuid_field")
+            .type(Type.pgUuid())
+            .endColumn()
+            .primaryKey()
+            .asc("uuid_field")
+            .end()
+            .endTable()
+            .build();
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("uuid_field", "550e8400-e29b-41d4-a716-446655440000");
+    changeEvent.put("pg_uuid_field", "123e4567-e89b-12d3-a456-426614174000");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "UsersUuid");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    Mutation mutation =
+        ChangeEventSpannerConvertor.mutationFromEvent(
+            ddl.table("UsersUuid"),
+            ce,
+            List.of("uuid_field", "pg_uuid_field"),
+            Set.of("uuid_field"));
+
+    Map<String, Value> actual = mutation.asMap();
+    Truth.assertThat(actual.get("uuid_field").getAsString())
+        .isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+    Truth.assertThat(actual.get("pg_uuid_field").getAsString())
+        .isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+  }
 }
