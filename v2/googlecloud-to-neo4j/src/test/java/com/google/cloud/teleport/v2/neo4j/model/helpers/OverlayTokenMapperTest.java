@@ -16,23 +16,16 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
-import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import java.util.Map;
 import org.junit.Test;
 
-public class OptionsParamsMapperTest {
+public class OverlayTokenMapperTest {
 
   @Test
-  public void populatesOverlayTokensFromJsonOptions() {
-    Neo4jFlexTemplateOptions templateOptions = mock(Neo4jFlexTemplateOptions.class);
-    when(templateOptions.getOptionsJson()).thenReturn("{\"foo\": \"bar\"}");
+  public void populates_overlay_tokens_from_json_string() {
+    var options = OverlayTokenParser.parse("{\"foo\": \"bar\"}");
 
-    OptionsParams options = OptionsParamsMapper.fromPipelineOptions(templateOptions);
-
-    assertThat(options.getTokenMap()).isEqualTo(Map.of("foo", "bar"));
+    assertThat(options.tokens()).isEqualTo(Map.of("foo", "bar"));
   }
 }
