@@ -541,8 +541,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   /**
    * Constructs an optimized boundary query for PostgreSQL columns like UUID or BYTEA.
    *
-   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID or BYTEA types.
-   * Instead, we use subqueries with ORDER BY and LIMIT 1.
+   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID or BYTEA types. Instead, we
+   * use subqueries with ORDER BY and LIMIT 1.
    *
    * <p>For compound/partitioned keys, we wrap the query in a CTE to specify the WHERE clause once,
    * keeping prepared statement parameter indexes aligned with the generic binder. The 'NOT
