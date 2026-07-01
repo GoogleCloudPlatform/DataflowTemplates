@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
  *   <li><b>Multi-Column Splitting</b>: When a range on a single column becomes too large but cannot
  *       be split further (e.g., all rows have the same value for that column), it triggers the
  *       addition of the next configured partition column.
+ *   <li><b>Multi-Round Adaptive Memory Halving</b>: For extremely large ranges (hotspots), multiple
+ *       rounds of memory splitting are performed in a single stage to accelerate convergence.
  * </ul>
  */
 @AutoValue
@@ -179,21 +181,43 @@ public abstract class RangeClassifierDoFn extends DoFn<KV<Integer, ImmutableList
     mean = Math.max(1, totalCount / maxPartitions);
 
     for (Range range : ranges) {
-      if (range.isUncounted()
-          || range.count()
-              > ((1 + TableSplitSpecification.SPLITTER_MAX_RELATIVE_DEVIATION) * mean)) {
+      // if `count` is not indeterminate, approxCount is always same as count.
+      // (we don't trigger the approximate count query if the actual query does not time out and in
+      // such a case, we copy the actual count into the approximate count.)
+      long effectiveCount =
+          range.approxCount() != Range.INDETERMINATE_COUNT ? range.approxCount() : range.count();
+      // In the first 20% of split stages (which is 25% of the original base stages),
+      // we only perform approximate counts.
+      // After that, if an actual count query times out (becoming indeterminate),
+      // we treat it as an empirical signal of a large range and force a split.
+      boolean isUncountable =
+          range.count() == Range.INDETERMINATE_COUNT && stageIdx() >= tableMaxSplitHeight / 5;
+
+      if (effectiveCount > ((1 + TableSplitSpecification.SPLITTER_MAX_RELATIVE_DEVIATION) * mean)
+          || isUncountable) {
+
         if (stageIdx() == 0) {
           // For the first stage, we have an initial split without the counts.
           c.output(TO_COUNT_TAG, range);
         } else if (range.isSplittable(c)) {
-          Pair<Range, Range> splitPair = range.split(c);
+          int splitRounds = 1;
+          if (effectiveCount != Range.INDETERMINATE_COUNT && mean > 0) {
+            double ratio = (double) effectiveCount / mean;
+            // Beyond 16, we want to avoid aggressive splitting, so we cap at 4 round split.
+            if (ratio >= 16.0) {
+              splitRounds = 4;
+            } else if (ratio >= 8.0) {
+              splitRounds = 3;
+            } else if (ratio >= 4.0) {
+              splitRounds = 2;
+            }
+          }
           logger.debug(
-              "Counting range {} and {} for stage {}.",
-              splitPair.getLeft(),
-              splitPair.getRight(),
+              "Performing {} rounds of memory splitting for range {} at stage {}.",
+              splitRounds,
+              range,
               stageIdx());
-          c.output(TO_COUNT_TAG, splitPair.getLeft());
-          c.output(TO_COUNT_TAG, splitPair.getRight());
+          multiRoundSplit(range, splitRounds, c);
         } else {
           if (range.height() + 1 < tableSplitSpecification.partitionColumns().size()) {
             PartitionColumn newColumn =
@@ -216,6 +240,16 @@ public abstract class RangeClassifierDoFn extends DoFn<KV<Integer, ImmutableList
         c.output(TO_RETAIN_TAG, range);
       }
     }
+  }
+
+  private void multiRoundSplit(Range range, int roundsLeft, ProcessContext c) {
+    if (roundsLeft <= 0 || !range.isSplittable(c)) {
+      c.output(TO_COUNT_TAG, range);
+      return;
+    }
+    Pair<Range, Range> splitPair = range.split(c);
+    multiRoundSplit(splitPair.getLeft(), roundsLeft - 1, c);
+    multiRoundSplit(splitPair.getRight(), roundsLeft - 1, c);
   }
 
   public static Builder builder() {
