@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import com.networknt.schema.JsonSchema;
+import com.networknt.schema.Schema;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
@@ -55,8 +55,8 @@ public class InputValidator {
   }
 
   public static ParsingResult validateNeo4jConnection(String json) {
-    JsonSchema connectionSchema =
-        Json.SCHEMA_FACTORY.getSchema(
+    Schema connectionSchema =
+        Json.SCHEMA_REGISTRY.getSchema(
             InputValidator.class.getResourceAsStream("/schemas/connection.v1.0.json"));
     return Json.parseAndValidate(json, connectionSchema);
   }

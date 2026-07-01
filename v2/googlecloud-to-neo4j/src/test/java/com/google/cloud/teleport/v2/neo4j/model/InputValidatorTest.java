@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -122,9 +122,9 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).hasSize(1);
-    assertThat(errors.get(0)).startsWith("The provided string is not valid JSON: invalidjson");
+    assertThat(errors.get(0)).startsWith("$: The provided string is not valid JSON: invalidjson");
   }
 
   @Test
@@ -135,7 +135,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: array found, object expected");
   }
 
@@ -147,7 +147,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'server_url' not found");
   }
 
@@ -159,7 +159,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors)
         .contains("$.server_url: does not match the regex pattern ^(neo4j|bolt)(\\+s(sc)?)?://");
   }
@@ -173,7 +173,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors)
         .containsExactly(
             "$.server_url: does not match the regex pattern ^(neo4j|bolt)(\\+s(sc)?)?://");
@@ -188,7 +188,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.database: must be at least 1 characters long");
   }
 
@@ -201,7 +201,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors)
         .containsExactly(
             "$.auth_type: does not have a value in the enumeration [\"basic\", \"none\", \"kerberos\", \"bearer\", \"custom\"]");
@@ -215,7 +215,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'username' not found");
   }
 
@@ -228,7 +228,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.username: must be at least 1 characters long");
   }
 
@@ -240,7 +240,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'pwd' not found");
   }
 
@@ -252,7 +252,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.pwd: must be at least 1 characters long");
   }
 
@@ -264,7 +264,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'ticket' not found");
   }
 
@@ -277,7 +277,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.ticket: must be at least 1 characters long");
   }
 
@@ -290,7 +290,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.token: must be at least 1 characters long");
   }
 
@@ -303,7 +303,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'principal' not found");
   }
 
@@ -316,7 +316,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.principal: must be at least 1 characters long");
   }
 
@@ -329,7 +329,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'credentials' not found");
   }
 
@@ -342,7 +342,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.credentials: must be at least 1 characters long");
   }
 
@@ -355,7 +355,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$: required property 'scheme' not found");
   }
 
@@ -368,7 +368,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.scheme: must be at least 1 characters long");
   }
 
@@ -381,7 +381,7 @@ public class InputValidatorTest {
 
     assertThat(result.isSuccessful()).isFalse();
     List<String> errors =
-        result.getErrors().stream().map(ValidationMessage::toString).collect(Collectors.toList());
+        result.getErrors().stream().map(Error::toString).collect(Collectors.toList());
     assertThat(errors).containsExactly("$.realm: must be at least 1 characters long");
   }
 
