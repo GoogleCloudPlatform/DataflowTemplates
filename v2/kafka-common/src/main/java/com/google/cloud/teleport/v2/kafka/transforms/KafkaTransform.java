@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareConsumerFactoryFn;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -128,6 +129,126 @@ public class KafkaTransform {
     if (enableCommitOffsets != null && enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
+    return kafkaRecords;
+  }
+
+  /**
+   * Configures optimized Kafka consumer that reads byte arrays with performance enhancements. This
+   * method supports redistribution, offset deduplication, and other performance optimizations based
+   * on the provided KafkaReadOptions.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @param enableCommitOffsets whether to commit offsets
+   * @param options KafkaReadOptions containing performance optimization settings
+   * @return PCollection of Kafka Key & Value Pair deserialized in byte array format with
+   *     optimizations
+   */
+  public static KafkaIO.Read<byte[], byte[]> readBytesFromKafkaOptimized(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      Boolean enableCommitOffsets,
+      KafkaReadOptions options) {
+
+    KafkaIO.Read<byte[], byte[]> kafkaRecords =
+        KafkaIO.<byte[], byte[]>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
+            .withValueDeserializerAndCoder(ByteArrayDeserializer.class, ByteArrayCoder.of())
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+
+    // Apply redistribution optimizations if enabled
+    if (options.getEnableKafkaRedistribution() != null && options.getEnableKafkaRedistribution()) {
+      kafkaRecords = kafkaRecords.withRedistribute();
+
+      // Set redistribution keys if specified
+      if (options.getKafkaRedistributeNumKeys() != null
+          && options.getKafkaRedistributeNumKeys() > 0) {
+        kafkaRecords = kafkaRecords.withRedistributeNumKeys(options.getKafkaRedistributeNumKeys());
+      }
+
+      // Apply offset deduplication if enabled (default true when redistribution is enabled)
+      if (options.getEnableOffsetDeduplication() == null
+          || options.getEnableOffsetDeduplication()) {
+        kafkaRecords = kafkaRecords.withOffsetDeduplication(true);
+      }
+    }
+
+    // Apply duplicate handling if specified
+    if (options.getAllowDuplicates() != null && options.getAllowDuplicates()) {
+      kafkaRecords = kafkaRecords.withAllowDuplicates(true);
+    }
+
+    // Apply offset commit configuration
+    if (enableCommitOffsets != null && enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
+    }
+
+    return kafkaRecords;
+  }
+
+  /**
+   * Configures optimized Kafka consumer that reads Strings with performance enhancements. This
+   * method supports redistribution, offset deduplication, and other performance optimizations based
+   * on the provided KafkaReadOptions.
+   *
+   * @param bootstrapServers Kafka servers to read from
+   * @param topicsList Kafka topics to read from
+   * @param config configuration for the Kafka consumer
+   * @param enableCommitOffsets whether to commit offsets
+   * @param options KafkaReadOptions containing performance optimization settings
+   * @return PCollection of Kafka Key & Value Pair deserialized in String format with optimizations
+   */
+  public static KafkaIO.Read<String, String> readStringFromKafkaOptimized(
+      String bootstrapServers,
+      List<String> topicsList,
+      Map<String, Object> config,
+      Boolean enableCommitOffsets,
+      KafkaReadOptions options) {
+
+    KafkaIO.Read<String, String> kafkaRecords =
+        KafkaIO.<String, String>read()
+            .withBootstrapServers(bootstrapServers)
+            .withTopics(topicsList)
+            .withKeyDeserializerAndCoder(
+                StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
+            .withValueDeserializerAndCoder(
+                StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
+
+    // Apply redistribution optimizations if enabled
+    if (options.getEnableKafkaRedistribution() != null && options.getEnableKafkaRedistribution()) {
+      kafkaRecords = kafkaRecords.withRedistribute();
+
+      // Set redistribution keys if specified
+      if (options.getKafkaRedistributeNumKeys() != null
+          && options.getKafkaRedistributeNumKeys() > 0) {
+        kafkaRecords = kafkaRecords.withRedistributeNumKeys(options.getKafkaRedistributeNumKeys());
+      }
+
+      // Apply offset deduplication if enabled (default true when redistribution is enabled)
+      if (options.getEnableOffsetDeduplication() == null
+          || options.getEnableOffsetDeduplication()) {
+        kafkaRecords = kafkaRecords.withOffsetDeduplication(true);
+      }
+    }
+
+    // Apply duplicate handling if specified
+    if (options.getAllowDuplicates() != null && options.getAllowDuplicates()) {
+      kafkaRecords = kafkaRecords.withAllowDuplicates(true);
+    }
+
+    // Apply offset commit configuration
+    if (enableCommitOffsets != null && enableCommitOffsets) {
+      kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
+    }
+
     return kafkaRecords;
   }
 
