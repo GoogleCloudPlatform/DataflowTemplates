@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.source.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.source.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
 import org.junit.Test;
 import org.junit.runner.RunWith;

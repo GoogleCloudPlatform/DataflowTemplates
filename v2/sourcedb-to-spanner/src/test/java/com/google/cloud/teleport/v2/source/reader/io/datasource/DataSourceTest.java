@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.datasource;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
+import com.google.cloud.teleport.v2.source.cassandra.iowrapper.CassandraDataSource;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource.Kind;
 import org.junit.Test;
 import org.junit.runner.RunWith;

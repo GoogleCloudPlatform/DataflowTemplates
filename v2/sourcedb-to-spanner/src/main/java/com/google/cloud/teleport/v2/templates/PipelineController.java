@@ -15,32 +15,23 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.DbConfigContainer;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraIOWrapperFactory;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -63,8 +54,7 @@ public class PipelineController {
   private static final Counter tablesCompleted =
       Metrics.counter(PipelineController.class, "tablesCompleted");
 
-  @VisibleForTesting
-  protected static PipelineResult executeSingleInstanceMigrationForDbConfigContainer(
+  public static PipelineResult executeMigration(
       SourceDbToSpannerOptions options,
       Pipeline pipeline,
       SpannerConfig spannerConfig,
@@ -83,57 +73,6 @@ public class PipelineController {
         dbConfigContainer);
 
     return pipeline.run();
-  }
-
-  static PipelineResult executeJdbcSingleInstanceMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-    JdbcDbConfigContainer jdbcDbConfigContainer = new SingleInstanceJdbcDbConfigContainer(options);
-    return executeSingleInstanceMigrationForDbConfigContainer(
-        options, pipeline, spannerConfig, jdbcDbConfigContainer);
-  }
-
-  static PipelineResult executeJdbcShardedMigration(
-      SourceDbToSpannerOptions options,
-      Pipeline pipeline,
-      List<Shard> shards,
-      SpannerConfig spannerConfig) {
-    // TODO
-    // Merge logical shards into 1 physical shard
-    // Populate completion per shard
-    // Take connection properties map
-    // Write to common DLQ ?
-
-    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
-    TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
-
-    Map<Integer, List<String>> levelToSpannerTableList = tableSelector.levelOrderedSpannerTables();
-
-    SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
-
-    LOG.info(
-        "running migration for {} shards: {}",
-        shards.stream().count(),
-        shards.stream().map(Shard::getHost).collect(Collectors.toList()));
-    ShardedJdbcDbConfigContainer dbConfigContainer =
-        new ShardedJdbcDbConfigContainer(shards, sqlDialect, options);
-    setupLogicalDbMigration(
-        options,
-        pipeline,
-        spannerConfig,
-        tableSelector,
-        levelToSpannerTableList,
-        dbConfigContainer);
-    return pipeline.run();
-  }
-
-  static PipelineResult executeCassandraMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
-    return executeSingleInstanceMigrationForDbConfigContainer(
-        options,
-        pipeline,
-        spannerConfig,
-        new DbConfigContainerDefaultImpl(CassandraIOWrapperFactory.fromPipelineOptions(options)));
   }
 
   @VisibleForTesting
@@ -276,126 +215,5 @@ public class PipelineController {
       schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
     }
     return schemaMapper;
-  }
-
-  /**
-   * Interface for managing database configurations.
-   *
-   * <p>TODO(vardhanvthigle): Consider refactoring this to JDBC specific package.
-   */
-  interface JdbcDbConfigContainer extends DbConfigContainer {
-
-    /**
-     * Get the {@link JdbcIoWrapperConfigGroup} for the given source tables and wait signal.
-     *
-     * <p><b>Graph Size Optimization:</b> By returning a config group, we allow the {@link
-     * JdbcIoWrapper} to aggregate multiple tables into a single or few reader transforms. This
-     * effectively decouples the Dataflow graph size from the total number of tables being migrated.
-     *
-     * @param sourceTables List of source tables to migrate.
-     * @param waitOnSignal Signal to wait on before starting the read.
-     * @return {@link JdbcIoWrapperConfigGroup}
-     */
-    JdbcIoWrapperConfigGroup getJdbcIoWrapperConfigGroup(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
-
-    /**
-     * Creates an {@link IoWrapper} for the given tables.
-     *
-     * <p><b>Backward Compatibility:</b> For single-shard migrations, the group will contain only
-     * one shard config, and the resulting IO wrapper will behave identically to the previous
-     * single-source implementation.
-     */
-    @Override
-    default IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
-      return JdbcIoWrapper.of(getJdbcIoWrapperConfigGroup(sourceTables, waitOnSignal));
-    }
-  }
-
-  /**
-   * Implementation for sharded JDBC sources.
-   *
-   * <p><b>DLQ Folder Path:</b> The DLQ folder path logic has been simplified. Previously, shard IDs
-   * were sometimes embedded in the path. Now, shard IDs are handled as metadata within the DLQ
-   * records themselves (see {@link com.google.cloud.teleport.v2.writer.DeadLetterQueue}), allowing
-   * for a unified DLQ directory structure. There is no change in the final output format in GCS.
-   */
-  static class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
-
-    private ImmutableList<Shard> shards;
-
-    private SQLDialect sqlDialect;
-
-    private SourceDbToSpannerOptions options;
-
-    public ShardedJdbcDbConfigContainer(
-        List<Shard> shards, SQLDialect sqlDialect, SourceDbToSpannerOptions options) {
-      this.shards = ImmutableList.copyOf(shards);
-      this.sqlDialect = sqlDialect;
-      this.options = options;
-    }
-
-    public JdbcIoWrapperConfigGroup getJdbcIoWrapperConfigGroup(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
-      String workerZone = OptionsToConfigBuilder.extractWorkerZone(options);
-      JdbcIoWrapperConfigGroup.Builder jdbcIoWrapperConfigGroupBuilder =
-          JdbcIoWrapperConfigGroup.builder().setSourceDbDialect(sqlDialect);
-      for (Shard shard : shards) {
-        // TODO Move towards clubbing all physical shards together in a single connection pool.
-        for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
-          // Read data from source
-          String shardId = entry.getValue();
-
-          // If a namespace is configured for a shard uses that, otherwise uses the namespace
-          // configured in the options if there is one.
-          String namespace =
-              Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
-          String dbName = entry.getKey();
-          JdbcIOWrapperConfig shardConfig =
-              OptionsToConfigBuilder.getJdbcIOWrapperConfig(
-                  sqlDialect,
-                  sourceTables,
-                  null,
-                  shard.getHost(),
-                  shard.getConnectionProperties(),
-                  Integer.parseInt(shard.getPort()),
-                  shard.getUserName(),
-                  shard.getPassword(),
-                  dbName,
-                  namespace,
-                  shardId,
-                  options.getJdbcDriverClassName(),
-                  options.getJdbcDriverJars(),
-                  options.getMaxConnections(),
-                  options.getNumPartitions(),
-                  waitOnSignal,
-                  options.getFetchSize(),
-                  options.getUniformizationStageCountHint(),
-                  options.getProjectId(),
-                  workerZone,
-                  options.as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType());
-          jdbcIoWrapperConfigGroupBuilder.addShardConfig(shardConfig);
-        }
-      }
-      return jdbcIoWrapperConfigGroupBuilder.build();
-    }
-  }
-
-  static class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
-    private SourceDbToSpannerOptions options;
-
-    public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options) {
-      this.options = options;
-    }
-
-    @Override
-    public JdbcIoWrapperConfigGroup getJdbcIoWrapperConfigGroup(
-        List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
-      return JdbcIoWrapperConfigGroup.builder()
-          .addShardConfig(
-              OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
-                  options, sourceTables, null, waitOnSignal))
-          .build();
-    }
   }
 }

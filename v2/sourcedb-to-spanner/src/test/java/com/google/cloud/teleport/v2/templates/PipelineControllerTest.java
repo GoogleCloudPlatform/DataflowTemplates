@@ -24,10 +24,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.ISourceConnector;
+import com.google.cloud.teleport.v2.source.SQLDialect;
+import com.google.cloud.teleport.v2.source.jdbc.ShardedJdbcDbConfigContainer;
+import com.google.cloud.teleport.v2.source.jdbc.SingleInstanceJdbcDbConfigContainer;
+import com.google.cloud.teleport.v2.source.jdbc.iowrapper.JdbcIoWrapper;
+import com.google.cloud.teleport.v2.source.jdbc.iowrapper.config.JdbcIOWrapperConfig;
+import com.google.cloud.teleport.v2.source.jdbc.iowrapper.config.JdbcIoWrapperConfigGroup;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
+import com.google.cloud.teleport.v2.source.postgres.PostgreSqlSourceConnector;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
@@ -39,8 +44,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverri
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
-import com.google.cloud.teleport.v2.templates.PipelineController.ShardedJdbcDbConfigContainer;
-import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceJdbcDbConfigContainer;
 import com.google.common.io.Resources;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -365,7 +368,8 @@ public class PipelineControllerTest {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     SingleInstanceJdbcDbConfigContainer dbConfigContainer =
-        new SingleInstanceJdbcDbConfigContainer(sourceDbToSpannerOptions);
+        new SingleInstanceJdbcDbConfigContainer(
+            new MySqlSourceConnector(), sourceDbToSpannerOptions);
     JdbcIoWrapperConfigGroup configGroup =
         dbConfigContainer.getJdbcIoWrapperConfigGroup(
             List.of("table1", "table2"), Wait.on(dummyPCollection));
@@ -398,7 +402,9 @@ public class PipelineControllerTest {
     sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
     mockedStaticJdbcIoWrapper
-        .when(() -> JdbcIoWrapper.of(any(JdbcIoWrapperConfigGroup.class)))
+        .when(
+            () ->
+                JdbcIoWrapper.of(any(JdbcIoWrapperConfigGroup.class), any(ISourceConnector.class)))
         .thenReturn(mockJdbcIoWrapper);
 
     Shard shard =
@@ -411,7 +417,10 @@ public class PipelineControllerTest {
 
     ShardedJdbcDbConfigContainer dbConfigContainer =
         new ShardedJdbcDbConfigContainer(
-            ImmutableList.of(shard, secondShard), SQLDialect.MYSQL, sourceDbToSpannerOptions);
+            new MySqlSourceConnector(),
+            ImmutableList.of(shard, secondShard),
+            SQLDialect.MYSQL,
+            sourceDbToSpannerOptions);
 
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
@@ -438,7 +447,10 @@ public class PipelineControllerTest {
 
     assertThat(
             new ShardedJdbcDbConfigContainer(
-                    ImmutableList.of(), SQLDialect.MYSQL, sourceDbToSpannerOptions)
+                    new MySqlSourceConnector(),
+                    ImmutableList.of(),
+                    SQLDialect.MYSQL,
+                    sourceDbToSpannerOptions)
                 .getJdbcIoWrapperConfigGroup(
                     ImmutableList.of("testTable"), Wait.on(dummyPCollection)))
         .isEqualTo(JdbcIoWrapperConfigGroup.builder().setSourceDbDialect(SQLDialect.MYSQL).build());
@@ -485,7 +497,9 @@ public class PipelineControllerTest {
           .when(() -> SpannerSchema.getInformationSchemaAsDdl(any()))
           .thenReturn(spannerDdl);
 
-      mockedStaticJdbcIoWrapper.when(() -> JdbcIoWrapper.of(any())).thenReturn(mockJdbcIoWrapper);
+      mockedStaticJdbcIoWrapper
+          .when(() -> JdbcIoWrapper.of(any(), any()))
+          .thenReturn(mockJdbcIoWrapper);
 
       SourceTableReference tableRef =
           SourceTableReference.builder()
@@ -493,8 +507,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference
-                          .builder()
+                      com.google.cloud.teleport.v2.source.jdbc.JdbcSchemaReference.builder()
                           .setDbName("db1")
                           .build()))
               .build();
@@ -506,8 +519,12 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      PipelineController.executeJdbcShardedMigration(
-          mockOptions, mockPipeline, List.of(shard), spannerConfig);
+      SQLDialect sqlDialect = SQLDialect.valueOf(mockOptions.getSourceDbDialect());
+      ShardedJdbcDbConfigContainer dbConfigContainer =
+          new ShardedJdbcDbConfigContainer(
+              new MySqlSourceConnector(), List.of(shard), sqlDialect, mockOptions);
+      PipelineController.executeMigration(
+          mockOptions, mockPipeline, spannerConfig, dbConfigContainer);
     }
   }
 
@@ -539,7 +556,9 @@ public class PipelineControllerTest {
           .when(() -> SpannerSchema.getInformationSchemaAsDdl(any()))
           .thenReturn(spannerDdl);
 
-      mockedStaticJdbcIoWrapper.when(() -> JdbcIoWrapper.of(any())).thenReturn(mockJdbcIoWrapper);
+      mockedStaticJdbcIoWrapper
+          .when(() -> JdbcIoWrapper.of(any(), any()))
+          .thenReturn(mockJdbcIoWrapper);
 
       SourceTableReference tableRef =
           SourceTableReference.builder()
@@ -547,8 +566,7 @@ public class PipelineControllerTest {
               .setSourceTableSchemaUUID("uuid-1")
               .setSourceSchemaReference(
                   SourceSchemaReference.ofJdbc(
-                      com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference
-                          .builder()
+                      com.google.cloud.teleport.v2.source.jdbc.JdbcSchemaReference.builder()
                           .setDbName("db1")
                           .build()))
               .build();
@@ -560,8 +578,12 @@ public class PipelineControllerTest {
       when(mockJdbcIoWrapper.discoverTableSchema())
           .thenReturn(com.google.common.collect.ImmutableList.of());
 
-      PipelineController.executeJdbcShardedMigration(
-          mockOptions, mockPipeline, List.of(shard), spannerConfig);
+      SQLDialect sqlDialect = SQLDialect.valueOf(mockOptions.getSourceDbDialect());
+      ShardedJdbcDbConfigContainer dbConfigContainer =
+          new ShardedJdbcDbConfigContainer(
+              new MySqlSourceConnector(), List.of(shard), sqlDialect, mockOptions);
+      PipelineController.executeMigration(
+          mockOptions, mockPipeline, spannerConfig, dbConfigContainer);
     }
   }
 
@@ -669,7 +691,10 @@ public class PipelineControllerTest {
 
     ShardedJdbcDbConfigContainer dbConfigContainer =
         new ShardedJdbcDbConfigContainer(
-            ImmutableList.of(shard), SQLDialect.POSTGRESQL, sourceDbToSpannerOptions);
+            new PostgreSqlSourceConnector(),
+            ImmutableList.of(shard),
+            SQLDialect.POSTGRESQL,
+            sourceDbToSpannerOptions);
 
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
