@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
@@ -235,6 +234,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
+  protected String getSpannerServerTime(SpannerResourceManager spannerResourceManager) {
+    return spannerResourceManager
+        .runQuery("SELECT CURRENT_TIMESTAMP()")
+        .get(0)
+        .getTimestamp(0)
+        .toString();
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -275,12 +282,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("numWorkers", "1");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
-            // Set startTimestamp 5 minutes in the past to account for any clock skew between
-            // the local machine/CI runner and Spanner's server time.
-            put(
-                "startTimestamp",
-                Timestamp.ofTimeMicroseconds((System.currentTimeMillis() - 300000) * 1000)
-                    .toString());
+            // Query Spanner server time to bypass local clock skew and set as startTimestamp
+            // to ensure the DirectRunner catches all test mutations during initialization.
+            put("startTimestamp", getSpannerServerTime(spannerResourceManager));
           }
         };
 
