@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
@@ -59,17 +60,22 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
+  private final String namespace =
+      "iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
-  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private final String icebergTableIdentifier = namespace + "." + ICEBERG_TABLE_NAME;
 
   @Before
   public void setUp() throws IOException {
     mySQLResourceManager = MySQLResourceManager.builder(testName).build();
 
     warehouseGcsResourceManager =
-        GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
-    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+        artifactBucketName != null && !artifactBucketName.isEmpty()
+            ? GcsResourceManager.builder(
+                    artifactBucketName, getClass().getSimpleName(), credentials)
+                .build()
+            : GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(namespace);
     LOG.info("warehouse bucket created {}", warehouseGcsResourceManager.getBucket());
 
     icebergResourceManager =
@@ -77,6 +83,7 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
+    icebergResourceManager.createNamespace(namespace);
   }
 
   @After
@@ -91,8 +98,8 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
     // Iceberg setup
 
     // Create namespace in the REST catalog
-    icebergResourceManager.createNamespace(NAMESPACE);
-    LOG.info("Namespace '{}' created successfully", NAMESPACE);
+    icebergResourceManager.createNamespace(namespace);
+    LOG.info("Namespace '{}' created successfully", namespace);
 
     // Define Iceberg table schema
     Schema icebergSchema =
@@ -102,7 +109,7 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
             Types.NestedField.optional(3, "active", Types.IntegerType.get()));
 
     // Create Iceberg table
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
+    icebergResourceManager.createTable(icebergTableIdentifier, icebergSchema);
 
     List<Map<String, Object>> icebergRecords =
         List.of(
@@ -110,7 +117,7 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
             Map.of("id", 2, "name", "Bob", "active", 0),
             Map.of("id", 3, "name", "Charlie", "active", 1));
 
-    icebergResourceManager.write(ICEBERG_TABLE_IDENTIFIER, icebergRecords);
+    icebergResourceManager.write(icebergTableIdentifier, icebergRecords);
     LOG.info("Iceberg source table populated with {} records", icebergRecords.size());
 
     // MySQL setup
@@ -125,7 +132,7 @@ public class IcebergToMySQLYamlIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("table", icebergTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
