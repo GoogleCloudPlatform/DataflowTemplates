@@ -29,12 +29,17 @@ import com.google.datastore.v1.Key;
 import com.google.datastore.v1.Key.PathElement;
 import com.google.datastore.v1.PartitionId;
 import com.google.datastore.v1.Value;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -206,8 +211,12 @@ public class FirestoreConvertersTest implements Serializable {
                 CheckSameKey.newBuilder().setGoodTag(goodTag).setErrorTag(errorTag).build());
 
     PAssert.that(results.get(goodTag)).containsInAnyOrder(entities.subList(1, entities.size()));
-    PAssert.that(results.get(errorTag)).containsInAnyOrder(expectedErrors);
-
+    PAssert.that(results.get(errorTag))
+        .satisfies(
+            actualErrors -> {
+              assertJsonErrorsEqual(expectedErrors, actualErrors);
+              return null;
+            });
     pipeline.run();
   }
 
@@ -277,7 +286,12 @@ public class FirestoreConvertersTest implements Serializable {
 
     // Check the results
     PAssert.that(results.get(successTag)).empty();
-    PAssert.that(results.get(failureTag)).containsInAnyOrder(expectedErrors);
+    PAssert.that(results.get(failureTag))
+        .satisfies(
+            actualErrors -> {
+              assertJsonErrorsEqual(expectedErrors, actualErrors);
+              return null;
+            });
     pipeline.run();
   }
 
@@ -322,7 +336,33 @@ public class FirestoreConvertersTest implements Serializable {
 
     // Check the results
     PAssert.that(results.get(successTag)).containsInAnyOrder(entities);
-    PAssert.that(results.get(failureTag)).containsInAnyOrder(expectedErrors);
+    PAssert.that(results.get(failureTag))
+        .satisfies(
+            actualErrors -> {
+              assertJsonErrorsEqual(expectedErrors, actualErrors);
+              return null;
+            });
     pipeline.run();
+  }
+
+  private static void assertJsonErrorsEqual(
+      List<String> expectedErrors, Iterable<String> actualErrors) {
+
+    Function<String, JsonObject> toJson = s -> JsonParser.parseString(s).getAsJsonObject();
+
+    Map<JsonObject, Long> expectedCounts =
+        expectedErrors.stream()
+            .map(toJson)
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+    Map<JsonObject, Long> actualCounts =
+        StreamSupport.stream(actualErrors.spliterator(), false)
+            .map(toJson)
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+    Assert.assertEquals(
+        "Mismatched JSON error contents between expected and actual results",
+        expectedCounts,
+        actualCounts);
   }
 }
