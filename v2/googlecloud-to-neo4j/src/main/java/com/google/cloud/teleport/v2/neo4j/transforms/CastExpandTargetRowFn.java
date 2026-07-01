@@ -20,8 +20,7 @@ import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
-import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,16 +28,11 @@ import org.slf4j.LoggerFactory;
 public class CastExpandTargetRowFn extends DoFn<Row, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CastExpandTargetRowFn.class);
-  private final Target target;
-  private final NodeTarget startNodeTarget;
-  private final NodeTarget endNodeTarget;
+  private final TargetStep targetStep;
   private final Schema targetSchema;
 
-  public CastExpandTargetRowFn(
-      Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget, Schema targetSchema) {
-    this.target = target;
-    this.startNodeTarget = startNodeTarget;
-    this.endNodeTarget = endNodeTarget;
+  public CastExpandTargetRowFn(TargetStep targetStep, Schema targetSchema) {
+    this.targetStep = targetStep;
     this.targetSchema = targetSchema;
   }
 
@@ -46,9 +40,7 @@ public class CastExpandTargetRowFn extends DoFn<Row, Row> {
   public void processElement(ProcessContext processContext) {
     Row inputRow = processContext.element();
 
-    List<Object> castVals =
-        DataCastingUtils.sourceTextToTargetObjects(
-            inputRow, target, startNodeTarget, endNodeTarget);
+    List<Object> castVals = DataCastingUtils.sourceTextToTargetObjects(inputRow, targetStep);
     if (targetSchema.getFieldCount() != castVals.size()) {
       LOG.error(
           "Unable to parse line.  Expecting {} fields, found {}",

@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
 import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
 import com.google.cloud.teleport.v2.neo4j.actions.HttpMethod;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +47,7 @@ class ActionMapper {
     }
   }
 
-  public static List<Action> parse(JSONArray json, OptionsParams options) {
+  public static List<Action> parse(JSONArray json, OverlayTokens options) {
     List<Action> actions = new ArrayList<>(json.length());
     for (int i = 0; i < json.length(); i++) {
       actions.add(parse(json.getJSONObject(i), options));
@@ -55,7 +55,7 @@ class ActionMapper {
     return actions;
   }
 
-  private static Action parse(JSONObject json, OptionsParams templateOptions) {
+  private static Action parse(JSONObject json, OverlayTokens templateOptions) {
     var type = json.getString("type").toLowerCase(Locale.ROOT);
     var active = JsonObjects.getBooleanOrDefault(json, "active", true);
     var name = json.getString("name");
@@ -65,29 +65,26 @@ class ActionMapper {
           active,
           name,
           mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-          ModelUtils.replaceVariableTokens(
-              (String) options.get("sql"), templateOptions.getTokenMap()));
+          ModelUtils.replaceVariableTokens((String) options.get("sql"), templateOptions.tokens()));
       case "cypher" -> new CypherAction(
           active,
           name,
           mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
           ModelUtils.replaceVariableTokens(
-              (String) options.get("cypher"), templateOptions.getTokenMap()),
+              (String) options.get("cypher"), templateOptions.tokens()),
           CypherExecutionMode.AUTOCOMMIT);
       case "http_get" -> new HttpAction(
           active,
           name,
           mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-          ModelUtils.replaceVariableTokens(
-              (String) options.get("url"), templateOptions.getTokenMap()),
+          ModelUtils.replaceVariableTokens((String) options.get("url"), templateOptions.tokens()),
           HttpMethod.GET,
           processValues(flattenObjectList(json, "headers"), templateOptions));
       case "http_post" -> new HttpAction(
           active,
           name,
           mapStage(json.opt("execute_after"), json.opt("execute_after_name")),
-          ModelUtils.replaceVariableTokens(
-              (String) options.get("url"), templateOptions.getTokenMap()),
+          ModelUtils.replaceVariableTokens((String) options.get("url"), templateOptions.tokens()),
           HttpMethod.POST,
           processValues(flattenObjectList(json, "headers"), templateOptions));
       default -> throw new IllegalArgumentException(
@@ -104,14 +101,14 @@ class ActionMapper {
     return ActionStage.START;
   }
 
-  private static Map<String, String> processValues(Map<String, Object> map, OptionsParams options) {
+  private static Map<String, String> processValues(Map<String, Object> map, OverlayTokens options) {
     if (map == null) {
       return null;
     }
     Map<String, String> result = new HashMap<>(map.size());
     for (String key : map.keySet()) {
       String value = (String) map.get(key);
-      result.put(key, ModelUtils.replaceVariableTokens(value, options.getTokenMap()));
+      result.put(key, ModelUtils.replaceVariableTokens(value, options.tokens()));
     }
     return result;
   }
