@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigtable;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
 import java.io.ByteArrayInputStream;
@@ -134,6 +135,23 @@ public class StreamingDataGeneratorTest {
     assertTrue(
         StreamingDataGenerator.createSink(options, getSimpleSchema())
             instanceof StreamingDataGeneratorWriteToGcs);
+  }
+
+  /** Tests Creation of Bigtable Sink based on Pipeline options. */
+  @Test
+  public void testCreatingBigtableSink_returnsValidSinkType() {
+    StreamingDataGenerator.StreamingDataGeneratorOptions options =
+        getPipelineOptions(
+            new String[] {
+              "--sinkType=" + StreamingDataGenerator.SinkType.BIGTABLE.name(),
+              "--bigtableWriteInstanceId=inst1",
+              "--bigtableWriteTableId=table1",
+              "--bigtableWriteColumnFamily=cf",
+              "--bigtableWriteRowkeyField=id"
+            });
+    assertTrue(
+        StreamingDataGenerator.createSink(options, getSimpleSchema())
+            instanceof StreamingDataGeneratorWriteToBigtable);
   }
 
   /** Tests generation of fake Json data message without attributes. */
