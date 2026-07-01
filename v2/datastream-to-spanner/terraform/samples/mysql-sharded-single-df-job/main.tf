@@ -77,37 +77,31 @@ resource "google_storage_bucket_object" "session_file_object" {
 }
 
 locals {
-  host_to_stream_map = {
-    for shard in var.shard_list :
-    shard.datastream_params.mysql_host => shard.datastream_params.stream_id
-  }
 }
 
 # if the sharding context file is specified, use that, otherwise
 # auto-generate sharding context on basis of stream names, MySQL db names and logical
 # shard names.
-resource "google_storage_bucket_object" "sharding_context_file_object" {
+resource "google_storage_bucket_object" "source_config_file_object" {
   depends_on   = [google_project_service.enabled_apis]
-  name         = "shardingContext.json"
+  name         = "sourceConfig.conf"
   content_type = "application/json"
   bucket       = google_storage_bucket.datastream_bucket.id
 
   content = (
-    var.common_params.dataflow_params.template_params.local_sharding_context_path != null
-    ? jsonencode({
-      "StreamToDbAndShardMap" = {
-        for host_ip, db_map in jsondecode(file(var.common_params.dataflow_params.template_params.local_sharding_context_path)).StreamToDbAndShardMap :
-        contains(keys(local.host_to_stream_map), host_ip) ? local.host_to_stream_map[host_ip] : host_ip => db_map
-      }
-    })
+    var.common_params.dataflow_params.template_params.local_source_config_path != null
+    ? file(var.common_params.dataflow_params.template_params.local_source_config_path)
     :
     jsonencode({
-      "StreamToDbAndShardMap" : {
-        for idx, shard in var.shard_list : "${shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id}-${shard.datastream_params.stream_id}" => {
-          for db in var.common_params.datastream_params.mysql_databases :
-          db.database => "${replace(shard.datastream_params.mysql_host, ".", "-")}-${db.database}"
-        }
-      }
+      "shardConfigs" : flatten([
+        for idx, shard in var.shard_list : [
+          for db in var.common_params.datastream_params.mysql_databases : {
+            streamId       = "${shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id}-${shard.datastream_params.stream_id}"
+            dbName         = db.database
+            logicalShardId = "${replace(shard.datastream_params.mysql_host, ".", "-")}-${db.database}"
+          }
+        ]
+      ])
     })
   )
 }
@@ -287,7 +281,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     datastreamSourceType            = var.common_params.dataflow_params.template_params.datastream_source_type
     roundJsonDecimals               = tostring(var.common_params.dataflow_params.template_params.round_json_decimals)
     runMode                         = var.common_params.dataflow_params.template_params.run_mode
-    shardingContextFilePath         = "gs://${google_storage_bucket_object.sharding_context_file_object.bucket}/${google_storage_bucket_object.sharding_context_file_object.name}"
+    sourceConfigURL                 = "gs://${google_storage_bucket_object.source_config_file_object.bucket}/${google_storage_bucket_object.source_config_file_object.name}"
     directoryWatchDurationInMinutes = tostring(var.common_params.dataflow_params.template_params.directory_watch_duration_in_minutes)
     spannerPriority                 = var.common_params.dataflow_params.template_params.spanner_priority
     dlqGcsPubSubSubscription        = var.common_params.dataflow_params.template_params.dlq_gcs_pub_sub_subscription

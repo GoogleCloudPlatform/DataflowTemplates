@@ -67,6 +67,20 @@ public class SourceConfigParser {
    */
   public SourceConnectionConfig parseConfiguration(
       String sourceTypeStr, String sourceConfigFilePath) throws Exception {
+    return parseConfiguration(sourceTypeStr, sourceConfigFilePath, /* resolveSecrets= */ true);
+  }
+
+  /**
+   * Parses the configuration file from GCS into the appropriate {@link SourceConnectionConfig}
+   * implementing class.
+   *
+   * @param sourceTypeStr The source database type ("mysql", "postgresql", "cassandra", "astra_db").
+   * @param sourceConfigFilePath The URI to the HOCON or JSON config file.
+   * @param resolveSecrets Whether to resolve secrets from Secret Manager.
+   * @return A populated implementation of {@link SourceConnectionConfig}.
+   */
+  public SourceConnectionConfig parseConfiguration(
+      String sourceTypeStr, String sourceConfigFilePath, boolean resolveSecrets) throws Exception {
 
     SourceType sourceType = SourceType.parseSourceType(sourceTypeStr);
     switch (SourceType.parseSourceType(sourceTypeStr)) {
@@ -83,9 +97,16 @@ public class SourceConfigParser {
         String jdbcFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> jdbcConfigMap = parseConfigToConfigMap(jdbcFileContent);
         JdbcShardConfig jdbcShardConfig = mapper.convertValue(jdbcConfigMap, JdbcShardConfig.class);
+        if (jdbcShardConfig.getShardConfigs() == null
+            || jdbcShardConfig.getShardConfigs().isEmpty()) {
+          throw new IllegalArgumentException(
+              "The configuration file is missing the 'shardConfigs' field.");
+        }
         // Returns ordered list of shards
         jdbcShardConfig.getShardConfigs().sort(Comparator.comparing(Shard::getLogicalShardId));
-        resolveShardSecret(jdbcShardConfig, sourceConfigFilePath);
+        if (resolveSecrets) {
+          resolveShardSecret(jdbcShardConfig, sourceConfigFilePath);
+        }
         return jdbcShardConfig;
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
