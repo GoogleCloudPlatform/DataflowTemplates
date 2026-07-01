@@ -48,7 +48,7 @@ public class OverlayTokenParser {
       var rawTokenValue = jsonToken.opt(tokenName);
       var tokenValue = JSONObject.NULL.equals(rawTokenValue) ? null : String.valueOf(rawTokenValue);
       result.put(tokenName, tokenValue);
-      LOG.debug("{}: {})", tokenName, tokenValue);
+      LOG.debug("{}: {}", tokenName, tokenValue);
     }
     return result;
   }
