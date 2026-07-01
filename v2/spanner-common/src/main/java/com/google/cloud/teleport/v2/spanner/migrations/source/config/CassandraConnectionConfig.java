@@ -29,4 +29,11 @@ public class CassandraConnectionConfig implements SourceConnectionConfig {
   public OptionsMap getOptionsMap() {
     return optionsMap;
   }
+
+  @Override
+  public void validateFields() {
+    if (optionsMap == null) {
+      throw new IllegalArgumentException("optionsMap cannot be null");
+    }
+  }
 }

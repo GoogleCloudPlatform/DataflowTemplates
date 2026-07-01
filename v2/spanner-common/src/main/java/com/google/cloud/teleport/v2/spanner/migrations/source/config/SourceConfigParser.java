@@ -69,20 +69,25 @@ public class SourceConfigParser {
       String sourceTypeStr, String sourceConfigFilePath) throws Exception {
 
     SourceType sourceType = SourceType.parseSourceType(sourceTypeStr);
-    switch (SourceType.parseSourceType(sourceTypeStr)) {
+    SourceConnectionConfig sourceConfig;
+    switch (sourceType) {
       case CASSANDRA:
         // Maps directly to the DataStax OptionsMap
-        return new CassandraConnectionConfig(
-            CassandraDriverConfigLoader.getOptionsMapFromFile(sourceConfigFilePath));
+        sourceConfig =
+            new CassandraConnectionConfig(
+                CassandraDriverConfigLoader.getOptionsMapFromFile(sourceConfigFilePath));
+        break;
       case ASTRA_DB:
         String astraFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> astraConfigMap = parseConfigToConfigMap(astraFileContent);
-        return mapper.convertValue(astraConfigMap, AstraConnectionConfig.class);
+        sourceConfig = mapper.convertValue(astraConfigMap, AstraConnectionConfig.class);
+        break;
       case MYSQL:
       case PG:
         String jdbcFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> jdbcConfigMap = parseConfigToConfigMap(jdbcFileContent);
         JdbcShardConfig jdbcShardConfig = mapper.convertValue(jdbcConfigMap, JdbcShardConfig.class);
+        jdbcShardConfig.validateFields();
         // Returns ordered list of shards
         jdbcShardConfig.getShardConfigs().sort(Comparator.comparing(Shard::getLogicalShardId));
         resolveShardSecret(jdbcShardConfig, sourceConfigFilePath);
@@ -90,6 +95,8 @@ public class SourceConfigParser {
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }
+    sourceConfig.validateFields();
+    return sourceConfig;
   }
 
   /**

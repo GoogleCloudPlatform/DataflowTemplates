@@ -33,4 +33,14 @@ public class JdbcShardConfig implements SourceConnectionConfig {
   public void setShardConfigs(List<Shard> shardConfigs) {
     this.shardConfigs = shardConfigs;
   }
+
+  @Override
+  public void validateFields() {
+    if (shardConfigs == null || shardConfigs.isEmpty()) {
+      throw new IllegalArgumentException("shardConfigs cannot be null or empty");
+    }
+    for (Shard shard : shardConfigs) {
+      shard.validateFields();
+    }
+  }
 }
