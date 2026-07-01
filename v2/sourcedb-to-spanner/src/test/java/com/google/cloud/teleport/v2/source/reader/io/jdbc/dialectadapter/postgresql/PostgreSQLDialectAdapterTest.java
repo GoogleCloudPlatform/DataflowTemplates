@@ -303,6 +303,141 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testDiscoverTableIndexesWithExplicitTypeMappings()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next())
+        .thenReturn(true, true, true, true, true, true, true, true, false);
+
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("collation")).thenReturn(null);
+    when(mockResultSet.getString("column_name"))
+        .thenReturn(
+            "col_numeric",
+            "col_float4",
+            "col_float8",
+            "col_money",
+            "col_date",
+            "col_time",
+            "col_timetz",
+            "col_bytea");
+    when(mockResultSet.getString("index_name"))
+        .thenReturn(
+            "idx_numeric",
+            "idx_float4",
+            "idx_float8",
+            "idx_money",
+            "idx_date",
+            "idx_time",
+            "idx_timetz",
+            "idx_bytea");
+    when(mockResultSet.getString("type_category"))
+        .thenReturn("N", "N", "N", "N", "D", "D", "D", "U");
+    when(mockResultSet.getString("type_name"))
+        .thenReturn(
+            "numeric", "float4", "float8", "money", "date", "time",
+            "timetz", "bytea");
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    assertThat(indexes)
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_numeric")
+                    .setIndexName("idx_numeric")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DECIMAL)
+                    .setColumnTypeName("numeric")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_float4")
+                    .setIndexName("idx_float4")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.FLOAT)
+                    .setColumnTypeName("float4")
+                    .setDecimalStepSize(new java.math.BigDecimal("0.00001"))
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_float8")
+                    .setIndexName("idx_float8")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DOUBLE)
+                    .setColumnTypeName("float8")
+                    .setDecimalStepSize(new java.math.BigDecimal("0.0000000001"))
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_money")
+                    .setIndexName("idx_money")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DECIMAL)
+                    .setColumnTypeName("money")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_date")
+                    .setIndexName("idx_date")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DATE)
+                    .setColumnTypeName("date")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_time")
+                    .setIndexName("idx_time")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DURATION)
+                    .setColumnTypeName("time")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_timetz")
+                    .setIndexName("idx_timetz")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.DURATION)
+                    .setColumnTypeName("timetz")
+                    .build(),
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_bytea")
+                    .setIndexName("idx_bytea")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.BINARY)
+                    .setColumnTypeName("bytea")
+                    .build()));
+  }
+
+  @Test
   public void testDiscoverTableIndexesWithUuid()
       throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> tables = ImmutableList.of("my_schema.table1");

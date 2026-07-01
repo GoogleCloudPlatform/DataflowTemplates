@@ -92,12 +92,13 @@ public abstract class CollationOrderRow {
    */
   public static CollationOrderRow fromRS(ResultSet rs) throws SQLException {
 
-    String charSetChar = rs.getString(CHARSET_CHAR_COL);
-    String equivalentCharsetChar = rs.getString(EQUIVALENT_CHARSET_CHAR_COL);
+    String charSetChar = stripPadding(rs.getString(CHARSET_CHAR_COL));
+    String equivalentCharsetChar = stripPadding(rs.getString(EQUIVALENT_CHARSET_CHAR_COL));
     Long codePointRank = rs.getLong(CODEPOINT_RANK_COL);
     Boolean isEmpty = rs.getBoolean(IS_EMPTY_COL);
     Boolean isSpace = rs.getBoolean(IS_SPACE_COL);
-    String equivalentCharsetCharPadSpace = rs.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL);
+    String equivalentCharsetCharPadSpace =
+        stripPadding(rs.getString(EQUIVALENT_CHARSET_CHAR_PAD_SPACE_COL));
     Long codePointRankPadSpace = rs.getLong(CODEPOINT_RANK_PAD_SPACE_COL);
 
     logger.debug(
@@ -149,6 +150,17 @@ public abstract class CollationOrderRow {
     public abstract Builder setIsSpace(Boolean value);
 
     public abstract CollationOrderRow build();
+  }
+
+  private static String stripPadding(String s) {
+    if (s != null && s.length() > 1) {
+      int end = s.length();
+      while (end > 0 && s.charAt(end - 1) == ' ') {
+        end--;
+      }
+      return end == 0 ? " " : s.substring(0, end);
+    }
+    return s;
   }
 
   /** Column names that must be returned by the collations order query. */

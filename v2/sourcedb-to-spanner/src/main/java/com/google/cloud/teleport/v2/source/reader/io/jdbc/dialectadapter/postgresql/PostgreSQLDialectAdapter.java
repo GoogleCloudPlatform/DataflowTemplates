@@ -36,6 +36,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -66,6 +67,24 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final Logger logger = LoggerFactory.getLogger(PostgreSQLDialectAdapter.class);
 
   private static final int VARCHAR_MAX_LENGTH = 65535;
+
+  /**
+   * Overrides for PostgreSQL types that cannot be safely inferred from their {@code pg_type}
+   * category. Ensures precise Java type bindings to prevent precision loss for decimals and to
+   * properly map binary keys for partitioning.
+   */
+  private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
+      ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          .put("NUMERIC", SourceColumnIndexInfo.IndexType.DECIMAL)
+          .put("FLOAT4", SourceColumnIndexInfo.IndexType.FLOAT)
+          .put("FLOAT8", SourceColumnIndexInfo.IndexType.DOUBLE)
+          .put("MONEY", SourceColumnIndexInfo.IndexType.DECIMAL)
+          .put("DATE", SourceColumnIndexInfo.IndexType.DATE)
+          .put("TIME", SourceColumnIndexInfo.IndexType.DURATION)
+          .put("TIMETZ", SourceColumnIndexInfo.IndexType.DURATION)
+          .put("BYTEA", SourceColumnIndexInfo.IndexType.BINARY)
+          .put(UUID_TYPE.toUpperCase(), SourceColumnIndexInfo.IndexType.BINARY)
+          .build();
 
   // SQLState / Error codes
   // Ref: <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html"></a>
@@ -329,7 +348,9 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  t.typcategory AS type_category,"
             + "  ico.collation_name AS collation,"
             + "  ico.pad_attribute AS pad,"
-            + "  pg_encoding_to_char(d.encoding) AS charset"
+            + "  pg_encoding_to_char(d.encoding) AS charset,"
+            + "  isc.numeric_scale AS numeric_scale,"
+            + "  isc.datetime_precision AS datetime_precision"
             + " FROM pg_catalog.pg_indexes ixs"
             + "  JOIN pg_catalog.pg_class c ON c.relname = ixs.indexname"
             + "  JOIN pg_catalog.pg_index ix ON c.oid = ix.indexrelid"
@@ -338,6 +359,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             + "  LEFT OUTER JOIN pg_catalog.pg_collation co ON co.oid = ix.indcollation[a.attnum - 1]"
             + "  LEFT OUTER JOIN information_schema.collations ico ON ico.collation_name = co.collname"
             + "  LEFT OUTER JOIN pg_catalog.pg_database d ON d.datname = current_database()"
+            + "  LEFT OUTER JOIN information_schema.columns isc ON isc.table_schema = ixs.schemaname AND isc.table_name = ixs.tablename AND isc.column_name = a.attname"
             + " WHERE ixs.schemaname = ?"
             + "  AND ixs.tablename IN "
             + DialectAdapter.generateInClause(tables.size())
@@ -363,6 +385,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           if (UUID_TYPE.equalsIgnoreCase(typeName)) {
             uuidColumnKeys.add(new ColumnKey(tableName, columnName));
           }
+          SourceColumnIndexInfo.IndexType indexType = indexTypeFrom(typeCategory, typeName);
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
                   .setColumnName(columnName)
@@ -372,7 +395,29 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
                   .setColumnTypeName(typeName)
-                  .setIndexType(indexTypeFrom(typeCategory, typeName));
+                  .setIndexType(indexType);
+
+          // Floating-point partition columns require a step size for equality checks and splitting.
+          if (indexType == SourceColumnIndexInfo.IndexType.FLOAT) {
+            indexBuilder.setDecimalStepSize(new BigDecimal("0.00001"));
+          } else if (indexType == SourceColumnIndexInfo.IndexType.DOUBLE) {
+            indexBuilder.setDecimalStepSize(new BigDecimal("0.0000000001"));
+          } else if (indexType == SourceColumnIndexInfo.IndexType.DECIMAL) {
+            long numericScale = resultSet.getLong("numeric_scale");
+            if (!resultSet.wasNull()) {
+              indexBuilder.setNumericScale((int) numericScale);
+            } else {
+              indexBuilder.setNumericScale(0);
+            }
+          } else if (indexType == SourceColumnIndexInfo.IndexType.DURATION) {
+            long datetimePrecision = resultSet.getLong("datetime_precision");
+            if (!resultSet.wasNull()) {
+              indexBuilder.setDatetimePrecision((int) datetimePrecision);
+            } else {
+              indexBuilder.setDatetimePrecision(
+                  6); // Postgres default precision for time is microseconds (6)
+            }
+          }
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
@@ -579,13 +624,18 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
+   * Maps a PostgreSQL column type to a Dataflow {@link SourceColumnIndexInfo.IndexType}.<br>
+   * First checks {@link #INDEX_TYPE_MAPPING} for specific type overrides. If no override exists, it
+   * falls back to inferring the type from the PostgreSQL {@code typcategory}.<br>
    * Ref <a
    * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
    */
   private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
-    if (UUID_TYPE.equalsIgnoreCase(typeName)) {
-      return SourceColumnIndexInfo.IndexType.BINARY;
+    String upperTypeName = typeName.toUpperCase();
+    if (INDEX_TYPE_MAPPING.containsKey(upperTypeName)) {
+      return INDEX_TYPE_MAPPING.get(upperTypeName);
     }
+
     switch (typeCategory) {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;

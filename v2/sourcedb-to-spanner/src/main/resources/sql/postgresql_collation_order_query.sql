@@ -2,7 +2,7 @@
 -- The return type is defined based on PAD_SPACE. In PostgreSQL fixed length character types (CHAR(X), BPCHAR(X)),
 -- pad trailing space, while variable length character types (CHAR (no length), BPCHAR (no length), VARCHAR and TEXT)
 -- do not.
-CREATE OR REPLACE FUNCTION pg_temp.safe_convert_from(codepoint int8, charset text) RETURNS return_type_replacement_tag AS
+CREATE OR REPLACE FUNCTION pg_temp.safe_convert_from(codepoint int8, charset text) RETURNS TEXT AS
 '
   BEGIN
     RETURN convert_from(decode(to_hex(codepoint), ''hex''), charset);
@@ -18,7 +18,9 @@ WITH
 -- 3 bytes (U+0800 to U+FFFF), and 4 bytes (U+10000 to U+10FFFF) unicode
 -- codepoints
 charset_chars AS (
-  SELECT *
+  SELECT
+    codepoint,
+    CAST(charset_char AS return_type_replacement_tag) AS charset_char
   FROM (
     SELECT
       generate_series(0, 1114111),
