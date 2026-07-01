@@ -275,7 +275,12 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("numWorkers", "1");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
-            put("startTimestamp", Timestamp.now().toString());
+            // Set startTimestamp 5 minutes in the past to account for any clock skew between
+            // the local machine/CI runner and Spanner's server time.
+            put(
+                "startTimestamp",
+                Timestamp.ofTimeMicroseconds((System.currentTimeMillis() - 300000) * 1000)
+                    .toString());
           }
         };
 
