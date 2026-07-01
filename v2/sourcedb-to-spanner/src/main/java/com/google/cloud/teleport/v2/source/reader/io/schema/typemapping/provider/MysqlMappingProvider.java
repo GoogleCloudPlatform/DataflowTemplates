@@ -39,7 +39,7 @@ public final class MysqlMappingProvider {
           .put("BLOB", UnifiedMappingProvider.Type.STRING)
           .put("BOOL", UnifiedMappingProvider.Type.INTEGER)
           .put("CHAR", UnifiedMappingProvider.Type.STRING)
-          .put("DATE", UnifiedMappingProvider.Type.TIMESTAMP)
+          .put("DATE", UnifiedMappingProvider.Type.DATE)
           .put("DATETIME", UnifiedMappingProvider.Type.DATETIME)
           .put("DECIMAL", UnifiedMappingProvider.Type.DECIMAL)
           .put("DOUBLE", UnifiedMappingProvider.Type.DOUBLE)

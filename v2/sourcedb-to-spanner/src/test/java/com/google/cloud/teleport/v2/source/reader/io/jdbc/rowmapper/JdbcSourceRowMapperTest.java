@@ -326,7 +326,7 @@ public class JdbcSourceRowMapperTest {
                 .derbyColumnType("DATE")
                 .sourceColumnType("DATE")
                 .inputValue(java.sql.Date.valueOf("2024-05-02"))
-                .mappedValue(java.sql.Date.valueOf("2024-05-02").getTime() * 1000)
+                .mappedValue((int) java.sql.Date.valueOf("2024-05-02").toLocalDate().toEpochDay())
                 .build())
         .add(
             Column.builder()
