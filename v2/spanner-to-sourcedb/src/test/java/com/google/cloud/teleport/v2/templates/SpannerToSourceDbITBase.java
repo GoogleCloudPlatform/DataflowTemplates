@@ -234,6 +234,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
+  protected String getSpannerServerTime(SpannerResourceManager spannerResourceManager) {
+    return spannerResourceManager
+        .runQuery("SELECT CURRENT_TIMESTAMP()")
+        .get(0)
+        .getTimestamp(0)
+        .toString();
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -274,6 +282,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("numWorkers", "1");
             put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
+            // Query Spanner server time to bypass local clock skew and set as startTimestamp
+            // to ensure the DirectRunner catches all test mutations during initialization.
+            put("startTimestamp", getSpannerServerTime(spannerResourceManager));
           }
         };
 
