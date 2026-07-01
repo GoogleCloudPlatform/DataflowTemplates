@@ -18,13 +18,14 @@ package com.google.cloud.teleport.v2.neo4j.templates;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextSourceProvider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import java.util.List;
+import java.util.Map;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,7 +36,7 @@ import org.junit.runners.JUnit4;
 public class GoogleToNeo4jTest {
 
   private static SourceProvider sourceProvider;
-  private static OptionsParams optionsParams;
+  private static OverlayTokens overlayTokens;
 
   @BeforeClass
   public static void setUp() {
@@ -46,9 +47,8 @@ public class GoogleToNeo4jTest {
                 List.of(List.of("v1", "v2"), List.of("v3", "v4")),
                 List.of("column1", "column2")),
             new TargetSequence());
-    optionsParams = new OptionsParams();
-    optionsParams.overlayTokens("{\"limit\":7}");
-    sourceProvider.configure(optionsParams);
+    overlayTokens = new OverlayTokens(Map.of("limit", "7"));
+    sourceProvider.configure(overlayTokens);
   }
 
   @Test
@@ -58,13 +58,13 @@ public class GoogleToNeo4jTest {
 
   @Test
   public void resolves_variable() {
-    assertThat(optionsParams.getTokenMap().get("limit")).isEqualTo("7");
+    assertThat(overlayTokens.tokens().get("limit")).isEqualTo("7");
   }
 
   @Test
   public void resolves_sql_variable() {
     String uri = "SELECT * FROM TEST LIMIT $limit";
-    String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
+    String uriReplaced = ModelUtils.replaceVariableTokens(uri, overlayTokens.tokens());
     assertThat(uriReplaced).contains("LIMIT 7");
   }
 }

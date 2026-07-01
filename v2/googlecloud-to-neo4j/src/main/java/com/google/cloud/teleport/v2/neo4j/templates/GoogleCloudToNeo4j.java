@@ -33,12 +33,12 @@ import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ArtifactType;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.OptionsParamsMapper;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.OverlayTokenParser;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec.TargetQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProvider;
 import com.google.cloud.teleport.v2.neo4j.providers.SourceProviderFactory;
@@ -129,7 +129,7 @@ public class GoogleCloudToNeo4j {
 
   private static final Logger LOG = LoggerFactory.getLogger(GoogleCloudToNeo4j.class);
 
-  private final OptionsParams optionsParams;
+  private final OverlayTokens overlayTokens;
   private final ConnectionParams neo4jConnection;
   private final ImportSpecification importSpecification;
   private final Configuration globalSettings;
@@ -152,7 +152,7 @@ public class GoogleCloudToNeo4j {
     // Set pipeline options
     this.pipeline = Pipeline.create(pipelineOptions);
     FileSystems.setDefaultPipelineOptions(pipelineOptions);
-    this.optionsParams = OptionsParamsMapper.fromPipelineOptions(pipelineOptions);
+    this.overlayTokens = OverlayTokenParser.parse(pipelineOptions.getOptionsJson());
 
     // Validate pipeline
     processValidations(
@@ -170,7 +170,7 @@ public class GoogleCloudToNeo4j {
     }
     this.neo4jConnection = Json.map(parsingResult, ConnectionParams.class);
 
-    this.importSpecification = JobSpecMapper.parse(pipelineOptions.getJobSpecUri(), optionsParams);
+    this.importSpecification = JobSpecMapper.parse(pipelineOptions.getJobSpecUri(), overlayTokens);
     globalSettings = importSpecification.getConfiguration();
 
     ///////////////////////////////////
@@ -179,7 +179,7 @@ public class GoogleCloudToNeo4j {
     for (Source source : importSpecification.getSources()) {
       // get provider implementation for source
       SourceProvider sourceProvider = SourceProviderFactory.of(source, targetSequence);
-      sourceProvider.configure(optionsParams);
+      sourceProvider.configure(overlayTokens);
     }
   }
 
@@ -294,7 +294,7 @@ public class GoogleCloudToNeo4j {
 
       // get provider implementation for source
       SourceProvider sourceProvider = SourceProviderFactory.of(source, targetSequence);
-      sourceProvider.configure(optionsParams);
+      sourceProvider.configure(overlayTokens);
       PCollection<Row> sourceMetadata =
           pipeline.apply(
               String.format("Metadata for source %s", sourceName), sourceProvider.queryMetadata());

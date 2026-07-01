@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.providers.text;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.transforms.CastExpandTargetRowFn;
 import com.google.cloud.teleport.v2.neo4j.utils.BeamUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
@@ -43,11 +43,11 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
   private static final Logger LOG = LoggerFactory.getLogger(TextTargetToRow.class);
   private final TargetSequence targetSequence;
   private final TargetQuerySpec targetQuerySpec;
-  private final OptionsParams optionsParams;
+  private final OverlayTokens overlayTokens;
 
   public TextTargetToRow(
-      OptionsParams optionsParams, TargetSequence targetSequence, TargetQuerySpec targetQuerySpec) {
-    this.optionsParams = optionsParams;
+      OverlayTokens overlayTokens, TargetSequence targetSequence, TargetQuerySpec targetQuerySpec) {
+    this.overlayTokens = overlayTokens;
     this.targetSequence = targetSequence;
     this.targetQuerySpec = targetQuerySpec;
   }
@@ -94,6 +94,6 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
   }
 
   private String getRewritten(String sql) {
-    return ModelUtils.replaceVariableTokens(sql, optionsParams.getTokenMap());
+    return ModelUtils.replaceVariableTokens(sql, overlayTokens.tokens());
   }
 }
