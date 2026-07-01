@@ -81,6 +81,18 @@ public class SpannerDao {
         row.getTimestamp(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
   }
 
+  public ShadowTableRecord readShadowTableRecordWithNoLock(
+      String shadowTableName, com.google.cloud.spanner.Key primaryKey) {
+    List<String> readColumnList =
+        Arrays.asList(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME);
+    Struct row =
+        getDatabaseClient().singleUse().readRow(shadowTableName, primaryKey, readColumnList);
+    if (row == null) {
+      return null;
+    }
+    return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
+  }
+
   public DatabaseClient getDatabaseClient() {
     return spannerAccessor.getDatabaseClient();
   }
