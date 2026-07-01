@@ -22,7 +22,6 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Column;
@@ -59,7 +58,7 @@ import org.junit.runners.JUnit4;
  * using Avro format, and subsequently importing that exact data into a fresh Spanner database. It
  * focuses on testing with randomly generated schemas and data.
  */
-@Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
+@Category(IntegrationTest.class)
 @TemplateIntegrationTest(ExportPipeline.class)
 @RunWith(JUnit4.class)
 public class CopyDbRandomisedIT extends SpannerTemplateITBase {
