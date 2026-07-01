@@ -310,8 +310,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next())
-        .thenReturn(true, true, true, true, true, true, true, true, false);
+    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, true, true, false);
 
     when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
     when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
@@ -342,9 +341,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockResultSet.getString("type_category"))
         .thenReturn("N", "N", "N", "N", "D", "D", "D", "U");
     when(mockResultSet.getString("type_name"))
-        .thenReturn(
-            "numeric", "float4", "float8", "money", "date", "time",
-            "timetz", "bytea");
+        .thenReturn("numeric", "float4", "float8", "money", "date", "time", "timetz", "bytea");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
