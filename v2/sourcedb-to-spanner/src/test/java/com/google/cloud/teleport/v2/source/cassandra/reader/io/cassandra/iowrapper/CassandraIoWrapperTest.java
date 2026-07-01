@@ -95,7 +95,7 @@ public class CassandraIoWrapperTest {
           .when(
               () ->
                   CassandraIOWrapperHelper.buildDataSource(
-                      testGcsPath,
+                      null,
                       null,
                       CassandraDialect.OSS,
                       GuardedStringValueProvider.create(""),
@@ -107,7 +107,7 @@ public class CassandraIoWrapperTest {
           .when(
               () ->
                   CassandraIOWrapperHelper.buildDataSource(
-                      "",
+                      null,
                       null,
                       CassandraDialect.ASTRA,
                       astraDataSource.cassandra().astra().astraToken(),
@@ -151,7 +151,7 @@ public class CassandraIoWrapperTest {
 
       CassandraIoWrapper cassandraIoWrapper =
           new CassandraIoWrapper(
-              testGcsPath,
+              null,
               tablesToRead,
               null,
               CassandraDialect.OSS,
@@ -165,7 +165,7 @@ public class CassandraIoWrapperTest {
 
       CassandraIoWrapper cassandraIoWrapperAstra =
           new CassandraIoWrapper(
-              "",
+              null,
               tablesToRead,
               null,
               CassandraDialect.ASTRA,
