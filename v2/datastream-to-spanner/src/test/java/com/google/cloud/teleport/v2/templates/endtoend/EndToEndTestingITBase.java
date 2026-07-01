@@ -443,7 +443,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2")
+            .setPrivateConnectivity(getPrivateConnectivity())
             .build();
     Stream stream =
         createDataStreamResources(
