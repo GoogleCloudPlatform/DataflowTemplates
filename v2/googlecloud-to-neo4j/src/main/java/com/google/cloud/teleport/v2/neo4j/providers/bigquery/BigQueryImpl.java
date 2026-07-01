@@ -19,7 +19,7 @@ import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec.BigQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
@@ -36,7 +36,7 @@ public class BigQueryImpl implements Provider {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
   private final BigQuerySource source;
   private final TargetSequence targetSequence;
-  private OptionsParams optionsParams;
+  private OverlayTokens overlayTokens;
 
   public BigQueryImpl(BigQuerySource source, TargetSequence targetSequence) {
     this.source = source;
@@ -44,8 +44,8 @@ public class BigQueryImpl implements Provider {
   }
 
   @Override
-  public void configure(OptionsParams optionsParams) {
-    this.optionsParams = optionsParams;
+  public void configure(OverlayTokens overlayTokens) {
+    this.overlayTokens = overlayTokens;
   }
 
   @Override

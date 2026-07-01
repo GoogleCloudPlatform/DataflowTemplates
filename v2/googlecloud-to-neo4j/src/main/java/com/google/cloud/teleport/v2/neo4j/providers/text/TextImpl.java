@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.providers.text;
 
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.model.sources.TextSource;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import org.apache.beam.sdk.schemas.Schema;
@@ -31,7 +31,7 @@ public class TextImpl implements Provider {
 
   private final TextSource source;
   private final TargetSequence targetSequence;
-  private OptionsParams optionsParams;
+  private OverlayTokens overlayTokens;
 
   public TextImpl(TextSource source, TargetSequence targetSequence) {
     this.source = source;
@@ -39,8 +39,8 @@ public class TextImpl implements Provider {
   }
 
   @Override
-  public void configure(OptionsParams optionsParams) {
-    this.optionsParams = optionsParams;
+  public void configure(OverlayTokens overlayTokens) {
+    this.overlayTokens = overlayTokens;
   }
 
   @Override
@@ -55,7 +55,7 @@ public class TextImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryTargetBeamRows(TargetQuerySpec targetQuerySpec) {
-    return new TextTargetToRow(optionsParams, targetSequence, targetQuerySpec);
+    return new TextTargetToRow(overlayTokens, targetSequence, targetQuerySpec);
   }
 
   @Override
