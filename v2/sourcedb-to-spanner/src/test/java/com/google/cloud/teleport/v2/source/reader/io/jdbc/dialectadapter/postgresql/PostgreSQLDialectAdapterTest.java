@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgr
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
@@ -71,14 +73,28 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testDiscoverTablesReturnsSchemaAndTableNames()
       throws SQLException, RetriableSchemaDiscoveryException {
+    PreparedStatement mockParentPreparedStatement = mock(PreparedStatement.class);
+    ResultSet mockParentResultSet = mock(ResultSet.class);
+
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
+
+    // Default mock for any prepareStatement (used by information_schema query)
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+
+    // Specific mock for the pg_inherits query
+    when(mockConnection.prepareStatement(contains("pg_inherits")))
+        .thenReturn(mockParentPreparedStatement);
+
+    when(mockParentPreparedStatement.executeQuery()).thenReturn(mockParentResultSet);
+    when(mockParentResultSet.next()).thenReturn(true, false);
+    when(mockParentResultSet.getString("table_name")).thenReturn("parent_table1");
+
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, true, false);
-    when(mockResultSet.getString("table_name")).thenReturn("table1", "table2");
+    when(mockResultSet.next()).thenReturn(true, true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("table1", "table2", "parent_table1");
 
     assertThat(adapter.discoverTables(mockDataSource, sourceSchemaReference))
-        .containsExactly("table1", "table2");
+        .containsExactly("table1", "table2", "parent_table1");
   }
 
   @Test
@@ -108,6 +124,29 @@ public class PostgreSQLDialectAdapterTest {
         () ->
             new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
                 .discoverTables(mockDataSource, sourceSchemaReference));
+  }
+
+  @Test
+  public void testDiscoverTablesThrowsExceptionWhenInheritanceQueryFails() throws SQLException {
+    PreparedStatement mockParentPreparedStatement = mock(PreparedStatement.class);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+
+    // Mock pg_inherits query to throw an exception
+    when(mockConnection.prepareStatement(contains("pg_inherits")))
+        .thenReturn(mockParentPreparedStatement);
+    when(mockParentPreparedStatement.executeQuery())
+        .thenThrow(new SQLException("Permission denied"));
+
+    SchemaDiscoveryException exception =
+        assertThrows(
+            SchemaDiscoveryException.class,
+            () ->
+                new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT)
+                    .discoverTables(mockDataSource, sourceSchemaReference));
+
+    assertThat(exception).hasCauseThat().hasMessageThat().contains("Permission denied");
   }
 
   @Test
@@ -466,12 +505,154 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testBoundaryQueryForParentTable() throws Exception {
+    populateParentTableCache("my_parent_table");
+    assertThat(adapter.getBoundaryQuery("my_parent_table", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY my_parent_table");
+    assertThat(adapter.getBoundaryQuery("my_parent_table", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper
+    assertThat(adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY \"my_parent_table\"");
+    assertThat(
+            adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY \"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getBoundaryQuery("\"public\".\"my_parent_table\"", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(
+            adapter.getBoundaryQuery(
+                "\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getBoundaryQuery("public.my_parent_table", ImmutableList.of(), "id"))
+        .isEqualTo("SELECT MIN(id), MAX(id) FROM ONLY public.my_parent_table");
+    assertThat(
+            adapter.getBoundaryQuery(
+                "public.my_parent_table", ImmutableList.of("col1", "col2"), "id"))
+        .isEqualTo(
+            "SELECT MIN(id), MAX(id) FROM ONLY public.my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+  }
+
+  @Test
+  public void testUuidBoundaryQueryForParentTable() throws Exception {
+    populateParentTableCache("my_parent_table");
+
+    // Populate uuid cache manually via discoverTableIndexes
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_parent_table");
+    when(mockResultSet.getString("column_name")).thenReturn("col_uuid");
+    when(mockResultSet.getString("index_name")).thenReturn("idx_uuid");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("type_category")).thenReturn("U");
+    when(mockResultSet.getString("type_name")).thenReturn("uuid");
+    when(mockResultSet.getInt("type_length")).thenReturn(0);
+    when(mockResultSet.wasNull()).thenReturn(true);
+
+    adapter.discoverTableIndexes(
+        mockDataSource, sourceSchemaReference, ImmutableList.of("my_parent_table"));
+
+    assertThat(adapter.getBoundaryQuery("my_parent_table", ImmutableList.of(), "col_uuid"))
+        .isEqualTo(
+            "SELECT (SELECT col_uuid FROM ONLY my_parent_table ORDER BY col_uuid ASC NULLS LAST"
+                + " LIMIT 1), (SELECT col_uuid FROM ONLY my_parent_table ORDER BY col_uuid DESC"
+                + " NULLS LAST LIMIT 1)");
+    assertThat(
+            adapter.getBoundaryQuery("my_parent_table", ImmutableList.of("parent_col"), "col_uuid"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM ONLY my_parent_table"
+                + " WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
+                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid DESC NULLS LAST LIMIT 1)");
+
+    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper for
+    // UUIDs
+    assertThat(adapter.getBoundaryQuery("\"my_parent_table\"", ImmutableList.of(), "col_uuid"))
+        .isEqualTo(
+            "SELECT (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid ASC NULLS LAST"
+                + " LIMIT 1), (SELECT col_uuid FROM ONLY \"my_parent_table\" ORDER BY col_uuid DESC"
+                + " NULLS LAST LIMIT 1)");
+    assertThat(
+            adapter.getBoundaryQuery(
+                "\"my_parent_table\"", ImmutableList.of("parent_col"), "col_uuid"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_uuid FROM ONLY \"my_parent_table\""
+                + " WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND"
+                + " parent_col = ?))))) SELECT (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid ASC NULLS LAST LIMIT 1), (SELECT col_uuid FROM filtered_uuid ORDER BY"
+                + " col_uuid DESC NULLS LAST LIMIT 1)");
+  }
+
+  @Test
   public void testReadQuery() {
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of()))
         .isEqualTo("SELECT * FROM my_schema.table1");
     assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col1", "col2")))
         .isEqualTo(
             "SELECT * FROM my_schema.table1 "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+  }
+
+  @Test
+  public void testReadQueryForParentTable() throws Exception {
+    populateParentTableCache("my_parent_table");
+    assertThat(adapter.getReadQuery("my_parent_table", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY my_parent_table");
+    assertThat(adapter.getReadQuery("my_parent_table", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper
+    assertThat(adapter.getReadQuery("\"my_parent_table\"", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY \"my_parent_table\"");
+    assertThat(adapter.getReadQuery("\"my_parent_table\"", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY \"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getReadQuery("\"public\".\"my_parent_table\"", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(
+            adapter.getReadQuery(
+                "\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+    assertThat(adapter.getReadQuery("public.\"my_parent_table\"", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY public.\"my_parent_table\"");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getReadQuery("public.my_parent_table", ImmutableList.of()))
+        .isEqualTo("SELECT * FROM ONLY public.my_parent_table");
+    assertThat(adapter.getReadQuery("public.my_parent_table", ImmutableList.of("col1", "col2")))
+        .isEqualTo(
+            "SELECT * FROM ONLY public.my_parent_table "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
   }
@@ -485,6 +666,70 @@ public class PostgreSQLDialectAdapterTest {
             "SELECT COUNT(*) FROM my_schema.table1 "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+  }
+
+  @Test
+  public void testCountQueryForParentTable() throws Exception {
+    populateParentTableCache("my_parent_table");
+    assertThat(adapter.getCountQuery("my_parent_table", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY my_parent_table");
+    assertThat(adapter.getCountQuery("my_parent_table", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches quoted identifiers passed from JdbcIoWrapper
+    assertThat(adapter.getCountQuery("\"my_parent_table\"", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY \"my_parent_table\"");
+    assertThat(
+            adapter.getCountQuery("\"my_parent_table\"", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY \"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified quoted identifiers
+    assertThat(adapter.getCountQuery("\"public\".\"my_parent_table\"", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY \"public\".\"my_parent_table\"");
+    assertThat(
+            adapter.getCountQuery(
+                "\"public\".\"my_parent_table\"", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY \"public\".\"my_parent_table\" "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+
+    // Test that the adapter correctly matches schema-qualified unquoted identifiers
+    assertThat(adapter.getCountQuery("public.my_parent_table", ImmutableList.of(), 1000L))
+        .isEqualTo("SELECT COUNT(*) FROM ONLY public.my_parent_table");
+    assertThat(
+            adapter.getCountQuery(
+                "public.my_parent_table", ImmutableList.of("col1", "col2"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM ONLY public.my_parent_table "
+                + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
+                + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
+  }
+
+  private void populateParentTableCache(String parentTableName) throws Exception {
+    PreparedStatement mockParentPreparedStatement = mock(PreparedStatement.class);
+    ResultSet mockParentResultSet = mock(ResultSet.class);
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockConnection.prepareStatement(contains("pg_inherits")))
+        .thenReturn(mockParentPreparedStatement);
+
+    when(mockParentPreparedStatement.executeQuery()).thenReturn(mockParentResultSet);
+    when(mockParentResultSet.next()).thenReturn(true, false);
+    when(mockParentResultSet.getString("table_name")).thenReturn(parentTableName);
+
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, true, false);
+    when(mockResultSet.getString("table_name")).thenReturn(parentTableName, "normal_table");
+
+    adapter.discoverTables(mockDataSource, sourceSchemaReference);
   }
 
   @Test
