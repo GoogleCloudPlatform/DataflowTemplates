@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.datasource;
 
 import com.google.auto.value.AutoOneOf;
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
+import com.google.cloud.teleport.v2.source.cassandra.iowrapper.CassandraDataSource;
 
 @AutoOneOf(DataSource.Kind.class)
 public abstract class DataSource {

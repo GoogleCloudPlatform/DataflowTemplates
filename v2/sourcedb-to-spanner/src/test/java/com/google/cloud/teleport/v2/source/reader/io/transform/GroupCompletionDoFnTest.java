@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.transform;
 
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
+import com.google.cloud.teleport.v2.source.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
 import com.google.common.collect.ImmutableList;

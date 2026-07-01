@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;

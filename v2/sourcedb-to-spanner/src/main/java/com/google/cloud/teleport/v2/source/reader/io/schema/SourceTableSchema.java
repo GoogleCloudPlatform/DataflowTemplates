@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.source.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;

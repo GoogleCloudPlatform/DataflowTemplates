@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.cloud.teleport.v2.source.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
+import com.google.cloud.teleport.v2.source.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
