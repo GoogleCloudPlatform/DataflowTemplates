@@ -337,7 +337,22 @@ public class PostgreSQLDataTypesIT extends SourceDbToSpannerITBase {
     // literal string "java.nio.HeapByteBuffer[pos=0 lim=4 cap=4]"
     // result.put("varbit_to_string", createRows("c", "NULL"));
     result.put("varchar", createRows("testing varchar", "NULL"));
+    result.put(
+        "uuid_pk",
+        createUuidPkRows(
+            "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"));
     return result;
+  }
+
+  private List<Map<String, Object>> createUuidPkRows(Object... values) {
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = 0; i < values.length; i++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("id", values[i]);
+      row.put("col", i + 1);
+      rows.add(row);
+    }
+    return rows;
   }
 
   private List<Map<String, Object>> createRows(Object... values) {

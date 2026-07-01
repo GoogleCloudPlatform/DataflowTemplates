@@ -893,6 +893,50 @@
       "ParentId": "",
       "Comment": "Spanner schema for source table AllDatatypePkColumns2",
       "Id": "t3"
+    },
+    "t4": {
+      "Name": "uuid_pk_table",
+      "ColIds": [
+        "c40",
+        "c41"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c40": {
+          "Name": "id",
+          "T": {
+            "Name": "UUID",
+            "Len": 128,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id varchar(36)",
+          "Id": "c40"
+        },
+        "c41": {
+          "Name": "varchar_column",
+          "T": {
+            "Name": "STRING",
+            "Len": 20,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: varchar_column varchar(20)",
+          "Id": "c41"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c40",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table uuid_pk_table",
+      "Id": "t4"
     }
   },
   "SyntheticPKeys": {},
@@ -2474,6 +2518,66 @@
       "ForeignKeys": null,
       "Indexes": null,
       "Id": "t3"
+    },
+    "t4": {
+      "Name": "uuid_pk_table",
+      "Schema": "Shard1",
+      "ColIds": [
+        "c40",
+        "c41"
+      ],
+      "ColDefs": {
+        "c40": {
+          "Name": "id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              36
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c40"
+        },
+        "c41": {
+          "Name": "varchar_column",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c41"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c40",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t4"
     }
   },
   "SchemaIssues": {
@@ -2520,4 +2624,3 @@
   "ResourceValidation": false,
   "UI": false
 }
-

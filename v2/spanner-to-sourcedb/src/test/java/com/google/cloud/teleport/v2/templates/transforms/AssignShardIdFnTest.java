@@ -1585,4 +1585,88 @@ public class AssignShardIdFnTest {
       assertTrue(requestedCols.contains("migration_shard_id"));
     }
   }
+
+  @Test
+  public void testProcessElementWithUuid() throws Exception {
+    String uuidSessionFilePath = "src/test/resources/SpannerToSourceDbDatatypeIT/session.json";
+
+    Timestamp commitTimestamp = Timestamp.ofTimeSecondsAndNanos(1678886400, 5000);
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            commitTimestamp,
+            "serverTxnId",
+            "recordSeq",
+            "uuid_pk_table",
+            new Mod("{\"id\": \"123e4567-e89b-12d3-a456-426614174000\"}", "{}", "{}"),
+            ModType.valueOf("DELETE"),
+            1,
+            "");
+    record.setShard("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(uuidSessionFilePath);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(uuidSessionFilePath);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+            eq("uuid_pk_table"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+
+    Struct uuidRow = mock(Struct.class);
+
+    // Mocking Value objects for uuid and varchar
+    Value mockUuidValue = mock(Value.class);
+    when(mockUuidValue.getUuid())
+        .thenReturn(java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
+    when(uuidRow.getValue("id")).thenReturn(mockUuidValue);
+
+    Value mockVarcharValue = mock(Value.class);
+    when(mockVarcharValue.getString()).thenReturn("val");
+    when(mockVarcharValue.toString()).thenReturn("val");
+    when(uuidRow.getValue("varchar_column")).thenReturn(mockVarcharValue);
+
+    when(uuidRow.isNull("varchar_column")).thenReturn(false);
+    when(uuidRow.isNull("id")).thenReturn(false);
+
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(uuidRow);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            uuidSessionFilePath,
+            "",
+            "",
+            "");
+    assignShardIdFn.setSchema(SessionFileReader.read(uuidSessionFilePath));
+
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    String keyStr = "uuid_pk_table_{\"id\": \"123e4567-e89b-12d3-a456-426614174000\"}_shard1";
+    Long key = keyStr.hashCode() % 10000L;
+
+    ArgumentCaptor<KV<Long, TrimmedShardedDataChangeRecord>> captor =
+        ArgumentCaptor.forClass(KV.class);
+    verify(processContext, atLeast(1)).output(captor.capture());
+
+    TrimmedShardedDataChangeRecord outputRecord = captor.getValue().getValue();
+    assertEquals("{\"varchar_column\":\"val\"}", outputRecord.getMod().getNewValuesJson());
+  }
 }
