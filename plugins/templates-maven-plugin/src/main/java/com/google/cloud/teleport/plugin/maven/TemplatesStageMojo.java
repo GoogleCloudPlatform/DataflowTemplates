@@ -1538,10 +1538,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - -c\n"
               + "  - |-\n"
               + "    mkdir -p ~/.docker/cli-plugins\n"
-              + "    curl -sSfL https://raw.githubusercontent.com/docker/sbom-cli-plugin/main/install.sh | sh -s --\n"
-              + "    docker sbom "
+              + "    curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh  | sh -s --\n"
+              + "    docker scout sbom "
               + imagePathTag
-              + " --format=spdx-json --output=/workspace/user-sbom.json\n"
+              + " --format=spdx --output=/workspace/user-sbom.json\n"
               + "- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'\n"
               + "  entrypoint: gcloud\n"
               + "  args:\n"
