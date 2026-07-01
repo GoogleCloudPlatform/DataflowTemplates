@@ -519,6 +519,90 @@ public class PostgreSQLDialectAdapterTest {
   }
 
   @Test
+  public void testDiscoverTableIndexesWithBytea()
+      throws SQLException, RetriableSchemaDiscoveryException {
+    ImmutableList<String> tables = ImmutableList.of("my_schema.table1");
+
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
+    when(mockResultSet.getString("column_name")).thenReturn("col_bytea");
+    when(mockResultSet.getString("index_name")).thenReturn("table_bytea_idx");
+    when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
+    when(mockResultSet.getBoolean("is_primary")).thenReturn(true);
+    when(mockResultSet.getLong("cardinality")).thenReturn(1L);
+    when(mockResultSet.getLong("ordinal_position")).thenReturn(1L);
+    when(mockResultSet.getString("type_category")).thenReturn("U");
+    when(mockResultSet.getString("type_name")).thenReturn("bytea");
+    when(mockResultSet.getInt("type_length")).thenReturn(0);
+    when(mockResultSet.wasNull()).thenReturn(true);
+
+    ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
+        adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
+
+    // 1. Assert discovered index info matches expected schema mapping
+    assertThat(indexes)
+        .containsExactly(
+            "my_schema.table1",
+            ImmutableList.of(
+                SourceColumnIndexInfo.builder()
+                    .setColumnName("col_bytea")
+                    .setIndexName("table_bytea_idx")
+                    .setIsUnique(true)
+                    .setIsPrimary(true)
+                    .setCardinality(1L)
+                    .setOrdinalPosition(1L)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.BINARY)
+                    .setColumnTypeName("bytea")
+                    .build()));
+
+    SourceColumnIndexInfo info = indexes.get("my_schema.table1").get(0);
+
+    // 2. Assert that a PartitionColumn can be built successfully from this index info (precondition
+    // check)
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName(info.columnName())
+            .setColumnClass(byte[].class)
+            .setColumnTypeName(info.columnTypeName())
+            .build();
+
+    assertThat(partitionColumn).isNotNull();
+    assertThat(partitionColumn.columnClass()).isEqualTo(byte[].class);
+    assertThat(partitionColumn.columnTypeName()).isEqualTo("bytea");
+
+    // 3. Assert that getBoundaryQuery correctly wraps this discovered BYTEA column in optimized
+    // subqueries
+    assertThat(adapter.getBoundaryQuery("my_schema.table1", ImmutableList.of(), "col_bytea"))
+        .isEqualTo(
+            "SELECT (SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_bytea FROM my_schema.table1 ORDER BY col_bytea DESC NULLS LAST LIMIT 1)");
+
+    // 3b. Assert that getBoundaryQuery generates correct partitioned query for BYTEA column (using
+    // CTE with subqueries)
+    assertThat(
+            adapter.getBoundaryQuery(
+                "my_schema.table1", ImmutableList.of("parent_col"), "col_bytea"))
+        .isEqualTo(
+            "WITH filtered_uuid AS NOT MATERIALIZED (SELECT col_bytea FROM my_schema.table1 "
+                + "WHERE ((? = FALSE) OR (parent_col >= ? AND (parent_col < ? OR (? = TRUE AND parent_col = ?))))) "
+                + "SELECT (SELECT col_bytea FROM filtered_uuid ORDER BY col_bytea ASC NULLS LAST LIMIT 1), "
+                + "(SELECT col_bytea FROM filtered_uuid ORDER BY col_bytea DESC NULLS LAST LIMIT 1)");
+
+    // 4. Assert that getReadQuery generates the correct query for BYTEA column
+    assertThat(adapter.getReadQuery("my_schema.table1", ImmutableList.of("col_bytea")))
+        .isEqualTo(
+            "SELECT * FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND (col_bytea < ? OR (? = TRUE AND col_bytea = ?))))");
+
+    // 5. Assert that getCountQuery generates the correct query for BYTEA column
+    assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col_bytea"), 1000L))
+        .isEqualTo(
+            "SELECT COUNT(*) FROM my_schema.table1 WHERE ((? = FALSE) OR (col_bytea >= ? AND (col_bytea < ? OR (? = TRUE AND col_bytea = ?))))");
+  }
+
+  @Test
   public void testDiscoverTableIndexesBulk()
       throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> tables = ImmutableList.of("table1", "table2");

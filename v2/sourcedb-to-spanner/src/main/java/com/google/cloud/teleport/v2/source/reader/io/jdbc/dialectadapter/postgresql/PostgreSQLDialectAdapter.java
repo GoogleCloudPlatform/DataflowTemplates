@@ -105,7 +105,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
   private final PostgreSQLVersion version;
-  private final Set<ColumnKey> uuidColumnKeys = ConcurrentHashMap.newKeySet();
+  private final Set<ColumnKey> customBoundaryQueryColumnKeys = ConcurrentHashMap.newKeySet();
 
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
@@ -226,12 +226,12 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
-          if (UUID_TYPE.equalsIgnoreCase(columnType)) {
+          if (UUID_TYPE.equalsIgnoreCase(columnType) || "BYTEA".equalsIgnoreCase(columnType)) {
             logger.info(
-                "Discovered UUID column '{}' in table '{}'; enabling text casting for boundary queries",
+                "Discovered UUID/BYTEA column '{}' in table '{}'; enabling custom boundary queries",
                 columnName,
                 tableName);
-            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+            customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           final long characterMaximumLength = resultSet.getLong("character_maximum_length");
           boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
@@ -382,8 +382,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String typeName =
               Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
           final String columnName = resultSet.getString("column_name");
-          if (UUID_TYPE.equalsIgnoreCase(typeName)) {
-            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+          if (UUID_TYPE.equalsIgnoreCase(typeName) || "BYTEA".equalsIgnoreCase(typeName)) {
+            customBoundaryQueryColumnKeys.add(new ColumnKey(tableName, columnName));
           }
           SourceColumnIndexInfo.IndexType indexType = indexTypeFrom(typeCategory, typeName);
           SourceColumnIndexInfo.Builder indexBuilder =
@@ -529,8 +529,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
-    if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
-      return getUuidBoundaryQuery(tableName, partitionColumns, colName);
+    if (customBoundaryQueryColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      return getCustomBoundaryQuery(tableName, partitionColumns, colName);
     }
 
     return addWhereClause(
@@ -539,17 +539,17 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /**
-   * Constructs an optimized boundary query for PostgreSQL UUID columns.
+   * Constructs an optimized boundary query for PostgreSQL columns like UUID or BYTEA.
    *
-   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID types. Instead, we use
-   * subqueries with ORDER BY and LIMIT 1.
+   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID or BYTEA types.
+   * Instead, we use subqueries with ORDER BY and LIMIT 1.
    *
    * <p>For compound/partitioned keys, we wrap the query in a CTE to specify the WHERE clause once,
    * keeping prepared statement parameter indexes aligned with the generic binder. The 'NOT
    * MATERIALIZED' hint prevents PostgreSQL from loading the partition into memory, forcing standard
    * index push-down.
    */
-  private String getUuidBoundaryQuery(
+  private String getCustomBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
     String queryTemplate =
         "SELECT (SELECT %1$s FROM %2$s ORDER BY %1$s ASC NULLS LAST LIMIT 1), "
