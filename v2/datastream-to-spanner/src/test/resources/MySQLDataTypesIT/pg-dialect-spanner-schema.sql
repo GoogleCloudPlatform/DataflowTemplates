@@ -483,3 +483,9 @@ CREATE TABLE IF NOT EXISTS uuid_table (
   uuid_col UUID,
   PRIMARY KEY (id)
 );
+
+CREATE TABLE IF NOT EXISTS uuid_pk_table (
+  id VARCHAR NOT NULL,
+  uuid_pk_col VARCHAR NOT NULL,
+  PRIMARY KEY (id)
+);

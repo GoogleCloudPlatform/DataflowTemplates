@@ -85,3 +85,8 @@ CREATE CHANGE STREAM allstream
   retention_period = '7d',
   allow_txn_exclusion = true
 );
+
+CREATE TABLE IF NOT EXISTS uuid_pk_table (
+    id UUID NOT NULL,
+    varchar_column STRING(20),
+) PRIMARY KEY(id);
