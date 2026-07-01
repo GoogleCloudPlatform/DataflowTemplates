@@ -20,7 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import java.util.Map;
 import org.junit.Test;
 
-public class OverlayTokensMapperTest {
+public class OverlayTokenMapperTest {
 
   @Test
   public void populates_overlay_tokens_from_json_string() {

@@ -24,7 +24,7 @@ import java.util.Map;
 import org.junit.Test;
 import org.neo4j.importer.v1.targets.NodeReference;
 
-public class OverlayTokenParserTest {
+public class JobSpecMapperTest {
 
   private static final String SPEC_PATH = "src/test/resources/testing-specs/job-spec-mapper-test";
 
