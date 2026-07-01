@@ -253,17 +253,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setTransformationCustomParameters(String value);
 
   @TemplateParameter.Text(
-      order = 20,
-      optional = true,
-      description = "Namespace",
-      helpText =
-          "Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used")
-  @Default.String("")
-  String getNamespace();
-
-  void setNamespace(String value);
-
-  @TemplateParameter.Text(
       order = 21,
       optional = true,
       description = "Use Inserts instead of Upserts for spanner mutations.",
