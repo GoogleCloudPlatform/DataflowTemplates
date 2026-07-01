@@ -103,7 +103,7 @@ public abstract class AstraDbDataSource implements Serializable {
         astraToken = SecretManagerUtils.getSecret(value);
       }
       LOG.info("Astra Token is parsed");
-      return this.setAstraToken(GuardedStringValueProvider.create(value));
+      return this.setAstraToken(GuardedStringValueProvider.create(astraToken));
     }
 
     public abstract Builder setKeySpace(String value);
