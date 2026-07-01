@@ -20,6 +20,8 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnectionConfig;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeUtils;
@@ -31,7 +33,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -114,19 +115,19 @@ public class SourceDbToSpanner {
     switch (options.getSourceDbDialect()) {
       case SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT:
         Preconditions.checkArgument(
-            StringUtils.isNotEmpty(options.getSourceConfigURL()),
-            "Cassandra Dialect needs sourceConfigURL to be set.");
+            (sourceConnectionConfig instanceof CassandraConnectionConfig),
+            "Source config is not type of CassandraConnectionConfig.");
         return PipelineController.executeCassandraMigration(
             options, sourceConnectionConfig, pipeline, spannerConfig);
       case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT:
+        Preconditions.checkArgument(
+            (sourceConnectionConfig instanceof AstraConnectionConfig),
+            "Source config is not type of AstraConnectionConfig.");
         return PipelineController.executeCassandraMigration(
             options, sourceConnectionConfig, pipeline, spannerConfig);
       default:
         /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
         /* Making jdbc as default case which includes MYSQL and PG. */
-        Preconditions.checkArgument(
-            StringUtils.isNotEmpty(options.getSourceConfigURL()),
-            "JDBC based source needs sourceConfigURL to be set.");
         Preconditions.checkArgument(
             (sourceConnectionConfig instanceof JdbcShardConfig),
             "Source config is not type of JdbcShardConfig.");
