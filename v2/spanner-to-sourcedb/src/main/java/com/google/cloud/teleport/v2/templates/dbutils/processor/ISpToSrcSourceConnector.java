@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * connection management, metadata discovery, and validation logic required by the pipeline to
  * integrate with the target database.
  */
-public interface ISourceConnector {
+public interface ISpToSrcSourceConnector {
 
   /**
    * Returns the dialect-specific DML Generator for this database.

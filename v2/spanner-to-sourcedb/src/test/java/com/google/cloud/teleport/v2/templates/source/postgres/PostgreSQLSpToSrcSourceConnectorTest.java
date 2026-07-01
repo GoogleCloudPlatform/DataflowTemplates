@@ -42,7 +42,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class PostgreSQLSourceConnectorTest {
+public class PostgreSQLSpToSrcSourceConnectorTest {
 
   @org.junit.Rule
   public org.junit.rules.TemporaryFolder tempFolder = new org.junit.rules.TemporaryFolder();
@@ -50,11 +50,11 @@ public class PostgreSQLSourceConnectorTest {
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private Shard mockShard;
 
-  private PostgreSQLSourceConnector connector;
+  private PostgreSQLSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new PostgreSQLSourceConnector(mockConnectionHelper);
+    connector = new PostgreSQLSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test
@@ -144,7 +144,7 @@ public class PostgreSQLSourceConnectorTest {
     java.sql.Connection mockConnection = mock(java.sql.Connection.class);
     when(mockShard.getDbName()).thenReturn("mydb");
     when(mockShard.getNamespace()).thenReturn("public");
-    PostgreSQLSourceConnector spyConnector = spy(connector);
+    PostgreSQLSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockConnection).when(spyConnector).createConnection(mockShard);
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
@@ -200,5 +200,15 @@ public class PostgreSQLSourceConnectorTest {
     assertEquals("secret-pass", shard.getPassword());
     assertEquals("testdb", shard.getDbName());
     assertEquals("public", shard.getNamespace());
+  }
+
+  @Test
+  public void testSupportsSharding() {
+    assertTrue(connector.supportsSharding());
+  }
+
+  @Test
+  public void testShouldUpdateReadValuesToSpannerRecord() {
+    assertTrue(connector.shouldUpdateReadValuesToSpannerRecord());
   }
 }

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.source.cassandra;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,16 +43,16 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class CassandraSourceConnectorTest {
+public class CassandraSpToSrcSourceConnectorTest {
 
   @Mock private IConnectionHelper mockConnectionHelper;
   @Mock private CassandraShard mockCassandraShard;
 
-  private CassandraSourceConnector connector;
+  private CassandraSpToSrcSourceConnector connector;
 
   @Before
   public void setUp() {
-    connector = new CassandraSourceConnector(mockConnectionHelper);
+    connector = new CassandraSpToSrcSourceConnector(mockConnectionHelper);
   }
 
   @Test
@@ -144,7 +145,7 @@ public class CassandraSourceConnectorTest {
         mock(com.datastax.oss.driver.api.core.CqlSession.class);
     when(mockCassandraShard.getKeySpaceName()).thenReturn("keyspace");
 
-    CassandraSourceConnector spyConnector = spy(connector);
+    CassandraSpToSrcSourceConnector spyConnector = spy(connector);
     doReturn(mockSession).when(spyConnector).createCqlSession(any());
 
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema dummySchema =
@@ -205,5 +206,30 @@ public class CassandraSourceConnectorTest {
                   com.datastax.oss.driver.api.core.config.TypedDriverOption
                       .AUTH_PROVIDER_PASSWORD));
     }
+  }
+
+  @Test
+  public void testSupportsSharding() {
+    assertFalse(connector.supportsSharding());
+  }
+
+  @Test
+  public void testShouldUpdateReadValuesToSpannerRecord() {
+    assertFalse(connector.shouldUpdateReadValuesToSpannerRecord());
+  }
+
+  @Test
+  public void testValidate_Success() throws Exception {
+    connector.validate(List.of(mockCassandraShard), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_MultipleShards_Failure() throws Exception {
+    connector.validate(List.of(mockCassandraShard, mockCassandraShard), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testValidate_InvalidShardType_Failure() throws Exception {
+    connector.validate(List.of(mock(Shard.class)), null);
   }
 }

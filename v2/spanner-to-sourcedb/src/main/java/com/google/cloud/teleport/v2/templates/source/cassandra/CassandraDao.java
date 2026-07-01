@@ -25,7 +25,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCh
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 
-public class CassandraDao implements IDao<DMLGeneratorResponse> {
+public class CassandraDao implements IDao {
   private final String cassandraUrl;
   private final String cassandraUser;
   private final IConnectionHelper connectionHelper;
@@ -41,10 +41,7 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
   public void write(
       DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
       throws Exception {
-    if (transactionalCheck != null) {
-      throw new UnsupportedOperationException(
-          "transactionalCheck is not supported for Cassandra database");
-    }
+    // Transaction checks are not supported in cassandra. They will be ignored in this flow.
     CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl);
     if (session == null) {
       throw new ConnectionException("Connection is null");

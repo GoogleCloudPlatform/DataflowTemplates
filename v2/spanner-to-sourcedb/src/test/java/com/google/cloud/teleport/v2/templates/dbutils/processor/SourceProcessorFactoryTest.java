@@ -27,11 +27,11 @@ import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceExcept
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraConnectionHelper;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraDao;
-import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.cassandra.CassandraSpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
-import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSourceConnector;
-import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSourceConnector;
-import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.postgres.PostgreSQLSpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.source.spanner.SpannerSpToSrcSourceConnector;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ import org.mockito.Mockito;
 @RunWith(JUnit4.class)
 public class SourceProcessorFactoryTest {
 
-  private static Map<String, ISourceConnector> originalSourceMap;
+  private static Map<String, ISpToSrcSourceConnector> originalSourceMap;
 
   @BeforeClass
   public static void setUpBeforeClass() {
@@ -74,7 +74,7 @@ public class SourceProcessorFactoryTest {
                 ""));
     int maxConnections = 10;
 
-    ISourceConnector mockSource = Mockito.mock(ISourceConnector.class);
+    ISpToSrcSourceConnector mockSource = Mockito.mock(ISpToSrcSourceConnector.class);
     JdbcConnectionHelper mockConnectionHelper = Mockito.mock(JdbcConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
 
@@ -123,7 +123,7 @@ public class SourceProcessorFactoryTest {
     List<Shard> shards = List.of(mockCassandraShard);
     int maxConnections = 10;
 
-    ISourceConnector mockSource = Mockito.mock(ISourceConnector.class);
+    ISpToSrcSourceConnector mockSource = Mockito.mock(ISpToSrcSourceConnector.class);
     CassandraConnectionHelper mockConnectionHelper = Mockito.mock(CassandraConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
 
@@ -145,17 +145,17 @@ public class SourceProcessorFactoryTest {
 
   @Test
   public void testGetSource_Success() throws Exception {
-    ISourceConnector mysqlSource = SourceProcessorFactory.getSource("mysql");
-    Assert.assertTrue(mysqlSource instanceof MySQLSourceConnector);
+    ISpToSrcSourceConnector mysqlSource = SourceProcessorFactory.getSource("mysql");
+    Assert.assertTrue(mysqlSource instanceof MySQLSpToSrcSourceConnector);
 
-    ISourceConnector postgresSource = SourceProcessorFactory.getSource("postgresql");
-    Assert.assertTrue(postgresSource instanceof PostgreSQLSourceConnector);
+    ISpToSrcSourceConnector postgresSource = SourceProcessorFactory.getSource("postgresql");
+    Assert.assertTrue(postgresSource instanceof PostgreSQLSpToSrcSourceConnector);
 
-    ISourceConnector cassandraSource = SourceProcessorFactory.getSource("cassandra");
-    Assert.assertTrue(cassandraSource instanceof CassandraSourceConnector);
+    ISpToSrcSourceConnector cassandraSource = SourceProcessorFactory.getSource("cassandra");
+    Assert.assertTrue(cassandraSource instanceof CassandraSpToSrcSourceConnector);
 
-    ISourceConnector spannerSource = SourceProcessorFactory.getSource("spanner");
-    Assert.assertTrue(spannerSource instanceof SpannerSourceConnector);
+    ISpToSrcSourceConnector spannerSource = SourceProcessorFactory.getSource("spanner");
+    Assert.assertTrue(spannerSource instanceof SpannerSpToSrcSourceConnector);
   }
 
   @Test(expected = UnsupportedSourceException.class)

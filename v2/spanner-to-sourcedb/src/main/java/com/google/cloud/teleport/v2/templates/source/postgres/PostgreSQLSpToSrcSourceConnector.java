@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.source.mysql;
+package com.google.cloud.teleport.v2.templates.source.postgres;
 
 import com.google.cloud.teleport.v2.spanner.migrations.connection.ConnectionHelperRequest;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
@@ -24,41 +24,35 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConfi
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.SourceConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAccessor;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.PostgreSQLInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class MySQLSourceConnector implements ISourceConnector {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLSourceConnector.class);
+public class PostgreSQLSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private final IConnectionHelper connectionHelper;
 
-  public MySQLSourceConnector() {
+  public PostgreSQLSpToSrcSourceConnector() {
     this.connectionHelper = new JdbcConnectionHelper();
   }
 
   @VisibleForTesting
-  MySQLSourceConnector(IConnectionHelper connectionHelper) {
+  PostgreSQLSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
   }
 
   @Override
   public IDMLGenerator getDmlGenerator() {
-    return new MySQLDMLGenerator();
+    return new PostgreSQLDMLGenerator();
   }
 
   @Override
@@ -67,7 +61,7 @@ public class MySQLSourceConnector implements ISourceConnector {
   }
 
   String getConnectionUrl(Shard shard) {
-    return "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+    return "jdbc:postgresql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
   }
 
   @Override
@@ -80,12 +74,7 @@ public class MySQLSourceConnector implements ISourceConnector {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
-              shards,
-              null,
-              maxConnections,
-              "com.mysql.cj.jdbc.Driver",
-              "SET SESSION net_read_timeout=1200", // To avoid timeouts at the network layer
-              "jdbc:mysql://");
+              shards, null, maxConnections, "org.postgresql.Driver", null, "jdbc:postgresql://");
       connectionHelper.init(request);
     }
   }
@@ -94,9 +83,9 @@ public class MySQLSourceConnector implements ISourceConnector {
   public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
-    SourceConnectionConfig sourceConnectionConfig =
-        sourceConfigParser.parseConfiguration("mysql", shardFilePath);
     // TODO checks for null and minimum size of 1
+    SourceConnectionConfig sourceConnectionConfig =
+        sourceConfigParser.parseConfiguration("postgresql", shardFilePath);
     if (sourceConnectionConfig instanceof JdbcShardConfig) {
       return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
     }
@@ -106,42 +95,27 @@ public class MySQLSourceConnector implements ISourceConnector {
 
   @Override
   public void validate(List<Shard> shards, PipelineOptions options) throws Exception {
-    for (Shard shard : shards) {
-      try (Connection conn = createConnection(shard)) {
-        if (conn != null) {
-          try (Statement stmt = conn.createStatement();
-              ResultSet rs = stmt.executeQuery("SELECT @@read_only")) {
-            if (rs != null && rs.next() && rs.getInt(1) == 1) {
-              throw new RuntimeException(
-                  "MySQL destination is in read-only mode for shard: " + shard.getLogicalShardId());
-            }
-          }
-        }
-      } catch (Exception e) {
-        LOG.error(
-            "Error checking MySQL read-only status for shard {}: {}",
-            shard.getLogicalShardId(),
-            e.getMessage());
-        throw new RuntimeException("Error checking MySQL read-only status", e);
-      }
-    }
+    // TODO- validate read only similar to mysql
   }
 
   @Override
   public SourceSchema getInformationSchema(List<Shard> shards) throws Exception {
     try (Connection connection = createConnection(shards.get(0))) {
-      return new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName()).scan();
+      return new PostgreSQLInformationSchemaScanner(
+              connection, shards.get(0).getDbName(), shards.get(0).getNamespace())
+          .scan();
     }
   }
 
   @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
     // TODO this looks like a connection leak. Look to fix this.
+    // Maybe create a connection directly without a pool
     HikariConfig config = new HikariConfig();
     config.setJdbcUrl(getConnectionUrl(shard));
     config.setUsername(shard.getUserName());
     config.setPassword(shard.getPassword());
-    config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    config.setDriverClassName("org.postgresql.Driver");
     HikariDataSource ds = new HikariDataSource(config);
     return ds.getConnection();
   }
@@ -158,17 +132,6 @@ public class MySQLSourceConnector implements ISourceConnector {
 
   @Override
   public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
-    if (cause instanceof java.sql.SQLSyntaxErrorException
-        || cause instanceof java.sql.SQLDataException) {
-      return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
-    }
-    if (cause instanceof java.sql.SQLNonTransientConnectionException e) {
-      if (e.getErrorCode() != 1053 && e.getErrorCode() != 1159 && e.getErrorCode() != 1161) {
-        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-        // error codes 1053,1161 and 1159 can be retried
-        return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
-      }
-    }
     return null;
   }
 }

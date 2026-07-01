@@ -44,7 +44,7 @@ import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
@@ -124,7 +124,7 @@ public class AssignShardIdFn
   private final String columnOverrides;
 
   private transient Schema schema;
-  private transient ISourceConnector sourceConnector;
+  private transient ISpToSrcSourceConnector sourceConnector;
   private transient SchemaFileOverridesParser schemaFileOverridesParser;
 
   public AssignShardIdFn(

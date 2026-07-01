@@ -20,7 +20,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.ISourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import java.sql.SQLDataException;
 import java.sql.SQLSyntaxErrorException;
@@ -42,7 +42,7 @@ public class SpannerToSourceDbExceptionClassifier {
           ErrorCode.UNIMPLEMENTED,
           ErrorCode.INTERNAL);
 
-  public static TupleTag<String> classify(Exception exception, ISourceConnector connector) {
+  public static TupleTag<String> classify(Exception exception, ISpToSrcSourceConnector connector) {
     if (exception instanceof SpannerException e) {
       return classifySpannerException(e, connector);
     } else if (exception instanceof ChangeEventConvertorException
@@ -55,7 +55,7 @@ public class SpannerToSourceDbExceptionClassifier {
   }
 
   private static TupleTag<String> classifySpannerException(
-      SpannerException exception, ISourceConnector connector) {
+      SpannerException exception, ISpToSrcSourceConnector connector) {
     // child exceptions are wrapped inside SpannerException.
     Throwable cause = exception.getCause();
 

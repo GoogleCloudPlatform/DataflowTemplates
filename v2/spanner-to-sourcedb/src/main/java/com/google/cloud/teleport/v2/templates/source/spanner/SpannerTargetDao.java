@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * {@link Mutation} via a {@link DatabaseClient} obtained from the {@link
  * com.google.cloud.teleport.v2.templates.dbutils.connection.SpannerConnectionHelper}.
  */
-public class SpannerTargetDao implements IDao<DMLGeneratorResponse> {
+public class SpannerTargetDao implements IDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerTargetDao.class);
 
