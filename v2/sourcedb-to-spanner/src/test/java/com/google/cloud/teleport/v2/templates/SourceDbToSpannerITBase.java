@@ -263,9 +263,13 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     }
 
     // overridden parameters
+    String ipConfig = "WORKER_IP_PRIVATE";
     if (jobParameters != null) {
+      if (jobParameters.containsKey("ipConfiguration")) {
+        ipConfig = jobParameters.get("ipConfiguration");
+      }
       for (Map.Entry<String, String> entry : jobParameters.entrySet()) {
-        if ("namespace".equals(entry.getKey())) {
+        if ("namespace".equals(entry.getKey()) || "ipConfiguration".equals(entry.getKey())) {
           continue;
         }
         params.put(entry.getKey(), entry.getValue());
@@ -280,7 +284,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
     options.addEnvironment("numWorkers", 2);
-    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("ipConfiguration", ipConfig);
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
