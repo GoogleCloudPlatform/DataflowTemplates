@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -268,6 +268,30 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
    * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
    */
+  private boolean checkIfPadAttributeExists(Connection conn) {
+    String query =
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'COLLATIONS' AND COLUMN_NAME = 'PAD_ATTRIBUTE'";
+    try (PreparedStatement stmt = conn.prepareStatement(query);
+        ResultSet rs = stmt.executeQuery()) {
+      if (rs.next()) {
+        return rs.getInt(1) > 0;
+      }
+    } catch (SQLException e) {
+      logger.warn("Failed to check if PAD_ATTRIBUTE exists, defaulting to false", e);
+    }
+    return false;
+  }
+
+  /**
+   * Discover the indexes of tables to migrate.
+   *
+   * @param dataSource Provider for JDBC connection.
+   * @param sourceSchemaReference Source database name and (optionally namespace)
+   * @param tables Tables to migrate.
+   * @return The discovered indexes.
+   * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
+   * @throws RetriableSchemaDiscoveryException - Retriable exception during Schema Discovery.
+   */
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
@@ -281,23 +305,27 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         String.format(
             "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
-    String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference, tables.size());
 
     Map<String, ImmutableList.Builder<SourceColumnIndexInfo>> builders = new HashMap<>();
     tables.forEach(table -> builders.put(table, ImmutableList.builder()));
 
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
-      statement.setFetchSize(1000);
-      for (int i = 0; i < tables.size(); i++) {
-        statement.setString(i + 1, tables.get(i));
-      }
-      ResultSet rs = statement.executeQuery();
-      while (rs.next()) {
-        String tableName = rs.getString("TABLE_NAME");
-        SourceColumnIndexInfo info = resultSetToSourceColumnIndexInfo(rs);
-        if (builders.containsKey(tableName)) {
-          builders.get(tableName).add(info);
+    try (Connection conn = dataSource.getConnection()) {
+      boolean padAttributeExists = checkIfPadAttributeExists(conn);
+      String discoveryQuery =
+          getIndexDiscoveryQuery(sourceSchemaReference, tables.size(), padAttributeExists);
+      try (PreparedStatement statement = conn.prepareStatement(discoveryQuery)) {
+        statement.setFetchSize(1000);
+        for (int i = 0; i < tables.size(); i++) {
+          statement.setString(i + 1, tables.get(i));
+        }
+        try (ResultSet rs = statement.executeQuery()) {
+          while (rs.next()) {
+            String tableName = rs.getString("TABLE_NAME");
+            SourceColumnIndexInfo info = resultSetToSourceColumnIndexInfo(rs);
+            if (builders.containsKey(tableName)) {
+              builders.get(tableName).add(info);
+            }
+          }
         }
       }
     } catch (SQLTransientConnectionException e) {
@@ -351,6 +379,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + DialectAdapter.generateInClause(numTables);
   }
 
+  protected static String getIndexDiscoveryQuery(
+      JdbcSchemaReference sourceSchemaReference, int numTables) {
+    return getIndexDiscoveryQuery(sourceSchemaReference, numTables, true);
+  }
+
   /**
    * Discover Indexed columns and their Collations(if applicable). You could try this on <a href =
    * https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/5>db-fiddle</a>
@@ -359,7 +392,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @return
    */
   protected static String getIndexDiscoveryQuery(
-      JdbcSchemaReference sourceSchemaReference, int numTables) {
+      JdbcSchemaReference sourceSchemaReference, int numTables, boolean padAttributeExists) {
     // We are selecting only the necessary columns as are quering multiple tables
     // And we would like the resultset to be crisp.
     return "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as '"
@@ -392,9 +425,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + "cols.DATETIME_PRECISION as '"
         + InformationSchemaStatsCols.DATETIME_PRECISION_COL
         + "', "
-        + "collations.PAD_ATTRIBUTE as '"
-        + InformationSchemaStatsCols.PAD_SPACE_COL
-        + "', "
+        + (padAttributeExists
+            ? "collations.PAD_ATTRIBUTE as '" + InformationSchemaStatsCols.PAD_SPACE_COL + "', "
+            : "'PAD SPACE' as '" + InformationSchemaStatsCols.PAD_SPACE_COL + "', ")
         + "cols.NUMERIC_SCALE as '"
         + InformationSchemaStatsCols.NUMERIC_SCALE_COL
         + "' "
@@ -405,10 +438,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         + "stats.table_schema = cols.table_schema"
         + " AND stats.table_name = cols.table_name"
         + " AND stats.column_name = cols.column_name"
-        + " LEFT JOIN "
-        + "INFORMATION_SCHEMA.COLLATIONS collations"
-        + " ON "
-        + "cols.COLLATION_NAME = collations.COLLATION_NAME"
+        + (padAttributeExists
+            ? " LEFT JOIN INFORMATION_SCHEMA.COLLATIONS collations ON cols.COLLATION_NAME = collations.COLLATION_NAME"
+            : "")
         + " WHERE stats.TABLE_SCHEMA = "
         + "'"
         + sourceSchemaReference.dbName()
@@ -556,6 +588,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         .setNumericScale(hasNumericScale ? numericScale : null)
         .setDecimalStepSize(decimalStepSize)
         .setDatetimePrecision(datetimePrecision)
+        .setColumnTypeName(columType)
         .build();
   }
 
@@ -743,23 +776,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public String getCollationsOrderQuery(String dbCharset, String dbCollation, boolean padSpace) {
-    return getCollationsOrderQuery(dbCharset, dbCollation, padSpace, 4);
-  }
-
-  @Override
-  public String getCollationsOrderQuery(
-      String dbCharset, String dbCollation, boolean padSpace, int maxBytes) {
     String query = resourceAsString(COLLATIONS_QUERY_RESOURCE_PATH);
-    if (maxBytes < 4) {
-      query = removeSegment(query, "4_BYTE");
-    }
-    if (maxBytes < 3) {
-      query = removeSegment(query, "3_BYTE");
-    }
-    if (maxBytes < 2) {
-      query = removeSegment(query, "2_BYTE");
-    }
-
     Map<String, String> tags = new HashMap<>();
     // The SQL template uses bare tags (no surrounding quotes) because the charset and collation
     // names appear in USING and COLLATE clauses which do not accept quoted identifiers.
@@ -768,178 +785,40 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     return replaceTagsAndSanitize(query, tags);
   }
 
-  private String removeSegment(String sql, String byteSize) {
-    String startTag = "/*START_" + byteSize + "*/";
-    String endTag = "/*END_" + byteSize + "*/";
-    int startIndex = sql.indexOf(startTag);
-    int endIndex = sql.indexOf(endTag);
-    if (startIndex != -1 && endIndex != -1) {
-      return sql.substring(0, startIndex) + sql.substring(endIndex + endTag.length());
-    }
-    return sql;
-  }
-
   @Override
-  public boolean supportsRanksRetrieval() {
-    return true;
-  }
-
-  @Override
-  public List<UniformSplitterDBAdapter.CharacterRank> getRanks(
-      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
-    String cleanCollation = cleanBackticks(collation);
-    String cleanCharset = cleanCollation.split("_")[0];
-    String escapedCharset = escapeMySql(cleanCharset);
-    String escapedCollation = escapeMySql(cleanCollation);
-
-    List<CharacterWeight> weights = new ArrayList<>();
-    int batchSize = 1000;
-    for (int i = 0; i < codepoints.size(); i += batchSize) {
-      List<Integer> batch = codepoints.subList(i, Math.min(i + batchSize, codepoints.size()));
-      weights.addAll(getWeightsBatch(conn, batch, escapedCharset, escapedCollation));
-    }
-    return computeRanksFromWeights(weights);
-  }
-
-  private List<CharacterWeight> getWeightsBatch(
-      Connection conn, List<Integer> batch, String charset, String collation) throws SQLException {
-
-    StringBuilder sb = new StringBuilder();
-    sb.append("SELECT charset_char, ");
-    sb.append("WEIGHT_STRING(CONCAT(CONVERT('a' USING ")
-        .append(charset)
-        .append("), charset_char, CONVERT('a' USING ")
-        .append(charset)
-        .append(")) COLLATE ")
-        .append(collation)
-        .append(") AS weight_non_trailing, ");
-    sb.append("WEIGHT_STRING(charset_char COLLATE ")
-        .append(collation)
-        .append(") AS weight_trailing, ");
-    sb.append("(CONCAT(CONVERT('a' USING ")
-        .append(charset)
-        .append("), charset_char, CONVERT('a' USING ")
-        .append(charset)
-        .append(")) = CONCAT(CONVERT('a' USING ")
-        .append(charset)
-        .append("), CONVERT('a' USING ")
-        .append(charset)
-        .append(")) COLLATE ")
-        .append(collation)
-        .append(") AS is_empty, ");
-    sb.append("(CONCAT(CONVERT('a' USING ")
-        .append(charset)
-        .append("), charset_char, CONVERT('a' USING ")
-        .append(charset)
-        .append(")) = CONCAT(CONVERT('a' USING ")
-        .append(charset)
-        .append("), CONVERT(' ' USING ")
-        .append(charset)
-        .append("), CONVERT('a' USING ")
-        .append(charset)
-        .append(")) COLLATE ")
-        .append(collation)
-        .append(") AS is_space ");
-    sb.append("FROM (");
-    for (int i = 0; i < batch.size(); i++) {
-      if (i > 0) {
-        sb.append(" UNION ALL ");
-      }
-      sb.append("SELECT ? AS charset_char");
-    }
-    sb.append(") AS t");
-
-    List<CharacterWeight> result = new ArrayList<>();
-    try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
-      for (int i = 0; i < batch.size(); i++) {
-        String s = new String(Character.toChars(batch.get(i)));
-        stmt.setString(i + 1, s);
-      }
-      try (ResultSet rs = stmt.executeQuery()) {
-        while (rs.next()) {
-          String charsetChar = rs.getString("charset_char");
-          if (charsetChar == null || charsetChar.isEmpty()) {
-            continue;
-          }
-          int cp = charsetChar.codePointAt(0);
-          byte[] wNt = rs.getBytes("weight_non_trailing");
-          byte[] wT = rs.getBytes("weight_trailing");
-          boolean isEmpty = rs.getBoolean("is_empty");
-          boolean isSpace = rs.getBoolean("is_space");
-          result.add(new CharacterWeight(cp, wNt, wT, isEmpty, isSpace));
-        }
-      }
-    }
-    return result;
-  }
-
-  private List<UniformSplitterDBAdapter.CharacterRank> computeRanksFromWeights(
-      List<CharacterWeight> rows) {
-    java.util.Comparator<String> weightKeyOrder = java.util.Comparator.naturalOrder();
-
-    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
-        new java.util.TreeMap<>(weightKeyOrder);
-    for (CharacterWeight row : rows) {
-      if (!row.isEmpty) {
-        byte[] wNt = row.weightNonTrailing;
-        String keyNt =
-            (wNt != null) ? new String(wNt, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
-        ntGroups
-            .computeIfAbsent(keyNt, k -> new java.util.TreeMap<>())
-            .put(row.codepoint, row.codepoint);
-      }
-    }
-    Map<Integer, Long> ntRank = new HashMap<>();
-    long rank = 0;
-    for (java.util.TreeMap<Integer, Integer> group : ntGroups.values()) {
-      for (Integer c : group.values()) {
-        ntRank.put(c, rank);
-      }
-      rank++;
-    }
-
-    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
-        new java.util.TreeMap<>(weightKeyOrder);
-    for (CharacterWeight row : rows) {
-      if (!row.isEmpty && !row.isSpace) {
-        byte[] wT = row.weightTrailing;
-        String keyT =
-            (wT != null) ? new String(wT, java.nio.charset.StandardCharsets.ISO_8859_1) : "";
-        tGroups
-            .computeIfAbsent(keyT, k -> new java.util.TreeMap<>())
-            .put(row.codepoint, row.codepoint);
-      }
-    }
-    Map<Integer, Long> tRank = new HashMap<>();
-    long tRankCounter = 0;
-    for (java.util.TreeMap<Integer, Integer> group : tGroups.values()) {
-      for (Integer c : group.values()) {
-        tRank.put(c, tRankCounter);
-      }
-      tRankCounter++;
-    }
-
-    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
-    for (CharacterWeight row : rows) {
-      long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
-      long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
-      result.add(
-          new UniformSplitterDBAdapter.CharacterRank(
-              row.codepoint, codepointRank, codepointRankPs, row.isEmpty, row.isSpace));
-    }
-    return result;
-  }
-
-  @Override
-  public List<UniformSplitterDBAdapter.CharacterRank> processCollationResultSet(
+  public List<CollationOrderRow> processCollationResultSet(
       ResultSet rs, CollationReference collationReference) throws SQLException {
-    List<CharacterWeight> list = new ArrayList<>();
+
+    class CharacterWeight {
+      final int codepoint;
+      final byte[] weightNonTrailing;
+      final byte[] weightTrailing;
+      final boolean isEmpty;
+      final boolean isSpace;
+
+      CharacterWeight(
+          int codepoint,
+          byte[] weightNonTrailing,
+          byte[] weightTrailing,
+          boolean isEmpty,
+          boolean isSpace) {
+        this.codepoint = codepoint;
+        this.weightNonTrailing = weightNonTrailing;
+        this.weightTrailing = weightTrailing;
+        this.isEmpty = isEmpty;
+        this.isSpace = isSpace;
+      }
+    }
+
+    List<CharacterWeight> rows = new ArrayList<>();
     while (rs.next()) {
       String charsetChar =
           rs.getString(
               com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
                   .CollationOrderRow.CollationsOrderQueryColumns.CHARSET_CHAR_COL);
-      if (charsetChar == null || charsetChar.isEmpty()) {
+      if (charsetChar == null
+          || charsetChar.isEmpty()
+          || charsetChar.codePointCount(0, charsetChar.length()) > 1) {
         continue;
       }
       int c = charsetChar.codePointAt(0);
@@ -967,30 +846,91 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             collationReference);
         continue;
       }
-      list.add(new CharacterWeight(c, wNt, wT, isEmpty, isSpace));
+      rows.add(new CharacterWeight(c, wNt, wT, isEmpty, isSpace));
     }
-    return computeRanksFromWeights(list);
-  }
 
-  private static class CharacterWeight {
-    private final int codepoint;
-    private final byte[] weightNonTrailing;
-    private final byte[] weightTrailing;
-    private final boolean isEmpty;
-    private final boolean isSpace;
-
-    public CharacterWeight(
-        int codepoint,
-        byte[] weightNonTrailing,
-        byte[] weightTrailing,
-        boolean isEmpty,
-        boolean isSpace) {
-      this.codepoint = codepoint;
-      this.weightNonTrailing = weightNonTrailing;
-      this.weightTrailing = weightTrailing;
-      this.isEmpty = isEmpty;
-      this.isSpace = isSpace;
+    List<CharacterWeight> uniqueRows = new ArrayList<>();
+    java.util.Set<Integer> seenCodepoints = new java.util.HashSet<>();
+    for (CharacterWeight row : rows) {
+      if (seenCodepoints.add(row.codepoint)) {
+        uniqueRows.add(row);
+      } else {
+        logger.warn("Skipping duplicate codepoint={} for {}", row.codepoint, collationReference);
+      }
     }
+    rows = uniqueRows;
+
+    java.util.Comparator<String> weightKeyOrder = java.util.Comparator.naturalOrder();
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> ntGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty) {
+        String keyNt =
+            (row.weightNonTrailing != null)
+                ? new String(row.weightNonTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
+                : "";
+        ntGroups
+            .computeIfAbsent(keyNt, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+
+    Map<Integer, Long> ntRank = new HashMap<>();
+    Map<Integer, Integer> ntEquivalent = new HashMap<>();
+    long rank = 0;
+    for (java.util.TreeMap<Integer, Integer> group : ntGroups.values()) {
+      int equiv = group.firstKey();
+      for (Integer c : group.values()) {
+        ntRank.put(c, rank);
+        ntEquivalent.put(c, equiv);
+      }
+      rank++;
+    }
+
+    java.util.TreeMap<String, java.util.TreeMap<Integer, Integer>> tGroups =
+        new java.util.TreeMap<>(weightKeyOrder);
+    for (CharacterWeight row : rows) {
+      if (!row.isEmpty && !row.isSpace) {
+        String keyT =
+            (row.weightTrailing != null)
+                ? new String(row.weightTrailing, java.nio.charset.StandardCharsets.ISO_8859_1)
+                : "";
+        tGroups
+            .computeIfAbsent(keyT, k -> new java.util.TreeMap<>())
+            .put(row.codepoint, row.codepoint);
+      }
+    }
+    Map<Integer, Long> tRank = new HashMap<>();
+    Map<Integer, Integer> tEquivalent = new HashMap<>();
+    long tRankCounter = 0;
+    for (java.util.TreeMap<Integer, Integer> group : tGroups.values()) {
+      int equiv = group.firstKey();
+      for (Integer c : group.values()) {
+        tRank.put(c, tRankCounter);
+        tEquivalent.put(c, equiv);
+      }
+      tRankCounter++;
+    }
+
+    List<CollationOrderRow> result = new ArrayList<>();
+    for (CharacterWeight row : rows) {
+      long codepointRank = ntRank.getOrDefault(row.codepoint, 0L);
+      long codepointRankPs = tRank.getOrDefault(row.codepoint, 0L);
+      int equivalentChar = ntEquivalent.getOrDefault(row.codepoint, row.codepoint);
+      int equivalentCharPs = tEquivalent.getOrDefault(row.codepoint, row.codepoint);
+      result.add(
+          CollationOrderRow.builder()
+              .setCharsetChar(row.codepoint)
+              .setEquivalentChar(equivalentChar)
+              .setCodepointRank(codepointRank)
+              .setEquivalentCharPadSpace(equivalentCharPs)
+              .setCodepointRankPadSpace(codepointRankPs)
+              .setIsEmpty(row.isEmpty)
+              .setIsSpace(row.isSpace)
+              .build());
+    }
+    return result;
   }
 
   @Override

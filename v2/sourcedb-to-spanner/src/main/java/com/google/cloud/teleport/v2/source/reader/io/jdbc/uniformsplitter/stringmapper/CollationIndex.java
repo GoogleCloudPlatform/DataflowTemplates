@@ -62,7 +62,11 @@ public abstract class CollationIndex implements Serializable {
   }
 
   public long getOrdinalPosition(Integer c) {
-    return characterToIndex().get(c);
+    Long res = characterToIndex().get(c);
+    if (res == null) {
+      throw new RuntimeException("Missing codepoint: " + c);
+    }
+    return res;
   }
 
   public Integer getCharacterFromPosition(Long position) {
@@ -103,58 +107,35 @@ public abstract class CollationIndex implements Serializable {
                 && this.indexToCharacterCache.get(index).equals(equivalentChar))
             || !(this.indexToCharacterReverseCache.containsKey(equivalentChar)
                 && this.indexToCharacterReverseCache.get(equivalentChar).equals(index))) {
-
-          if (equivalentChar.equals((int) '\uFFFD')) {
-            logger.warn(
-                "Duplicate equivalent character \uFFFD mapped to different index. Ignoring reverse mapping. Passed index: {}",
-                index);
-            this.indexToCharacterCache.put(index, equivalentChar);
-          } else {
-            throw new IllegalStateException(
-                "Duplicate Equivalent characters share same index. Please check the collation order query. "
-                    + "passed index: "
-                    + index
-                    + " passed equivalent char: "
-                    + equivalentChar
-                    + " existing equivalent char: "
-                    + (this.indexToCharacterCache.containsKey(index)
-                        ? this.indexToCharacterCache.get(index)
-                        : "not-present")
-                    + " existing index: "
-                    + (this.indexToCharacterReverseCache.containsKey(equivalentChar)
-                        ? this.indexToCharacterReverseCache.get(equivalentChar)
-                        : "not-present")
-                    + " passed charsetChar: "
-                    + charsetChar
-                    + " for "
-                    + collationReference()
-                    + "index-type = "
-                    + indexType());
-          }
+          logger.warn(
+              "Duplicate Equivalent characters share same index or reverse mapping mismatch. Ignoring. "
+                  + "passed index: "
+                  + index
+                  + " passed equivalent char: "
+                  + equivalentChar
+                  + " existing equivalent char: "
+                  + (this.indexToCharacterCache.containsKey(index)
+                      ? this.indexToCharacterCache.get(index)
+                      : "not-present")
+                  + " existing index: "
+                  + (this.indexToCharacterReverseCache.containsKey(equivalentChar)
+                      ? this.indexToCharacterReverseCache.get(equivalentChar)
+                      : "not-present")
+                  + " passed charsetChar: "
+                  + charsetChar
+                  + " for "
+                  + collationReference()
+                  + "index-type = "
+                  + indexType());
+          this.indexToCharacterCache.put(index, equivalentChar);
         }
       } else {
         this.indexToCharacterCache.put(index, equivalentChar);
         this.indexToCharacterReverseCache.put(equivalentChar, index);
       }
       if (this.charToIndexCache.containsKey(charsetChar)) {
-        if (charsetChar.equals('\uFFFD')) {
-          logger.warn("Duplicate charset character \\uFFFD. Ignoring. Passed index: {}", index);
-        } else {
-          throw new IllegalStateException(
-              "Duplicate Charset characters added. Please check the collation order query. "
-                  + "new index: "
-                  + index
-                  + " existing idx: "
-                  + this.charToIndexCache.get(charsetChar)
-                  + " equivalent char: "
-                  + equivalentChar
-                  + " charsetChar: "
-                  + charsetChar
-                  + " for "
-                  + collationReference()
-                  + "index-type = "
-                  + indexType());
-        }
+        logger.warn(
+            "Duplicate charset character {}. Ignoring. Passed index: {}", charsetChar, index);
       } else {
         this.charToIndexCache.put(charsetChar, index);
       }
@@ -173,9 +154,19 @@ public abstract class CollationIndex implements Serializable {
               .collect(ImmutableList.toImmutableList());
       for (int i = 0; i < indexes.size(); i++) {
         if (indexes.get(i) != i) {
+          // Find the missing index
+          int expected = i;
+          long actual = indexes.get(i);
+          logger.error("Discontinuous index found! Expected {}, got {}.", expected, actual);
+
           throw new IllegalStateException(
               "Discontinuous index found at position "
                   + i
+                  + " (expected "
+                  + i
+                  + ", got "
+                  + indexes.get(i)
+                  + ")"
                   + " please check the collation order query"
                   + " for "
                   + collationReference()

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.CHARSET_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.COLLATION_REPLACEMENT_TAG;
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils.RETURN_TYPE_REPLACEMENT_TAG;
@@ -27,7 +28,6 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryEx
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -42,11 +43,11 @@ import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLTransientConnectionException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -85,6 +86,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   private static final String NO_PAD_SPACE_RETURN_TYPE = "TEXT";
 
   private final PostgreSQLVersion version;
+  private final Set<ColumnKey> uuidColumnKeys = ConcurrentHashMap.newKeySet();
 
   public PostgreSQLDialectAdapter(PostgreSQLVersion version) {
     this.version = version;
@@ -205,6 +207,13 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
           final String tableName = resultSet.getString("table_name");
           final String columnName = resultSet.getString("column_name");
           final String columnType = resultSet.getString("data_type");
+          if (UUID_TYPE.equalsIgnoreCase(columnType)) {
+            logger.info(
+                "Discovered UUID column '{}' in table '{}'; enabling text casting for boundary queries",
+                columnName,
+                tableName);
+            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+          }
           final long characterMaximumLength = resultSet.getLong("character_maximum_length");
           boolean typeHasMaximumCharacterLength = !resultSet.wasNull();
           final long numericPrecision = resultSet.getLong("numeric_precision");
@@ -347,20 +356,27 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       try (ResultSet resultSet = statement.executeQuery()) {
         while (resultSet.next()) {
           final String tableName = resultSet.getString("table_name");
+          final String typeCategory = resultSet.getString("type_category");
+          final String typeName =
+              Objects.requireNonNull(resultSet.getString("type_name"), "type_name is null");
+          final String columnName = resultSet.getString("column_name");
+          if (UUID_TYPE.equalsIgnoreCase(typeName)) {
+            uuidColumnKeys.add(new ColumnKey(tableName, columnName));
+          }
           SourceColumnIndexInfo.Builder indexBuilder =
               SourceColumnIndexInfo.builder()
-                  .setColumnName(resultSet.getString("column_name"))
+                  .setColumnName(columnName)
                   .setIndexName(resultSet.getString("index_name"))
                   .setIsUnique(resultSet.getBoolean("is_unique"))
                   .setIsPrimary(resultSet.getBoolean("is_primary"))
                   .setCardinality(resultSet.getLong("cardinality"))
                   .setOrdinalPosition(resultSet.getLong("ordinal_position"))
-                  .setIndexType(indexTypeFrom(resultSet.getString("type_category")));
+                  .setColumnTypeName(typeName)
+                  .setIndexType(indexTypeFrom(typeCategory, typeName));
 
           String collation = resultSet.getString("collation");
           if (collation != null) {
             String charset = resultSet.getString("charset");
-            String typeName = resultSet.getString("type_name");
             Integer typeLength = resultSet.getInt("type_length");
             if (resultSet.wasNull()) {
               typeLength = null;
@@ -462,13 +478,46 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * @param tableName name of the table to read.
    * @param partitionColumns if not-empty, partition columns. Set empty for first column of
    *     partitioning.
+   * @param colName the column to evaluate for boundaries.
+   * @return The optimized SQL string.
    */
   @Override
   public String getBoundaryQuery(
       String tableName, ImmutableList<String> partitionColumns, String colName) {
+    if (uuidColumnKeys.contains(new ColumnKey(tableName, colName))) {
+      return getUuidBoundaryQuery(tableName, partitionColumns, colName);
+    }
+
     return addWhereClause(
         String.format("SELECT MIN(%s), MAX(%s) FROM %s", colName, colName, tableName),
         partitionColumns);
+  }
+
+  /**
+   * Constructs an optimized boundary query for PostgreSQL UUID columns.
+   *
+   * <p>PostgreSQL does not support MIN/MAX aggregate functions on UUID types. Instead, we use
+   * subqueries with ORDER BY and LIMIT 1.
+   *
+   * <p>For compound/partitioned keys, we wrap the query in a CTE to specify the WHERE clause once,
+   * keeping prepared statement parameter indexes aligned with the generic binder. The 'NOT
+   * MATERIALIZED' hint prevents PostgreSQL from loading the partition into memory, forcing standard
+   * index push-down.
+   */
+  private String getUuidBoundaryQuery(
+      String tableName, ImmutableList<String> partitionColumns, String colName) {
+    String queryTemplate =
+        "SELECT (SELECT %1$s FROM %2$s ORDER BY %1$s ASC NULLS LAST LIMIT 1), "
+            + "(SELECT %1$s FROM %2$s ORDER BY %1$s DESC NULLS LAST LIMIT 1)";
+
+    if (partitionColumns.isEmpty()) {
+      return String.format(queryTemplate, colName, tableName);
+    }
+    String whereClause = addWhereClause("", partitionColumns);
+    String selectClause = String.format(queryTemplate, colName, "filtered_uuid");
+    return String.format(
+        "WITH filtered_uuid AS NOT MATERIALIZED (SELECT %1$s FROM %2$s%3$s) %4$s",
+        colName, tableName, whereClause, selectClause);
   }
 
   /**
@@ -533,7 +582,10 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * Ref <a
    * href="https://www.postgresql.org/docs/16/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE"></a>.
    */
-  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory) {
+  private SourceColumnIndexInfo.IndexType indexTypeFrom(String typeCategory, String typeName) {
+    if (UUID_TYPE.equalsIgnoreCase(typeName)) {
+      return SourceColumnIndexInfo.IndexType.BINARY;
+    }
     switch (typeCategory) {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;
@@ -555,89 +607,37 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
             || upperTypeName.equals("BPCHAR"));
   }
 
-  @Override
-  public boolean supportsRanksRetrieval() {
-    return true;
-  }
+  private static final class ColumnKey implements Serializable {
+    private final String tableName;
+    private final String columnName;
 
-  @Override
-  public List<UniformSplitterDBAdapter.CharacterRank> getRanks(
-      Connection conn, List<Integer> codepoints, String collation) throws SQLException {
-    String escapedCollation = escapePostgresCollation(collation);
+    public ColumnKey(String tableName, String columnName) {
+      this.tableName = clean(tableName);
+      this.columnName = clean(columnName);
+    }
 
-    StringBuilder sb = new StringBuilder();
-    sb.append("WITH t_with_flags AS (");
-    sb.append("  SELECT c, ");
-    sb.append("         (CONCAT('a', c, 'a') = 'aa' COLLATE ")
-        .append(escapedCollation)
-        .append(") AS is_empty, ");
-    sb.append("         (CONCAT('a', c, 'a') = 'a a' COLLATE ")
-        .append(escapedCollation)
-        .append(") AS is_space ");
-    sb.append("  FROM (VALUES ");
-    for (int i = 0; i < codepoints.size(); i++) {
-      if (i > 0) {
-        sb.append(", ");
+    private static String clean(String identifier) {
+      if (identifier == null) {
+        return "";
       }
-      sb.append("(?::text)");
+      return identifier.replace("\"", "").toLowerCase();
     }
-    sb.append(") AS t(c)");
-    sb.append(")");
-    sb.append("SELECT c, is_empty, is_space, ");
-    sb.append(
-            "       DENSE_RANK() OVER (PARTITION BY is_empty ORDER BY (CONCAT('a', c, 'a') COLLATE ")
-        .append(escapedCollation)
-        .append(")) - 1 AS rank, ");
-    sb.append("       DENSE_RANK() OVER (PARTITION BY is_empty, is_space ORDER BY (c COLLATE ")
-        .append(escapedCollation)
-        .append(")) - 1 AS rank_ps ");
-    sb.append("FROM t_with_flags");
 
-    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
-    try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
-      for (int i = 0; i < codepoints.size(); i++) {
-        String s = new String(Character.toChars(codepoints.get(i)));
-        stmt.setString(i + 1, s);
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
       }
-      try (ResultSet rs = stmt.executeQuery()) {
-        while (rs.next()) {
-          String charsetChar = rs.getString("c");
-          if (charsetChar == null || charsetChar.isEmpty()) {
-            continue;
-          }
-          int cp = charsetChar.codePointAt(0);
-          long rank = rs.getLong("rank");
-          long rankPs = rs.getLong("rank_ps");
-          boolean isEmpty = rs.getBoolean("is_empty");
-          boolean isSpace = rs.getBoolean("is_space");
-          result.add(
-              new UniformSplitterDBAdapter.CharacterRank(cp, rank, rankPs, isEmpty, isSpace));
-        }
+      if (!(o instanceof ColumnKey)) {
+        return false;
       }
+      ColumnKey that = (ColumnKey) o;
+      return tableName.equals(that.tableName) && columnName.equals(that.columnName);
     }
-    return result;
-  }
 
-  @Override
-  public List<UniformSplitterDBAdapter.CharacterRank> processCollationResultSet(
-      ResultSet rs, CollationReference collationReference) throws SQLException {
-    List<UniformSplitterDBAdapter.CharacterRank> result = new ArrayList<>();
-    while (rs.next()) {
-      int cp = rs.getInt("codepoint");
-      long rank = rs.getLong("codepoint_rank");
-      long rankPs = rs.getLong("codepoint_rank_pad_space");
-      boolean isEmpty = rs.getBoolean("is_empty");
-      boolean isSpace = rs.getBoolean("is_space");
-      result.add(new UniformSplitterDBAdapter.CharacterRank(cp, rank, rankPs, isEmpty, isSpace));
+    @Override
+    public int hashCode() {
+      return Objects.hash(tableName, columnName);
     }
-    return result;
-  }
-
-  private String escapePostgresCollation(String collation) {
-    if (collation == null) {
-      return null;
-    }
-    String clean = collation.replace("\"", "");
-    return "\"" + clean + "\"";
   }
 }

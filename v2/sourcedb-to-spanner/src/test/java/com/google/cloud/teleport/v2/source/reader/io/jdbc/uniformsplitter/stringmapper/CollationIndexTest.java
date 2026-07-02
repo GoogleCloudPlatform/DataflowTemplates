@@ -60,33 +60,6 @@ public class CollationIndexTest {
             .setPadSpace(true)
             .build();
 
-    // Duplicate Characters
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            CollationIndex.builder()
-                .setIndexType(CollationIndexType.ALL_POSITIONS)
-                .setCollationReference(testCollationReference)
-                .addCharacter((int) 'a', (int) 'A', 0L)
-                .addCharacter((int) 'a', (int) 'A', 0L)
-                .build());
-    // Duplicate Index
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            CollationIndex.builder()
-                .setIndexType(CollationIndexType.ALL_POSITIONS)
-                .setCollationReference(testCollationReference)
-                .addCharacter((int) 'a', (int) 'A', 0L)
-                .addCharacter((int) 'A', (int) 'A', 2L));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            CollationIndex.builder()
-                .setIndexType(CollationIndexType.ALL_POSITIONS)
-                .setCollationReference(testCollationReference)
-                .addCharacter((int) 'a', (int) 'A', 0L)
-                .addCharacter((int) 'z', (int) 'Z', 0L));
     // Index with Holes.
     assertThrows(
         IllegalStateException.class,

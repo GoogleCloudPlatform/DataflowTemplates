@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
@@ -117,16 +118,7 @@ public interface UniformSplitterDBAdapter extends Serializable {
     return BoundaryExtractorFactory.parseTimeStringToDuration(rs.getString(index));
   }
 
-  default boolean supportsRanksRetrieval() {
-    return false;
-  }
-
-  default List<CharacterRank> getRanks(Connection conn, List<Integer> codepoints, String collation)
-      throws SQLException {
-    throw new UnsupportedOperationException("Ranks retrieval not supported");
-  }
-
-  default List<CharacterRank> processCollationResultSet(
+  default List<CollationOrderRow> processCollationResultSet(
       ResultSet rs,
       com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper
               .CollationReference
@@ -137,42 +129,5 @@ public interface UniformSplitterDBAdapter extends Serializable {
 
   default int getCharsetMaxLength(Connection conn, String charsetName) throws SQLException {
     return 4; // Default to safe 4 bytes
-  }
-
-  class CharacterRank implements Serializable {
-    private final int codepoint;
-    private final long rank;
-    private final long rankPadSpace;
-    private final boolean isEmpty;
-    private final boolean isSpace;
-
-    public CharacterRank(
-        int codepoint, long rank, long rankPadSpace, boolean isEmpty, boolean isSpace) {
-      this.codepoint = codepoint;
-      this.rank = rank;
-      this.rankPadSpace = rankPadSpace;
-      this.isEmpty = isEmpty;
-      this.isSpace = isSpace;
-    }
-
-    public int codepoint() {
-      return codepoint;
-    }
-
-    public long rank() {
-      return rank;
-    }
-
-    public long rankPadSpace() {
-      return rankPadSpace;
-    }
-
-    public boolean isEmpty() {
-      return isEmpty;
-    }
-
-    public boolean isSpace() {
-      return isSpace;
-    }
   }
 }

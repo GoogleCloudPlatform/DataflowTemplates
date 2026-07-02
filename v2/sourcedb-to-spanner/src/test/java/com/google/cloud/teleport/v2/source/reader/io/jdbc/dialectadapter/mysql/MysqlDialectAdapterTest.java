@@ -337,6 +337,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
@@ -388,6 +389,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
@@ -623,6 +625,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, false);
     doNothing().when(mockPreparedStatement).setString(1, testTables.get(0));
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
@@ -751,6 +754,15 @@ public class MysqlDialectAdapterTest {
   }
 
   @Test
+  public void testGetIndexDiscoveryQuery5_7() {
+    assertThat(
+            MysqlDialectAdapter.getIndexDiscoveryQuery(
+                JdbcSchemaReference.builder().setDbName("testDB").build(), 1, false))
+        .isEqualTo(
+            "SELECT stats.TABLE_NAME, stats.COLUMN_NAME as 'stats.COLUMN_NAME', stats.INDEX_NAME as 'stats.INDEX_NAME', stats.SEQ_IN_INDEX as 'stats.SEQ_IN_INDEX', stats.NON_UNIQUE as 'stats.NON_UNIQUE', stats.CARDINALITY as 'stats.CARDINALITY', cols.COLUMN_TYPE as 'cols.COLUMN_TYPE', cols.CHARACTER_MAXIMUM_LENGTH as 'cols.CHARACTER_MAXIMUM_LENGTH', cols.CHARACTER_SET_NAME as 'cols.CHARACTER_SET_NAME', cols.COLLATION_NAME as 'cols.COLLATION_NAME', cols.DATETIME_PRECISION as 'cols.DATETIME_PRECISION', 'PAD SPACE' as 'collations.PAD_ATTRIBUTE', cols.NUMERIC_SCALE as 'cols.NUMERIC_SCALE'  FROM INFORMATION_SCHEMA.STATISTICS stats JOIN INFORMATION_SCHEMA.COLUMNS cols ON stats.table_schema = cols.table_schema AND stats.table_name = cols.table_name AND stats.column_name = cols.column_name WHERE stats.TABLE_SCHEMA = 'testDB' AND stats.TABLE_NAME IN (?)");
+  }
+
+  @Test
   public void testDiscoverTableIndexesGetConnectionException() throws SQLException {
     final String testTable = "testTable";
     final JdbcSchemaReference sourceSchemaReference =
@@ -788,6 +800,7 @@ public class MysqlDialectAdapterTest {
     when(mockConnection.prepareStatement(anyString()))
         .thenThrow(new SQLException("test"))
         .thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     exceptionCount++;
     doThrow(new SQLException("test"))
         .doNothing()
@@ -994,6 +1007,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> result =
@@ -1040,6 +1054,7 @@ public class MysqlDialectAdapterTest {
 
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+    mockPadAttributeCheck(mockConnection, true);
     doNothing().when(mockPreparedStatement).setString(1, testTable);
 
     // We'll run this with different padSpace return values
@@ -1179,6 +1194,18 @@ public class MysqlDialectAdapterTest {
             .put("int_unsigned_col", new SourceColumnType("INTEGER UNSIGNED", new Long[] {}, null))
             .put("tiny_int_unsigned_col", new SourceColumnType("TINYINT", new Long[] {}, null))
             .build());
+  }
+
+  private void mockPadAttributeCheck(Connection conn, boolean exists) throws SQLException {
+    PreparedStatement stmt = mock(PreparedStatement.class);
+    ResultSet rs = mock(ResultSet.class);
+    when(conn.prepareStatement(
+            org.mockito.ArgumentMatchers.eq(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'COLLATIONS' AND COLUMN_NAME = 'PAD_ATTRIBUTE'")))
+        .thenReturn(stmt);
+    when(stmt.executeQuery()).thenReturn(rs);
+    when(rs.next()).thenReturn(true);
+    when(rs.getInt(1)).thenReturn(exists ? 1 : 0);
   }
 }
 

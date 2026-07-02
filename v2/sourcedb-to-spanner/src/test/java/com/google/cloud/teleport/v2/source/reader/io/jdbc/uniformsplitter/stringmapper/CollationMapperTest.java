@@ -23,17 +23,11 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter.CharacterRank;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -41,10 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -468,157 +459,11 @@ public class CollationMapperTest {
     assertThat(collationMapper.mapString("a", 1).equals(collationMapper.mapString("a ", 1)));
   }
 
-  @Test
-  public void testCollationFromDb_MysqlJavaDriven_Success() throws SQLException {
-    CollationReference testCollationReference =
-        CollationReference.builder()
-            .setDbCharacterSet("latin1")
-            .setDbCollation("latin1_swedish_ci")
-            .setPadSpace(false)
-            .build();
 
-    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
-
-    List<CharacterRank> ranks = new ArrayList<>();
-    // Add ranks for Latin-1 codepoints (0 to 255)
-    for (int cp = 0; cp < 256; cp++) {
-      long rank = cp;
-      ranks.add(new CharacterRank(cp, rank, rank, false, false));
-    }
-    when(mockDbAdapter.getRanks(any(), any(), any())).thenReturn(ranks);
-
-    CollationMapper collationMapper =
-        CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
-
-    assertThat(collationMapper.allPositionsIndex().characterToIndex().size()).isEqualTo(256);
-    assertThat(collationMapper.collationReference().dbCollation()).isEqualTo("latin1_swedish_ci");
-  }
-
-  @Test
-  public void testCollationFromDb_PostgresJavaDriven_Success() throws SQLException {
-    CollationReference testCollationReference =
-        CollationReference.builder()
-            .setDbCharacterSet("latin1")
-            .setDbCollation("en_US.utf8")
-            .setPadSpace(false)
-            .build();
-
-    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
-
-    Map<Integer, Integer> cpToEquiv = new HashMap<>();
-    for (int cp = 0; cp < 256; cp++) {
-      int equiv = (cp >= 'a' && cp <= 'z') ? (cp - 32) : cp;
-      cpToEquiv.put(cp, equiv);
-    }
-    List<Integer> uniqueEquivs =
-        cpToEquiv.values().stream().distinct().sorted().collect(Collectors.toList());
-    Map<Integer, Long> equivToRank = new HashMap<>();
-    for (int i = 0; i < uniqueEquivs.size(); i++) {
-      equivToRank.put(uniqueEquivs.get(i), (long) i);
-    }
-
-    List<Integer> uniqueEquivsPs =
-        cpToEquiv.entrySet().stream()
-            .filter(entry -> entry.getKey() != ' ')
-            .map(Map.Entry::getValue)
-            .distinct()
-            .sorted()
-            .collect(Collectors.toList());
-    Map<Integer, Long> equivToRankPs = new HashMap<>();
-    for (int i = 0; i < uniqueEquivsPs.size(); i++) {
-      equivToRankPs.put(uniqueEquivsPs.get(i), (long) i);
-    }
-
-    List<CharacterRank> ranks = new ArrayList<>();
-    for (int cp = 0; cp < 256; cp++) {
-      int equiv = cpToEquiv.get(cp);
-      long rank = equivToRank.get(equiv);
-      long rankPs = (cp == ' ') ? 0L : equivToRankPs.get(equiv);
-      ranks.add(new CharacterRank(cp, rank, rankPs, false, cp == ' '));
-    }
-    when(mockDbAdapter.getRanks(any(), any(), any())).thenReturn(ranks);
-
-    CollationMapper collationMapper =
-        CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
-
-    assertThat(collationMapper.allPositionsIndex().characterToIndex().size()).isEqualTo(256);
-    assertThat(collationMapper.collationReference().dbCollation()).isEqualTo("en_US.utf8");
-  }
-
-  @Test
-  public void testCollationFromDb_MysqlJavaDriven_FallbackToSql() throws SQLException {
-    CollationReference testCollationReference =
-        CollationReference.builder()
-            .setDbCharacterSet("latin1")
-            .setDbCollation("latin1_swedish_ci")
-            .setPadSpace(false)
-            .build();
-
-    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(true);
-    when(mockDbAdapter.getRanks(any(), any(), any()))
-        .thenThrow(new SQLException("Mocked connection failure"));
-
-    // Fallback mock settings
-    when(mockDbAdapter.getCharsetMaxLength(any(), any())).thenReturn(1);
-    when(mockDbAdapter.getCollationsOrderQuery(anyString(), anyString(), anyBoolean(), anyInt()))
-        .thenReturn("SELECT 1");
-    when(mockDbAdapter.collationQueryResultType())
-        .thenReturn(UniformSplitterDBAdapter.CollationQueryResultType.WEIGHT_BYTES);
-
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.execute(any())).thenReturn(true);
-    when(mockStatement.getResultSet()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true).thenReturn(false);
-
-    List<CharacterRank> ranks = new java.util.ArrayList<>();
-    ranks.add(new CharacterRank('a', 0L, 0L, false, false));
-    when(mockDbAdapter.processCollationResultSet(any(), any())).thenReturn(ranks);
-
-    CollationMapper collationMapper =
-        CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
-
-    assertThat(collationMapper.allPositionsIndex().characterToIndex().size()).isEqualTo(1);
-    assertThat(collationMapper.collationReference().dbCollation()).isEqualTo("latin1_swedish_ci");
-  }
-
-  @Test
-  public void testCollationFromDb_FallbackSqlCappedTo3Bytes() throws SQLException {
-    CollationReference testCollationReference =
-        CollationReference.builder()
-            .setDbCharacterSet("utf8mb4")
-            .setDbCollation("utf8mb4_unicode_ci")
-            .setPadSpace(false)
-            .build();
-
-    // Force fallback by disabling ranks retrieval support
-    when(mockDbAdapter.supportsRanksRetrieval()).thenReturn(false);
-
-    // Mock 4-byte charset length, but we expect it to be capped at 3
-    when(mockDbAdapter.getCharsetMaxLength(any(), eq("utf8mb4"))).thenReturn(4);
-    when(mockDbAdapter.getCollationsOrderQuery(anyString(), anyString(), anyBoolean(), anyInt()))
-        .thenReturn("SELECT 1");
-    when(mockDbAdapter.collationQueryResultType())
-        .thenReturn(UniformSplitterDBAdapter.CollationQueryResultType.WEIGHT_BYTES);
-
-    when(mockConnection.createStatement()).thenReturn(mockStatement);
-    when(mockStatement.execute(any())).thenReturn(true);
-    when(mockStatement.getResultSet()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true).thenReturn(false);
-
-    List<CharacterRank> ranks = new java.util.ArrayList<>();
-    ranks.add(new CharacterRank('a', 0L, 0L, false, false));
-    when(mockDbAdapter.processCollationResultSet(any(), any())).thenReturn(ranks);
-
-    CollationMapper.fromDB(mockConnection, mockDbAdapter, testCollationReference);
-
-    // Verify that maxBytes is capped at 3 when querying the database adapter
-    verify(mockDbAdapter)
-        .getCollationsOrderQuery(eq("utf8mb4"), eq("utf8mb4_unicode_ci"), eq(false), eq(3));
-  }
 
   private static CollationMapper fromResultSetWithRanks(
       ResultSet rs, CollationReference collationReference) throws SQLException {
-    List<UniformSplitterDBAdapter.CharacterRank> list = new ArrayList<>();
+    List<CollationOrderRow> list = new ArrayList<>();
     while (rs.next()) {
       String charsetChar = rs.getString(CHARSET_CHAR_COL);
       if (charsetChar == null || charsetChar.isEmpty()) {
@@ -629,14 +474,9 @@ public class CollationMapperTest {
           charsetChar.length() == Character.charCount(c),
           "Expected single character from collation query, got: %s",
           charsetChar);
-      long rankVal = rs.getLong(CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_COL);
-      long rankPsVal =
-          rs.getLong(CollationOrderRow.CollationsOrderQueryColumns.CODEPOINT_RANK_PAD_SPACE_COL);
-      boolean isEmpty = rs.getBoolean(IS_EMPTY_COL);
-      boolean isSpace = rs.getBoolean(IS_SPACE_COL);
-      list.add(new UniformSplitterDBAdapter.CharacterRank(c, rankVal, rankPsVal, isEmpty, isSpace));
+      list.add(CollationOrderRow.fromRS(rs));
     }
-    return CollationMapper.fromRanksCollection(list, collationReference);
+    return CollationMapper.fromRowsCollection(list, collationReference);
   }
 
   public void testCollationMapperDeduplication() {

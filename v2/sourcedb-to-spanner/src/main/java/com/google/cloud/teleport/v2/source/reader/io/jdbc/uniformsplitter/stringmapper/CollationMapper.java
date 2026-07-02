@@ -23,15 +23,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -242,51 +238,19 @@ public abstract class CollationMapper implements Serializable {
       CollationReference collationReference)
       throws SQLException {
 
-    // 1. Attempt Java-side codepoint generation
-    Optional<Charset> javaCharsetOpt =
-        CharsetMapper.toJavaCharset(collationReference.dbCharacterSet());
-    if (javaCharsetOpt.isPresent()) {
-      // Limit of 10000 codepoints for Java-side processing to prevent large charset overheads.
-      // If a custom charset is larger than 10000, we fall back to dynamic SQL.
-      Optional<List<Integer>> codepointsOpt =
-          CodepointGenerator.getValidCodepoints(javaCharsetOpt.get(), 10000);
-      if (codepointsOpt.isPresent()) {
-        List<Integer> codepoints = codepointsOpt.get();
-
-        // Unified Rank retrieval path
-        if (dbAdapter.supportsRanksRetrieval()) {
-          try {
-            logger.info("Running Java-driven rank retrieval for collation {}", collationReference);
-            List<UniformSplitterDBAdapter.CharacterRank> ranks =
-                dbAdapter.getRanks(connection, codepoints, collationReference.dbCollation());
-            return fromRanksCollection(ranks, collationReference);
-          } catch (Exception e) {
-            logger.warn(
-                "Java-driven rank retrieval failed for {}, falling back to SQL path",
-                collationReference,
-                e);
-          }
-        }
-      }
-    }
-
-    // 2. Fallback SQL-driven path
-    logger.info("Using SQL-driven fallback query for collation {}", collationReference);
-    int maxBytes = 3;
-    try {
-      maxBytes =
-          Math.min(
-              dbAdapter.getCharsetMaxLength(connection, collationReference.dbCharacterSet()), 3);
-    } catch (Exception e) {
-      logger.warn("Failed to query max character length, defaulting to 3 bytes", e);
-    }
+    logger.info("Using SQL-driven query for collation {}", collationReference);
 
     String query =
         dbAdapter.getCollationsOrderQuery(
             collationReference.dbCharacterSet(),
             collationReference.dbCollation(),
-            collationReference.padSpace(),
-            maxBytes);
+            collationReference.padSpace());
+
+    logger.info("QUERY IS: \n{}", query);
+    dbAdapter.getCollationsOrderQuery(
+        collationReference.dbCharacterSet(),
+        collationReference.dbCollation(),
+        collationReference.padSpace());
 
     CollationMapper mapper = null;
     try (Statement statement = connection.createStatement()) {
@@ -295,9 +259,9 @@ public abstract class CollationMapper implements Serializable {
       for (int i = 0; i < query.lines().count() + 1; i++) {
         if (foundResultSet) {
           ResultSet rs = statement.getResultSet();
-          List<UniformSplitterDBAdapter.CharacterRank> ranks =
+          List<CollationOrderRow> rows =
               dbAdapter.processCollationResultSet(rs, collationReference);
-          mapper = fromRanksCollection(ranks, collationReference);
+          mapper = fromRowsCollection(rows, collationReference);
           break;
         }
         foundResultSet = statement.getMoreResults();
@@ -321,38 +285,11 @@ public abstract class CollationMapper implements Serializable {
     return mapper;
   }
 
-  static CollationMapper fromRanksCollection(
-      List<UniformSplitterDBAdapter.CharacterRank> rows, CollationReference collationReference) {
-
-    Map<Long, Integer> rankToMinCodepoint = new HashMap<>();
-    Map<Long, Integer> rankPsToMinCodepoint = new HashMap<>();
-    for (UniformSplitterDBAdapter.CharacterRank row : rows) {
-      if (!row.isEmpty()) {
-        rankToMinCodepoint.merge(row.rank(), row.codepoint(), Math::min);
-        if (!row.isSpace()) {
-          rankPsToMinCodepoint.merge(row.rankPadSpace(), row.codepoint(), Math::min);
-        }
-      }
-    }
-
+  static CollationMapper fromRowsCollection(
+      List<CollationOrderRow> rows, CollationReference collationReference) {
     Builder builder = builder(collationReference);
-    for (UniformSplitterDBAdapter.CharacterRank row : rows) {
-      int equivChar = row.isEmpty() ? row.codepoint() : rankToMinCodepoint.get(row.rank());
-      int equivCharPs =
-          (row.isEmpty() || row.isSpace())
-              ? row.codepoint()
-              : rankPsToMinCodepoint.get(row.rankPadSpace());
-
-      builder.addCharacter(
-          CollationOrderRow.builder()
-              .setCharsetChar(row.codepoint())
-              .setEquivalentChar(equivChar)
-              .setCodepointRank(row.rank())
-              .setEquivalentCharPadSpace(equivCharPs)
-              .setCodepointRankPadSpace(row.rankPadSpace())
-              .setIsEmpty(row.isEmpty())
-              .setIsSpace(row.isSpace())
-              .build());
+    for (CollationOrderRow row : rows) {
+      builder.addCharacter(row);
     }
     return builder.build();
   }
