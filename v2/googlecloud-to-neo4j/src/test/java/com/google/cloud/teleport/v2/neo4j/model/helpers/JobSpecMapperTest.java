@@ -285,7 +285,10 @@ public class JobSpecMapperTest {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
-        () -> JobSpecMapper.parse(SPEC_PATH + "/valid-json-wrong-format-legacy-spec.json", new OverlayTokens(Map.of())));
+        () ->
+            JobSpecMapper.parse(
+                SPEC_PATH + "/valid-json-wrong-format-legacy-spec.json",
+                new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -293,7 +296,10 @@ public class JobSpecMapperTest {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
-        () -> JobSpecMapper.parse(SPEC_PATH + "/valid-json-wrong-format-import-spec.json", new OverlayTokens(Map.of())));
+        () ->
+            JobSpecMapper.parse(
+                SPEC_PATH + "/valid-json-wrong-format-import-spec.json",
+                new OverlayTokens(Map.of())));
   }
 
   @Test
@@ -301,6 +307,9 @@ public class JobSpecMapperTest {
     assertThrows(
         "Unable to process Neo4j job specification",
         RuntimeException.class,
-        () -> JobSpecMapper.parse(SPEC_PATH + "/valid-yaml-wrong-format-import-spec.yaml", new OverlayTokens(Map.of())));
+        () ->
+            JobSpecMapper.parse(
+                SPEC_PATH + "/valid-yaml-wrong-format-import-spec.yaml",
+                new OverlayTokens(Map.of())));
   }
 }
