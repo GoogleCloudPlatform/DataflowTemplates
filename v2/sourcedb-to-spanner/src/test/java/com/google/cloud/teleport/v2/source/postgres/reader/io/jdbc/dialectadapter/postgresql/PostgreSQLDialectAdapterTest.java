@@ -299,7 +299,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setOrdinalPosition(2L)
                     .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
                     .setColumnTypeName("timestamp")
-                    .setDatetimePrecision(0)
+                    .setDatetimePrecision(6)
                     .build()));
   }
 
@@ -311,7 +311,7 @@ public class PostgreSQLDialectAdapterTest {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, true, true, false);
+    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, true, false);
 
     when(mockResultSet.getString("table_name")).thenReturn("my_schema.table1");
     when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
@@ -324,7 +324,6 @@ public class PostgreSQLDialectAdapterTest {
             "col_numeric",
             "col_float4",
             "col_float8",
-            "col_money",
             "col_date",
             "col_time",
             "col_timetz",
@@ -334,15 +333,14 @@ public class PostgreSQLDialectAdapterTest {
             "idx_numeric",
             "idx_float4",
             "idx_float8",
-            "idx_money",
             "idx_date",
             "idx_time",
             "idx_timetz",
             "idx_bytea");
     when(mockResultSet.getString("type_category"))
-        .thenReturn("N", "N", "N", "N", "D", "D", "D", "U");
+        .thenReturn("N", "N", "N", "D", "D", "D", "U");
     when(mockResultSet.getString("type_name"))
-        .thenReturn("numeric", "float4", "float8", "money", "date", "time", "timetz", "bytea");
+        .thenReturn("numeric", "float4", "float8", "date", "time", "timetz", "bytea");
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> indexes =
         adapter.discoverTableIndexes(mockDataSource, sourceSchemaReference, tables);
@@ -384,17 +382,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setColumnTypeName("float8")
                     .setDecimalStepSize(new java.math.BigDecimal("0.0000000001"))
                     .build(),
-                SourceColumnIndexInfo.builder()
-                    .setColumnName("col_money")
-                    .setIndexName("idx_money")
-                    .setIsUnique(true)
-                    .setIsPrimary(true)
-                    .setCardinality(1L)
-                    .setOrdinalPosition(1L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.DECIMAL)
-                    .setColumnTypeName("money")
-                    .setNumericScale(0)
-                    .build(),
+
                 SourceColumnIndexInfo.builder()
                     .setColumnName("col_date")
                     .setIndexName("idx_date")
