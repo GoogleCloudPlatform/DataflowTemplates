@@ -449,8 +449,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   }
 
   /** Discovers and caches parent tables in an inheritance hierarchy. */
-  private void discoverAndCacheParentTables(Connection conn)
-      throws SchemaDiscoveryException {
+  private void discoverAndCacheParentTables(Connection conn) throws SchemaDiscoveryException {
     final String parentTableQuery =
         "SELECT DISTINCT c.relname AS table_name "
             + "FROM pg_catalog.pg_inherits i "
