@@ -156,8 +156,20 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BigDecimal.class));
     resultSet.next();
-    BigDecimal start = resultSet.getBigDecimal(1);
-    BigDecimal end = resultSet.getBigDecimal(2);
+    BigDecimal start;
+    try {
+      start = resultSet.getBigDecimal(1);
+    } catch (SQLException e) {
+      String s = resultSet.getString(1);
+      start = s == null ? null : new BigDecimal(s.replaceAll("[^\\d.-]", ""));
+    }
+    BigDecimal end;
+    try {
+      end = resultSet.getBigDecimal(2);
+    } catch (SQLException e) {
+      String s = resultSet.getString(2);
+      end = s == null ? null : new BigDecimal(s.replaceAll("[^\\d.-]", ""));
+    }
     return Boundary.<BigDecimal>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
