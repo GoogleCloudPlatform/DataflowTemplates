@@ -43,7 +43,6 @@ import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.teleport.v2.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
-import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
